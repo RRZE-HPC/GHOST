@@ -57,14 +57,12 @@ static ghost_error_t ghost_sell_spmv_plain_rm(ghost_sparsemat_t *mat,
         for (i=1; i<ch; i++) {
             tmp[i] = tmp[i-1] + rhs->traits.ncols;
         }
-        v_t **lhsv = NULL;
         int tid = ghost_omp_threadnum();
-        v_t * rhsrow;
+        v_t * rhsrow, *lhsrow;
         v_t matrixval;
 
 #pragma omp for schedule(runtime) 
         for (c=0; c<mat->nrowsPadded/ch; c++) { // loop over chunks
-            lhsv = (v_t **)&(lhs->val[c*ch]);
 
             for (i=0; i<ch; i++) {
                 for (rcol=0; rcol<rhs->traits.ncols; rcol++) {
@@ -76,9 +74,14 @@ static ghost_error_t ghost_sell_spmv_plain_rm(ghost_sparsemat_t *mat,
                 for (i=0; i<ch; i++) {
                     matrixval = (v_t)(((m_t*)(sell->val))
                             [sell->chunkStart[c]+j*ch+i]);
-                    rhsrow = (v_t *)rhs->val
-                        [sell->col[sell->chunkStart[c]+j*ch+i]];
-                    rcol = ghost_bitmap_first(rhs->ldmask)-1;
+                    if (scatteredrows) {
+                        rhsrow = (v_t *)rhs->val
+                            [sell->col[sell->chunkStart[c]+j*ch+i]];
+                        rcol = ghost_bitmap_first(rhs->ldmask)-1;
+                    } else {
+                        rhsrow = ((v_t *)rhs->val[0])+rhs->stride*sell->col[sell->chunkStart[c]+j*ch+i];
+                        rcol = -1;
+                    }
                     for (cidx = 0; cidx<rhs->traits.ncols; cidx++) {
                         if (scatteredrows) {
                             rcol = ghost_bitmap_next(rhs->ldmask,rcol);
@@ -92,9 +95,17 @@ static ghost_error_t ghost_sell_spmv_plain_rm(ghost_sparsemat_t *mat,
             }
 
             for (i=0; (i<ch) && (c*ch+i < mat->nrows); i++) {
-                rhsrow = (v_t *)rhs->val[c*ch+i];
-                rcol = ghost_bitmap_first(rhs->ldmask)-1;
-                lcol = ghost_bitmap_first(lhs->ldmask)-1;
+                if (scatteredrows) {
+                    lhsrow = (v_t *)lhs->val[c*ch+i];
+                    rhsrow = (v_t *)rhs->val[c*ch+i];
+                    rcol = ghost_bitmap_first(rhs->ldmask)-1;
+                    lcol = ghost_bitmap_first(lhs->ldmask)-1;
+                } else {
+                    lhsrow = ((v_t *)lhs->val[0])+lhs->stride*(c*ch+i);
+                    rhsrow = ((v_t *)rhs->val[0])+rhs->stride*(c*ch+i);
+                    rcol = -1;
+                    lcol = -1;
+                }
                 for (cidx = 0; cidx<lhs->traits.ncols; cidx++) {
                     if (scatteredrows) {
                         rcol = ghost_bitmap_next(rhs->ldmask,rcol);
@@ -113,18 +124,18 @@ static ghost_error_t ghost_sell_spmv_plain_rm(ghost_sparsemat_t *mat,
                         tmp[i][cidx] = tmp[i][cidx]*scale;
                     }
                     if (options & GHOST_SPMV_AXPY) {
-                        lhsv[i][lcol] += tmp[i][cidx];
+                        lhsrow[lcol] += tmp[i][cidx];
                     } else if (options & GHOST_SPMV_AXPBY) {
-                        lhsv[i][lcol] = beta*lhsv[i][lcol] + tmp[i][cidx];
+                        lhsrow[lcol] = beta*lhsrow[lcol] + tmp[i][cidx];
                     } else {
-                        lhsv[i][lcol] = tmp[i][cidx];
+                        lhsrow[lcol] = tmp[i][cidx];
                     }
 
                     if (options & GHOST_SPMV_DOT_ANY) {
                         partsums[((pad+3*lhs->traits.ncols)*tid)+3*cidx+0] += 
-                            conjugate(&lhsv[i][lcol])*lhsv[i][rcol];
+                            conjugate(&lhsrow[lcol])*lhsrow[rcol];
                         partsums[((pad+3*lhs->traits.ncols)*tid)+3*cidx+1] += 
-                            conjugate(&lhsv[i][lcol])*rhsrow[rcol];
+                            conjugate(&lhsrow[lcol])*rhsrow[rcol];
                         partsums[((pad+3*lhs->traits.ncols)*tid)+3*cidx+2] += 
                             conjugate(&rhsrow[rcol])*rhsrow[rcol];
                     }
@@ -165,8 +176,7 @@ static ghost_error_t ghost_sell_spmv_plain_rm_selector(ghost_sparsemat_t *mat,
         ghost_densemat_t *lhs, ghost_densemat_t *rhs, 
         ghost_spmv_flags_t options, va_list argp)
 {
-    if (lhs->traits.ncolsorig != lhs->traits.ncols || 
-            rhs->traits.ncolsorig != rhs->traits.ncols) {
+    if ((lhs->traits.flags & GHOST_DENSEMAT_SCATTERED) || (rhs->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
         return ghost_sell_spmv_plain_rm<m_t,v_t,true>(mat,lhs,rhs,options,argp);
     } else {
         return ghost_sell_spmv_plain_rm<m_t,v_t,false>(mat,lhs,rhs,options,argp);
@@ -556,7 +566,12 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
         p.blocksz = -1;
     }
     kernel = ghost_sellspmv_kernels[p];
-
+/*
+    char *str;
+    lhs->string(lhs,&str);
+    printf("%s\n",str);
+    rhs->string(rhs,&str);
+    printf("%s\n",str);*/
     if (kernel) {
         kernel(mat,lhs,rhs,options,argp);
     } else { // execute plain kernel as fallback

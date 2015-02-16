@@ -230,7 +230,10 @@ struct ghost_densemat_t
      * @brief The values of the densemat.
      */
     char** val;
-    
+    /**
+     * @brief The source densemat (must not be a view). 
+     */
+    ghost_densemat_t *src; 
     /**
      * @brief Size (in bytes) of one matrix element.
      */
@@ -241,7 +244,7 @@ struct ghost_densemat_t
      * Points to ncolspadded if the densemat has row-major storage and 
      * nrowspadded if it has col-major storage.
      */
-    ghost_lidx_t *stride;
+    ghost_lidx_t stride;
     /**
      * @brief Mask out elements in the leading dimension
      */
@@ -250,18 +253,6 @@ struct ghost_densemat_t
      * @brief Mask out elements in the non-leading dimension (only for CUDA)
      */
     ghost_bitmap_t trmask;
-    /**
-     * @brief The densemat which is being viewed or NULL if not a view.
-     */
-    struct ghost_densemat_t *viewing;
-    /**
-     * @brief The column of the densemat which is being viewed as the my column.
-     */
-    ghost_lidx_t viewing_col;
-    /**
-     * @brief The row of the densemat which is being viewed as the my row.
-     */
-    ghost_lidx_t viewing_row;
     /**
      * @brief An MPI data type which holds one element.
      */
@@ -616,12 +607,10 @@ struct ghost_densemat_t
      *
      * @param vec The densemat.
      * @param data The plain data.
-     * @param roffs The row offset.
-     * @param coffs The column offset.
      * @param lda The leading dimension.
      */
     ghost_error_t (*viewPlain) (ghost_densemat_t *vec, void *data, 
-            ghost_lidx_t roffs, ghost_lidx_t coffs, ghost_lidx_t lda);
+            ghost_lidx_t lda);
     /**
      * @brief Create a densemat as a scattered view of another densemat.
      *

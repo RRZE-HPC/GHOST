@@ -34,7 +34,7 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
         x = x_in;
     }
         
-    if (v->traits.storage != w->traits.storage || x->traits.storage != w->traits.storage) {
+    if ((v->traits.storage != w->traits.storage) || (x->traits.storage != w->traits.storage)){
         ERROR_LOG("Different storage layouts of input densemats!");
         return GHOST_ERR_INVALID_ARG;
     }
@@ -126,9 +126,9 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
     k = (ghost_blas_idx_t *)&ncV;
     n = (ghost_blas_idx_t *)&ncW;
 
-    ghost_blas_idx_t *ldv = (ghost_blas_idx_t *)v->stride;
-    ghost_blas_idx_t *ldw = (ghost_blas_idx_t *)w->stride;
-    ghost_blas_idx_t *ldx = (ghost_blas_idx_t *)x->stride;
+    ghost_blas_idx_t *ldv = &v->stride;
+    ghost_blas_idx_t *ldw = &w->stride;
+    ghost_blas_idx_t *ldx = &x->stride;
 
     void *vdata = NULL;
     void *wdata = NULL;
@@ -330,7 +330,7 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
             }
             else if (x->traits.flags & GHOST_DENSEMAT_HOST)
             {
-                val = x->val[i]+ghost_bitmap_first(x->ldmask)*x->elSize;
+                val = x->val[0]+i*x->stride*x->elSize;
             }
             ghost_mpi_op_t sumOp;
             ghost_mpi_datatype_t mpiDt;
@@ -367,12 +367,6 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
     UNUSED(reduce);
 #endif
 
-    if (x != x_in) {
-        INFO_LOG("Transform x back");
-        GHOST_CALL_GOTO(x_in->fromVec(x_in,x,0,0),err,ret);
-        x->destroy(x);
-    }
-
 #ifdef GHOST_HAVE_INSTR_TIMING
     ghost_gemm_perf_args_t gemm_perfargs;
     gemm_perfargs.xcols = x->traits.ncols;
@@ -381,6 +375,15 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
     gemm_perfargs.dt = x->traits.datatype;
     ghost_timing_set_perfFunc(__ghost_functag,ghost_gemm_perf_GFs,(void *)&gemm_perfargs,sizeof(gemm_perfargs),"GF/s");
 #endif
+    if (x != x_in) {
+        INFO_LOG("Transform x back");
+        GHOST_CALL_GOTO(x_in->fromVec(x_in,x,0,0),err,ret);
+        x->destroy(x);
+    }
+
+    //char *str;
+    //x->string(x,&str);
+    //printf("$$$$$\n%s\n$$$$$",str);
     
     goto out;
 err:

@@ -51,6 +51,12 @@
  */
 #define UNUSED(x) (void)(x)
 
+#define GHOST_SINGLETHREAD(code) {\
+    int nthread = ghost_omp_nthread(); \
+    ghost_omp_nthread_set(1);\
+    code;\
+    ghost_omp_nthread_set(nthread);\
+}
 
 #ifdef __cplusplus
 extern "C" {

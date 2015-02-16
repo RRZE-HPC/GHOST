@@ -357,6 +357,7 @@ endif()
 
 
 if (USE_CUDA)
+    message(FATAL_ERROR "CUDA currently broken due to densemat refactoring")
     find_package(CUDA)
     if (CUDA_FOUND)
         set(GHOST_HAVE_CUDA 1)

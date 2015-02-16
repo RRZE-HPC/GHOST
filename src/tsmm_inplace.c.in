@@ -22,8 +22,8 @@ ghost_error_t ghost_tsmm_inplace__plain_d_NCOLSIN_NCOLSOUT(ghost_densemat_t *x, 
     double * restrict wval = NULL, * restrict xval;
     ghost_lidx_t ldw, ldx;
 
-    ldw = *w->stride;
-    ldx = *x->stride;
+    ldw = w->stride;
+    ldx = x->stride;
 
     ghost_densemat_valptr(w,(void **)&wval);
     ghost_densemat_valptr(x,(void **)&xval);
@@ -70,8 +70,8 @@ ghost_error_t ghost_tsmm_inplace__plain_d_x_x(ghost_densemat_t *x, ghost_densema
     double * restrict wval = NULL, * restrict xval;
     ghost_lidx_t ldw, ldx;
 
-    ldw = *w->stride;
-    ldx = *x->stride;
+    ldw = w->stride;
+    ldx = x->stride;
 
     ghost_densemat_valptr(w,(void **)&wval);
     ghost_densemat_valptr(x,(void **)&xval);
@@ -116,8 +116,8 @@ ghost_error_t ghost_tsmm_inplace__plain_z_x_x(ghost_densemat_t *x, ghost_densema
     double complex * restrict wval = NULL, * restrict xval;
     ghost_lidx_t ldw, ldx;
 
-    ldw = *w->stride;
-    ldx = *x->stride;
+    ldw = w->stride;
+    ldx = x->stride;
 
     ghost_densemat_valptr(w,(void **)&wval);
     ghost_densemat_valptr(x,(void **)&xval);

@@ -26,9 +26,9 @@ ghost_error_t ghost_tsmm__a_avx_d_BLOCKSZ1_BLOCKSZ2(ghost_densemat_t *x, ghost_d
     double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
     ghost_lidx_t ldv, ldw, ldx;
 
-    ldv = *v->stride;
-    ldw = *w->stride;
-    ldx = *x->stride;
+    ldv = v->stride;
+    ldw = w->stride;
+    ldx = x->stride;
 
     ghost_densemat_valptr(v,(void **)&vval);
     ghost_densemat_valptr(w,(void **)&wval);
@@ -110,9 +110,9 @@ ghost_error_t ghost_tsmm__u_avx_d_BLOCKSZ1_BLOCKSZ2(ghost_densemat_t *x, ghost_d
     double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
     ghost_lidx_t ldv, ldw, ldx;
 
-    ldv = *v->stride;
-    ldw = *w->stride;
-    ldx = *x->stride;
+    ldv = v->stride;
+    ldw = w->stride;
+    ldx = x->stride;
 
     ghost_densemat_valptr(v,(void **)&vval);
     ghost_densemat_valptr(w,(void **)&wval);
@@ -193,9 +193,9 @@ ghost_error_t ghost_tsmm__a_avx_d_x_x(ghost_densemat_t *x, ghost_densemat_t *v, 
     double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
     ghost_lidx_t ldv, ldw, ldx;
 
-    ldv = *v->stride;
-    ldw = *w->stride;
-    ldx = *x->stride;
+    ldv = v->stride;
+    ldw = w->stride;
+    ldx = x->stride;
 
     ghost_densemat_valptr(v,(void **)&vval);
     ghost_densemat_valptr(w,(void **)&wval);
@@ -278,9 +278,9 @@ ghost_error_t ghost_tsmm__u_avx_d_x_x(ghost_densemat_t *x, ghost_densemat_t *v, 
     double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
     ghost_lidx_t ldv, ldw, ldx;
 
-    ldv = *v->stride;
-    ldw = *w->stride;
-    ldx = *x->stride;
+    ldv = v->stride;
+    ldw = w->stride;
+    ldx = x->stride;
 
     ghost_densemat_valptr(v,(void **)&vval);
     ghost_densemat_valptr(w,(void **)&wval);

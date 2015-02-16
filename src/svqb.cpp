@@ -69,7 +69,7 @@ static ghost_error_t ghost_svqb_tmpl (ghost_densemat_t * v_ot , ghost_densemat_t
     xtraits.datatype = DT;
     GHOST_CALL_GOTO(ghost_densemat_create(&x,NULL,xtraits),err,ret);
     GHOST_CALL_GOTO(x->fromScalar(x,&zero),err,ret);
-    ldx = *x->stride;
+    ldx = x->stride;
 
     T *  xval;
     GHOST_CALL_GOTO(ghost_densemat_valptr(x,(void **)&xval),err,ret);

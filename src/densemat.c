@@ -68,7 +68,12 @@ ghost_error_t ghost_densemat_create(ghost_densemat_t **vec, ghost_context_t *ctx
     (*vec)->trmask = NULL;
     (*vec)->val = NULL;
     (*vec)->cu_val = NULL;
-    (*vec)->viewing = NULL;
+
+    if (!((*vec)->traits.flags & GHOST_DENSEMAT_VIEW)) {
+        (*vec)->src = *vec;
+    } else {
+        (*vec)->src = NULL;
+    }
 
     GHOST_CALL_GOTO(ghost_datatype_size(&(*vec)->elSize,(*vec)->traits.datatype),err,ret);
     getNrowsFromContext((*vec));
@@ -88,10 +93,10 @@ ghost_error_t ghost_densemat_create(ghost_densemat_t **vec, ghost_context_t *ctx
 
     if ((*vec)->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
         ghost_densemat_rm_setfuncs(*vec);
-        (*vec)->stride = &(*vec)->traits.ncolspadded;
+        (*vec)->stride = (*vec)->traits.ncolspadded;
     } else {
         ghost_densemat_cm_setfuncs(*vec);
-        (*vec)->stride = &(*vec)->traits.nrowspadded;
+        (*vec)->stride = (*vec)->traits.nrowspadded;
     }
 #ifdef GHOST_HAVE_MPI
     GHOST_CALL_RETURN(ghost_mpi_datatype(&(*vec)->mpidt,(*vec)->traits.datatype));
@@ -99,6 +104,9 @@ ghost_error_t ghost_densemat_create(ghost_densemat_t **vec, ghost_context_t *ctx
     (*vec)->mpidt = MPI_DATATYPE_NULL;
 #endif
 
+    char *str;
+    ghost_densemat_info_string(&str,*vec);
+    printf("%s\n",str);
     goto out;
 err:
     free(*vec); *vec = NULL;
@@ -156,7 +164,7 @@ static ghost_error_t getNrowsFromContext(ghost_densemat_t *vec)
         DEBUG_LOG(1,"The vector's context is NULL.");
     }
 
-    if (vec->traits.nrowspadded == 0) {
+    //if (vec->traits.nrowspadded == 0) {
         if (vec->traits.flags & GHOST_DENSEMAT_VIEW) {
             INFO_LOG("No padding for view!");
             vec->traits.nrowspadded = vec->traits.nrows;
@@ -182,8 +190,8 @@ static ghost_error_t getNrowsFromContext(ghost_densemat_t *vec)
             
             vec->traits.nrowspadded = PAD(MAX(vec->traits.nrowshalo,vec->traits.nrows),padding);
         }
-    }
-    if (vec->traits.ncolspadded == 0) {
+    //}
+    //if (vec->traits.ncolspadded == 0) {
         if (vec->traits.flags & GHOST_DENSEMAT_VIEW) {
             INFO_LOG("No padding for view!");
             vec->traits.ncolspadded = vec->traits.ncols;
@@ -209,7 +217,7 @@ static ghost_error_t getNrowsFromContext(ghost_densemat_t *vec)
                 INFO_LOG("Cols will be padded to a multiple of %"PRLIDX" to %"PRLIDX,padding,vec->traits.ncolspadded);
             }
         }
-    }
+    //}
     if (vec->traits.ncolsorig == 0) {
         vec->traits.ncolsorig = vec->traits.ncols;
     }
@@ -238,12 +246,13 @@ ghost_error_t ghost_densemat_valptr(ghost_densemat_t *vec, void **ptr)
         return GHOST_ERR_INVALID_ARG;
     }
 
-    if (ghost_bitmap_iszero(vec->ldmask)) {
+    if (vec->ldmask && ghost_bitmap_iszero(vec->ldmask)) {
         ERROR_LOG("Everything masked out. This is a zero-view.");
         return GHOST_ERR_INVALID_ARG;
     }
 
-    *ptr = &vec->val[0][ghost_bitmap_first(vec->ldmask)*vec->elSize];
+    *ptr = vec->val[0];
+//    *ptr = &vec->val[0][ghost_bitmap_first(vec->ldmask)*vec->elSize];
 
     return GHOST_SUCCESS;
 
@@ -272,7 +281,7 @@ ghost_error_t ghost_densemat_cu_valptr(ghost_densemat_t *vec, void **ptr)
     }
 
 #ifdef GHOST_HAVE_CUDA
-    *ptr = &vec->cu_val[(ghost_bitmap_first(vec->trmask)*(*(vec->stride))+ghost_bitmap_first(vec->ldmask))*vec->elSize];
+    *ptr = &vec->cu_val[(ghost_bitmap_first(vec->trmask)*(vec->stride)+ghost_bitmap_first(vec->ldmask))*vec->elSize];
 #else
     *ptr = NULL;
 #endif
@@ -359,20 +368,25 @@ ghost_error_t ghost_densemat_info_string(char **str, ghost_densemat_t *densemat)
     
     ghost_header_string(str,"Dense matrix @ local rank %d (glob %d)",mynoderank,myrank);
     ghost_line_string(str,"Dimension",NULL,"%"PRLIDX"x%"PRLIDX,densemat->traits.nrows,densemat->traits.ncols);
+    ghost_line_string(str,"Dimension w/ halo",NULL,"%"PRLIDX"x%"PRLIDX,densemat->traits.nrowshalo,densemat->traits.ncols);
     ghost_line_string(str,"Padded dimension",NULL,"%"PRLIDX"x%"PRLIDX,densemat->traits.nrowspadded,densemat->traits.ncolspadded);
+    ghost_line_string(str,"Stride",NULL,"%"PRLIDX,densemat->stride);
     ghost_line_string(str,"View",NULL,"%s",densemat->traits.flags&GHOST_DENSEMAT_VIEW?"Yes":"No");
+    ghost_line_string(str,"Scattered",NULL,"%s",densemat->traits.flags&GHOST_DENSEMAT_SCATTERED?"Yes":"No");
     if (densemat->traits.flags&GHOST_DENSEMAT_VIEW) {
         ghost_line_string(str,"Dimension of viewed densemat",NULL,"%"PRLIDX"x%"PRLIDX,densemat->traits.nrowsorig,densemat->traits.ncolsorig);
-        char colmask[densemat->traits.ncolsorig];
-        char colmaskstr[densemat->traits.ncolsorig+1];
-        ghost_densemat_mask2charfield((densemat->traits.storage==GHOST_DENSEMAT_ROWMAJOR)?densemat->ldmask:densemat->trmask,densemat->traits.ncolsorig,colmask);
-        charfield2string(colmaskstr,colmask,densemat->traits.ncolsorig);
-        ghost_line_string(str,"Viewed columns",NULL,"%s",colmaskstr);
-        char rowmask[densemat->traits.nrowsorig];
-        char rowmaskstr[densemat->traits.nrowsorig+1];
-        ghost_densemat_mask2charfield(densemat->traits.storage==GHOST_DENSEMAT_ROWMAJOR?densemat->trmask:densemat->ldmask,densemat->traits.nrowsorig,rowmask);
-        charfield2string(rowmaskstr,rowmask,densemat->traits.nrowsorig);
-        ghost_line_string(str,"Viewed rows",NULL,"%s",rowmaskstr);
+        if (densemat->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+            char colmask[densemat->traits.ncolsorig];
+            char colmaskstr[densemat->traits.ncolsorig+1];
+            ghost_densemat_mask2charfield((densemat->traits.storage==GHOST_DENSEMAT_ROWMAJOR)?densemat->ldmask:densemat->trmask,densemat->traits.ncolsorig,colmask);
+            charfield2string(colmaskstr,colmask,densemat->traits.ncolsorig);
+            ghost_line_string(str,"Viewed columns",NULL,"%s",colmaskstr);
+            char rowmask[densemat->traits.nrowsorig];
+            char rowmaskstr[densemat->traits.nrowsorig+1];
+            ghost_densemat_mask2charfield(densemat->traits.storage==GHOST_DENSEMAT_ROWMAJOR?densemat->trmask:densemat->ldmask,densemat->traits.nrowsorig,rowmask);
+            charfield2string(rowmaskstr,rowmask,densemat->traits.nrowsorig);
+            ghost_line_string(str,"Viewed rows",NULL,"%s",rowmaskstr);
+        }
 
     }
    

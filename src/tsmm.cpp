@@ -127,7 +127,11 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
         PERFWARNING_LOG("Use plain for ncols==1");
         p.impl = GHOST_IMPLEMENTATION_PLAIN;
     }
-    if (p.xcols % 2) {
+    if (p.xcols % 4 || p.vcols % 4) {
+        PERFWARNING_LOG("Use plain for non-multiple of four");
+        p.impl = GHOST_IMPLEMENTATION_SSE;
+    }
+    if (p.xcols % 2 || p.vcols % 2) {
         PERFWARNING_LOG("Use plain for non-even column count");
         p.impl = GHOST_IMPLEMENTATION_PLAIN;
     }

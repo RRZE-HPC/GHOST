@@ -13,6 +13,7 @@
  */
 typedef hwloc_bitmap_t ghost_bitmap_t;
 
+#define ghost_bitmap_set(bitmap,idx) hwloc_bitmap_set(bitmap,idx)
 #define ghost_bitmap_set_range(bitmap,start,end) hwloc_bitmap_set_range(bitmap,start,end)
 #define ghost_bitmap_clr_range(bitmap,start,end) hwloc_bitmap_clr_range(bitmap,start,end)
 #define ghost_bitmap_list_asprintf(str,bitmap) hwloc_bitmap_list_asprintf(str,bitmap)

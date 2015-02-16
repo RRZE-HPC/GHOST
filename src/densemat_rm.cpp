@@ -79,8 +79,8 @@ static ghost_error_t ghost_densemat_rm_dotprod_tmpl(ghost_densemat_t *vec, void 
     {
         int tid = ghost_omp_threadnum();
         DENSEMAT_ITER2(vec,vec2,
-            partsums[(padding+vec->traits.ncols)*tid+col] += *(v_t *)DENSEMAT_VAL(vec2,row,memcol2)*
-                conjugate((v_t *)(DENSEMAT_VAL(vec,row,memcol1))));
+            partsums[(padding+vec->traits.ncols)*tid+col] += *(v_t *)valptr2 * 
+                conjugate((v_t *)valptr1));
     }
     ghost_lidx_t col;
     for (col=0; col<vec->traits.ncols; col++) {
@@ -109,9 +109,7 @@ static ghost_error_t ghost_densemat_rm_vaxpy_tmpl(ghost_densemat_t *vec, ghost_d
     
     v_t *s = (v_t *)scale;
     
-    DENSEMAT_ITER2(vec,vec2,
-            *(v_t *)DENSEMAT_VAL(vec,row,memcol1) += 
-            *(v_t *)DENSEMAT_VAL(vec2,row,memcol2) * s[col]);
+    DENSEMAT_ITER2(vec,vec2,*(v_t *)valptr1 += *(v_t *)valptr2 * s[col]);
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     return GHOST_SUCCESS;
@@ -126,10 +124,8 @@ static ghost_error_t ghost_densemat_rm_vaxpby_tmpl(ghost_densemat_t *vec, ghost_
     v_t *s = (v_t *)scale;
     v_t *b = (v_t *)b_;
 
-    DENSEMAT_ITER2(vec,vec2,
-            *(v_t *)DENSEMAT_VAL(vec,row,memcol1) = 
-            *(v_t *)DENSEMAT_VAL(vec2,row,memcol2) * s[col] + 
-                *(v_t *)DENSEMAT_VAL(vec,row,memcol1) * b[col]);
+    DENSEMAT_ITER2(vec,vec2,*(v_t *)valptr1 = *(v_t *)valptr2 * s[col] + 
+            *(v_t *)valptr1 * b[col]);
     
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     return GHOST_SUCCESS;
@@ -140,7 +136,7 @@ static ghost_error_t ghost_densemat_rm_vscale_tmpl(ghost_densemat_t *vec, void *
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
         
-    DENSEMAT_ITER(vec,*(v_t *)DENSEMAT_VAL(vec,row,memcol) *= ((v_t *)scale)[col]);
+    DENSEMAT_ITER(vec,*(v_t *)valptr *= ((v_t *)scale)[col]);
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     return GHOST_SUCCESS;
@@ -184,7 +180,7 @@ static ghost_error_t ghost_densemat_rm_fromRand_tmpl(ghost_densemat_t *vec)
     {
         unsigned int *state;
         ghost_rand_get(&state);
-        DENSEMAT_ITER(vec,my_rand(state,(v_t *)DENSEMAT_VAL(vec,row,memcol)));
+        DENSEMAT_ITER(vec,my_rand(state,(v_t *)valptr));
     }
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
@@ -222,7 +218,9 @@ static ghost_error_t ghost_densemat_rm_string_tmpl(char **str, ghost_densemat_t 
         }
 #endif
     } else {
-        ghost_lidx_t i,v,r;
+        GHOST_SINGLETHREAD(DENSEMAT_ITER(vec,buffer<<*(v_t *)valptr<<(col==vec->traits.ncols-1?"\n":"\t")));
+
+/*        ghost_lidx_t row,col,memrow,memcol;
         for (r=0; r<vec->traits.nrows; r++) {
             for (i=0, v=0; v<vec->traits.ncolsorig; v++) {
                 if (ghost_bitmap_isset(vec->ldmask,v)) {
@@ -246,7 +244,7 @@ static ghost_error_t ghost_densemat_rm_string_tmpl(char **str, ghost_densemat_t 
             if (r<vec->traits.nrows-1) {
                 buffer << std::endl;
             }
-        }
+        }*/
     }
 
     GHOST_CALL_RETURN(ghost_malloc((void **)str,buffer.str().length()+1));
