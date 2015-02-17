@@ -12,9 +12,6 @@
 #include "ghost/bindensemat.h"
 #include "ghost/densemat_cm.h"
 
-#define ROWMAJOR
-#include "ghost/densemat_iter_macros.h"
-
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
@@ -25,6 +22,10 @@
 #ifdef GHOST_HAVE_CUDA
 #include <cuda_runtime.h>
 #endif
+
+#define ROWMAJOR
+#include "ghost/densemat_iter_macros.h"
+#include "ghost/densemat_common.c.def"
 
 static ghost_error_t vec_rm_scale(ghost_densemat_t *vec, void *scale);
 static ghost_error_t vec_rm_axpy(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale);
@@ -40,11 +41,11 @@ static void ghost_freeVector( ghost_densemat_t* const vec );
 static ghost_error_t ghost_permuteVector( ghost_densemat_t* vec, ghost_permutation_t *permutation, ghost_permutation_direction_t dir); 
 static ghost_error_t ghost_cloneVector(ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nr, ghost_lidx_t roffs, ghost_lidx_t nc, ghost_lidx_t coffs);
 static ghost_error_t vec_rm_entry(ghost_densemat_t *, void *, ghost_lidx_t, ghost_lidx_t);
-static ghost_error_t vec_rm_view (ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nr, ghost_lidx_t roffs, ghost_lidx_t nc, ghost_lidx_t coffs);
-static ghost_error_t vec_rm_viewScatteredVec (ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nr, ghost_lidx_t *roffs, ghost_lidx_t nc, ghost_lidx_t *coffs);
-static ghost_error_t vec_rm_viewScatteredCols (ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nc, ghost_lidx_t *coffs);
-static ghost_error_t vec_rm_viewCols (ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nc, ghost_lidx_t coffs);
-static ghost_error_t vec_rm_viewPlain (ghost_densemat_t *vec, void *data, ghost_lidx_t lda);
+//static ghost_error_t vec_rm_view (ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nr, ghost_lidx_t roffs, ghost_lidx_t nc, ghost_lidx_t coffs);
+//static ghost_error_t vec_rm_viewScatteredVec (ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nr, ghost_lidx_t *roffs, ghost_lidx_t nc, ghost_lidx_t *coffs);
+//static ghost_error_t vec_rm_viewScatteredCols (ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nc, ghost_lidx_t *coffs);
+//static ghost_error_t vec_rm_viewCols (ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nc, ghost_lidx_t coffs);
+//static ghost_error_t vec_rm_viewPlain (ghost_densemat_t *vec, void *data, ghost_lidx_t lda);
 static ghost_error_t vec_rm_compress(ghost_densemat_t *vec);
 static ghost_error_t vec_rm_upload(ghost_densemat_t *vec);
 static ghost_error_t vec_rm_download(ghost_densemat_t *vec);
@@ -100,11 +101,11 @@ ghost_error_t ghost_densemat_rm_setfuncs(ghost_densemat_t *vec)
     vec->permute = &ghost_permuteVector;
     vec->clone = &ghost_cloneVector;
     vec->entry = &vec_rm_entry;
-    vec->viewVec = &vec_rm_view;
-    vec->viewPlain = &vec_rm_viewPlain;
-    vec->viewScatteredVec = &vec_rm_viewScatteredVec;
-    vec->viewScatteredCols = &vec_rm_viewScatteredCols;
-    vec->viewCols = &vec_rm_viewCols;
+    vec->viewVec = &ghost_densemat_rm_view;
+    vec->viewPlain = &ghost_densemat_rm_viewPlain;
+    vec->viewScatteredVec = &ghost_densemat_rm_viewScatteredVec;
+    vec->viewScatteredCols = &ghost_densemat_rm_viewScatteredCols;
+    vec->viewCols = &ghost_densemat_rm_viewCols;
     vec->syncValues = &vec_rm_equalize;
     vec->halocommInit = &densemat_rm_halocommInit;
     vec->halocommFinalize = &densemat_rm_halocommFinalize;
@@ -313,6 +314,7 @@ static ghost_error_t vec_rm_equalize(ghost_densemat_t *vec, ghost_mpi_comm_t com
     return GHOST_SUCCESS;
 }
 
+#if 0
 static ghost_error_t vec_rm_view (ghost_densemat_t *src, ghost_densemat_t **new, 
         ghost_lidx_t nr, ghost_lidx_t roffs, ghost_lidx_t nc, ghost_lidx_t coffs)
 {
@@ -488,6 +490,7 @@ static ghost_error_t vec_rm_viewScatteredCols (ghost_densemat_t *src,
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
     return GHOST_SUCCESS;
 }
+#endif
 
 ghost_error_t ghost_densemat_rm_malloc(ghost_densemat_t *vec)
 {

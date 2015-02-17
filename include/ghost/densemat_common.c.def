@@ -69,3 +69,127 @@ static ghost_error_t FUNCNAME(viewPlain(ghost_densemat_t *vec, void *data, ghost
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
     return GHOST_SUCCESS;
 }
+
+static ghost_error_t FUNCNAME(viewCols(ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nc, ghost_lidx_t coffs))
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
+    DEBUG_LOG(1,"Viewing a %"PRLIDX"x%"PRLIDX" contiguous dense matrix",src->traits.nrows,nc);
+    ghost_densemat_traits_t newTraits = src->traits;
+    newTraits.ncols = nc;
+    newTraits.ncolsorig = src->traits.ncolsorig;
+    newTraits.flags |= (ghost_densemat_flags_t)GHOST_DENSEMAT_VIEW;
+
+    ghost_densemat_create(new,src->context,newTraits);
+    FUNCNAME(malloc(*new));
+    (*new)->stride = src->stride;
+    (*new)->src = src->src;
+    
+    ghost_lidx_t coloffset;
+
+    if (src->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+        ghost_lidx_t coffsarray[nc];
+        ghost_lidx_t c;
+        for (c=0; c<nc; c++) {
+            coffsarray[c] = coffs+c;
+        }
+        ghost_bitmap_copy((*new)->rowmask,src->rowmask);
+        GHOST_CALL_RETURN(ghost_bitmap_copy_indices((*new)->colmask,&coloffset,src->colmask,coffsarray,nc));
+    } else {
+        coloffset = coffs;
+    }
+        
+    (*new)->cu_val = DENSEMAT_CUVAL(src,0,coloffset);
+    (*new)->val = DENSEMAT_VAL(src,0,coloffset);
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
+    return GHOST_SUCCESS;
+}
+
+static ghost_error_t FUNCNAME(viewScatteredCols(ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nc, ghost_lidx_t *coffs))
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
+
+#ifdef GHOST_HAVE_CUDA
+    if (src->traits.flags & GHOST_DENSEMAT_DEVICE) {
+        if (!array_strictly_ascending(coffs,nc)) {
+            ERROR_LOG("Can only view sctrictly ascending scattered columns for row-major densemats!");
+            return GHOST_ERR_INVALID_ARG;
+        }
+    }
+#endif
+    
+    DEBUG_LOG(1,"Viewing a %"PRLIDX"x%"PRLIDX" scattered dense matrix",src->traits.nrows,nc);
+    ghost_lidx_t v;
+    ghost_densemat_traits_t newTraits = src->traits;
+    newTraits.ncols = nc;
+    newTraits.flags |= (ghost_densemat_flags_t)GHOST_DENSEMAT_VIEW;
+    newTraits.flags |= (ghost_densemat_flags_t)GHOST_DENSEMAT_SCATTERED;
+
+    ghost_densemat_create(new,src->context,newTraits);
+    FUNCNAME(malloc(*new));
+    (*new)->stride = src->stride;
+    (*new)->src = src->src;
+        
+    ghost_lidx_t coloffset;
+    
+    ghost_bitmap_clr_range((*new)->colmask,0,(*new)->traits.ncolsorig);
+
+    if (src->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+        ghost_bitmap_copy((*new)->rowmask,src->rowmask);
+        GHOST_CALL_RETURN(ghost_bitmap_copy_indices((*new)->colmask,&coloffset,src->colmask,coffs,nc));
+    } else {
+        for (v=0; v<nc; v++) {
+            ghost_bitmap_set((*new)->colmask,coffs[v]-coffs[0]);
+        }
+        ghost_bitmap_set_range((*new)->rowmask,0,(*new)->traits.nrowsorig-1);
+        coloffset = coffs[0];
+    }
+    
+    (*new)->val = DENSEMAT_VAL(src,0,coloffset);
+    (*new)->cu_val = DENSEMAT_CUVAL(src,0,coloffset);
+    
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
+    return GHOST_SUCCESS;
+}
+
+static ghost_error_t FUNCNAME(viewScatteredVec(ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nr, ghost_lidx_t *roffs, ghost_lidx_t nc, ghost_lidx_t *coffs))
+{
+    DEBUG_LOG(1,"Viewing a %"PRLIDX"x%"PRLIDX" scattered dense matrix",src->traits.nrows,nc);
+    ghost_lidx_t i;
+    ghost_densemat_traits_t newTraits = src->traits;
+    newTraits.ncols = nc;
+    newTraits.nrows = nr;
+    newTraits.ncolsorig = src->traits.ncolsorig;
+    newTraits.nrowsorig = src->traits.nrowsorig;
+    newTraits.flags |= (ghost_densemat_flags_t)GHOST_DENSEMAT_VIEW;
+    newTraits.flags |= (ghost_densemat_flags_t)GHOST_DENSEMAT_SCATTERED;
+
+    ghost_densemat_create(new,src->context,newTraits);
+    FUNCNAME(malloc(*new));
+    (*new)->stride = src->stride;
+    (*new)->src = src->src;
+        
+    ghost_bitmap_clr_range((*new)->colmask,0,(*new)->traits.ncolsorig);
+    ghost_bitmap_clr_range((*new)->rowmask,0,(*new)->traits.nrowsorig);
+    
+    if (src->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+        ghost_lidx_t rowoffset, coloffset;
+        GHOST_CALL_RETURN(ghost_bitmap_copy_indices((*new)->rowmask,&rowoffset,src->rowmask,roffs,nr));
+        GHOST_CALL_RETURN(ghost_bitmap_copy_indices((*new)->colmask,&coloffset,src->colmask,coffs,nc));
+        
+        (*new)->val = DENSEMAT_VAL(src,rowoffset,coloffset);
+        (*new)->cu_val = DENSEMAT_CUVAL(src,rowoffset,coloffset);
+    } else {
+        for (i=0; i<nr; i++) {
+            ghost_bitmap_set((*new)->rowmask,roffs[i]);
+        }
+        for (i=0; i<nc; i++) {
+            ghost_bitmap_set((*new)->colmask,coffs[i]);
+        }
+        
+        (*new)->val = DENSEMAT_VAL(src,roffs[0],coffs[0]);
+        (*new)->cu_val = DENSEMAT_CUVAL(src,roffs[0],coffs[0]);
+    }
+
+    return GHOST_SUCCESS;
+}
