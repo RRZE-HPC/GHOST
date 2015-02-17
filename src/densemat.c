@@ -179,6 +179,8 @@ static ghost_error_t getNrowsFromContext(ghost_densemat_t *vec)
 
 ghost_error_t ghost_densemat_valptr(ghost_densemat_t *vec, void **ptr)
 {
+    WARNING_LOG("Deprecated! Use vec->val directly instead!");
+    
     if (!ptr) {
         ERROR_LOG("NULL pointer");
         return GHOST_ERR_INVALID_ARG;
@@ -207,6 +209,8 @@ ghost_error_t ghost_densemat_valptr(ghost_densemat_t *vec, void **ptr)
 
 ghost_error_t ghost_densemat_cu_valptr(ghost_densemat_t *vec, void **ptr)
 {
+    WARNING_LOG("Deprecated! Use vec->cu_val directly instead!");
+
     if (!ptr) {
         ERROR_LOG("NULL pointer");
         return GHOST_ERR_INVALID_ARG;
