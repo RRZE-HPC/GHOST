@@ -44,7 +44,7 @@ static ghost_error_t ghost_densemat_cm_averagehalo_tmpl(ghost_densemat_t *vec)
     }
 
     for (i=0; i<nrank; i++) {
-        MPI_CALL_GOTO(MPI_Isend(&((T *)vec->val[0])[vec->context->hput_pos[i]],vec->context->wishes[i]*vec->traits.ncols,vec->mpidt,i,rank,vec->context->mpicomm,&req[i]),err,ret);
+        MPI_CALL_GOTO(MPI_Isend(&((T *)vec->val)[vec->context->hput_pos[i]],vec->context->wishes[i]*vec->traits.ncols,vec->mpidt,i,rank,vec->context->mpicomm,&req[i]),err,ret);
     }
 
     curwork = work;
@@ -64,7 +64,7 @@ static ghost_error_t ghost_densemat_cm_averagehalo_tmpl(ghost_densemat_t *vec)
     }
     
     for (i=0; i<vec->context->lnrows[rank]; i++) {
-        sum[i] = ((T *)vec->val[0])[i];
+        sum[i] = ((T *)vec->val)[i];
         nrankspresent[i] = 1;
     }
     
@@ -85,7 +85,7 @@ static ghost_error_t ghost_densemat_cm_averagehalo_tmpl(ghost_densemat_t *vec)
     }
         
     for (currow=0; currow<vec->context->lnrows[rank]; currow++) {
-        ((T *)vec->val[0])[currow] = sum[currow]/(T)nrankspresent[currow];
+        ((T *)vec->val)[currow] = sum[currow]/(T)nrankspresent[currow];
     }
         
     goto out;

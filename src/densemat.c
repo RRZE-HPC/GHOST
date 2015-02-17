@@ -121,103 +121,50 @@ static ghost_error_t getNrowsFromContext(ghost_densemat_t *vec)
     DEBUG_LOG(1,"Computing the number of vector rows from the context");
 
     if (vec->context != NULL) {
-        if (vec->traits.nrows == 0) {
-            DEBUG_LOG(2,"nrows for vector not given. determining it from the context");
-            if ((vec->context->flags & GHOST_CONTEXT_REDUNDANT) || (vec->traits.flags & GHOST_DENSEMAT_GLOBAL))
-            {
-                if (vec->traits.flags & GHOST_DENSEMAT_NO_HALO) {
-                    vec->traits.nrows = vec->context->gnrows;
-                } else {
-                    vec->traits.nrows = vec->context->gncols;
-                }
-
-            } 
-            else 
-            {
-                int rank;
-                GHOST_CALL_RETURN(ghost_rank(&rank, vec->context->mpicomm));
-                vec->traits.nrows = vec->context->lnrows[rank];
+        int rank;
+        GHOST_CALL_RETURN(ghost_rank(&rank, vec->context->mpicomm));
+        vec->traits.nrows = vec->context->lnrows[rank];
+        if (!(vec->traits.flags & GHOST_DENSEMAT_NO_HALO)) {
+            if (vec->context->halo_elements == -1) {
+                ERROR_LOG("You have to make sure to read in the matrix _before_ creating the right hand side vector in a distributed context! This is because we have to know the number of halo elements of the vector.");
+                return GHOST_ERR_UNKNOWN;
             }
-        }
-        if (vec->traits.nrowshalo == 0) {
-            DEBUG_LOG(2,"nrowshalo for vector not given. determining it from the context");
-            if ((vec->context->flags & GHOST_CONTEXT_REDUNDANT) || (vec->traits.flags & GHOST_DENSEMAT_GLOBAL))
-            {
-                vec->traits.nrowshalo = vec->traits.nrows;
-            } 
-            else 
-            {
-                if (!(vec->traits.flags & GHOST_DENSEMAT_GLOBAL) && !(vec->traits.flags & GHOST_DENSEMAT_NO_HALO)) {
-                    if (vec->context->halo_elements == -1) {
-                        ERROR_LOG("You have to make sure to read in the matrix _before_ creating the right hand side vector in a distributed context! This is because we have to know the number of halo elements of the vector.");
-                        return GHOST_ERR_UNKNOWN;
-                    }
-                    vec->traits.nrowshalo = vec->traits.nrows+vec->context->halo_elements+1;
-                } else {
-                    // context->hput_pos[0] = nrows if only one process, so we need a dummy element 
-                    vec->traits.nrowshalo = vec->traits.nrows+1; 
-                }
-            }    
+            vec->traits.nrowshalo = vec->traits.nrows+vec->context->halo_elements+1;
         }
     } else {
-        // the case context==NULL is allowed - the vector is local.
-        DEBUG_LOG(1,"The vector's context is NULL.");
+        // context->hput_pos[0] = nrows if only one process, so we need a dummy element 
+        vec->traits.nrowshalo = vec->traits.nrows+1; 
     }
 
-    //if (vec->traits.nrowspadded == 0) {
-        if (vec->traits.flags & GHOST_DENSEMAT_VIEW) {
-            INFO_LOG("No padding for view!");
-            vec->traits.nrowspadded = vec->traits.nrows;
-        } else {
-            DEBUG_LOG(2,"nrowspadded for vector not given. determining it from the context");
-            ghost_lidx_t padding = vec->elSize;
-            if (vec->traits.nrows > 1) {
+    if (vec->traits.flags & GHOST_DENSEMAT_VIEW) {
+        INFO_LOG("No padding for view!");
+        vec->traits.nrowspadded = vec->traits.nrows;
+        vec->traits.ncolspadded = vec->traits.ncols;
+    } else {
+        ghost_lidx_t padding = vec->elSize;
+        if (vec->traits.nrows > 1) {
 #ifdef GHOST_HAVE_MIC
-                padding = 64; // 64 byte padding
+            padding = 64; // 64 byte padding
 #elif defined(GHOST_HAVE_AVX)
-                padding = 32; // 32 byte padding
-                if (vec->traits.nrows <= 2) {
-                    PERFWARNING_LOG("Force SSE over AVX vor densemat with less than 2 rows!");
-                    padding = 16; // SSE in this case: only 16 byte alignment required
-                }
+            padding = 32; // 32 byte padding
+            if (vec->traits.nrows <= 2) {
+                PERFWARNING_LOG("Force SSE over AVX vor densemat with less than 2 rows!");
+                padding = 16; // SSE in this case: only 16 byte alignment required
+            }
 #elif defined (GHOST_HAVE_SSE)
-                padding = 16; // 16 byte padding
+            padding = 16; // 16 byte padding
 #endif
-            }
-            
-            padding /= vec->elSize;
-            padding = MAX(padding,ghost_sell_max_cfg_chunkheight());
-            
-            vec->traits.nrowspadded = PAD(MAX(vec->traits.nrowshalo,vec->traits.nrows),padding);
         }
-    //}
-    //if (vec->traits.ncolspadded == 0) {
-        if (vec->traits.flags & GHOST_DENSEMAT_VIEW) {
-            INFO_LOG("No padding for view!");
-            vec->traits.ncolspadded = vec->traits.ncols;
-        } else {
-            DEBUG_LOG(2,"ncolspadded for vector not given. determining it from the context");
-            ghost_lidx_t padding = vec->elSize;
-            if (vec->traits.ncols > 1) {
-#ifdef GHOST_HAVE_MIC
-                padding = 64; // 64 byte padding
-#elif defined(GHOST_HAVE_AVX)
-                padding = 32; // 32 byte padding
-                if (vec->traits.ncols <= 2) {
-                    PERFWARNING_LOG("Force SSE over AVX vor densemat with less than 2 columns!");
-                    padding = 16; // SSE in this case: only 16 byte alignment required
-                }
-#elif defined (GHOST_HAVE_SSE)
-                padding = 16; // 16 byte padding
-#endif
-            }
-            padding /= vec->elSize;
-            vec->traits.ncolspadded = PAD(vec->traits.ncols,padding);
-            if (vec->traits.ncols % padding) {
-                INFO_LOG("Cols will be padded to a multiple of %"PRLIDX" to %"PRLIDX,padding,vec->traits.ncolspadded);
-            }
-        }
-    //}
+        
+        padding /= vec->elSize;
+        
+        vec->traits.ncolspadded = PAD(vec->traits.ncols,padding);
+        
+        padding = MAX(padding,ghost_sell_max_cfg_chunkheight());
+        
+        vec->traits.nrowspadded = PAD(MAX(vec->traits.nrowshalo,vec->traits.nrows),padding);
+    }
+        
     if (vec->traits.ncolsorig == 0) {
         vec->traits.ncolsorig = vec->traits.ncols;
     }
@@ -251,8 +198,7 @@ ghost_error_t ghost_densemat_valptr(ghost_densemat_t *vec, void **ptr)
         return GHOST_ERR_INVALID_ARG;
     }
 
-    *ptr = vec->val[0];
-//    *ptr = &vec->val[0][ghost_bitmap_first(vec->ldmask)*vec->elSize];
+    *ptr = vec->val;
 
     return GHOST_SUCCESS;
 

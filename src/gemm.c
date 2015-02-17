@@ -23,41 +23,14 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
     transv[0]=transv_in[0];
     transw[0]=transw_in[0];
     
-    ghost_densemat_t *x;
+    ghost_densemat_t *x = x_in;
     ghost_densemat_t *v = v_in;
     ghost_densemat_t *w = w_in;
     
-    if (x_in->traits.flags & GHOST_DENSEMAT_SCATTERED) {
-        INFO_LOG("The result vector x is scattered. It will be cloned and compressed before the computation and transformed back afterwards.");
-        GHOST_CALL_GOTO(x_in->clone(x_in,&x,x_in->traits.nrows,0,x_in->traits.ncols,0),err,ret);
-    } else {
-        x = x_in;
-    }
-        
+    
     if ((v->traits.storage != w->traits.storage) || (x->traits.storage != w->traits.storage)){
         ERROR_LOG("Different storage layouts of input densemats!");
         return GHOST_ERR_INVALID_ARG;
-    }
-
-    INFO_LOG("in gemm");
-
-    // scattered vectors are copied together, if this occurs the user should rethink his or 
-    // her data layout.
-    if (v->traits.flags & GHOST_DENSEMAT_SCATTERED)
-    {
-        WARNING_LOG("The vector v is scattered. It will be cloned to a compressed "
-                "vector before computation but not be changed itself.");
-        ghost_densemat_t *vc;
-        v->clone(v,&vc,v->traits.nrows,0,v->traits.ncols,0);
-        v = vc;
-    }
-    if (w->traits.flags & GHOST_DENSEMAT_SCATTERED)
-    {
-        WARNING_LOG("The vector w is scattered. It will be cloned to a compressed "
-                "vector before computation but not be changed itself.");
-        ghost_densemat_t *wc;
-        w->clone(w,&wc,w->traits.nrows,0,w->traits.ncols,0);
-        w = wc;
     }
 
     if (v == x && !(flags & GHOST_GEMM_NOT_CLONE_ALIASED)) {
@@ -84,8 +57,10 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
         reduce = GHOST_GEMM_NO_REDUCE;
     }
 
-    int nranks;
-    GHOST_CALL_GOTO(ghost_nrank(&nranks, v->context->mpicomm),err,ret);
+    int nranks = 1;
+    if (v->context) {
+        GHOST_CALL_GOTO(ghost_nrank(&nranks, v->context->mpicomm),err,ret);
+    }
 
     if ((reduce != GHOST_GEMM_NO_REDUCE) && (reduce >= nranks)) {
         WARNING_LOG("Reduction should be done to rank %d but only %d ranks are present. Reducing to 0...",
@@ -143,7 +118,7 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
     // take the comm from v if and only if a reduction is requested.
     int myrank=0;
 
-    if (reduce!=GHOST_GEMM_NO_REDUCE) {
+    if ((reduce != GHOST_GEMM_NO_REDUCE) && (v->context)) {
         GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
     }
 
@@ -330,36 +305,34 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
             }
             else if (x->traits.flags & GHOST_DENSEMAT_HOST)
             {
-                val = x->val[0]+i*x->stride*x->elSize;
+                val = x->val+i*x->stride*x->elSize;
             }
             ghost_mpi_op_t sumOp;
             ghost_mpi_datatype_t mpiDt;
             GHOST_CALL_GOTO(ghost_mpi_op_sum(&sumOp,x->traits.datatype),err,ret);
             GHOST_CALL_GOTO(ghost_mpi_datatype(&mpiDt,x->traits.datatype),err,ret);
 
-            if (reduce == GHOST_GEMM_ALL_REDUCE) 
-            {
-                MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,val,dimb,mpiDt,sumOp,v->context->mpicomm),err,ret);
-            } 
-            else 
-            {
-                if (myrank == reduce) 
-                {
-                    MPI_CALL_GOTO(MPI_Reduce(MPI_IN_PLACE,val,dimb,mpiDt,sumOp,reduce,v->context->mpicomm),err,ret);
-                } 
-                else 
-                {
-                    MPI_CALL_GOTO(MPI_Reduce(val,NULL,dimb,mpiDt,sumOp,reduce,v->context->mpicomm),err,ret);
+            if (v->context) {
+                if (reduce == GHOST_GEMM_ALL_REDUCE) {
+                    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,val,dimb,mpiDt,sumOp,v->context->mpicomm),err,ret);
+                } else {
+                    if (myrank == reduce) 
+                    {
+                        MPI_CALL_GOTO(MPI_Reduce(MPI_IN_PLACE,val,dimb,mpiDt,sumOp,reduce,v->context->mpicomm),err,ret);
+                    } 
+                    else 
+                    {
+                        MPI_CALL_GOTO(MPI_Reduce(val,NULL,dimb,mpiDt,sumOp,reduce,v->context->mpicomm),err,ret);
+                    }
                 }
-            }
-            if (copied)
-            {
+                if (copied) {
 #ifdef GHOST_HAVE_CUDA
-                size_t sizeofdt;
-                ghost_datatype_size(&sizeofdt,x->traits.datatype);
-                GHOST_CALL_GOTO(ghost_cu_upload(&x->cu_val[i*lda*sizeofdt],val,dimb*sizeofdt),err,ret);
-                free(val);
+                    size_t sizeofdt;
+                    ghost_datatype_size(&sizeofdt,x->traits.datatype);
+                    GHOST_CALL_GOTO(ghost_cu_upload(&x->cu_val[i*lda*sizeofdt],val,dimb*sizeofdt),err,ret);
+                    free(val);
 #endif
+                }
             }
         }
     }
@@ -371,15 +344,14 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
     ghost_gemm_perf_args_t gemm_perfargs;
     gemm_perfargs.xcols = x->traits.ncols;
     gemm_perfargs.vcols = v->traits.ncols;
-    gemm_perfargs.vrows = v->context->gnrows;
+    if (v->context) {
+        gemm_perfargs.vrows = v->context->gnrows;
+    } else {
+        gemm_perfargs.vrows = v->traits.nrows;
+    }
     gemm_perfargs.dt = x->traits.datatype;
     ghost_timing_set_perfFunc(__ghost_functag,ghost_gemm_perf_GFs,(void *)&gemm_perfargs,sizeof(gemm_perfargs),"GF/s");
 #endif
-    if (x != x_in) {
-        INFO_LOG("Transform x back");
-        GHOST_CALL_GOTO(x_in->fromVec(x_in,x,0,0),err,ret);
-        x->destroy(x);
-    }
 
     //char *str;
     //x->string(x,&str);
@@ -394,8 +366,8 @@ out:
 
 }
 
-ghost_error_t ghost_gemm(ghost_densemat_t *x_in, ghost_densemat_t *v_in, const char * transv_in, 
-ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int reduce,ghost_gemm_flags_t flags) 
+ghost_error_t ghost_gemm(ghost_densemat_t *x_in, ghost_densemat_t *v_in, const char * transv, 
+ghost_densemat_t *w_in, const char *transw, void *alpha, void *beta, int reduce,ghost_gemm_flags_t flags) 
 {
 #ifdef GHOST_HAVE_LONGIDX_LOCAL
 #ifndef GHOST_HAVE_MKL
@@ -404,6 +376,7 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
 #endif
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error_t ret = GHOST_SUCCESS;
+    int donespecial = 0;
        
     int deviceflags = (v_in->traits.flags & GHOST_DENSEMAT_DEVICE) + (w_in->traits.flags & GHOST_DENSEMAT_DEVICE) + (x_in->traits.flags & GHOST_DENSEMAT_DEVICE);
 
@@ -412,40 +385,80 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
         return GHOST_ERR_INVALID_ARG;
     }
     
-    if (!(v_in->traits.flags & GHOST_DENSEMAT_DEVICE) && !(flags & GHOST_GEMM_NOT_SPECIAL)) { 
+    ghost_densemat_t *x = NULL;
+    ghost_densemat_t *v = v_in;
+    ghost_densemat_t *w = w_in;
+    
+    // scattered vectors are copied together, if this occurs the user should rethink his or 
+    // her data layout.
+    if (x_in->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+        INFO_LOG("The result vector x is scattered. It will be cloned and compressed before the computation and transformed back afterwards.");
+        GHOST_CALL_GOTO(x_in->clone(x_in,&x,x_in->traits.nrows,0,x_in->traits.ncols,0),err,ret);
+    } else {
+        x = x_in;
+    }
+        
+
+    if (v_in->traits.flags & GHOST_DENSEMAT_SCATTERED)
+    {
+        WARNING_LOG("The vector v is scattered. It will be cloned to a compressed "
+                "vector before computation but not be changed itself.");
+        ghost_densemat_t *vc;
+        v_in->clone(v_in,&vc,v->traits.nrows,0,v->traits.ncols,0);
+        v = vc;
+    }
+    if (w->traits.flags & GHOST_DENSEMAT_SCATTERED)
+    {
+        WARNING_LOG("The vector w is scattered. It will be cloned to a compressed "
+                "vector before computation but not be changed itself.");
+        ghost_densemat_t *wc;
+        w_in->clone(w_in,&wc,w->traits.nrows,0,w->traits.ncols,0);
+        w = wc;
+    }
+    
+    if (!(v->traits.flags & GHOST_DENSEMAT_DEVICE) && !(flags & GHOST_GEMM_NOT_SPECIAL)) { 
         if (flags & GHOST_GEMM_KAHAN) {
-            if (ghost_tsmttsm_kahan_valid(x_in,v_in,transv_in,w_in,transw_in,alpha,beta,reduce,0) == GHOST_SUCCESS) {
+            if (ghost_tsmttsm_kahan_valid(x,v,transv,w,transw,alpha,beta,reduce,0) == GHOST_SUCCESS) {
                 INFO_LOG("Transparently call special implementation Kahan-TSMTTSM");
-                GHOST_CALL_GOTO(ghost_tsmttsm_kahan(x_in,v_in,w_in,alpha,beta,reduce,transv_in[0] == 'C' || transv_in[0] == 'c'),err,ret);
-                goto out;
+                GHOST_CALL_GOTO(ghost_tsmttsm_kahan(x,v,w,alpha,beta,reduce,transv[0] == 'C' || transv[0] == 'c'),err,ret);
+                donespecial = 1;
             } else {
                 WARNING_LOG("Will not do Kahan summation although requested!");
             }
         }
 
-        if (ghost_tsmttsm_valid(x_in,v_in,transv_in,w_in,transw_in,alpha,beta,reduce,0) == GHOST_SUCCESS) {
+        if (ghost_tsmttsm_valid(x,v,transv,w,transw,alpha,beta,reduce,0) == GHOST_SUCCESS) {
             INFO_LOG("Transparently call special implementation TSMTTSM");
-            GHOST_CALL_GOTO(ghost_tsmttsm(x_in,v_in,w_in,alpha,beta,reduce,transv_in[0] == 'C' || transv_in[0] == 'c'),err,ret);
-            goto out;
+            GHOST_CALL_GOTO(ghost_tsmttsm(x,v,w,alpha,beta,reduce,transv[0] == 'C' || transv[0] == 'c'),err,ret);
+            donespecial = 1;
         }
-        if (ghost_tsmm_valid(x_in,v_in,transv_in,w_in,transw_in,alpha,beta,reduce,0) == GHOST_SUCCESS) {
+        if (ghost_tsmm_valid(x,v,transv,w,transw,alpha,beta,reduce,0) == GHOST_SUCCESS) {
             INFO_LOG("Transparently call special implementation TSMM");
-            GHOST_CALL_GOTO(ghost_tsmm(x_in,v_in,w_in,alpha,beta),err,ret);
-            goto out;
+            GHOST_CALL_GOTO(ghost_tsmm(x,v,w,alpha,beta),err,ret);
+            donespecial = 1;
         }
-        if (ghost_tsmm_inplace_valid(x_in,v_in,transv_in,w_in,transw_in,alpha,beta,reduce,0) == GHOST_SUCCESS) {
+        if (ghost_tsmm_inplace_valid(x,v,transv,w,transw,alpha,beta,reduce,0) == GHOST_SUCCESS) {
             INFO_LOG("Transparently call special implementation TSMM-inplace");
-            GHOST_CALL_GOTO(ghost_tsmm_inplace(x_in,w_in,alpha,beta),err,ret);
-            goto out;
+            GHOST_CALL_GOTO(ghost_tsmm_inplace(x,w,alpha,beta),err,ret);
+            donespecial = 1;
         }
     }
 
-    ret = ghost_gemm_blas(x_in,v_in,transv_in,w_in,transw_in,alpha,beta,reduce,flags);
+    if (!donespecial) {
+        ret = ghost_gemm_blas(x,v,transv,w,transw,alpha,beta,reduce,flags);
+    }
+    
+    if (x != x_in) {
+        INFO_LOG("Transform x back");
+        GHOST_CALL_GOTO(x_in->fromVec(x_in,x,0,0),err,ret);
+        x->destroy(x);
+    }
     
     goto out;
 err:
 
 out:
+    
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 }

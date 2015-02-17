@@ -49,11 +49,6 @@ typedef enum {
      */
     GHOST_DENSEMAT_DEVICE    = 8,
     /**
-     * @brief The densemat should not be distributed among the processes in 
-     * the context.
-     */
-    GHOST_DENSEMAT_GLOBAL    = 16,
-    /**
      * @brief The densemat is a view of another densemat.
      */
     GHOST_DENSEMAT_VIEW      = 32,
@@ -229,7 +224,7 @@ struct ghost_densemat_t
     /**
      * @brief The values of the densemat.
      */
-    char** val;
+    char* val;
     /**
      * @brief The source densemat (must not be a view). 
      */
@@ -512,14 +507,6 @@ struct ghost_densemat_t
      */
     ghost_error_t (*halocommFinalize) (ghost_densemat_t *vec, ghost_densemat_halo_comm_t *comm);
     /**
-     * @brief Change the memory layout between row-/col-major.
-     *
-     * @param vec The densemat.
-     *
-     * @return ::GHOST_SUCCESS on success or an error indicator.
-     */
-    ghost_error_t (*memtranspose) (ghost_densemat_t *vec);
-    /**
      * @brief Normalize a densemat, i.e., scale it such that its 2-norm is one.
      *
      * @param vec The densemat.
@@ -653,17 +640,6 @@ struct ghost_densemat_t
      */
     ghost_error_t (*viewCols) (ghost_densemat_t *src, ghost_densemat_t **dst, 
             ghost_lidx_t nc, ghost_lidx_t coffs);
-    /**
-     * @brief Set an existing view to view a new dense set of columns.
-     *
-     * @param vec The densemat view. 
-     * @param nc The number of columns.
-     * @param coffs The column offset in the source densemat.
-     *
-     * @return ::GHOST_SUCCESS on success or an error indicator.
-     */
-    ghost_error_t (*viewSetCols) (ghost_densemat_t *vec, ghost_lidx_t nc, 
-            ghost_lidx_t coffs);
     /**
      * @brief Create a densemat as a view of another densemat.
      *

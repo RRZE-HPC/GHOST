@@ -22,8 +22,8 @@ static ghost_error_t sell_kacz(ghost_sparsemat_t *mat, ghost_densemat_t *x, ghos
     ghost_lidx_t color;
     ghost_sell_t *sellmat = SELL(mat);
     ghost_lidx_t fchunk, lchunk;
-    v_t *bval = (v_t *)(b->val[0]);
-    v_t *xval = (v_t *)(x->val[0]);
+    v_t *bval = (v_t *)(b->val);
+    v_t *xval = (v_t *)(x->val);
     m_t *mval = (m_t *)sellmat->val;
 
 

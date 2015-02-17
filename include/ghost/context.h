@@ -21,14 +21,6 @@ typedef struct ghost_context_t ghost_context_t;
 typedef enum {
     GHOST_CONTEXT_DEFAULT = 0, 
     /**
-     * @brief The context will hold the same data on each process.
-     */
-    GHOST_CONTEXT_REDUNDANT = 1, 
-    /**
-     * @brief The context will be distributed across the ranks.
-     */
-    GHOST_CONTEXT_DISTRIBUTED = 2,
-    /**
      * @brief Distribute work among the ranks by number of nonzeros.
      */
     GHOST_CONTEXT_DIST_NZ = 4,

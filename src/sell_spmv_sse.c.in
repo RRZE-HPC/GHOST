@@ -17,13 +17,6 @@ ghost_error_t ghost_sellspmv__a_sse_d_d_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat,
     double *mval = (double *)SELL(mat)->val;
     double *local_dot_product = NULL;
     double *partsums = NULL;
-    int lhsaligned;
-    if (IS_ALIGNED(((double *)res->val[0])+ghost_bitmap_first(res->ldmask),16)) {
-        lhsaligned = 1;
-    } else {
-        lhsaligned = 0;
-        PERFWARNING_LOG("Will not use streaming stores because of violated alignment!");
-    }
     
     double sscale = 1., sbeta = 1.;
     double *sshift = NULL;
@@ -72,8 +65,8 @@ ghost_error_t ghost_sellspmv__a_sse_d_d_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat,
             { // loop over chunks
 
                 #GHOST_UNROLL#tmp@ = _mm_setzero_pd();#CHUNKHEIGHT/2
-                lval = (double *)res->val[v];
-                rval = (double *)invec->val[v];
+                lval = (double *)res->val+v*res->stride;
+                rval = (double *)invec->val+v*invec->stride;
                 offs = SELL(mat)->chunkStart[c];
 
                 for (j=0; j<(SELL(mat)->chunkStart[c+1]-SELL(mat)->chunkStart[c])/CHUNKHEIGHT; j++) 
@@ -97,10 +90,8 @@ ghost_error_t ghost_sellspmv__a_sse_d_d_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat,
                     #GHOST_UNROLL#_mm_store_pd(&lval[c*CHUNKHEIGHT+2*@],_mm_add_pd(tmp@,_mm_load_pd(&lval[c*CHUNKHEIGHT+2*@])));#CHUNKHEIGHT/2
                 } else if (spmvmOptions & GHOST_SPMV_AXPBY) {
                     #GHOST_UNROLL#_mm_store_pd(&lval[c*CHUNKHEIGHT+2*@],_mm_add_pd(tmp@,_mm_mul_pd(beta,_mm_load_pd(&lval[c*CHUNKHEIGHT+2*@]))));#CHUNKHEIGHT/2
-                } else if (lhsaligned) {
-                    #GHOST_UNROLL#_mm_stream_pd(&lval[c*CHUNKHEIGHT+2*@],tmp@);#CHUNKHEIGHT/2
                 } else {
-                    #GHOST_UNROLL#_mm_store_pd(&lval[c*CHUNKHEIGHT+2*@],tmp@);#CHUNKHEIGHT/2
+                    #GHOST_UNROLL#_mm_stream_pd(&lval[c*CHUNKHEIGHT+2*@],tmp@);#CHUNKHEIGHT/2
                 }
 
                 if (spmvmOptions & GHOST_SPMV_DOT) {
@@ -175,15 +166,6 @@ ghost_error_t ghost_sellspmv__a_sse_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat,
     double *partsums = NULL;
     __m128d rhs;
     int nthreads = 1, i;
-    int lhsaligned;
-    if (IS_ALIGNED(((double *)res->val[0])+ghost_bitmap_first(res->ldmask),16)) {
-        lhsaligned = 1;
-    } else {
-        lhsaligned = 0;
-        PERFWARNING_LOG("Will not use streaming stores because of violated alignment!");
-    }
-    ghost_lidx_t loffs = ghost_bitmap_first(res->ldmask);
-    ghost_lidx_t roffs = ghost_bitmap_first(invec->ldmask);
     
     unsigned clsize;
     ghost_machine_cacheline_size(&clsize);
@@ -227,15 +209,15 @@ ghost_error_t ghost_sellspmv__a_sse_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat,
 #pragma omp for schedule(runtime)
         for (c=0; c<mat->nrowsPadded/CHUNKHEIGHT; c++) 
         { // loop over chunks
-            double *lval = (double *)res->val[c*CHUNKHEIGHT]+loffs;
-            double *rval = (double *)invec->val[c*CHUNKHEIGHT]+roffs;
+            double *lval = (double *)res->val+c*CHUNKHEIGHT*res->stride;
+            double *rval = (double *)invec->val+c*CHUNKHEIGHT*invec->stride;
 
             for (donecols = 0; donecols < ncolspadded; donecols+=2) {
                 #GHOST_UNROLL#tmp@ = _mm_setzero_pd();#CHUNKHEIGHT
                 offs = SELL(mat)->chunkStart[c];
 
                 for (j=0; j<SELL(mat)->chunkLen[c]; j++) { // loop inside chunk
-                    #GHOST_UNROLL#rhs = _mm_load_pd((double *)invec->val[SELL(mat)->col[offs]]+donecols);tmp@ = _mm_add_pd(tmp@,_mm_mul_pd(_mm_load1_pd(&mval[offs++]),rhs));#CHUNKHEIGHT
+                    #GHOST_UNROLL#rhs = _mm_load_pd((double *)invec->val+SELL(mat)->col[offs]*invec->stride+donecols);tmp@ = _mm_add_pd(tmp@,_mm_mul_pd(_mm_load1_pd(&mval[offs++]),rhs));#CHUNKHEIGHT
                 }
               
                 if (spmvmOptions & (GHOST_SPMV_SHIFT | GHOST_SPMV_VSHIFT)) {
@@ -244,7 +226,7 @@ ghost_error_t ghost_sellspmv__a_sse_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat,
                     } else {
                         shift = _mm_load_pd(&sshift[donecols]);
                     }
-                    #GHOST_UNROLL#tmp@ = _mm_sub_pd(tmp@,_mm_mul_pd(shift,_mm_load_pd((double *)invec->val[c*CHUNKHEIGHT+@]+donecols)));#CHUNKHEIGHT
+                    #GHOST_UNROLL#tmp@ = _mm_sub_pd(tmp@,_mm_mul_pd(shift,_mm_load_pd((double *)invec->val+(c*CHUNKHEIGHT+@)*invec->stride+donecols)));#CHUNKHEIGHT
                 }
                 if (spmvmOptions & GHOST_SPMV_SCALE) {
                     #GHOST_UNROLL#tmp@ = _mm_mul_pd(scale,tmp@);#CHUNKHEIGHT
@@ -254,10 +236,8 @@ ghost_error_t ghost_sellspmv__a_sse_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat,
                         #GHOST_UNROLL#_mm_store_pd(&lval[invec->traits.ncolspadded*@+donecols],_mm_add_pd(tmp@,_mm_load_pd(&lval[invec->traits.ncolspadded*@+donecols])));#CHUNKHEIGHT
                     } else if (spmvmOptions & GHOST_SPMV_AXPBY) {
                         #GHOST_UNROLL#_mm_store_pd(&lval[invec->traits.ncolspadded*@+donecols],_mm_add_pd(tmp@,_mm_mul_pd(_mm_load_pd(&lval[invec->traits.ncolspadded*@+donecols]),beta)));#CHUNKHEIGHT
-                    } else if (lhsaligned) {
-                        #GHOST_UNROLL#_mm_stream_pd(&lval[invec->traits.ncolspadded*@+donecols],tmp@);#CHUNKHEIGHT
                     } else {
-                        #GHOST_UNROLL#_mm_store_pd(&lval[invec->traits.ncolspadded*@+donecols],tmp@);#CHUNKHEIGHT
+                        #GHOST_UNROLL#_mm_stream_pd(&lval[invec->traits.ncolspadded*@+donecols],tmp@);#CHUNKHEIGHT
                     }
                     if (spmvmOptions & GHOST_SPMV_DOT) {
                         for (col = donecols; col<donecols+2; col++) {
@@ -273,11 +253,7 @@ ghost_error_t ghost_sellspmv__a_sse_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat,
 
             }
             if (!axpy && ncolspadded>2 && CHUNKHEIGHT != 1) {
-                if (lhsaligned) {
-                    #GHOST_UNROLL#for (donecols = 0; donecols < ncolspadded; donecols+=2) {tmp@ = _mm_load_pd(&tmpresult[@*ncolspadded+donecols]); _mm_stream_pd(&lval[@*ncolspadded+donecols],tmp@);}#CHUNKHEIGHT
-                } else {
-                    #GHOST_UNROLL#for (donecols = 0; donecols < ncolspadded; donecols+=2) {tmp@ = _mm_load_pd(&tmpresult[@*ncolspadded+donecols]); _mm_store_pd(&lval[@*ncolspadded+donecols],tmp@);}#CHUNKHEIGHT
-                }
+                #GHOST_UNROLL#for (donecols = 0; donecols < ncolspadded; donecols+=2) {tmp@ = _mm_load_pd(&tmpresult[@*ncolspadded+donecols]); _mm_stream_pd(&lval[@*ncolspadded+donecols],tmp@);}#CHUNKHEIGHT
             }
         }
     }
@@ -324,8 +300,6 @@ ghost_error_t ghost_sellspmv__a_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
     unsigned clsize;
     ghost_machine_cacheline_size(&clsize);
     int padding = (int)clsize/sizeof(double);
-    ghost_lidx_t loffs = ghost_bitmap_first(res->ldmask);
-    ghost_lidx_t roffs = ghost_bitmap_first(invec->ldmask);
 
     UNUSED(argp);
     
@@ -366,13 +340,13 @@ ghost_error_t ghost_sellspmv__a_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
 #pragma omp for schedule(runtime)
         for (c=0; c<mat->nrows; c++) 
         { // loop over chunks
-            double *lval = (double *)res->val[c]+loffs;
-            double *rval = (double *)invec->val[c]+roffs;
+            double *lval = (double *)res->val+c*res->stride;
+            double *rval = (double *)invec->val+c*res->stride;
             offs = SELL(mat)->chunkStart[c/CHUNKHEIGHT]+c%CHUNKHEIGHT;
 
             #GHOST_UNROLL#tmp@ = _mm_setzero_pd();#NVECS/2
             for (j=0; j<SELL(mat)->rowLen[c]; j++) { // loop inside chunk
-                    #GHOST_UNROLL#rhs = _mm_load_pd((double *)invec->val[SELL(mat)->col[offs+j*CHUNKHEIGHT]]+@*2);tmp@ = _mm_add_pd(tmp@,_mm_mul_pd(_mm_load1_pd(&mval[offs+j*CHUNKHEIGHT]),rhs));#NVECS/2
+                    #GHOST_UNROLL#rhs = _mm_load_pd((double *)invec->val+SELL(mat)->col[offs+j*CHUNKHEIGHT]*invec->stride+@*2);tmp@ = _mm_add_pd(tmp@,_mm_mul_pd(_mm_load1_pd(&mval[offs+j*CHUNKHEIGHT]),rhs));#NVECS/2
             }
             if (spmvmOptions & GHOST_SPMV_SHIFT) {
                 #GHOST_UNROLL#tmp@ = _mm_sub_pd(tmp@,_mm_mul_pd(_mm_load1_pd(&sshift[0]),_mm_load_pd(rval+@*2)));#NVECS/2
@@ -449,8 +423,6 @@ ghost_error_t ghost_sellspmv__u_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
     unsigned clsize;
     ghost_machine_cacheline_size(&clsize);
     int padding = (int)clsize/sizeof(double);
-    ghost_lidx_t loffs = ghost_bitmap_first(res->ldmask);
-    ghost_lidx_t roffs = ghost_bitmap_first(invec->ldmask);
 
     UNUSED(argp);
     
@@ -491,13 +463,13 @@ ghost_error_t ghost_sellspmv__u_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
 #pragma omp for schedule(runtime)
         for (c=0; c<mat->nrows; c++) 
         { // loop over chunks
-            double *lval = (double *)res->val[c]+loffs;
-            double *rval = (double *)invec->val[c]+roffs;
+            double *lval = (double *)res->val+c*res->stride;
+            double *rval = (double *)invec->val+c*invec->stride;
             offs = SELL(mat)->chunkStart[c/CHUNKHEIGHT]+c%CHUNKHEIGHT;
 
             #GHOST_UNROLL#tmp@ = _mm_setzero_pd();#NVECS/2
             for (j=0; j<SELL(mat)->rowLen[c]; j++) { // loop inside chunk
-                    #GHOST_UNROLL#rhs = _mm_loadu_pd((double *)invec->val[SELL(mat)->col[offs+j*CHUNKHEIGHT]]+roffs+@*2);tmp@ = _mm_add_pd(tmp@,_mm_mul_pd(_mm_load1_pd(&mval[offs+j*CHUNKHEIGHT]),rhs));#NVECS/2
+                    #GHOST_UNROLL#rhs = _mm_loadu_pd((double *)invec->val+SELL(mat)->col[offs+j*CHUNKHEIGHT]*invec->stride+@*2);tmp@ = _mm_add_pd(tmp@,_mm_mul_pd(_mm_load1_pd(&mval[offs+j*CHUNKHEIGHT]),rhs));#NVECS/2
             }
             if (spmvmOptions & GHOST_SPMV_SHIFT) {
                 #GHOST_UNROLL#tmp@ = _mm_sub_pd(tmp@,_mm_mul_pd(_mm_load1_pd(&sshift[0]),_mm_loadu_pd(rval+@*2)));#NVECS/2

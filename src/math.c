@@ -27,7 +27,7 @@ ghost_error_t ghost_dot(void *res, ghost_densemat_t *vec, ghost_densemat_t *vec2
         ghost_mpi_op_sum(&sumOp,vec->traits.datatype);
         ghost_mpi_datatype(&mpiDt,vec->traits.datatype);
         int v;
-        if (!(vec->traits.flags & GHOST_DENSEMAT_GLOBAL)) {
+        if (vec->context) {
             for (v=0; v<MIN(vec->traits.ncols,vec2->traits.ncols); v++) {
                 MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE, (char *)res+vec->elSize*v, 1, mpiDt, sumOp, vec->context->mpicomm));
             }
@@ -209,9 +209,11 @@ static void ghost_mpi_add_z(ghost_mpi_z *invec, ghost_mpi_z *inoutvec, int *len)
 
 static void ghost_spmv_selectMode(ghost_context_t * context, ghost_spmv_flags_t *flags)
 {
+    int nranks;
+    ghost_nrank(&nranks,context->mpicomm);
     if (!(*flags & GHOST_SPMV_MODES_ALL)) { // no mode specified
 #ifdef GHOST_HAVE_MPI
-        if (context->flags & GHOST_CONTEXT_REDUNDANT) {
+        if (nranks == 1) {
             *flags |= (ghost_spmv_flags_t)GHOST_SPMV_MODE_NOMPI;
         } else {
             *flags |= (ghost_spmv_flags_t)GHOST_SPMV_MODE_OVERLAP;

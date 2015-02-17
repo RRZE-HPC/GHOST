@@ -20,7 +20,9 @@ ghost_error_t ghost_tsmttsm__plain_d_x_x(ghost_densemat_t *x, ghost_densemat_t *
     
     int myrank=0;
 
-    GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
+    if (v->context) {
+        GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
+    }
 
     ghost_lidx_t n = v->traits.nrows;
     ghost_lidx_t m = v->traits.ncols;
@@ -78,12 +80,14 @@ ghost_error_t ghost_tsmttsm__plain_d_x_x(ghost_densemat_t *x, ghost_densemat_t *
             }
         }
 #ifdef GHOST_HAVE_MPI
-        if (x->traits.flags & GHOST_DENSEMAT_VIEW) {
-            for (k=0; k<K; k++) {
-                MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval+k*ldx,m,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
+        if (v->context) {
+            if (x->traits.flags & GHOST_DENSEMAT_VIEW) {
+                for (k=0; k<K; k++) {
+                    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval+k*ldx,m,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
+                }
+            } else {
+                MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,K*ldx,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
             }
-        } else {
-            MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,K*ldx,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
         }
 #endif
     
@@ -125,12 +129,14 @@ ghost_error_t ghost_tsmttsm__plain_d_x_x(ghost_densemat_t *x, ghost_densemat_t *
             }
         }
 #ifdef GHOST_HAVE_MPI
-        if (x->traits.flags & GHOST_DENSEMAT_VIEW) {
-            for (j=0; j<m; j++) {
-                MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval+j*ldx,K,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
+        if (v->context) {
+            if (x->traits.flags & GHOST_DENSEMAT_VIEW) {
+                for (j=0; j<m; j++) {
+                    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval+j*ldx,K,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
+                }
+            } else {
+                MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,ldx*m,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
             }
-        } else {
-            MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,ldx*m,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
         }
 #endif
 
@@ -156,7 +162,9 @@ ghost_error_t ghost_tsmttsm__plain_z_x_x(ghost_densemat_t *x, ghost_densemat_t *
     
     int myrank=0;
 
-    GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
+    if (v->context) {
+        GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
+    }
 
     ghost_lidx_t n = v->traits.nrows;
     ghost_lidx_t m = v->traits.ncols;
@@ -233,12 +241,14 @@ ghost_error_t ghost_tsmttsm__plain_z_x_x(ghost_densemat_t *x, ghost_densemat_t *
             }
         }
 #ifdef GHOST_HAVE_MPI
-        if (x->traits.flags & GHOST_DENSEMAT_VIEW) {
-            for (k=0; k<K; k++) {
-                MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval+k*ldx,m,mpidt_z,mpiop_zadd,v->context->mpicomm),err,ret);
+        if (v->context) {
+            if (x->traits.flags & GHOST_DENSEMAT_VIEW) {
+                for (k=0; k<K; k++) {
+                    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval+k*ldx,m,mpidt_z,mpiop_zadd,v->context->mpicomm),err,ret);
+                }
+            } else {
+                MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,K*ldx,mpidt_z,mpiop_zadd,v->context->mpicomm),err,ret);
             }
-        } else {
-            MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,K*ldx,mpidt_z,mpiop_zadd,v->context->mpicomm),err,ret);
         }
 #endif
     
@@ -297,12 +307,14 @@ ghost_error_t ghost_tsmttsm__plain_z_x_x(ghost_densemat_t *x, ghost_densemat_t *
             }
         }
 #ifdef GHOST_HAVE_MPI
-        if (x->traits.flags & GHOST_DENSEMAT_VIEW) {
-            for (j=0; j<m; j++) {
-                MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval+j*ldx,K,mpidt_z,mpiop_zadd,v->context->mpicomm),err,ret);
+        if (v->context) {
+            if (x->traits.flags & GHOST_DENSEMAT_VIEW) {
+                for (j=0; j<m; j++) {
+                    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval+j*ldx,K,mpidt_z,mpiop_zadd,v->context->mpicomm),err,ret);
+                }
+            } else {
+                MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,ldx*m,mpidt_z,mpiop_zadd,v->context->mpicomm),err,ret);
             }
-        } else {
-            MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,ldx*m,mpidt_z,mpiop_zadd,v->context->mpicomm),err,ret);
         }
 #endif
 
@@ -330,7 +342,9 @@ ghost_error_t ghost_tsmttsm__plain_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densem
     
     int myrank=0;
 
-    GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
+    if (v->context) {
+        GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
+    }
 
     ghost_lidx_t n = v->traits.nrows;
     INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
@@ -393,26 +407,16 @@ ghost_error_t ghost_tsmttsm__plain_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densem
             }
         }
 #ifdef GHOST_HAVE_MPI
-        if (x->traits.flags & GHOST_DENSEMAT_VIEW) {
-            for (k=0; k<x->traits.ncols; k++) {
-                MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval+k*ldx,x->traits.nrows,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
+        if (v->context) {
+            if (x->traits.flags & GHOST_DENSEMAT_VIEW) {
+                for (k=0; k<x->traits.ncols; k++) {
+                    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval+k*ldx,x->traits.nrows,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
+                }
+            } else {
+                MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,x->traits.ncols*ldx,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
             }
-        } else {
-            MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,x->traits.ncols*ldx,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
         }
 #endif
-/*#ifdef GHOST_HAVE_MPI
-        if( CFGK*CFGM == 1 )
-        {
-          MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,1,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
-        }
-        else
-        {
-          // melven: out of bounds for 1 1 somehow
-          MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,ldx*CFGK,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
-        }
-#endif*/
-    
     } else {
         ERROR_LOG("Will be implemented soon :-)!");
         ret = GHOST_ERR_NOT_IMPLEMENTED;

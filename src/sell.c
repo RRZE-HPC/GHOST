@@ -459,14 +459,8 @@ static ghost_error_t SELL_split(ghost_sparsemat_t *mat)
         GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->col,sizeof(ghost_lidx_t)*mat->nEnts),err,ret);
     }
    
-    if (mat->context->flags & GHOST_CONTEXT_DISTRIBUTED) {
-        GHOST_CALL_GOTO(ghost_context_comm_init(mat->context,mat->col_orig,fullSELL->col),err,ret);
+    GHOST_CALL_GOTO(ghost_context_comm_init(mat->context,mat->col_orig,fullSELL->col),err,ret);
 
-    } else {
-        for (i=0; i<mat->nEnts; i++) {
-            SELL(mat)->col[i] = (ghost_lidx_t)mat->col_orig[i];
-        }
-    }
 #ifndef GHOST_HAVE_UNIFORM_IDX
     if (!(mat->traits->flags & GHOST_SPARSEMAT_SAVE_ORIG_COLS)) {
         DEBUG_LOG(1,"Free orig cols");

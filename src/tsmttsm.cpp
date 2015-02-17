@@ -36,7 +36,7 @@ ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce, in
     }
     if (x->traits.storage != GHOST_DENSEMAT_COLMAJOR) {
         if (printerror) {
-            ERROR_LOG("x must be stored row-major!");
+            ERROR_LOG("x must be stored col-major!");
         }
         return GHOST_ERR_INVALID_ARG;
     }
@@ -140,7 +140,11 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
     ghost_gemm_perf_args_t tsmttsm_perfargs;
     tsmttsm_perfargs.xcols = p.wcols;
     tsmttsm_perfargs.vcols = p.vcols;
-    tsmttsm_perfargs.vrows = v->context->gnrows;
+    if (v->context) {
+        tsmttsm_perfargs.vrows = v->context->gnrows;
+    } else {
+        tsmttsm_perfargs.vrows = v->traits.nrows;
+    }
     tsmttsm_perfargs.dt = x->traits.datatype;
     ghost_timing_set_perfFunc(__ghost_functag,ghost_gemm_perf_GFs,(void *)&tsmttsm_perfargs,sizeof(tsmttsm_perfargs),"GF/s");
 #endif

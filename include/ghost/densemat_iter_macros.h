@@ -27,7 +27,7 @@
     if (DENSEMAT_COMPACT(vec)) {\
         if (ghost_omp_in_parallel()) {\
             DENSEMAT_ITER_BEGIN_COMPACT(vec,valptr,row,col,memrow,memcol);\
-            valptr = DENSEMAT_VAL_COMPACT(vec,row,col);\
+            valptr = DENSEMAT_VAL(vec,row,col);\
             cuvalptr = DENSEMAT_CUVAL(vec,row,col);\
             call;\
             DENSEMAT_ITER_END();\
@@ -35,7 +35,7 @@
             _Pragma("omp parallel")\
             {\
                 DENSEMAT_ITER_BEGIN_COMPACT(vec,valptr,row,col,memrow,memcol)\
-                valptr = DENSEMAT_VAL_COMPACT(vec,row,col);\
+                valptr = DENSEMAT_VAL(vec,row,col);\
                 cuvalptr = DENSEMAT_CUVAL(vec,row,col);\
                 call;\
                 DENSEMAT_ITER_END()\
@@ -81,8 +81,8 @@
     if (DENSEMAT_COMPACT(vec1) && DENSEMAT_COMPACT(vec2)) {\
         if (ghost_omp_in_parallel()) {\
             DENSEMAT_ITER2_BEGIN_COMPACT_OFFS(vec1,vec2,valptr1,valptr2,row,col,memrow1,memrow2,memcol1,memcol2,vec2roffs,vec2coffs);\
-            valptr1 = DENSEMAT_VAL_COMPACT(vec1,row,col);\
-            valptr2 = DENSEMAT_VAL_COMPACT(vec2,row+vec2roffs,col+vec2coffs);\
+            valptr1 = DENSEMAT_VAL(vec1,row,col);\
+            valptr2 = DENSEMAT_VAL(vec2,row+vec2roffs,col+vec2coffs);\
             cuvalptr1 = DENSEMAT_CUVAL(vec1,row,col);\
             cuvalptr2 = DENSEMAT_CUVAL(vec2,row+vec2roffs,col+vec2coffs);\
             call;\
@@ -91,8 +91,8 @@
             _Pragma("omp parallel")\
             {\
                 DENSEMAT_ITER2_BEGIN_COMPACT_OFFS(vec1,vec2,valptr1,valptr2,row,col,memrow1,memrow2,memcol1,memcol2,vec2roffs,vec2coffs);\
-                valptr1 = DENSEMAT_VAL_COMPACT(vec1,row,col);\
-                valptr2 = DENSEMAT_VAL_COMPACT(vec2,row+vec2roffs,col+vec2coffs);\
+                valptr1 = DENSEMAT_VAL(vec1,row,col);\
+                valptr2 = DENSEMAT_VAL(vec2,row+vec2roffs,col+vec2coffs);\
                 cuvalptr1 = DENSEMAT_CUVAL(vec1,row,col);\
                 cuvalptr2 = DENSEMAT_CUVAL(vec2,row+vec2roffs,col+vec2coffs);\
                 call;\
@@ -153,8 +153,8 @@
     char *valptr1 = NULL, *valptr2 = NULL, *cuvalptr1 = NULL, *cuvalptr2 = NULL;\
     if (ghost_omp_in_parallel()) {\
         DENSEMAT_ITER2_BEGIN_COMPACT_OFFS_TRANSPOSED(vec1,vec2,row,col,memrow1,memrow2,memcol1,memcol2,vec2roffs,vec2coffs);\
-        valptr1 = DENSEMAT_VAL_COMPACT(vec1,row,col);\
-        valptr2 = DENSEMAT_VAL_TRANSPOSED_COMPACT(vec2,row+vec2roffs,col+vec2coffs);\
+        valptr1 = DENSEMAT_VAL(vec1,row,col);\
+        valptr2 = DENSEMAT_VAL_TRANSPOSED(vec2,row+vec2roffs,col+vec2coffs);\
         cuvalptr1 = DENSEMAT_CUVAL(vec1,row,col);\
         cuvalptr2 = DENSEMAT_CUVAL_TRANSPOSED(vec2,row+vec2roffs,col+vec2coffs);\
         call;\
@@ -163,8 +163,8 @@
         _Pragma("omp parallel")\
         {\
             DENSEMAT_ITER2_BEGIN_COMPACT_OFFS_TRANSPOSED(vec1,vec2,row,col,memrow1,memrow2,memcol1,memcol2,vec2roffs,vec2coffs);\
-            valptr1 = DENSEMAT_VAL_COMPACT(vec1,row,col);\
-            valptr2 = DENSEMAT_VAL_TRANSPOSED_COMPACT(vec2,row+vec2roffs,col+vec2coffs);\
+            valptr1 = DENSEMAT_VAL(vec1,row,col);\
+            valptr2 = DENSEMAT_VAL_TRANSPOSED(vec2,row+vec2roffs,col+vec2coffs);\
             cuvalptr1 = DENSEMAT_CUVAL(vec1,row,col);\
             cuvalptr2 = DENSEMAT_CUVAL_TRANSPOSED(vec2,row+vec2roffs,col+vec2coffs);\
             call;\
@@ -215,11 +215,12 @@
 #error "Only one of COLMAJOR or ROWMAJOR has to be defined for this header!"
 #endif
 
-#define DENSEMAT_VAL(vec,row,col) &vec->val[row][(col)*vec->elSize]
-#define DENSEMAT_VAL_COMPACT(vec,row,col) &vec->val[0][((row)*(vec->stride)+(col))*vec->elSize]
-#define DENSEMAT_VAL_TRANSPOSED(vec,row,col) &vec->val[col][(row)*vec->elSize]
-#define DENSEMAT_VAL_TRANSPOSED_COMPACT(vec,row,col) &vec->val[0][((col)*vec->stride+(row))*vec->elSize]
-#define DENSEMAT_CUVAL(vec,row,col) &((char *)(vec->cu_val))[((row)*vec->stride+(col))*vec->elSize]
+//#define DENSEMAT_VAL(vec,row,col) &vec->val[row][(col)*vec->elSize]
+//#define DENSEMAT_VAL(vec,row,col) &vec->val[0][((row)*(vec->stride)+(col))*vec->elSize]
+#define DENSEMAT_VAL(vec,row,col) &vec->val[((row)*(vec->stride)+(col))*vec->elSize]
+//#define DENSEMAT_VAL_TRANSPOSED(vec,row,col) &vec->val[col][(row)*vec->elSize]
+#define DENSEMAT_VAL_TRANSPOSED(vec,row,col) &vec->val[((col)*vec->stride+(row))*vec->elSize]
+#define DENSEMAT_CUVAL(vec,row,col) vec->cu_val?(&((char *)(vec->cu_val))[((row)*vec->stride+(col))*vec->elSize]):NULL
 #define DENSEMAT_CUVAL_TRANSPOSED(vec,row,col) &((char *)(vec->cu_val))[((col)*vec->stride+(row))*vec->elSize]
 
 
@@ -230,7 +231,7 @@
         memcol = -1;\
         for (col = 0; col<vec->traits.ncols; col++) {\
             memcol = ghost_bitmap_next(vec->ldmask,memcol);\
-            valptr = DENSEMAT_VAL(vec,row,memcol);\
+            valptr = DENSEMAT_VAL(vec,memrow,memcol);\
             cuvalptr = DENSEMAT_CUVAL(vec,memrow,memcol);\
 
 #define DENSEMAT_ITER2_BEGIN_SCATTERED(vec1,vec2,row,col,memrow1,memrow2,memcol1,memcol2)\
@@ -253,8 +254,8 @@
         for (col=0; col<vec1->traits.ncols; col++) {\
             memcol1 = ghost_bitmap_next(vec1->ldmask,memcol1);\
             memcol2 = ghost_bitmap_next(vec2->ldmask,memcol2);\
-            valptr1 = DENSEMAT_VAL(vec1,row,memcol1);\
-            valptr2 = DENSEMAT_VAL(vec2,row+vec2roffs,memcol2+vec2coffs);\
+            valptr1 = DENSEMAT_VAL(vec1,memrow1,memcol1);\
+            valptr2 = DENSEMAT_VAL(vec2,memrow2+vec2roffs,memcol2+vec2coffs);\
             cuvalptr1 = DENSEMAT_CUVAL(vec1,memrow1,memcol1);\
             cuvalptr2 = DENSEMAT_CUVAL(vec2,memrow2+vec2roffs,memcol2+vec2coffs);\
 
@@ -267,8 +268,8 @@
         for (col=0; col<vec1->traits.ncols; col++) {\
             memcol1 = ghost_bitmap_next(vec1->ldmask,memcol1);\
             memcol2 = col;\
-            valptr1 = DENSEMAT_VAL(vec1,row,memcol1);\
-            valptr2 = DENSEMAT_VAL_COMPACT(vec2,row+vec2roffs,col+vec2coffs);\
+            valptr1 = DENSEMAT_VAL(vec1,memrow1,memcol1);\
+            valptr2 = DENSEMAT_VAL(vec2,row+vec2roffs,col+vec2coffs);\
             cuvalptr1 = DENSEMAT_CUVAL(vec1,memrow1,memcol1);\
             cuvalptr2 = DENSEMAT_CUVAL(vec2,row+vec2roffs,col+vec2coffs);\
 
@@ -287,17 +288,17 @@
         for (col=0; col<vec1->traits.ncols; col++) {\
             memcol1 = col;\
             memcol2 = ghost_bitmap_next(vec2->ldmask,memcol2);\
-            valptr1 = DENSEMAT_VAL_COMPACT(vec1,row,col);\
-            valptr2 = DENSEMAT_VAL(vec2,row+vec2roffs,memcol2+vec2coffs);\
+            valptr1 = DENSEMAT_VAL(vec1,row,col);\
+            valptr2 = DENSEMAT_VAL(vec2,memrow2+vec2roffs,memcol2+vec2coffs);\
             cuvalptr1 = DENSEMAT_CUVAL(vec1,row,col);\
             cuvalptr2 = DENSEMAT_CUVAL(vec2,memrow2+vec2roffs,memcol2+vec2coffs);\
 
 #elif defined(COLMAJOR)
 
-#define DENSEMAT_VAL(vec,row,col) &vec->val[col][(row)*vec->elSize]
-#define DENSEMAT_VAL_COMPACT(vec,row,col) &vec->val[0][((col)*vec->stride+(row))*vec->elSize]
-#define DENSEMAT_VAL_TRANSPOSED(vec,row,col) &vec->val[row][(col)*vec->elSize]
-#define DENSEMAT_VAL_TRANSPOSED_COMPACT(vec,row,col) &vec->val[0][((row)*vec->stride+(col))*vec->elSize]
+//#define DENSEMAT_VAL(vec,row,col) &vec->val[col][(row)*vec->elSize]
+#define DENSEMAT_VAL(vec,row,col) &vec->val[((col)*vec->stride+(row))*vec->elSize]
+//#define DENSEMAT_VAL_TRANSPOSED(vec,row,col) &vec->val[row][(col)*vec->elSize]
+#define DENSEMAT_VAL_TRANSPOSED(vec,row,col) &vec->val[((row)*vec->stride+(col))*vec->elSize]
 #define DENSEMAT_CUVAL(vec,row,col) &((char *)(vec->cu_val))[((col)*vec->stride+(row))*vec->elSize]
 #define DENSEMAT_CUVAL_TRANSPOSED(vec,row,col) &((char *)(vec->cu_val))[((row)*vec->stride+(col))*vec->elSize]
 
@@ -308,7 +309,7 @@
         memcol = -1;\
         for (col = 0; col<vec->traits.ncols; col++) {\
             memcol = ghost_bitmap_next(vec->trmask,memcol);\
-            valptr = DENSEMAT_VAL(vec,memrow,col);\
+            valptr = DENSEMAT_VAL(vec,memrow,memcol);\
             cuvalptr = DENSEMAT_CUVAL(vec,memrow,memcol);\
 
 #define DENSEMAT_ITER2_BEGIN_SCATTERED(vec1,vec2,row,col,memrow1,memrow2,memcol1,memcol2)\
@@ -331,8 +332,8 @@
         for (col=0; col<vec1->traits.ncols; col++) {\
             memcol1 = ghost_bitmap_next(vec1->trmask,memcol1);\
             memcol2 = ghost_bitmap_next(vec2->trmask,memcol2);\
-            valptr1 = DENSEMAT_VAL(vec1,memrow1,col);\
-            valptr2 = DENSEMAT_VAL(vec2,memrow2+vec2roffs,col+vec2coffs);\
+            valptr1 = DENSEMAT_VAL(vec1,memrow1,memcol1);\
+            valptr2 = DENSEMAT_VAL(vec2,memrow2+vec2roffs,memcol2+vec2coffs);\
             cuvalptr1 = DENSEMAT_CUVAL(vec1,memrow1,memcol1);\
             cuvalptr2 = DENSEMAT_CUVAL(vec2,memrow2+vec2roffs,memcol2+vec2coffs);\
 
@@ -345,8 +346,8 @@
         for (col=0; col<vec1->traits.ncols; col++) {\
             memcol1 = ghost_bitmap_next(vec1->trmask,memcol1);\
             memcol2 = col;\
-            valptr1 = DENSEMAT_VAL(vec1,memrow1,col);\
-            valptr2 = DENSEMAT_VAL_COMPACT(vec2,row+vec2roffs,col+vec2coffs);\
+            valptr1 = DENSEMAT_VAL(vec1,memrow1,memcol1);\
+            valptr2 = DENSEMAT_VAL(vec2,row+vec2roffs,col+vec2coffs);\
             cuvalptr1 = DENSEMAT_CUVAL(vec1,memrow1,memcol1);\
             cuvalptr2 = DENSEMAT_CUVAL(vec2,row+vec2roffs,col+vec2coffs);\
 
@@ -365,8 +366,8 @@
         for (col=0; col<vec1->traits.ncols; col++) {\
             memcol1 = col;\
             memcol2 = ghost_bitmap_next(vec2->trmask,memcol2);\
-            valptr1 = DENSEMAT_VAL_COMPACT(vec1,row,col);\
-            valptr2 = DENSEMAT_VAL(vec2,memrow2+vec2roffs,col+vec2coffs);\
+            valptr1 = DENSEMAT_VAL(vec1,row,col);\
+            valptr2 = DENSEMAT_VAL(vec2,memrow2+vec2roffs,memcol2+vec2coffs);\
             cuvalptr1 = DENSEMAT_CUVAL(vec1,row,col);\
             cuvalptr2 = DENSEMAT_CUVAL(vec2,memrow2+vec2roffs,memcol2+vec2coffs);\
 

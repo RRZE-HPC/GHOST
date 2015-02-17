@@ -522,13 +522,7 @@ static ghost_error_t CRS_split(ghost_sparsemat_t *mat)
         GHOST_CALL_GOTO(ghost_malloc((void **)&CR(mat)->col,sizeof(ghost_lidx_t)*mat->nnz),err,ret);
     }
    
-    if (mat->context->flags & GHOST_CONTEXT_DISTRIBUTED) {
-        GHOST_CALL_GOTO(ghost_context_comm_init(mat->context,mat->col_orig,fullCR->col),err,ret);
-    } else {
-        for (i=0; i<mat->nEnts; i++) {
-            CR(mat)->col[i] = (ghost_lidx_t)mat->col_orig[i];
-        }
-    }
+    GHOST_CALL_GOTO(ghost_context_comm_init(mat->context,mat->col_orig,fullCR->col),err,ret);
 #ifndef GHOST_HAVE_UNIFORM_IDX
     if (!(mat->traits->flags & GHOST_SPARSEMAT_SAVE_ORIG_COLS)) {
         DEBUG_LOG(1,"Free orig cols");

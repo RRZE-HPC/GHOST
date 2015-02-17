@@ -36,7 +36,7 @@ typedef hwloc_bitmap_t ghost_bitmap_t;
 #ifdef __cplusplus
 extern "C" {
 #endif
-    ghost_error_t ghost_bitmap_copy_indices(ghost_bitmap_t dst, ghost_bitmap_t src, ghost_lidx_t *idx, ghost_lidx_t nidx); 
+    ghost_error_t ghost_bitmap_copy_indices(ghost_bitmap_t dst, ghost_lidx_t *offset, ghost_bitmap_t src, ghost_lidx_t *idx, ghost_lidx_t nidx); 
 
 #ifdef __cplusplus
 }

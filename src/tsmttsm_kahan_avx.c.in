@@ -18,7 +18,9 @@ ghost_error_t ghost_tsmttsm_kahan__avx_d_CFGK_CFGM(ghost_densemat_t *x, ghost_de
 
     int myrank=0;
 
-    GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
+    if (v->context) {
+        GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
+    }
 
     ghost_lidx_t n = v->traits.nrows;
     INFO_LOG("In AVX TSMTTSM with two fixed block sizes [CFGK][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
@@ -160,12 +162,14 @@ ghost_error_t ghost_tsmttsm_kahan__avx_d_CFGK_CFGM(ghost_densemat_t *x, ghost_de
     }
             
 #ifdef GHOST_HAVE_MPI
-        if (x->traits.flags & GHOST_DENSEMAT_VIEW) {
-            for (k=0; k<CFGK; k++) {
-                MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval+k*ldx,x->traits.ncols,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
+        if (v->context) { 
+            if (x->traits.flags & GHOST_DENSEMAT_VIEW) {
+                for (k=0; k<CFGK; k++) {
+                    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval+k*ldx,x->traits.ncols,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
+                }
+            } else {
+                MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,CFGK*ldx,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
             }
-        } else {
-            MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,CFGK*ldx,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
         }
 #endif
     
