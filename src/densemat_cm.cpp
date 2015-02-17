@@ -1,4 +1,4 @@
 #define COLMAJOR
 
-#include "ghost/densemat_common.def"
+#include "ghost/densemat_common.cpp.def"
 
