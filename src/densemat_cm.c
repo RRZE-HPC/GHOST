@@ -52,7 +52,7 @@ static ghost_error_t vec_cm_uploadHalo(ghost_densemat_t *vec);
 static ghost_error_t vec_cm_downloadHalo(ghost_densemat_t *vec);
 static ghost_error_t vec_cm_uploadNonHalo(ghost_densemat_t *vec);
 static ghost_error_t vec_cm_downloadNonHalo(ghost_densemat_t *vec);
-static ghost_error_t vec_cm_equalize(ghost_densemat_t *vec, int root);
+static ghost_error_t vec_cm_equalize(ghost_densemat_t *vec, ghost_mpi_comm_t comm, int root);
 static ghost_error_t densemat_cm_halocommInit(ghost_densemat_t *vec, ghost_densemat_halo_comm_t *comm);
 static ghost_error_t densemat_cm_halocommFinalize(ghost_densemat_t *vec, ghost_densemat_halo_comm_t *comm);
 
@@ -280,7 +280,7 @@ static ghost_error_t vec_cm_download(ghost_densemat_t *vec)
     return GHOST_SUCCESS;
 }
 
-static ghost_error_t vec_cm_equalize(ghost_densemat_t *vec, int root)
+static ghost_error_t vec_cm_equalize(ghost_densemat_t *vec, ghost_mpi_comm_t comm, int root)
 {
 #ifdef GHOST_HAVE_MPI
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
@@ -293,13 +293,13 @@ static ghost_error_t vec_cm_equalize(ghost_densemat_t *vec, int root)
         ghost_lidx_t row,col;
         for (col=0; col<vec->traits.ncols; col++) {
             for (row=0; row<vec->traits.nrows; row++) {
-                MPI_CALL_RETURN(MPI_Bcast(DENSEMAT_VAL(vec,row,col),1,vecdt,root,vec->context->mpicomm));
+                MPI_CALL_RETURN(MPI_Bcast(DENSEMAT_VAL(vec,row,col),1,vecdt,root,comm));
             }
         }
     } else {
-        MPI_CALL_RETURN(MPI_Bcast(vec->val,vec->traits.nrowspadded*vec->traits.ncols,vecdt,root,vec->context->mpicomm));
+        MPI_CALL_RETURN(MPI_Bcast(vec->val,vec->traits.nrowspadded*vec->traits.ncols,vecdt,root,comm));
     }
-    
+
     vec->uploadNonHalo(vec);
      
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_COMMUNICATION);

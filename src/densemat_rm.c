@@ -52,7 +52,7 @@ static ghost_error_t vec_rm_uploadHalo(ghost_densemat_t *vec);
 static ghost_error_t vec_rm_downloadHalo(ghost_densemat_t *vec);
 static ghost_error_t vec_rm_uploadNonHalo(ghost_densemat_t *vec);
 static ghost_error_t vec_rm_downloadNonHalo(ghost_densemat_t *vec);
-static ghost_error_t vec_rm_equalize(ghost_densemat_t *vec, int root);
+static ghost_error_t vec_rm_equalize(ghost_densemat_t *vec, ghost_mpi_comm_t comm, int root);
 static ghost_error_t densemat_rm_halocommInit(ghost_densemat_t *vec, ghost_densemat_halo_comm_t *comm);
 static ghost_error_t densemat_rm_halocommFinalize(ghost_densemat_t *vec, ghost_densemat_halo_comm_t *comm);
 
@@ -278,7 +278,7 @@ static ghost_error_t vec_rm_download(ghost_densemat_t *vec)
     return GHOST_SUCCESS;
 }
 
-static ghost_error_t vec_rm_equalize(ghost_densemat_t *vec, int root)
+static ghost_error_t vec_rm_equalize(ghost_densemat_t *vec, ghost_mpi_comm_t comm, int root)
 {
 #ifdef GHOST_HAVE_MPI
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
@@ -291,16 +291,16 @@ static ghost_error_t vec_rm_equalize(ghost_densemat_t *vec, int root)
         ghost_lidx_t row,col;
         for (row=0; row<vec->traits.nrows; row++) {
             for (col=0; col<vec->traits.ncols; col++) {
-                MPI_CALL_RETURN(MPI_Bcast(DENSEMAT_VAL(vec,row,col),1,vecdt,root,vec->context->mpicomm));
+                MPI_CALL_RETURN(MPI_Bcast(DENSEMAT_VAL(vec,row,col),1,vecdt,root,comm));
             }
         }
     } else if (vec->traits.flags & GHOST_DENSEMAT_VIEW) {
         ghost_lidx_t row;
         for (row=0; row<vec->traits.nrows; row++) {
-            MPI_CALL_RETURN(MPI_Bcast(DENSEMAT_VAL(vec,row,0),vec->traits.nrows,vecdt,root,vec->context->mpicomm));
+            MPI_CALL_RETURN(MPI_Bcast(DENSEMAT_VAL(vec,row,0),vec->traits.nrows,vecdt,root,comm));
         }
     } else {
-        MPI_CALL_RETURN(MPI_Bcast(vec->val,vec->traits.ncolspadded*vec->traits.nrows,vecdt,root,vec->context->mpicomm));
+        MPI_CALL_RETURN(MPI_Bcast(vec->val,vec->traits.ncolspadded*vec->traits.nrows,vecdt,root,comm));
     }
     
     vec->uploadNonHalo(vec);
@@ -438,8 +438,6 @@ static ghost_error_t vec_rm_viewCols (ghost_densemat_t *src,
         ghost_bitmap_copy((*new)->trmask,src->trmask);
         ghost_bitmap_set_range((*new)->ldmask,0,nc-1);
     }
-
-    return GHOST_SUCCESS;
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
     return GHOST_SUCCESS;

@@ -465,7 +465,7 @@ struct ghost_densemat_t
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t (*syncValues) (ghost_densemat_t *vec, int root);
+    ghost_error_t (*syncValues) (ghost_densemat_t *vec, ghost_mpi_comm_t, int root);
     /**
      * @ingroup denseinit
      *
