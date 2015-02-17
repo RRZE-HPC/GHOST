@@ -61,7 +61,7 @@ typedef enum {
      * @brief The densemat is scattered in trailing dimension, i.e., the rows/columns are not 
      * consecutive in memory. This is only possible for views. The densemat::val has one entry for each row.
      */
-    GHOST_DENSEMAT_SCATTERED_TR = 64,
+    GHOST_DENSEMAT_SCATTERED_TR = 128,
     /**
      * @brief The densemat has been permuted in #GHOST_PERMUTATION_ORIG2PERM 
      * direction via its ghost_densemat_t::permute() function. 
@@ -69,7 +69,7 @@ typedef enum {
      * This flag gets deleted once the densemat has been permuted back 
      * (#GHOST_PERMUTATION_PERM2ORIG).
      */
-    GHOST_DENSEMAT_PERMUTED = 128
+    GHOST_DENSEMAT_PERMUTED = 256
 } 
 ghost_densemat_flags_t;
 
