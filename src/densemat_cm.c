@@ -12,9 +12,6 @@
 #include "ghost/bindensemat.h"
 #include "ghost/densemat_rm.h"
 
-#define COLMAJOR
-#include "ghost/densemat_iter_macros.h"
-
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
@@ -25,6 +22,11 @@
 #ifdef GHOST_HAVE_CUDA
 #include <cuda_runtime.h>
 #endif
+
+#define COLMAJOR
+#include "ghost/densemat_iter_macros.h"
+#include "ghost/densemat_common.c.def"
+
 
 static ghost_error_t vec_cm_scale(ghost_densemat_t *vec, void *scale);
 static ghost_error_t vec_cm_axpy(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale);
@@ -40,11 +42,11 @@ static void ghost_freeVector( ghost_densemat_t* const vec );
 static ghost_error_t ghost_permuteVector( ghost_densemat_t* vec, ghost_permutation_t *permutation, ghost_permutation_direction_t dir); 
 static ghost_error_t ghost_cloneVector(ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nr, ghost_lidx_t roffs, ghost_lidx_t nc, ghost_lidx_t coffs);
 static ghost_error_t vec_cm_entry(ghost_densemat_t *, void *, ghost_lidx_t, ghost_lidx_t);
-static ghost_error_t vec_cm_view (ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nr, ghost_lidx_t roffs, ghost_lidx_t nc, ghost_lidx_t coffs);
+//static ghost_error_t vec_cm_view (ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nr, ghost_lidx_t roffs, ghost_lidx_t nc, ghost_lidx_t coffs);
 static ghost_error_t vec_cm_viewScatteredVec (ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nr, ghost_lidx_t *roffs, ghost_lidx_t nc, ghost_lidx_t *coffs);
 static ghost_error_t vec_cm_viewScatteredCols (ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nc, ghost_lidx_t *coffs);
 static ghost_error_t vec_cm_viewCols (ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nc, ghost_lidx_t coffs);
-static ghost_error_t vec_cm_viewPlain (ghost_densemat_t *vec, void *data, ghost_lidx_t lda);
+//static ghost_error_t vec_cm_viewPlain (ghost_densemat_t *vec, void *data, ghost_lidx_t lda);
 static ghost_error_t vec_cm_compress(ghost_densemat_t *vec);
 static ghost_error_t vec_cm_upload(ghost_densemat_t *vec);
 static ghost_error_t vec_cm_download(ghost_densemat_t *vec);
@@ -100,8 +102,8 @@ ghost_error_t ghost_densemat_cm_setfuncs(ghost_densemat_t *vec)
     vec->permute = &ghost_permuteVector;
     vec->clone = &ghost_cloneVector;
     vec->entry = &vec_cm_entry;
-    vec->viewVec = &vec_cm_view;
-    vec->viewPlain = &vec_cm_viewPlain;
+    vec->viewVec = &ghost_densemat_cm_view;
+    vec->viewPlain = &ghost_densemat_cm_viewPlain;
     vec->viewScatteredVec = &vec_cm_viewScatteredVec;
     vec->viewScatteredCols = &vec_cm_viewScatteredCols;
     vec->viewCols = &vec_cm_viewCols;
@@ -309,9 +311,10 @@ static ghost_error_t vec_cm_equalize(ghost_densemat_t *vec, ghost_mpi_comm_t com
 #endif
     return GHOST_SUCCESS;
 }
-
+#if 0
 static ghost_error_t vec_cm_view (ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nr, ghost_lidx_t roffs, ghost_lidx_t nc, ghost_lidx_t coffs)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     DEBUG_LOG(1,"Viewing a %"PRLIDX"x%"PRLIDX" densemat from a %"PRLIDX"x%"PRLIDX" densemat with offset %"PRLIDX"x%"PRLIDX,nr,nc,src->traits.nrows,src->traits.ncols,roffs,coffs);
     
     ghost_densemat_traits_t newTraits = src->traits;
@@ -332,11 +335,13 @@ static ghost_error_t vec_cm_view (ghost_densemat_t *src, ghost_densemat_t **new,
         ghost_bitmap_copy((*new)->trmask,src->trmask);
     }
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
     return GHOST_SUCCESS;
 }
 
 static ghost_error_t vec_cm_viewPlain (ghost_densemat_t *vec, void *data, ghost_lidx_t lda)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         ERROR_LOG("A scattered densemat may not view plain data!");
         return GHOST_ERR_INVALID_ARG;
@@ -356,13 +361,17 @@ static ghost_error_t vec_cm_viewPlain (ghost_densemat_t *vec, void *data, ghost_
     vec->traits.flags |= (ghost_densemat_flags_t)GHOST_DENSEMAT_VIEW;
     vec->stride = lda;
     vec->traits.ncolsorig = vec->traits.ncols;
-    vec->traits.nrowsorig = lda;
+    vec->traits.nrowsorig = vec->traits.nrows;
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
     return GHOST_SUCCESS;
 }
+#endif
+
 
 static ghost_error_t vec_cm_viewCols (ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nc, ghost_lidx_t coffs)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     DEBUG_LOG(1,"Viewing a %"PRLIDX"x%"PRLIDX" contiguous dense matrix",src->traits.nrows,nc);
     ghost_densemat_traits_t newTraits = src->traits;
     newTraits.ncols = nc;
@@ -383,6 +392,7 @@ static ghost_error_t vec_cm_viewCols (ghost_densemat_t *src, ghost_densemat_t **
         ghost_bitmap_set_range((*new)->trmask,0,nc-1);
     }
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
     return GHOST_SUCCESS;
 }
 

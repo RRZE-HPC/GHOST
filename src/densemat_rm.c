@@ -361,7 +361,7 @@ static ghost_error_t vec_rm_viewPlain (ghost_densemat_t *vec, void *data,
     }
     vec->traits.flags |= (ghost_densemat_flags_t)GHOST_DENSEMAT_VIEW;
     vec->stride = lda;
-    vec->traits.ncolsorig = lda;
+    vec->traits.ncolsorig = vec->traits.ncols;
     vec->traits.nrowsorig = vec->traits.nrows;
 
     return GHOST_SUCCESS;

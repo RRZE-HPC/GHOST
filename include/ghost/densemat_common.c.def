@@ -1,0 +1,71 @@
+#include "ghost/config.h"
+
+#ifdef ROWMAJOR
+#ifdef COLMAJOR
+#error "Only one of ROWMAJOR or COLMAJOR must be defined!"
+#endif
+#define PREFIX rm
+#elif defined (COLMAJOR)
+#define PREFIX cm
+#else
+#error "One of ROWMAJOR or COLMAJOR must be defined!"
+#endif
+
+#define PASTER(x,y) x ## _ ## y
+#define EVALUATOR(x,y) PASTER(x,y)
+#define FUNCNAME(fun) EVALUATOR(ghost_densemat,EVALUATOR(PREFIX,fun))
+
+static ghost_error_t FUNCNAME(view(ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nr, ghost_lidx_t roffs, ghost_lidx_t nc, ghost_lidx_t coffs))
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
+    DEBUG_LOG(1,"Viewing a %"PRLIDX"x%"PRLIDX" densemat from a %"PRLIDX"x%"PRLIDX" densemat with offset %"PRLIDX"x%"PRLIDX,nr,nc,src->traits.nrows,src->traits.ncols,roffs,coffs);
+    
+    ghost_densemat_traits_t newTraits = src->traits;
+    newTraits.ncols = nc;
+    newTraits.nrows = nr;
+    newTraits.flags |= (ghost_densemat_flags_t)GHOST_DENSEMAT_VIEW;
+
+    ghost_densemat_create(new,src->context,newTraits);
+    FUNCNAME(malloc(*new));
+    
+    (*new)->stride = src->stride;
+    (*new)->src = src->src;
+    (*new)->val = DENSEMAT_VAL(src,roffs,coffs);
+    (*new)->cu_val = DENSEMAT_CUVAL(src,roffs,coffs);
+
+    if (src->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+        ghost_bitmap_copy((*new)->ldmask,src->ldmask);
+        ghost_bitmap_copy((*new)->trmask,src->trmask);
+    }
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
+    return GHOST_SUCCESS;
+}
+
+static ghost_error_t FUNCNAME(viewPlain(ghost_densemat_t *vec, void *data, ghost_lidx_t lda))
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
+    if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+        ERROR_LOG("A scattered densemat may not view plain data!");
+        return GHOST_ERR_INVALID_ARG;
+    }
+
+    FUNCNAME(malloc(vec));
+
+    if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+#ifdef GHOST_HAVE_CUDA
+        INFO_LOG("The plain memory has to be valid CUDA device memory!");
+        vec->cu_val = data;
+#endif
+    } 
+    if (vec->traits.flags & GHOST_DENSEMAT_HOST) {
+        vec->val = data;
+    }
+    vec->traits.flags |= (ghost_densemat_flags_t)GHOST_DENSEMAT_VIEW;
+    vec->stride = lda;
+    vec->traits.ncolsorig = vec->traits.ncols;
+    vec->traits.nrowsorig = vec->traits.nrows;
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
+    return GHOST_SUCCESS;
+}

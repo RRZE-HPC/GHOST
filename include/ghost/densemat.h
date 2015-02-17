@@ -245,7 +245,7 @@ struct ghost_densemat_t
      */
     ghost_bitmap_t ldmask;
     /**
-     * @brief Mask out elements in the non-leading dimension (only for CUDA)
+     * @brief Mask out elements in the non-leading dimension
      */
     ghost_bitmap_t trmask;
     /**
