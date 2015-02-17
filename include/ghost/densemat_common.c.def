@@ -34,8 +34,8 @@ static ghost_error_t FUNCNAME(view(ghost_densemat_t *src, ghost_densemat_t **new
     (*new)->cu_val = DENSEMAT_CUVAL(src,roffs,coffs);
 
     if (src->traits.flags & GHOST_DENSEMAT_SCATTERED) {
-        ghost_bitmap_copy((*new)->ldmask,src->ldmask);
-        ghost_bitmap_copy((*new)->trmask,src->trmask);
+        ghost_bitmap_copy((*new)->colmask,src->colmask);
+        ghost_bitmap_copy((*new)->rowmask,src->rowmask);
     }
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);

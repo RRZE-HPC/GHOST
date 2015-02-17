@@ -79,7 +79,7 @@ static ghost_error_t ghost_sell_spmv_plain_rm(ghost_sparsemat_t *mat,
                     for (cidx = 0; cidx<rhs->traits.ncols; cidx++) {
                         tmp[i][cidx] +=  matrixval * rhsrow[rcol];
                         if (scatteredvecs) {
-                            rcol = ghost_bitmap_next(rhs->ldmask,rcol);
+                            rcol = ghost_bitmap_next(rhs->colmask,rcol);
                         } else {
                             rcol++;
                         }
@@ -120,8 +120,8 @@ static ghost_error_t ghost_sell_spmv_plain_rm(ghost_sparsemat_t *mat,
                             conjugate(&rhsrow[rcol])*rhsrow[rcol];
                     }
                     if (scatteredvecs) {
-                        rcol = ghost_bitmap_next(rhs->ldmask,rcol);
-                        lcol = ghost_bitmap_next(lhs->ldmask,lcol);
+                        rcol = ghost_bitmap_next(rhs->colmask,rcol);
+                        lcol = ghost_bitmap_next(lhs->colmask,lcol);
                     } else {
                         rcol++;
                         lcol++;
@@ -268,8 +268,8 @@ static ghost_error_t ghost_sell_spmv_plain_cm(ghost_sparsemat_t *mat,
                 }
 
                 if (scatteredvecs) {
-                    rcol = ghost_bitmap_next(rhs->trmask,rcol);
-                    lcol = ghost_bitmap_next(lhs->trmask,lcol);
+                    rcol = ghost_bitmap_next(rhs->colmask,rcol);
+                    lcol = ghost_bitmap_next(lhs->colmask,lcol);
                 } else {
                     rcol++;
                     lcol++;

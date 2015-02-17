@@ -227,10 +227,10 @@
 #define DENSEMAT_ITER_BEGIN_SCATTERED(vec,row,col,memrow,memcol)\
     memrow = -1;\
     for (row=0; row<vec->traits.nrows; row++) {\
-        memrow = ghost_bitmap_next(vec->trmask,memrow);\
+        memrow = ghost_bitmap_next(vec->rowmask,memrow);\
         memcol = -1;\
         for (col = 0; col<vec->traits.ncols; col++) {\
-            memcol = ghost_bitmap_next(vec->ldmask,memcol);\
+            memcol = ghost_bitmap_next(vec->colmask,memcol);\
             valptr = DENSEMAT_VAL(vec,memrow,memcol);\
             cuvalptr = DENSEMAT_CUVAL(vec,memrow,memcol);\
 
@@ -241,19 +241,19 @@
     memrow1 = -1;\
     memrow2 = -1;\
     for (row=0; row<vec2roffs; row++) { /* go to offset */\
-        memrow2 = ghost_bitmap_next(vec2->trmask,memrow2);\
+        memrow2 = ghost_bitmap_next(vec2->rowmask,memrow2);\
     }\
     for (row=0; row<vec1->traits.nrows; row++) {\
-        memrow1 = ghost_bitmap_next(vec1->trmask,memrow1);\
-        memrow2 = ghost_bitmap_next(vec2->trmask,memrow2);\
+        memrow1 = ghost_bitmap_next(vec1->rowmask,memrow1);\
+        memrow2 = ghost_bitmap_next(vec2->rowmask,memrow2);\
         memcol1 = -1;\
         memcol2 = -1;\
         for (col=0; col<vec2coffs; col++) { /* go to offset */\
-            memcol2 = ghost_bitmap_next(vec2->ldmask,memcol2);\
+            memcol2 = ghost_bitmap_next(vec2->colmask,memcol2);\
         }\
         for (col=0; col<vec1->traits.ncols; col++) {\
-            memcol1 = ghost_bitmap_next(vec1->ldmask,memcol1);\
-            memcol2 = ghost_bitmap_next(vec2->ldmask,memcol2);\
+            memcol1 = ghost_bitmap_next(vec1->colmask,memcol1);\
+            memcol2 = ghost_bitmap_next(vec2->colmask,memcol2);\
             valptr1 = DENSEMAT_VAL(vec1,memrow1,memcol1);\
             valptr2 = DENSEMAT_VAL(vec2,memrow2+vec2roffs,memcol2+vec2coffs);\
             cuvalptr1 = DENSEMAT_CUVAL(vec1,memrow1,memcol1);\
@@ -262,11 +262,11 @@
 #define DENSEMAT_ITER2_BEGIN_SCATTERED1_OFFS(vec1,vec2,row,col,memrow1,memrow2,memcol1,memcol2,vec2roffs,vec2coffs)\
     memrow1 = -1;\
     for (row=0; row<vec1->traits.nrows; row++) {\
-        memrow1 = ghost_bitmap_next(vec1->trmask,memrow1);\
+        memrow1 = ghost_bitmap_next(vec1->rowmask,memrow1);\
         memrow2 = row;\
         memcol1 = -1;\
         for (col=0; col<vec1->traits.ncols; col++) {\
-            memcol1 = ghost_bitmap_next(vec1->ldmask,memcol1);\
+            memcol1 = ghost_bitmap_next(vec1->colmask,memcol1);\
             memcol2 = col;\
             valptr1 = DENSEMAT_VAL(vec1,memrow1,memcol1);\
             valptr2 = DENSEMAT_VAL(vec2,row+vec2roffs,col+vec2coffs);\
@@ -276,18 +276,18 @@
 #define DENSEMAT_ITER2_BEGIN_SCATTERED2_OFFS(vec1,vec2,row,col,memrow1,memrow2,memcol1,memcol2,vec2roffs,vec2coffs)\
     memrow2 = -1;\
     for (row=0; row<vec2roffs; row++) { /* go to offset */\
-        memrow2 = ghost_bitmap_next(vec2->trmask,memrow2);\
+        memrow2 = ghost_bitmap_next(vec2->rowmask,memrow2);\
     }\
     for (row=0; row<vec1->traits.nrows; row++) {\
         memrow1 = row;\
-        memrow2 = ghost_bitmap_next(vec2->trmask,memrow2);\
+        memrow2 = ghost_bitmap_next(vec2->rowmask,memrow2);\
         memcol2 = -1;\
         for (col=0; col<vec2coffs; col++) { /* go to offset */\
-            memcol2 = ghost_bitmap_next(vec2->ldmask,memcol2);\
+            memcol2 = ghost_bitmap_next(vec2->colmask,memcol2);\
         }\
         for (col=0; col<vec1->traits.ncols; col++) {\
             memcol1 = col;\
-            memcol2 = ghost_bitmap_next(vec2->ldmask,memcol2);\
+            memcol2 = ghost_bitmap_next(vec2->colmask,memcol2);\
             valptr1 = DENSEMAT_VAL(vec1,row,col);\
             valptr2 = DENSEMAT_VAL(vec2,memrow2+vec2roffs,memcol2+vec2coffs);\
             cuvalptr1 = DENSEMAT_CUVAL(vec1,row,col);\
@@ -305,10 +305,10 @@
 #define DENSEMAT_ITER_BEGIN_SCATTERED(vec,row,col,memrow,memcol)\
     memrow = -1;\
     for (row=0; row<vec->traits.nrows; row++) {\
-        memrow = ghost_bitmap_next(vec->ldmask,memrow);\
+        memrow = ghost_bitmap_next(vec->rowmask,memrow);\
         memcol = -1;\
         for (col = 0; col<vec->traits.ncols; col++) {\
-            memcol = ghost_bitmap_next(vec->trmask,memcol);\
+            memcol = ghost_bitmap_next(vec->colmask,memcol);\
             valptr = DENSEMAT_VAL(vec,memrow,memcol);\
             cuvalptr = DENSEMAT_CUVAL(vec,memrow,memcol);\
 
@@ -319,19 +319,19 @@
     memrow1 = -1;\
     memrow2 = -1;\
     for (row=0; row<vec2roffs; row++) { /* go to offset */\
-        memrow2 = ghost_bitmap_next(vec2->ldmask,memrow2);\
+        memrow2 = ghost_bitmap_next(vec2->rowmask,memrow2);\
     }\
     for (row=0; row<vec1->traits.nrows; row++) {\
-        memrow1 = ghost_bitmap_next(vec1->ldmask,memrow1);\
-        memrow2 = ghost_bitmap_next(vec2->ldmask,memrow2);\
+        memrow1 = ghost_bitmap_next(vec1->rowmask,memrow1);\
+        memrow2 = ghost_bitmap_next(vec2->rowmask,memrow2);\
         memcol1 = -1;\
         memcol2 = -1;\
         for (col=0; col<vec2coffs; col++) { /* go to offset */\
-            memcol2 = ghost_bitmap_next(vec2->trmask,memcol2);\
+            memcol2 = ghost_bitmap_next(vec2->colmask,memcol2);\
         }\
         for (col=0; col<vec1->traits.ncols; col++) {\
-            memcol1 = ghost_bitmap_next(vec1->trmask,memcol1);\
-            memcol2 = ghost_bitmap_next(vec2->trmask,memcol2);\
+            memcol1 = ghost_bitmap_next(vec1->colmask,memcol1);\
+            memcol2 = ghost_bitmap_next(vec2->colmask,memcol2);\
             valptr1 = DENSEMAT_VAL(vec1,memrow1,memcol1);\
             valptr2 = DENSEMAT_VAL(vec2,memrow2+vec2roffs,memcol2+vec2coffs);\
             cuvalptr1 = DENSEMAT_CUVAL(vec1,memrow1,memcol1);\
@@ -340,11 +340,11 @@
 #define DENSEMAT_ITER2_BEGIN_SCATTERED1_OFFS(vec1,vec2,row,col,memrow1,memrow2,memcol1,memcol2,vec2roffs,vec2coffs)\
     memrow1 = -1;\
     for (row=0; row<vec1->traits.nrows; row++) {\
-        memrow1 = ghost_bitmap_next(vec1->ldmask,memrow1);\
+        memrow1 = ghost_bitmap_next(vec1->rowmask,memrow1);\
         memrow2 = row;\
         memcol1 = -1;\
         for (col=0; col<vec1->traits.ncols; col++) {\
-            memcol1 = ghost_bitmap_next(vec1->trmask,memcol1);\
+            memcol1 = ghost_bitmap_next(vec1->colmask,memcol1);\
             memcol2 = col;\
             valptr1 = DENSEMAT_VAL(vec1,memrow1,memcol1);\
             valptr2 = DENSEMAT_VAL(vec2,row+vec2roffs,col+vec2coffs);\
@@ -354,18 +354,18 @@
 #define DENSEMAT_ITER2_BEGIN_SCATTERED2_OFFS(vec1,vec2,row,col,memrow1,memrow2,memcol1,memcol2,vec2roffs,vec2coffs)\
     memrow2 = -1;\
     for (row=0; row<vec2roffs; row++) { /* go to offset */\
-        memrow2 = ghost_bitmap_next(vec2->ldmask,memrow2);\
+        memrow2 = ghost_bitmap_next(vec2->rowmask,memrow2);\
     }\
     for (row=0; row<vec1->traits.nrows; row++) {\
         memrow1 = row;\
-        memrow2 = ghost_bitmap_next(vec2->ldmask,memrow2);\
+        memrow2 = ghost_bitmap_next(vec2->rowmask,memrow2);\
         memcol2 = -1;\
         for (col=0; col<vec2coffs; col++) { /* go to offset */\
-            memcol2 = ghost_bitmap_next(vec2->trmask,memcol2);\
+            memcol2 = ghost_bitmap_next(vec2->colmask,memcol2);\
         }\
         for (col=0; col<vec1->traits.ncols; col++) {\
             memcol1 = col;\
-            memcol2 = ghost_bitmap_next(vec2->trmask,memcol2);\
+            memcol2 = ghost_bitmap_next(vec2->colmask,memcol2);\
             valptr1 = DENSEMAT_VAL(vec1,row,col);\
             valptr2 = DENSEMAT_VAL(vec2,memrow2+vec2roffs,memcol2+vec2coffs);\
             cuvalptr1 = DENSEMAT_CUVAL(vec1,row,col);\

@@ -241,13 +241,13 @@ struct ghost_densemat_t
      */
     ghost_lidx_t stride;
     /**
-     * @brief Mask out elements in the leading dimension
+     * @brief Masked out columns for scattered views
      */
-    ghost_bitmap_t ldmask;
+    ghost_bitmap_t colmask;
     /**
-     * @brief Mask out elements in the non-leading dimension
+     * @brief Masked out rows for scattered views
      */
-    ghost_bitmap_t trmask;
+    ghost_bitmap_t rowmask;
     /**
      * @brief An MPI data type which holds one element.
      */

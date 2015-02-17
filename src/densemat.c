@@ -64,8 +64,8 @@ ghost_error_t ghost_densemat_create(ghost_densemat_t **vec, ghost_context_t *ctx
     GHOST_CALL_GOTO(ghost_malloc((void **)vec,sizeof(ghost_densemat_t)),err,ret);
     (*vec)->context = ctx;
     (*vec)->traits = traits;
-    (*vec)->ldmask = NULL;
-    (*vec)->trmask = NULL;
+    (*vec)->colmask = NULL;
+    (*vec)->rowmask = NULL;
     (*vec)->val = NULL;
     (*vec)->cu_val = NULL;
 
@@ -186,25 +186,9 @@ ghost_error_t ghost_densemat_valptr(ghost_densemat_t *vec, void **ptr)
         return GHOST_ERR_INVALID_ARG;
     }
 
-    if (vec->traits.nrows < 1) {
-        ERROR_LOG("No rows");
-        return GHOST_ERR_INVALID_ARG;
-    }
-    if (vec->traits.ncols < 1) {
-        ERROR_LOG("No columns");
-        return GHOST_ERR_INVALID_ARG;
-    }
-
-    if (vec->ldmask && ghost_bitmap_iszero(vec->ldmask)) {
-        ERROR_LOG("Everything masked out. This is a zero-view.");
-        return GHOST_ERR_INVALID_ARG;
-    }
-
     *ptr = vec->val;
 
     return GHOST_SUCCESS;
-
-
 }
 
 ghost_error_t ghost_densemat_cu_valptr(ghost_densemat_t *vec, void **ptr)
@@ -216,26 +200,7 @@ ghost_error_t ghost_densemat_cu_valptr(ghost_densemat_t *vec, void **ptr)
         return GHOST_ERR_INVALID_ARG;
     }
 
-    if (vec->traits.nrows < 1) {
-        ERROR_LOG("No rows");
-        return GHOST_ERR_INVALID_ARG;
-    }
-    if (vec->traits.ncols < 1) {
-        ERROR_LOG("No columns");
-        return GHOST_ERR_INVALID_ARG;
-    }
-
-    if ((vec->traits.flags & GHOST_DENSEMAT_SCATTERED) && (ghost_bitmap_iszero(vec->ldmask))) {
-        ERROR_LOG("Everything masked out. This is a zero-view.");
-        return GHOST_ERR_INVALID_ARG;
-    }
-
-#ifdef GHOST_HAVE_CUDA
     *ptr = vec->cu_val;
-//    *ptr = &vec->cu_val[(ghost_bitmap_first(vec->trmask)*(vec->stride)+ghost_bitmap_first(vec->ldmask))*vec->elSize];
-#else
-    *ptr = NULL;
-#endif
 
     return GHOST_SUCCESS;
 }
@@ -329,12 +294,12 @@ ghost_error_t ghost_densemat_info_string(char **str, ghost_densemat_t *densemat)
         if (densemat->traits.flags & GHOST_DENSEMAT_SCATTERED) {
             char colmask[densemat->traits.ncolsorig];
             char colmaskstr[densemat->traits.ncolsorig+1];
-            ghost_densemat_mask2charfield((densemat->traits.storage==GHOST_DENSEMAT_ROWMAJOR)?densemat->ldmask:densemat->trmask,densemat->traits.ncolsorig,colmask);
+            ghost_densemat_mask2charfield(densemat->colmask,densemat->traits.ncolsorig,colmask);
             charfield2string(colmaskstr,colmask,densemat->traits.ncolsorig);
             ghost_line_string(str,"Viewed columns",NULL,"%s",colmaskstr);
             char rowmask[densemat->traits.nrowsorig];
             char rowmaskstr[densemat->traits.nrowsorig+1];
-            ghost_densemat_mask2charfield(densemat->traits.storage==GHOST_DENSEMAT_ROWMAJOR?densemat->trmask:densemat->ldmask,densemat->traits.nrowsorig,rowmask);
+            ghost_densemat_mask2charfield(densemat->rowmask,densemat->traits.nrowsorig,rowmask);
             charfield2string(rowmaskstr,rowmask,densemat->traits.nrowsorig);
             ghost_line_string(str,"Viewed rows",NULL,"%s",rowmaskstr);
         }
