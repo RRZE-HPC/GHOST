@@ -15,6 +15,51 @@
 #define EVALUATOR(x,y) PASTER(x,y)
 #define FUNCNAME(fun) EVALUATOR(ghost_densemat,EVALUATOR(PREFIX,fun))
 
+ghost_error_t FUNCNAME(malloc(ghost_densemat_t *vec))
+{
+    if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+        if (vec->rowmask == NULL) {
+            vec->rowmask = ghost_bitmap_alloc();
+        }
+        if (vec->colmask == NULL) {
+            vec->colmask = ghost_bitmap_alloc();
+        }
+    }
+
+    if (vec->traits.flags & GHOST_DENSEMAT_VIEW) {
+        return GHOST_SUCCESS;
+    }
+
+    if ((vec->traits.flags & GHOST_DENSEMAT_HOST) && !vec->val) {
+        DEBUG_LOG(2,"Allocating host side of vector");
+        if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+            GHOST_CALL_RETURN(ghost_malloc_pinned((void **)&vec->val,
+                        (size_t)vec->traits.ncolspadded*vec->traits.nrowspadded*
+                        vec->elSize));
+        } else {
+            GHOST_CALL_RETURN(ghost_malloc_align((void **)&vec->val,
+                        (size_t)vec->traits.ncolspadded*vec->traits.nrowspadded*
+                        vec->elSize,GHOST_DATA_ALIGNMENT));
+        }
+    }
+
+    if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+        DEBUG_LOG(2,"Allocating device side of vector");
+#ifdef GHOST_HAVE_CUDA
+        if (vec->cu_val == NULL) {
+#ifdef GHOST_HAVE_CUDA_PINNEDMEM
+            WARNING_LOG("CUDA pinned memory is disabled");
+            GHOST_CALL_RETURN(ghost_cu_malloc((void **)&vec->cu_val,vec->traits.nrowspadded*vec->traits.ncolspadded*vec->elSize));
+#else
+            GHOST_CALL_RETURN(ghost_cu_malloc((void **)&vec->cu_val,vec->traits.nrowspadded*vec->traits.ncolspadded*vec->elSize));
+#endif
+        }
+#endif
+    }   
+
+    return GHOST_SUCCESS; 
+}
+
 static ghost_error_t FUNCNAME(view(ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nr, ghost_lidx_t roffs, ghost_lidx_t nc, ghost_lidx_t coffs))
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
@@ -30,12 +75,25 @@ static ghost_error_t FUNCNAME(view(ghost_densemat_t *src, ghost_densemat_t **new
     
     (*new)->stride = src->stride;
     (*new)->src = src->src;
-    (*new)->val = DENSEMAT_VAL(src,roffs,coffs);
-    (*new)->cu_val = DENSEMAT_CUVAL(src,roffs,coffs);
 
     if (src->traits.flags & GHOST_DENSEMAT_SCATTERED) {
-        ghost_bitmap_copy((*new)->colmask,src->colmask);
-        ghost_bitmap_copy((*new)->rowmask,src->rowmask);
+        ghost_lidx_t coffsarray[nc], roffsarray[nr];
+        ghost_lidx_t i;
+        for (i=0; i<nc; i++) {
+            coffsarray[i] = coffs+i;
+        }
+        for (i=0; i<nr; i++) {
+            roffsarray[i] = roffs+i;
+        }
+        ghost_lidx_t rowoffset, coloffset;
+        GHOST_CALL_RETURN(ghost_bitmap_copy_indices((*new)->rowmask,&rowoffset,src->rowmask,roffsarray,nr));
+        GHOST_CALL_RETURN(ghost_bitmap_copy_indices((*new)->colmask,&coloffset,src->colmask,coffsarray,nc));
+        
+        (*new)->val = DENSEMAT_VAL(src,rowoffset,coloffset);
+        (*new)->cu_val = DENSEMAT_CUVAL(src,rowoffset,coloffset);
+    } else {
+        (*new)->val = DENSEMAT_VAL(src,roffs,coffs);
+        (*new)->cu_val = DENSEMAT_CUVAL(src,roffs,coffs);
     }
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
@@ -190,6 +248,151 @@ static ghost_error_t FUNCNAME(viewScatteredVec(ghost_densemat_t *src, ghost_dens
         (*new)->val = DENSEMAT_VAL(src,roffs[0],coffs[0]);
         (*new)->cu_val = DENSEMAT_CUVAL(src,roffs[0],coffs[0]);
     }
+
+    return GHOST_SUCCESS;
+}
+
+static ghost_error_t FUNCNAME(fromVec(ghost_densemat_t *vec, ghost_densemat_t *vec2, ghost_lidx_t roffs, ghost_lidx_t coffs))
+{
+    FUNCNAME(malloc(vec));
+    DEBUG_LOG(1,"Initializing vector from vector w/ col offset %"PRLIDX,coffs);
+    
+    if (vec2->traits.storage == vec->traits.storage) { 
+        if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+            if (vec2->traits.flags & GHOST_DENSEMAT_DEVICE) {
+                DENSEMAT_ITER2_OFFS(vec,vec2,roffs,coffs,
+                        ghost_cu_memcpy(cuvalptr1,cuvalptr2,vec->elSize));
+            } else {
+                DENSEMAT_ITER2_OFFS(vec,vec2,roffs,coffs,
+                        ghost_cu_upload(cuvalptr1,valptr2,vec->elSize));
+            }
+        } else {
+            if (vec2->traits.flags & GHOST_DENSEMAT_DEVICE) {
+                DENSEMAT_ITER2_OFFS(vec,vec2,roffs,coffs,
+                        ghost_cu_download(valptr1,cuvalptr2,vec->elSize));
+            } else {
+                DENSEMAT_ITER2_OFFS(vec,vec2,roffs,coffs,
+                        memcpy(valptr1,valptr2,vec->elSize));
+            }
+        }
+    } else {
+        INFO_LOG("On-the-fly memtranpose");
+        if (vec->traits.flags & GHOST_DENSEMAT_DEVICE || 
+                vec2->traits.flags & GHOST_DENSEMAT_DEVICE) {
+            ERROR_LOG("fromVec with memtranspose not available for GPU!");
+            return GHOST_ERR_NOT_IMPLEMENTED;
+        }
+        if (vec2->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+            ERROR_LOG("Not implemented!");
+            return GHOST_ERR_NOT_IMPLEMENTED;
+        }
+
+        DENSEMAT_ITER2_COMPACT_OFFS_TRANSPOSED(vec,vec2,roffs,coffs,memcpy(valptr1,valptr2,vec->elSize));
+    }
+
+    vec->traits.flags |= (ghost_densemat_flags_t)(vec2->traits.flags & GHOST_DENSEMAT_PERMUTED);
+
+    return GHOST_SUCCESS;
+}
+
+static ghost_error_t FUNCNAME(axpy(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale))
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
+    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_lidx_t nc = MIN(vec->traits.ncols,vec2->traits.ncols);
+    char *s = NULL;
+    GHOST_CALL_GOTO(ghost_malloc((void **)&s,nc*vec->elSize),err,ret);
+
+    ghost_lidx_t i;
+    for (i=0; i<nc; i++) {
+        memcpy(&s[i*vec->elSize],scale,vec->elSize);
+    }
+    
+    ret = vec->vaxpy(vec,vec2,s);
+
+    goto out;
+err:
+
+out:
+    free(s);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
+    return ret;
+}
+
+static ghost_error_t FUNCNAME(axpby(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale, void *_b))
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
+    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_lidx_t nc = MIN(vec->traits.ncols,vec2->traits.ncols);
+    char *s = NULL;
+    char *b = NULL;
+    GHOST_CALL_GOTO(ghost_malloc((void **)&s,nc*vec->elSize),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&b,nc*vec->elSize),err,ret);
+
+    ghost_lidx_t i;
+    for (i=0; i<nc; i++) {
+        memcpy(&s[i*vec->elSize],scale,vec->elSize);
+        memcpy(&b[i*vec->elSize],_b,vec->elSize);
+    }
+    
+    ret = vec->vaxpby(vec,vec2,s,b);
+
+    goto out;
+err:
+
+out:
+    free(s);
+    free(b);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
+    return ret;
+}
+
+static ghost_error_t FUNCNAME(scale(ghost_densemat_t *vec, void *scale))
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
+    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_lidx_t nc = vec->traits.ncols;
+    char *s;
+    GHOST_CALL_GOTO(ghost_malloc((void **)&s,nc*vec->elSize),err,ret);
+
+    ghost_lidx_t i;
+    for (i=0; i<nc; i++) {
+        memcpy(&s[i*vec->elSize],scale,vec->elSize);
+    }
+
+    ret = vec->vscale(vec,s);
+
+    goto out;
+err:
+
+out:
+    free(s);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
+    return GHOST_SUCCESS;
+}
+
+static ghost_error_t FUNCNAME(fromScalar(ghost_densemat_t *vec, void *val))
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
+    
+    FUNCNAME(malloc(vec));
+
+    DENSEMAT_ITER(vec,memcpy(valptr,val,vec->elSize));
+    
+    vec->upload(vec);
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
+    
+    return GHOST_SUCCESS;
+}
+
+static ghost_error_t FUNCNAME(entry(ghost_densemat_t * vec, void *val, ghost_lidx_t r, ghost_lidx_t c)) 
+{
+    ghost_densemat_t *singleent;
+    GHOST_CALL_RETURN(vec->viewVec(vec,&singleent,1,r,1,c));
+    memcpy(val,singleent->val,singleent->elSize);
+
+    singleent->destroy(singleent);
 
     return GHOST_SUCCESS;
 }

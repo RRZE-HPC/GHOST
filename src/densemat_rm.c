@@ -27,12 +27,12 @@
 #include "ghost/densemat_iter_macros.h"
 #include "ghost/densemat_common.c.def"
 
-static ghost_error_t vec_rm_scale(ghost_densemat_t *vec, void *scale);
-static ghost_error_t vec_rm_axpy(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale);
-static ghost_error_t vec_rm_axpby(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale, void *b);
+//static ghost_error_t vec_rm_scale(ghost_densemat_t *vec, void *scale);
+//static ghost_error_t vec_rm_axpy(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale);
+//static ghost_error_t vec_rm_axpby(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale, void *b);
 static ghost_error_t vec_rm_fromFunc(ghost_densemat_t *vec, void (*fp)(ghost_gidx_t, ghost_lidx_t, void *));
-static ghost_error_t vec_rm_fromVec(ghost_densemat_t *vec, ghost_densemat_t *vec2, ghost_lidx_t roffs, ghost_lidx_t coffs);
-static ghost_error_t vec_rm_fromScalar(ghost_densemat_t *vec, void *val);
+//static ghost_error_t vec_rm_fromVec(ghost_densemat_t *vec, ghost_densemat_t *vec2, ghost_lidx_t roffs, ghost_lidx_t coffs);
+//static ghost_error_t vec_rm_fromScalar(ghost_densemat_t *vec, void *val);
 static ghost_error_t vec_rm_fromFile(ghost_densemat_t *vec, char *path, bool singleFile);
 static ghost_error_t vec_rm_toFile(ghost_densemat_t *vec, char *path, bool singleFile);
 static ghost_error_t ghost_distributeVector(ghost_densemat_t *vec, ghost_densemat_t *nodeVec);
@@ -40,7 +40,7 @@ static ghost_error_t ghost_collectVectors(ghost_densemat_t *vec, ghost_densemat_
 static void ghost_freeVector( ghost_densemat_t* const vec );
 static ghost_error_t ghost_permuteVector( ghost_densemat_t* vec, ghost_permutation_t *permutation, ghost_permutation_direction_t dir); 
 static ghost_error_t ghost_cloneVector(ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nr, ghost_lidx_t roffs, ghost_lidx_t nc, ghost_lidx_t coffs);
-static ghost_error_t vec_rm_entry(ghost_densemat_t *, void *, ghost_lidx_t, ghost_lidx_t);
+//static ghost_error_t vec_rm_entry(ghost_densemat_t *, void *, ghost_lidx_t, ghost_lidx_t);
 //static ghost_error_t vec_rm_view (ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nr, ghost_lidx_t roffs, ghost_lidx_t nc, ghost_lidx_t coffs);
 //static ghost_error_t vec_rm_viewScatteredVec (ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nr, ghost_lidx_t *roffs, ghost_lidx_t nc, ghost_lidx_t *coffs);
 //static ghost_error_t vec_rm_viewScatteredCols (ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nc, ghost_lidx_t *coffs);
@@ -80,18 +80,18 @@ ghost_error_t ghost_densemat_rm_setfuncs(ghost_densemat_t *vec)
         vec->dot = &ghost_densemat_rm_dotprod_selector;
         vec->vaxpy = &ghost_densemat_rm_vaxpy_selector;
         vec->vaxpby = &ghost_densemat_rm_vaxpby_selector;
-        vec->axpy = &vec_rm_axpy;
-        vec->axpby = &vec_rm_axpby;
-        vec->scale = &vec_rm_scale;
+        vec->axpy = &ghost_densemat_rm_axpy;
+        vec->axpby = &ghost_densemat_rm_axpby;
+        vec->scale = &ghost_densemat_rm_scale;
         vec->vscale = &ghost_densemat_rm_vscale_selector;
-        vec->fromScalar = &vec_rm_fromScalar;
+        vec->fromScalar = &ghost_densemat_rm_fromScalar;
         vec->fromRand = &ghost_densemat_rm_fromRand_selector;
     }
 
     vec->compress = &vec_rm_compress;
     vec->string = &ghost_densemat_rm_string_selector;
     vec->fromFunc = &vec_rm_fromFunc;
-    vec->fromVec = &vec_rm_fromVec;
+    vec->fromVec = &ghost_densemat_rm_fromVec;
     vec->fromFile = &vec_rm_fromFile;
     vec->toFile = &vec_rm_toFile;
     vec->distribute = &ghost_distributeVector;
@@ -100,7 +100,7 @@ ghost_error_t ghost_densemat_rm_setfuncs(ghost_densemat_t *vec)
     vec->destroy = &ghost_freeVector;
     vec->permute = &ghost_permuteVector;
     vec->clone = &ghost_cloneVector;
-    vec->entry = &vec_rm_entry;
+    vec->entry = &ghost_densemat_rm_entry;
     vec->viewVec = &ghost_densemat_rm_view;
     vec->viewPlain = &ghost_densemat_rm_viewPlain;
     vec->viewScatteredVec = &ghost_densemat_rm_viewScatteredVec;
@@ -490,7 +490,6 @@ static ghost_error_t vec_rm_viewScatteredCols (ghost_densemat_t *src,
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
     return GHOST_SUCCESS;
 }
-#endif
 
 ghost_error_t ghost_densemat_rm_malloc(ghost_densemat_t *vec)
 {
@@ -654,8 +653,30 @@ out:
     return GHOST_SUCCESS;
 }
 
+static ghost_error_t vec_rm_fromScalar(ghost_densemat_t *vec, void *val)
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
+    
+    ghost_densemat_rm_malloc(vec);
+
+    DENSEMAT_ITER(vec,memcpy(valptr,val,vec->elSize));
+    
+    vec->upload(vec);
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
+    
+    return GHOST_SUCCESS;
+}
+
+
 static ghost_error_t vec_rm_entry(ghost_densemat_t * vec, void *val, ghost_lidx_t r, ghost_lidx_t c) 
 {
+    ghost_densemat_t *singleent;
+    vec->viewVec(vec,&singleent,1,r,1,c);
+    memcpy(val,singleent->val,singleent->elSize);
+
+    singleent->destroy(singleent);
+
     if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         int i = 0;
         int idx = 0;
@@ -691,21 +712,7 @@ static ghost_error_t vec_rm_entry(ghost_densemat_t * vec, void *val, ghost_lidx_
 
     return GHOST_SUCCESS;
 }
-
-static ghost_error_t vec_rm_fromScalar(ghost_densemat_t *vec, void *val)
-{
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
-    
-    ghost_densemat_rm_malloc(vec);
-
-    DENSEMAT_ITER(vec,memcpy(valptr,val,vec->elSize));
-    
-    vec->upload(vec);
-
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
-    
-    return GHOST_SUCCESS;
-}
+#endif
 
 static ghost_error_t vec_rm_toFile(ghost_densemat_t *vec, char *path, bool singleFile)
 { 
