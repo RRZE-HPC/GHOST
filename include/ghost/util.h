@@ -52,7 +52,12 @@
 #define UNUSED(x) (void)(x)
 
 #define GHOST_SINGLETHREAD(code) {\
-    int nthread = ghost_omp_nthread(); \
+    int nthread;\
+_Pragma("omp parallel") {\
+_Pragma("omp single") {\
+            nthread = ghost_omp_nthread(); \
+        }\
+    }\
     ghost_omp_nthread_set(1);\
     code;\
     ghost_omp_nthread_set(nthread);\
