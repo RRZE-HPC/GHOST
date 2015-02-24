@@ -219,10 +219,10 @@ typedef enum {
  * @brief Possible implementations of a CPU function.
  */
 typedef enum {
-    GHOST_IMPLEMENTATION_AVX,
-    GHOST_IMPLEMENTATION_SSE,
-    GHOST_IMPLEMENTATION_MIC,
-    GHOST_IMPLEMENTATION_PLAIN
+    GHOST_IMPLEMENTATION_PLAIN = 0,
+    GHOST_IMPLEMENTATION_SSE = 1,
+    GHOST_IMPLEMENTATION_AVX = 2,
+    GHOST_IMPLEMENTATION_MIC = 3
 } ghost_implementation_t;
 
 /**
