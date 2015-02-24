@@ -199,6 +199,10 @@ configure_file (
     ${PROJECT_BINARY_DIR}/src/sell_spmv_mic.c
     )
 configure_file (
+    ${PROJECT_SOURCE_DIR}/src/sell_spmv_plain.c.in
+    ${PROJECT_BINARY_DIR}/src/sell_spmv_plain.c
+    )
+configure_file (
     ${PROJECT_SOURCE_DIR}/src/tsmm.c.in
     ${PROJECT_BINARY_DIR}/src/tsmm.c
     )
@@ -231,6 +235,7 @@ set (TO_PREPROCESS
     ${PROJECT_BINARY_DIR}/src/sell_spmv_avx.c
     ${PROJECT_BINARY_DIR}/src/sell_spmv_sse.c
     ${PROJECT_BINARY_DIR}/src/sell_spmv_mic.c
+    ${PROJECT_BINARY_DIR}/src/sell_spmv_plain.c
     ${PROJECT_BINARY_DIR}/src/tsmm.c
     ${PROJECT_BINARY_DIR}/src/tsmm_avx.c
     ${PROJECT_BINARY_DIR}/src/tsmm_sse.c
