@@ -574,7 +574,6 @@ ghost_error_t ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
     {
         ghost_lidx_t j,c;
         ghost_lidx_t offs;
-        __m256d rhs;
         __m256d matval;
         ghost_lidx_t matcol;
         int tid = ghost_omp_threadnum();
@@ -599,7 +598,7 @@ ghost_error_t ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
 
                 #GHOST_UNROLL#tmp@ = _mm256_add_pd(tmp@,_mm256_mul_pd(matval,_mm256_load_pd(((double *)(invec->val))+invec->stride*(matcol)+@*4)));#NVECS/4
 #if NVECS%4
-                rhs = _mm256_maskload_pd(((double *)(invec->val))+invec->stride*(SELL(mat)->col[offs+j*CHUNKHEIGHT])+(NVECS/4)*4,mask);tmpNVECS/4 = _mm256_add_pd(tmpNVECS/4,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs+j*CHUNKHEIGHT]),rhs));
+                tmpNVECS/4 = _mm256_add_pd(tmpNVECS/4,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs+j*CHUNKHEIGHT]),_mm256_maskload_pd(((double *)(invec->val))+invec->stride*(SELL(mat)->col[offs+j*CHUNKHEIGHT])+(NVECS/4)*4,mask)));
 #endif
             }
             if (spmvmOptions & GHOST_SPMV_SHIFT) {
