@@ -38,7 +38,7 @@ typedef enum
     } else {\
         ghost_instr_enable = false;\
     }\
-    if (functype == (GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)) {\
+    if ((functype) == (GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)) {\
         ghost_task_t *cur = NULL;\
         ghost_task_cur(&cur);\
         if (!cur) {\
