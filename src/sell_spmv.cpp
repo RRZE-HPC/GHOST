@@ -499,7 +499,7 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
     }
 
     if (p.storage == GHOST_DENSEMAT_ROWMAJOR && p.blocksz == 1 && 
-            rhs->traits.ncolsorig == 1 && lhs->traits.ncolsorig== 1) {
+            rhs->stride == 1 && lhs->stride == 1) {
         INFO_LOG("Chose col-major kernel for row-major densemat with 1 column");
         p.storage = GHOST_DENSEMAT_COLMAJOR;
     }
