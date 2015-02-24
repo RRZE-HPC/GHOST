@@ -454,7 +454,7 @@ ghost_error_t ghost_finalize()
 #if GHOST_VERBOSITY
     char *str;
     ghost_timing_summarystring(&str);
-//    INFO_LOG("\n%s",str);
+    INFO_LOG("\n%s",str);
     free(str);
 #endif
 #endif
