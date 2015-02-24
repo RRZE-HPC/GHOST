@@ -17,6 +17,7 @@ ghost_error_t ghost_sellspmv__a_avx_d_d_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat,
 {
 #if defined(GHOST_HAVE_AVX) && CHUNKHEIGHT>=4
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+    INFO_LOG("In CM kernel with block size %d",res->traits.ncols);
     ghost_lidx_t i;
     double *lval = NULL, *rval = NULL;
     double *mval = (double *)SELL(mat)->val;
@@ -509,7 +510,22 @@ ghost_error_t ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
 {
 #if defined(GHOST_HAVE_AVX) && NVECS>=4
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
-    INFO_LOG("In RM kernel with block size NVECS");
+
+#if NVECS%4
+    WARNING_LOG("!!! Augmented functions net yet implemented for remainder !!!");
+    __m256i mask;
+#if NVECS%4 == 1
+    mask = _mm256_set_epi64x(0,0,0,~0);
+#endif
+#if NVECS%4 == 2
+    mask = _mm256_set_epi64x(0,0,~0,~0);
+#endif
+#if NVECS%4 == 3
+    mask = _mm256_set_epi64x(0,~0,~0,~0);
+#endif
+#endif
+
+    INFO_LOG("In RM kernel with block size NVECS (remainder %d)",NVECS%4);
     double *mval = (double *)SELL(mat)->val;
     double *local_dot_product = NULL;
     double *partsums = NULL;
@@ -559,8 +575,12 @@ ghost_error_t ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
         ghost_lidx_t j,c;
         ghost_lidx_t offs;
         __m256d rhs;
+        __m256d matval;
+        ghost_lidx_t matcol;
         int tid = ghost_omp_threadnum();
-        #GHOST_UNROLL#__m256d tmp@;#NVECS/4
+        double *lval, *rval, *rptr;
+        rptr = (double *)invec->val;
+        #GHOST_UNROLL#__m256d tmp@;#(NVECS+3)/4
         #GHOST_UNROLL#__m256d dot1_@ = _mm256_setzero_pd();#NVECS/4
         #GHOST_UNROLL#__m256d dot2_@ = _mm256_setzero_pd();#NVECS/4
         #GHOST_UNROLL#__m256d dot3_@ = _mm256_setzero_pd();#NVECS/4
@@ -568,13 +588,19 @@ ghost_error_t ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
 #pragma omp for schedule(runtime)
         for (c=0; c<mat->nrows; c++) 
         { // loop over chunks
-            double *lval = ((double *)(res->val))+res->stride*c;
-            double *rval = ((double *)(invec->val))+invec->stride*c;
+            lval = ((double *)(res->val))+res->stride*c;
+            rval = &rptr[invec->stride*c];
             offs = SELL(mat)->chunkStart[c/CHUNKHEIGHT]+c%CHUNKHEIGHT;
 
-            #GHOST_UNROLL#tmp@ = _mm256_setzero_pd();#NVECS/4
+            #GHOST_UNROLL#tmp@ = _mm256_setzero_pd();#(NVECS+3)/4
             for (j=0; j<SELL(mat)->rowLen[c]; j++) { // loop inside chunk
-                    #GHOST_UNROLL#rhs = _mm256_load_pd(((double *)(invec->val))+invec->stride*(SELL(mat)->col[offs+j*CHUNKHEIGHT])+@*4);tmp@ = _mm256_add_pd(tmp@,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs+j*CHUNKHEIGHT]),rhs));#NVECS/4
+                matval = _mm256_broadcast_sd(&mval[offs+j*CHUNKHEIGHT]);
+                matcol = SELL(mat)->col[offs+j*CHUNKHEIGHT];
+
+                #GHOST_UNROLL#tmp@ = _mm256_add_pd(tmp@,_mm256_mul_pd(matval,_mm256_load_pd(((double *)(invec->val))+invec->stride*(matcol)+@*4)));#NVECS/4
+#if NVECS%4
+                rhs = _mm256_maskload_pd(((double *)(invec->val))+invec->stride*(SELL(mat)->col[offs+j*CHUNKHEIGHT])+(NVECS/4)*4,mask);tmpNVECS/4 = _mm256_add_pd(tmpNVECS/4,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs+j*CHUNKHEIGHT]),rhs));
+#endif
             }
             if (spmvmOptions & GHOST_SPMV_SHIFT) {
                 #GHOST_UNROLL#tmp@ = _mm256_sub_pd(tmp@,_mm256_mul_pd(_mm256_broadcast_sd(&sshift[0]),_mm256_load_pd(rval+@*4)));#NVECS/4
@@ -590,6 +616,9 @@ ghost_error_t ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
                 #GHOST_UNROLL#_mm256_store_pd(lval+@*4,_mm256_add_pd(tmp@,_mm256_mul_pd(_mm256_load_pd(lval+@*4),beta)));#NVECS/4
             } else {
                 #GHOST_UNROLL#_mm256_stream_pd(lval+@*4,tmp@);#NVECS/4
+#if NVECS%4
+                _mm256_maskstore_pd(lval+(NVECS/4)*4,mask,tmpNVECS/4);
+#endif
             }
 
             if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
