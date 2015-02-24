@@ -11,6 +11,7 @@
 
 #include "ghost/sell_spmv_avx_gen.h"
 #include "ghost/sell_spmv_sse_gen.h"
+#include "ghost/sell_spmv_plain_gen.h"
 
 #include <map>
 
@@ -22,6 +23,7 @@ static ghost_error_t ghost_sell_spmv_plain_rm(ghost_sparsemat_t *mat,
         ghost_spmv_flags_t options, va_list argp)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+    PERFWARNING_LOG("In plain row-major SEL SpMV with scatteredvecs=%d, blocksz=%d",scatteredvecs,rhs->traits.ncols);
     ghost_sell_t *sell = (ghost_sell_t *)(mat->data);
     v_t *local_dot_product = NULL, *partsums = NULL;
     ghost_lidx_t i,j,c,rcol,lcol,cidx;
@@ -463,6 +465,7 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
     if (ghost_sellspmv_kernels.empty()) {
 #include "sell_spmv_avx.def"
 #include "sell_spmv_sse.def"
+#include "sell_spmv_plain.def"
     }
 
     ghost_error_t ret = GHOST_SUCCESS;
@@ -476,6 +479,8 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
         impl = GHOST_IMPLEMENTATION_AVX;
 #elif defined(GHOST_HAVE_SSE)
         impl = GHOST_IMPLEMENTATION_SSE;
+#else
+        impl = GHOST_IMPLEMENTATION_PLAIN;
 #endif
     }
 
@@ -488,11 +493,10 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
     p.chunkheight = SELL(mat)->chunkHeight;
     
     if (!(lhs->traits.flags & GHOST_DENSEMAT_VIEW)) {
-        p.blocksz = rhs->traits.ncolspadded;
-    } else {
         p.blocksz = rhs->traits.ncols;
+    } else {
+        p.blocksz = rhs->traits.ncolspadded;
     }
-
 
     if (p.storage == GHOST_DENSEMAT_ROWMAJOR && p.blocksz == 1 && 
             rhs->traits.ncolsorig == 1 && lhs->traits.ncolsorig== 1) {
@@ -553,26 +557,38 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
                 "unaligned addresses work with SSE.");
         p.alignment = GHOST_UNALIGNED;
     }*/
-    if ((lhs->traits.flags & GHOST_DENSEMAT_VIEW) 
-            || (rhs->traits.flags & GHOST_DENSEMAT_VIEW)) {
-        PERFWARNING_LOG("Using unaligned version for compact views. In the future we "
-                "should check for the actual alignment.");
-        p.alignment = GHOST_UNALIGNED;
+    if (p.impl == GHOST_IMPLEMENTATION_AVX) {
+        if (!(IS_ALIGNED(lhs->val,32)) || !(IS_ALIGNED(rhs->val,32))) {
+            PERFWARNING_LOG("Using unaligned version for because (one of) the vectors are not aligned to 32 bytes.");
+            p.alignment = GHOST_UNALIGNED;
+        }
     }
-    if (lhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR && p.blocksz > 1 && p.blocksz % 4) {
-        PERFWARNING_LOG("Use plain implementation non-multiples of four!");
-        p.impl = GHOST_IMPLEMENTATION_PLAIN;
+    if (p.impl == GHOST_IMPLEMENTATION_SSE) {
+        if (!(IS_ALIGNED(lhs->val,16)) || !(IS_ALIGNED(rhs->val,16))) {
+            PERFWARNING_LOG("Using unaligned version for because (one of) the vectors are not aligned to 32 bytes.");
+            p.alignment = GHOST_UNALIGNED;
+        }
     }
+    /*if (lhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR && p.blocksz > 1 && p.blocksz % 4) {
+        if (p.impl == GHOST_IMPLEMENTATION_AVX) {
+            PERFWARNING_LOG("Use SSE implementation non-multiples of four!");
+            p.impl = GHOST_IMPLEMENTATION_SSE;
+        }
+        if (p.blocksz % 2 && p.impl >= GHOST_IMPLEMENTATION_SSE) {
+            PERFWARNING_LOG("Use plain implementation non-multiples of two!");
+            p.impl = GHOST_IMPLEMENTATION_PLAIN;
+        }
+    }*/
 
 
     ghost_spmv_kernel_t kernel = ghost_sellspmv_kernels[p];
 
     if (!kernel) {
         PERFWARNING_LOG("Try kernel with arbitrary blocksz because blocksz %d is not available.",p.blocksz);
-        if (p.storage == GHOST_DENSEMAT_ROWMAJOR) {
+        /*if (p.storage == GHOST_DENSEMAT_ROWMAJOR) {
             PERFWARNING_LOG("The vectorized version is broken so I will fall back to the plain implementation!");
             p.impl = GHOST_IMPLEMENTATION_PLAIN;
-        }
+        }*/
         p.blocksz = -1;
     }
     kernel = ghost_sellspmv_kernels[p];
