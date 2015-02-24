@@ -8,11 +8,10 @@
 #GHOST_FUNC_BEGIN#NVECS=${CFG_BLOCKVECTOR_SIZES}#CHUNKHEIGHT=${CFG_SELL_CHUNKHEIGHTS}
 ghost_error_t ghost_sellspmv__a_plain_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
 {
-#if defined(GHOST_HAVE_AVX) && NVECS>=4
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
 
     WARNING_LOG("!!!!! augmented functions broken !!!");
-    INFO_LOG("In RM kernel with block size NVECS (remainder %d)",NVECS%4);
+    INFO_LOG("In RM kernel with block size NVECS and chunk height CHUNKHEIGHT");
     double *mval = (double *)SELL(mat)->val;
     double *local_dot_product = NULL;
     double *partsums = NULL;
@@ -28,50 +27,102 @@ ghost_error_t ghost_sellspmv__a_plain_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t
     {
         ghost_lidx_t j,c,v,r;
         ghost_lidx_t offs;
-        double tmp[NVECS];
+        double tmp[NVECS][CHUNKHEIGHT];
         double *rhsval = (double *)invec->val;
 
 #pragma omp for schedule(runtime)
         for (c=0; c<mat->nrowsPadded/CHUNKHEIGHT; c++) 
         { // loop over chunks
             memset(tmp,0,sizeof(tmp));
-            double *lval = ((double *)(res->val))+res->stride*c;
-            double *rval = ((double *)(invec->val))+invec->stride*c;
+            double *lrow = ((double *)(res->val))+res->stride*c;
+            double *rrow = ((double *)(invec->val))+invec->stride*c;
             offs = SELL(mat)->chunkStart[c];
 
             for (j=0; j<SELL(mat)->chunkLen[c]; j++) { // loop inside chunk
 #pragma simd
-                    for (v=0; v<NVECS; v++) {
+                for (v=0; v<NVECS; v++) {
 #pragma unroll_and_jam
-                for (r=0; r<CHUNKHEIGHT; r++) {
-                    double matval = mval[offs+j*CHUNKHEIGHT+r]; 
-                    ghost_lidx_t matcol = SELL(mat)->col[offs+j*CHUNKHEIGHT+r];
-                        tmp[v] += matval*rhsval[matcol*invec->stride+v];
+                    for (r=0; r<CHUNKHEIGHT; r++) {
+                        double matval = mval[offs+j*CHUNKHEIGHT+r]; 
+                        ghost_lidx_t matcol = SELL(mat)->col[offs+j*CHUNKHEIGHT+r];
+                        tmp[v][r] += matval*rhsval[matcol*invec->stride+v];
                     }
                 }
 
             }
 #pragma vector nontemporal
             for (v=0; v<NVECS; v++) {
-                lval[v] = tmp[v];
+#pragma unroll_and_jam
+                for (r=0; r<CHUNKHEIGHT; r++) {
+                    lrow[r*res->stride+v] = tmp[v][r];
+                }
             }
         }
     }
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     return GHOST_SUCCESS;
-#else
-    UNUSED(mat);
-    UNUSED(res);
-    UNUSED(invec);
-    UNUSED(spmvmOptions);
+}
+#GHOST_FUNC_END
+
+#GHOST_FUNC_BEGIN#NVECS=${CFG_BLOCKVECTOR_SIZES}#CHUNKHEIGHT=${CFG_SELL_CHUNKHEIGHTS}
+ghost_error_t ghost_sellspmv__a_plain_d_d_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+
+    WARNING_LOG("!!!!! augmented functions broken !!!");
+    INFO_LOG("In CM kernel with block size NVECS and chunk height CHUNKHEIGHT");
+    double *mval = (double *)SELL(mat)->val;
+    double *local_dot_product = NULL;
+    double *partsums = NULL;
+    int nthreads = 1, i;
+    
+    unsigned clsize;
+    ghost_machine_cacheline_size(&clsize);
+    int padding = (int)clsize/sizeof(double);
+
     UNUSED(argp);
-#if NVECS < 4
-    ERROR_LOG("Invalid nVecs");
-#else
-    ERROR_LOG("No AVX available");
-#endif
-    return GHOST_ERR_UNKNOWN;
-#endif
+   
+    if (spmvmOptions & (GHOST_SPMV_AXPY|GHOST_SPMV_AXPBY|GHOST_SPMV_SCALE|GHOST_SPMV_SHIFT|GHOST_SPMV_VSHIFT|GHOST_SPMV_DOT)) {
+       ERROR_LOG("Not implemented");
+       exit(-1);
+    } 
+#pragma omp parallel shared (partsums)
+    {
+        ghost_lidx_t j,c,v,r;
+        ghost_lidx_t offs;
+        double tmp[CHUNKHEIGHT];
+        double *rhsval = (double *)invec->val;
+
+#pragma omp for schedule(runtime)
+        for (c=0; c<mat->nrowsPadded/CHUNKHEIGHT; c++) 
+        { // loop over chunks
+            offs = SELL(mat)->chunkStart[c];
+            
+            for (v=0; v<NVECS; v++) {
+                memset(tmp,0,sizeof(tmp));
+                double *lcol = ((double *)(res->val))+res->stride*v;
+                double *rcol = ((double *)(invec->val))+invec->stride*v;
+
+#pragma simd
+                for (j=0; j<SELL(mat)->chunkLen[c]; j++) { // loop inside chunk
+#pragma unroll_and_jam
+                    for (r=0; r<CHUNKHEIGHT; r++) {
+                        double matval = mval[offs+j*CHUNKHEIGHT+r];
+                        ghost_lidx_t matcol = SELL(mat)->col[offs+j*CHUNKHEIGHT+r];
+                        tmp[r] += matval*rcol[matcol];
+                    }
+                }
+
+#pragma vector nontemporal
+                for (r=0; (r<CHUNKHEIGHT) && (c*CHUNKHEIGHT+r < mat->nrows); r++) {
+                    lcol[c*CHUNKHEIGHT+r] = tmp[r];
+                }
+            }
+        }
+    }
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+    return GHOST_SUCCESS;
 }
 #GHOST_FUNC_END
