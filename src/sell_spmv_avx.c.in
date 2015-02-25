@@ -5,6 +5,7 @@
 #include "ghost/instr.h"
 #include "ghost/machine.h"
 #include "ghost/omp.h"
+#include "ghost/math.h"
 #include "ghost/sell_spmv_avx_gen.h"
 #include <immintrin.h>
 
@@ -655,6 +656,21 @@ ghost_error_t ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
         free(sshiftpadded);
     }
 
+#ifdef GHOST_HAVE_INSTR_TIMING
+    ghost_gidx_t nnz;
+    ghost_gidx_t nrow;
+    
+    ghost_sparsemat_nnz(&nnz,mat);
+    ghost_sparsemat_nrows(&nrow,mat);
+
+    ghost_spmv_perf_args_t spmv_perfargs;
+    spmv_perfargs.vecncols = invec->traits.ncols;
+    spmv_perfargs.globalnnz = nnz;
+    spmv_perfargs.globalrows = nrow;
+    spmv_perfargs.dt = invec->traits.datatype;
+    spmv_perfargs.flags = spmvmOptions;
+    ghost_timing_set_perfFunc(__ghost_functag,ghost_spmv_perf,(void *)&spmv_perfargs,sizeof(spmv_perfargs),GHOST_SPMV_PERF_UNIT);
+#endif 
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     return GHOST_SUCCESS;
