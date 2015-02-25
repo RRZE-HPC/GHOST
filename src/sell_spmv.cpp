@@ -600,7 +600,7 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
     rhs->string(rhs,&str);
     printf("%s\n",str);*/
     if (kernel) {
-        kernel(mat,lhs,rhs,options,argp);
+        ret = kernel(mat,lhs,rhs,options,argp);
     } else { // execute plain kernel as fallback
         PERFWARNING_LOG("Execute fallback SELL SpMV kernel which is potentially"
                 " slow!");
