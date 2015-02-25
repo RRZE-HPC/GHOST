@@ -483,6 +483,7 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
         impl = GHOST_IMPLEMENTATION_PLAIN;
 #endif
     }
+        //impl = GHOST_IMPLEMENTATION_PLAIN;
 
     ghost_sellspmv_parameters_t p;
     p.alignment = GHOST_ALIGNED;
@@ -569,7 +570,7 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
             p.alignment = GHOST_UNALIGNED;
         }
     }
-    /*if (lhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR && p.blocksz > 1 && p.blocksz % 4) {
+    if (lhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR && p.blocksz > 1 && p.blocksz % 4) {
         if (p.impl == GHOST_IMPLEMENTATION_AVX) {
             PERFWARNING_LOG("Use SSE implementation non-multiples of four!");
             p.impl = GHOST_IMPLEMENTATION_SSE;
@@ -578,7 +579,7 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
             PERFWARNING_LOG("Use plain implementation non-multiples of two!");
             p.impl = GHOST_IMPLEMENTATION_PLAIN;
         }
-    }*/
+    }
 
 
     ghost_spmv_kernel_t kernel = ghost_sellspmv_kernels[p];
