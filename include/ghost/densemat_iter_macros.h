@@ -32,11 +32,10 @@
             call;\
             DENSEMAT_ITER_END();\
         } else {\
-            _Pragma("omp parallel")\
+            _Pragma("omp parallel private(row,col,memrow,memcol,valptr)")\
             {\
                 DENSEMAT_ITER_BEGIN_COMPACT(vec,valptr,row,col,memrow,memcol)\
                 valptr = DENSEMAT_VAL(vec,row,col);\
-                cuvalptr = DENSEMAT_CUVAL(vec,row,col);\
                 call;\
                 DENSEMAT_ITER_END()\
             }\
@@ -88,7 +87,7 @@
             call;\
             DENSEMAT_ITER_END();\
         } else {\
-            _Pragma("omp parallel")\
+            _Pragma("omp parallel private(col,memcol1,memcol2,memrow1,memrow2,valptr1,valptr2)")\
             {\
                 DENSEMAT_ITER2_BEGIN_COMPACT_OFFS(vec1,vec2,valptr1,valptr2,row,col,memrow1,memrow2,memcol1,memcol2,vec2roffs,vec2coffs);\
                 valptr1 = DENSEMAT_VAL(vec1,row,col);\
@@ -179,10 +178,11 @@
 
 
 #define DENSEMAT_ITER_BEGIN_COMPACT(vec,valptr,row,col,memrow,memcol)\
-    _Pragma("omp for private(valptr,col,memcol) schedule(runtime)")\
+    _Pragma("omp for schedule(runtime)")\
     for (row = 0; row<vec->traits.nrows; row++) {\
         memrow = row;\
-        for (col = 0, memcol = 0; col<vec->traits.ncols; col++, memcol++) {\
+        for (col = 0; col<vec->traits.ncols; col++) {\
+            memcol = col;\
 
 #define DENSEMAT_ITER_END()\
         }\
@@ -192,22 +192,22 @@
     DENSEMAT_ITER2_BEGIN_COMPACT_OFFS(vec1,vec2,row,col,memrow1,memrow2,memcol1,memcol2,0,0)
 
 #define DENSEMAT_ITER2_BEGIN_COMPACT_OFFS(vec1,vec2,valptr1,valptr2,row,col,memrow1,memrow2,memcol1,memcol2,vec2roffs,vec2coffs)\
-    _Pragma("omp for private(col,memcol1,memcol2,memrow1,memrow2,valptr1,valptr2) schedule(runtime)")\
+    _Pragma("omp for schedule(runtime)")\
     for (row=0; row<vec1->traits.nrows; row++) {\
         memrow1 = row;\
         memrow2 = row;\
-        for (col = 0, memcol1 = 0, memcol2 = 0;\
-                col<vec1->traits.ncols;\
-                col++, memcol1++, memcol2++) {
+        for (col = 0; col<vec1->traits.ncols; col++) {\
+            memcol1 = col;\
+            memcol2 = col;
 
 #define DENSEMAT_ITER2_BEGIN_COMPACT_OFFS_TRANSPOSED(vec1,vec2,row,col,memrow1,memrow2,memcol1,memcol2,vec2roffs,vec2coffs)\
-    _Pragma("omp for private(memrow1,memrow2,col,memcol1,memcol2,valptr1,valptr2) schedule(runtime)")\
+    _Pragma("omp for schedule(runtime)")\
     for (row=0; row<vec1->traits.nrows; row++) {\
         memrow1 = row;\
         memrow2 = row;\
-        for (col = 0, memcol1 = 0, memcol2 = 0;\
-                col<vec1->traits.ncols;\
-                col++, memcol1++, memcol2++) {\
+        for (col = 0; col<vec1->traits.ncols; col++) {\
+            memcol1 = col;\
+            memcol2 = col;
 
 
 #ifdef ROWMAJOR
