@@ -101,7 +101,21 @@ ghost_error_t ghost_tsmm_inplace(ghost_densemat_t *x, ghost_densemat_t *w, void 
     kernel = ghost_tsmm_inplace_kernels[p];
     
     if (!kernel) {
-        PERFWARNING_LOG("Try kernel with arbitrary block size");
+        PERFWARNING_LOG("Try kernel with arbitrary block size ncolsin");
+        p.ncolsin = -1;
+        p.ncolsout = w->traits.ncols;
+        kernel = ghost_tsmm_inplace_kernels[p];
+    }
+    
+    if (!kernel) {
+        PERFWARNING_LOG("Try kernel with arbitrary block size ncolsout");
+        p.ncolsin = w->traits.nrows;
+        p.ncolsout = -1;
+        kernel = ghost_tsmm_inplace_kernels[p];
+    }
+    
+    if (!kernel) {
+        PERFWARNING_LOG("Try kernel with arbitrary block sizes");
         p.ncolsin = -1;
         p.ncolsout = -1;
         kernel = ghost_tsmm_inplace_kernels[p];
