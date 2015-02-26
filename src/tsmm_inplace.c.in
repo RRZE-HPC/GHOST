@@ -81,11 +81,8 @@ ghost_error_t ghost_tsmm_inplace__plain_d_NCOLSIN_x(ghost_densemat_t *x, ghost_d
 
 #pragma omp parallel for private(j,s,tmp) schedule(runtime)
     for (i=0; i<n; i++) {
-#pragma simd
         for (s=0; s<ncolsout; s++) {
             tmp[s] = dbeta*xval[i*ldx+s];
-#pragma simd
-#pragma ivdep
 #pragma simd
             for (j=0; j<NCOLSIN; j++) {
                 tmp[s] += dalpha*xval[i*ldx+j]*wval[s*ldw+j];
