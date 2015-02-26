@@ -92,7 +92,7 @@ ghost_error_t ghost_densemat_cm_setfuncs(ghost_densemat_t *vec)
     vec->compress = &vec_cm_compress;
     vec->string = &ghost_densemat_cm_string_selector;
     vec->fromFunc = &vec_cm_fromFunc;
-    vec->fromVec = &ghost_densemat_cm_fromVec;
+    vec->fromVec = &ghost_densemat_cm_fromVec_selector;
     vec->fromFile = &vec_cm_fromFile;
     vec->toFile = &vec_cm_toFile;
     vec->distribute = &ghost_distributeVector;

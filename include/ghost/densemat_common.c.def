@@ -252,49 +252,6 @@ static ghost_error_t FUNCNAME(viewScatteredVec(ghost_densemat_t *src, ghost_dens
     return GHOST_SUCCESS;
 }
 
-static ghost_error_t FUNCNAME(fromVec(ghost_densemat_t *vec, ghost_densemat_t *vec2, ghost_lidx_t roffs, ghost_lidx_t coffs))
-{
-    FUNCNAME(malloc(vec));
-    DEBUG_LOG(1,"Initializing vector from vector w/ col offset %"PRLIDX,coffs);
-    
-    if (vec2->traits.storage == vec->traits.storage) { 
-        if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
-            if (vec2->traits.flags & GHOST_DENSEMAT_DEVICE) {
-                DENSEMAT_ITER2_OFFS(vec,vec2,roffs,coffs,
-                        ghost_cu_memcpy(cuvalptr1,cuvalptr2,vec->elSize));
-            } else {
-                DENSEMAT_ITER2_OFFS(vec,vec2,roffs,coffs,
-                        ghost_cu_upload(cuvalptr1,valptr2,vec->elSize));
-            }
-        } else {
-            if (vec2->traits.flags & GHOST_DENSEMAT_DEVICE) {
-                DENSEMAT_ITER2_OFFS(vec,vec2,roffs,coffs,
-                        ghost_cu_download(valptr1,cuvalptr2,vec->elSize));
-            } else {
-                DENSEMAT_ITER2_OFFS(vec,vec2,roffs,coffs,
-                        memcpy(valptr1,valptr2,vec->elSize));
-            }
-        }
-    } else {
-        INFO_LOG("On-the-fly memtranpose");
-        if (vec->traits.flags & GHOST_DENSEMAT_DEVICE || 
-                vec2->traits.flags & GHOST_DENSEMAT_DEVICE) {
-            ERROR_LOG("fromVec with memtranspose not available for GPU!");
-            return GHOST_ERR_NOT_IMPLEMENTED;
-        }
-        if (vec2->traits.flags & GHOST_DENSEMAT_SCATTERED) {
-            ERROR_LOG("Not implemented!");
-            return GHOST_ERR_NOT_IMPLEMENTED;
-        }
-
-        DENSEMAT_ITER2_COMPACT_OFFS_TRANSPOSED(vec,vec2,roffs,coffs,memcpy(valptr1,valptr2,vec->elSize));
-    }
-
-    vec->traits.flags |= (ghost_densemat_flags_t)(vec2->traits.flags & GHOST_DENSEMAT_PERMUTED);
-
-    return GHOST_SUCCESS;
-}
-
 static ghost_error_t FUNCNAME(axpy(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale))
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
