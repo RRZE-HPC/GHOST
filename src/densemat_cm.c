@@ -85,7 +85,7 @@ ghost_error_t ghost_densemat_cm_setfuncs(ghost_densemat_t *vec)
         vec->axpby = &ghost_densemat_cm_axpby;
         vec->scale = &ghost_densemat_cm_scale;
         vec->vscale = &ghost_densemat_cm_vscale_selector;
-        vec->fromScalar = &ghost_densemat_cm_fromScalar;
+        vec->fromScalar = &ghost_densemat_cm_fromScalar_selector;
         vec->fromRand = &ghost_densemat_cm_fromRand_selector;
     }
 

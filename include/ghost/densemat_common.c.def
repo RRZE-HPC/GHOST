@@ -371,21 +371,6 @@ out:
     return GHOST_SUCCESS;
 }
 
-static ghost_error_t FUNCNAME(fromScalar(ghost_densemat_t *vec, void *val))
-{
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
-    
-    FUNCNAME(malloc(vec));
-
-    DENSEMAT_ITER(vec,memcpy(valptr,val,vec->elSize));
-    
-    vec->upload(vec);
-
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
-    
-    return GHOST_SUCCESS;
-}
-
 static ghost_error_t FUNCNAME(entry(ghost_densemat_t * vec, void *val, ghost_lidx_t r, ghost_lidx_t c)) 
 {
     ghost_densemat_t *singleent;
