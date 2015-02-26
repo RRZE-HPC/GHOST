@@ -84,9 +84,9 @@ static ghost_error_t FUNCNAME(dotprod_tmpl(ghost_densemat_t *vec, void *res, gho
     nthreads = ghost_omp_nthread();
    
     ghost_machine_cacheline_size(&clsize);
-    int padding = (int)clsize/sizeof(v_t);
+    int padding = 8*(int)clsize/sizeof(v_t);
         
-    GHOST_CALL_GOTO(ghost_malloc((void **)&partsums,nthreads*(vec->traits.ncols+padding)*sizeof(v_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc_align((void **)&partsums,nthreads*(vec->traits.ncols+padding)*sizeof(v_t),64),err,ret);
     memset(partsums,0,nthreads*(vec->traits.ncols+padding)*sizeof(v_t));
     
 #pragma omp parallel shared(partsums) 
