@@ -32,10 +32,11 @@
             call;\
             DENSEMAT_ITER_END();\
         } else {\
-            _Pragma("omp parallel private(row,col,memrow,memcol,valptr)")\
+            _Pragma("omp parallel")\
             {\
                 DENSEMAT_ITER_BEGIN_COMPACT(vec,valptr,row,col,memrow,memcol)\
                 valptr = DENSEMAT_VAL(vec,row,col);\
+                cuvalptr = DENSEMAT_CUVAL(vec,row,col);\
                 call;\
                 DENSEMAT_ITER_END()\
             }\
@@ -87,7 +88,7 @@
             call;\
             DENSEMAT_ITER_END();\
         } else {\
-            _Pragma("omp parallel private(col,memcol1,memcol2,memrow1,memrow2,valptr1,valptr2)")\
+            _Pragma("omp parallel")\
             {\
                 DENSEMAT_ITER2_BEGIN_COMPACT_OFFS(vec1,vec2,valptr1,valptr2,row,col,memrow1,memrow2,memcol1,memcol2,vec2roffs,vec2coffs);\
                 valptr1 = DENSEMAT_VAL(vec1,row,col);\
@@ -178,7 +179,7 @@
 
 
 #define DENSEMAT_ITER_BEGIN_COMPACT(vec,valptr,row,col,memrow,memcol)\
-    _Pragma("omp for schedule(runtime)")\
+    _Pragma("omp for schedule(runtime) private(col,memrow,memcol,valptr,cuvalptr)")\
     for (row = 0; row<vec->traits.nrows; row++) {\
         memrow = row;\
         for (col = 0; col<vec->traits.ncols; col++) {\
@@ -192,7 +193,7 @@
     DENSEMAT_ITER2_BEGIN_COMPACT_OFFS(vec1,vec2,row,col,memrow1,memrow2,memcol1,memcol2,0,0)
 
 #define DENSEMAT_ITER2_BEGIN_COMPACT_OFFS(vec1,vec2,valptr1,valptr2,row,col,memrow1,memrow2,memcol1,memcol2,vec2roffs,vec2coffs)\
-    _Pragma("omp for schedule(runtime)")\
+    _Pragma("omp for schedule(runtime) private(col,memcol1,memcol2,memrow1,memrow2,valptr1,valptr2,cuvalptr1,cuvalptr2)")\
     for (row=0; row<vec1->traits.nrows; row++) {\
         memrow1 = row;\
         memrow2 = row;\
@@ -201,7 +202,7 @@
             memcol2 = col;
 
 #define DENSEMAT_ITER2_BEGIN_COMPACT_OFFS_TRANSPOSED(vec1,vec2,row,col,memrow1,memrow2,memcol1,memcol2,vec2roffs,vec2coffs)\
-    _Pragma("omp for schedule(runtime)")\
+    _Pragma("omp for schedule(runtime) private(col,memcol1,memcol2,memrow1,memrow2,valptr1,valptr2,cuvalptr1,cuvalptr2)")\
     for (row=0; row<vec1->traits.nrows; row++) {\
         memrow1 = row;\
         memrow2 = row;\
@@ -220,8 +221,8 @@
 #define DENSEMAT_VAL(vec,row,col) &vec->val[((row)*(vec->stride)+(col))*vec->elSize]
 //#define DENSEMAT_VAL_TRANSPOSED(vec,row,col) &vec->val[col][(row)*vec->elSize]
 #define DENSEMAT_VAL_TRANSPOSED(vec,row,col) &vec->val[((col)*vec->stride+(row))*vec->elSize]
-#define DENSEMAT_CUVAL(vec,row,col) vec->cu_val?(&((char *)(vec->cu_val))[((row)*vec->stride+(col))*vec->elSize]):NULL
-#define DENSEMAT_CUVAL_TRANSPOSED(vec,row,col) &((char *)(vec->cu_val))[((col)*vec->stride+(row))*vec->elSize]
+#define DENSEMAT_CUVAL(vec,row,col) &vec->cu_val[((row)*vec->stride+(col))*vec->elSize]
+#define DENSEMAT_CUVAL_TRANSPOSED(vec,row,col) &vec->cu_val[((col)*vec->stride+(row))*vec->elSize]
 
 
 #define DENSEMAT_ITER_BEGIN_SCATTERED(vec,row,col,memrow,memcol)\
@@ -299,8 +300,8 @@
 #define DENSEMAT_VAL(vec,row,col) &vec->val[((col)*vec->stride+(row))*vec->elSize]
 //#define DENSEMAT_VAL_TRANSPOSED(vec,row,col) &vec->val[row][(col)*vec->elSize]
 #define DENSEMAT_VAL_TRANSPOSED(vec,row,col) &vec->val[((row)*vec->stride+(col))*vec->elSize]
-#define DENSEMAT_CUVAL(vec,row,col) &((char *)(vec->cu_val))[((col)*vec->stride+(row))*vec->elSize]
-#define DENSEMAT_CUVAL_TRANSPOSED(vec,row,col) &((char *)(vec->cu_val))[((row)*vec->stride+(col))*vec->elSize]
+#define DENSEMAT_CUVAL(vec,row,col) &vec->cu_val[((col)*vec->stride+(row))*vec->elSize]
+#define DENSEMAT_CUVAL_TRANSPOSED(vec,row,col) &vec->cu_val[((row)*vec->stride+(col))*vec->elSize]
 
 #define DENSEMAT_ITER_BEGIN_SCATTERED(vec,row,col,memrow,memcol)\
     memrow = -1;\
