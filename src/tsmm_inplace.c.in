@@ -170,8 +170,7 @@ ghost_error_t ghost_tsmm_inplace__plain_d_x_x(ghost_densemat_t *x, ghost_densema
 
 #pragma omp parallel 
     {
-        double *tmp = NULL;
-        ghost_malloc_align((void **)&tmp,ncolsout*sizeof(double),64);
+        double tmp[ncolsout];
         ghost_lidx_t i,j,s;
 #pragma omp for schedule(runtime)
         for (i=0; i<n; i++) {
