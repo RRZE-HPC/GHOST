@@ -80,12 +80,14 @@ ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat
             for (i=0; i<n; i++) {
                 for (k=0; k+4<=CFGK; k+=4) {
                     #GHOST_UNROLL#wvec@ = _mm256_mul_pd(_mm256_set1_pd(wval[i*ldw+(k+@)]),alphavec);#4
-                    
+                   
+#pragma unroll_and_jam 
                     for (j=0; j+4<=CFGM; j+=4) {
                         #GHOST_UNROLL#vvec@ = _mm256_mul_pd(_mm256_load_pd(&vval[i*ldv+j]),wvec@);#4
                         #GHOST_UNROLL#_mm256_store_pd(&x_priv[(k+@)*ldxpriv+j],_mm256_add_pd(_mm256_load_pd(&x_priv[(k+@)*ldxpriv+j]),vvec@));#4
 
                     }
+#pragma unroll_and_jam 
                     for (; j<CFGM; j++) {
                         x_priv[(k+0)*ldxpriv+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+(k+0)];
                         x_priv[(k+1)*ldxpriv+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+(k+1)];
@@ -95,10 +97,12 @@ ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat
                 }
                 for (; k<CFGK; k++) {
                     wvec0 = _mm256_mul_pd(_mm256_set1_pd(wval[i*ldw+(k+0)]),alphavec);
+#pragma unroll_and_jam 
                     for (j=0; j+4<=CFGM; j+=4) {
                         vvec0 = _mm256_mul_pd(_mm256_load_pd(&vval[i*ldv+j]),wvec0);
                         _mm256_store_pd(&x_priv[(k+0)*ldxpriv+j],_mm256_add_pd(_mm256_load_pd(&x_priv[(k+0)*ldxpriv+j]),vvec0));
                     }
+#pragma unroll_and_jam 
                     for (; j<CFGM; j++) {
                         x_priv[k*ldxpriv+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
                     }
@@ -109,9 +113,11 @@ ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat
             {
                 j=0;
                 for (k=0; k+4<=CFGK; k+=4) {
+#pragma unroll_and_jam 
                     for (j=0; j+4<=CFGM; j+=4) {
                         #GHOST_UNROLL#_mm256_store_pd(&xval[(k+@)*ldx+j],_mm256_add_pd(_mm256_load_pd(&xval[(k+@)*ldx+j]),_mm256_load_pd(&x_priv[(k+@)*ldxpriv+j])));#4
                     }
+#pragma unroll_and_jam 
                     for (; j<CFGM; j++) {
                         xval[(k+0)*ldx+j] += x_priv[(k+0)*ldxpriv+j];
                         xval[(k+1)*ldx+j] += x_priv[(k+1)*ldxpriv+j];
@@ -120,9 +126,11 @@ ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat
                     }
                 }
                 for (; k<CFGK; k++) {
+#pragma unroll_and_jam 
                     for (j=0; j+4<=CFGM; j+=4) {
                         _mm256_store_pd(&xval[(k+0)*ldx+j],_mm256_add_pd(_mm256_load_pd(&xval[(k+0)*ldx+j]),_mm256_load_pd(&x_priv[(k+0)*ldxpriv+j])));
                     }
+#pragma unroll_and_jam 
                     for (; j<CFGM; j++) {
                         xval[k*ldx+j] += x_priv[k*ldxpriv+j];
                     }

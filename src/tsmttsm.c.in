@@ -63,8 +63,11 @@ ghost_error_t ghost_tsmttsm__plain_d_x_x(ghost_densemat_t *x, ghost_densemat_t *
             memset(x_priv,0,sizeof(x_priv));
 #pragma omp for schedule(runtime)
             for (i=0; i<n; i++) {
+#pragma vector aligned
+#pragma ivdep
 #pragma simd
                 for (k=0; k<K; k++) {
+#pragma unroll_and_jam
                   for (j=0; j<m; j++) {
                         x_priv[j*K+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
                     }
@@ -72,10 +75,15 @@ ghost_error_t ghost_tsmttsm__plain_d_x_x(ghost_densemat_t *x, ghost_densemat_t *
 
             }
 #pragma omp critical
+            {
+#pragma vector aligned
+#pragma ivdep
 #pragma simd
-            for (k=0; k<K; k++) {
-                for (j=0; j<m; j++) {
-                    xval[k*ldx+j] += x_priv[j*K+k];
+                for (k=0; k<K; k++) {
+#pragma unroll_and_jam
+                    for (j=0; j<m; j++) {
+                        xval[k*ldx+j] += x_priv[j*K+k];
+                    }
                 }
             }
         }
@@ -329,6 +337,310 @@ out:
 }
 
 
+#GHOST_FUNC_BEGIN#CFGM=${CFG_BLOCKVECTOR_SIZES}
+ghost_error_t ghost_tsmttsm__plain_d_x_CFGM(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conjv)
+{
+    UNUSED(conjv);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
+    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_lidx_t K = w->traits.ncols;
+
+#ifdef GHOST_TSMTTSM_KAHAN
+    WARNING_LOG("Kahan summation not implemented for this kernel. Falling back to normal summation!");
+#endif
+    
+    int myrank=0;
+
+    if (v->context) {
+        GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
+    }
+
+    ghost_lidx_t n = v->traits.nrows;
+    
+    INFO_LOG("In TSMTTSM with fixed m CFGM and arbitrary k %d: %dx%d <- %dx%d * %dx%d",K,CFGM,K,CFGM,n,n,K);
+    
+    double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
+    ghost_lidx_t ldv, ldw, ldx;
+
+    ldv = v->stride;
+    ldw = w->stride;
+    ldx = x->stride;
+
+    ghost_densemat_valptr(v,(void **)&vval);
+    ghost_densemat_valptr(w,(void **)&wval);
+    ghost_densemat_valptr(x,(void **)&xval);
+    
+    double dalpha = *(double *)alpha;
+    double dbeta = *(double *)beta;
+    
+    // make sure that the initial x only gets added up once
+    if (myrank) {
+        dbeta = 0.;
+    }
+
+    ghost_lidx_t i,j;
+    
+    if (x->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
+        ghost_lidx_t k;
+        for (j=0; j<CFGM; j++) {
+            for (k=0; k<K; k++) {
+                xval[k*ldx+j] = dbeta*xval[k*ldx+j];
+            }
+        }
+#pragma omp parallel private(j,k)
+        {
+            double x_priv[CFGM*K];
+            memset(x_priv,0,sizeof(x_priv));
+#pragma omp for schedule(runtime)
+            for (i=0; i<n; i++) {
+#pragma vector aligned
+#pragma ivdep
+#pragma simd
+                for (k=0; k<K; k++) {
+#pragma unroll_and_jam
+                  for (j=0; j<CFGM; j++) {
+                        x_priv[j*K+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
+                    }
+                }
+
+            }
+#pragma omp critical
+            {
+#pragma vector aligned
+#pragma ivdep
+#pragma simd
+                for (k=0; k<K; k++) {
+#pragma unroll_and_jam
+                    for (j=0; j<CFGM; j++) {
+                        xval[k*ldx+j] += x_priv[j*K+k];
+                    }
+                }
+            }
+        }
+#ifdef GHOST_HAVE_MPI
+        if (v->context) {
+            if (x->traits.flags & GHOST_DENSEMAT_VIEW) {
+                for (k=0; k<K; k++) {
+                    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval+k*ldx,CFGM,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
+                }
+            } else {
+                MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,K*ldx,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
+            }
+        }
+#endif
+    
+    } else {
+        ghost_lidx_t k;
+        for (j=0; j<CFGM; j++) {
+            for (k=0; k<K; k++) {
+                xval[j*ldx+k] = dbeta*xval[j*ldx+k];
+            }
+        }
+#pragma omp parallel private(j,k)
+        {
+            double x_priv[CFGM*K];
+            memset(x_priv,0,sizeof(x_priv));
+#pragma omp for schedule(runtime)
+            for (i=0; i<n; i++) {
+                for (j=0; j<CFGM; j++) {
+#pragma simd
+#pragma vector always
+#pragma vector aligned
+#pragma ivdep
+#pragma unroll
+                    for (k=0; k<K; k++) {
+                        x_priv[j*K+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
+                    }
+                }
+
+            }
+#pragma omp critical
+            for (j=0; j<CFGM; j++) {
+#pragma simd
+#pragma vector always
+#pragma vector aligned
+#pragma ivdep
+#pragma unroll
+                for (k=0; k<K; k++) {
+                    xval[j*ldx+k] += x_priv[j*K+k];
+                }
+            }
+        }
+#ifdef GHOST_HAVE_MPI
+        if (v->context) {
+            if (x->traits.flags & GHOST_DENSEMAT_VIEW) {
+                for (j=0; j<CFGM; j++) {
+                    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval+j*ldx,K,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
+                }
+            } else {
+                MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,ldx*CFGM,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
+            }
+        }
+#endif
+
+    }
+   
+    goto out;
+err:
+
+out:
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
+    return ret;
+}
+#GHOST_FUNC_END
+
+#GHOST_FUNC_BEGIN#CFGK=${CFG_BLOCKVECTOR_SIZES}
+ghost_error_t ghost_tsmttsm__plain_d_CFGK_x(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conjv)
+{
+    UNUSED(conjv);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
+    ghost_error_t ret = GHOST_SUCCESS;
+
+#ifdef GHOST_TSMTTSM_KAHAN
+    WARNING_LOG("Kahan summation not implemented for this kernel. Falling back to normal summation!");
+#endif
+    
+    int myrank=0;
+
+    if (v->context) {
+        GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
+    }
+
+    ghost_lidx_t n = v->traits.nrows;
+    ghost_lidx_t m = v->traits.ncols;
+    
+    INFO_LOG("In TSMTTSM with fixed k CFGK and arbitrary m %d: %dx%d <- %dx%d * %dx%d",m,m,CFGK,m,n,n,CFGK);
+    
+    double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
+    ghost_lidx_t ldv, ldw, ldx;
+
+    ldv = v->stride;
+    ldw = w->stride;
+    ldx = x->stride;
+
+    ghost_densemat_valptr(v,(void **)&vval);
+    ghost_densemat_valptr(w,(void **)&wval);
+    ghost_densemat_valptr(x,(void **)&xval);
+    
+    double dalpha = *(double *)alpha;
+    double dbeta = *(double *)beta;
+    
+    // make sure that the initial x only gets added up once
+    if (myrank) {
+        dbeta = 0.;
+    }
+
+    ghost_lidx_t i,j;
+    
+    if (x->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
+        ghost_lidx_t k;
+        for (j=0; j<m; j++) {
+            for (k=0; k<CFGK; k++) {
+                xval[k*ldx+j] = dbeta*xval[k*ldx+j];
+            }
+        }
+#pragma omp parallel private(j,k)
+        {
+            double x_priv[m*CFGK];
+            memset(x_priv,0,sizeof(x_priv));
+#pragma omp for schedule(runtime)
+            for (i=0; i<n; i++) {
+#pragma vector aligned
+#pragma ivdep
+#pragma simd
+                for (k=0; k<CFGK; k++) {
+#pragma unroll_and_jam
+                  for (j=0; j<m; j++) {
+                        x_priv[j*CFGK+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
+                    }
+                }
+
+            }
+#pragma omp critical
+            {
+#pragma vector aligned
+#pragma ivdep
+#pragma simd
+                for (k=0; k<CFGK; k++) {
+#pragma unroll_and_jam
+                    for (j=0; j<m; j++) {
+                        xval[k*ldx+j] += x_priv[j*CFGK+k];
+                    }
+                }
+            }
+        }
+#ifdef GHOST_HAVE_MPI
+        if (v->context) {
+            if (x->traits.flags & GHOST_DENSEMAT_VIEW) {
+                for (k=0; k<CFGK; k++) {
+                    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval+k*ldx,m,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
+                }
+            } else {
+                MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,CFGK*ldx,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
+            }
+        }
+#endif
+    
+    } else {
+        ghost_lidx_t k;
+        for (j=0; j<m; j++) {
+            for (k=0; k<CFGK; k++) {
+                xval[j*ldx+k] = dbeta*xval[j*ldx+k];
+            }
+        }
+#pragma omp parallel private(j,k)
+        {
+            double x_priv[m*CFGK];
+            memset(x_priv,0,sizeof(x_priv));
+#pragma omp for schedule(runtime)
+            for (i=0; i<n; i++) {
+                for (j=0; j<m; j++) {
+#pragma simd
+#pragma vector always
+#pragma vector aligned
+#pragma ivdep
+#pragma unroll
+                    for (k=0; k<CFGK; k++) {
+                        x_priv[j*CFGK+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
+                    }
+                }
+
+            }
+#pragma omp critical
+            for (j=0; j<m; j++) {
+#pragma simd
+#pragma vector always
+#pragma vector aligned
+#pragma ivdep
+#pragma unroll
+                for (k=0; k<CFGK; k++) {
+                    xval[j*ldx+k] += x_priv[j*CFGK+k];
+                }
+            }
+        }
+#ifdef GHOST_HAVE_MPI
+        if (v->context) {
+            if (x->traits.flags & GHOST_DENSEMAT_VIEW) {
+                for (j=0; j<m; j++) {
+                    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval+j*ldx,CFGK,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
+                }
+            } else {
+                MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,ldx*m,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
+            }
+        }
+#endif
+
+    }
+   
+    goto out;
+err:
+
+out:
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
+    return ret;
+}
+#GHOST_FUNC_END
+
 #GHOST_FUNC_BEGIN#CFGK=${CFG_BLOCKVECTOR_SIZES}#CFGM=${CFG_BLOCKVECTOR_SIZES}
 ghost_error_t ghost_tsmttsm__plain_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conjv)
 {
@@ -388,8 +700,11 @@ ghost_error_t ghost_tsmttsm__plain_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densem
             for (i=0; i<n; i++) {
 #if CFGK>1
 #pragma simd
+#pragma vector aligned
+#pragma ivdep
 #endif
                 for (k=0; k<CFGK; k++) {
+#pragma unroll_and_jam
                   for (j=0; j<CFGM; j++) {
                         x_priv[j*CFGK+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
                     }
@@ -399,8 +714,11 @@ ghost_error_t ghost_tsmttsm__plain_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densem
 #pragma omp critical
 #if CFGK>1
 #pragma simd
+#pragma vector aligned
+#pragma ivdep
 #endif
             for (k=0; k<CFGK; k++) {
+#pragma unroll_and_jam
                 for (j=0; j<CFGM; j++) {
                     xval[k*ldx+j] += x_priv[j*CFGK+k];
                 }

@@ -104,16 +104,37 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
 #else
     p.impl = GHOST_IMPLEMENTATION_PLAIN;
 #endif
-    if (x->traits.ncolspadded < 4 || x->traits.flags & GHOST_DENSEMAT_VIEW) {
+    
+    /*if (x->traits.ncolspadded < 4 || x->traits.flags & GHOST_DENSEMAT_VIEW) {
         p.impl = GHOST_IMPLEMENTATION_PLAIN;
-    }
+    }*/
 
     p.dt = x->traits.datatype;
     
     p.vcols = v->traits.ncols;
     p.wcols = w->traits.ncols;
+    
+    if (p.vcols % 4 || p.wcols % 4) {
+        PERFWARNING_LOG("Use plain for non-multiple of four");
+        p.impl = GHOST_IMPLEMENTATION_SSE;
+    }
+    
     kernel = ghost_tsmttsm_kernels[p];
     
+    if (!kernel) {
+        PERFWARNING_LOG("Try kernel with arbitrary wcols");
+        p.wcols = -1;
+        p.vcols = v->traits.ncols;
+        kernel = ghost_tsmttsm_kernels[p];
+    }
+    
+    if (!kernel) {
+        PERFWARNING_LOG("Try kernel with arbitrary vcols");
+        p.wcols = w->traits.ncols;
+        p.vcols = -1;
+        kernel = ghost_tsmttsm_kernels[p];
+    }
+
     if (!kernel) {
         PERFWARNING_LOG("Try kernel with arbitrary block sizes");
         p.wcols = -1;
