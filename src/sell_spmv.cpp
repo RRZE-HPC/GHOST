@@ -511,6 +511,17 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
         PERFWARNING_LOG("Chose SSE over AVX for blocksz=2");
         p.impl = GHOST_IMPLEMENTATION_SSE;
     }
+    
+    if (p.impl == GHOST_IMPLEMENTATION_AVX && 
+            p.storage == GHOST_DENSEMAT_ROWMAJOR && p.blocksz == 1) {
+        if (rhs->traits.datatype & GHOST_DT_COMPLEX) {
+            PERFWARNING_LOG("Chose SSE over AVX for blocksz=1 and complex densemat");
+            p.impl = GHOST_IMPLEMENTATION_SSE;
+        } else {
+            PERFWARNING_LOG("Chose plain over AVX for blocksz=1");
+            p.impl = GHOST_IMPLEMENTATION_PLAIN;
+        }
+    }
 
     if (p.impl == GHOST_IMPLEMENTATION_AVX && 
             p.storage == GHOST_DENSEMAT_COLMAJOR && p.chunkheight < 4 
