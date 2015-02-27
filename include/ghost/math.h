@@ -15,15 +15,37 @@
 #include "tsmm.h"
 #include "tsmm_inplace.h"
 #include "tsmttsm.h"
+#include "tsmttsm_kahan.h"
 
 #include <stdarg.h>
+
+typedef enum {
+    GHOST_GEMM_DEFAULT = 0,
+    /**
+     * @brief Do _not_ look for special implementations!
+     */
+    GHOST_GEMM_NOT_SPECIAL = 1,
+    GHOST_GEMM_NOT_CLONE_ALIASED = 2,
+    GHOST_GEMM_KAHAN = 4
+} ghost_gemm_flags_t;
+
+typedef struct {
+    ghost_lidx_t vcols,xcols;
+    ghost_gidx_t vrows;
+    ghost_datatype_t dt;
+}
+ghost_gemm_perf_args_t;
+
+
 
 #define GHOST_GEMM_ALL_REDUCE -1
 #define GHOST_GEMM_NO_REDUCE -2
 
 typedef struct {
-    ghost_sparsemat_t *mat;
-    ghost_densemat_t *rhs;
+    ghost_lidx_t vecncols;
+    ghost_lidx_t globalrows;
+    ghost_gidx_t globalnnz;
+    ghost_datatype_t dt;
     ghost_spmv_flags_t flags;
 }
 ghost_spmv_perf_args_t;
@@ -31,23 +53,28 @@ ghost_spmv_perf_args_t;
 #define GHOST_SPMV_PERF_TAG "spmv"
 
 typedef struct {
-    ghost_densemat_t *vec1;
-    ghost_densemat_t *vec2;
+    ghost_lidx_t ncols;
+    ghost_gidx_t globnrows;
+    ghost_datatype_t dt;
 }
 ghost_axpy_perf_args_t;
 #define GHOST_AXPY_PERF_UNIT "GB/s"
 #define GHOST_AXPY_PERF_TAG "axpy"
 
 typedef struct {
-    ghost_densemat_t *vec1;
-    ghost_densemat_t *vec2;
+    ghost_lidx_t ncols;
+    ghost_gidx_t globnrows;
+    ghost_datatype_t dt;
+    bool samevec;
 }
 ghost_dot_perf_args_t;
 #define GHOST_DOT_PERF_UNIT "GB/s"
 #define GHOST_DOT_PERF_TAG "dot"
 
 typedef struct {
-    ghost_densemat_t *vec;
+    ghost_lidx_t ncols;
+    ghost_gidx_t globnrows;
+    ghost_datatype_t dt;
 }
 ghost_scale_perf_args_t;
 #define GHOST_SCALE_PERF_UNIT "GB/s"
@@ -118,7 +145,7 @@ extern "C" {
      * The scaling factor \f$\beta\f$ can be enabled by setting ::GHOST_SPMV_AXPBY in the flags.
      * The flag ::GHOST_SPMV_AXPY sets \f$\beta\f$ to a fixed value of 1 which is a very common case.
      * 
-     * \f$\gamma\f$ will be evaluated if the flags contain ::GHOST_SPMV_SHIFT.
+     * \f$\gamma\f$ will be evaluated if the flags contain ::GHOST_SPMV_SHIFT or ::GHOST_SPMV_VSHIFT.
      *
      * In case ::GHOST_SPMV_DOT is set, \a dot has to point to a memory destination of the size
      * of three vector values.
@@ -140,10 +167,11 @@ extern "C" {
      * @param alpha
      * @param beta
      * @param reduce
+     * @param flags
      *
      * @return 
      */
-    ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v, char *transv, ghost_densemat_t *w, char * transw, void *alpha, void *beta, int reduce); 
+    ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v, const char *transv, ghost_densemat_t *w, const char * transw, void *alpha, void *beta, int reduce,ghost_gemm_flags_t flags); 
     ghost_error_t ghost_mpi_operations_create();
     ghost_error_t ghost_mpi_operations_destroy();
     ghost_error_t ghost_mpi_op_sum(ghost_mpi_op_t * op, int datatype);
@@ -164,6 +192,7 @@ extern "C" {
     int ghost_axpy_perf(double *perf, double time, void *arg);
     int ghost_scale_perf(double *perf, double time, void *arg);
     int ghost_dot_perf(double *perf, double time, void *arg);
+    int ghost_gemm_perf_GFs(double *perf, double time, void *arg);
 
 #ifdef __cplusplus
 } //extern "C"

@@ -318,7 +318,7 @@ static ghost_error_t ghost_hostname(char ** hostnamePtr, size_t * hostnameLength
     *hostnameLength = strnlen(hostname, nHostname) + 1;
     *hostnamePtr = hostname;
 
-    return 0;
+    return GHOST_SUCCESS;
 }
 
 ghost_error_t ghost_nodecomm_get(ghost_mpi_comm_t *comm)
@@ -348,7 +348,7 @@ ghost_error_t ghost_nodecomm_setup(ghost_mpi_comm_t comm)
 
     error = ghost_hostname(&hostname, &hostnameLength);
     if (error != 0) {
-        return -1;
+        return GHOST_ERR_MPI;
     }
 
     uint32_t checkSum;

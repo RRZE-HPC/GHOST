@@ -24,7 +24,7 @@
  * @param func The function.
  * @param ... The function's arguments.
  *
- * This macro creates the variables <func>_tmin/_tmax/_tavg of type double holding the minimal, maximal and average execution time.
+ * This macro creates the variables \<func\>_tmin/_tmax/_tavg of type double holding the minimal, maximal and average execution time.
  */
 #define GHOST_TIME(nIter,func,...) \
     double func ## _start, func ## _end, func ## _tstart, func ## _tend;\
@@ -141,9 +141,10 @@ extern "C" {
      * @param[in] tag The region tag.
      * @param[in] func The performance callback function.
      * @param[in] arg Argument to the function.
+     * @param[in] sizeofarg Size of the arg struct.
      * @param[in] unit The unit of performance.
      */
-    void ghost_timing_set_perfFunc(const char *tag, ghost_compute_performance_func_t func, void *arg, const char *unit);
+    void ghost_timing_set_perfFunc(const char *tag, ghost_compute_performance_func_t func, void *arg, size_t sizeofarg, const char *unit);
 
 #ifdef __cplusplus
 }

@@ -105,7 +105,9 @@ ghost_error_t ghost_sparsemat_registerrow_finalize(ghost_sparsemat_t *mat)
     nth_element(upperPerc90Dists.begin(),upperPerc90Dists.begin()+int(upperPerc90Dists.size()*.5),upperPerc90Dists.end());
     nth_element(lowerPerc90Dists.begin(),lowerPerc90Dists.begin()+int(lowerPerc90Dists.size()*.5),lowerPerc90Dists.end());
     
-    mat->smartRowBand = *(upperPerc90Dists.begin()+int(upperPerc90Dists.size()*.5)) + *(lowerPerc90Dists.begin()+int(lowerPerc90Dists.size()*.5)) + 1;
+    if (upperPerc90Dists.size() && lowerPerc90Dists.size()) {
+        mat->smartRowBand = (double) *(upperPerc90Dists.begin()+int(upperPerc90Dists.size()*.5)) + *(lowerPerc90Dists.begin()+int(lowerPerc90Dists.size()*.5)) + 1;
+    }
 
     ghost_sparsemat_nrows(&gnrows,mat);
     mat->avgRowBand /= (double)(gnrows);

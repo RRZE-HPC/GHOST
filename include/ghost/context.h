@@ -21,21 +21,13 @@ typedef struct ghost_context_t ghost_context_t;
 typedef enum {
     GHOST_CONTEXT_DEFAULT = 0, 
     /**
-     * @brief The context will hold the same data on each process.
-     */
-    GHOST_CONTEXT_REDUNDANT = 1, 
-    /**
-     * @brief The context will be distributed across the ranks.
-     */
-    GHOST_CONTEXT_DISTRIBUTED = 2,
-    /**
      * @brief Distribute work among the ranks by number of nonzeros.
      */
     GHOST_CONTEXT_DIST_NZ = 4,
     /**
      * @brief Distribute work among the ranks by number of rows.
      */
-    GHOST_CONTEXT_DIST_ROWS = 8,
+    GHOST_CONTEXT_DIST_ROWS = 8
 } ghost_context_flags_t;
 
 /**
@@ -147,7 +139,7 @@ typedef enum {
     /**
      * @brief Empty source.
      */
-    GHOST_SPARSEMAT_SRC_NONE,
+    GHOST_SPARSEMAT_SRC_NONE
 } ghost_sparsemat_src_t;
 
 
@@ -158,7 +150,7 @@ extern "C" {
     /**
      * @brief Create a context. 
      *
-     * @param[out] ctx Where to store the created context.
+     * @param[out] context Where to store the created context.
      * @param[in] gnrows The global number of rows for the context. If gnrows is 0 a valid matrix file path has to be provided in the argument matrixSource from which the number of rows will be read.
      * @param[in] gncols The global number of columns for the context. If gncols is 0 a valid matrix file path has to be provided in the argument matrixSource from which the number of columns will be read.
      * @param[in] flags Flags to the context.
@@ -183,7 +175,7 @@ extern "C" {
      * Thus, A would be assigned 6 million matrix rows and B 2 million.
      * 
      */
-    ghost_error_t ghost_context_create(ghost_context_t **context, ghost_gidx_t gnrows, ghost_gidx_t gncols, ghost_context_flags_t context_flags, void *matrixSource, ghost_sparsemat_src_t srcType, ghost_mpi_comm_t comm, double weight); 
+    ghost_error_t ghost_context_create(ghost_context_t **context, ghost_gidx_t gnrows, ghost_gidx_t gncols, ghost_context_flags_t flags, void *matrixSource, ghost_sparsemat_src_t srcType, ghost_mpi_comm_t comm, double weight); 
     
     /**
      * @ingroup stringification
@@ -207,12 +199,14 @@ extern "C" {
     /**
      * @brief Assemble communication information in the given context.
      * @param[inout] ctx The context.
-     * @param[in] col The column indices of the sparse matrix which is bound to the context.
+     * @param[in] col_orig The original column indices of the sparse matrix which is bound to the context.
+     * @param[out] col The compressed column indices of the sparse matrix which is bound to the context.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      * 
      * The following fields of ghost_context_t are being filled in this function:
      * wishes, wishlist, dues, duelist, hput_pos.
+     * Additionally, the columns in col_orig are being compressed and stored in col.
      */
     ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_orig, ghost_lidx_t *col);
     

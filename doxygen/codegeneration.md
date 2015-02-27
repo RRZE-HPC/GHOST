@@ -69,7 +69,7 @@ int func_2_6(void) {
 
 
 This macro is used in the intrinsics implementation of compute kernels.
-The code line to be duplicated has to start with `#GHOST_UNROLL#`. After that, the actual code follows in a single line.
+The code line to be duplicated has to start with \#GHOST_UNROLL\#. After that, the actual code follows in a single line.
 Everything that should be substituted with a serial index has to be an "@" sign.
 After the code line, another "#" followed with by the unroll size has to be specified.
 

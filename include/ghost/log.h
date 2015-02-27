@@ -55,12 +55,12 @@
 #ifdef GHOST_HAVE_MPI
 
 #define LOG(type,color,...) {\
-    int me;\
-    int err = MPI_Comm_rank(MPI_COMM_WORLD,&me);\
-    if (err != MPI_SUCCESS) {\
-        me=-1;\
+    int logmacrome;\
+    int logmacroerr = MPI_Comm_rank(MPI_COMM_WORLD,&logmacrome);\
+    if (logmacroerr != MPI_SUCCESS) {\
+        logmacrome = -1;\
     }\
-    fprintf(stderr, color "PE%d " #type " at %s() <%s:%d>: " FIRST(__VA_ARGS__) ANSI_COLOR_RESET "\n", me, __func__, FILE_BASENAME, __LINE__ REST(__VA_ARGS__)); \
+    fprintf(stderr, color "PE%d " #type " at %s() <%s:%d>: " FIRST(__VA_ARGS__) ANSI_COLOR_RESET "\n", logmacrome, __func__, FILE_BASENAME, __LINE__ REST(__VA_ARGS__)); \
     fflush(stderr);\
 }\
 

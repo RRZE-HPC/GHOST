@@ -58,7 +58,7 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_gidx_t gnrow
     }
 
     if (!((*context)->flags & GHOST_CONTEXT_DIST_NZ)) {
-        (*context)->flags |= GHOST_CONTEXT_DIST_ROWS;
+        (*context)->flags |= (ghost_context_flags_t)GHOST_CONTEXT_DIST_ROWS;
     }
 
     if ((gnrows == 0) || (gncols == 0)) {
@@ -116,22 +116,6 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_gidx_t gnrow
     }
     DEBUG_LOG(1,"Creating context with dimension %"PRGIDX"x%"PRGIDX,(*context)->gnrows,(*context)->gncols);
 
-#ifdef GHOST_HAVE_MPI
-    if (!((*context)->flags & (GHOST_CONTEXT_DISTRIBUTED|GHOST_CONTEXT_REDUNDANT))) { // neither flag is set
-        DEBUG_LOG(1,"Context is set to be distributed");
-        (*context)->flags |= GHOST_CONTEXT_DISTRIBUTED;
-    }
-#else
-    if ((*context)->flags & GHOST_CONTEXT_DISTRIBUTED) {
-        WARNING_LOG("Creating a distributed matrix without MPI is not possible. Forcing redundant.");
-        (*context)->flags &= ~GHOST_CONTEXT_DISTRIBUTED;
-        (*context)->flags |= GHOST_CONTEXT_REDUNDANT;
-    } else if (!((*context)->flags & GHOST_CONTEXT_REDUNDANT)) {
-        DEBUG_LOG(1,"Context is set to be redundant");
-        (*context)->flags |= GHOST_CONTEXT_REDUNDANT;
-    }
-#endif
-
     GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->lnEnts, nranks*sizeof(ghost_lidx_t)),err,ret); 
     GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->lfEnt, nranks*sizeof(ghost_gidx_t)),err,ret); 
     GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->lnrows, nranks*sizeof(ghost_lidx_t)),err,ret); 
@@ -139,231 +123,224 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_gidx_t gnrow
 
 #ifdef GHOST_HAVE_MPI
     ghost_lidx_t row;
-    if ((*context)->flags & GHOST_CONTEXT_DISTRIBUTED) {
-        (*context)->halo_elements = -1;
+    (*context)->halo_elements = -1;
 /*
-        if ((*context)->flags & GHOST_CONTEXT_PERMUTED) {
-            INFO_LOG("Reducing matrix bandwidth");
-            ghost_error_t ret = GHOST_SUCCESS;
-            if ((*context)->rowPerm || (*context)->invRowPerm) {
-                WARNING_LOG("Existing permutations will be overwritten!");
-            }
+    if ((*context)->flags & GHOST_CONTEXT_PERMUTED) {
+        INFO_LOG("Reducing matrix bandwidth");
+        ghost_error_t ret = GHOST_SUCCESS;
+        if ((*context)->rowPerm || (*context)->invRowPerm) {
+            WARNING_LOG("Existing permutations will be overwritten!");
+        }
 
-            char *matrixPath = (char *)matrixSource;
-            ghost_idx_t *rpt = NULL, *col = NULL, i;
-            int me, nprocs;
+        char *matrixPath = (char *)matrixSource;
+        ghost_idx_t *rpt = NULL, *col = NULL, i;
+        int me, nprocs;
+        
+        ghost_bincrs_header_t header;
+        ghost_bincrs_header_read(matrixPath,&header);
+        MPI_Request *req = NULL;
+        MPI_Status *stat = NULL;
+
+        GHOST_CALL_GOTO(ghost_rank(&me, (*context)->mpicomm),err,ret);
+        GHOST_CALL_GOTO(ghost_nrank(&nprocs, (*context)->mpicomm),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&req,sizeof(MPI_Request)*nprocs),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&stat,sizeof(MPI_Status)*nprocs),err,ret);
             
-            ghost_bincrs_header_t header;
-            ghost_bincrs_header_read(matrixPath,&header);
-            MPI_Request *req = NULL;
-            MPI_Status *stat = NULL;
+        ghost_idx_t target_rows = (ghost_idx_t)((*context)->gnrows/nranks);
 
-            GHOST_CALL_GOTO(ghost_rank(&me, (*context)->mpicomm),err,ret);
-            GHOST_CALL_GOTO(ghost_nrank(&nprocs, (*context)->mpicomm),err,ret);
-            GHOST_CALL_GOTO(ghost_malloc((void **)&req,sizeof(MPI_Request)*nprocs),err,ret);
-            GHOST_CALL_GOTO(ghost_malloc((void **)&stat,sizeof(MPI_Status)*nprocs),err,ret);
+        (*context)->lfRow[0] = 0;
+
+        for (i=1; i<nranks; i++){
+            (*context)->lfRow[i] = (*context)->lfRow[i-1]+target_rows;
+        }
+        for (i=0; i<nranks-1; i++){
+            (*context)->lnrows[i] = (*context)->lfRow[i+1] - (*context)->lfRow[i] ;
+        }
+        (*context)->lnrows[nranks-1] = (*context)->gnrows - (*context)->lfRow[nranks-1] ;
                 
-            ghost_idx_t target_rows = (ghost_idx_t)((*context)->gnrows/nranks);
-
-            (*context)->lfRow[0] = 0;
-
-            for (i=1; i<nranks; i++){
-                (*context)->lfRow[i] = (*context)->lfRow[i-1]+target_rows;
-            }
-            for (i=0; i<nranks-1; i++){
-                (*context)->lnrows[i] = (*context)->lfRow[i+1] - (*context)->lfRow[i] ;
-            }
-            (*context)->lnrows[nranks-1] = (*context)->gnrows - (*context)->lfRow[nranks-1] ;
-                    
-            GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,((*context)->lnrows[me]+1) * sizeof(ghost_idx_t)),err,ret);
-            GHOST_CALL_GOTO(ghost_bincrs_rpt_read(rpt, matrixPath, (*context)->lfRow[me], (*context)->lnrows[me]+1, NULL),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,((*context)->lnrows[me]+1) * sizeof(ghost_idx_t)),err,ret);
+        GHOST_CALL_GOTO(ghost_bincrs_rpt_read(rpt, matrixPath, (*context)->lfRow[me], (*context)->lnrows[me]+1, NULL),err,ret);
 
 
-            ghost_idx_t nnz = rpt[(*context)->lnrows[me]]-rpt[0];
-                
-            GHOST_CALL_GOTO(ghost_malloc((void **)&col,nnz * sizeof(ghost_idx_t)),err,ret);
-            GHOST_CALL_GOTO(ghost_readCol(col, matrixPath, (*context)->lfRow[me], (*context)->lnrows[me], NULL,NULL),err,ret);
+        ghost_idx_t nnz = rpt[(*context)->lnrows[me]]-rpt[0];
             
-            WARNING_LOG("nnz: %d",nnz); 
-            for (i=1;i<(*context)->lnrows[me]+1;i++) {
-                rpt[i] -= rpt[0];
-                WARNING_LOG("rpt[%d]: %d",i,rpt[i]); 
-            }
-            rpt[0] = 0;
+        GHOST_CALL_GOTO(ghost_malloc((void **)&col,nnz * sizeof(ghost_idx_t)),err,ret);
+        GHOST_CALL_GOTO(ghost_readCol(col, matrixPath, (*context)->lfRow[me], (*context)->lnrows[me], NULL,NULL),err,ret);
+        
+        WARNING_LOG("nnz: %d",nnz); 
+        for (i=1;i<(*context)->lnrows[me]+1;i++) {
+            rpt[i] -= rpt[0];
+            WARNING_LOG("rpt[%d]: %d",i,rpt[i]); 
+        }
+        rpt[0] = 0;
 
-            ghost_idx_t j;
-            for (i=0;i<(*context)->lnrows[me];i++) {
-                for (j=rpt[i];j<rpt[i+1];j++) {
-                    WARNING_LOG("col[%d]: %d",j,col[j]);
-                }
-            }
-            
-            GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->rowPerm,sizeof(ghost_idx_t)*(*context)->gnrows),err,ret);
-            GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->invRowPerm,sizeof(ghost_idx_t)*(*context)->gnrows),err,ret);
-            memset((*context)->rowPerm,0,sizeof(ghost_idx_t)*(*context)->gnrows);
-            memset((*context)->rowPerm,0,sizeof(ghost_idx_t)*(*context)->gnrows);
-            
-            SCOTCH_Dgraph * dgraph = SCOTCH_dgraphAlloc();
-            if (!dgraph) {
-                ERROR_LOG("Could not alloc SCOTCH graph");
-                ret = GHOST_ERR_SCOTCH;
-                goto err;
-            }
-            SCOTCH_CALL_GOTO(SCOTCH_dgraphInit(dgraph,(*context)->mpicomm),err,ret);
-            SCOTCH_Strat * strat = SCOTCH_stratAlloc();
-            if (!strat) {
-                ERROR_LOG("Could not alloc SCOTCH strat");
-                ret = GHOST_ERR_SCOTCH;
-                goto err;
-            }
-            SCOTCH_CALL_GOTO(SCOTCH_stratInit(strat),err,ret);
-            SCOTCH_Dordering *dorder = SCOTCH_dorderAlloc();
-            if (!dorder) {
-                ERROR_LOG("Could not alloc SCOTCH order");
-                ret = GHOST_ERR_SCOTCH;
-                goto err;
-            }
-            SCOTCH_CALL_GOTO(SCOTCH_dgraphBuild(dgraph, 0, (*context)->lnrows[me], (*context)->lnrows[me], rpt, rpt+1, NULL, NULL, nnz, nnz, col, NULL, NULL),err,ret);
-            SCOTCH_CALL_GOTO(SCOTCH_dgraphCheck(dgraph),err,ret);
-            SCOTCH_CALL_GOTO(SCOTCH_dgraphOrderInit(dgraph,dorder),err,ret);
-            SCOTCH_CALL_GOTO(SCOTCH_stratDgraphOrder(strat,"n{sep=m{asc=b,low=b},ole=q{strat=g},ose=q{strat=g},osq=g}"),err,ret);
-            SCOTCH_CALL_GOTO(SCOTCH_dgraphOrderCompute(dgraph,dorder,strat),err,ret);
-            SCOTCH_CALL_GOTO(SCOTCH_dgraphOrderPerm(dgraph,dorder,(*context)->rowPerm+(*context)->lfRow[me]),err,ret);
-
-            // combine permutation vectors
-            MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,(*context)->rowPerm,(*context)->gnrows,ghost_mpi_dt_idx,MPI_MAX,(*context)->mpicomm),err,ret);
-
-            // assemble inverse permutation
-            for (i=0; i<(*context)->gnrows; i++) {
-                (*context)->invRowPerm[(*context)->rowPerm[i]] = i;
-            }
-            for (i=0; i<(*context)->gnrows; i++) {
-                INFO_LOG("perm[%d] = %d",i,(*context)->rowPerm[i]);
+        ghost_idx_t j;
+        for (i=0;i<(*context)->lnrows[me];i++) {
+            for (j=rpt[i];j<rpt[i+1];j++) {
+                WARNING_LOG("col[%d]: %d",j,col[j]);
             }
         }
-                    
+        
+        GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->rowPerm,sizeof(ghost_idx_t)*(*context)->gnrows),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->invRowPerm,sizeof(ghost_idx_t)*(*context)->gnrows),err,ret);
+        memset((*context)->rowPerm,0,sizeof(ghost_idx_t)*(*context)->gnrows);
+        memset((*context)->rowPerm,0,sizeof(ghost_idx_t)*(*context)->gnrows);
+        
+        SCOTCH_Dgraph * dgraph = SCOTCH_dgraphAlloc();
+        if (!dgraph) {
+            ERROR_LOG("Could not alloc SCOTCH graph");
+            ret = GHOST_ERR_SCOTCH;
+            goto err;
+        }
+        SCOTCH_CALL_GOTO(SCOTCH_dgraphInit(dgraph,(*context)->mpicomm),err,ret);
+        SCOTCH_Strat * strat = SCOTCH_stratAlloc();
+        if (!strat) {
+            ERROR_LOG("Could not alloc SCOTCH strat");
+            ret = GHOST_ERR_SCOTCH;
+            goto err;
+        }
+        SCOTCH_CALL_GOTO(SCOTCH_stratInit(strat),err,ret);
+        SCOTCH_Dordering *dorder = SCOTCH_dorderAlloc();
+        if (!dorder) {
+            ERROR_LOG("Could not alloc SCOTCH order");
+            ret = GHOST_ERR_SCOTCH;
+            goto err;
+        }
+        SCOTCH_CALL_GOTO(SCOTCH_dgraphBuild(dgraph, 0, (*context)->lnrows[me], (*context)->lnrows[me], rpt, rpt+1, NULL, NULL, nnz, nnz, col, NULL, NULL),err,ret);
+        SCOTCH_CALL_GOTO(SCOTCH_dgraphCheck(dgraph),err,ret);
+        SCOTCH_CALL_GOTO(SCOTCH_dgraphOrderInit(dgraph,dorder),err,ret);
+        SCOTCH_CALL_GOTO(SCOTCH_stratDgraphOrder(strat,"n{sep=m{asc=b,low=b},ole=q{strat=g},ose=q{strat=g},osq=g}"),err,ret);
+        SCOTCH_CALL_GOTO(SCOTCH_dgraphOrderCompute(dgraph,dorder,strat),err,ret);
+        SCOTCH_CALL_GOTO(SCOTCH_dgraphOrderPerm(dgraph,dorder,(*context)->rowPerm+(*context)->lfRow[me]),err,ret);
+
+        // combine permutation vectors
+        MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,(*context)->rowPerm,(*context)->gnrows,ghost_mpi_dt_idx,MPI_MAX,(*context)->mpicomm),err,ret);
+
+        // assemble inverse permutation
+        for (i=0; i<(*context)->gnrows; i++) {
+            (*context)->invRowPerm[(*context)->rowPerm[i]] = i;
+        }
+        for (i=0; i<(*context)->gnrows; i++) {
+            INFO_LOG("perm[%d] = %d",i,(*context)->rowPerm[i]);
+        }
+    }
+                
 */
 
-        if ((*context)->flags & GHOST_CONTEXT_DIST_NZ)
-        { // read rpt and fill lfrow, lnrows, lfent, lnents
-            ghost_gidx_t gnnz;
-            if (!matrixSource) {
-                ERROR_LOG("If distribution by nnz a matrix source has to be given!");
+    if ((*context)->flags & GHOST_CONTEXT_DIST_NZ)
+    { // read rpt and fill lfrow, lnrows, lfent, lnents
+        ghost_gidx_t gnnz;
+        if (!matrixSource) {
+            ERROR_LOG("If distribution by nnz a matrix source has to be given!");
+            ret = GHOST_ERR_INVALID_ARG;
+            goto err;
+        }
+        WARNING_LOG("Will not take into account possible matrix re-ordering when dividing the matrix by number of non-zeros!");
+
+
+        if (me == 0) {
+            GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->rpt,sizeof(ghost_gidx_t)*((*context)->gnrows+1)),err,ret);
+#pragma omp parallel for schedule(runtime)
+            for( row = 0; row < (*context)->gnrows+1; row++ ) {
+                (*context)->rpt[row] = 0;
+            }
+            if (srcType == GHOST_SPARSEMAT_SRC_FILE) {
+                GHOST_CALL_GOTO(ghost_bincrs_rpt_read((*context)->rpt,(char *)matrixSource,0,(*context)->gnrows+1,NULL),err,ret);
+            } else if (srcType == GHOST_SPARSEMAT_SRC_MM) {
+                ghost_sparsemat_rowfunc_mm_initargs args;
+                args.filename = (char *)matrixSource;
+                
+                ghost_sparsemat_rowfunc_mm(GHOST_SPARSEMAT_ROWFUNC_MM_ROW_GETRPT,NULL,(*context)->rpt,&args);
+
+
+            } else if (srcType == GHOST_SPARSEMAT_SRC_FUNC) {
+                ghost_sparsemat_src_rowfunc_t *matsrc = (ghost_sparsemat_src_rowfunc_t *)matrixSource;
+                GHOST_CALL_GOTO(ghost_malloc((void **)&tmpval,matsrc->maxrowlen*GHOST_DT_MAX_SIZE),err,ret);
+                GHOST_CALL_GOTO(ghost_malloc((void **)&tmpcol,matsrc->maxrowlen*sizeof(ghost_gidx_t)),err,ret);
+                (*context)->rpt[0] = 0;
+                ghost_lidx_t rowlen;
+                for(row = 0; row < (*context)->gnrows; row++) {
+                    matsrc->func(row,&rowlen,tmpcol,tmpval);
+                    (*context)->rpt[row+1] = (*context)->rpt[row]+rowlen;
+                }
+                free(tmpval); tmpval = NULL;
+                free(tmpcol); tmpcol = NULL;
+            } else {
+                ERROR_LOG("If distribution by nnz the type of the matrix source has to be specified in the flags!");
                 ret = GHOST_ERR_INVALID_ARG;
                 goto err;
             }
-            WARNING_LOG("Will not take into account possible matrix re-ordering when dividing the matrix by number of non-zeros!");
 
+            gnnz = (*context)->rpt[(*context)->gnrows];
+            ghost_lidx_t target_nnz;
+            target_nnz = (gnnz/nranks)+1; /* sonst bleiben welche uebrig! */
 
-            if (me == 0) {
-                GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->rpt,sizeof(ghost_gidx_t)*((*context)->gnrows+1)),err,ret);
-#pragma omp parallel for schedule(runtime)
-                for( row = 0; row < (*context)->gnrows+1; row++ ) {
-                    (*context)->rpt[row] = 0;
+            (*context)->lfRow[0]  = 0;
+            (*context)->lfEnt[0] = 0;
+            ghost_lidx_t j = 1;
+
+            for (row=0;row<(*context)->gnrows;row++){
+                if ((*context)->rpt[row] >= j*target_nnz){
+                    (*context)->lfRow[j] = row;
+                    (*context)->lfEnt[j] = (*context)->rpt[row];
+                    j = j+1;
                 }
-                if (srcType == GHOST_SPARSEMAT_SRC_FILE) {
-                    GHOST_CALL_GOTO(ghost_bincrs_rpt_read((*context)->rpt,(char *)matrixSource,0,(*context)->gnrows+1,NULL),err,ret);
-                } else if (srcType == GHOST_SPARSEMAT_SRC_MM) {
-                    ghost_sparsemat_rowfunc_mm_initargs args;
-                    args.filename = (char *)matrixSource;
-                    
-                    ghost_sparsemat_rowfunc_mm(GHOST_SPARSEMAT_ROWFUNC_MM_ROW_GETRPT,NULL,(*context)->rpt,&args);
-
-
-                } else if (srcType == GHOST_SPARSEMAT_SRC_FUNC) {
-                    ghost_sparsemat_src_rowfunc_t *matsrc = (ghost_sparsemat_src_rowfunc_t *)matrixSource;
-                    GHOST_CALL_GOTO(ghost_malloc((void **)&tmpval,matsrc->maxrowlen*GHOST_DT_MAX_SIZE),err,ret);
-                    GHOST_CALL_GOTO(ghost_malloc((void **)&tmpcol,matsrc->maxrowlen*sizeof(ghost_gidx_t)),err,ret);
-                    (*context)->rpt[0] = 0;
-                    ghost_lidx_t rowlen;
-                    for(row = 0; row < (*context)->gnrows; row++) {
-                        matsrc->func(row,&rowlen,tmpcol,tmpval);
-                        (*context)->rpt[row+1] = (*context)->rpt[row]+rowlen;
-                    }
-                    free(tmpval); tmpval = NULL;
-                    free(tmpcol); tmpcol = NULL;
-                } else {
-                    ERROR_LOG("If distribution by nnz the type of the matrix source has to be specified in the flags!");
-                    ret = GHOST_ERR_INVALID_ARG;
-                    goto err;
-                }
-
-                gnnz = (*context)->rpt[(*context)->gnrows];
-                ghost_lidx_t target_nnz;
-                target_nnz = (gnnz/nranks)+1; /* sonst bleiben welche uebrig! */
-
-                (*context)->lfRow[0]  = 0;
-                (*context)->lfEnt[0] = 0;
-                ghost_lidx_t j = 1;
-
-                for (row=0;row<(*context)->gnrows;row++){
-                    if ((*context)->rpt[row] >= j*target_nnz){
-                        (*context)->lfRow[j] = row;
-                        (*context)->lfEnt[j] = (*context)->rpt[row];
-                        j = j+1;
-                    }
-                }
-                for (i=0; i<nranks-1; i++){
-                    (*context)->lnrows[i] = (*context)->lfRow[i+1] - (*context)->lfRow[i] ;
-                    (*context)->lnEnts[i] = (*context)->lfEnt[i+1] - (*context)->lfEnt[i] ;
-                }
-
-                (*context)->lnrows[nranks-1] = (*context)->gnrows - (*context)->lfRow[nranks-1] ;
-                (*context)->lnEnts[nranks-1] = gnnz - (*context)->lfEnt[nranks-1];
-
-                //fclose(filed);
-            }
-            MPI_CALL_GOTO(MPI_Bcast((*context)->lfRow,  nranks, ghost_mpi_dt_gidx, 0, (*context)->mpicomm),err,ret);
-            MPI_CALL_GOTO(MPI_Bcast((*context)->lfEnt,  nranks, ghost_mpi_dt_gidx, 0, (*context)->mpicomm),err,ret);
-            MPI_CALL_GOTO(MPI_Bcast((*context)->lnrows, nranks, ghost_mpi_dt_lidx, 0, (*context)->mpicomm),err,ret);
-            MPI_CALL_GOTO(MPI_Bcast((*context)->lnEnts, nranks, ghost_mpi_dt_lidx, 0, (*context)->mpicomm),err,ret);
-
-        } else
-        { // don't read rpt, only fill lfrow, lnrows, rest will be done after some matrix from*() function
-            UNUSED(matrixSource);
-            double allweights;
-            MPI_CALL_GOTO(MPI_Allreduce(&weight,&allweights,1,MPI_DOUBLE,MPI_SUM,(*context)->mpicomm),err,ret)
-
-            ghost_lidx_t my_target_rows = (ghost_lidx_t)((*context)->gnrows*((double)weight/(double)allweights));
-            GHOST_CALL_GOTO(ghost_malloc((void **)&target_rows,nranks*sizeof(ghost_lidx_t)),err,ret);
-
-            MPI_CALL_GOTO(MPI_Allgather(&my_target_rows,1,ghost_mpi_dt_lidx,target_rows,1,ghost_mpi_dt_lidx,(*context)->mpicomm),err,ret);
-                       
-            (*context)->rpt = NULL;
-            (*context)->lfRow[0] = 0;
-
-            for (i=1; i<nranks; i++){
-                (*context)->lfRow[i] = (*context)->lfRow[i-1]+target_rows[i-1];
             }
             for (i=0; i<nranks-1; i++){
-                ghost_gidx_t lnrows = (*context)->lfRow[i+1] - (*context)->lfRow[i];
-                if (lnrows > (ghost_gidx_t)GHOST_LIDX_MAX) {
-                    ERROR_LOG("Re-compile with 64-bit local indices!");
-                    return GHOST_ERR_UNKNOWN;
-                }
-                (*context)->lnrows[i] = (ghost_lidx_t)lnrows;
+                (*context)->lnrows[i] = (*context)->lfRow[i+1] - (*context)->lfRow[i] ;
+                (*context)->lnEnts[i] = (*context)->lfEnt[i+1] - (*context)->lfEnt[i] ;
             }
-            ghost_gidx_t lnrows = (*context)->gnrows - (*context)->lfRow[nranks-1];
-            if (lnrows > (ghost_gidx_t)GHOST_LIDX_MAX) {
-                ERROR_LOG("The local number of rows (%"PRGIDX") exceeds the maximum range. Re-compile with 64-bit local indices!",lnrows);
-                return GHOST_ERR_DATATYPE;
-            }
-            (*context)->lnrows[nranks-1] = (ghost_lidx_t)lnrows;
-            
-            //MPI_CALL_GOTO(MPI_Bcast((*context)->lfRow,  nranks, ghost_mpi_dt_gidx, 0, (*context)->mpicomm),err,ret);
-            //MPI_CALL_GOTO(MPI_Bcast((*context)->lnrows, nranks, ghost_mpi_dt_lidx, 0, (*context)->mpicomm),err,ret);
-            (*context)->lnEnts[0] = -1;
-            (*context)->lfEnt[0] = -1;
 
-            free(target_rows); target_rows = NULL;
+            (*context)->lnrows[nranks-1] = (*context)->gnrows - (*context)->lfRow[nranks-1] ;
+            (*context)->lnEnts[nranks-1] = gnnz - (*context)->lfEnt[nranks-1];
+
+            //fclose(filed);
         }
+        MPI_CALL_GOTO(MPI_Bcast((*context)->lfRow,  nranks, ghost_mpi_dt_gidx, 0, (*context)->mpicomm),err,ret);
+        MPI_CALL_GOTO(MPI_Bcast((*context)->lfEnt,  nranks, ghost_mpi_dt_gidx, 0, (*context)->mpicomm),err,ret);
+        MPI_CALL_GOTO(MPI_Bcast((*context)->lnrows, nranks, ghost_mpi_dt_lidx, 0, (*context)->mpicomm),err,ret);
+        MPI_CALL_GOTO(MPI_Bcast((*context)->lnEnts, nranks, ghost_mpi_dt_lidx, 0, (*context)->mpicomm),err,ret);
 
-    } else {
-        (*context)->lnrows[0] = (*context)->gnrows;
+    } else
+    { // don't read rpt, only fill lfrow, lnrows, rest will be done after some matrix from*() function
+        UNUSED(matrixSource);
+        double allweights;
+        MPI_CALL_GOTO(MPI_Allreduce(&weight,&allweights,1,MPI_DOUBLE,MPI_SUM,(*context)->mpicomm),err,ret)
+
+        ghost_lidx_t my_target_rows = (ghost_lidx_t)((*context)->gnrows*((double)weight/(double)allweights));
+        GHOST_CALL_GOTO(ghost_malloc((void **)&target_rows,nranks*sizeof(ghost_lidx_t)),err,ret);
+
+        MPI_CALL_GOTO(MPI_Allgather(&my_target_rows,1,ghost_mpi_dt_lidx,target_rows,1,ghost_mpi_dt_lidx,(*context)->mpicomm),err,ret);
+                   
+        (*context)->rpt = NULL;
         (*context)->lfRow[0] = 0;
-        (*context)->lnEnts[0] = 0;
-        (*context)->lfEnt[0] = 0;
+
+        for (i=1; i<nranks; i++){
+            (*context)->lfRow[i] = (*context)->lfRow[i-1]+target_rows[i-1];
+        }
+        for (i=0; i<nranks-1; i++){
+            ghost_gidx_t lnrows = (*context)->lfRow[i+1] - (*context)->lfRow[i];
+            if (lnrows > (ghost_gidx_t)GHOST_LIDX_MAX) {
+                ERROR_LOG("Re-compile with 64-bit local indices!");
+                return GHOST_ERR_UNKNOWN;
+            }
+            (*context)->lnrows[i] = (ghost_lidx_t)lnrows;
+        }
+        ghost_gidx_t lnrows = (*context)->gnrows - (*context)->lfRow[nranks-1];
+        if (lnrows > (ghost_gidx_t)GHOST_LIDX_MAX) {
+            ERROR_LOG("The local number of rows (%"PRGIDX") exceeds the maximum range. Re-compile with 64-bit local indices!",lnrows);
+            return GHOST_ERR_DATATYPE;
+        }
+        (*context)->lnrows[nranks-1] = (ghost_lidx_t)lnrows;
+        
+        //MPI_CALL_GOTO(MPI_Bcast((*context)->lfRow,  nranks, ghost_mpi_dt_gidx, 0, (*context)->mpicomm),err,ret);
+        //MPI_CALL_GOTO(MPI_Bcast((*context)->lnrows, nranks, ghost_mpi_dt_lidx, 0, (*context)->mpicomm),err,ret);
+        (*context)->lnEnts[0] = -1;
+        (*context)->lfEnt[0] = -1;
+
+        free(target_rows); target_rows = NULL;
     }
+
 
 #else
     UNUSED(srcType);
@@ -403,17 +380,9 @@ ghost_error_t ghost_context_string(char **str, ghost_context_t *context)
     int nranks;
     GHOST_CALL_RETURN(ghost_nrank(&nranks, context->mpicomm));
 
-    char *contextType = "";
-    if (context->flags & GHOST_CONTEXT_DISTRIBUTED)
-        contextType = "Distributed";
-    else if (context->flags & GHOST_CONTEXT_REDUNDANT)
-        contextType = "Redundant";
-
-
     ghost_header_string(str,"Context");
     ghost_line_string(str,"MPI processes",NULL,"%d",nranks);
     ghost_line_string(str,"Number of rows",NULL,"%"PRGIDX,context->gnrows);
-    ghost_line_string(str,"Type",NULL,"%s",contextType);
     ghost_line_string(str,"Work distribution scheme",NULL,"%s",ghost_context_workdist_string(context->flags));
     ghost_footer_string(str);
     return GHOST_SUCCESS;
@@ -482,7 +451,7 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
     ghost_lidx_t *duel_mem   = NULL;
     ghost_lidx_t acc_transfer_wishes, acc_transfer_dues;
 
-    size_t size_nint, size_col;
+    size_t size_nint, size_lcol, size_gcol;
     size_t size_a2ai, size_nptr, size_pval;  
     size_t size_wish, size_dues;
 
@@ -509,7 +478,8 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
     }
 
     size_pval = (size_t)( max_loc_elements * sizeof(ghost_lidx_t) );
-    size_col  = (size_t)( (size_t)(ctx->lnEnts[me])   * sizeof( ghost_lidx_t ) );
+    size_lcol  = (size_t)( (size_t)(ctx->lnEnts[me])   * sizeof( ghost_lidx_t ) );
+    size_gcol  = (size_t)( (size_t)(ctx->lnEnts[me])   * sizeof( ghost_gidx_t ) );
 
     /*       / 1  2  .  3  4  . \
      *       | .  5  6  7  .  . |
@@ -532,8 +502,8 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&item_from, size_nint),err,ret); 
     GHOST_CALL_GOTO(ghost_malloc((void **)&wishlist_counts, nprocs*sizeof(ghost_lidx_t)),err,ret); 
-    GHOST_CALL_GOTO(ghost_malloc((void **)&comm_remotePE, size_col),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&comm_remoteEl, size_col),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&comm_remotePE, size_lcol),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&comm_remoteEl, size_lcol),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&present_values, size_pval),err,ret); 
     GHOST_CALL_GOTO(ghost_malloc((void **)&tmp_transfers,  size_a2ai),err,ret); 
 
@@ -647,8 +617,8 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
      * acc_transfer_dues = <3,2,2>
      */
 
-    GHOST_CALL_GOTO(ghost_malloc((void **)&pseudocol,size_col),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&globcol,size_col),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&pseudocol,size_lcol),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&globcol,size_gcol),err,ret);
     
     /*
      * pseudocol = <{0,0,0,0,0,0,0},{0,0,0,0,0,0},{0,0,0,0,0}> PE where element is on
@@ -734,7 +704,7 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
     ghost_type_t type;
     ghost_type_get(&type); 
 #ifdef GHOST_HAVE_CUDA
-    void *cu_duel_mem;
+    ghost_lidx_t *cu_duel_mem;
     if (type == GHOST_TYPE_CUDA) {
         GHOST_CALL_GOTO(ghost_cu_malloc((void **)&cu_duel_mem,size_dues),err,ret);
     }
@@ -749,7 +719,7 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
         ctx->duelist[i]    = &(duel_mem[acc_dues]);
 #ifdef GHOST_HAVE_CUDA
         if (type == GHOST_TYPE_CUDA) {
-            ctx->cu_duelist[i]    = &(cu_duel_mem[acc_dues*sizeof(ghost_lidx_t)]);
+            ctx->cu_duelist[i]    = &(cu_duel_mem[acc_dues]);
         }
 #endif
         ctx->wishlist[i]   = &(wishl_mem[acc_wishes]);

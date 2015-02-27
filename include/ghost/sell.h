@@ -128,6 +128,10 @@ ghost_sell_t;
 typedef struct 
 {
     /**
+     * @brief The data access alignment.
+     */
+    ghost_alignment_t alignment;
+    /**
      * @brief The implementation.
      */
     ghost_implementation_t impl;
@@ -222,7 +226,7 @@ extern "C" {
      * @param mat The matrix.
      * @param lhs The result densemat.
      * @param rhs The input densemat.
-     * @param options Options to the SpMV.
+     * @param flags Options to the SpMV.
      * @param argp The varargs. 
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
@@ -244,6 +248,14 @@ extern "C" {
      */
     ghost_error_t ghost_sell_kacz(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, 
             ghost_densemat_t *rhs, void *omega, int forward);
+
+    /**
+     * @brief Get the largest SELL chunk height of auto-generated kernels.
+     *
+     * @return The largest configured SELL chunk height or 0 if none has been 
+     * configured.
+     */
+    int ghost_sell_max_cfg_chunkheight();
 #ifdef __cplusplus
 }
 #endif

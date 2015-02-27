@@ -18,9 +18,11 @@
 #ifdef GHOST_HAVE_CUDA
 typedef cublasHandle_t ghost_cublas_handle_t;
 typedef cusparseHandle_t ghost_cusparse_handle_t;
+typedef struct cudaDeviceProp ghost_cu_deviceprop_t;
 #else
 typedef int ghost_cublas_handle_t;
 typedef int ghost_cusparse_handle_t;
+typedef int ghost_cu_deviceprop_t;
 #endif
 
 /**
@@ -219,6 +221,14 @@ extern "C" {
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t ghost_cu_cusparse_handle(ghost_cusparse_handle_t *handle);
+    /**
+     * @brief Get the CUDA device properties.
+     *
+     * @param prop Where to store the properties.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error_t ghost_cu_deviceprop(ghost_cu_deviceprop_t *prop);
 
 #ifdef __cplusplus
 }

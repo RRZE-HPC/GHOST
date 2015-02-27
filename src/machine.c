@@ -79,6 +79,24 @@ ghost_error_t ghost_topology_get(hwloc_topology_t *topo)
 
 }
 
+ghost_error_t ghost_machine_innercache_size(uint64_t *size)
+{
+    hwloc_topology_t topology;
+    GHOST_CALL_RETURN(ghost_topology_get(&topology));
+    hwloc_obj_t obj;
+    int depth;
+
+    for (depth=(int)hwloc_topology_get_depth(topology)-1; depth>=0; depth--) {
+        obj = hwloc_get_obj_by_depth(topology,depth,0);
+        if (obj->type == HWLOC_OBJ_CACHE) {
+            *size = obj->attr->cache.size;
+            break;
+        }
+    }
+
+    return GHOST_SUCCESS;
+}
+
 ghost_error_t ghost_machine_outercache_size(uint64_t *size)
 {
     hwloc_topology_t topology;
@@ -294,9 +312,11 @@ ghost_error_t ghost_machine_string(char **str)
     char omp_sched_str[] = "N/A";
 #endif
 
-    uint64_t cacheSize = 0;
+    uint64_t outerCacheSize = 0;
+    uint64_t innerCacheSize = 0;
     unsigned int cacheline_size = 0;
-    ghost_machine_outercache_size(&cacheSize);
+    ghost_machine_outercache_size(&outerCacheSize);
+    ghost_machine_innercache_size(&innerCacheSize);
     ghost_machine_cacheline_size(&cacheline_size);
 
     ghost_header_string(str,"Machine");
@@ -306,7 +326,8 @@ ghost_error_t ghost_machine_string(char **str)
     ghost_line_string(str,"MPI processes per node",NULL,"%d",nranks/nnodes);
     ghost_line_string(str,"Avail. cores/PUs per node",NULL,"%d/%d",nphyscores,ncores);
     ghost_line_string(str,"OpenMP scheduling",NULL,"%s",omp_sched_str);
-    ghost_line_string(str,"LLC size","MiB","%.2f",cacheSize*1.0/(1024.*1024.));
+    ghost_line_string(str,"LLC size","MiB","%.2f",outerCacheSize*1.0/(1024.*1024.));
+    ghost_line_string(str,"FLC size","KiB","%.2f",innerCacheSize*1.0/(1024.));
     ghost_line_string(str,"Cache line size","B","%zu",cacheline_size);
 #ifdef GHOST_HAVE_CUDA
     ghost_line_string(str,"CUDA version",NULL,"%d",cuVersion);

@@ -4,6 +4,7 @@
 #include "ghost/tsmttsm.h"
 #include "ghost/tsmm.h"
 #include <complex>
+#include <cstdlib>
 
 #ifdef GHOST_HAVE_LAPACK
 #ifdef GHOST_HAVE_MKL
@@ -13,7 +14,7 @@
 #endif
 
 template<typename T, typename T_b>
-lapack_int call_eig_function(int matrix_order, char jobz, char uplo, lapack_int n, T *a, lapack_int lda, T_b *w)
+static lapack_int call_eig_function(int matrix_order, char jobz, char uplo, lapack_int n, T *a, lapack_int lda, T_b *w)
 {
     ERROR_LOG("This should not be called!");
     return -999;
@@ -44,7 +45,7 @@ lapack_int call_eig_function<std::complex<double>,double>(int matrix_order, char
 }
 
     template <typename T, typename T_b>
-ghost_error_t ghost_svqb_tmpl (ghost_densemat_t * v_ot , ghost_densemat_t * v)
+static ghost_error_t ghost_svqb_tmpl (ghost_densemat_t * v_ot , ghost_densemat_t * v)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error_t ret = GHOST_SUCCESS;
@@ -68,13 +69,13 @@ ghost_error_t ghost_svqb_tmpl (ghost_densemat_t * v_ot , ghost_densemat_t * v)
     xtraits.datatype = DT;
     GHOST_CALL_GOTO(ghost_densemat_create(&x,NULL,xtraits),err,ret);
     GHOST_CALL_GOTO(x->fromScalar(x,&zero),err,ret);
-    ldx = *x->stride;
+    ldx = x->stride;
 
     T *  xval;
     GHOST_CALL_GOTO(ghost_densemat_valptr(x,(void **)&xval),err,ret);
     
 
-    GHOST_CALL_GOTO(ghost_tsmttsm( x, v, v,&one,&zero),err,ret);
+    GHOST_CALL_GOTO(ghost_tsmttsm( x, v, v,&one,&zero,GHOST_GEMM_ALL_REDUCE,0),err,ret);
     
     for (i=0;i<n;i++) {
         D[i] = (T_b)1./std::sqrt(std::real(xval[i*ldx+i]));
@@ -92,7 +93,7 @@ ghost_error_t ghost_svqb_tmpl (ghost_densemat_t * v_ot , ghost_densemat_t * v)
         goto err;
     }
 
-    for ( i=0;i<n;i++) eigs[i] = 1./sqrt(eigs[i]);
+    for ( i=0;i<n;i++) eigs[i] = (T_b)1./std::sqrt(eigs[i]);
     for ( i=0;i<n;i++) {
          for( j=0;j<n;j++) {
             xval[i*ldx+j] *= D[j]*eigs[i];
@@ -139,7 +140,7 @@ static ghost_error_t ghost_blockortho_tmpl (ghost_densemat_t * w , ghost_densema
     T *  xval;
     GHOST_CALL_GOTO(ghost_densemat_valptr(x,(void **)&xval),err,ret);
     
-    GHOST_CALL_GOTO(ghost_tsmttsm( x, v, w,&one,&zero),err,ret);
+    GHOST_CALL_GOTO(ghost_tsmttsm( x, v, w,&one,&zero,GHOST_GEMM_ALL_REDUCE,0),err,ret);
     GHOST_CALL_GOTO(ghost_tsmm( w, v, x, &one, &minusone),err,ret);
        
     goto out;

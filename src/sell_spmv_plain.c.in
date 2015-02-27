@@ -1,0 +1,312 @@
+#include "ghost/config.h"
+#include "ghost/types.h"
+#include "ghost/sell.h"
+#include "ghost/util.h"
+#include "ghost/instr.h"
+#include "ghost/omp.h"
+#include "ghost/machine.h"
+#include "ghost/math.h"
+#include "ghost/sell_spmv_plain_gen.h"
+
+#GHOST_FUNC_BEGIN#NVECS=${CFG_BLOCKVECTOR_SIZES}#CHUNKHEIGHT=${CFG_SELL_CHUNKHEIGHTS}
+ghost_error_t ghost_sellspmv__a_plain_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+
+    INFO_LOG("In RM kernel with block size NVECS and chunk height CHUNKHEIGHT");
+    double *mval = (double *)SELL(mat)->val;
+    double *local_dot_product = NULL;
+    double *partsums = NULL;
+    int nthreads = 1, i;
+    ghost_lidx_t v;
+   
+    double *shift = NULL, scale = 1., beta = 1.; 
+    unsigned clsize;
+    ghost_machine_cacheline_size(&clsize);
+    int pad = (int) clsize/sizeof(double);
+
+    GHOST_SPMV_PARSE_ARGS(spmvmOptions,argp,scale,beta,shift,local_dot_product,double,
+            double);
+
+    if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
+#pragma omp parallel
+        nthreads = ghost_omp_nthread();
+
+        GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,
+                    (3*res->traits.ncols+pad)*nthreads*sizeof(double))); 
+        for (i=0; i<(3*res->traits.ncols+pad)*nthreads; i++) {
+            partsums[i] = 0.;
+        }
+    }
+   
+#pragma omp parallel shared (partsums) private(v)
+    {
+        ghost_lidx_t j,c,r,row;
+        ghost_lidx_t offs;
+        double tmp[CHUNKHEIGHT][NVECS];
+        double *rhsval = (double *)invec->val;
+        int tid = ghost_omp_threadnum();
+
+#pragma omp for schedule(runtime)
+        for (c=0; c<mat->nrowsPadded/CHUNKHEIGHT; c++) 
+        { // loop over chunks
+            offs = SELL(mat)->chunkStart[c];
+                    
+            memset(tmp,0,sizeof(tmp));
+            for (j=0; j<SELL(mat)->chunkLen[c]; j++) { // loop inside chunk
+#if NVECS > 1
+#pragma simd
+#endif
+                for (v=0; v<NVECS; v++) {
+#pragma unroll_and_jam
+                    for (r=0; r<CHUNKHEIGHT; r++) {
+                        row = c*CHUNKHEIGHT+r;
+                        double matval = mval[offs+j*CHUNKHEIGHT+r];
+                        ghost_lidx_t matcol = SELL(mat)->col[offs+j*CHUNKHEIGHT+r];
+                        tmp[r][v] += matval*rhsval[invec->stride*matcol+v];
+                    }
+                }
+            }
+
+            for (r=0; (r<CHUNKHEIGHT) && (c*CHUNKHEIGHT+r < mat->nrows); r++) {
+                row = c*CHUNKHEIGHT+r;
+                double *lrow = ((double *)(res->val))+res->stride*row;
+                double *rrow = rhsval+invec->stride*row;
+                if ((spmvmOptions & GHOST_SPMV_SHIFT) && shift) {
+#if NVECS > 1
+#pragma simd
+#endif
+                    for (v=0; v<NVECS; v++) {
+                        tmp[r][v] = tmp[r][v]-shift[0]*rrow[v];
+                    }
+                }
+                if ((spmvmOptions & GHOST_SPMV_VSHIFT) && shift) {
+#if NVECS > 1
+#pragma simd
+#endif
+                    for (v=0; v<NVECS; v++) {
+                        tmp[r][v] = tmp[r][v]-shift[v]*rrow[v];
+                    }
+                }
+                if (spmvmOptions & GHOST_SPMV_SCALE) {
+#if NVECS > 1
+#pragma simd
+#endif
+                    for (v=0; v<NVECS; v++) {
+                        tmp[r][v] = tmp[r][v]*scale;
+                    }
+                }
+                if (spmvmOptions & GHOST_SPMV_AXPY) {
+#if NVECS > 1
+#pragma simd
+#endif
+                    for (v=0; v<NVECS; v++) {
+                        lrow[v] += tmp[r][v];
+                    }
+                } else if (spmvmOptions & GHOST_SPMV_AXPBY) {
+#if NVECS > 1
+#pragma simd
+#endif
+                    for (v=0; v<NVECS; v++) {
+                        lrow[v] = beta*lrow[v] + tmp[r][v];
+                    }
+                } else {
+#pragma vector nontemporal
+#if NVECS > 1
+#pragma simd
+#endif
+                    for (v=0; v<NVECS; v++) {
+                        lrow[v] = tmp[r][v];
+                    }
+                }
+                    
+                if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
+#if NVECS > 1
+#pragma simd
+#endif
+                    for (v=0; v<NVECS; v++) {
+                        partsums[((pad+3*res->traits.ncols)*tid)+3*v+0] += 
+                            lrow[v]*lrow[v];
+                        partsums[((pad+3*res->traits.ncols)*tid)+3*v+1] += 
+                            lrow[v]*rrow[v];
+                        partsums[((pad+3*res->traits.ncols)*tid)+3*v+2] += 
+                            rrow[v]*rrow[v];
+                    }
+                }
+            }
+        }
+    }
+    if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
+        if (!local_dot_product) {
+            ERROR_LOG("The location of the local dot products is NULL!");
+            return GHOST_ERR_INVALID_ARG;
+        }
+        for (v=0; v<res->traits.ncols; v++) {
+            local_dot_product[v                       ] = 0.; 
+            local_dot_product[v  +   res->traits.ncols] = 0.;
+            local_dot_product[v  + 2*res->traits.ncols] = 0.;
+            for (i=0; i<nthreads; i++) {
+                local_dot_product[v                      ] += 
+                    partsums[(pad+3*res->traits.ncols)*i + 3*v + 0];
+                local_dot_product[v +   res->traits.ncols] += 
+                    partsums[(pad+3*res->traits.ncols)*i + 3*v + 1];
+                local_dot_product[v + 2*res->traits.ncols] += 
+                    partsums[(pad+3*res->traits.ncols)*i + 3*v + 2];
+            }
+        }
+        free(partsums);
+    }
+
+#ifdef GHOST_HAVE_INSTR_TIMING
+    ghost_gidx_t nnz;
+    ghost_gidx_t nrow;
+    
+    ghost_sparsemat_nnz(&nnz,mat);
+    ghost_sparsemat_nrows(&nrow,mat);
+
+    ghost_spmv_perf_args_t spmv_perfargs;
+    spmv_perfargs.vecncols = invec->traits.ncols;
+    spmv_perfargs.globalnnz = nnz;
+    spmv_perfargs.globalrows = nrow;
+    spmv_perfargs.dt = invec->traits.datatype;
+    spmv_perfargs.flags = spmvmOptions;
+    ghost_timing_set_perfFunc(__ghost_functag,ghost_spmv_perf,(void *)&spmv_perfargs,sizeof(spmv_perfargs),GHOST_SPMV_PERF_UNIT);
+#endif 
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+    return GHOST_SUCCESS;
+}
+#GHOST_FUNC_END
+
+#GHOST_FUNC_BEGIN#NVECS=${CFG_BLOCKVECTOR_SIZES}#CHUNKHEIGHT=${CFG_SELL_CHUNKHEIGHTS}
+ghost_error_t ghost_sellspmv__a_plain_d_d_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+
+    INFO_LOG("In CM kernel with block size NVECS and chunk height CHUNKHEIGHT");
+    double *mval = (double *)SELL(mat)->val;
+    double *local_dot_product = NULL;
+    double *partsums = NULL;
+    int nthreads = 1, i;
+    ghost_lidx_t v;
+   
+    double *shift = NULL, scale = 1., beta = 1.; 
+    unsigned clsize;
+    ghost_machine_cacheline_size(&clsize);
+    int pad = (int) clsize/sizeof(double);
+
+    GHOST_SPMV_PARSE_ARGS(spmvmOptions,argp,scale,beta,shift,local_dot_product,double,
+            double);
+
+    if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
+#pragma omp parallel
+        nthreads = ghost_omp_nthread();
+
+        GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,
+                    (3*res->traits.ncols+pad)*nthreads*sizeof(double))); 
+        for (i=0; i<(3*res->traits.ncols+pad)*nthreads; i++) {
+            partsums[i] = 0.;
+        }
+    }
+   
+#pragma omp parallel shared (partsums) private(v)
+    {
+        ghost_lidx_t j,c,r,row;
+        ghost_lidx_t offs;
+        double tmp[CHUNKHEIGHT];
+        double *rhsval = (double *)invec->val;
+        int tid = ghost_omp_threadnum();
+
+#pragma omp for schedule(runtime)
+        for (c=0; c<mat->nrowsPadded/CHUNKHEIGHT; c++) 
+        { // loop over chunks
+            offs = SELL(mat)->chunkStart[c];
+            
+            for (v=0; v<NVECS; v++) {
+                memset(tmp,0,sizeof(tmp));
+                double *lcol = ((double *)(res->val))+res->stride*v;
+                double *rcol = rhsval+invec->stride*v;
+
+#pragma simd
+                for (j=0; j<SELL(mat)->chunkLen[c]; j++) { // loop inside chunk
+#pragma unroll_and_jam
+                    for (r=0; r<CHUNKHEIGHT; r++) {
+                        double matval = mval[offs+j*CHUNKHEIGHT+r];
+                        ghost_lidx_t matcol = SELL(mat)->col[offs+j*CHUNKHEIGHT+r];
+                        tmp[r] += matval*rcol[matcol];
+                    }
+                }
+
+                for (r=0; (r<CHUNKHEIGHT) && (c*CHUNKHEIGHT+r < mat->nrows); r++) {
+                    row = c*CHUNKHEIGHT+r;
+                    
+                    if ((spmvmOptions & GHOST_SPMV_SHIFT) && shift) {
+                        tmp[r] = tmp[r]-shift[0]*rcol[row];
+                    }
+                    if ((spmvmOptions & GHOST_SPMV_VSHIFT) && shift) {
+                        tmp[r] = tmp[r]-shift[v]*rcol[row];
+                    }
+                    if (spmvmOptions & GHOST_SPMV_SCALE) {
+                        tmp[r] = tmp[r]*scale;
+                    }
+                    if (spmvmOptions & GHOST_SPMV_AXPY) {
+                        lcol[row] += tmp[r];
+                    } else if (spmvmOptions & GHOST_SPMV_AXPBY) {
+                        lcol[row] = beta*lcol[row] + tmp[r];
+                    } else {
+                        lcol[row] = tmp[r];
+                    }
+                    
+                    if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
+                        partsums[((pad+3*res->traits.ncols)*tid)+3*v+0] += 
+                            lcol[row]*lcol[row];
+                        partsums[((pad+3*res->traits.ncols)*tid)+3*v+1] += 
+                            lcol[row]*rcol[row];
+                        partsums[((pad+3*res->traits.ncols)*tid)+3*v+2] += 
+                            rcol[row]*rcol[row];
+                    }
+                }
+            }
+        }
+    }
+    if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
+        if (!local_dot_product) {
+            ERROR_LOG("The location of the local dot products is NULL!");
+            return GHOST_ERR_INVALID_ARG;
+        }
+        for (v=0; v<res->traits.ncols; v++) {
+            local_dot_product[v                       ] = 0.; 
+            local_dot_product[v  +   res->traits.ncols] = 0.;
+            local_dot_product[v  + 2*res->traits.ncols] = 0.;
+            for (i=0; i<nthreads; i++) {
+                local_dot_product[v                      ] += 
+                    partsums[(pad+3*res->traits.ncols)*i + 3*v + 0];
+                local_dot_product[v +   res->traits.ncols] += 
+                    partsums[(pad+3*res->traits.ncols)*i + 3*v + 1];
+                local_dot_product[v + 2*res->traits.ncols] += 
+                    partsums[(pad+3*res->traits.ncols)*i + 3*v + 2];
+            }
+        }
+        free(partsums);
+    }
+
+#ifdef GHOST_HAVE_INSTR_TIMING
+    ghost_gidx_t nnz;
+    ghost_gidx_t nrow;
+    
+    ghost_sparsemat_nnz(&nnz,mat);
+    ghost_sparsemat_nrows(&nrow,mat);
+
+    ghost_spmv_perf_args_t spmv_perfargs;
+    spmv_perfargs.vecncols = invec->traits.ncols;
+    spmv_perfargs.globalnnz = nnz;
+    spmv_perfargs.globalrows = nrow;
+    spmv_perfargs.dt = invec->traits.datatype;
+    spmv_perfargs.flags = spmvmOptions;
+    ghost_timing_set_perfFunc(__ghost_functag,ghost_spmv_perf,(void *)&spmv_perfargs,sizeof(spmv_perfargs),GHOST_SPMV_PERF_UNIT);
+#endif 
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+    return GHOST_SUCCESS;
+}
+#GHOST_FUNC_END

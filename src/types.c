@@ -61,7 +61,7 @@ ghost_error_t ghost_mpi_datatypes_destroy()
 ghost_error_t ghost_datatype_size(size_t *size, ghost_datatype_t datatype)
 {
     if (!ghost_datatype_valid(datatype)) {
-        ERROR_LOG("Invalid data type %d",datatype);
+        ERROR_LOG("Invalid data type %d",(int)datatype);
         return GHOST_ERR_INVALID_ARG;
     }
 
@@ -108,18 +108,18 @@ char * ghost_datatype_string(ghost_datatype_t datatype)
     }
 
     if (datatype & GHOST_DT_FLOAT) {
-        if (datatype & GHOST_DT_REAL)
+        if (datatype & GHOST_DT_REAL) {
             return "Float";
-        else
+        } else {
             return "Complex float";
+        }
     } else {
-        if (datatype & GHOST_DT_REAL)
+        if (datatype & GHOST_DT_REAL) {
             return "Double";
-        else
+        } else {
             return "Complex double";
+        }
     }
-
-    return "Invalid";
 }
 
 ghost_error_t ghost_datatype_idx(ghost_datatype_idx_t *idx, ghost_datatype_t datatype)
@@ -149,16 +149,16 @@ ghost_error_t ghost_datatype_idx(ghost_datatype_idx_t *idx, ghost_datatype_t dat
 ghost_error_t ghost_idx2datatype(ghost_datatype_t *datatype, ghost_datatype_idx_t idx)
 {
     switch(idx) {
-        case 0: 
+        case (ghost_datatype_idx_t)0: 
             *datatype = (ghost_datatype_t)(GHOST_DT_REAL|GHOST_DT_FLOAT);
             break;
-        case 1: 
+        case (ghost_datatype_idx_t)1: 
             *datatype = (ghost_datatype_t)(GHOST_DT_REAL|GHOST_DT_DOUBLE);
             break;
-        case 2: 
+        case (ghost_datatype_idx_t)2: 
             *datatype = (ghost_datatype_t)(GHOST_DT_COMPLEX|GHOST_DT_FLOAT);
             break;
-        case 3: 
+        case (ghost_datatype_idx_t)3: 
             *datatype = (ghost_datatype_t)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE);
             break;
         default:

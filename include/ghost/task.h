@@ -75,7 +75,8 @@ typedef enum {
  * @brief This structure represents a GHOST task.
  *
  * This data structure holds all necessary information for
- * a task. The members #nThreads, #LD, #flags, #func and #arg have to be set by
+ * a task. The members ghost_task_t#nThreads, ghost_task_t#LD, ghost_task_t#flags, 
+ * ghost_task_t#func, ghost_task_t#arg, ghost_task_t#depends, and ghost_task_t#ndepends have to be set by
  * the user in ghost_task_init(). All other members are set by the library at
  * some point.
  */
@@ -174,11 +175,20 @@ extern "C" {
      * @param func The function the task should execute
      * @param arg The arguments to the task's function
      * @param flags The task's flags
+     * @param depends List of ghost_task_t * on which this task depends
+     * @param ndepends Length of the depends argument
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t ghost_task_create(ghost_task_t **task, int nThreads, int LD, void *(*func)(void *), void *arg, ghost_task_flags_t flags, ghost_task_t **depends, int ndepends);
-    ghost_error_t ghost_task_enqueue(ghost_task_t *);
+    /**
+     * @brief Enqueue a task.
+     *
+     * @param t The task.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error_t ghost_task_enqueue(ghost_task_t *t);
     /**
      * @brief Wait for a task to finish
      *
@@ -194,17 +204,17 @@ extern "C" {
      *
      * @return  The state of the task
      */
-    ghost_task_state_t ghost_task_test(ghost_task_t *);
+    ghost_task_state_t ghost_task_test(ghost_task_t *t);
     /**
      * @brief Destroy a task.
      *
      * @param[inout] t The task to be destroyed
      */
-    void ghost_task_destroy(ghost_task_t *); 
+    void ghost_task_destroy(ghost_task_t *t); 
     /**
      * @brief Unpin a task's threads.
      *
-     * @param[inout] t The task.
+     * @param[inout] task The task.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */

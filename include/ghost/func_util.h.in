@@ -6,6 +6,8 @@
 #ifndef GHOST_FUNC_UTIL_H
 #define GHOST_FUNC_UTIL_H
 
+#include <ghost/task.h>
+
 typedef enum
 {
     GHOST_FUNCTYPE_MATH = 1,
@@ -13,29 +15,42 @@ typedef enum
     GHOST_FUNCTYPE_COMMUNICATION = 4,
     GHOST_FUNCTYPE_PREPROCESS = 8,
     GHOST_FUNCTYPE_INITIALIZATION = 16,
-    GHOST_FUNCTYPE_KERNEL = 32,
+    GHOST_FUNCTYPE_KERNEL = 32
 } ghost_functype_t;
 
 #define GHOST_FUNC_ENTER(functype)\
-    int __funcnameoffset = strncmp(__FUNCTION__,"ghost_",6)?0:6;\
-    bool __ghost_instr_enable_backup = ghost_instr_enable;\
+    int __funcnameoffset;\
+    bool __ghost_instr_enable_backup;\
+    char * __prefixbackup;\
+    char __prefix[256];\
+    char __ghost_functag[256];\
     if (${INSTRUMENTATION_FUNCTYPES}) {\
+        __funcnameoffset = strncmp(__FUNCTION__,"ghost_",6)?0:6;\
+        __ghost_instr_enable_backup = ghost_instr_enable;\
+        __prefixbackup = ghost_instr_prefix_get();\
+        snprintf(__ghost_functag,256,"%s%s",__prefixbackup,\
+                __FUNCTION__+__funcnameoffset);\
+        snprintf(__prefix,256,"%s%s->",__prefixbackup,\
+            __FUNCTION__+__funcnameoffset);\
         ghost_instr_enable = true;\
         GHOST_INSTR_START(__FUNCTION__+__funcnameoffset);\
+        ghost_instr_prefix_set(__prefix);\
     } else {\
         ghost_instr_enable = false;\
     }\
-    char * __prefixbackup = ghost_instr_prefix_get();\
-    char __prefix[256];\
-    snprintf(__prefix,256,"%s%s->",__prefixbackup,\
-            __FUNCTION__+__funcnameoffset);\
-    ghost_instr_prefix_set(__prefix);\
+    if ((functype) == (GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)) {\
+        ghost_task_t *cur = NULL;\
+        ghost_task_cur(&cur);\
+        if (!cur) {\
+            PERFWARNING_LOG("A mathematical kernel has been called outside a task!");\
+        }\
+    }\
 
 #define GHOST_FUNC_EXIT(functype)\
-    ghost_instr_prefix_set(__prefixbackup);\
     if (${INSTRUMENTATION_FUNCTYPES}) {\
+        ghost_instr_prefix_set(__prefixbackup);\
         GHOST_INSTR_STOP(__FUNCTION__+__funcnameoffset);\
+        ghost_instr_enable = __ghost_instr_enable_backup;\
     }\
-    ghost_instr_enable = __ghost_instr_enable_backup;
 
 #endif

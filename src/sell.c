@@ -1,3 +1,4 @@
+#define _XOPEN_SOURCE 500
 #include "ghost/sell.h"
 #include "ghost/core.h"
 #include "ghost/crs.h"
@@ -47,9 +48,9 @@ ghost_error_t ghost_sell_init(ghost_sparsemat_t *mat)
         ghost_type_t ghost_type;
         GHOST_CALL_GOTO(ghost_type_get(&ghost_type),err,ret);
         if (ghost_type == GHOST_TYPE_CUDA) {
-            mat->traits->flags |= GHOST_SPARSEMAT_DEVICE;
+            mat->traits->flags |= (ghost_sparsemat_flags_t)GHOST_SPARSEMAT_DEVICE;
         } else {
-            mat->traits->flags |= GHOST_SPARSEMAT_HOST;
+            mat->traits->flags |= (ghost_sparsemat_flags_t)GHOST_SPARSEMAT_HOST;
         }
     }
     ghost_type_t ghost_type;
@@ -210,7 +211,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
     int funcerrs = 0;
     ghost_gidx_t gnents = 0, gnnz = 0;
 
-#pragma omp parallel private(maxRowLenInChunk,i,tmpval,tmpcol) reduction (+:gnents,gnnz,funcerrs) 
+#pragma omp parallel private(maxRowLenInChunk,i,tmpval,tmpcol,row) reduction (+:gnents,gnnz,funcerrs) 
         {
             int funcret = 0;
             maxRowLenInChunk = 0; 
@@ -219,7 +220,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
 #pragma omp for schedule(runtime)
             for( chunk = 0; chunk < nChunks; chunk++ ) {
                 for (i=0; i<SELL(mat)->chunkHeight; i++) {
-                    ghost_lidx_t row = chunk*SELL(mat)->chunkHeight+i;
+                    row = chunk*SELL(mat)->chunkHeight+i;
 
                     if (row < mat->nrows) {
                         if ((mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) && mat->context->permutation) {
@@ -266,7 +267,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
     }
 
     if (gnents > (ghost_gidx_t)GHOST_LIDX_MAX) {
-        ERROR_LOG("The local number of entries is too large.");
+        ERROR_LOG("The local number of entries is too large: %"PRGIDX,gnents);
         return GHOST_ERR_DATATYPE;
     }
 
@@ -458,14 +459,8 @@ static ghost_error_t SELL_split(ghost_sparsemat_t *mat)
         GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->col,sizeof(ghost_lidx_t)*mat->nEnts),err,ret);
     }
    
-    if (mat->context->flags & GHOST_CONTEXT_DISTRIBUTED) {
-        GHOST_CALL_GOTO(ghost_context_comm_init(mat->context,mat->col_orig,fullSELL->col),err,ret);
+    GHOST_CALL_GOTO(ghost_context_comm_init(mat->context,mat->col_orig,fullSELL->col),err,ret);
 
-    } else {
-        for (i=0; i<mat->nEnts; i++) {
-            SELL(mat)->col[i] = (ghost_lidx_t)mat->col_orig[i];
-        }
-    }
 #ifndef GHOST_HAVE_UNIFORM_IDX
     if (!(mat->traits->flags & GHOST_SPARSEMAT_SAVE_ORIG_COLS)) {
         DEBUG_LOG(1,"Free orig cols");
@@ -751,7 +746,7 @@ static ghost_error_t SELL_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
         }
     }
 
-    WARNING_LOG("Memory usage may be high because read-in of CRS data is done at once and not chunk-wise");
+    DEBUG_LOG(1,"Memory usage may be high because read-in of CRS data is done at once and not chunk-wise");
     GHOST_CALL_GOTO(ghost_malloc((void **)&tmpcol,mat->nnz*sizeof(ghost_gidx_t)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&tmpval,mat->nnz*mat->elSize),err,ret);
     GHOST_CALL_GOTO(ghost_bincrs_col_read(tmpcol, matrixPath, mat->context->lfRow[me], mat->nrows, mat->context->permutation, mat->traits->flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS),err,ret);
@@ -850,7 +845,6 @@ static void SELL_free(ghost_sparsemat_t *mat)
     if (!mat) {
         return;
     }
-    ghost_sparsemat_destroy_common(mat);
 
     if (mat->data) {
 #ifdef GHOST_HAVE_CUDA
@@ -883,8 +877,9 @@ static void SELL_free(ghost_sparsemat_t *mat)
         SELL_free(mat->remotePart);
     }
 
-    free(mat);
+    ghost_sparsemat_destroy_common(mat);
 
+    free(mat);
 }
 
 /*static int ld(int i) 
@@ -920,5 +915,20 @@ ch = 256;
 return ch;*/
     UNUSED(datatype);
     return 32;
+}
+
+int ghost_sell_max_cfg_chunkheight()
+{
+    int max = 0;
+    char *cfgch = strdup(GHOST_CFG_SELL_CHUNKHEIGHTS);
+    char *ch = strtok(cfgch,",");
+
+    while (ch) {
+        max = MAX(max,atoi(ch));
+        ch = strtok(NULL,",");
+    }
+
+    free(cfgch);
+    return max;
 }
 

@@ -92,16 +92,6 @@ extern "C" {
     ghost_error_t ghost_bincrs_rpt_read(ghost_gidx_t *rpt, char *matrixPath, ghost_gidx_t offsRows, ghost_lidx_t nRows, ghost_permutation_t *perm);
     ghost_error_t ghost_bincrs_rpt_read_opened(ghost_gidx_t *rpt, char *matrixPath, ghost_gidx_t offsRows, ghost_lidx_t nRows, ghost_permutation_t *perm, FILE *filed);
 
-    /**
-     * @brief Check if the machine endianess differs from the sparse matrix file.
-     *
-     * @param differs Where to store the result.
-     * @param matrixPath The sparse matrix file.
-     *
-     * @return GHOST_SUCCESS on success or an error indicator.
-     */
-    //ghost_error_t ghost_endianessDiffers(int *differs, char *matrixPath);
-
     void dd_ghost_castarray(void *, void *, int);
     void ds_ghost_castarray(void *, void *, int);
     void dc_ghost_castarray(void *, void *, int);

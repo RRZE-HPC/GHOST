@@ -20,6 +20,10 @@
 #include "ghost/log.h"
 #include "ghost/omp.h"
 
+#ifdef GHOST_HAVE_MKL
+#include <mkl.h>
+#endif
+
 #ifdef GHOST_HAVE_INSTR_LIKWID
 #include <likwid.h>
 #endif
@@ -198,6 +202,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
         }
         if (availcores < curTask->nThreads) {
             DEBUG_LOG(1,"Skipping task %p because it needs %d threads and only %d threads are available",(void *)curTask,curTask->nThreads,availcores);
+            hwloc_bitmap_free(parentscores);
             curTask = curTask->next;
             continue;
         }
@@ -218,6 +223,9 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
         taskq_deleteTask(q,curTask);    
         DEBUG_LOG(1,"Pinning the task's threads");
         ghost_omp_nthread_set(curTask->nThreads);
+#ifdef GHOST_HAVE_MKL
+        mkl_set_num_threads(curTask->nThreads); 
+#endif
 
         //        if (curTask->flags & GHOST_TASK_NO_PIN) {
         //            return curTask;
@@ -270,7 +278,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 
                        //                            hwloc_bitmap_set(ghost_thpool->busy,core);
                         hwloc_bitmap_set(mybusy,core);
-                        DEBUG_LOG(2,"Pinning thread %lu to core %d",(unsigned long)pthread_self(),pumap->PUs[curTask->LD][t]->os_index);
+                        DEBUG_LOG(2,"Pinning thread %lu to core %u",(unsigned long)pthread_self(),pumap->PUs[curTask->LD][t]->os_index);
                         ghost_thread_pin(core);
                         hwloc_bitmap_set(curTask->coremap,core);
                         //curTask->cores[reservedCores] = core;
@@ -279,36 +287,38 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
                         break;
                     }
                 }
-                }
+            }
 #ifdef GHOST_HAVE_INSTR_LIKWID
-                LIKWID_MARKER_THREADINIT;
+            LIKWID_MARKER_THREADINIT;
 #endif
-            }
-            if (curTask->parent && !(curTask->parent->flags & GHOST_TASK_NOT_ALLOW_CHILD)) {
-                //char *a;
-                //hwloc_bitmap_list_asprintf(&a,curTask->parent->childusedmap);
-                //WARNING_LOG("### %p %s",curTask->parent->childusedmap,a);
-                hwloc_bitmap_or(curTask->parent->childusedmap,curTask->parent->childusedmap,mybusy);
-                //hwloc_bitmap_list_asprintf(&a,curTask->parent->childusedmap);
-                //WARNING_LOG("### %p %s",curTask->parent->childusedmap,a);
-            }
-            ghost_pumap_setbusy(mybusy);
+        }
+        if (curTask->parent && !(curTask->parent->flags & GHOST_TASK_NOT_ALLOW_CHILD)) {
+            //char *a;
+            //hwloc_bitmap_list_asprintf(&a,curTask->parent->childusedmap);
+            //WARNING_LOG("### %p %s",curTask->parent->childusedmap,a);
+            hwloc_bitmap_or(curTask->parent->childusedmap,curTask->parent->childusedmap,mybusy);
+            //hwloc_bitmap_list_asprintf(&a,curTask->parent->childusedmap);
+            //WARNING_LOG("### %p %s",curTask->parent->childusedmap,a);
+        }
+        ghost_pumap_setbusy(mybusy);
 //            hwloc_bitmap_or(pumap->busy,pumap->busy,mybusy);
 
-            if (reservedCores < curTask->nThreads) {
-                WARNING_LOG("Too few cores reserved! %d < %d This should not have happened...",reservedCores,curTask->nThreads);
-            }
-
-            DEBUG_LOG(1,"Pinning successful, returning");
-
-            return curTask;
+        if (reservedCores < curTask->nThreads) {
+            WARNING_LOG("Too few cores reserved! %d < %d This should not have happened...",reservedCores,curTask->nThreads);
         }
 
-        DEBUG_LOG(1,"Could not find and delete a task, returning NULL");
-        return NULL;
+        hwloc_bitmap_free(mybusy);
+        hwloc_bitmap_free(parentscores);
+        DEBUG_LOG(1,"Pinning successful, returning");
 
-
+        return curTask;
     }
+
+    DEBUG_LOG(1,"Could not find and delete a task, returning NULL");
+    return NULL;
+
+
+}
 
 ghost_error_t ghost_taskq_startroutine(void *(**func)(void *))
 {
@@ -430,7 +440,7 @@ ghost_error_t ghost_taskq_startroutine(void *(**func)(void *))
 
             //    kmp_set_blocktime(200);
             pthread_mutex_lock(&newTaskMutex);
-            pthread_cond_broadcast(&newTaskCond);
+            pthread_cond_signal(&newTaskCond);
             pthread_mutex_unlock(&newTaskMutex);
 
             pthread_mutex_lock(myTask->mutex); 
@@ -459,7 +469,6 @@ ghost_error_t ghost_taskq_startroutine(void *(**func)(void *))
     /**
      * @brief Helper function to add a task to a queue
      *
-     * @param q The queue
      * @param t The task
      *
      * @return GHOST_SUCCESS on success or GHOST_FAILURE on failure.
@@ -501,7 +510,7 @@ ghost_error_t ghost_taskq_add(ghost_task_t *t)
 
         sem_post(&taskSem);
         pthread_mutex_lock(&newTaskMutex);
-        pthread_cond_broadcast(&newTaskCond);
+        pthread_cond_signal(&newTaskCond);
         pthread_mutex_unlock(&newTaskMutex);
 
         return GHOST_SUCCESS;

@@ -6,6 +6,9 @@
 #ifndef GHOST_BITMAP_H
 #define GHOST_BITMAP_H
 
+#include "config.h"
+#include "types.h"
+#include "error.h"
 #include <hwloc/bitmap.h>
 
 /**
@@ -13,6 +16,7 @@
  */
 typedef hwloc_bitmap_t ghost_bitmap_t;
 
+#define ghost_bitmap_set(bitmap,idx) hwloc_bitmap_set(bitmap,idx)
 #define ghost_bitmap_set_range(bitmap,start,end) hwloc_bitmap_set_range(bitmap,start,end)
 #define ghost_bitmap_clr_range(bitmap,start,end) hwloc_bitmap_clr_range(bitmap,start,end)
 #define ghost_bitmap_list_asprintf(str,bitmap) hwloc_bitmap_list_asprintf(str,bitmap)
@@ -28,5 +32,14 @@ typedef hwloc_bitmap_t ghost_bitmap_t;
 #define ghost_bitmap_last(bitmap) hwloc_bitmap_last(bitmap)
 #define ghost_bitmap_weight(bitmap) hwloc_bitmap_weight(bitmap)
 #define ghost_bitmap_iscompact(bitmap) ((ghost_bitmap_last(bitmap)-ghost_bitmap_first(bitmap)+1) == ghost_bitmap_weight(bitmap))
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+    ghost_error_t ghost_bitmap_copy_indices(ghost_bitmap_t dst, ghost_lidx_t *offset, ghost_bitmap_t src, ghost_lidx_t *idx, ghost_lidx_t nidx); 
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

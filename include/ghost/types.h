@@ -208,13 +208,21 @@ inline ghost_datatype_t operator|(const ghost_datatype_t &a, const ghost_datatyp
 #endif
 
 /**
+ * @brief Possible alignments of data access.
+ */
+typedef enum {
+    GHOST_ALIGNED,
+    GHOST_UNALIGNED
+} ghost_alignment_t;
+
+/**
  * @brief Possible implementations of a CPU function.
  */
 typedef enum {
-    GHOST_IMPLEMENTATION_AVX,
-    GHOST_IMPLEMENTATION_SSE,
-    GHOST_IMPLEMENTATION_MIC,
-    GHOST_IMPLEMENTATION_PLAIN
+    GHOST_IMPLEMENTATION_PLAIN = 0,
+    GHOST_IMPLEMENTATION_SSE = 1,
+    GHOST_IMPLEMENTATION_AVX = 2,
+    GHOST_IMPLEMENTATION_MIC = 3
 } ghost_implementation_t;
 
 /**
@@ -238,7 +246,7 @@ typedef enum {
     /**
      * @brief Complex double.
      */
-    GHOST_DT_Z_IDX = 3,
+    GHOST_DT_Z_IDX = 3
 } ghost_datatype_idx_t;
 
 /**

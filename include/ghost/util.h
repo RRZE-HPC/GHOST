@@ -44,11 +44,24 @@
 
 #define GHOST_PAD_MAX 1024
 
+#define IS_ALIGNED(PTR,BYTES) (((uintptr_t)(const void *)(PTR)) % (BYTES) == 0)
+
 /**
  * @brief Avoid unused variable/function warnings.
  */
 #define UNUSED(x) (void)(x)
 
+#define GHOST_SINGLETHREAD(code) {\
+    int nthread;\
+_Pragma("omp parallel") {\
+_Pragma("omp single") {\
+            nthread = ghost_omp_nthread(); \
+        }\
+    }\
+    ghost_omp_nthread_set(1);\
+    code;\
+    ghost_omp_nthread_set(nthread);\
+}
 
 #ifdef __cplusplus
 extern "C" {

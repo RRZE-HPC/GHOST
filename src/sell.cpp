@@ -22,7 +22,7 @@ static ghost_error_t SELL_stringify_tmpl(ghost_sparsemat_t *mat, char **str, int
             ghost_lidx_t rowOffs = SELL(mat)->chunkStart[chunk]+i;
             if (dense) {
                 for (col=0, j=0; col<mat->ncols; col++) {
-                    if ((j < SELL(mat)->rowLen[row]) && (SELL(mat)->col[rowOffs+j*SELL(mat)->chunkHeight] == col)) { // there is an entry at col
+                    if ((j < SELL(mat)->rowLen[row]) && ((mat->traits->flags & GHOST_SPARSEMAT_SAVE_ORIG_COLS)?(mat->col_orig[rowOffs+j*SELL(mat)->chunkHeight] == col):(SELL(mat)->col[rowOffs+j*SELL(mat)->chunkHeight] == col))) { // there is an entry at col
                          buffer << val[rowOffs+j*SELL(mat)->chunkHeight] << "\t";
                         j++;
                     } else {

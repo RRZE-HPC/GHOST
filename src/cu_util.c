@@ -24,6 +24,7 @@
 #ifdef GHOST_HAVE_CUDA
 static cublasHandle_t ghost_cublas_handle;
 static cusparseHandle_t ghost_cusparse_handle;
+static struct cudaDeviceProp ghost_cu_device_prop;
 #endif
 
 static int cu_device = -1;
@@ -46,7 +47,9 @@ ghost_error_t ghost_cu_init(int dev)
         return GHOST_ERR_CUDA;
     }
     CUBLAS_CALL_RETURN(cublasCreate(&ghost_cublas_handle));
-    CUBLAS_CALL_RETURN(cusparseCreate(&ghost_cusparse_handle));
+    CUSPARSE_CALL_RETURN(cusparseCreate(&ghost_cusparse_handle));
+    CUDA_CALL_RETURN(cudaGetDeviceProperties(&ghost_cu_device_prop,cu_device));
+
 #ifdef GHOST_HAVE_CUDA_PINNEDMEM
     CUDA_CALL_RETURN(cudaSetDeviceFlags(cudaDeviceMapHost));
 #endif
@@ -407,5 +410,16 @@ ghost_error_t ghost_cu_free_host(void * mem)
 #else
     UNUSED(mem);
 #endif
+    return GHOST_SUCCESS;
+}
+
+ghost_error_t ghost_cu_deviceprop(ghost_cu_deviceprop_t *prop)
+{
+#ifdef GHOST_HAVE_CUDA
+    *prop = ghost_cu_device_prop;
+#else
+    *prop = -1;
+#endif
+
     return GHOST_SUCCESS;
 }

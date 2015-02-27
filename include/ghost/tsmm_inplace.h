@@ -17,15 +17,21 @@ typedef struct
      */
     ghost_datatype_t dt;
     /**
-     * @brief The first configured block size M.
+     * @brief The number of columns for the input densemat.
      */
-    int blocksz;
+    int ncolsin;
+    /**
+     * @brief The number of columns for the output densemat.
+     */
+    int ncolsout;
+
+    ghost_implementation_t impl;
 } ghost_tsmm_inplace_parameters_t;
 
 /**
- * @brief A tsmm kernel function. 
+ * @brief A tsmm-inplace kernel function. 
  */
-typedef ghost_error_t (*ghost_tsmm_inplace_kernel_t)(ghost_densemat_t *, ghost_densemat_t *, void *);
+typedef ghost_error_t (*ghost_tsmm_inplace_kernel_t)(ghost_densemat_t *, ghost_densemat_t *, void *, void *);
 
 
 #ifdef __cplusplus
@@ -40,33 +46,40 @@ extern "C" {
      * @param[inout] x
      * @param[in] w
      * @param[in] alpha
+     * @param[in] beta
      *
      *
-     * Compute \f$ x = \alpha \cdot x \cdot w \f$.
+     * Compute \f$ x(:,1:K) = \alpha \cdot x(:,1:M) \cdot w  + \beta \cdot x(:,1:M)\f$.
      *
-     * w is MxM, redundant, col-major.
+     * w is MxK, M>K, redundant, col-major.
      *
      * x is NxM, distributed, row-major.
      *
-     * M<<N
+     * M,K<<N
      *
-     * This kernel is auto-generated at compile time for given values of M.
+     * This kernel is auto-generated at compile time for given values of M and K.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_tsmm_inplace(ghost_densemat_t *x, ghost_densemat_t *w, void *alpha);
+    ghost_error_t ghost_tsmm_inplace(ghost_densemat_t *x, ghost_densemat_t *w, void *alpha, void *beta);
+
     /**
-     * @brief Generate the map of auto-generated tsmm kernels.
-     */
-    void ghost_tsmm_inplace_kernelmap_generate();
-    /**
-     * @brief Get the auto-generated tsmm kernel which fits the given parameters or, if not found, a fallback kernel. 
+     * @brief Check whether TSMM-inplace can be applied instead of GEMM with the given arguments.
      *
-     * @param[in] p The tsmm kernel parameters
+     * @param x
+     * @param v
+     * @param transv
+     * @param w
+     * @param transw
+     * @param alpha
+     * @param beta
+     * @param reduce
+     * @param printerror Print an error message if application is not possible.
      *
-     * @return The according kernel. 
+     * @return 
      */
-    ghost_tsmm_inplace_kernel_t ghost_tsmm_inplace_kernel(ghost_tsmm_inplace_parameters_t p, ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, int reduce);
+    ghost_error_t ghost_tsmm_inplace_valid(ghost_densemat_t *x, ghost_densemat_t *v, const char * transv, 
+        ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce, int printerror);
 
 #ifdef __cplusplus
 }

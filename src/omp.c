@@ -56,5 +56,7 @@ void ghost_omp_set_nested(int nested)
 {
 #ifdef GHOST_HAVE_OPENMP
     omp_set_nested(nested);
+#else
+    UNUSED(nested);
 #endif
 }

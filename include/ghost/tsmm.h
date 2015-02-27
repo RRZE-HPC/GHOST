@@ -9,6 +9,7 @@
 #include "config.h"
 #include "types.h"
 #include "densemat.h"
+#include "math.h"
 
 typedef struct
 {
@@ -19,11 +20,13 @@ typedef struct
     /**
      * @brief The first configured block size K.
      */
-    int blocksz1;
+    int xcols;
     /**
      * @brief The second configure block size M.
      */
-    int blocksz2;
+    int vcols;
+    ghost_implementation_t impl;
+    ghost_alignment_t alignment;
 } ghost_tsmm_parameters_t;
 
 /**
@@ -59,23 +62,31 @@ extern "C" {
      * M<<N
      *
      * This kernel is auto-generated at compile time for given values of K and M.
-     * Additionally, a version for given K but arbitrary M is being generated.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta);
+
     /**
-     * @brief Generate the map of auto-generated tsmm kernels.
-     */
-    void ghost_tsmm_kernelmap_generate();
-    /**
-     * @brief Get the auto-generated tsmm kernel which fits the given parameters or, if not found, a fallback kernel. 
+     * @brief Check whether TSMM can be applied instead of GEMM with the given arguments.
      *
-     * @param[in] p The tsmm kernel parameters
+     * @param x
+     * @param v
+     * @param transv
+     * @param w
+     * @param transw
+     * @param alpha
+     * @param beta
+     * @param reduce
+     * @param printerror Print an error message if application is not possible.
      *
-     * @return The according kernel. 
+     * @return 
      */
-    ghost_tsmm_kernel_t ghost_tsmm_kernel(ghost_tsmm_parameters_t p, ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, int reduce);
+    ghost_error_t ghost_tsmm_valid(ghost_densemat_t *x, ghost_densemat_t *v, const char * transv, 
+        ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce, int printerror);
+
+    int ghost_tsmm_perf_GBs(double *perf, double time, void *varg);
+    int ghost_tsmm_perf_GFs(double *perf, double time, void *varg);
 
 #ifdef __cplusplus
 }

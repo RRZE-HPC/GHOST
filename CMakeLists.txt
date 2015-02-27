@@ -4,7 +4,7 @@ project (GHOST)
 set(GHOST_VERSION_MAJOR 0)
 set(GHOST_VERSION_MINOR 8)
 set(GHOST_VERSION_REVISION 0)
-set(GHOST_VERSION_IDENTIFIER "alpha")
+set(GHOST_VERSION_IDENTIFIER)
 set(GHOST_VERSION "${GHOST_VERSION_MAJOR}.${GHOST_VERSION_MINOR}.${GHOST_VERSION_REVISION}")
 if (DEFINED GHOST_VERSION_IDENTIFIER)
     set(GHOST_VERSION "${GHOST_VERSION}-${GHOST_VERSION_IDENTIFIER}")
@@ -23,6 +23,7 @@ option(USE_SCOTCH "Use PT-Scotch for matrix re-ordering" 0)
 option(USE_COLPACK "Use ColPack for matrix coloring" 0)
 option(USE_LONGIDX_LOCAL "Enable 64-bit indices for local quantities" 0)
 option(USE_LONGIDX_GLOBAL "Enable 64-bit indices for global quantities" 1)
+option(OPTIMIZE_HOSTARCH "Create optimized code for the host's architecture" 1)
 option(BUILD_MIC "Build for Intel MIC" 0)
 option(ERR_WARN_INFO_PRINTONCE "Print all errors, warnings and info only once for each occurence" 1)
 option(TRACK_DATATRANSFERS "Track MPI and CUDA data transfers" 0)
@@ -30,10 +31,9 @@ option(GATHER_GLOBAL_INFO "Gather some global information (should be disabled fo
 set(CFG_BLOCKVECTOR_SIZES "1" CACHE STRING "The block vector sizes for which generated kernels are being created (comma-separated list)")
 set(CFG_SELL_CHUNKHEIGHTS "32" CACHE STRING "The SELL chunk heights for which generated kernels are being created (comma-separated list)")
 set(CFG_SELL_CUDA_KERNELS "true,true,true,true,true,true;true,false,false,false,false,false;false,false,false,false,false,false" CACHE STRING "The permutations of SELL SpMV CUDA kernels to instantiate (semicolon-separated list of comma-separated lists). AXP(B)Y,SCALE,(V)SHIFT,DOT_YY,DOT_XY,DOT_XX")
-set(LIBTYPE "SHARED" CACHE STRING "Type of GHOST build (required). Valid values: SHARED, STATIC")
 set(VERBOSITY 1 CACHE STRING "Level of verbosity information. Valid values: 0 (be totally silent), 1 (print warnings, errors and further important information), 2, 3, 4 (increasing level of verbosity)")
 set(INSTRUMENTATION "" CACHE STRING "Type of instrumentation (semicolon separated list). Valid values: TIMING, LIKWID")
-set(INSTRUMENTATION_FUNCTYPES "(functype | GHOST_FUNCTYPE_MATH) && (functype | GHOST_FUNCTYPE_KERNEL)" CACHE STRING "Logical selection of function types to instrument. Check the variable functype against valid values as defined in func_util.h. Example: functype & (GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_COMMUNICATION) ")
+set(INSTRUMENTATION_FUNCTYPES "((functype) & GHOST_FUNCTYPE_MATH) && ((functype) & GHOST_FUNCTYPE_KERNEL)" CACHE STRING "Logical selection of function types to instrument. Check the variable functype against valid values as defined in func_util.h. Example: functype & (GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_COMMUNICATION) ")
 
 find_package(PkgConfig)
 
@@ -77,10 +77,12 @@ set (SOURCES
     src/sparsemat_perm_colpack.cpp
     src/svqb.cpp
     src/timing.cpp
-    src/tsmm_kernelmap.cpp
-    src/tsmm_inplace_kernelmap.cpp
-    src/tsmttsm_kernelmap.cpp
+    src/tsmm.cpp
+    src/tsmm_inplace.cpp
+    src/tsmttsm.cpp
+    src/tsmttsm_kahan.cpp
     src/bincrs.c
+    src/bitmap.c
     src/blas_util.c
     src/carp.c
     src/context.c
@@ -104,7 +106,6 @@ set (SOURCES
     src/sell.c 
     src/sparsemat.c
     src/sparsemat_perm_scotch.c
-    src/spmv_haloexchange.c
     src/spmv_overlap.c 
     src/spmv_nompi.c 
     src/spmv_task.c
@@ -113,9 +114,6 @@ set (SOURCES
     src/taskq.c
     src/thpool.c
     src/timing.c
-    src/tsmm.c
-    src/tsmm_inplace.c
-    src/tsmttsm.c
     src/types.c
     src/util.c 
     )
@@ -158,6 +156,7 @@ set (HEADERS
     include/ghost/tsmm.h
     include/ghost/tsmm_inplace.h
     include/ghost/tsmttsm.h
+    include/ghost/tsmttsm_kahan.h
     include/ghost/types.h
     include/ghost/util.h
     )
@@ -172,7 +171,7 @@ foreach (SELL_CHUNKHEIGHT ${CFG_SELL_CHUNKHEIGHTS_LIST})
     foreach (SELL_NCOLS ${CFG_BLOCKVECTOR_SIZES_LIST})
         set(SELL_CU_SPMV_SWITCHCASCADE "${SELL_CU_SPMV_SWITCHCASCADE}            case ${SELL_NCOLS}:\\\n")
         foreach(SELL_CUDA_VARIANT ${CFG_SELL_CUDA_KERNELS})
-            set(SELL_CU_SPMV_SWITCHCASCADE "${SELL_CU_SPMV_SWITCHCASCADE}                if(!(strcmp(boolstr,\"${SELL_CUDA_VARIANT}\"))) { kernel<dt1,dt2,dt2_b,${SELL_CHUNKHEIGHT},${SELL_NCOLS},${SELL_CUDA_VARIANT}><<<grid,block,smem>>>((dt2 *)lhsval,*(int *)(lhs->stride),(dt2 *)rhsval,*(int *)rhs->stride,flags,mat->nrows,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,(dt2 *)cu_shift,(dt2)scale,(dt2)beta,(dt2 *)cu_localdot); } else \\\n")
+            set(SELL_CU_SPMV_SWITCHCASCADE "${SELL_CU_SPMV_SWITCHCASCADE}                if(!(strcmp(boolstr,\"${SELL_CUDA_VARIANT}\"))) { kernel<dt1,dt2,dt2_b,${SELL_CHUNKHEIGHT},${SELL_NCOLS},${SELL_CUDA_VARIANT}><<<grid,block,smem>>>((dt2 *)lhsval,(int)(lhs->stride),(dt2 *)rhsval,(int)rhs->stride,flags,mat->nrows,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,(dt2 *)cu_shift,(dt2)scale,(dt2)beta,(dt2 *)cu_localdot); } else \\\n")
         endforeach()
         set(SELL_CU_SPMV_SWITCHCASCADE "${SELL_CU_SPMV_SWITCHCASCADE}                { PERFWARNING_LOG(\"Non-configured bool variant: %s\",boolstr);\\\n                do_fallback = true; }\\\n")
         set(SELL_CU_SPMV_SWITCHCASCADE "${SELL_CU_SPMV_SWITCHCASCADE}        break;\\\n")
@@ -199,8 +198,20 @@ configure_file (
     ${PROJECT_BINARY_DIR}/src/sell_spmv_mic.c
     )
 configure_file (
+    ${PROJECT_SOURCE_DIR}/src/sell_spmv_plain.c.in
+    ${PROJECT_BINARY_DIR}/src/sell_spmv_plain.c
+    )
+configure_file (
     ${PROJECT_SOURCE_DIR}/src/tsmm.c.in
     ${PROJECT_BINARY_DIR}/src/tsmm.c
+    )
+configure_file (
+    ${PROJECT_SOURCE_DIR}/src/tsmm_avx.c.in
+    ${PROJECT_BINARY_DIR}/src/tsmm_avx.c
+    )
+configure_file (
+    ${PROJECT_SOURCE_DIR}/src/tsmm_sse.c.in
+    ${PROJECT_BINARY_DIR}/src/tsmm_sse.c
     )
 configure_file (
     ${PROJECT_SOURCE_DIR}/src/tsmm_inplace.c.in
@@ -210,14 +221,27 @@ configure_file (
     ${PROJECT_SOURCE_DIR}/src/tsmttsm.c.in
     ${PROJECT_BINARY_DIR}/src/tsmttsm.c
     )
+configure_file (
+    ${PROJECT_SOURCE_DIR}/src/tsmttsm_avx.c.in
+    ${PROJECT_BINARY_DIR}/src/tsmttsm_avx.c
+    )
+configure_file (
+    ${PROJECT_SOURCE_DIR}/src/tsmttsm_kahan_avx.c.in
+    ${PROJECT_BINARY_DIR}/src/tsmttsm_kahan_avx.c
+    )
 
 set (TO_PREPROCESS
     ${PROJECT_BINARY_DIR}/src/sell_spmv_avx.c
     ${PROJECT_BINARY_DIR}/src/sell_spmv_sse.c
     ${PROJECT_BINARY_DIR}/src/sell_spmv_mic.c
+    ${PROJECT_BINARY_DIR}/src/sell_spmv_plain.c
     ${PROJECT_BINARY_DIR}/src/tsmm.c
+    ${PROJECT_BINARY_DIR}/src/tsmm_avx.c
+    ${PROJECT_BINARY_DIR}/src/tsmm_sse.c
     ${PROJECT_BINARY_DIR}/src/tsmm_inplace.c
     ${PROJECT_BINARY_DIR}/src/tsmttsm.c
+    ${PROJECT_BINARY_DIR}/src/tsmttsm_avx.c
+    ${PROJECT_BINARY_DIR}/src/tsmttsm_kahan_avx.c
     )
 
 set (PP_SCRIPT ${PROJECT_SOURCE_DIR}/bin/ghost_pp.pl)
@@ -260,6 +284,11 @@ if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel." FORCE)
 endif()
 
+if (NOT BUILD_SHARED_LIBS)
+    message(STATUS "No library type specified. Setting it to shared.")
+    set(BUILD_SHARED_LIBS ON CACHE BOOL "Set to ON/OFF for shared/static library build.")
+endif()
+
 set(HWLOC_INCLUDE_DIR HWLOC_INCLUDE_DIR-NOTFOUND CACHE PATH "Location of hwloc.h")
 set(LIBHWLOC LIBHWLOC-NOTFOUND) 
 
@@ -280,7 +309,7 @@ endif()
 
 if (NOT LIBHWLOC)
     get_filename_component(HWLOC_LIBDIR ${HWLOC_INCLUDE_DIR}/../lib REALPATH)
-    find_library(LIBHWLOC hwloc ${HWLOC_LIBDIR} NO_DEFAULT_PATH)
+    find_library(LIBHWLOC hwloc HINTS ${HWLOC_LIBDIR})
 endif()
 
 set(HWLOC_LIBRARIES ${LIBHWLOC})
@@ -306,7 +335,7 @@ endforeach()
 if (USE_MPI)
     set(MPI_LIBRARIES "-lmpi_mt")
     find_package(MPI QUIET)
-    include_directories(${MPI_INCLUDE_PATH})
+    include_directories(SYSTEM ${MPI_INCLUDE_PATH})
     foreach(item ${MPI_LIBRARIES})
         if (BUILD_MIC)
             string(REPLACE "intel64" "mic" item_mic ${item})
@@ -359,7 +388,7 @@ if (USE_CUDA)
             ${DENSEMAT_RM_CU_O}
             ${CRS_CU_O}
             )
-        include_directories(${CUDA_INCLUDE_DIRS})
+        include_directories(SYSTEM ${CUDA_INCLUDE_DIRS})
         set (HEADERS ${HEADERS}
             include/ghost/cu_densemat_cm.h
             include/ghost/cu_densemat_rm.h
@@ -377,15 +406,7 @@ if (USE_CUDA)
     endif()
 endif()
 
-if (${LIBTYPE} STREQUAL "STATIC")
-    add_library(ghost STATIC ${SOURCES})
-elseif (${LIBTYPE} STREQUAL "SHARED")
-    add_library(ghost SHARED ${SOURCES})
-else ()
-    message(SEND_ERROR "Unknown library type. Setting it to SHARED")
-    set(LIBTYPE "SHARED")
-    add_library(ghost SHARED ${SOURCES})
-endif()
+add_library(ghost ${SOURCES})
 add_dependencies(ghost preprocess)
 
 
@@ -507,7 +528,7 @@ if (${CBLAS_H} STREQUAL "mkl_cblas.h")
         find_library(LIBMKL_X_THREAD mkl_sequential ${MKL_LIBDIR})
     endif()
 
-    set (BLAS_LIBRARIES "${LIBMKL_CORE};${LIBMKL_INTEL_XLP64};${LIBMKL_X_THREAD}" CACHE STRING "BLAS libraries")
+    set (BLAS_LIBRARIES "${LIBMKL_INTEL_XLP64};${LIBMKL_CORE};${LIBMKL_X_THREAD}" CACHE STRING "BLAS libraries")
     mark_as_advanced(LIBMKL_CORE LIBMKL_INTEL_XLP64 LIBMKL_X_THREAD) 
 elseif (${CBLAS_H} STREQUAL "gsl_cblas.h")
     set(GHOST_HAVE_GSL 1)
@@ -523,6 +544,7 @@ endif()
 
 set(LAPACK_INCLUDE_DIR CACHE PATH "Location of lapacke.h")
 
+        find_package(LAPACK)
 if (NOT LAPACK_INCLUDE_DIR)
     message(STATUS "Determine LAPACK...")
 
@@ -535,9 +557,16 @@ if (NOT LAPACK_INCLUDE_DIR)
         message(STATUS "Try to find LAPACK")
         find_package(LAPACK)
         if (LAPACK_FOUND)
-            message(STATUS "LAPACK found!")
+            message(STATUS "Try to find LAPACK_INCLUDE_DIR")
+            find_path(LAPACK_INCLUDE_DIR lapacke.h)
+            if (NOT EXISTS "${LAPACK_INCLUDE_DIR}/lapacke.h")
+                message(STATUS "Use lapacke.h shipped with GHOST")
+                add_definitions(-DGHOST_USE_OWN_LAPACKE_H)
+		set(LAPACK_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include/lapack)
+            endif()
+            message(STATUS "LAPACK found: ${LAPACK_INCLUDE_DIR} ${LAPACK_LIBRARIES}")
             set(GHOST_HAVE_LAPACK 1)
-            include_directories(LAPACK_INCLUDE_DIR)
+            include_directories(SYSTEM ${LAPACK_INCLUDE_DIR})
 
             string(REPLACE "lapack.so" "lapacke.so" LAPACK_LIBRARIES "${LAPACK_LIBRARIES}")
         else()
@@ -554,7 +583,7 @@ if (NOT LAPACK_LIBRARIES AND LAPACK_INCLUDE_DIR)
     set(GHOST_HAVE_LAPACK 1)
 endif()
 
-include_directories(${LAPACK_INCLUDE_DIR})    
+include_directories(SYSTEM ${LAPACK_INCLUDE_DIR})    
 mark_as_advanced(CLEAR LAPACK_INCLUDE_DIR)
 mark_as_advanced(CLEAR LAPACK_LIBRARIES)
 
@@ -571,8 +600,10 @@ else ()
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -std=c99 -Wall -Wextra -pedantic")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -std=c++0x -Wall -Wextra -pedantic")
     if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wunused-variable -save-temps -fsource-asm")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wunused-variable -save-temps -fsource-asm")
+        set(CMAKE_INCLUDE_SYSTEM_FLAG_C "-isystem ") # Not present in Cmake 2.8.11.2
+        set(CMAKE_INCLUDE_SYSTEM_FLAG_CXX "-isystem ") # Not present in Cmake 2.8.11.2
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wunused-variable -save-temps -fsource-asm -w3 -wd981")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wunused-variable -save-temps -fsource-asm -w3 -wd981 -wd383")
         if ("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
             set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-alias")
             set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-alias")
@@ -580,21 +611,30 @@ else ()
     else()
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unknown-pragmas")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unknown-pragmas")
-        if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang") 
+        if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU") 
             if ("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
                 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Ofast -fstrict-aliasing")
                 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast -fstrict-aliasing")
-            elseif ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
-                set(CLANG_SANITIZE "" CACHE STRING "What should be sanitized by Clang for a Debug build? (Adress, Thread, Memory or leave empty)")
+            endif()
+            if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" AND NOT "${CMAKE_CXX_COMPILER_VERSION}" VERSION_LESS "4.8")) 
+                set(CLANG_SANITIZE "" CACHE STRING "What should be sanitized by Clang/GCC for a Debug build? (Adress, Thread, Memory, Undefined or leave empty)")
                 if ("${CLANG_SANITIZE}" STREQUAL "Address")
-                    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address")
-                    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
+                    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -fsanitize=address -fno-omit-frame-pointer")
+                    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -fsanitize=address -fno-omit-frame-pointer") 
                 elseif ("${CLANG_SANITIZE}" STREQUAL "Thread")
-                    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=thread")
-                    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=thread")
+                    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=thread -pie")
+                    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=thread -pie")
                 elseif ("${CLANG_SANITIZE}" STREQUAL "Memory")
-                    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=memory -fno-omit-frame-pointer")
-                    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=memory -fno-omit-frame-pointer")
+                    if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+                      set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=memory -fno-omit-frame-pointer")
+                      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=memory -fno-omit-frame-pointer")
+                    else()
+                      set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=leak -fno-omit-frame-pointer")
+                      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=leak -fno-omit-frame-pointer")
+                    endif()
+                elseif ("${CLANG_SANITIZE}" STREQUAL "Undefined")
+                    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=undefined")
+                    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=undefined")
                 endif()
             endif()
         endif()
@@ -616,18 +656,22 @@ if (BUILD_MIC)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mmic")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmic")
 else()
-    if (NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" AND NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Cray")
-        AutodetectHostArchitecture()
-        OptimizeForArchitecture()
-        if (AVX_FOUND)
-            set(GHOST_HAVE_AVX 1)
-        endif()
-        if (SSE2_FOUND OR SSE3_FOUND OR SSE4_1_FOUND OR SSE4_2_FOUND OR SSE4a_FOUND)
-            set(GHOST_HAVE_SSE 1)
-        endif()
+    AutodetectHostArchitecture()
+    if (USE_AVX)
+        set(GHOST_HAVE_AVX 1 CACHE BOOL "Generate AVX kernels")
+    endif()
+    if (USE_SSE2 OR USE_SSE3 OR USE_SSE4_1 OR USE_SSE4_2 OR USE_SSE4a)
+        set(GHOST_HAVE_SSE 1 CACHE BOOL "Generate SSE kernels")
+    endif()
 
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ARCH_FLAGS}")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ARCH_FLAGS}")
+    if (OPTIMIZE_HOSTARCH)
+        if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+            set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native")
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
+        elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
+            set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -xHost")
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -xHost")
+        endif()
     endif()
 endif()
 
@@ -643,10 +687,10 @@ configure_file(${PROJECT_SOURCE_DIR}/ghost.pc.in ${PROJECT_BINARY_DIR}/ghost.pc 
 configure_file(${PROJECT_SOURCE_DIR}/ghost-config.cmake.in ${PROJECT_BINARY_DIR}/ghost-config.cmake @ONLY)
 configure_file(${PROJECT_SOURCE_DIR}/ghost-config-version.cmake.in ${PROJECT_BINARY_DIR}/ghost-config-version.cmake @ONLY)
 
-if (${LIBTYPE} STREQUAL "STATIC")
-    install(TARGETS ghost EXPORT ghost-targets ARCHIVE DESTINATION lib/ghost)
-elseif (${LIBTYPE} STREQUAL "SHARED")
+if (${BUILD_SHARED_LIBS})
     install(TARGETS ghost EXPORT ghost-targets LIBRARY DESTINATION lib/ghost)
+else ()
+    install(TARGETS ghost EXPORT ghost-targets ARCHIVE DESTINATION lib/ghost)
 endif()
 install(FILES ${PROJECT_BINARY_DIR}/ghost-config.cmake DESTINATION lib/ghost)
 install(FILES ${PROJECT_BINARY_DIR}/ghost-config-version.cmake DESTINATION lib/ghost)
@@ -674,7 +718,7 @@ if (DOXYGEN_FOUND)
             OUTPUT ${PROJECT_BINARY_DIR}/doc/html/index.html 
             DEPENDS ${HEADERS} ${DOCFILES}
             COMMAND ${DOXYGEN_EXECUTABLE} ${PROJECT_BINARY_DIR}/doxygen/Doxyfile && 
-            cp ${PROJECT_SOURCE_DIR}/contrib/ghost_logo.svg ${PROJECT_BINARY_DIR}/doc/html && 
+            cp ${PROJECT_SOURCE_DIR}/contrib/ghost_logo.png ${PROJECT_BINARY_DIR}/doc/html && 
             rsync -a ${PROJECT_BINARY_DIR}/doc/html/. ${DOC_INSTALL_PREFIX} && 
             find ${DOC_INSTALL_PREFIX} -type d -exec chmod 755 {} + &&
             find ${DOC_INSTALL_PREFIX} -type f -exec chmod 644 {} +
@@ -684,7 +728,8 @@ if (DOXYGEN_FOUND)
         add_custom_command(
             OUTPUT ${PROJECT_BINARY_DIR}/doc/html/index.html 
             DEPENDS ${SOURCES} ${HEADERS} ${DOCFILES} 
-            COMMAND ${DOXYGEN_EXECUTABLE} ${PROJECT_BINARY_DIR}/doxygen/Doxyfile && cp ${PROJECT_SOURCE_DIR}/contrib/ghost_logo.svg ${PROJECT_BINARY_DIR}/doc/html 
+            COMMAND ${DOXYGEN_EXECUTABLE} ${PROJECT_BINARY_DIR}/doxygen/Doxyfile && 
+            cp ${PROJECT_SOURCE_DIR}/contrib/ghost_logo.png ${PROJECT_BINARY_DIR}/doc/html 
             )
     endif()
 
@@ -694,5 +739,5 @@ endif()
 add_subdirectory(${PROJECT_SOURCE_DIR}/test)
 enable_testing()
 add_test(NAME simple WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/test COMMAND simple)
-add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} DEPENDS simple)
+add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} --force-new-ctest-process --output-on-failure DEPENDS simple)
 

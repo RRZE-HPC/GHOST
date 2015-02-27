@@ -200,7 +200,7 @@ struct ghost_sparsemat_traits_t {
 };
 
 #ifdef GHOST_HAVE_MPI
-#define GHOST_SCOTCH_STRAT_DEFAULT "n{ole=q{strat=g},ose=q{strat=g},osq=g}"
+#define GHOST_SCOTCH_STRAT_DEFAULT "n{ole=q{strat=g},ose=q{strat=g},osq=g,sep=m}"
 #else
 #define GHOST_SCOTCH_STRAT_DEFAULT "g"
 #endif
@@ -536,7 +536,7 @@ extern "C" {
     /**
      * @brief Obtain the global number of rows of a sparse matrix.
      
-     * @param[out] nnz Where to store the result.
+     * @param[out] nrows Where to store the result.
      * @param[in] mat The sparse matrix.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.

@@ -11,10 +11,10 @@
 #include "ghost/pumap.h"
 #include "ghost/omp.h"
 #include "ghost/rand.h"
-#include "ghost/sell.h"
-#include "ghost/tsmm.h"
-#include "ghost/tsmm_inplace.h"
-#include "ghost/tsmttsm.h"
+//#include "ghost/sell.h"
+//#include "ghost/tsmm.h"
+//#include "ghost/tsmm_inplace.h"
+//#include "ghost/tsmttsm.h"
 #include "ghost/instr.h"
 
 #include <hwloc.h>
@@ -149,13 +149,19 @@ ghost_error_t ghost_init(int argc, char **argv)
     ghost_machine_nnuma(&nnumanodes);
 
 #ifdef GHOST_HAVE_CUDA
-    ghost_cu_ndevice(&ncudadevs);
+    GHOST_CALL_RETURN(ghost_cu_ndevice(&ncudadevs));
 #endif
 
-    ghost_type_t ghost_type;
-    GHOST_CALL_RETURN(ghost_type_get(&ghost_type));
+    if (nnoderanks != nnumanodes+ncudadevs) {
+        PERFWARNING_LOG("The number of MPI processes (%d) on this node is not "
+                "optimal! Suggested number: %d (%d CUDA devices + %d NUMA "
+                "domains)",nnoderanks,nnumanodes+ncudadevs,ncudadevs,nnumanodes);
+    }
+
+    ghost_type_t settype;
+    GHOST_CALL_RETURN(ghost_type_get(&settype));
     
-    if (ghost_type == GHOST_TYPE_INVALID) {
+    if (settype == GHOST_TYPE_INVALID) {
         char *envtype = getenv("GHOST_TYPE");
         if (envtype) {
             if (!strncasecmp(envtype,"CUDA",4)) {
@@ -166,7 +172,8 @@ ghost_error_t ghost_init(int argc, char **argv)
         }
     }
 
-    if (ghost_type == GHOST_TYPE_INVALID) {
+    // type has been set by neither env nor API
+    if (settype == GHOST_TYPE_INVALID && ghost_type == GHOST_TYPE_INVALID) {
         if (noderank == 0) {
             ghost_type = GHOST_TYPE_WORK;
         } else if (noderank <= ncudadevs) {
@@ -261,19 +268,19 @@ ghost_error_t ghost_init(int argc, char **argv)
     int cudaDevice = 0;
 
     if (hwconfig.cudevice != GHOST_HWCONFIG_INVALID) {
-        ghost_cu_init(hwconfig.cudevice);
+        GHOST_CALL_RETURN(ghost_cu_init(hwconfig.cudevice));
     } else { // automatically assign a CUDA device
         for (i=0; i<nnoderanks; i++) {
             if (localTypes[i] == GHOST_TYPE_CUDA) {
                 if (i == noderank) {
                     hwconfig.cudevice = cudaDevice%ncudadevs;
-                    ghost_cu_init(hwconfig.cudevice);
+                    GHOST_CALL_RETURN(ghost_cu_init(hwconfig.cudevice));
                 }
                 cudaDevice++;
             }
         }
     }
-    ghost_hwconfig_set(hwconfig);
+    GHOST_CALL_RETURN(ghost_hwconfig_set(hwconfig));
 
 
     // CUDA ranks have a physical core
@@ -418,9 +425,9 @@ ghost_error_t ghost_init(int argc, char **argv)
     hwloc_bitmap_free(mycpuset); mycpuset = NULL; 
     hwloc_bitmap_free(globcpuset); globcpuset = NULL;
 
-    ghost_tsmm_kernelmap_generate();
-    ghost_tsmm_inplace_kernelmap_generate();
-    ghost_tsmttsm_kernelmap_generate();
+//    ghost_tsmm_kernelmap_generate();
+//    ghost_tsmm_inplace_kernelmap_generate();
+//    ghost_tsmttsm_kernelmap_generate();
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_PREPROCESS);
     return GHOST_SUCCESS;
 }
@@ -440,6 +447,15 @@ ghost_error_t ghost_finalize()
 
 #ifdef GHOST_HAVE_INSTR_LIKWID
     LIKWID_MARKER_CLOSE;
+#endif
+    
+#ifdef GHOST_HAVE_INSTR_TIMING
+#if GHOST_VERBOSITY
+    char *str;
+    ghost_timing_summarystring(&str);
+    INFO_LOG("\n%s",str);
+    free(str);
+#endif
 #endif
 
     ghost_mpi_datatypes_destroy();
@@ -540,7 +556,7 @@ ghost_error_t ghost_barrier()
     ghost_type_t type;
     ghost_type_get(&type);
     if (type == GHOST_TYPE_CUDA) {
-        CUDA_CALL_RETURN(ghost_cu_barrier());
+        GHOST_CALL_RETURN(ghost_cu_barrier());
     }
 #endif
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_COMMUNICATION);
