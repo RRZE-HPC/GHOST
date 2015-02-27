@@ -926,7 +926,6 @@ static ghost_error_t vec_rm_compress(ghost_densemat_t *vec)
     }
     if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
-        ghost_lidx_t v,i,r,j;
 
         char *cu_val;
         GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_val,vec->traits.nrowspadded*vec->traits.ncolspadded*vec->elSize));

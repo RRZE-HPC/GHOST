@@ -54,7 +54,9 @@ ghost_error_t ghost_sellspmv__a_plain_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t
                     
             memset(tmp,0,sizeof(tmp));
             for (j=0; j<SELL(mat)->chunkLen[c]; j++) { // loop inside chunk
+#if NVECS > 1
 #pragma simd
+#endif
                 for (v=0; v<NVECS; v++) {
 #pragma unroll_and_jam
                     for (r=0; r<CHUNKHEIGHT; r++) {
@@ -71,43 +73,57 @@ ghost_error_t ghost_sellspmv__a_plain_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t
                 double *lrow = ((double *)(res->val))+res->stride*row;
                 double *rrow = rhsval+invec->stride*row;
                 if ((spmvmOptions & GHOST_SPMV_SHIFT) && shift) {
+#if NVECS > 1
 #pragma simd
+#endif
                     for (v=0; v<NVECS; v++) {
                         tmp[r][v] = tmp[r][v]-shift[0]*rrow[v];
                     }
                 }
                 if ((spmvmOptions & GHOST_SPMV_VSHIFT) && shift) {
+#if NVECS > 1
 #pragma simd
+#endif
                     for (v=0; v<NVECS; v++) {
                         tmp[r][v] = tmp[r][v]-shift[v]*rrow[v];
                     }
                 }
                 if (spmvmOptions & GHOST_SPMV_SCALE) {
+#if NVECS > 1
 #pragma simd
+#endif
                     for (v=0; v<NVECS; v++) {
                         tmp[r][v] = tmp[r][v]*scale;
                     }
                 }
                 if (spmvmOptions & GHOST_SPMV_AXPY) {
+#if NVECS > 1
 #pragma simd
+#endif
                     for (v=0; v<NVECS; v++) {
                         lrow[v] += tmp[r][v];
                     }
                 } else if (spmvmOptions & GHOST_SPMV_AXPBY) {
+#if NVECS > 1
 #pragma simd
+#endif
                     for (v=0; v<NVECS; v++) {
                         lrow[v] = beta*lrow[v] + tmp[r][v];
                     }
                 } else {
 #pragma vector nontemporal
+#if NVECS > 1
 #pragma simd
+#endif
                     for (v=0; v<NVECS; v++) {
                         lrow[v] = tmp[r][v];
                     }
                 }
                     
                 if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
+#if NVECS > 1
 #pragma simd
+#endif
                     for (v=0; v<NVECS; v++) {
                         partsums[((pad+3*res->traits.ncols)*tid)+3*v+0] += 
                             lrow[v]*lrow[v];
