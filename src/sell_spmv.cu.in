@@ -861,9 +861,6 @@ static ghost_error_t ghost_cu_sell_spmv_tmpl(ghost_sparsemat_t *mat, ghost_dense
     ghost_cu_deviceprop_t prop;
     GHOST_CALL_RETURN(ghost_cu_deviceprop(&prop));
         
-    if (flags & GHOST_SPMV_DOT_ANY) {
-        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
-    }
        
     GHOST_INSTR_START("spmv_cuda")
     if (rhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
@@ -871,6 +868,9 @@ static ghost_error_t ghost_cu_sell_spmv_tmpl(ghost_sparsemat_t *mat, ghost_dense
         block.y = MIN(MAX_COLS_PER_BLOCK,rhs->traits.ncols);
         grid.x = (int)ceil(mat->nrowsPadded/(double)block.x);
         grid.y = (int)(ceil(rhs->traits.ncols/(double)MAX_COLS_PER_BLOCK));
+        if (flags & GHOST_SPMV_DOT_ANY) {
+            GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
+        }
         size_t reqSmem = 0;
         if (flags & GHOST_SPMV_DOT_ANY) {
             reqSmem = sizeof(v_dt_device)*32*block.y;
@@ -886,6 +886,9 @@ static ghost_error_t ghost_cu_sell_spmv_tmpl(ghost_sparsemat_t *mat, ghost_dense
         block.y = SELL_CUDA_THREADSPERBLOCK/block.x;
         grid.x = (int)ceil(mat->nrows/((double)block.y*block.x/rhs->traits.ncols));
         grid.y = (int)(ceil(rhs->traits.ncols/(double)MAX_COLS_PER_BLOCK));
+        if (flags & GHOST_SPMV_DOT_ANY) {
+            GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
+        }
         size_t reqSmem = 0;
         if (prop.sharedMemPerBlock < reqSmem) {
             WARNING_LOG("Not enough shared memory available! CUDA kernel will not execute!");
@@ -907,6 +910,9 @@ static ghost_error_t ghost_cu_sell_spmv_tmpl(ghost_sparsemat_t *mat, ghost_dense
         block.y = 1;
         grid.x = (int)ceil(mat->nrows/((double)block.y*block.x/(double)rhs->traits.ncols));
         grid.y = 1;
+        if (flags & GHOST_SPMV_DOT_ANY) {
+            GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
+        }
         size_t reqSmem = 0;
         if ((flags & GHOST_SPMV_DOT_ANY) && (SELL_CUDA_THREADSPERBLOCK/rhs->traits.ncols > 32)) {
             reqSmem = sizeof(v_dt_device)*32;
