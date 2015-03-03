@@ -645,6 +645,7 @@ out:
 
 extern "C" ghost_error_t ghost_densemat_rm_cu_fromScalar(ghost_densemat_t *vec, void *a)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     ghost_error_t ret = GHOST_SUCCESS;
     ghost_densemat_rm_malloc(vec);
     
@@ -698,11 +699,13 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_fromScalar(ghost_densemat_t *vec, 
     goto out;
 err:
 out:
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
     return ret;
 }
 
 extern "C" ghost_error_t ghost_densemat_rm_cu_fromRand(ghost_densemat_t *vec)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     ghost_error_t ret = GHOST_SUCCESS;
 
     ghost_densemat_t *onevec;
@@ -777,6 +780,7 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_fromRand(ghost_densemat_t *vec)
     goto out;
 err:
 out:
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
     CURAND_CALL_RETURN(curandDestroyGenerator(gen));
     onevec->destroy(onevec);
 
