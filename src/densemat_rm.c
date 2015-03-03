@@ -1007,6 +1007,17 @@ static ghost_error_t densemat_rm_halocommInit(ghost_densemat_t *vec, ghost_dense
                 }
             }
     }
+#ifdef GHOST_HAVE_CUDA
+    if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+        GHOST_INSTR_START("downloadcomm->work");
+#ifdef GHOST_HAVE_TRACK_DATATRANSFERS
+        ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_IN,GHOST_DATATRANSFER_RANK_GPU,vec->traits.ncols*comm->acc_dues*vec->elSize);
+
+#endif
+        ghost_cu_download(comm->work,comm->cu_work,vec->traits.ncols*comm->acc_dues*vec->elSize);
+        GHOST_INSTR_STOP("downloadcomm->work");
+    }
+#endif
     
 
     goto out;
