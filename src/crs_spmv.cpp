@@ -140,6 +140,7 @@ static ghost_error_t ghost_crs_spmv_plain_rm_selector(ghost_sparsemat_t *mat,
 template<typename m_t, typename v_t, bool scatteredvecs> 
 static ghost_error_t ghost_crs_spmv_plain_cm(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options, va_list argp)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     ghost_crs_t *cr = CR(mat);
     v_t *rhsv = NULL;
     v_t *lhsv = NULL;
@@ -232,6 +233,7 @@ static ghost_error_t ghost_crs_spmv_plain_cm(ghost_sparsemat_t *mat, ghost_dense
         }
         free(partsums);
     }
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     return GHOST_SUCCESS;
 }
     
