@@ -452,10 +452,10 @@ ghost_error_t ghost_finalize()
     
 #ifdef GHOST_HAVE_INSTR_TIMING
 #if GHOST_VERBOSITY
-    char *str;
-    ghost_timing_summarystring(&str);
-    INFO_LOG("\n%s",str);
-    free(str);
+//    char *str;
+//    ghost_timing_summarystring(&str);
+//    INFO_LOG("\n%s",str);
+//    free(str);
 #endif
 #endif
 
