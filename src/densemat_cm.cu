@@ -352,8 +352,8 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_dotprod(ghost_densemat_t *vec, voi
     ghost_lidx_t v;
     for (v=0; v<veccompact->traits.ncols; v++)
     {
-        char *v1 = &((char *)(veccompact->cu_val))[v*veccompact->stride*sizeofdt];
-        char *v2 = &((char *)(vec2compact->cu_val))[v*vec2compact->stride*sizeofdt];
+        char *v1 = veccompact->cu_val;
+        char *v2 = vec2compact->cu_val;
         if (vec->traits.datatype & GHOST_DT_COMPLEX)
         {
             if (vec->traits.datatype & GHOST_DT_DOUBLE)
