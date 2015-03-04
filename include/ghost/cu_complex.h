@@ -33,13 +33,13 @@ __device__ __host__ inline void one(T &val)
 template<>
 __device__  __host__ inline void one<cuFloatComplex>(cuFloatComplex &val)
 {
-    val = make_cuFloatComplex(1.,1.);
+    val = make_cuFloatComplex(1.,0.);
 }
 
 template<>
 __device__  __host__ inline void one<cuDoubleComplex>(cuDoubleComplex &val)
 {
-    val = make_cuDoubleComplex(1.,1.);
+    val = make_cuDoubleComplex(1.,0.);
 }
 
 template<typename T, typename T_b>
