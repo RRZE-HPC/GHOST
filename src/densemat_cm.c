@@ -637,13 +637,13 @@ static ghost_error_t vec_cm_fromFunc(ghost_densemat_t *vec, void (*fp)(ghost_gid
     GHOST_CALL_RETURN(ghost_densemat_cm_malloc(vec));
     DEBUG_LOG(1,"Filling vector via function");
 
-    if (vec->traits.location == GHOST_LOCATION_HOSTDEVICE) { // vector is stored _at least_ at host
+    if (vec->traits.location == GHOST_LOCATION_HOST) { // vector is stored on host
         DENSEMAT_ITER(vec,fp(offset+row,col,valptr));
-        vec->upload(vec);
     } else {
+        INFO_LOG("Need to create dummy HOST densemat!");
         ghost_densemat_t *hostVec;
         ghost_densemat_traits_t htraits = vec->traits;
-        htraits.location = GHOST_LOCATION_HOSTDEVICE;
+        htraits.location = GHOST_LOCATION_HOST;
         GHOST_CALL_RETURN(ghost_densemat_create(&hostVec,vec->context,htraits));
         GHOST_CALL_RETURN(hostVec->fromFunc(hostVec,fp));
         GHOST_CALL_RETURN(vec->fromVec(vec,hostVec,0,0));
