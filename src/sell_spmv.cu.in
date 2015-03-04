@@ -959,7 +959,7 @@ static ghost_error_t ghost_cu_sell_spmv_tmpl(ghost_sparsemat_t *mat, ghost_dense
         memset(localdot,0,rhs->traits.ncols*3*sizeof(v_dt_host));
         lhs->dot(lhs,&localdot[0],lhs);
         lhs->dot(lhs,&localdot[rhs->traits.ncols],rhs);
-        lhs->dot(rhs,&localdot[2*rhs->traits.ncols],rhs);
+        rhs->dot(rhs,&localdot[2*rhs->traits.ncols],rhs);
         GHOST_INSTR_STOP("spmv_cuda_dot")
 #endif
     }
