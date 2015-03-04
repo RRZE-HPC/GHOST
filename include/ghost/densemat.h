@@ -25,6 +25,10 @@
     if (vec1->traits.storage != vec2->traits.storage) {\
         ERROR_LOG("Storage orders do not match!");\
         return GHOST_ERR_INVALID_ARG;\
+    }\
+    if (vec1->traits.location != vec2->traits.location) {\
+        ERROR_LOG("Locations do not match!");\
+        return GHOST_ERR_INVALID_ARG;\
     }
 
 
@@ -40,14 +44,6 @@ typedef enum {
      * densemat to a SpMV.
      */
     GHOST_DENSEMAT_NO_HALO   = 1,
-    /**
-     * @brief Store densemat on host.
-     */
-    GHOST_DENSEMAT_HOST      = 4,
-    /**
-     * @brief Store densemat on device (accelerator, GPU).
-     */
-    GHOST_DENSEMAT_DEVICE    = 8,
     /**
      * @brief The densemat is a view of another densemat.
      */
@@ -196,6 +192,10 @@ typedef struct
      * @brief The data type.
      */
     ghost_datatype_t datatype;
+    /**
+     * @brief Location of the densemat.
+     */
+    ghost_location_t location;
 }
 ghost_densemat_traits_t;
 

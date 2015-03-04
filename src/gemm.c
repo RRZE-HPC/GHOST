@@ -151,8 +151,8 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
         printf("\nv\n%s\n%s\nw\n%s\n%s\nx\n%s\n%s\n\n",vstr,vvstr,wstr,wvstr,xstr,xvstr);
         WARNING_LOG("GEMM %dx%d * %dx%d = %dx%d",*m,*k,*k,*n,*m,*n);
         WARNING_LOG("%s %s",transv,transw);*/
-    if (v->traits.flags & w->traits.flags & x->traits.flags & GHOST_DENSEMAT_DEVICE)
-    {
+    if ((v->traits.location == w->traits.location) && (v->traits.location ==  x->traits.location) && 
+            (v->traits.location == GHOST_LOCATION_DEVICE)) {
 #ifdef GHOST_HAVE_CUDA
         cublasHandle_t ghost_cublas_handle;
         ghost_blas_idx_t culdv,culdw,culdx;
@@ -238,8 +238,8 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
         }
 #endif
     } else
-    if (v->traits.flags & w->traits.flags & x->traits.flags & GHOST_DENSEMAT_HOST)
-    {
+    if ((v->traits.location == w->traits.location) && (v->traits.location ==  x->traits.location) && 
+            (v->traits.location == GHOST_LOCATION_HOST)) {
         if (v->traits.datatype & GHOST_DT_COMPLEX) 
         {
             if (v->traits.datatype & GHOST_DT_DOUBLE) 
@@ -288,12 +288,10 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
         }
 
 
-        for (i=0; i<dima; ++i) 
-        {
+        for (i=0; i<dima; ++i) {
             int copied = 0;
             void *val = NULL;
-            if (x->traits.flags & GHOST_DENSEMAT_DEVICE)
-            {
+            if (x->traits.location == GHOST_LOCATION_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
                 size_t sizeofdt;
                 ghost_datatype_size(&sizeofdt,x->traits.datatype);
@@ -302,9 +300,7 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
                 ghost_cu_download(val, &x->cu_val[i*lda*sizeofdt], dimb*sizeofdt);
                 copied = 1;
 #endif
-            }
-            else if (x->traits.flags & GHOST_DENSEMAT_HOST)
-            {
+            } else if (x->traits.location & GHOST_LOCATION_HOST) {
                 val = x->val+i*x->stride*x->elSize;
             }
             ghost_mpi_op_t sumOp;
@@ -377,10 +373,8 @@ ghost_densemat_t *w_in, const char *transw, void *alpha, void *beta, int reduce,
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error_t ret = GHOST_SUCCESS;
     int donespecial = 0;
-       
-    int deviceflags = (v_in->traits.flags & GHOST_DENSEMAT_DEVICE) + (w_in->traits.flags & GHOST_DENSEMAT_DEVICE) + (x_in->traits.flags & GHOST_DENSEMAT_DEVICE);
-
-    if (deviceflags != 0 && deviceflags != (3*GHOST_DENSEMAT_DEVICE)) {
+      
+    if ((v_in->traits.location != w_in->traits.location) || (v_in->traits.location != x_in->traits.location)) { 
         ERROR_LOG("The storage of all densemats has to be uniform (host or device)!");
         return GHOST_ERR_INVALID_ARG;
     }
@@ -416,7 +410,7 @@ ghost_densemat_t *w_in, const char *transw, void *alpha, void *beta, int reduce,
         w = wc;
     }
     
-    if (!(v->traits.flags & GHOST_DENSEMAT_DEVICE) && !(flags & GHOST_GEMM_NOT_SPECIAL)) { 
+    if ((v->traits.location == GHOST_LOCATION_HOST) && !(flags & GHOST_GEMM_NOT_SPECIAL)) { 
         if (flags & GHOST_GEMM_KAHAN) {
             if (ghost_tsmttsm_kahan_valid(x,v,transv,w,transw,alpha,beta,reduce,0) == GHOST_SUCCESS) {
                 INFO_LOG("Transparently call special implementation Kahan-TSMTTSM");

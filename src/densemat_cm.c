@@ -50,7 +50,7 @@ ghost_error_t ghost_densemat_cm_setfuncs(ghost_densemat_t *vec)
 {
     ghost_error_t ret = GHOST_SUCCESS;
 
-    if (vec->traits.flags & GHOST_DENSEMAT_DEVICE)
+    if (vec->traits.location == GHOST_LOCATION_DEVICE)
     {
 #ifdef GHOST_HAVE_CUDA
         vec->dot = &ghost_densemat_cm_cu_dotprod;
@@ -64,7 +64,7 @@ ghost_error_t ghost_densemat_cm_setfuncs(ghost_densemat_t *vec)
         vec->fromRand = &ghost_densemat_cm_cu_fromRand;
 #endif
     }
-    else if (vec->traits.flags & GHOST_DENSEMAT_HOST)
+    else if (vec->traits.location == GHOST_LOCATION_HOST)
     {
         vec->dot = &ghost_densemat_cm_dotprod_selector;
         vec->vaxpy = &ghost_densemat_cm_vaxpy_selector;
@@ -109,7 +109,7 @@ ghost_error_t ghost_densemat_cm_setfuncs(ghost_densemat_t *vec)
     vec->uploadNonHalo = &vec_cm_uploadNonHalo;
     vec->downloadNonHalo = &vec_cm_downloadNonHalo;
 #ifdef GHOST_HAVE_CUDA
-    if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+    if (vec->traits.location == GHOST_LOCATION_DEVICE) {
         vec->cu_val = NULL;
     }
 #endif
@@ -119,9 +119,13 @@ ghost_error_t ghost_densemat_cm_setfuncs(ghost_densemat_t *vec)
 
 static ghost_error_t vec_cm_uploadHalo(ghost_densemat_t *vec)
 {
-    if (!((vec->traits.flags & GHOST_DENSEMAT_HOST) && 
-                (vec->traits.flags & GHOST_DENSEMAT_DEVICE))) {
+    if (vec->traits.location != GHOST_LOCATION_HOSTDEVICE) {
+        WARNING_LOG("Can only upload if densemat is stored on both host and device!");
         return GHOST_SUCCESS;
+    }
+    if (vec->traits.flags & GHOST_DENSEMAT_NO_HALO) {
+        ERROR_LOG("Cannot upload halo in NO_HALO densemat!");
+        return GHOST_ERR_INVALID_ARG;
     }
     if (DENSEMAT_COMPACT(vec)) {
         if (vec->traits.ncolsorig != vec->traits.ncols) {
@@ -158,9 +162,13 @@ static ghost_error_t vec_cm_uploadHalo(ghost_densemat_t *vec)
 
 static ghost_error_t vec_cm_downloadHalo(ghost_densemat_t *vec)
 {
-    if (!((vec->traits.flags & GHOST_DENSEMAT_HOST) && 
-                (vec->traits.flags & GHOST_DENSEMAT_DEVICE))) {
+    if (vec->traits.location != GHOST_LOCATION_HOSTDEVICE) {
+        WARNING_LOG("Can only upload if densemat is stored on both host and device!");
         return GHOST_SUCCESS;
+    }
+    if (vec->traits.flags & GHOST_DENSEMAT_NO_HALO) {
+        ERROR_LOG("Cannot download halo in NO_HALO densemat!");
+        return GHOST_ERR_INVALID_ARG;
     }
     if (DENSEMAT_COMPACT(vec)) {
         if (vec->traits.ncolsorig != vec->traits.ncols) {
@@ -197,8 +205,8 @@ static ghost_error_t vec_cm_downloadHalo(ghost_densemat_t *vec)
 
 static ghost_error_t vec_cm_uploadNonHalo(ghost_densemat_t *vec)
 {
-    if (!((vec->traits.flags & GHOST_DENSEMAT_HOST) && 
-                (vec->traits.flags & GHOST_DENSEMAT_DEVICE))) {
+    if (vec->traits.location != GHOST_LOCATION_HOSTDEVICE) {
+        WARNING_LOG("Can only upload if densemat is stored on both host and device!");
         return GHOST_SUCCESS;
     }
     if (DENSEMAT_COMPACT(vec)) {
@@ -228,8 +236,8 @@ static ghost_error_t vec_cm_uploadNonHalo(ghost_densemat_t *vec)
 
 static ghost_error_t vec_cm_downloadNonHalo(ghost_densemat_t *vec)
 {
-    if (!((vec->traits.flags & GHOST_DENSEMAT_HOST) && 
-                (vec->traits.flags & GHOST_DENSEMAT_DEVICE))) {
+    if (vec->traits.location != GHOST_LOCATION_HOSTDEVICE) {
+        WARNING_LOG("Can only upload if densemat is stored on both host and device!");
         return GHOST_SUCCESS;
     }
     if (DENSEMAT_COMPACT(vec)) {
@@ -260,14 +268,18 @@ static ghost_error_t vec_cm_downloadNonHalo(ghost_densemat_t *vec)
 static ghost_error_t vec_cm_upload(ghost_densemat_t *vec) 
 {
     GHOST_CALL_RETURN(vec->uploadNonHalo(vec));
-    GHOST_CALL_RETURN(vec->uploadHalo(vec));
+    if (!(vec->traits.flags & GHOST_DENSEMAT_NO_HALO)) {
+        GHOST_CALL_RETURN(vec->uploadHalo(vec));
+    }
     return GHOST_SUCCESS;
 }
 
 static ghost_error_t vec_cm_download(ghost_densemat_t *vec)
 {
     GHOST_CALL_RETURN(vec->downloadNonHalo(vec));
-    GHOST_CALL_RETURN(vec->downloadHalo(vec));
+    if (!(vec->traits.flags & GHOST_DENSEMAT_NO_HALO)) {
+        GHOST_CALL_RETURN(vec->downloadHalo(vec));
+    }
     return GHOST_SUCCESS;
 }
 
@@ -344,12 +356,12 @@ static ghost_error_t vec_cm_toFile(ghost_densemat_t *vec, char *path, bool singl
             for (v=0; v<vec->traits.ncols; v++) {
             char *val = NULL;
             int copied = 0;
-            if (vec->traits.flags & GHOST_DENSEMAT_HOST)
+            if (vec->traits.location == GHOST_LOCATION_HOST)
             {
                 vec->download(vec);
                 val = DENSEMAT_VAL(vec,0,v);
             }
-            else if (vec->traits.flags & GHOST_DENSEMAT_DEVICE)
+            else if (vec->traits.location == GHOST_LOCATION_DEVICE)
             {
 #ifdef GHOST_HAVE_CUDA
                 GHOST_CALL_RETURN(ghost_malloc((void **)&val,vec->traits.nrows*vec->elSize));
@@ -419,12 +431,12 @@ static ghost_error_t vec_cm_toFile(ghost_densemat_t *vec, char *path, bool singl
         for (v=0; v<vec->traits.ncols; v++) {
             char *val = NULL;
             int copied = 0;
-            if (vec->traits.flags & GHOST_DENSEMAT_HOST)
+            if (vec->traits.location == GHOST_LOCATION_HOST)
             {
                 vec->download(vec);
                 val = DENSEMAT_VAL(vec,0,v);
             }
-            else if (vec->traits.flags & GHOST_DENSEMAT_DEVICE)
+            else if (vec->traits.location == GHOST_LOCATION_DEVICE)
             {
 #ifdef GHOST_HAVE_CUDA
                 GHOST_CALL_RETURN(ghost_malloc((void **)&val,vec->traits.nrows*vec->elSize));
@@ -569,7 +581,7 @@ static ghost_error_t vec_cm_fromFile(ghost_densemat_t *vec, char *path, bool sin
     GHOST_SINGLETHREAD(DENSEMAT_ITER(vec,fread(valptr, vec->elSize, 1,filed)));
     /*int v;
     for (v=0; v<vec->traits.ncols; v++) {
-        if (vec->traits.flags & GHOST_DENSEMAT_HOST)
+        if (vec->traits.location == GHOST_LOCATION_HOST)
         {
             if ((ghost_lidx_t)(ret = fread(DENSEMAT_VAL(vec,0,v), vec->elSize, vec->traits.nrows,filed)) != vec->traits.nrows) {
                 ERROR_LOG("fread failed: %zu",ret);
@@ -578,7 +590,7 @@ static ghost_error_t vec_cm_fromFile(ghost_densemat_t *vec, char *path, bool sin
             }
             vec->upload(vec);
         }
-        else if (vec->traits.flags & GHOST_DENSEMAT_DEVICE)
+        else if (vec->traits.location == GHOST_LOCATION_DEVICE)
         {
 #ifdef GHOST_HAVE_CUDA
             char *val;
@@ -625,14 +637,13 @@ static ghost_error_t vec_cm_fromFunc(ghost_densemat_t *vec, void (*fp)(ghost_gid
     GHOST_CALL_RETURN(ghost_densemat_cm_malloc(vec));
     DEBUG_LOG(1,"Filling vector via function");
 
-    if (vec->traits.flags & GHOST_DENSEMAT_HOST) { // vector is stored _at least_ at host
+    if (vec->traits.location == GHOST_LOCATION_HOSTDEVICE) { // vector is stored _at least_ at host
         DENSEMAT_ITER(vec,fp(offset+row,col,valptr));
         vec->upload(vec);
     } else {
         ghost_densemat_t *hostVec;
         ghost_densemat_traits_t htraits = vec->traits;
-        htraits.flags &= ~(ghost_densemat_flags_t)GHOST_DENSEMAT_DEVICE;
-        htraits.flags |= (ghost_densemat_flags_t)GHOST_DENSEMAT_HOST;
+        htraits.location = GHOST_LOCATION_HOSTDEVICE;
         GHOST_CALL_RETURN(ghost_densemat_create(&hostVec,vec->context,htraits));
         GHOST_CALL_RETURN(hostVec->fromFunc(hostVec,fp));
         GHOST_CALL_RETURN(vec->fromVec(vec,hostVec,0,0));
@@ -765,7 +776,7 @@ static void ghost_freeVector( ghost_densemat_t* vec )
 {
     if (vec) {
         if (!(vec->traits.flags & GHOST_DENSEMAT_VIEW)) {
-            if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+            if (vec->traits.location == GHOST_LOCATION_DEVICE) {
                 ghost_cu_free(vec->cu_val);
                 ghost_cu_free_host(vec->val); vec->val = NULL;
             } else {
@@ -803,7 +814,7 @@ static ghost_error_t ghost_permuteVector( ghost_densemat_t* vec, ghost_permutati
         return GHOST_ERR_INVALID_ARG;
     }
 
-    if ((vec->traits.storage & GHOST_DENSEMAT_DEVICE) && !(vec->traits.storage & GHOST_DENSEMAT_HOST)) {
+    if (vec->traits.location == GHOST_LOCATION_DEVICE) {
         ERROR_LOG("Permutation of pure device vectors not yet implemented!");
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
@@ -813,7 +824,7 @@ static ghost_error_t ghost_permuteVector( ghost_densemat_t* vec, ghost_permutati
     if (permutation->scope == GHOST_PERMUTATION_GLOBAL && vec->traits.nrows != permutation->len) {
         traits = vec->traits;
         traits.nrows = vec->context->gnrows;
-        traits.flags = GHOST_DENSEMAT_HOST;
+        traits.location = GHOST_LOCATION_HOST;
         char zero[vec->elSize];
         memset(zero,0,vec->elSize);
 
@@ -905,11 +916,11 @@ static ghost_error_t vec_cm_compress(ghost_densemat_t *vec)
         return GHOST_SUCCESS;
     }
 
-    if (vec->traits.flags & GHOST_DENSEMAT_HOST) {
+    if (vec->traits.location == GHOST_LOCATION_HOST) {
         ghost_lidx_t v,i;
 
         char *val = NULL;
-        if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+        if (vec->traits.location == GHOST_LOCATION_DEVICE) {
             GHOST_CALL_RETURN(ghost_malloc_pinned((void **)&val,
                         (size_t)vec->traits.ncolspadded*vec->traits.nrowspadded*
                         vec->elSize));
@@ -944,7 +955,7 @@ static ghost_error_t vec_cm_compress(ghost_densemat_t *vec)
             vec->val[v] = &val[(v*vec->traits.nrowspadded)*vec->elSize];
         }*/
     }
-    if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+    if (vec->traits.location == GHOST_LOCATION_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
 
         char *cu_val;
@@ -984,13 +995,14 @@ static ghost_error_t densemat_cm_halocommInit(ghost_densemat_t *vec, ghost_dense
     
     GHOST_CALL_GOTO(ghost_malloc((void **)&comm->tmprecv,nprocs*sizeof(char *)),err,ret);
 
-    if (vec->traits.ncols > 1) {
+    if ((vec->traits.ncols > 1) || (vec->traits.location == GHOST_LOCATION_DEVICE)) {
         GHOST_CALL_GOTO(ghost_malloc((void **)&comm->tmprecv_mem,vec->traits.ncols*vec->elSize*comm->acc_wishes),err,ret);
 
         for (from_PE=0; from_PE<nprocs; from_PE++){
             comm->tmprecv[from_PE] = &comm->tmprecv_mem[comm->wishptr[from_PE]*vec->traits.ncols*vec->elSize];
         }
     } else {
+
         for (from_PE=0; from_PE<nprocs; from_PE++){
             comm->tmprecv[from_PE] = &vec->val[vec->context->hput_pos[from_PE]*vec->elSize];
         }
@@ -1000,11 +1012,11 @@ static ghost_error_t densemat_cm_halocommInit(ghost_densemat_t *vec, ghost_dense
     
     if (permutation && permutation->scope == GHOST_PERMUTATION_LOCAL) {
 #ifdef GHOST_HAVE_CUDA
-        if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+        if (vec->traits.location == GHOST_LOCATION_DEVICE) {
             ghost_densemat_cm_cu_communicationassembly(comm->cu_work,comm->dueptr,vec,(ghost_lidx_t *)permutation->cu_perm);
         } else
 #endif
-            if (vec->traits.flags & GHOST_DENSEMAT_HOST) {
+            if (vec->traits.location == GHOST_LOCATION_HOST) {
                 ghost_gidx_t c;
 #pragma omp parallel private(to_PE,i,c)
                 for (to_PE=0 ; to_PE<nprocs ; to_PE++){
@@ -1019,11 +1031,11 @@ static ghost_error_t densemat_cm_halocommInit(ghost_densemat_t *vec, ghost_dense
             }
     } else {
 #ifdef GHOST_HAVE_CUDA
-        if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+        if (vec->traits.location == GHOST_LOCATION_DEVICE) {
             ghost_densemat_cm_cu_communicationassembly(comm->cu_work,comm->dueptr,vec,NULL);
         } else
 #endif
-            if (vec->traits.flags & GHOST_DENSEMAT_HOST) {
+            if (vec->traits.location == GHOST_LOCATION_HOST) {
                 ghost_gidx_t c;
 #pragma omp parallel private(to_PE,i,c)
                 for (to_PE=0 ; to_PE<nprocs ; to_PE++){
@@ -1037,7 +1049,7 @@ static ghost_error_t densemat_cm_halocommInit(ghost_densemat_t *vec, ghost_dense
             }
     }
 #ifdef GHOST_HAVE_CUDA
-    if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+    if (vec->traits.location == GHOST_LOCATION_DEVICE) {
         GHOST_INSTR_START("downloadcomm->work");
 #ifdef GHOST_HAVE_TRACK_DATATRANSFERS
         ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_IN,GHOST_DATATRANSFER_RANK_GPU,vec->traits.ncols*comm->acc_dues*vec->elSize);
@@ -1076,7 +1088,11 @@ static ghost_error_t densemat_cm_halocommFinalize(ghost_densemat_t *vec, ghost_d
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, vec->context->mpicomm),err,ret);
 
     ghost_densemat_halocommFinalize_common(comm);
-    if (vec->traits.ncols > 1) {
+    if ((vec->traits.ncols > 1) && (vec->traits.location == GHOST_LOCATION_DEVICE)) {
+        ERROR_LOG("Re-order from col-major not yet implemented for device densemats!");
+        return GHOST_ERR_NOT_IMPLEMENTED;
+    }
+    if ((vec->traits.ncols > 1) && (vec->traits.location == GHOST_LOCATION_HOST)) {
         GHOST_INSTR_START("re-order from col-major");
         for (from_PE=0; from_PE<nprocs; from_PE++){
             for (i=0; i<vec->context->wishes[from_PE]; i++){
@@ -1089,17 +1105,17 @@ static ghost_error_t densemat_cm_halocommFinalize(ghost_densemat_t *vec, ghost_d
     }   
 
 #ifdef GHOST_HAVE_CUDA 
-    GHOST_INSTR_START("upload")
+    GHOST_INSTR_START("upload");
+    if (vec->traits.location == GHOST_LOCATION_DEVICE) {
 #ifdef GHOST_HAVE_TRACK_DATATRANSFERS
-        if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
-            ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_OUT,GHOST_DATATRANSFER_RANK_GPU,vec->context->halo_elements*vec->traits.ncols*vec->elSize);
-        }
+        ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_OUT,GHOST_DATATRANSFER_RANK_GPU,vec->context->halo_elements*vec->traits.ncols*vec->elSize);
 #endif
-    GHOST_CALL_GOTO(vec->uploadHalo(vec),err,ret);
-    GHOST_INSTR_STOP("upload")
+        ghost_cu_upload(DENSEMAT_CUVAL(vec,vec->traits.nrows,0),comm->tmprecv_mem,vec->traits.ncols*comm->acc_wishes*vec->elSize);
+    }
+    GHOST_INSTR_STOP("upload");
 #endif
 
-        if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+        if (vec->traits.location == GHOST_LOCATION_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
             ghost_cu_free(comm->cu_work);
             cudaFreeHost(comm->work); comm->work = NULL;

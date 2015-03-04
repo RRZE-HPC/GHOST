@@ -202,6 +202,26 @@ typedef enum {
     GHOST_DT_COMPLEX = 8
 } ghost_datatype_t;
 
+typedef enum {
+    /**
+     * @brief Default location. This is only a placeholder and the actual location has to be specified by GHOST.
+     */
+    GHOST_LOCATION_DEFAULT,
+    /**
+     * @brief Data is located on host.
+     */
+    GHOST_LOCATION_HOST,
+    /**
+     * @brief Data is located on device (accelerator, GPU).
+     */
+    GHOST_LOCATION_DEVICE,
+    /**
+     * @brief Data is located on host and device.
+     */
+    GHOST_LOCATION_HOSTDEVICE
+}
+ghost_location_t;
+
 #ifdef __cplusplus
 inline ghost_datatype_t operator|(const ghost_datatype_t &a, const ghost_datatype_t &b)
 {return static_cast<ghost_datatype_t>(static_cast<int>(a) | static_cast<int>(b));}

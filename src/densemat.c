@@ -35,6 +35,7 @@ const ghost_densemat_traits_t GHOST_DENSEMAT_TRAITS_INITIALIZER = {
     .ncolspadded = 0,
     .flags = GHOST_DENSEMAT_DEFAULT,
     .storage = GHOST_DENSEMAT_COLMAJOR,
+    .location = GHOST_LOCATION_DEFAULT,
     .datatype = (ghost_datatype_t)(GHOST_DT_DOUBLE|GHOST_DT_REAL)
 };
 
@@ -80,15 +81,15 @@ ghost_error_t ghost_densemat_create(ghost_densemat_t **vec, ghost_context_t *ctx
 
     DEBUG_LOG(1,"Initializing vector");
 
-    if (!((*vec)->traits.flags & (GHOST_DENSEMAT_HOST | GHOST_DENSEMAT_DEVICE)))
-    { // no placement specified
-        DEBUG_LOG(2,"Setting vector placement");
-        (*vec)->traits.flags |= (ghost_densemat_flags_t)GHOST_DENSEMAT_HOST;
+    if ((*vec)->traits.location == GHOST_LOCATION_DEFAULT) { // no placement specified
         ghost_type_t ghost_type;
         GHOST_CALL_RETURN(ghost_type_get(&ghost_type));
         if (ghost_type == GHOST_TYPE_CUDA) {
-            (*vec)->traits.flags |= (ghost_densemat_flags_t)GHOST_DENSEMAT_DEVICE;
+            (*vec)->traits.location = GHOST_LOCATION_DEVICE;
+        } else {
+            (*vec)->traits.location = GHOST_LOCATION_HOST;
         }
+
     }
 
     if ((*vec)->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
@@ -314,7 +315,7 @@ ghost_error_t ghost_densemat_info_string(char **str, ghost_densemat_t *densemat)
 
     }
    
-    ghost_line_string(str,"Location",NULL,"%s",densemat->traits.storage&GHOST_DENSEMAT_DEVICE?densemat->traits.flags&GHOST_DENSEMAT_HOST?"Device+Host":"Device":"Host");
+    ghost_line_string(str,"Location",NULL,"%s",densemat->traits.location==GHOST_LOCATION_DEVICE?"Device":densemat->traits.location==GHOST_LOCATION_HOST?"Host":"Undefined");
     ghost_line_string(str,"Storage order",NULL,"%s",ghost_densemat_storage_string(densemat));
     ghost_footer_string(str);
     
@@ -380,20 +381,14 @@ ghost_error_t ghost_densemat_halocommInit_common(ghost_densemat_t *vec, ghost_de
     }
     comm->acc_dues = comm->dueptr[nprocs];
 
-    if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+    if (vec->traits.location == GHOST_LOCATION_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
         CUDA_CALL_RETURN(cudaHostAlloc((void **)&comm->work,(size_t)vec->traits.ncols*comm->acc_dues*vec->elSize,cudaHostAllocDefault));
+        GHOST_CALL_GOTO(ghost_cu_malloc(&comm->cu_work,vec->traits.ncols*comm->acc_dues*vec->elSize),err,ret);
 #endif
     } else {
         GHOST_CALL_RETURN(ghost_malloc((void **)&comm->work,(size_t)vec->traits.ncols*comm->acc_dues*vec->elSize));
     }
-
-#ifdef GHOST_HAVE_CUDA
-    if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
-        GHOST_CALL_GOTO(ghost_cu_malloc(&comm->cu_work,vec->traits.ncols*comm->acc_dues*vec->elSize),err,ret);
-    }
-#endif
-
 
     goto out;
 err:
