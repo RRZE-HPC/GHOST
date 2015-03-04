@@ -53,16 +53,43 @@ static ghost_error_t ghost_cu_crsspmv_tmpl(ghost_sparsemat_t *mat, ghost_densema
 
     if (options & GHOST_SPMV_AXPY) {
         one<dt1>(beta);
-    } else {
+    } else if (!(options & GHOST_SPMV_AXPBY)) {
         zero<dt1>(beta);
     }
     
-    if (localdot || shift) {
-        WARNING_LOG("Localdot or shift are not NULL, something went wrong!");
-    } 
-
     CUSPARSE_CALL_RETURN(crskernel(cusparse_handle,CUSPARSE_OPERATION_NON_TRANSPOSE,mat->nrows,mat->ncols,mat->nnz,&scale,descr,(dt1 *)CR(mat)->cumat->val, CR(mat)->cumat->rpt, CR(mat)->cumat->col, (dt1 *)rhs->cu_val, &beta, (dt1 *)lhs->cu_val));
+    
+    if (options & (GHOST_SPMV_SHIFT|GHOST_SPMV_VSHIFT)) {
+        PERFWARNING_LOG("Shift will not be applied on-the-fly!");
+        dt2 minusshift[rhs->traits.ncols];
+        ghost_lidx_t col;
+        if (options & GHOST_SPMV_SHIFT) {
+            for (col=0; col<rhs->traits.ncols; col++) {
+                minusshift[col] = -1.*(*(dt2 *)&scale)*(*(dt2 *)shift);
+            }
+        } else {
+            for (col=0; col<rhs->traits.ncols; col++) {
+                minusshift[col] = -1.*(*(dt2 *)&scale)*(((dt2 *)shift)[col]);
+            }
+        }
+        lhs->vaxpy(lhs,rhs,minusshift);
+    }
 
+    if (options & GHOST_SPMV_DOT_ANY) {
+        PERFWARNING_LOG("Dot product computation will be not be done on-the-fly!");
+        memset(localdot,0,lhs->traits.ncols*3*sizeof(dt1));
+        if (options & GHOST_SPMV_DOT_YY) {
+            lhs->dot(lhs,&localdot[0],lhs);
+        }
+        if (options & GHOST_SPMV_DOT_XY) {
+            lhs->dot(lhs,&localdot[lhs->traits.ncols],rhs);
+        }
+        if (options & GHOST_SPMV_DOT_XX) {
+            rhs->dot(rhs,&localdot[2*lhs->traits.ncols],rhs);
+        }
+            
+    }
+    
     return GHOST_SUCCESS;
 }
     
@@ -88,12 +115,39 @@ static ghost_error_t ghost_cu_crsspmmv_cm_tmpl(ghost_sparsemat_t *mat, ghost_den
         zero<dt1>(beta);
     }
     
-    if (localdot || shift) {
-        WARNING_LOG("Localdot or shift are not NULL, something went wrong!");
-    } 
-
     crskernel(cusparse_handle,CUSPARSE_OPERATION_NON_TRANSPOSE,mat->nrows,rhs->traits.ncols,mat->ncols,mat->nnz,&scale,descr,(dt1 *)CR(mat)->cumat->val, CR(mat)->cumat->rpt, CR(mat)->cumat->col, (dt1 *)rhs->cu_val, rhs->stride, &beta, (dt1 *)lhs->cu_val, lhs->stride);
 
+    if (options & (GHOST_SPMV_SHIFT|GHOST_SPMV_VSHIFT)) {
+        PERFWARNING_LOG("Shift will not be applied on-the-fly!");
+        dt2 minusshift[rhs->traits.ncols];
+        ghost_lidx_t col;
+        if (options & GHOST_SPMV_SHIFT) {
+            for (col=0; col<rhs->traits.ncols; col++) {
+                minusshift[col] = -1.*(*(dt2 *)&scale)*(*(dt2 *)shift);
+            }
+        } else {
+            for (col=0; col<rhs->traits.ncols; col++) {
+                minusshift[col] = -1.*(*(dt2 *)&scale)*(((dt2 *)shift)[col]);
+            }
+        }
+        lhs->vaxpy(lhs,rhs,minusshift);
+    }
+
+    if (options & GHOST_SPMV_DOT_ANY) {
+        PERFWARNING_LOG("Dot product computation will be not be done on-the-fly!");
+        memset(localdot,0,lhs->traits.ncols*3*sizeof(dt1));
+        if (options & GHOST_SPMV_DOT_YY) {
+            lhs->dot(lhs,&localdot[0],lhs);
+        }
+        if (options & GHOST_SPMV_DOT_XY) {
+            lhs->dot(lhs,&localdot[lhs->traits.ncols],rhs);
+        }
+        if (options & GHOST_SPMV_DOT_XX) {
+            rhs->dot(rhs,&localdot[2*lhs->traits.ncols],rhs);
+        }
+            
+    }
+    
     return GHOST_SUCCESS;
 }
 
@@ -115,16 +169,43 @@ static ghost_error_t ghost_cu_crsspmmv_rm_tmpl(ghost_sparsemat_t *mat, ghost_den
 
     if (options & GHOST_SPMV_AXPY) {
         one<dt1>(beta);
-    } else {
+    } else if (!(options & GHOST_SPMV_AXPBY)) {
         zero<dt1>(beta);
     }
     
-    if (localdot || shift) {
-        WARNING_LOG("Localdot or shift are not NULL, something went wrong!");
-    } 
-
     CUSPARSE_CALL_RETURN(crskernel(cusparse_handle,CUSPARSE_OPERATION_NON_TRANSPOSE,CUSPARSE_OPERATION_TRANSPOSE,mat->nrows,rhs->traits.ncols,mat->ncols,mat->nnz,&scale,descr,(dt1 *)CR(mat)->cumat->val, CR(mat)->cumat->rpt, CR(mat)->cumat->col, (dt1 *)rhs->cu_val, rhs->stride, &beta, (dt1 *)lhs->cu_val,lhs->stride));
 
+    if (options & (GHOST_SPMV_SHIFT|GHOST_SPMV_VSHIFT)) {
+        PERFWARNING_LOG("Shift will not be applied on-the-fly!");
+        dt2 minusshift[rhs->traits.ncols];
+        ghost_lidx_t col;
+        if (options & GHOST_SPMV_SHIFT) {
+            for (col=0; col<rhs->traits.ncols; col++) {
+                minusshift[col] = -1.*(*(dt2 *)&scale)*(*(dt2 *)shift);
+            }
+        } else {
+            for (col=0; col<rhs->traits.ncols; col++) {
+                minusshift[col] = -1.*(*(dt2 *)&scale)*(((dt2 *)shift)[col]);
+            }
+        }
+        lhs->vaxpy(lhs,rhs,minusshift);
+    }
+    
+    if (options & GHOST_SPMV_DOT_ANY) {
+        PERFWARNING_LOG("Dot product computation will be not be done on-the-fly!");
+        memset(localdot,0,lhs->traits.ncols*3*sizeof(dt1));
+        if (options & GHOST_SPMV_DOT_YY) {
+            lhs->dot(lhs,&localdot[0],lhs);
+        }
+        if (options & GHOST_SPMV_DOT_XY) {
+            lhs->dot(lhs,&localdot[lhs->traits.ncols],rhs);
+        }
+        if (options & GHOST_SPMV_DOT_XX) {
+            rhs->dot(rhs,&localdot[2*lhs->traits.ncols],rhs);
+        }
+            
+    }
+    
     return GHOST_SUCCESS;
 }
 
@@ -138,17 +219,6 @@ ghost_error_t ghost_cu_crs_spmv_selector(ghost_sparsemat_t *mat, ghost_densemat_
         ret = GHOST_ERR_NOT_IMPLEMENTED;
         goto err;
     }
-    if (options & GHOST_SPMV_DOT_ANY) {
-        ERROR_LOG("Localdot not implemented!");
-        ret = GHOST_ERR_NOT_IMPLEMENTED;
-        goto err;
-    }
-    if (options & GHOST_SPMV_SHIFT) {
-        ERROR_LOG("Shift not implemented!");
-        ret = GHOST_ERR_NOT_IMPLEMENTED;
-        goto err;
-    }
-    
     if (lhs->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         INFO_LOG("Cloning (and compressing) lhs before operation");
         GHOST_CALL_GOTO(lhs->clone(lhs,&lhscompact,lhs->traits.nrows,0,lhs->traits.ncols,0),err,ret);
@@ -222,7 +292,7 @@ ghost_error_t ghost_cu_crs_spmv_selector(ghost_sparsemat_t *mat, ghost_densemat_
             }
         }
     }
-
+    
     goto out;
 err:
     ERROR_LOG("Error in CRS SpMV!");
