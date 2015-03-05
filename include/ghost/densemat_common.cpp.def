@@ -88,14 +88,25 @@ static ghost_error_t FUNCNAME(dotprod_tmpl(ghost_densemat_t *vec, void *res, gho
         
     GHOST_CALL_GOTO(ghost_malloc_align((void **)&partsums,nthreads*(vec->traits.ncols+padding)*sizeof(v_t),64),err,ret);
     memset(partsums,0,nthreads*(vec->traits.ncols+padding)*sizeof(v_t));
-    
+   
+    if (vec == vec2) { 
 #pragma omp parallel shared(partsums) 
-    {
-        int tid = ghost_omp_threadnum();
-        DENSEMAT_ITER2(vec,vec2,
-            partsums[(padding+vec->traits.ncols)*tid+col] += *(v_t *)valptr2 * 
-                conjugate((v_t *)valptr1));
+        {
+            int tid = ghost_omp_threadnum();
+            DENSEMAT_ITER(vec,
+                partsums[(padding+vec->traits.ncols)*tid+col] += *(v_t *)valptr * 
+                    conjugate((v_t *)valptr));
+        }
+    } else {
+#pragma omp parallel shared(partsums) 
+        {
+            int tid = ghost_omp_threadnum();
+            DENSEMAT_ITER2(vec,vec2,
+                partsums[(padding+vec->traits.ncols)*tid+col] += *(v_t *)valptr2 * 
+                    conjugate((v_t *)valptr1));
+        }
     }
+    
     ghost_lidx_t col;
     for (col=0; col<vec->traits.ncols; col++) {
         ((v_t *)res)[col] = 0.;
