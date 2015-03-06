@@ -11,6 +11,31 @@
 #endif
 #endif
 
+#ifdef GHOST_HAVE_MPI
+//! MPI_Allreduce for more than INT_MAX elements
+int MPI_Allreduce64_in_place ( void *buf, int64_t count,
+                      MPI_Datatype datatype, MPI_Op op, MPI_Comm comm )
+  {
+    int ierr;
+    int64_t i;
+    int sz;
+    ierr=MPI_Type_size(datatype,&sz);
+    if (ierr) return ierr;
+    int chunksize=count>INT_MAX? INT_MAX: (int)count;
+    for (i=0; i<count; i+=chunksize)
+    {
+      char *rbuf=(char*)buf+i*sz;
+      
+      int icount= i+chunksize>count? (count-i): chunksize;
+        ierr=MPI_Allreduce(MPI_IN_PLACE, (void*)rbuf, icount,
+                        datatype, op, comm);
+      if (ierr) return ierr;
+    }
+    return ierr;
+  }
+
+#endif
+
 ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSource, ghost_sparsemat_src_t srcType)
 {
 #ifndef GHOST_HAVE_SCOTCH
@@ -188,8 +213,12 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
 
     GHOST_INSTR_START("scotch_combineperm")
     // combine permutation vectors
+#ifdef GHOST_HAVE_LONGIDX_GLOBAL
+    // chunk-wise MPI_Allreduce, implementation above
+    MPI_CALL_GOTO(MPI_Allreduce64_in_place(mat->context->permutation->perm,mat->context->gnrows,ghost_mpi_dt_idx,MPI_MAX,mat->context->mpicomm),err,ret);
+#else
     MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,mat->context->permutation->perm,mat->context->gnrows,ghost_mpi_dt_idx,MPI_MAX,mat->context->mpicomm),err,ret);
-
+#endif
     // assemble inverse permutation
     for (i=0; i<mat->context->gnrows; i++) {
         mat->context->permutation->invPerm[mat->context->permutation->perm[i]] = i;
