@@ -31,17 +31,30 @@ ghost_error_t ghost_tsmm_inplace__plain_d_NCOLSIN_NCOLSOUT(ghost_densemat_t *x, 
     double tmp[NCOLSOUT];
     ghost_lidx_t i,j,s;
 
+    /* construct dense wval... we can safely copy it as it is small! */
+    double wtmp[NCOLSOUT][NCOLSIN];
+    for(s=0; s<NCOLSOUT; s++)
+    {
+      for(j=0; j<NCOLSIN; j++)
+      {
+        wtmp[s][j] = dalpha*wval[s*ldw+j];
+        if(s==j)
+          wtmp[s][j] += dbeta;
+      }
+    }
+
+
 #pragma omp parallel for private(j,s,tmp) schedule(runtime)
     for (i=0; i<n; i++) {
         for (s=0; s<NCOLSOUT; s++) {
-            tmp[s] = dbeta*xval[i*ldx+s];
+            tmp[s] = 0.;
         }
         for (s=0; s<NCOLSOUT; s++) {
 #if NCOLSIN > 1
 #pragma simd
 #endif
             for (j=0; j<NCOLSIN; j++) {
-                tmp[s] += dalpha*xval[i*ldx+j]*wval[s*ldw+j];
+                tmp[s] += xval[i*ldx+j]*wtmp[s][j];
             }
         }
         memcpy(&xval[i*ldx],tmp,NCOLSOUT*sizeof(double));
@@ -79,15 +92,27 @@ ghost_error_t ghost_tsmm_inplace__plain_d_NCOLSIN_x(ghost_densemat_t *x, ghost_d
     double tmp[ncolsout];
     ghost_lidx_t i,j,s;
 
+    /* construct dense wval... we can safely copy it as it is small! */
+    double wtmp[ncolsout][NCOLSIN];
+    for(s=0; s<ncolsout; s++)
+    {
+      for(j=0; j<NCOLSIN; j++)
+      {
+        wtmp[s][j] = dalpha*wval[s*ldw+j];
+        if(s==j)
+          wtmp[s][j] += dbeta;
+      }
+    }
+
 #pragma omp parallel for private(j,s,tmp) schedule(runtime)
     for (i=0; i<n; i++) {
         for (s=0; s<ncolsout; s++) {
-            tmp[s] = dbeta*xval[i*ldx+s];
+            tmp[s] = 0.;
 #if NCOLSIN > 1
 #pragma simd
 #endif
             for (j=0; j<NCOLSIN; j++) {
-                tmp[s] += dalpha*xval[i*ldx+j]*wval[s*ldw+j];
+                tmp[s] += xval[i*ldx+j]*wtmp[s][j];
             }
         }
         memcpy(&xval[i*ldx],tmp,x->traits.ncols*sizeof(double));
@@ -125,13 +150,26 @@ ghost_error_t ghost_tsmm_inplace__plain_d_x_NCOLSOUT(ghost_densemat_t *x, ghost_
     double tmp[NCOLSOUT];
     ghost_lidx_t i,j,s;
 
+    /* construct dense wval... we can safely copy it as it is small! */
+    double wtmp[NCOLSOUT][ncolsin];
+    for(s=0; s<NCOLSOUT; s++)
+    {
+      for(j=0; j<ncolsin; j++)
+      {
+        wtmp[s][j] = dalpha*wval[s*ldw+j];
+        if(s==j)
+          wtmp[s][j] += dbeta;
+      }
+    }
+
+
 #pragma omp parallel for private(j,s,tmp) schedule(runtime)
     for (i=0; i<n; i++) {
         for (s=0; s<NCOLSOUT; s++) {
-            tmp[s] = dbeta*xval[i*ldx+s];
+            tmp[s] = 0.;
 #pragma simd
             for (j=0; j<ncolsin; j++) {
-                tmp[s] += dalpha*xval[i*ldx+j]*wval[s*ldw+j];
+                tmp[s] += xval[i*ldx+j]*wtmp[s][j];
             }
         }
         memcpy(&xval[i*ldx],tmp,x->traits.ncols*sizeof(double));
@@ -166,6 +204,18 @@ ghost_error_t ghost_tsmm_inplace__plain_d_x_x(ghost_densemat_t *x, ghost_densema
     ghost_densemat_valptr(w,(void **)&wval);
     ghost_densemat_valptr(x,(void **)&xval);
 
+    /* construct dense wval... we can safely copy it as it is small! */
+    double wtmp[ncolsout][ncolsin];
+    for(ghost_lidx_t s=0; s<ncolsout; s++)
+    {
+      for(ghost_lidx_t j=0; j<ncolsin; j++)
+      {
+        wtmp[s][j] = dalpha*wval[s*ldw+j];
+        if(s==j)
+          wtmp[s][j] += dbeta;
+      }
+    }
+
 
 #pragma omp parallel 
     {
@@ -174,12 +224,12 @@ ghost_error_t ghost_tsmm_inplace__plain_d_x_x(ghost_densemat_t *x, ghost_densema
 #pragma omp for schedule(runtime)
         for (i=0; i<n; i++) {
             for (s=0; s<ncolsout; s++) {
-                tmp[s] = dbeta*xval[i*ldx+s];
+                tmp[s] = 0.;
 #pragma vector aligned
 #pragma ivdep
 #pragma simd
                 for (j=0; j<ncolsin; j++) {
-                    tmp[s] += dalpha*xval[i*ldx+j]*wval[s*ldw+j];
+                    tmp[s] += xval[i*ldx+j]*wtmp[s][j];
                 }
             }
             memcpy(&xval[i*ldx],tmp,x->traits.ncols*sizeof(double));
