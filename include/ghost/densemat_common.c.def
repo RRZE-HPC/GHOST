@@ -89,11 +89,11 @@ static ghost_error_t FUNCNAME(view(ghost_densemat_t *src, ghost_densemat_t **new
         GHOST_CALL_RETURN(ghost_bitmap_copy_indices((*new)->rowmask,&rowoffset,src->rowmask,roffsarray,nr));
         GHOST_CALL_RETURN(ghost_bitmap_copy_indices((*new)->colmask,&coloffset,src->colmask,coffsarray,nc));
         
-        (*new)->val = DENSEMAT_VAL(src,rowoffset,coloffset);
-        (*new)->cu_val = DENSEMAT_CUVAL(src,rowoffset,coloffset);
+        (*new)->val = DENSEMAT_VALPTR(src,rowoffset,coloffset);
+        (*new)->cu_val = DENSEMAT_CUVALPTR(src,rowoffset,coloffset);
     } else {
-        (*new)->val = DENSEMAT_VAL(src,roffs,coffs);
-        (*new)->cu_val = DENSEMAT_CUVAL(src,roffs,coffs);
+        (*new)->val = DENSEMAT_VALPTR(src,roffs,coffs);
+        (*new)->cu_val = DENSEMAT_CUVALPTR(src,roffs,coffs);
     }
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
@@ -156,8 +156,8 @@ static ghost_error_t FUNCNAME(viewCols(ghost_densemat_t *src, ghost_densemat_t *
         coloffset = coffs;
     }
         
-    (*new)->cu_val = DENSEMAT_CUVAL(src,0,coloffset);
-    (*new)->val = DENSEMAT_VAL(src,0,coloffset);
+    (*new)->cu_val = DENSEMAT_CUVALPTR(src,0,coloffset);
+    (*new)->val = DENSEMAT_VALPTR(src,0,coloffset);
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
     return GHOST_SUCCESS;
@@ -203,8 +203,8 @@ static ghost_error_t FUNCNAME(viewScatteredCols(ghost_densemat_t *src, ghost_den
         coloffset = coffs[0];
     }
     
-    (*new)->val = DENSEMAT_VAL(src,0,coloffset);
-    (*new)->cu_val = DENSEMAT_CUVAL(src,0,coloffset);
+    (*new)->val = DENSEMAT_VALPTR(src,0,coloffset);
+    (*new)->cu_val = DENSEMAT_CUVALPTR(src,0,coloffset);
     
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
     return GHOST_SUCCESS;
@@ -235,8 +235,8 @@ static ghost_error_t FUNCNAME(viewScatteredVec(ghost_densemat_t *src, ghost_dens
         GHOST_CALL_RETURN(ghost_bitmap_copy_indices((*new)->rowmask,&rowoffset,src->rowmask,roffs,nr));
         GHOST_CALL_RETURN(ghost_bitmap_copy_indices((*new)->colmask,&coloffset,src->colmask,coffs,nc));
         
-        (*new)->val = DENSEMAT_VAL(src,rowoffset,coloffset);
-        (*new)->cu_val = DENSEMAT_CUVAL(src,rowoffset,coloffset);
+        (*new)->val = DENSEMAT_VALPTR(src,rowoffset,coloffset);
+        (*new)->cu_val = DENSEMAT_CUVALPTR(src,rowoffset,coloffset);
     } else {
         for (i=0; i<nr; i++) {
             ghost_bitmap_set((*new)->rowmask,roffs[i]);
@@ -245,8 +245,8 @@ static ghost_error_t FUNCNAME(viewScatteredVec(ghost_densemat_t *src, ghost_dens
             ghost_bitmap_set((*new)->colmask,coffs[i]);
         }
         
-        (*new)->val = DENSEMAT_VAL(src,roffs[0],coffs[0]);
-        (*new)->cu_val = DENSEMAT_CUVAL(src,roffs[0],coffs[0]);
+        (*new)->val = DENSEMAT_VALPTR(src,roffs[0],coffs[0]);
+        (*new)->cu_val = DENSEMAT_CUVALPTR(src,roffs[0],coffs[0]);
     }
 
     return GHOST_SUCCESS;

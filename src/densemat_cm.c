@@ -132,14 +132,14 @@ static ghost_error_t vec_cm_uploadHalo(ghost_densemat_t *vec)
             ghost_lidx_t col;
             for (col=0; col<vec->traits.ncols; col++) {
                 GHOST_CALL_RETURN(ghost_cu_upload(
-                            DENSEMAT_CUVAL(vec,vec->traits.nrowsorig,col),
-                            DENSEMAT_VAL(vec,vec->traits.nrowsorig,col), 
+                            DENSEMAT_CUVALPTR(vec,vec->traits.nrowsorig,col),
+                            DENSEMAT_VALPTR(vec,vec->traits.nrowsorig,col), 
                             (vec->traits.nrowshalo-vec->traits.nrowsorig)*vec->elSize));
             }
         } else {
             GHOST_CALL_RETURN(ghost_cu_upload(
-                        DENSEMAT_CUVAL(vec,vec->traits.nrows,0),
-                        DENSEMAT_VAL(vec,vec->traits.nrows,0), 
+                        DENSEMAT_CUVALPTR(vec,vec->traits.nrows,0),
+                        DENSEMAT_VALPTR(vec,vec->traits.nrows,0), 
                         (vec->traits.nrowshalo-vec->traits.nrows)*
                         vec->traits.ncolspadded*vec->elSize));
         }
@@ -149,9 +149,9 @@ static ghost_error_t vec_cm_uploadHalo(ghost_densemat_t *vec)
         for (col=0; col<vec->traits.ncols; col++) {
             memcol = ghost_bitmap_next(vec->rowmask,memcol);
             GHOST_CALL_RETURN(ghost_cu_upload2d(
-                        DENSEMAT_CUVAL(vec,vec->traits.nrowsorig,memcol),
+                        DENSEMAT_CUVALPTR(vec,vec->traits.nrowsorig,memcol),
                         vec->traits.ncolspadded*vec->elSize,
-                        DENSEMAT_VAL(vec,vec->traits.nrows,memcol),
+                        DENSEMAT_VALPTR(vec,vec->traits.nrows,memcol),
                         vec->traits.ncolspadded*vec->elSize,vec->elSize,
                         vec->context->halo_elements));
         }
@@ -175,14 +175,14 @@ static ghost_error_t vec_cm_downloadHalo(ghost_densemat_t *vec)
             ghost_lidx_t col;
             for (col=0; col<vec->traits.ncols; col++) {
                 GHOST_CALL_RETURN(ghost_cu_download(
-                            DENSEMAT_VAL(vec,vec->traits.nrowsorig,col), 
-                            DENSEMAT_CUVAL(vec,vec->traits.nrowsorig,col),
+                            DENSEMAT_VALPTR(vec,vec->traits.nrowsorig,col), 
+                            DENSEMAT_CUVALPTR(vec,vec->traits.nrowsorig,col),
                             (vec->traits.nrowshalo-vec->traits.nrowsorig)*vec->elSize));
             }
         } else {
             GHOST_CALL_RETURN(ghost_cu_download(
-                        DENSEMAT_VAL(vec,vec->traits.nrows,0), 
-                        DENSEMAT_CUVAL(vec,vec->traits.nrows,0),
+                        DENSEMAT_VALPTR(vec,vec->traits.nrows,0), 
+                        DENSEMAT_CUVALPTR(vec,vec->traits.nrows,0),
                         (vec->traits.nrowshalo-vec->traits.nrows)*
                         vec->traits.ncolspadded*vec->elSize));
         }
@@ -192,9 +192,9 @@ static ghost_error_t vec_cm_downloadHalo(ghost_densemat_t *vec)
         for (col=0; col<vec->traits.ncols; col++) {
             memcol = ghost_bitmap_next(vec->rowmask,memcol);
             GHOST_CALL_RETURN(ghost_cu_download2d(
-                        DENSEMAT_VAL(vec,vec->traits.nrows,col),
+                        DENSEMAT_VALPTR(vec,vec->traits.nrows,col),
                         vec->traits.ncolspadded*vec->elSize,
-                        DENSEMAT_CUVAL(vec,vec->traits.nrowsorig,memcol),
+                        DENSEMAT_CUVALPTR(vec,vec->traits.nrowsorig,memcol),
                         vec->traits.ncolspadded*vec->elSize,
                         vec->elSize,vec->context->halo_elements));
         }
@@ -214,20 +214,20 @@ static ghost_error_t vec_cm_uploadNonHalo(ghost_densemat_t *vec)
             ghost_lidx_t col;
             for (col=0; col<vec->traits.ncols; col++) {
                 GHOST_CALL_RETURN(ghost_cu_upload(
-                            DENSEMAT_CUVAL(vec,0,col),
-                            DENSEMAT_VAL(vec,0,col), 
+                            DENSEMAT_CUVALPTR(vec,0,col),
+                            DENSEMAT_VALPTR(vec,0,col), 
                             (vec->traits.nrows)*vec->elSize));
             }
         } else {
             GHOST_CALL_RETURN(ghost_cu_upload(
-                        DENSEMAT_CUVAL(vec,0,0),
-                        DENSEMAT_VAL(vec,0,0), 
+                        DENSEMAT_CUVALPTR(vec,0,0),
+                        DENSEMAT_VALPTR(vec,0,0), 
                         vec->traits.nrowspadded*vec->traits.ncols*vec->elSize));
         }
     } else {
         DENSEMAT_ITER(vec,ghost_cu_upload(
-                    DENSEMAT_CUVAL(vec,memrow,memcol),
-                    DENSEMAT_VAL(vec,memrow,col),
+                    DENSEMAT_CUVALPTR(vec,memrow,memcol),
+                    DENSEMAT_VALPTR(vec,memrow,col),
                     vec->elSize));
     }
     
@@ -245,20 +245,20 @@ static ghost_error_t vec_cm_downloadNonHalo(ghost_densemat_t *vec)
             ghost_lidx_t col;
             for (col=0; col<vec->traits.ncols; col++) {
                 GHOST_CALL_RETURN(ghost_cu_download(
-                            DENSEMAT_VAL(vec,0,col), 
-                            DENSEMAT_CUVAL(vec,0,col),
+                            DENSEMAT_VALPTR(vec,0,col), 
+                            DENSEMAT_CUVALPTR(vec,0,col),
                             (vec->traits.nrows)*vec->elSize));
             }
         } else {
             GHOST_CALL_RETURN(ghost_cu_download(
-                        DENSEMAT_CUVAL(vec,0,0),
-                        DENSEMAT_VAL(vec,0,0), 
+                        DENSEMAT_CUVALPTR(vec,0,0),
+                        DENSEMAT_VALPTR(vec,0,0), 
                         vec->traits.nrowspadded*vec->traits.ncols*vec->elSize));
         }
     } else {
         DENSEMAT_ITER(vec,ghost_cu_download(
-                    DENSEMAT_CUVAL(vec,memrow,memcol),
-                    DENSEMAT_VAL(vec,memrow,col),
+                    DENSEMAT_CUVALPTR(vec,memrow,memcol),
+                    DENSEMAT_VALPTR(vec,memrow,col),
                     vec->elSize));
     }
     
@@ -296,7 +296,7 @@ static ghost_error_t vec_cm_equalize(ghost_densemat_t *vec, ghost_mpi_comm_t com
         ghost_lidx_t row,col;
         for (col=0; col<vec->traits.ncols; col++) {
             for (row=0; row<vec->traits.nrows; row++) {
-                MPI_CALL_RETURN(MPI_Bcast(DENSEMAT_VAL(vec,row,col),1,vecdt,root,comm));
+                MPI_CALL_RETURN(MPI_Bcast(DENSEMAT_VALPTR(vec,row,col),1,vecdt,root,comm));
             }
         }
     } else {
@@ -359,7 +359,7 @@ static ghost_error_t vec_cm_toFile(ghost_densemat_t *vec, char *path, bool singl
             if (vec->traits.location == GHOST_LOCATION_HOST)
             {
                 vec->download(vec);
-                val = DENSEMAT_VAL(vec,0,v);
+                val = DENSEMAT_VALPTR(vec,0,v);
             }
             else if (vec->traits.location == GHOST_LOCATION_DEVICE)
             {
@@ -434,7 +434,7 @@ static ghost_error_t vec_cm_toFile(ghost_densemat_t *vec, char *path, bool singl
             if (vec->traits.location == GHOST_LOCATION_HOST)
             {
                 vec->download(vec);
-                val = DENSEMAT_VAL(vec,0,v);
+                val = DENSEMAT_VALPTR(vec,0,v);
             }
             else if (vec->traits.location == GHOST_LOCATION_DEVICE)
             {
@@ -583,7 +583,7 @@ static ghost_error_t vec_cm_fromFile(ghost_densemat_t *vec, char *path, bool sin
     for (v=0; v<vec->traits.ncols; v++) {
         if (vec->traits.location == GHOST_LOCATION_HOST)
         {
-            if ((ghost_lidx_t)(ret = fread(DENSEMAT_VAL(vec,0,v), vec->elSize, vec->traits.nrows,filed)) != vec->traits.nrows) {
+            if ((ghost_lidx_t)(ret = fread(DENSEMAT_VALPTR(vec,0,v), vec->elSize, vec->traits.nrows,filed)) != vec->traits.nrows) {
                 ERROR_LOG("fread failed: %zu",ret);
                 vec->destroy(vec);
                 return GHOST_ERR_IO;
@@ -686,14 +686,14 @@ static ghost_error_t ghost_distributeVector(ghost_densemat_t *vec, ghost_densema
 
     if (me != 0) {
         for (c=0; c<vec->traits.ncols; c++) {
-            MPI_CALL_RETURN(MPI_Irecv(DENSEMAT_VAL(nodeVec,0,c),nodeVec->context->lnrows[me],mpidt,0,me,nodeVec->context->mpicomm,&req[msgcount]));
+            MPI_CALL_RETURN(MPI_Irecv(DENSEMAT_VALPTR(nodeVec,0,c),nodeVec->context->lnrows[me],mpidt,0,me,nodeVec->context->mpicomm,&req[msgcount]));
             msgcount++;
         }
     } else {
         for (c=0; c<vec->traits.ncols; c++) {
-            memcpy(DENSEMAT_VAL(nodeVec,0,c),DENSEMAT_VAL(vec,0,c),vec->elSize*nodeVec->context->lnrows[0]);
+            memcpy(DENSEMAT_VALPTR(nodeVec,0,c),DENSEMAT_VALPTR(vec,0,c),vec->elSize*nodeVec->context->lnrows[0]);
             for (i=1;i<nprocs;i++) {
-                MPI_CALL_RETURN(MPI_Isend(DENSEMAT_VAL(vec,nodeVec->context->lfRow[i],c),nodeVec->context->lnrows[i],mpidt,i,i,nodeVec->context->mpicomm,&req[msgcount]));
+                MPI_CALL_RETURN(MPI_Isend(DENSEMAT_VALPTR(vec,nodeVec->context->lfRow[i],c),nodeVec->context->lnrows[i],mpidt,i,i,nodeVec->context->mpicomm,&req[msgcount]));
                 msgcount++;
             }
         }
@@ -702,7 +702,7 @@ static ghost_error_t ghost_distributeVector(ghost_densemat_t *vec, ghost_densema
 #else
 
     for (c=0; c<vec->traits.ncols; c++) {
-        memcpy(DENSEMAT_VAL(nodeVec,0,c),DENSEMAT_VAL(vec,0,c),vec->traits.nrows*vec->elSize);
+        memcpy(DENSEMAT_VALPTR(nodeVec,0,c),DENSEMAT_VALPTR(vec,0,c),vec->traits.nrows*vec->elSize);
     }
     //    *nodeVec = vec->clone(vec);
 #endif
@@ -746,14 +746,14 @@ static ghost_error_t ghost_collectVectors(ghost_densemat_t *vec, ghost_densemat_
 
     if (me != 0) {
         for (c=0; c<vec->traits.ncols; c++) {
-            MPI_CALL_RETURN(MPI_Isend(DENSEMAT_VAL(vec,0,c),vec->context->lnrows[me],mpidt,0,me,vec->context->mpicomm,&req[msgcount]));
+            MPI_CALL_RETURN(MPI_Isend(DENSEMAT_VALPTR(vec,0,c),vec->context->lnrows[me],mpidt,0,me,vec->context->mpicomm,&req[msgcount]));
             msgcount++;
         }
     } else {
         for (c=0; c<vec->traits.ncols; c++) {
-            memcpy(DENSEMAT_VAL(totalVec,0,c),DENSEMAT_VAL(vec,0,c),vec->elSize*vec->context->lnrows[0]);
+            memcpy(DENSEMAT_VALPTR(totalVec,0,c),DENSEMAT_VALPTR(vec,0,c),vec->elSize*vec->context->lnrows[0]);
             for (i=1;i<nprocs;i++) {
-                MPI_CALL_RETURN(MPI_Irecv(DENSEMAT_VAL(totalVec,vec->context->lfRow[i],c),vec->context->lnrows[i],mpidt,i,i,vec->context->mpicomm,&req[msgcount]));
+                MPI_CALL_RETURN(MPI_Irecv(DENSEMAT_VALPTR(totalVec,vec->context->lfRow[i],c),vec->context->lnrows[i],mpidt,i,i,vec->context->mpicomm,&req[msgcount]));
                 msgcount++;
             }
         }
@@ -763,7 +763,7 @@ static ghost_error_t ghost_collectVectors(ghost_densemat_t *vec, ghost_densemat_
     if (vec->context != NULL) {
 //        vec->permute(vec,vec->context->invRowPerm);
         for (c=0; c<vec->traits.ncols; c++) {
-            memcpy(DENSEMAT_VAL(totalVec,0,c),DENSEMAT_VAL(vec,0,c),totalVec->traits.nrows*vec->elSize);
+            memcpy(DENSEMAT_VALPTR(totalVec,0,c),DENSEMAT_VALPTR(vec,0,c),totalVec->traits.nrows*vec->elSize);
         }
     }
 #endif
@@ -867,10 +867,10 @@ static ghost_error_t ghost_permuteVector( ghost_densemat_t* vec, ghost_permutati
                 return GHOST_ERR_UNKNOWN;
             }
 
-            memcpy(&tmp[vec->elSize*perm[i]],DENSEMAT_VAL(permvec,i,c),permvec->elSize);
+            memcpy(&tmp[vec->elSize*perm[i]],DENSEMAT_VALPTR(permvec,i,c),permvec->elSize);
         }
         for(i=0; i < len; ++i) {
-            memcpy(DENSEMAT_VAL(permvec,i,c),&tmp[permvec->elSize*i],permvec->elSize);
+            memcpy(DENSEMAT_VALPTR(permvec,i,c),&tmp[permvec->elSize*i],permvec->elSize);
         }
         free(tmp);
     }
@@ -947,7 +947,7 @@ static ghost_error_t vec_cm_compress(ghost_densemat_t *vec)
 /*        for (v=0; v<vec->traits.ncols; v++)
         {
             memcpy(&val[(v*vec->traits.nrowspadded)*vec->elSize],
-                    DENSEMAT_VAL(vec,0,v),vec->traits.nrowspadded*vec->elSize);
+                    DENSEMAT_VALPTR(vec,0,v),vec->traits.nrowspadded*vec->elSize);
 
             if (!(vec->traits.flags & GHOST_DENSEMAT_VIEW)) {
                 free(vec->val[v]);
@@ -962,7 +962,7 @@ static ghost_error_t vec_cm_compress(ghost_densemat_t *vec)
         GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_val,vec->traits.nrowspadded*vec->traits.ncols*vec->elSize));
         
         DENSEMAT_ITER(vec,ghost_cu_memcpy(&cu_val[(col*vec->traits.nrowspadded+col)*vec->elSize],
-                    DENSEMAT_CUVAL(vec,memrow,memcol),vec->elSize));
+                    DENSEMAT_CUVALPTR(vec,memrow,memcol),vec->elSize));
 
         if (!(vec->traits.flags & GHOST_DENSEMAT_VIEW)) {
             ghost_cu_free(vec->cu_val);
@@ -1024,7 +1024,7 @@ static ghost_error_t densemat_cm_halocommInit(ghost_densemat_t *vec, ghost_dense
                     for (i=0; i<vec->context->dues[to_PE]; i++){
                         for (c=0; c<vec->traits.ncols; c++) {
                             memcpy(comm->work + (comm->dueptr[to_PE]+i)*vec->elSize*vec->traits.ncols + c*vec->elSize,
-                                    DENSEMAT_VAL(vec,permutation->perm[vec->context->duelist[to_PE][i]],c),vec->elSize);
+                                    DENSEMAT_VALPTR(vec,permutation->perm[vec->context->duelist[to_PE][i]],c),vec->elSize);
                         }
                     }
                 }
@@ -1042,7 +1042,7 @@ static ghost_error_t densemat_cm_halocommInit(ghost_densemat_t *vec, ghost_dense
 #pragma omp for 
                     for (i=0; i<vec->context->dues[to_PE]; i++){
                         for (c=0; c<vec->traits.ncols; c++) {
-                            memcpy(comm->work + (comm->dueptr[to_PE]+i)*vec->elSize*vec->traits.ncols + c*vec->elSize,DENSEMAT_VAL(vec,vec->context->duelist[to_PE][i],c),vec->elSize);
+                            memcpy(comm->work + (comm->dueptr[to_PE]+i)*vec->elSize*vec->traits.ncols + c*vec->elSize,DENSEMAT_VALPTR(vec,vec->context->duelist[to_PE][i],c),vec->elSize);
                         }
                     }
                 }
@@ -1097,7 +1097,7 @@ static ghost_error_t densemat_cm_halocommFinalize(ghost_densemat_t *vec, ghost_d
         for (from_PE=0; from_PE<nprocs; from_PE++){
             for (i=0; i<vec->context->wishes[from_PE]; i++){
                 for (c=0; c<vec->traits.ncols; c++) {
-                    memcpy(DENSEMAT_VAL(vec,vec->context->hput_pos[from_PE]+i,c),&comm->tmprecv[from_PE][(i*vec->traits.ncols+c)*vec->elSize],vec->elSize);
+                    memcpy(DENSEMAT_VALPTR(vec,vec->context->hput_pos[from_PE]+i,c),&comm->tmprecv[from_PE][(i*vec->traits.ncols+c)*vec->elSize],vec->elSize);
                 }
             }
         }
@@ -1110,7 +1110,7 @@ static ghost_error_t densemat_cm_halocommFinalize(ghost_densemat_t *vec, ghost_d
 #ifdef GHOST_HAVE_TRACK_DATATRANSFERS
         ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_OUT,GHOST_DATATRANSFER_RANK_GPU,vec->context->halo_elements*vec->traits.ncols*vec->elSize);
 #endif
-        ghost_cu_upload(DENSEMAT_CUVAL(vec,vec->traits.nrows,0),comm->tmprecv_mem,vec->traits.ncols*comm->acc_wishes*vec->elSize);
+        ghost_cu_upload(DENSEMAT_CUVALPTR(vec,vec->traits.nrows,0),comm->tmprecv_mem,vec->traits.ncols*comm->acc_wishes*vec->elSize);
     }
     GHOST_INSTR_STOP("upload");
 #endif

@@ -19,6 +19,8 @@
 #include "ghost/locality.h"
 #include "ghost/log.h"
 #include "ghost/machine.h"
+
+#define DENSEMAT_DT v_t
 #include "ghost/densemat_iter_macros.h"
 
 #ifdef ROWMAJOR
@@ -80,8 +82,10 @@ static ghost_error_t FUNCNAME(dotprod_tmpl(ghost_densemat_t *vec, void *res, gho
     unsigned clsize;
 
 #pragma omp parallel
+    {
 #pragma omp single
     nthreads = ghost_omp_nthread();
+    }
    
     ghost_machine_cacheline_size(&clsize);
     int padding = 8*(int)clsize/sizeof(v_t);
@@ -285,7 +289,7 @@ static ghost_error_t FUNCNAME(fromVec_tmpl(ghost_densemat_t *vec, ghost_densemat
                 if (!(vec->traits.flags & GHOST_DENSEMAT_SCATTERED) && !(vec2->traits.flags & GHOST_DENSEMAT_SCATTERED) &&
                     (vec->traits.ncols == vec->traits.ncolsorig) && (vec2->traits.ncols == vec2->traits.ncolsorig) &&
                     (vec->traits.nrows == vec->traits.nrowsorig) && (vec2->traits.nrows == vec2->traits.nrowsorig)) {
-                        ghost_cu_memcpy(DENSEMAT_CUVAL(vec,0,0),DENSEMAT_CUVAL(vec2,roffs,coffs),vec->traits.nrowspadded*vec->traits.ncolspadded*vec->elSize);
+                        ghost_cu_memcpy(DENSEMAT_CUVALPTR(vec,0,0),DENSEMAT_CUVALPTR(vec2,roffs,coffs),vec->traits.nrowspadded*vec->traits.ncolspadded*vec->elSize);
                 } else {
                     PERFWARNING_LOG("Potentially slow element-wise copy!");
                     DENSEMAT_ITER2_OFFS(vec,vec2,roffs,coffs,
