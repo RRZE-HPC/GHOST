@@ -97,7 +97,8 @@ ghost_error_t ghost_tsmm_inplace(ghost_densemat_t *x, ghost_densemat_t *w, void 
     p.dt = x->traits.datatype;
     p.ncolsin = w->traits.nrows;
     p.ncolsout = w->traits.ncols;
-    
+   
+    INFO_LOG("in %d out %d",p.ncolsin,p.ncolsout); 
     kernel = ghost_tsmm_inplace_kernels[p];
     
     if (!kernel) {

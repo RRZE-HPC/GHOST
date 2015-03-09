@@ -17,7 +17,7 @@ ghost_error_t ghost_tsmm_inplace__plain_d_NCOLSIN_NCOLSOUT(ghost_densemat_t *x, 
     double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
     
-    INFO_LOG("In in-place TSMM with fixed block sizes [NCOLSIN][NCOLSOUT] (%"PRLIDX"x%"PRLIDX") <- %f * (%"PRLIDX"x%"PRLIDX") * (%"PRLIDX"x%"PRLIDX")",n,m,dalpha,n,m,w->traits.nrows,w->traits.ncols);
+    INFO_LOG("In in-place TSMM with fixed block sizes [NCOLSIN][NCOLSOUT] (%"PRLIDX"x%"PRLIDX") <- %f * (%"PRLIDX"x%"PRLIDX") * (%"PRLIDX"x%"PRLIDX")",n,NCOLSOUT,dalpha,n,m,w->traits.nrows,NCOLSOUT);
 
     double * restrict wval = NULL, * restrict xval;
     ghost_lidx_t ldw, ldx;
@@ -52,6 +52,8 @@ ghost_error_t ghost_tsmm_inplace__plain_d_NCOLSIN_NCOLSOUT(ghost_densemat_t *x, 
         for (s=0; s<NCOLSOUT; s++) {
 #if NCOLSIN > 1
 #pragma simd
+#pragma vector aligned
+#pragma ivdep
 #endif
             for (j=0; j<NCOLSIN; j++) {
                 tmp[s] += xval[i*ldx+j]*wtmp[s][j];
@@ -78,7 +80,7 @@ ghost_error_t ghost_tsmm_inplace__plain_d_NCOLSIN_x(ghost_densemat_t *x, ghost_d
     double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
     
-    INFO_LOG("In in-place TSMM with arbitrary block size (%"PRLIDX"x%"PRLIDX") <- %f * (%"PRLIDX"x%"PRLIDX") * (%"PRLIDX"x%"PRLIDX")",n,m,dalpha,n,m,m,m);
+    INFO_LOG("In in-place TSMM with arbitrary block size (%"PRLIDX"x%"PRLIDX") <- %f * (%"PRLIDX"x%"PRLIDX") * (%"PRLIDX"x%"PRLIDX")",n,ncolsout,dalpha,n,m,m,ncolsout);
 
     double * restrict wval = NULL, * restrict xval;
     ghost_lidx_t ldw, ldx;
@@ -136,7 +138,7 @@ ghost_error_t ghost_tsmm_inplace__plain_d_x_NCOLSOUT(ghost_densemat_t *x, ghost_
     double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
     
-    INFO_LOG("In in-place TSMM with arbitrary block size (%"PRLIDX"x%"PRLIDX") <- %f * (%"PRLIDX"x%"PRLIDX") * (%"PRLIDX"x%"PRLIDX")",n,m,dalpha,n,m,m,m);
+    INFO_LOG("In in-place TSMM with arbitrary block size (%"PRLIDX"x%"PRLIDX") <- %f * (%"PRLIDX"x%"PRLIDX") * (%"PRLIDX"x%"PRLIDX")",n,NCOLSOUT,dalpha,n,m,m,NCOLSOUT);
 
     double * restrict wval = NULL, * restrict xval;
     ghost_lidx_t ldw, ldx;
