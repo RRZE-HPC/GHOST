@@ -13,7 +13,7 @@
 
 #ifdef GHOST_HAVE_MPI
 //! MPI_Allreduce for more than INT_MAX elements
-int MPI_Allreduce64_in_place ( void *buf, int64_t count,
+static int MPI_Allreduce64_in_place ( void *buf, int64_t count,
                       MPI_Datatype datatype, MPI_Op op, MPI_Comm comm )
   {
     int ierr;
