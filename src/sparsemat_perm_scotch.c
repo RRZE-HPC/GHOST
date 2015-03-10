@@ -36,6 +36,16 @@ static int MPI_Allreduce64_in_place ( void *buf, int64_t count,
   }
 #endif
 #endif
+    
+typedef struct {
+    ghost_gidx_t idx, pidx;
+} perm_t;
+
+static int permcmp(const void *a, const void *b)
+{
+    return ((perm_t *)a)->pidx - ((perm_t *)b)->pidx;
+}
+                    
 
 ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSource, ghost_sparsemat_src_t srcType)
 {
@@ -213,6 +223,8 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
     
 
     GHOST_INSTR_START("scotch_combineperm")
+//#define INVPERM_V1
+#ifdef INVPERM_V1
     MPI_Status * status;
     MPI_Request * request;
     ghost_malloc((void **)&request,2*mat->context->lnrows[me]*sizeof(MPI_Request));
@@ -242,6 +254,69 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
     free(gidx);
     free(request);
     free(status);
+
+#else
+    ghost_mpi_datatype_t ghost_mpi_dt_perm;
+    MPI_CALL_RETURN(MPI_Type_contiguous(2,ghost_mpi_dt_gidx,&ghost_mpi_dt_perm));
+    MPI_CALL_RETURN(MPI_Type_commit(&ghost_mpi_dt_perm));
+
+    int proc;
+    perm_t *permclone;
+    ghost_malloc((void **)&permclone,sizeof(perm_t)*mat->context->lnrows[me]);
+
+#pragma omp parallel for
+    for (i=0; i<mat->context->lnrows[me]; i++) {
+        permclone[i].idx = mat->context->lfRow[me]+i;
+        permclone[i].pidx = mat->context->permutation->perm[i];
+    }
+    qsort(permclone,mat->context->lnrows[me],sizeof(perm_t),permcmp);
+
+
+    for (proc = 0; proc<nprocs; proc++) {
+        ghost_lidx_t offs = 0;
+        int displ[nprocs];
+        int nel[nprocs];
+        memset(displ,0,sizeof(displ));
+        memset(nel,0,sizeof(nel));
+
+        while(permclone[offs].pidx < mat->context->lfRow[proc]) {
+            offs++;
+        }
+        displ[me] = offs;
+        while(permclone[offs].pidx < mat->context->lfRow[proc]+mat->context->lnrows[proc]) {
+            offs++;
+        }
+        nel[me] = offs-displ[me];
+
+        MPI_Allreduce(MPI_IN_PLACE,nel,nprocs,MPI_INT,MPI_MAX,mat->context->mpicomm);
+
+        ghost_lidx_t recvdispl[nprocs];
+        if (proc == me) {
+            recvdispl[0] = 0;
+            for (i=1; i<nprocs; i++) {
+                recvdispl[i] = recvdispl[i-1] + nel[i-1];
+            }
+        }
+        perm_t sendbuf[nel[me]];
+        perm_t recvbuf[mat->context->lnrows[me]];
+    
+        for (i=0; i<nel[me]; i++) {
+            sendbuf[i] = permclone[displ[me]+i];
+        }
+
+        MPI_Gatherv(sendbuf,nel[me],ghost_mpi_dt_perm,recvbuf,nel,recvdispl,ghost_mpi_dt_perm,proc,mat->context->mpicomm);
+        
+        if (proc == me) {
+            qsort(recvbuf,mat->context->lnrows[me],sizeof(perm_t),permcmp);
+            for (i=0; i<mat->context->lnrows[me]; i++) {
+                mat->context->permutation->invPerm[i] = recvbuf[i].idx;
+            }
+        }
+    }
+        
+    MPI_CALL_RETURN(MPI_Type_free(&ghost_mpi_dt_perm));
+
+#endif
 
     GHOST_INSTR_STOP("scotch_combineperm")
     
