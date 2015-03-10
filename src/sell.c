@@ -225,7 +225,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
                     if (row < mat->nrows) {
                         if ((mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) && mat->context->permutation) {
                             if (mat->context->permutation->scope == GHOST_PERMUTATION_GLOBAL) {
-                                funcret = src->func(mat->context->permutation->invPerm[mat->context->lfRow[me]+row],&SELL(mat)->rowLen[row],tmpcol,tmpval);
+                                funcret = src->func(mat->context->permutation->invPerm[row],&SELL(mat)->rowLen[row],tmpcol,tmpval);
                             } else {
                                 funcret = src->func(mat->context->lfRow[me]+mat->context->permutation->invPerm[row],&SELL(mat)->rowLen[row],tmpcol,tmpval);
                             }
@@ -329,7 +329,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
                 if (row < mat->nrows) {
                     if ((mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) && mat->context->permutation) {
                         if (mat->context->permutation->scope == GHOST_PERMUTATION_GLOBAL) {
-                            funcret = src->func(mat->context->permutation->invPerm[mat->context->lfRow[me]+row],&SELL(mat)->rowLen[row],&tmpcol[src->maxrowlen*i],&tmpval[src->maxrowlen*i*mat->elSize]);
+                            funcret = src->func(mat->context->permutation->invPerm[row],&SELL(mat)->rowLen[row],&tmpcol[src->maxrowlen*i],&tmpval[src->maxrowlen*i*mat->elSize]);
                         } else {
                             funcret = src->func(mat->context->lfRow[me]+mat->context->permutation->invPerm[row],&SELL(mat)->rowLen[row],&tmpcol[src->maxrowlen*i],&tmpval[src->maxrowlen*i*mat->elSize]);
                         }
@@ -346,7 +346,8 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
                     memcpy(&SELL(mat)->val[mat->elSize*(SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i)],&tmpval[mat->elSize*(i*src->maxrowlen+col)],mat->elSize);
                     if ((mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) && mat->context->permutation) {
                         if (mat->context->permutation->scope == GHOST_PERMUTATION_GLOBAL) { // no distinction between global and local entries
-                            mat->col_orig[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = mat->context->permutation->perm[tmpcol[i*src->maxrowlen+col]];
+                            // global permutation will be done after all rows are read
+                            mat->col_orig[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = tmpcol[i*src->maxrowlen+col];
                         } else { // local permutation: distinction between global and local entries
                             if ((tmpcol[i*src->maxrowlen+col] >= mat->context->lfRow[me]) && (tmpcol[i*src->maxrowlen+col] < (mat->context->lfRow[me]+mat->nrows))) { // local entry: copy with permutation
                                 if (mat->traits->flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS) {
@@ -366,12 +367,26 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
                     // sort rows by ascending column indices
                     ghost_sparsemat_sortrow(&mat->col_orig[SELL(mat)->chunkStart[chunk]+i],&SELL(mat)->val[(SELL(mat)->chunkStart[chunk]+i)*mat->elSize],mat->elSize,SELL(mat)->rowLen[row],SELL(mat)->chunkHeight);
                 }
+                if ((!mat->context->permutation) || (mat->context->permutation->scope == GHOST_PERMUTATION_LOCAL)) { 
 #pragma omp critical
-                ghost_sparsemat_registerrow(mat,mat->context->lfRow[me]+row,&mat->col_orig[SELL(mat)->chunkStart[chunk]+i],SELL(mat)->rowLen[row],SELL(mat)->chunkHeight);
+                    ghost_sparsemat_registerrow(mat,mat->context->lfRow[me]+row,&mat->col_orig[SELL(mat)->chunkStart[chunk]+i],SELL(mat)->rowLen[row],SELL(mat)->chunkHeight);
+                }
             }
         }
         free(tmpval); tmpval = NULL;
         free(tmpcol); tmpcol = NULL;
+    }
+    
+    if ((mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) && mat->context->permutation && mat->context->permutation->scope == GHOST_PERMUTATION_GLOBAL
+             && !(mat->traits->flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS)) {
+        ghost_sparsemat_perm_global_cols(mat->col_orig,mat->nEnts,mat->context);
+        for( chunk = 0; chunk < nChunks; chunk++ ) {
+            for (i=0; i<SELL(mat)->chunkHeight; i++) {
+                row = chunk*SELL(mat)->chunkHeight+i;
+                ghost_sparsemat_sortrow(&mat->col_orig[SELL(mat)->chunkStart[chunk]+i],&SELL(mat)->val[(SELL(mat)->chunkStart[chunk]+i)*mat->elSize],mat->elSize,SELL(mat)->rowLen[row],SELL(mat)->chunkHeight);
+                ghost_sparsemat_registerrow(mat,mat->context->lfRow[me]+row,&mat->col_orig[SELL(mat)->chunkStart[chunk]+i],SELL(mat)->rowLen[row],SELL(mat)->chunkHeight);
+            }
+        }
     }
 
     ghost_sparsemat_registerrow_finalize(mat);
@@ -749,7 +764,7 @@ static ghost_error_t SELL_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
     DEBUG_LOG(1,"Memory usage may be high because read-in of CRS data is done at once and not chunk-wise");
     GHOST_CALL_GOTO(ghost_malloc((void **)&tmpcol,mat->nnz*sizeof(ghost_gidx_t)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&tmpval,mat->nnz*mat->elSize),err,ret);
-    GHOST_CALL_GOTO(ghost_bincrs_col_read(tmpcol, matrixPath, mat->context->lfRow[me], mat->nrows, mat->context->permutation, mat->traits->flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS),err,ret);
+    GHOST_CALL_GOTO(ghost_bincrs_col_read(tmpcol, matrixPath, mat->context->lfRow[me], mat->nrows, mat->context, mat->traits->flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS),err,ret);
     GHOST_CALL_GOTO(ghost_bincrs_val_read(tmpval, mat->traits->datatype, matrixPath,  mat->context->lfRow[me], mat->nrows, mat->context->permutation),err,ret);
 
     ghost_lidx_t row = 0;

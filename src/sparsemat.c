@@ -379,6 +379,55 @@ int ghost_cmp_entsperrow(const void* a, const void* b)
     return  ((ghost_sorting_helper_t*)b)->nEntsInRow - ((ghost_sorting_helper_t*)a)->nEntsInRow;
 }
 
+ghost_error_t ghost_sparsemat_perm_global_cols(ghost_gidx_t *col, ghost_lidx_t ncols, ghost_context_t *context) 
+{
+    int me, nprocs,i;
+    ghost_rank(&me,context->mpicomm);
+    ghost_nrank(&nprocs,context->mpicomm);
+
+    for (i=0; i<nprocs; i++) {
+        ghost_lidx_t nels = 0;
+        if (i==me) {
+            nels = ncols;
+        }
+        MPI_Bcast(&nels,1,ghost_mpi_dt_gidx,i,context->mpicomm);
+
+        //printf("rank %d has %d elements\n", i,nels);
+
+        ghost_gidx_t *colsfromi;
+        ghost_malloc((void **)&colsfromi,nels*sizeof(ghost_gidx_t));
+    
+        if (i==me) {
+            memcpy(colsfromi,col,nels*sizeof(ghost_gidx_t));
+        }
+        MPI_Bcast(colsfromi,nels,ghost_mpi_dt_gidx,i,context->mpicomm);
+
+        ghost_lidx_t el;
+        for (el=0; el<nels; el++) {
+            if ((colsfromi[el] >=context->lfRow[me]) && (colsfromi[el] < (context->lfRow[me]+context->lnrows[me]))) {
+                //printf("@%d: colsfrom[%d][%d] %d -> %d\n",me,i,el,colsfromi[el],mat->context->permutation->perm[colsfromi[el]-mat->context->lfRow[me]]);
+                colsfromi[el] = context->permutation->perm[colsfromi[el]-context->lfRow[me]];
+            } else {
+                colsfromi[el] = 0;
+            }
+        }
+
+        if (i==me) {
+            MPI_Reduce(MPI_IN_PLACE,colsfromi,nels,ghost_mpi_dt_gidx,MPI_MAX,i,context->mpicomm);
+        } else {
+            MPI_Reduce(colsfromi,NULL,nels,ghost_mpi_dt_gidx,MPI_MAX,i,context->mpicomm);
+        }
+
+        if (i==me) {
+            memcpy(col,colsfromi,nels*sizeof(ghost_gidx_t));
+        }
+
+        free(colsfromi);
+    }
+
+    return GHOST_SUCCESS;
+}
+
 ghost_error_t ghost_sparsemat_perm_sort(ghost_sparsemat_t *mat, void *matrixSource, ghost_sparsemat_src_t srcType, ghost_gidx_t scope)
 {
     ghost_error_t ret = GHOST_SUCCESS;

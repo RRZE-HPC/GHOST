@@ -3,6 +3,8 @@
 #include "ghost/log.h"
 #include "ghost/util.h"
 #include "ghost/machine.h"
+#include "ghost/locality.h"
+#include "ghost/sparsemat.h"
 #include <errno.h>
 #include <limits.h>
 
@@ -34,8 +36,14 @@ static void (*ghost_castarray_funcs[4][4]) (void *, void *, int) =
     {&zs_ghost_castarray,&zd_ghost_castarray,&zc_ghost_castarray,&zz_ghost_castarray}};
 
 
-ghost_error_t ghost_bincrs_col_read_opened(ghost_gidx_t *col, char *matrixPath, ghost_gidx_t offsRows, ghost_lidx_t nRows, ghost_permutation_t *perm, int keepCols, FILE *filed)
+ghost_error_t ghost_bincrs_col_read_opened(ghost_gidx_t *col, char *matrixPath, ghost_gidx_t offsRows, ghost_lidx_t nRows, ghost_context_t *context, int keepCols, FILE *filed)
 {
+    ghost_permutation_t *perm;
+    if (context) {
+       perm = context->permutation;
+    } else {
+        perm = NULL;
+    }
     ghost_bincrs_header_t header;
     size_t ret;
     int swapReq;
@@ -73,27 +81,28 @@ ghost_error_t ghost_bincrs_col_read_opened(ghost_gidx_t *col, char *matrixPath, 
             }
             e = 0;
             for(i = offsRows; i < offsRows+nRows; i++) {
-                if (fseeko(filed,GHOST_BINCRS_SIZE_HEADER+GHOST_BINCRS_SIZE_RPT_EL*(header.nrows+1)+rpt_raw[perm->invPerm[i]]*GHOST_BINCRS_SIZE_COL_EL,SEEK_SET)) {
+                if (fseeko(filed,GHOST_BINCRS_SIZE_HEADER+GHOST_BINCRS_SIZE_RPT_EL*(header.nrows+1)+rpt_raw[perm->invPerm[i-offsRows]]*GHOST_BINCRS_SIZE_COL_EL,SEEK_SET)) {
                     ERROR_LOG("Seek failed");
                     return GHOST_ERR_IO;
                 }
-                ghost_lidx_t rowlen = rpt_raw[perm->invPerm[i]+1]-rpt_raw[perm->invPerm[i]];
+                ghost_lidx_t rowlen = rpt_raw[perm->invPerm[i-offsRows]+1]-rpt_raw[perm->invPerm[i-offsRows]];
                 ghost_gidx_t rawcol[rowlen];
                 if ((ret = fread(rawcol, GHOST_BINCRS_SIZE_COL_EL, rowlen,filed)) != (size_t)(rowlen)){
                     ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
                     return GHOST_ERR_IO;
                 }
 
-                if (keepCols) {
+                //if (keepCols) {
                     memcpy(&col[e],rawcol,rowlen*sizeof(ghost_gidx_t));
                     e+=rowlen;
-                } else {
-                    for(j = 0; j < rowlen; j++) {
-                        col[e++] = perm->perm[rawcol[j]];
-                    }
-                }
+                //} else {
+                //    for(j = 0; j < rowlen; j++) {
+                //        col[e++] = perm->perm[rawcol[j]];
+                //    }
+               // }
             }
 
+            ghost_sparsemat_perm_global_cols(col,e,context);
             //free(col_raw);
             free(rpt_raw);
         } else {
@@ -146,7 +155,7 @@ ghost_error_t ghost_bincrs_col_read_opened(ghost_gidx_t *col, char *matrixPath, 
             }
             e = 0;
             for(i = 0; i < nRows; i++) {
-                for(j = rpt_raw[perm->invPerm[i]]; j < rpt_raw[perm->invPerm[i]+1]; j++) {
+                for(j = rpt_raw[perm->invPerm[i-offsRows]]; j < rpt_raw[perm->invPerm[i-offsRows]+1]; j++) {
                     if (!keepCols) {
                         if ((col_raw[j-rpt_raw[0]]>=offsRows+nRows) || (col_raw[j-rpt_raw[0]] < offsRows)) {
                             col[e++] = col_raw[j-rpt_raw[0]];
@@ -236,7 +245,7 @@ ghost_error_t ghost_bincrs_col_read_opened(ghost_gidx_t *col, char *matrixPath, 
 }
 
 
-ghost_error_t ghost_bincrs_col_read(ghost_gidx_t *col, char *matrixPath, ghost_gidx_t offsRows, ghost_lidx_t nRows, ghost_permutation_t *perm, int keepCols)
+ghost_error_t ghost_bincrs_col_read(ghost_gidx_t *col, char *matrixPath, ghost_gidx_t offsRows, ghost_lidx_t nRows, ghost_context_t *context, int keepCols)
 {
     FILE *filed;
 
@@ -245,7 +254,7 @@ ghost_error_t ghost_bincrs_col_read(ghost_gidx_t *col, char *matrixPath, ghost_g
         return GHOST_ERR_IO;
     }
 
-    GHOST_CALL_RETURN(ghost_bincrs_col_read_opened(col,matrixPath,offsRows,nRows,perm,keepCols,filed));
+    GHOST_CALL_RETURN(ghost_bincrs_col_read_opened(col,matrixPath,offsRows,nRows,context,keepCols,filed));
 
     fclose(filed);
 
@@ -425,7 +434,7 @@ ghost_error_t ghost_bincrs_val_read_opened(char *val, ghost_datatype_t datatype,
         e = 0;
         if (perm->scope == GHOST_PERMUTATION_GLOBAL) {
             for(i = offsRows; i < offsRows+nRows; i++) {
-                for(j = rpt_raw[perm->invPerm[i]]; j < rpt_raw[perm->invPerm[i]+1]; j++) {
+                for(j = rpt_raw[perm->invPerm[i-offsRows]]; j < rpt_raw[perm->invPerm[i-offsRows]+1]; j++) {
                     memcpy(val+e*sizeofdt,val_raw+j*sizeofdt,sizeofdt);
                     e++;
                 }
@@ -500,9 +509,9 @@ ghost_error_t ghost_bincrs_rpt_read_opened(ghost_gidx_t *rpt, char *matrixPath, 
                     return GHOST_ERR_IO;
                 }
             }
-                rpt[0] = rpt_raw[perm->invPerm[offsRows]];
+                rpt[0] = rpt_raw[perm->invPerm[0]];
                 for( i = 1; i < nRows; i++ ) {
-                    rpt[i] = rpt[i-1]+(rpt_raw[perm->invPerm[offsRows+i-1]+1]-rpt_raw[perm->invPerm[offsRows+i-1]]);
+                    rpt[i] = rpt[i-1]+(rpt_raw[perm->invPerm[i-1]+1]-rpt_raw[perm->invPerm[i-1]]);
                 }
 
             free(rpt_raw);

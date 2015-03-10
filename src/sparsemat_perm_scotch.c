@@ -12,6 +12,7 @@
 #endif
 
 #ifdef GHOST_HAVE_MPI
+#if 0
 //! MPI_Allreduce for more than INT_MAX elements
 static int MPI_Allreduce64_in_place ( void *buf, int64_t count,
                       MPI_Datatype datatype, MPI_Op op, MPI_Comm comm )
@@ -33,7 +34,7 @@ static int MPI_Allreduce64_in_place ( void *buf, int64_t count,
     }
     return ierr;
   }
-
+#endif
 #endif
 
 ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSource, ghost_sparsemat_src_t srcType)
@@ -148,15 +149,15 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
     GHOST_INSTR_STOP("scotch_readin")
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->permutation,sizeof(ghost_permutation_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->permutation->perm,sizeof(ghost_gidx_t)*mat->context->gnrows),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->permutation->invPerm,sizeof(ghost_gidx_t)*mat->context->gnrows),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->permutation->perm,sizeof(ghost_gidx_t)*mat->context->lnrows[me]),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->permutation->invPerm,sizeof(ghost_gidx_t)*mat->context->lnrows[me]),err,ret);
 #ifdef GHOST_HAVE_CUDA
     GHOST_CALL_GOTO(ghost_cu_malloc((void **)&mat->context->permutation->cu_perm,sizeof(ghost_gidx_t)*mat->context->gnrows),err,ret);
 #endif
-    memset(mat->context->permutation->perm,0,sizeof(ghost_gidx_t)*mat->context->gnrows);
-    memset(mat->context->permutation->invPerm,0,sizeof(ghost_gidx_t)*mat->context->gnrows);
+    memset(mat->context->permutation->perm,0,sizeof(ghost_gidx_t)*mat->context->lnrows[me]);
+    memset(mat->context->permutation->invPerm,0,sizeof(ghost_gidx_t)*mat->context->lnrows[me]);
     mat->context->permutation->scope = GHOST_PERMUTATION_GLOBAL;
-    mat->context->permutation->len = mat->context->gnrows;
+    mat->context->permutation->len = mat->context->lnrows[me];
 
 #ifdef GHOST_HAVE_MPI
     GHOST_INSTR_START("scotch_createperm")
@@ -207,22 +208,41 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
     }
     SCOTCH_CALL_GOTO(SCOTCH_dgraphOrderInit(dgraph,dorder),err,ret);
     SCOTCH_CALL_GOTO(SCOTCH_dgraphOrderCompute(dgraph,dorder,strat),err,ret);
-    SCOTCH_CALL_GOTO(SCOTCH_dgraphOrderPerm(dgraph,dorder,mat->context->permutation->perm+mat->context->lfRow[me]),err,ret);
+    SCOTCH_CALL_GOTO(SCOTCH_dgraphOrderPerm(dgraph,dorder,mat->context->permutation->perm),err,ret);
     GHOST_INSTR_STOP("scotch_createperm")
     
 
     GHOST_INSTR_START("scotch_combineperm")
-    // combine permutation vectors
-#ifdef GHOST_HAVE_LONGIDX_GLOBAL
-    // chunk-wise MPI_Allreduce, implementation above
-    MPI_CALL_GOTO(MPI_Allreduce64_in_place(mat->context->permutation->perm,mat->context->gnrows,ghost_mpi_dt_idx,MPI_MAX,mat->context->mpicomm),err,ret);
-#else
-    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,mat->context->permutation->perm,mat->context->gnrows,ghost_mpi_dt_idx,MPI_MAX,mat->context->mpicomm),err,ret);
-#endif
-    // assemble inverse permutation
-    for (i=0; i<mat->context->gnrows; i++) {
-        mat->context->permutation->invPerm[mat->context->permutation->perm[i]] = i;
+    MPI_Status * status;
+    MPI_Request * request;
+    ghost_malloc((void **)&request,2*mat->context->lnrows[me]*sizeof(MPI_Request));
+    ghost_malloc((void **)&status,2*mat->context->lnrows[me]*sizeof(MPI_Status));
+    
+    for (i=0;i<2*mat->context->lnrows[me];i++) {
+        request[i] = MPI_REQUEST_NULL;
     }
+   
+    ghost_gidx_t *gidx;
+    ghost_malloc((void **)&gidx,mat->context->lnrows[me]*sizeof(ghost_gidx_t)); 
+    int proc;
+    for (i=0; i<mat->context->lnrows[me]; i++) {
+        gidx[i] = i+mat->context->lfRow[me];
+        MPI_CALL_GOTO(MPI_Irecv(&mat->context->permutation->invPerm[i],1,ghost_mpi_dt_gidx,MPI_ANY_SOURCE,i,mat->context->mpicomm,&request[2*i]),err,ret);
+        for (proc = 0; proc<nprocs; proc++) {
+            if (mat->context->lfRow[proc] <=mat->context->permutation->perm[i] && mat->context->lfRow[proc]+mat->context->lnrows[proc] > mat->context->permutation->perm[i]) {
+                break;
+            }
+        }
+        MPI_CALL_GOTO(MPI_Isend(&gidx[i],1,ghost_mpi_dt_gidx,proc,mat->context->permutation->perm[i]-mat->context->lfRow[proc],mat->context->mpicomm,&request[2*i+1]),err,ret);
+    }
+    GHOST_INSTR_START("waitall")
+    MPI_CALL_GOTO(MPI_Waitall(2*mat->context->lnrows[me],request,status),err,ret);
+    GHOST_INSTR_STOP("waitall")
+    
+    free(gidx);
+    free(request);
+    free(status);
+
     GHOST_INSTR_STOP("scotch_combineperm")
     
 
