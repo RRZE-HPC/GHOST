@@ -396,6 +396,8 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
 #endif
     
     if (mat->traits->sortScope > 1) {
+        ERROR_LOG("Post-permutation with sorting is currently broken and will be ignored!");
+#if 0
         GHOST_INSTR_START("post-permutation with sorting")
         ghost_gidx_t nrows = mat->context->lnrows[me];
         ghost_gidx_t scope = mat->traits->sortScope;
@@ -423,8 +425,8 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
             GHOST_CALL_GOTO(ghost_malloc((void **)&dummyval,src->maxrowlen*mat->elSize),err,ret);
 
             for (i=0; i<nrows; i++) {
-                rowSort[mat->context->permutation->perm[i]].row = i;
-                src->func(i,&rowSort[mat->context->permutation->perm[i]].nEntsInRow,dummycol,dummyval);
+                rowSort[i].row = mat->context->permutation->invPerm[i];
+                src->func(mat->context->permutation->invPerm[i],&rowSort[i].nEntsInRow,dummycol,dummyval);
             }
             
             free(dummyval);
@@ -437,10 +439,11 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
         qsort(rowSort+c*scope, nrows-c*scope, sizeof(ghost_sorting_helper_t), ghost_cmp_entsperrow);
         
         for(i=0; i < nrows; ++i) {
-            (mat->context->permutation->invPerm)[i] =rowSort[i].row;
+            (mat->context->permutation->invPerm)[i] = rowSort[i].row;
             (mat->context->permutation->perm)[rowSort[i].row] = i;
         }
         GHOST_INSTR_STOP("post-permutation with sorting")
+#endif
     }
 #ifdef GHOST_HAVE_CUDA
     ghost_cu_upload(mat->context->permutation->cu_perm,mat->context->permutation->perm,mat->context->permutation->len*sizeof(ghost_gidx_t));
