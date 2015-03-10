@@ -162,7 +162,7 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->permutation->perm,sizeof(ghost_gidx_t)*mat->context->lnrows[me]),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->permutation->invPerm,sizeof(ghost_gidx_t)*mat->context->lnrows[me]),err,ret);
 #ifdef GHOST_HAVE_CUDA
-    GHOST_CALL_GOTO(ghost_cu_malloc((void **)&mat->context->permutation->cu_perm,sizeof(ghost_gidx_t)*mat->context->gnrows),err,ret);
+    GHOST_CALL_GOTO(ghost_cu_malloc((void **)&mat->context->permutation->cu_perm,sizeof(ghost_gidx_t)*mat->context->lnrows[me]),err,ret);
 #endif
     memset(mat->context->permutation->perm,0,sizeof(ghost_gidx_t)*mat->context->lnrows[me]);
     memset(mat->context->permutation->invPerm,0,sizeof(ghost_gidx_t)*mat->context->lnrows[me]);
@@ -270,26 +270,35 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
         permclone[i].pidx = mat->context->permutation->perm[i];
     }
     qsort(permclone,mat->context->lnrows[me],sizeof(perm_t),permcmp);
+    // permclone is now sorted by ascending pidx
 
-
+    ghost_lidx_t offs = 0;
     for (proc = 0; proc<nprocs; proc++) {
-        ghost_lidx_t offs = 0;
         int displ[nprocs];
         int nel[nprocs];
         memset(displ,0,sizeof(displ));
         memset(nel,0,sizeof(nel));
 
+        // find 1st pidx in sorted permclone which lies in process proc
         while(permclone[offs].pidx < mat->context->lfRow[proc]) {
             offs++;
         }
         displ[me] = offs;
-        while(permclone[offs].pidx < mat->context->lfRow[proc]+mat->context->lnrows[proc]) {
+        
+        // find last pidx in sorted permclone which lies in process proc
+        while((offs < mat->context->lnrows[me]) && (permclone[offs].pidx < mat->context->lfRow[proc]+mat->context->lnrows[proc])) {
             offs++;
         }
         nel[me] = offs-displ[me];
 
-        MPI_Allreduce(MPI_IN_PLACE,nel,nprocs,MPI_INT,MPI_MAX,mat->context->mpicomm);
+        // proc needs to know how many elements to receive from each process
+        if (proc == me) { 
+            MPI_Reduce(MPI_IN_PLACE,nel,nprocs,MPI_INT,MPI_MAX,proc,mat->context->mpicomm);
+        } else {
+            MPI_Reduce(nel,NULL,nprocs,MPI_INT,MPI_MAX,proc,mat->context->mpicomm);
+        }
 
+        // assemble receive displacements
         ghost_lidx_t recvdispl[nprocs];
         if (proc == me) {
             recvdispl[0] = 0;
@@ -297,22 +306,34 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
                 recvdispl[i] = recvdispl[i-1] + nel[i-1];
             }
         }
-        perm_t sendbuf[nel[me]];
-        perm_t recvbuf[mat->context->lnrows[me]];
-    
+
+        // prepare send and receive buffer
+        perm_t *sendbuf = NULL;
+        perm_t *recvbuf = NULL;
+        if (proc == me) {
+            ghost_malloc((void **)&recvbuf,mat->context->lnrows[me]*sizeof(perm_t));
+        }
+        ghost_malloc((void **)&sendbuf,nel[me]*sizeof(perm_t));
         for (i=0; i<nel[me]; i++) {
             sendbuf[i] = permclone[displ[me]+i];
         }
 
+        // gather local invPerm
         MPI_Gatherv(sendbuf,nel[me],ghost_mpi_dt_perm,recvbuf,nel,recvdispl,ghost_mpi_dt_perm,proc,mat->context->mpicomm);
         
         if (proc == me) {
+            // sort the indices and put them into the invPerm array
             qsort(recvbuf,mat->context->lnrows[me],sizeof(perm_t),permcmp);
             for (i=0; i<mat->context->lnrows[me]; i++) {
                 mat->context->permutation->invPerm[i] = recvbuf[i].idx;
             }
         }
+
+        free(recvbuf);
+        free(sendbuf);
     }
+
+    free(permclone);
         
     MPI_CALL_RETURN(MPI_Type_free(&ghost_mpi_dt_perm));
 
@@ -376,7 +397,7 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
     
     if (mat->traits->sortScope > 1) {
         GHOST_INSTR_START("post-permutation with sorting")
-        ghost_gidx_t nrows = mat->context->gnrows;
+        ghost_gidx_t nrows = mat->context->lnrows[me];
         ghost_gidx_t scope = mat->traits->sortScope;
         
         GHOST_CALL_GOTO(ghost_malloc((void **)&rowSort,nrows * sizeof(ghost_sorting_helper_t)),err,ret);
