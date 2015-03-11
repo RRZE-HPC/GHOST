@@ -308,19 +308,14 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
             }
         }
 
-        // prepare send and receive buffer
-        perm_t *sendbuf = NULL;
+        // prepare receive buffer
         perm_t *recvbuf = NULL;
         if (proc == me) {
             ghost_malloc((void **)&recvbuf,mat->context->lnrows[me]*sizeof(perm_t));
         }
-        ghost_malloc((void **)&sendbuf,nel[me]*sizeof(perm_t));
-        for (i=0; i<nel[me]; i++) {
-            sendbuf[i] = permclone[displ[me]+i];
-        }
 
         // gather local invPerm
-        MPI_Gatherv(sendbuf,nel[me],ghost_mpi_dt_perm,recvbuf,nel,recvdispl,ghost_mpi_dt_perm,proc,mat->context->mpicomm);
+        MPI_Gatherv(&permclone[displ[me]],nel[me],ghost_mpi_dt_perm,recvbuf,nel,recvdispl,ghost_mpi_dt_perm,proc,mat->context->mpicomm);
         
         if (proc == me) {
             // sort the indices and put them into the invPerm array
@@ -331,7 +326,6 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
         }
 
         free(recvbuf);
-        free(sendbuf);
     }
 
     free(permclone);
