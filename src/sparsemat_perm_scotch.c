@@ -206,7 +206,8 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
           INFO_LOG("SCOTCH strategy used:");
           if (GHOST_VERBOSITY)
           {
-            SCOTCH_CALL_GOTO(SCOTCH_stratSave(strat,stdout),err,ret);
+            SCOTCH_CALL_GOTO(SCOTCH_stratSave(strat,stderr),err,ret);
+            fprintf(stderr,"\n");
           }
         }
     
