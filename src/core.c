@@ -385,6 +385,7 @@ ghost_error_t ghost_init(int argc, char **argv)
     }
 
     if (oversubscribed) {
+        PERFWARNING_LOG("Each process will use the full CPU set due to oversubscription! There will probably be resource conflicts.");
         mycpuset = hwloc_bitmap_dup(hwloc_get_obj_by_depth(topology,HWLOC_OBJ_SYSTEM,0)->cpuset);
     }
 
