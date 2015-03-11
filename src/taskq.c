@@ -177,6 +177,23 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
             return curTask;
         }
 
+        int totalPUs;
+        if (curTask->flags & GHOST_TASK_LD_STRICT) {
+            ghost_pumap_npu(&totalPUs,curTask->LD);
+            if (curTask->nThreads > totalPUs) {
+                PERFWARNING_LOG("More threads requested than PUs available in the requested strict locality domain! Will reduce the number of threads!");
+                curTask->nThreads = totalPUs;
+            }
+        } else {
+            ghost_pumap_npu(&totalPUs,GHOST_NUMANODE_ANY);
+            if (curTask->nThreads > totalPUs) {
+                PERFWARNING_LOG("More threads requested than PUs available for this process! Will reduce the number of threads!");
+                curTask->nThreads = totalPUs;
+            }
+        }
+
+
+
         hwloc_obj_t numanode;
         ghost_machine_numanode(&numanode,curTask->LD);
 
