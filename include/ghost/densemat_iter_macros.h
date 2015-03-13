@@ -231,7 +231,7 @@
 #define DENSEMAT_ITER_BEGIN_COMPACT_SINGLECOL(vec,valptr,row,col,memrow,memcol)\
     col = 0;\
     memcol = 0;\
-    _Pragma("omp for schedule(runtime) private(col,memrow,memcol,valptr,cuvalptr)")\
+    _Pragma("omp for schedule(runtime) private(memrow,memcol,valptr,cuvalptr)")\
     for (row = 0; row<vec->traits.nrows; row++) {\
         memrow = row;\
 
