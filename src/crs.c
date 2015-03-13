@@ -289,7 +289,6 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     ghost_error_t ret = GHOST_SUCCESS;
 
-    char * tmpval = NULL;
     ghost_gidx_t * tmpcol = NULL;
 
     int nprocs = 1;
@@ -315,70 +314,10 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
         CR(mat)->rpt[i] = 0;
     }
 
-    ghost_gidx_t gnents = 0;
     ghost_lidx_t funcret = 0;
 
-    GHOST_INSTR_START("extractrpt")
-#pragma omp parallel private(i,rowlen,tmpval,tmpcol) reduction (+:gnents,funcret) 
-    {
-        GHOST_CALL(ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize),ret);
-        GHOST_CALL(ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx_t)),ret);
-#pragma omp for ordered
-        for(i = 0; i < mat->nrows; i++) {
-            if ((mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) && mat->context->permutation) {
-                if (mat->context->permutation->scope == GHOST_PERMUTATION_GLOBAL) {
-                    funcret += src->func(mat->context->permutation->invPerm[i],&rowlen,tmpcol,tmpval);
-                } else {
-                    funcret += src->func(mat->context->lfRow[me]+mat->context->permutation->invPerm[i],&rowlen,tmpcol,tmpval);
-                }
-            } else {
-                funcret += src->func(mat->context->lfRow[me]+i,&rowlen,tmpcol,tmpval);
-            }
-            gnents += rowlen;
-            if (gnents > (ghost_gidx_t)GHOST_LIDX_MAX) {
-                ERROR_LOG("Number of elements too large!");
-                ret = GHOST_ERR_DATATYPE;
-            }
-#pragma omp ordered
-            CR(mat)->rpt[i+1] = CR(mat)->rpt[i]+rowlen;
-        }
-        free(tmpval); tmpval = NULL;
-        free(tmpcol); tmpcol = NULL;
-    }
-    if (funcret) {
-        ERROR_LOG("Matrix construction function returned error");
-        ret = GHOST_ERR_UNKNOWN;
-    }
-    if (ret != GHOST_SUCCESS){
-        goto err;
-    }
-    
-    if (gnents > (ghost_gidx_t)GHOST_LIDX_MAX) {
-        ERROR_LOG("The local number of entries is too large: %"PRGIDX">%"PRLIDX,gnents,GHOST_LIDX_MAX);
-        return GHOST_ERR_UNKNOWN;
-    }
-    
+    ghost_sparsemat_fromfunc_readrowlenghts(NULL,NULL,NULL,NULL,CR(mat)->rpt,src,mat,1,1);
 
-#ifdef GHOST_HAVE_MPI
-    ghost_gidx_t fent = 0;
-    for (i=0; i<nprocs; i++) {
-        if (i>0 && me==i) {
-            MPI_CALL_GOTO(MPI_Recv(&fent,1,ghost_mpi_dt_gidx,me-1,me-1,mat->context->mpicomm,MPI_STATUS_IGNORE),err,ret);
-        }
-        if (me==i && i<nprocs-1) {
-            ghost_gidx_t send = fent+gnents;
-            MPI_CALL_GOTO(MPI_Send(&send,1,ghost_mpi_dt_gidx,me+1,me,mat->context->mpicomm),err,ret);
-        }
-    }
-    
-    MPI_CALL_GOTO(MPI_Allgather(&gnents,1,ghost_mpi_dt_lidx,mat->context->lnEnts,1,ghost_mpi_dt_lidx,mat->context->mpicomm),err,ret);
-    MPI_CALL_GOTO(MPI_Allgather(&fent,1,ghost_mpi_dt_gidx,mat->context->lfEnt,1,ghost_mpi_dt_gidx,mat->context->mpicomm),err,ret);
-#endif
-
-    GHOST_INSTR_STOP("extractrpt")
-
-    mat->nnz = CR(mat)->rpt[mat->nrows];
-    mat->nEnts = mat->nnz;
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&(mat->col_orig),mat->nEnts*sizeof(ghost_gidx_t)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&(CR(mat)->val),mat->nEnts*mat->elSize),err,ret);

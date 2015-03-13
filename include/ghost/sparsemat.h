@@ -702,6 +702,8 @@ extern "C" {
     ghost_error_t ghost_sparsemat_from_mm(ghost_sparsemat_t *mat, char *path);
 
     ghost_error_t ghost_sparsemat_perm_global_cols(ghost_gidx_t *cols, ghost_lidx_t ncols, ghost_context_t *context);
+
+    ghost_error_t ghost_sparsemat_fromfunc_readrowlenghts(ghost_lidx_t *rl, ghost_lidx_t *rlp, ghost_lidx_t *cl, ghost_lidx_t *clp, ghost_lidx_t *chunkptr, ghost_sparsemat_src_rowfunc_t *src, ghost_sparsemat_t *mat, ghost_lidx_t C, ghost_lidx_t P);
         
 
 #ifdef __cplusplus

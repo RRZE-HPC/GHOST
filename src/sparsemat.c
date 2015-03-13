@@ -13,6 +13,7 @@
 #include "ghost/instr.h"
 
 #include <libgen.h>
+#include <math.h>
 
 const ghost_sparsemat_src_rowfunc_t GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER = {
     .func = NULL,
@@ -181,6 +182,120 @@ err:
 
 out:
 
+
+    return ret;
+}
+
+ghost_error_t ghost_sparsemat_fromfunc_readrowlenghts(ghost_lidx_t *rl, ghost_lidx_t *rlp, ghost_lidx_t *cl, ghost_lidx_t *clp, ghost_lidx_t *chunkptr, ghost_sparsemat_src_rowfunc_t *src, ghost_sparsemat_t *mat, ghost_lidx_t C, ghost_lidx_t P)
+{
+    ghost_error_t ret = GHOST_SUCCESS;
+    int funcerrs = 0;
+    char *tmpval = NULL;
+    ghost_gidx_t *tmpcol = NULL;
+    ghost_lidx_t nchunks = (ghost_lidx_t)(ceil((double)mat->nrows/(double)C));
+    ghost_lidx_t i,row,chunk;
+    ghost_gidx_t gnents = 0, gnnz = 0;
+    ghost_lidx_t maxRowLenInChunk = 0;
+    int me,nprocs;
+
+    ghost_lidx_t *tmpclp = NULL;
+    if (!clp) {
+        ghost_malloc((void **)&tmpclp,nchunks*sizeof(ghost_lidx_t));
+        clp = tmpclp;
+    }
+
+    GHOST_CALL_GOTO(ghost_rank(&me,mat->context->mpicomm),err,ret);
+    GHOST_CALL_GOTO(ghost_nrank(&nprocs,mat->context->mpicomm),err,ret);
+
+#pragma omp parallel private(maxRowLenInChunk,i,tmpval,tmpcol,row) reduction (+:gnents,gnnz,funcerrs)
+    {
+        ghost_lidx_t rowlen;
+        int funcret = 0;
+        maxRowLenInChunk = 0; 
+        GHOST_CALL(ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize),ret);
+        GHOST_CALL(ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx_t)),ret);
+#pragma omp for schedule(runtime)
+        for( chunk = 0; chunk < nchunks; chunk++ ) {
+            for (i=0; (i<C) && (chunk*C+i < mat->nrows); i++) {
+                row = chunk*C+i;
+
+                if ((mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) && mat->context->permutation) {
+                    if (mat->context->permutation->scope == GHOST_PERMUTATION_GLOBAL) {
+                        funcerrs += src->func(mat->context->permutation->invPerm[row],&rowlen,tmpcol,tmpval);
+                    } else {
+                        funcerrs += src->func(mat->context->lfRow[me]+mat->context->permutation->invPerm[row],&rowlen,tmpcol,tmpval);
+                    }
+                } else {
+                    funcerrs += src->func(mat->context->lfRow[me]+row,&rowlen,tmpcol,tmpval);
+                }
+
+                if (rl) {
+                    rl[row] = rowlen;
+                }
+                if (rlp) {
+                    rlp[row] = PAD(rowlen,P);
+                }
+
+                gnnz += rowlen;
+                maxRowLenInChunk = MAX(maxRowLenInChunk,rowlen);
+            }
+            if (cl) {
+                cl[chunk] = maxRowLenInChunk;
+            }
+
+            // clp _must_ not be NULL because we need if for the chunkptr computation
+            clp[chunk] = PAD(maxRowLenInChunk,P);
+
+            gnents += clp[chunk]*C;
+            maxRowLenInChunk = 0;
+        }
+
+        free(tmpval); tmpval = NULL;
+        free(tmpcol); tmpcol = NULL;
+    }
+    if (funcerrs) {
+        ERROR_LOG("Matrix construction function returned error");
+        ret = GHOST_ERR_UNKNOWN;
+        goto err;
+    }
+    if (gnents > (ghost_gidx_t)GHOST_LIDX_MAX) {
+        ERROR_LOG("The local number of entries is too large: %"PRGIDX,gnents);
+        return GHOST_ERR_DATATYPE;
+    }
+    if (gnnz > (ghost_gidx_t)GHOST_LIDX_MAX) {
+        ERROR_LOG("The local number of entries is too large: %"PRGIDX,gnents);
+        return GHOST_ERR_DATATYPE;
+    }
+
+    mat->nnz = (ghost_lidx_t)gnnz;
+    mat->nEnts = (ghost_lidx_t)gnents;
+    
+    for(chunk = 0; chunk < nchunks; chunk++ ) {
+        chunkptr[chunk+1] = chunkptr[chunk] + clp[chunk]*C;
+    }
+
+#ifdef GHOST_HAVE_MPI
+    ghost_gidx_t fent = 0;
+    for (i=0; i<nprocs; i++) {
+        if (i>0 && me==i) {
+            MPI_CALL_GOTO(MPI_Recv(&fent,1,ghost_mpi_dt_gidx,me-1,me-1,mat->context->mpicomm,MPI_STATUS_IGNORE),err,ret);
+        }
+        if (me==i && i<nprocs-1) {
+            ghost_gidx_t send = fent+mat->nEnts;
+            MPI_CALL_GOTO(MPI_Send(&send,1,ghost_mpi_dt_gidx,me+1,me,mat->context->mpicomm),err,ret);
+        }
+    }
+    
+    MPI_CALL_GOTO(MPI_Allgather(&mat->nEnts,1,ghost_mpi_dt_lidx,mat->context->lnEnts,1,ghost_mpi_dt_lidx,mat->context->mpicomm),err,ret);
+    MPI_CALL_GOTO(MPI_Allgather(&fent,1,ghost_mpi_dt_gidx,mat->context->lfEnt,1,ghost_mpi_dt_gidx,mat->context->mpicomm),err,ret);
+#endif
+
+    free(tmpclp);
+
+    goto out;
+err:
+
+out:
 
     return ret;
 }

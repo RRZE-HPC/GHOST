@@ -203,96 +203,10 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
     GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->rowLenPadded, (mat->nrowsPadded)*sizeof(ghost_lidx_t)),err,ret);
     SELL(mat)->chunkStart[0] = 0;
 
-    ghost_lidx_t maxRowLenInChunk = 0;
-    ghost_lidx_t maxRowLen = 0;
-    SELL(mat)->chunkStart[0] = 0;
-
     GHOST_CALL_GOTO(ghost_sparsemat_fromfunc_common(mat,src),err,ret);
-    int funcerrs = 0;
-    ghost_gidx_t gnents = 0, gnnz = 0;
-
-#pragma omp parallel private(maxRowLenInChunk,i,tmpval,tmpcol,row) reduction (+:gnents,gnnz,funcerrs) 
-        {
-            int funcret = 0;
-            maxRowLenInChunk = 0; 
-            GHOST_CALL(ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize),ret);
-            GHOST_CALL(ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx_t)),ret);
-#pragma omp for schedule(runtime)
-            for( chunk = 0; chunk < nChunks; chunk++ ) {
-                for (i=0; i<SELL(mat)->chunkHeight; i++) {
-                    row = chunk*SELL(mat)->chunkHeight+i;
-
-                    if (row < mat->nrows) {
-                        if ((mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) && mat->context->permutation) {
-                            if (mat->context->permutation->scope == GHOST_PERMUTATION_GLOBAL) {
-                                funcret = src->func(mat->context->permutation->invPerm[row],&SELL(mat)->rowLen[row],tmpcol,tmpval);
-                            } else {
-                                funcret = src->func(mat->context->lfRow[me]+mat->context->permutation->invPerm[row],&SELL(mat)->rowLen[row],tmpcol,tmpval);
-                            }
-                        } else {
-                            funcret = src->func(mat->context->lfRow[me]+row,&SELL(mat)->rowLen[row],tmpcol,tmpval);
-                        }
-                        if (funcret) {
-                            funcerrs++;
-                        }
-                    } else {
-                        SELL(mat)->rowLen[row] = 0;
-                    }
-
-                    SELL(mat)->rowLenPadded[row] = PAD(SELL(mat)->rowLen[row],SELL(mat)->T);
-
-                    gnnz += SELL(mat)->rowLen[row];
-                    maxRowLenInChunk = MAX(maxRowLenInChunk,SELL(mat)->rowLen[row]);
-                }
-#pragma omp critical
-                maxRowLen = MAX(maxRowLen,maxRowLenInChunk);
-                SELL(mat)->chunkLen[chunk] = maxRowLenInChunk;
-                SELL(mat)->chunkLenPadded[chunk] = PAD(maxRowLenInChunk,SELL(mat)->T);
-                gnents += SELL(mat)->chunkLenPadded[chunk]*SELL(mat)->chunkHeight;
-                maxRowLenInChunk = 0;
-            }
-
-            free(tmpval); tmpval = NULL;
-            free(tmpcol); tmpcol = NULL;
-        }
-        if (funcerrs) {
-            ERROR_LOG("Matrix construction function returned error");
-            ret = GHOST_ERR_UNKNOWN;
-            goto err;
-        }
- //   }
-
-    for( chunk = 0; chunk < nChunks; chunk++ ) {
-        SELL(mat)->chunkStart[chunk+1] = SELL(mat)->chunkStart[chunk] + SELL(mat)->chunkLenPadded[chunk]*SELL(mat)->chunkHeight;
-    }
-
-    if (gnents > (ghost_gidx_t)GHOST_LIDX_MAX) {
-        ERROR_LOG("The local number of entries is too large: %"PRGIDX,gnents);
-        return GHOST_ERR_DATATYPE;
-    }
-
-#ifdef GHOST_HAVE_MPI
-    ghost_gidx_t fent = 0;
-    for (i=0; i<nprocs; i++) {
-        if (i>0 && me==i) {
-            MPI_CALL_GOTO(MPI_Recv(&fent,1,ghost_mpi_dt_gidx,me-1,me-1,mat->context->mpicomm,MPI_STATUS_IGNORE),err,ret);
-        }
-        if (me==i && i<nprocs-1) {
-            ghost_gidx_t send = fent+gnents;
-            MPI_CALL_GOTO(MPI_Send(&send,1,ghost_mpi_dt_gidx,me+1,me,mat->context->mpicomm),err,ret);
-        }
-    }
     
-    MPI_CALL_GOTO(MPI_Allgather(&gnents,1,ghost_mpi_dt_lidx,mat->context->lnEnts,1,ghost_mpi_dt_lidx,mat->context->mpicomm),err,ret);
-    MPI_CALL_GOTO(MPI_Allgather(&fent,1,ghost_mpi_dt_gidx,mat->context->lfEnt,1,ghost_mpi_dt_gidx,mat->context->mpicomm),err,ret);
-#endif
+    ghost_sparsemat_fromfunc_readrowlenghts(SELL(mat)->rowLen,SELL(mat)->rowLenPadded,SELL(mat)->chunkLen,SELL(mat)->chunkLenPadded,SELL(mat)->chunkStart,src,mat,SELL(mat)->chunkHeight,SELL(mat)->T);
 
-    if (gnnz > (ghost_gidx_t)GHOST_LIDX_MAX) {
-        ERROR_LOG("The local number of nonzeroes is too large.");
-        return GHOST_ERR_DATATYPE;
-    }
-    mat->nEnts = (ghost_lidx_t)gnents;
-    mat->nnz = (ghost_lidx_t)gnnz;
     SELL(mat)->beta = mat->nnz*1.0/(double)mat->nEnts;
 
     GHOST_CALL_GOTO(ghost_malloc_align((void **)&SELL(mat)->val,mat->elSize*(size_t)mat->nEnts,GHOST_DATA_ALIGNMENT),err,ret);
