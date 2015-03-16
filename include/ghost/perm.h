@@ -8,7 +8,13 @@
 
 typedef enum
 {
+    /**
+     * @brief A local permutation only contains local indices in the range [0..perm->len-1].
+     */
     GHOST_PERMUTATION_LOCAL,
+    /**
+     * @brief A global permutation contains global indices in the range [0..context->gnrows-1].
+     */
     GHOST_PERMUTATION_GLOBAL
 }
 ghost_permutation_scope_t;
