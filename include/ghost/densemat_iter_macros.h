@@ -265,7 +265,7 @@
     memcol1 = 0;\
     memcol2 = 0;\
     col = 0;\
-    _Pragma("omp for schedule(runtime) private(col,memcol1,memcol2,memrow1,memrow2,valptr1,valptr2,cuvalptr1,cuvalptr2)")\
+    _Pragma("omp for schedule(runtime) private(memrow1,memrow2,valptr1,valptr2,cuvalptr1,cuvalptr2)")\
     for (row=0; row<vec1->traits.nrows; row++) {\
         memrow1 = row;\
         memrow2 = row;
