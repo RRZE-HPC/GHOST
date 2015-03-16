@@ -252,7 +252,8 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
 
     mat->nnz = (ghost_lidx_t)gnnz;
     mat->nEnts = (ghost_lidx_t)gnents;
-    
+   
+    chunkptr[0] = 0; 
     for(chunk = 0; chunk < nchunks; chunk++ ) {
         chunkptr[chunk+1] = chunkptr[chunk] + clp[chunk]*C;
     }
