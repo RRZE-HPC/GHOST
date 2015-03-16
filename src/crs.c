@@ -289,132 +289,18 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     ghost_error_t ret = GHOST_SUCCESS;
 
-    ghost_gidx_t * tmpcol = NULL;
-
-    int nprocs = 1;
-    int me;
-    GHOST_CALL_GOTO(ghost_nrank(&nprocs, mat->context->mpicomm),err,ret);
-    GHOST_CALL_GOTO(ghost_rank(&me, mat->context->mpicomm),err,ret);
-
-    GHOST_CALL_GOTO(ghost_sparsemat_fromfunc_common(mat,src),err,ret);
-    ghost_lidx_t rowlen;
-    ghost_lidx_t i,j;
-    mat->ncols = mat->context->gncols;
-    mat->nrows = mat->context->lnrows[me];
+    ghost_lidx_t i;
    
-    if (((int64_t)mat->nrows)+1 > (int64_t)GHOST_LIDX_MAX) {
-       ERROR_LOG("Index too large!");
-       return GHOST_ERR_DATATYPE;
-    } 
     GHOST_CALL_GOTO(ghost_malloc((void **)&(CR(mat)->rpt),(mat->nrows+1)*sizeof(ghost_lidx_t)),err,ret);
-    mat->nEnts = 0;
 
 #pragma omp parallel for schedule(runtime)
     for (i = 0; i < mat->nrows+1; i++) {
         CR(mat)->rpt[i] = 0;
     }
 
-    ghost_lidx_t funcret = 0;
-
-    ghost_sparsemat_fromfunc_readrowlenghts(NULL,NULL,NULL,NULL,CR(mat)->rpt,src,mat,1,1);
-
-
-    GHOST_CALL_GOTO(ghost_malloc((void **)&(mat->col_orig),mat->nEnts*sizeof(ghost_gidx_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&(CR(mat)->val),mat->nEnts*mat->elSize),err,ret);
-
-#pragma omp parallel for schedule(runtime) private (j)
-    for (i = 0; i < mat->nrows; i++) {
-        for (j=CR(mat)->rpt[i]; j<CR(mat)->rpt[i+1]; j++) {
-            mat->col_orig[j] = 0;
-            memset(&CR(mat)->val[j*mat->elSize],0,mat->elSize);
-        }
-    }
-
-    int funcerrs = 0;
-
-    GHOST_INSTR_START("readcolval")
-#pragma omp parallel private(i,j,rowlen,tmpcol) reduction(+:funcerrs)
-    {
-        funcret = 0;
-        GHOST_CALL(ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx_t)),ret);
-        memset(tmpcol,0,sizeof(ghost_gidx_t)*src->maxrowlen);
-    
-#pragma omp for schedule(runtime)
-        for( i = 0; i < mat->nrows; i++ ) {
-            if ((mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) && mat->context->permutation) {
-                if (mat->context->permutation->scope == GHOST_PERMUTATION_GLOBAL) {
-                    // global permutation will be done after all rows are read
-                    funcret = src->func(mat->context->permutation->invPerm[i],&rowlen,&mat->col_orig[CR(mat)->rpt[i]],&CR(mat)->val[CR(mat)->rpt[i]*mat->elSize]);
-                    // continue right away for global perms. row sorting and registration will be done in the second iteration
-                    continue;
-                } else {
-                    if (mat->traits->flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS) {
-                        funcret = src->func(mat->context->lfRow[me]+mat->context->permutation->invPerm[i],&rowlen,&mat->col_orig[CR(mat)->rpt[i]],&CR(mat)->val[CR(mat)->rpt[i]*mat->elSize]);
-                    } else {
-                        funcret = src->func(mat->context->lfRow[me]+mat->context->permutation->invPerm[i],&rowlen,tmpcol,&CR(mat)->val[CR(mat)->rpt[i]*mat->elSize]);
-                        for (j=CR(mat)->rpt[i]; j<CR(mat)->rpt[i+1]; j++) {
-                            if ((tmpcol[j-CR(mat)->rpt[i]] >= mat->context->lfRow[me]) && (tmpcol[j-CR(mat)->rpt[i]] < mat->context->lfRow[me]+mat->context->lnrows[me])) {
-                                mat->col_orig[j] = mat->context->permutation->perm[tmpcol[j-CR(mat)->rpt[i]]-mat->context->lfRow[me]]+mat->context->lfRow[me];
-                            } else {
-                                mat->col_orig[j] = tmpcol[j-CR(mat)->rpt[i]];
-                            }
-                        }
-                    }
-                }
-            } else {
-                funcret = src->func(mat->context->lfRow[me]+i,&rowlen,&mat->col_orig[CR(mat)->rpt[i]],&CR(mat)->val[CR(mat)->rpt[i]*mat->elSize]);
-            }
-            if (funcret) {
-                funcerrs++;
-            }
-            if (!(mat->traits->flags & GHOST_SPARSEMAT_NOT_SORT_COLS)) {
-                // sort rows by ascending column indices
-                GHOST_CALL(ghost_sparsemat_sortrow(&mat->col_orig[CR(mat)->rpt[i]],&CR(mat)->val[CR(mat)->rpt[i]*mat->elSize],mat->elSize,CR(mat)->rpt[i+1]-CR(mat)->rpt[i],1),ret);
-            }
-#pragma omp critical
-            GHOST_CALL(ghost_sparsemat_registerrow(mat,mat->context->lfRow[me]+i,&mat->col_orig[CR(mat)->rpt[i]],CR(mat)->rpt[i+1]-CR(mat)->rpt[i],1),ret);
-        }
-        free(tmpcol);
-    }
-    if (funcerrs) {
-        ERROR_LOG("Matrix construction function returned error");
-        ret = GHOST_ERR_UNKNOWN;
-        goto err;
-    }
-
-    if ((mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) && mat->context->permutation && mat->context->permutation->scope == GHOST_PERMUTATION_GLOBAL
-             && !(mat->traits->flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS)) {
-        ghost_sparsemat_perm_global_cols(mat->col_orig,mat->nnz,mat->context);
-#pragma omp parallel for schedule(runtime)
-        for( i = 0; i < mat->nrows; i++ ) {
-            if (!(mat->traits->flags & GHOST_SPARSEMAT_NOT_SORT_COLS)) {
-                // sort rows by ascending column indices
-                GHOST_CALL(ghost_sparsemat_sortrow(&mat->col_orig[CR(mat)->rpt[i]],&CR(mat)->val[CR(mat)->rpt[i]*mat->elSize],mat->elSize,CR(mat)->rpt[i+1]-CR(mat)->rpt[i],1),ret);
-            }
-#pragma omp critical
-            GHOST_CALL(ghost_sparsemat_registerrow(mat,mat->context->lfRow[me]+i,&mat->col_orig[CR(mat)->rpt[i]],CR(mat)->rpt[i+1]-CR(mat)->rpt[i],1),ret);
-        }
-    }
-
-
-    ghost_sparsemat_registerrow_finalize(mat);
-    GHOST_INSTR_STOP("readcolval")
-
-
-
-    mat->context->lnEnts[me] = mat->nEnts;
-
-    for (i=0; i<nprocs; i++) {
-        mat->context->lfEnt[i] = 0;
-    } 
-
-    for (i=1; i<nprocs; i++) {
-        mat->context->lfEnt[i] = mat->context->lfEnt[i-1]+mat->context->lnEnts[i-1];
-    } 
+    GHOST_CALL_GOTO(ghost_sparsemat_fromfunc_common(NULL,NULL,NULL,NULL,CR(mat)->rpt,&(CR(mat)->val),&mat->col_orig,src,mat,1,1),err,ret);
 
     GHOST_CALL_GOTO(mat->split(mat),err,ret);
-
-    mat->nrows = mat->context->lnrows[me];
 
 #ifdef GHOST_HAVE_CUDA
     if (mat->traits->flags & GHOST_SPARSEMAT_DEVICE) {
