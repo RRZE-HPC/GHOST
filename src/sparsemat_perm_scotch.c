@@ -224,39 +224,7 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
     
 
     GHOST_INSTR_START("scotch_combineperm")
-//#define INVPERM_V1
-#ifdef INVPERM_V1
-    MPI_Status * status;
-    MPI_Request * request;
-    ghost_malloc((void **)&request,2*mat->context->lnrows[me]*sizeof(MPI_Request));
-    ghost_malloc((void **)&status,2*mat->context->lnrows[me]*sizeof(MPI_Status));
-    
-    for (i=0;i<2*mat->context->lnrows[me];i++) {
-        request[i] = MPI_REQUEST_NULL;
-    }
-   
-    ghost_gidx_t *gidx;
-    ghost_malloc((void **)&gidx,mat->context->lnrows[me]*sizeof(ghost_gidx_t)); 
-    int proc;
-    for (i=0; i<mat->context->lnrows[me]; i++) {
-        gidx[i] = i+mat->context->lfRow[me];
-        MPI_CALL_GOTO(MPI_Irecv(&mat->context->permutation->invPerm[i],1,ghost_mpi_dt_gidx,MPI_ANY_SOURCE,i,mat->context->mpicomm,&request[2*i]),err,ret);
-        for (proc = 0; proc<nprocs; proc++) {
-            if (mat->context->lfRow[proc] <=mat->context->permutation->perm[i] && mat->context->lfRow[proc]+mat->context->lnrows[proc] > mat->context->permutation->perm[i]) {
-                break;
-            }
-        }
-        MPI_CALL_GOTO(MPI_Isend(&gidx[i],1,ghost_mpi_dt_gidx,proc,mat->context->permutation->perm[i]-mat->context->lfRow[proc],mat->context->mpicomm,&request[2*i+1]),err,ret);
-    }
-    GHOST_INSTR_START("waitall")
-    MPI_CALL_GOTO(MPI_Waitall(2*mat->context->lnrows[me],request,status),err,ret);
-    GHOST_INSTR_STOP("waitall")
-    
-    free(gidx);
-    free(request);
-    free(status);
 
-#else
     ghost_mpi_datatype_t ghost_mpi_dt_perm;
     MPI_CALL_RETURN(MPI_Type_contiguous(2,ghost_mpi_dt_gidx,&ghost_mpi_dt_perm));
     MPI_CALL_RETURN(MPI_Type_commit(&ghost_mpi_dt_perm));
@@ -334,8 +302,6 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
     free(permclone);
         
     MPI_CALL_RETURN(MPI_Type_free(&ghost_mpi_dt_perm));
-
-#endif
 
     GHOST_INSTR_STOP("scotch_combineperm")
     
