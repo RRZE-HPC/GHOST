@@ -277,11 +277,12 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
     for (proc = 0; proc<nprocs; proc++) {
         int displ[nprocs];
         int nel[nprocs];
+        int recvdispl[nprocs];
         memset(displ,0,sizeof(displ));
         memset(nel,0,sizeof(nel));
 
         // find 1st pidx in sorted permclone which lies in process proc
-        while(permclone[offs].pidx < mat->context->lfRow[proc]) {
+        while((offs < mat->context->lnrows[me]) && (permclone[offs].pidx < mat->context->lfRow[proc])) {
             offs++;
         }
         displ[me] = offs;
@@ -300,12 +301,12 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
         }
 
         // assemble receive displacements
-        ghost_lidx_t recvdispl[nprocs];
         if (proc == me) {
             recvdispl[0] = 0;
             for (i=1; i<nprocs; i++) {
                 recvdispl[i] = recvdispl[i-1] + nel[i-1];
             }
+            
         }
 
         // prepare receive buffer
@@ -325,7 +326,9 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
             }
         }
 
-        free(recvbuf);
+        if (proc == me) {
+            free(recvbuf);
+        }
     }
 
     free(permclone);
