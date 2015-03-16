@@ -56,9 +56,9 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
     WARNING_LOG("Scotch not available. Will not create matrix permutation!");
     return GHOST_SUCCESS;
 #else
-    GHOST_INSTR_START("scotch")
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_PREPROCESS);
     ghost_error_t ret = GHOST_SUCCESS;
-    ghost_gidx_t *col = NULL, i, j, k, c;
+    ghost_gidx_t *col = NULL, i, j, k;
     ghost_sorting_helper_t *rowSort = NULL;
     ghost_gidx_t *rpt = NULL;
     ghost_gidx_t *col_loopless = NULL;
@@ -185,7 +185,7 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
         goto err;
     }
     SCOTCH_CALL_GOTO(SCOTCH_dgraphBuild(dgraph, 0, (ghost_gidx_t)mat->context->lnrows[me], mat->context->lnrows[me], rpt, rpt+1, NULL, NULL, nnz, nnz, col, NULL, NULL),err,ret);
-    SCOTCH_CALL_GOTO(SCOTCH_dgraphCheck(dgraph),err,ret);
+//    SCOTCH_CALL_GOTO(SCOTCH_dgraphCheck(dgraph),err,ret);
 
     SCOTCH_CALL_GOTO(SCOTCH_stratInit(strat),err,ret);
     
@@ -477,7 +477,7 @@ out:
     if (strat) {
         SCOTCH_stratExit(strat);
     }
-    GHOST_INSTR_STOP("scotch")
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_PREPROCESS);
     
     
     return ret;
