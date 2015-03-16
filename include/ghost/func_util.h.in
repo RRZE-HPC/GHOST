@@ -45,6 +45,9 @@ typedef enum
             PERFWARNING_LOG("A mathematical kernel has been called outside a task!");\
         }\
     }\
+    if (GHOST_VERBOSITY > 1) {\
+        DEBUG_LOG(1,"Enter %s",__FUNCTION__);\
+    }\ 
 
 #define GHOST_FUNC_EXIT(functype)\
     if (${INSTRUMENTATION_FUNCTYPES}) {\
@@ -52,5 +55,8 @@ typedef enum
         GHOST_INSTR_STOP(__FUNCTION__+__funcnameoffset);\
         ghost_instr_enable = __ghost_instr_enable_backup;\
     }\
+    if (GHOST_VERBOSITY > 1) {\
+        DEBUG_LOG(1,"Exit %s",__FUNCTION__);\
+    }\ 
 
 #endif

@@ -77,7 +77,6 @@ int ghost_initialized()
 
 ghost_error_t ghost_init(int argc, char **argv)
 {
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_PREPROCESS);
 
     if (initialized) {
         return GHOST_SUCCESS;
@@ -105,6 +104,8 @@ ghost_error_t ghost_init(int argc, char **argv)
     } else {
         INFO_LOG("MPI was already initialized, not doing it!");
     }
+    
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_PREPROCESS);
 
     ghost_nodecomm_setup(MPI_COMM_WORLD);
     ghost_mpi_datatypes_create();
