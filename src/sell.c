@@ -217,11 +217,6 @@ err:
     SELL(mat)->beta = 0;
     mat->nEnts = 0;
     mat->nnz = 0;
-    free(mat->context->permutation->perm); mat->context->permutation->perm = NULL;
-    free(mat->context->permutation->invPerm); mat->context->permutation->invPerm = NULL;
-#ifdef GHOST_HAVE_CUDA
-    free(mat->context->permutation->cu_perm); mat->context->permutation->cu_perm = NULL;
-#endif
 
 out:
     return ret;
@@ -553,7 +548,7 @@ static ghost_error_t SELL_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
     GHOST_CALL_GOTO(ghost_malloc((void **)&tmpcol,mat->nnz*sizeof(ghost_gidx_t)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&tmpval,mat->nnz*mat->elSize),err,ret);
     GHOST_CALL_GOTO(ghost_bincrs_col_read(tmpcol, matrixPath, mat->context->lfRow[me], mat->nrows, mat->context, mat->traits->flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS),err,ret);
-    GHOST_CALL_GOTO(ghost_bincrs_val_read(tmpval, mat->traits->datatype, matrixPath,  mat->context->lfRow[me], mat->nrows, mat->context->permutation),err,ret);
+    GHOST_CALL_GOTO(ghost_bincrs_val_read(tmpval, mat->traits->datatype, matrixPath,  mat->context->lfRow[me], mat->nrows, mat->context->perm_global),err,ret);
 
     ghost_lidx_t row = 0;
     for (chunk = 0; chunk < nChunks; chunk++) {
@@ -599,11 +594,6 @@ err:
     free(SELL(mat)->rowLen); SELL(mat)->rowLen = NULL;
     free(SELL(mat)->rowLenPadded); SELL(mat)->rowLenPadded = NULL;
     free(SELL(mat)->chunkStart); SELL(mat)->chunkStart = NULL;
-    free(mat->context->permutation->perm); mat->context->permutation->perm = NULL;
-    free(mat->context->permutation->invPerm); mat->context->permutation->invPerm = NULL;
-#ifdef GHOST_HAVE_CUDA
-    free(mat->context->permutation->cu_perm); mat->context->permutation->cu_perm = NULL;
-#endif
 
 out:
     free(tmpcol); tmpcol = NULL;

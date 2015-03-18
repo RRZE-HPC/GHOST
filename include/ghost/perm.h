@@ -6,6 +6,8 @@
 #ifndef GHOST_PERM_H
 #define GHOST_PERM_H
 
+#include "types.h"
+
 typedef enum
 {
     /**
@@ -25,7 +27,7 @@ typedef enum
     GHOST_PERMUTATION_PERM2ORIG
 }
 ghost_permutation_direction_t;
-
+    
 typedef struct
 {
     /**

@@ -196,7 +196,160 @@ static inline void my_rand(unsigned int* state, ghost_complex<float_type>* resul
     my_rand<float_type>(state,((float_type *)result)+1);
 }
 
+template<typename v_t>
+struct ghost_densemat_perment_t {
+    v_t val;
+    ghost_gidx_t pidx;
+};
 
+template <typename v_t> 
+static int densemat_perment_cmp (const void *a, const void *b)
+{
+    return ((ghost_densemat_perment_t<v_t> *)a)->pidx - ((ghost_densemat_perment_t<v_t> *)b)->pidx;
+
+}
+
+
+template <typename v_t> 
+static ghost_error_t FUNCNAME(permute_tmpl(ghost_densemat_t *vec, ghost_permutation_direction_t dir))
+{
+    if (!vec->context->perm_local && !vec->context->perm_global) {
+        WARNING_LOG("No permutation vector present!");
+        return GHOST_SUCCESS;
+    }
+
+    ghost_lidx_t colidx;
+    ghost_lidx_t i,me,nprocs;
+    
+    int blocklengths[] = {1,1};
+    MPI_Aint displacements[2];
+    displacements[0] = 0;
+    displacements[1] = sizeof(v_t);
+    ghost_mpi_datatype_t types[] = {vec->mpidt,ghost_mpi_dt_gidx};
+
+    ghost_mpi_datatype_t ghost_mpi_dt_densemat_perment;
+    MPI_CALL_RETURN(MPI_Type_create_struct(2,blocklengths,displacements,types,&ghost_mpi_dt_densemat_perment));
+    MPI_CALL_RETURN(MPI_Type_commit(&ghost_mpi_dt_densemat_perment));
+        
+    GHOST_CALL_RETURN(ghost_rank(&me,vec->context->mpicomm));
+    GHOST_CALL_RETURN(ghost_nrank(&nprocs,vec->context->mpicomm));
+    GHOST_CALL_RETURN(vec->downloadNonHalo(vec));
+
+    if (vec->context->perm_global) {
+        for (colidx=0; colidx<vec->traits.ncols; colidx++) {
+            struct ghost_densemat_perment_t<v_t> *permsorted, *invpermsorted;
+
+            GHOST_CALL_RETURN(ghost_malloc((void **)&permsorted,sizeof(struct ghost_densemat_perment_t<v_t>)*vec->context->perm_global->len));
+            GHOST_CALL_RETURN(ghost_malloc((void **)&invpermsorted,sizeof(struct ghost_densemat_perment_t<v_t>)*vec->context->perm_global->len));
+
+            for (i=0; i<vec->context->perm_global->len; i++) {
+                if (vec->context->perm_local && dir == GHOST_PERMUTATION_PERM2ORIG) {
+                    permsorted[i].val = *(v_t *)DENSEMAT_VALPTR(vec,i,colidx);
+                    invpermsorted[i].val = *(v_t *)DENSEMAT_VALPTR(vec,i,colidx);
+                    permsorted[i].pidx = vec->context->perm_global->perm[vec->context->perm_local->perm[i]];
+                    invpermsorted[i].pidx = vec->context->perm_global->invPerm[vec->context->perm_local->invPerm[i]];
+                    //permsorted[i].pidx = vec->context->perm_global->perm[i];
+                    //invpermsorted[i].pidx = vec->context->perm_global->invPerm[i];
+                    //WARNING_LOG("permsorted[%d].pidx = %d, .val = %f",i,permsorted[i].pidx,permsorted[i].val);
+                    //WARNING_LOG("invpermsorted[%d].pidx = %d, .val = %f",i,invpermsorted[i].pidx,invpermsorted[i].val);
+                } else {
+                    //permsorted[i].val = *(v_t *)DENSEMAT_VALPTR(vec,vec->context->perm_local->perm[i],colidx);
+                    //invpermsorted[i].val = *(v_t *)DENSEMAT_VALPTR(vec,vec->context->perm_local->invPerm[i],colidx);
+                    permsorted[i].val = *(v_t *)DENSEMAT_VALPTR(vec,i,colidx);
+                    invpermsorted[i].val = *(v_t *)DENSEMAT_VALPTR(vec,i,colidx);
+                    permsorted[i].pidx = vec->context->perm_global->perm[i];
+                    invpermsorted[i].pidx = vec->context->perm_global->invPerm[i];
+                    //permsorted[i].pidx = vec->context->perm_local->perm[vec->context->perm_global->perm[i]];
+                    //invpermsorted[i].pidx = vec->context->perm_local->invPerm[vec->context->perm_global->invPerm[i]];
+                    //WARNING_LOG("permsorted[%d].pidx = %d, .val = %f",i,permsorted[i].pidx,permsorted[i].val);
+                }
+                
+            }
+            qsort(permsorted,vec->context->perm_global->len,sizeof(struct ghost_densemat_perment_t<v_t>),densemat_perment_cmp<v_t>);
+            qsort(invpermsorted,vec->context->perm_global->len,sizeof(struct ghost_densemat_perment_t<v_t>),densemat_perment_cmp<v_t>);
+
+            int permcnt[nprocs];
+            int invpermcnt[nprocs];
+            int permdispl[nprocs];
+            int invpermdispl[nprocs];
+
+            memset(permcnt,0,sizeof(permcnt));
+            memset(invpermcnt,0,sizeof(invpermcnt));
+            memset(permdispl,0,sizeof(permdispl));
+            memset(invpermdispl,0,sizeof(invpermdispl));
+
+            int permproc = 0, invpermproc = 0;
+            for (i=0; i<vec->context->perm_global->len; i++) {
+                while (permsorted[i].pidx >= (vec->context->lfRow[permproc]+vec->context->lnrows[permproc])) {
+                    permproc++;
+                }
+                while (invpermsorted[i].pidx >= (vec->context->lfRow[invpermproc]+vec->context->lnrows[invpermproc])) {
+                    invpermproc++;
+                }
+                permcnt[permproc]++;
+                invpermcnt[invpermproc]++;
+            }
+            for (i=1; i<nprocs; i++) {
+                permdispl[i] = permdispl[i-1]+permcnt[i-1];
+                invpermdispl[i] = invpermdispl[i-1]+invpermcnt[i-1];
+            }
+
+            if (dir == GHOST_PERMUTATION_ORIG2PERM) {
+                MPI_CALL_RETURN(MPI_Alltoallv(permsorted,permcnt,permdispl,ghost_mpi_dt_densemat_perment,invpermsorted,invpermcnt,invpermdispl,ghost_mpi_dt_densemat_perment,vec->context->mpicomm));
+                if (vec->context->perm_local) {
+                    for (i=0; i<vec->context->perm_global->len; i++) {
+                    //WARNING_LOG("invpermsorted[%d].pidx = %d, .val = %f, put into val %d",i,invpermsorted[i].pidx,invpermsorted[i].val,vec->context->perm_local->perm[invpermsorted[i].pidx-vec->context->lfRow[me]]);
+                        //*(v_t *)DENSEMAT_VALPTR(vec,vec->context->perm_local->invPerm[invpermsorted[i].pidx-vec->context->lfRow[me]],colidx) = invpermsorted[i].val;
+                        //*(v_t *)DENSEMAT_VALPTR(vec,i,colidx) = invpermsorted[vec->context->perm_local->invPerm[i]].val;
+//                        *(v_t *)DENSEMAT_VALPTR(vec,i,colidx) = invpermsorted[vec->context->perm_local->perm[i]].val;
+//                        *(v_t *)DENSEMAT_VALPTR(vec,i,colidx) = invpermsorted[i].val;
+                        *(v_t *)DENSEMAT_VALPTR(vec,vec->context->perm_local->perm[invpermsorted[i].pidx-vec->context->lfRow[me]],colidx) = invpermsorted[i].val;
+                    }
+                } else {
+                    for (i=0; i<vec->context->perm_global->len; i++) {
+                        //*(v_t *)DENSEMAT_VALPTR(vec,invpermsorted[i].pidx-vec->context->lfRow[me],colidx) = invpermsorted[i].val;
+                        *(v_t *)DENSEMAT_VALPTR(vec,i,colidx) = invpermsorted[i].val;
+                    }
+                }
+            } else {
+                MPI_CALL_RETURN(MPI_Alltoallv(invpermsorted,invpermcnt,invpermdispl,ghost_mpi_dt_densemat_perment,permsorted,permcnt,permdispl,ghost_mpi_dt_densemat_perment,vec->context->mpicomm));
+                for (i=0; i<vec->context->perm_global->len; i++) {
+                    //WARNING_LOG("permsorted[%d].pidx = %d, .val = %f",i,permsorted[i].pidx,permsorted[i].val);
+                    *(v_t *)DENSEMAT_VALPTR(vec,permsorted[i].pidx-vec->context->lfRow[me],colidx) = permsorted[i].val;
+                    //*(v_t *)DENSEMAT_VALPTR(vec,vec->context->perm_local->invPerm[permsorted[i].pidx-vec->context->lfRow[me]],colidx) = permsorted[i].val;
+                }
+            }
+
+            free(permsorted);
+            free(invpermsorted);
+        }
+    } else if (vec->context->perm_local) {
+        ghost_densemat_t *vecclone;
+
+        vec->clone(vec,&vecclone,vec->traits.nrows,0,vec->traits.ncols,0);
+
+        if (dir == GHOST_PERMUTATION_ORIG2PERM) {
+            DENSEMAT_ITER(vec,*valptr = *(v_t *)DENSEMAT_VALPTR(vecclone,vec->context->perm_local->invPerm[row],col));
+        } else {
+            DENSEMAT_ITER(vec,*valptr = *(v_t *)DENSEMAT_VALPTR(vecclone,vec->context->perm_local->perm[row],col));
+        }
+
+        vecclone->destroy(vecclone);
+    }
+
+    
+    if (dir == GHOST_PERMUTATION_ORIG2PERM) {
+        vec->traits.flags |= (ghost_densemat_flags_t)GHOST_DENSEMAT_PERMUTED;
+    } else {
+        vec->traits.flags &= (ghost_densemat_flags_t)(~GHOST_DENSEMAT_PERMUTED);
+    }
+        
+    MPI_Type_free(&ghost_mpi_dt_densemat_perment);
+
+    return GHOST_SUCCESS;
+
+
+}
 
 template <typename v_t> 
 static ghost_error_t FUNCNAME(fromRand_tmpl(ghost_densemat_t *vec))
@@ -432,3 +585,13 @@ extern "C" ghost_error_t FUNCNAME(fromVec_selector(ghost_densemat_t *vec, ghost_
 
     return ret;
 }
+
+extern "C" ghost_error_t FUNCNAME(permute_selector(ghost_densemat_t *vec, ghost_permutation_direction_t dir))
+{ 
+    ghost_error_t ret = GHOST_SUCCESS;
+
+    SELECT_TMPL_1DATATYPE(vec->traits.datatype,ghost_complex,ret,FUNCNAME(permute_tmpl),vec,dir);
+
+    return ret;
+}
+

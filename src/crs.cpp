@@ -40,16 +40,7 @@ static ghost_error_t CRS_stringify_tmpl(ghost_sparsemat_t *mat, char ** str, int
             }
         } else {
             for (j=CR(mat)->rpt[i]; j<CR(mat)->rpt[i+1]; j++) {
-                if (mat->traits->flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS) {
-                    buffer << val[j] << " (" << CR(mat)->col[j] << ")" << "\t";
-                } else {
-                    if (CR(mat)->col[j] < mat->nrows) {
-                        buffer << val[j] << " (o " << mat->context->permutation->invPerm[CR(mat)->col[j]] << "|p " << CR(mat)->col[j] << ")" << "\t";
-                    } else {
-                        buffer << val[j] << " (p " << CR(mat)->col[j] << "|p " << CR(mat)->col[j] << ")" << "\t";
-                    }
-                }
-
+                buffer << val[j] << " (" << CR(mat)->col[j] << ")" << "\t";
             }
         }
         if (i<mat->nrows-1) {

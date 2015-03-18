@@ -70,9 +70,13 @@ struct ghost_context_t
      */
     ghost_mpi_comm_t mpicomm;
     /**
-     * @brief The matrix' permutation.
+     * @brief The matrix' global permutation.
      */
-    ghost_permutation_t *permutation;
+    ghost_permutation_t *perm_global;
+    /**
+     * @brief The matrix' local permutation.
+     */
+    ghost_permutation_t *perm_local;
     /**
      * @brief Number of remote elements with unique colidx
      */

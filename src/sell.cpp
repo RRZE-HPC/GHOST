@@ -32,16 +32,7 @@ static ghost_error_t SELL_stringify_tmpl(ghost_sparsemat_t *mat, char **str, int
             } else {
                 for (j=0; j<(dense?mat->ncols:SELL(mat)->chunkLen[chunk]); j++) {
                     ghost_lidx_t idx = SELL(mat)->chunkStart[chunk]+j*SELL(mat)->chunkHeight+i;
-                    if (mat->traits->flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS) {
-                        buffer << val[idx] << " (" << SELL(mat)->col[idx] << ")" << "\t";
-                    } else {
-                        if (SELL(mat)->col[idx] < mat->nrows) {
-                            buffer << val[idx] << " (o " << mat->context->permutation->invPerm[SELL(mat)->col[idx]] << "|p " << SELL(mat)->col[idx] << ")" << "\t";
-                        } else {
-                            buffer << val[idx] << " (p " << SELL(mat)->col[idx] << "|p " << SELL(mat)->col[idx] << ")" << "\t";
-                        }
-                    }
-
+                    buffer << val[idx] << " (" << SELL(mat)->col[idx] << ")" << "\t";
                 }
             }
             if (i<mat->nrows-1) {

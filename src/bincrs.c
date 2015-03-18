@@ -38,6 +38,8 @@ static void (*ghost_castarray_funcs[4][4]) (void *, void *, int) =
 
 ghost_error_t ghost_bincrs_col_read_opened(ghost_gidx_t *col, char *matrixPath, ghost_gidx_t offsRows, ghost_lidx_t nRows, ghost_context_t *context, int keepCols, FILE *filed)
 {
+    return GHOST_SUCCESS;
+#if 0
     ghost_permutation_t *perm;
     if (context) {
        perm = context->permutation;
@@ -242,6 +244,7 @@ ghost_error_t ghost_bincrs_col_read_opened(ghost_gidx_t *col, char *matrixPath, 
     }
 
     return GHOST_SUCCESS;
+#endif
 }
 
 
