@@ -32,7 +32,7 @@ extern "C" ghost_error_t ghost_sparsemat_perm_color(ghost_sparsemat_t *mat, void
         
     rpt[0] = 0;
     rptlocal[0] = 0;
-
+#if 0
     if (srcType == GHOST_SPARSEMAT_SRC_FILE) {
         char *matrixPath = (char *)matrixSource;
         GHOST_CALL_GOTO(ghost_bincrs_rpt_read(rpt, matrixPath, mat->context->lfRow[me], mat->context->lnrows[me]+1, NULL),err,ret);
@@ -55,6 +55,8 @@ extern "C" ghost_error_t ghost_sparsemat_perm_color(ghost_sparsemat_t *mat, void
         }
 
     } else if (srcType == GHOST_SPARSEMAT_SRC_FUNC) {
+#endif
+    if (srcType == GHOST_SPARSEMAT_SRC_FUNC || srcType == GHOST_SPARSEMAT_SRC_FILE) {
         ghost_sparsemat_src_rowfunc_t *src = (ghost_sparsemat_src_rowfunc_t *)matrixSource;
         char * tmpval = NULL;
         ghost_gidx_t * tmpcol = NULL;

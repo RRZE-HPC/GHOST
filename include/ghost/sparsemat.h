@@ -699,6 +699,7 @@ extern "C" {
 
     int ghost_cmp_entsperrow(const void* a, const void* b);
 
+    ghost_error_t ghost_sparsemat_from_bincrs(ghost_sparsemat_t *mat, char *path);
     ghost_error_t ghost_sparsemat_from_mm(ghost_sparsemat_t *mat, char *path);
 
     ghost_error_t ghost_sparsemat_perm_global_cols(ghost_gidx_t *cols, ghost_lidx_t ncols, ghost_context_t *context);

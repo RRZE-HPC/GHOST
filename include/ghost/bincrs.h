@@ -11,6 +11,7 @@
 #include "error.h"
 #include "perm.h"
 #include "context.h"
+#include "sparsemat.h"
 
 #include <stdio.h>
 
@@ -41,6 +42,16 @@
 #define GHOST_BINCRS_DT_REAL    GHOST_DT_REAL
 #define GHOST_BINCRS_DT_COMPLEX GHOST_DT_COMPLEX
 
+#define GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_INIT -1
+#define GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_FINALIZE -2
+#define GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_GETRPT -3
+#define GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_GETDIM -4
+
+typedef struct 
+{
+    char *filename;
+    ghost_datatype_t dt;
+} ghost_sparsemat_rowfunc_bincrs_initargs;
 
 /**
  * @brief The header of a sparse matrix file.
@@ -84,6 +95,25 @@ typedef struct {
 template<typename m_t, typename f_t> void ghost_castarray_tmpl(void *out, void *in, int nEnts);
 extern "C" {
 #endif
+/**
+ * @brief 
+ *
+ * @param row
+ * @param rowlen
+ * @param col
+ * @param val
+ *
+ * @return 
+ *
+ * If called with row #GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_INIT, the parameter
+ * \p val has to be a ghost_sparsemat_rowfunc_bincrs_initargs * with the according
+ * information filled in. The parameter \p col has to be a ghost_gidx_t[2] in 
+ * which the number of rows and columns will be stored.
+ */
+int ghost_sparsemat_rowfunc_bincrs(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, void *val);
+    ghost_error_t ghost_bincrs_header_read(ghost_bincrs_header_t *header, char *path);
+
+#if 0
 
     ghost_error_t ghost_bincrs_header_read(ghost_bincrs_header_t *header, char *path);
     ghost_error_t ghost_bincrs_col_read(ghost_gidx_t *col, char *matrixPath, ghost_gidx_t offsRows, ghost_lidx_t nRows, ghost_context_t *context, int keepCols);
@@ -109,7 +139,7 @@ extern "C" {
     void zs_ghost_castarray(void *, void *, int);
     void zc_ghost_castarray(void *, void *, int);
     void zz_ghost_castarray(void *, void *, int);
-
+#endif
 
 #ifdef __cplusplus
 }

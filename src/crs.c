@@ -27,7 +27,6 @@
 
 #include <dlfcn.h>
 
-static ghost_error_t CRS_fromBin(ghost_sparsemat_t *mat, char *matrixPath);
 static ghost_error_t CRS_toBin(ghost_sparsemat_t *mat, char *matrixPath);
 static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src_rowfunc_t *src);
 static ghost_error_t CRS_permute(ghost_sparsemat_t *mat, ghost_lidx_t *perm, ghost_lidx_t *invPerm);
@@ -69,7 +68,7 @@ ghost_error_t ghost_crs_init(ghost_sparsemat_t *mat)
         mat->kacz   = &ghost_crs_kacz;
     }
 
-    mat->fromFile = &CRS_fromBin;
+    mat->fromFile = &ghost_sparsemat_from_bincrs;
     mat->fromMM = &ghost_sparsemat_from_mm;
     mat->toFile = &CRS_toBin;
     mat->fromRowFunc = &CRS_fromRowFunc;
@@ -463,88 +462,6 @@ out:
 
 }
 
-
-/*int compareNZEPos( const void* a, const void* b ) 
-  {
-
-  int aRow = ((NZE_TYPE*)a)->row,
-  bRow = ((NZE_TYPE*)b)->row,
-  aCol = ((NZE_TYPE*)a)->col,
-  bCol = ((NZE_TYPE*)b)->col;
-
-  if( aRow == bRow ) {
-  return aCol - bCol;
-  }
-  else return aRow - bRow;
-  }*/
-
-/**
- * @brief Creates a CRS matrix from a binary file.
- *
- * @param mat The matrix.
- * @param matrixPath Path to the file.
- *
- * If the row pointers have already been read-in and stored in the context
- * they will not be read in again.
- */
-static ghost_error_t CRS_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
-{
-    DEBUG_LOG(1,"Reading CRS matrix from file");
-    ghost_error_t ret = GHOST_SUCCESS;
-
-    ghost_gidx_t i, j;
-    int me,nprocs;
-    
-    GHOST_CALL_GOTO(ghost_rank(&me, mat->context->mpicomm),err,ret);
-    GHOST_CALL_GOTO(ghost_nrank(&nprocs, mat->context->mpicomm),err,ret);
-    GHOST_CALL_GOTO(ghost_sparsemat_fromfile_common(mat,matrixPath,&(CR(mat)->rpt)),err,ret);
-    mat->nEnts = mat->nnz;
-
-    GHOST_CALL_GOTO(ghost_malloc_align((void **)&(mat->col_orig),mat->nEnts * sizeof(ghost_gidx_t), GHOST_DATA_ALIGNMENT),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc_align((void **)&(CR(mat)->val),mat->nEnts * mat->elSize,GHOST_DATA_ALIGNMENT),err,ret);
-
-#pragma omp parallel for schedule(runtime) private (j)
-    for (i = 0; i < mat->nrows; i++) {
-        for (j=CR(mat)->rpt[i]; j<CR(mat)->rpt[i+1]; j++) {
-            mat->col_orig[j] = 0;
-            memset(&CR(mat)->val[j*mat->elSize],0,mat->elSize);
-        }
-    }
-
-    GHOST_CALL_GOTO(ghost_bincrs_col_read(mat->col_orig, matrixPath, mat->context->lfRow[me], mat->nrows, mat->context,mat->traits->flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS),err,ret);
-    GHOST_CALL_GOTO(ghost_bincrs_val_read(CR(mat)->val, mat->traits->datatype, matrixPath, mat->context->lfRow[me], mat->nrows, mat->context->perm_global),err,ret);
-   
-    for (i=0;i<mat->context->lnrows[me];i++) {
-        if (!(mat->traits->flags & GHOST_SPARSEMAT_NOT_SORT_COLS)) {
-            // sort rows by ascending column indices
-            GHOST_CALL_GOTO(ghost_sparsemat_sortrow(&mat->col_orig[CR(mat)->rpt[i]],&CR(mat)->val[CR(mat)->rpt[i]*mat->elSize],mat->elSize,CR(mat)->rpt[i+1]-CR(mat)->rpt[i],1),err,ret);
-        }
-        GHOST_CALL_GOTO(ghost_sparsemat_registerrow(mat,mat->context->lfRow[me]+i,&mat->col_orig[CR(mat)->rpt[i]],CR(mat)->rpt[i+1]-CR(mat)->rpt[i],1),err,ret);
-    }
-    ghost_sparsemat_registerrow_finalize(mat);
-
-    DEBUG_LOG(1,"Split matrix");
-    GHOST_CALL_GOTO(mat->split(mat),err,ret);
-    DEBUG_LOG(1,"Matrix read in successfully");
-
-#ifdef GHOST_HAVE_CUDA
-    if (mat->traits->flags & GHOST_SPARSEMAT_DEVICE) {
-        GHOST_CALL_GOTO(mat->upload(mat),err,ret);
-    }
-#endif
-
-    goto out;
-err:
-    free(CR(mat)->rpt); CR(mat)->rpt = NULL;
-    free(mat->col_orig); mat->col_orig = NULL;
-    free(CR(mat)->val); CR(mat)->val = NULL;
-    free(mat->nzDist); mat->nzDist = NULL;
-
-out:
-
-    return ret;
-
-}
 
 static ghost_error_t CRS_toBin(ghost_sparsemat_t *mat, char *matrixPath)
 {

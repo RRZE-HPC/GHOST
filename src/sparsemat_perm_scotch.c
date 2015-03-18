@@ -37,14 +37,16 @@ static int MPI_Allreduce64_in_place ( void *buf, int64_t count,
 #endif
 #endif
 
+#ifdef GHOST_HAVE_SCOTCH
 typedef struct {
     ghost_gidx_t idx, pidx;
 } ghost_permutation_ent_t;
                     
-int perm_ent_cmp(const void *a, const void *b)
+static int perm_ent_cmp(const void *a, const void *b)
 {
     return ((ghost_permutation_ent_t *)a)->pidx - ((ghost_permutation_ent_t *)b)->pidx;
 }
+#endif
 
 ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSource, ghost_sparsemat_src_t srcType)
 {
@@ -89,6 +91,7 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
     GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,(mat->context->lnrows[me]+1) * sizeof(ghost_gidx_t)),err,ret);
     
     GHOST_INSTR_START("scotch_readin")
+#if 0
     if (srcType == GHOST_SPARSEMAT_SRC_FILE) {
         char *matrixPath = (char *)matrixSource;
         GHOST_CALL_GOTO(ghost_bincrs_rpt_read(rpt, matrixPath, mat->context->lfRow[me], mat->context->lnrows[me]+1, NULL),err,ret);
@@ -102,7 +105,8 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
         GHOST_CALL_GOTO(ghost_malloc((void **)&col,nnz * sizeof(ghost_gidx_t)),err,ret);
         GHOST_CALL_GOTO(ghost_bincrs_col_read(col, matrixPath, mat->context->lfRow[me], mat->context->lnrows[me], NULL,1),err,ret);
 
-    } else if (srcType == GHOST_SPARSEMAT_SRC_FUNC) {
+#endif
+    if (srcType == GHOST_SPARSEMAT_SRC_FUNC || srcType == GHOST_SPARSEMAT_SRC_FILE) {
         ghost_sparsemat_src_rowfunc_t *src = (ghost_sparsemat_src_rowfunc_t *)matrixSource;
         char * tmpval = NULL;
         ghost_gidx_t * tmpcol = NULL;
@@ -358,7 +362,6 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
 
 #endif
    
-    }
 #ifdef GHOST_HAVE_CUDA
     ghost_cu_upload(mat->context->perm_global->cu_perm,mat->context->perm_global->perm,mat->context->perm_global->len*sizeof(ghost_gidx_t));
 #endif

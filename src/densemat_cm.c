@@ -788,17 +788,6 @@ static void ghost_freeVector( ghost_densemat_t* vec )
     }
 }
 
-typedef struct {
-    double val;
-    ghost_gidx_t pidx;
-} ghost_densemat_perment_t;
-
-static int densemat_perment_cmp(const void *a, const void *b)
-{
-    return ((ghost_densemat_perment_t *)a)->pidx - ((ghost_densemat_perment_t *)b)->pidx;
-
-}
-
 static ghost_error_t ghost_cloneVector(ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nr, ghost_lidx_t roffs, ghost_lidx_t nc, ghost_lidx_t coffs)
 {
     ghost_densemat_traits_t newTraits = src->traits;
