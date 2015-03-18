@@ -827,12 +827,17 @@ ghost_error_t ghost_sparsemat_from_bincrs(ghost_sparsemat_t *mat, char *path)
     src.func = &ghost_sparsemat_rowfunc_bincrs;
     args.filename = path;
     args.dt = mat->traits->datatype;
-    if (src.func(GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_INIT,NULL,dim,&args)) {
+    if (src.func(GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_GETDIM,NULL,dim,&args)) {
         ERROR_LOG("Error in matrix creation function");
         ret = GHOST_ERR_UNKNOWN;
         goto err;
     }
-    
+    if (src.func(GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_INIT,NULL,NULL,&args)) {
+        ERROR_LOG("Error in matrix creation function");
+        ret = GHOST_ERR_UNKNOWN;
+        goto err;
+    }
+   
     src.maxrowlen = dim[1];
     
     GHOST_CALL_GOTO(mat->fromRowFunc(mat,&src),err,ret);
@@ -866,7 +871,12 @@ ghost_error_t ghost_sparsemat_from_mm(ghost_sparsemat_t *mat, char *path)
     src.func = &ghost_sparsemat_rowfunc_mm;
     args.filename = path;
     args.dt = mat->traits->datatype;
-    if (src.func(GHOST_SPARSEMAT_ROWFUNC_MM_ROW_INIT,NULL,dim,&args)) {
+    if (src.func(GHOST_SPARSEMAT_ROWFUNC_MM_ROW_GETDIM,NULL,dim,&args)) {
+        ERROR_LOG("Error in matrix creation function");
+        ret = GHOST_ERR_UNKNOWN;
+        goto err;
+    }
+    if (src.func(GHOST_SPARSEMAT_ROWFUNC_MM_ROW_INIT,NULL,NULL,&args)) {
         ERROR_LOG("Error in matrix creation function");
         ret = GHOST_ERR_UNKNOWN;
         goto err;
