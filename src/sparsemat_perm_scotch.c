@@ -37,7 +37,7 @@ static int MPI_Allreduce64_in_place ( void *buf, int64_t count,
 #endif
 #endif
 
-#ifdef GHOST_HAVE_SCOTCH
+#if defined(GHOST_HAVE_SCOTCH) && defined(GHOST_HAVE_MPI)
 typedef struct {
     ghost_gidx_t idx, pidx;
 } ghost_permutation_ent_t;
@@ -315,7 +315,6 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
     ghost_malloc((void **)&rpt_loopless,(mat->nrows+1)*sizeof(ghost_gidx_t));
     rpt_loopless[0] = 0;
     ghost_gidx_t nnz_loopless = 0;
-    ghost_gidx_t j;
 
     // eliminate loops by deleting diagonal entries
     for (i=0; i<mat->nrows; i++) {

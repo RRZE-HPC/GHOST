@@ -309,6 +309,7 @@ static ghost_error_t vec_rm_equalize(ghost_densemat_t *vec, ghost_mpi_comm_t com
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_COMMUNICATION);
 #else
     UNUSED(vec);
+    UNUSED(comm);
     UNUSED(root);
 #endif
     return GHOST_SUCCESS;

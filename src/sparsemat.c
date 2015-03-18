@@ -402,6 +402,7 @@ int ghost_cmp_entsperrow(const void* a, const void* b)
 
 ghost_error_t ghost_sparsemat_perm_global_cols(ghost_gidx_t *col, ghost_lidx_t ncols, ghost_context_t *context) 
 {
+#ifdef GHOST_HAVE_MPI
     int me, nprocs,i;
     ghost_rank(&me,context->mpicomm);
     ghost_nrank(&nprocs,context->mpicomm);
@@ -412,8 +413,6 @@ ghost_error_t ghost_sparsemat_perm_global_cols(ghost_gidx_t *col, ghost_lidx_t n
             nels = ncols;
         }
         MPI_Bcast(&nels,1,ghost_mpi_dt_gidx,i,context->mpicomm);
-
-        //printf("rank %d has %d elements\n", i,nels);
 
         ghost_gidx_t *colsfromi;
         ghost_malloc((void **)&colsfromi,nels*sizeof(ghost_gidx_t));
@@ -426,12 +425,7 @@ ghost_error_t ghost_sparsemat_perm_global_cols(ghost_gidx_t *col, ghost_lidx_t n
         ghost_lidx_t el;
         for (el=0; el<nels; el++) {
             if ((colsfromi[el] >= context->lfRow[me]) && (colsfromi[el] < (context->lfRow[me]+context->lnrows[me]))) {
-                //printf("@%d: colsfrom[%d][%d] %d -> %d\n",me,i,el,colsfromi[el],mat->context->permutation->perm[colsfromi[el]-mat->context->lfRow[me]]);
-//                if (context->perm_local) {
-//                   colsfromi[el] = context->perm_global->perm[context->perm_local->perm[colsfromi[el]-context->lfRow[me]]];
-//                } else {
-                   colsfromi[el] = context->perm_global->perm[colsfromi[el]-context->lfRow[me]];
-//                }
+                colsfromi[el] = context->perm_global->perm[colsfromi[el]-context->lfRow[me]];
             } else {
                 colsfromi[el] = 0;
             }
@@ -460,7 +454,12 @@ ghost_error_t ghost_sparsemat_perm_global_cols(ghost_gidx_t *col, ghost_lidx_t n
 
         free(colsfromi);
     }
-
+#else
+    ERROR_LOG("This function should not have been called without MPI!");
+    UNUSED(col);
+    UNUSED(ncols);
+    UNUSED(context);
+#endif
     return GHOST_SUCCESS;
 }
 

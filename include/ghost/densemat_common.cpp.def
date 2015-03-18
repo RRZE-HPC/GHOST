@@ -219,6 +219,7 @@ static ghost_error_t FUNCNAME(permute_tmpl(ghost_densemat_t *vec, ghost_permutat
     }
 
     if (vec->context->perm_global) {
+#ifdef GHOST_HAVE_MPI
         ghost_lidx_t colidx;
         ghost_lidx_t i,me,nprocs;
         
@@ -313,6 +314,9 @@ static ghost_error_t FUNCNAME(permute_tmpl(ghost_densemat_t *vec, ghost_permutat
         free(invpermcnt);
         free(permdispl);
         free(invpermdispl);
+#else
+        ERROR_LOG("There should not be a global permutation in case MPI is disabled!");
+#endif
     } else if (vec->context->perm_local) {
         ghost_densemat_t *vecclone;
 
