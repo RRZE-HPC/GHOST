@@ -810,6 +810,9 @@ extern "C" {
      */
     ghost_error_t ghost_densemat_halocommFinalize_common(ghost_densemat_halo_comm_t *comm);
 
+    void ghost_densemat_destroy(ghost_densemat_t* vec);
+
+
 #ifdef __cplusplus
 }
 #endif

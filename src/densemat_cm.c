@@ -32,7 +32,6 @@ static ghost_error_t vec_cm_fromFile(ghost_densemat_t *vec, char *path, bool sin
 static ghost_error_t vec_cm_toFile(ghost_densemat_t *vec, char *path, bool singleFile);
 static ghost_error_t ghost_distributeVector(ghost_densemat_t *vec, ghost_densemat_t *nodeVec);
 static ghost_error_t ghost_collectVectors(ghost_densemat_t *vec, ghost_densemat_t *totalVec); 
-static void ghost_freeVector( ghost_densemat_t* const vec );
 static ghost_error_t ghost_cloneVector(ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nr, ghost_lidx_t roffs, ghost_lidx_t nc, ghost_lidx_t coffs);
 static ghost_error_t vec_cm_compress(ghost_densemat_t *vec);
 static ghost_error_t vec_cm_upload(ghost_densemat_t *vec);
@@ -49,7 +48,7 @@ ghost_error_t ghost_densemat_cm_setfuncs(ghost_densemat_t *vec)
 {
     ghost_error_t ret = GHOST_SUCCESS;
 
-    if (vec->traits.location == GHOST_LOCATION_DEVICE)
+    if (vec->traits.location == GHOST_LOCATION_DEVICE || vec->traits.location == GHOST_LOCATION_HOSTDEVICE)
     {
 #ifdef GHOST_HAVE_CUDA
         vec->dot = &ghost_densemat_cm_cu_dotprod;
@@ -85,7 +84,7 @@ ghost_error_t ghost_densemat_cm_setfuncs(ghost_densemat_t *vec)
     vec->distribute = &ghost_distributeVector;
     vec->collect = &ghost_collectVectors;
     vec->normalize = &ghost_densemat_cm_normalize_selector;
-    vec->destroy = &ghost_freeVector;
+    vec->destroy = &ghost_densemat_destroy;
     vec->permute = &ghost_densemat_cm_permute_selector;
     vec->clone = &ghost_cloneVector;
     vec->entry = &ghost_densemat_cm_entry;
@@ -637,8 +636,9 @@ static ghost_error_t vec_cm_fromFunc(ghost_densemat_t *vec, void (*fp)(ghost_gid
     GHOST_CALL_RETURN(ghost_densemat_cm_malloc(vec));
     DEBUG_LOG(1,"Filling vector via function");
 
-    if (vec->traits.location == GHOST_LOCATION_HOST) { // vector is stored on host
+    if (vec->traits.location == GHOST_LOCATION_HOST || vec->traits.location == GHOST_LOCATION_HOSTDEVICE) { // vector is stored on host
         DENSEMAT_ITER(vec,fp(offset+row,col,valptr));
+        vec->uploadNonHalo(vec);
     } else {
         INFO_LOG("Need to create dummy HOST densemat!");
         ghost_densemat_t *hostVec;
@@ -770,23 +770,6 @@ static ghost_error_t ghost_collectVectors(ghost_densemat_t *vec, ghost_densemat_
 
     return GHOST_SUCCESS;
 
-}
-
-static void ghost_freeVector( ghost_densemat_t* vec ) 
-{
-    if (vec) {
-        if (!(vec->traits.flags & GHOST_DENSEMAT_VIEW)) {
-            if (vec->traits.location == GHOST_LOCATION_DEVICE) {
-                ghost_cu_free(vec->cu_val);
-                ghost_cu_free_host(vec->val); vec->val = NULL;
-            } else {
-                free(vec->val); vec->val = NULL;
-            }
-        }
-        ghost_bitmap_free(vec->rowmask); vec->rowmask = NULL;
-        ghost_bitmap_free(vec->colmask); vec->colmask = NULL;
-        free(vec);
-    }
 }
 
 static ghost_error_t ghost_cloneVector(ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nr, ghost_lidx_t roffs, ghost_lidx_t nc, ghost_lidx_t coffs)
