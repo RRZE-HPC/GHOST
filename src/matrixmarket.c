@@ -156,9 +156,6 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gid
                 }
 
             }
-
-            col[0] = M;
-            col[1] = N;
         }
 
 

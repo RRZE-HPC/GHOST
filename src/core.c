@@ -77,7 +77,6 @@ int ghost_initialized()
 
 ghost_error_t ghost_init(int argc, char **argv)
 {
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_PREPROCESS);
 
     if (initialized) {
         return GHOST_SUCCESS;
@@ -105,6 +104,7 @@ ghost_error_t ghost_init(int argc, char **argv)
     } else {
         INFO_LOG("MPI was already initialized, not doing it!");
     }
+    
 
     ghost_nodecomm_setup(MPI_COMM_WORLD);
     ghost_mpi_datatypes_create();
@@ -116,6 +116,8 @@ ghost_error_t ghost_init(int argc, char **argv)
     UNUSED(argv);
 
 #endif // ifdef GHOST_HAVE_MPI
+    
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_PREPROCESS);
     
     hwloc_topology_t topology;
     ghost_topology_create();
@@ -385,6 +387,7 @@ ghost_error_t ghost_init(int argc, char **argv)
     }
 
     if (oversubscribed) {
+        PERFWARNING_LOG("Each process will use the full CPU set due to oversubscription! There will probably be resource conflicts.");
         mycpuset = hwloc_bitmap_dup(hwloc_get_obj_by_depth(topology,HWLOC_OBJ_SYSTEM,0)->cpuset);
     }
 

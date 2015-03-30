@@ -30,9 +30,9 @@ ghost_error_t FUNCNAME(malloc(ghost_densemat_t *vec))
         return GHOST_SUCCESS;
     }
 
-    if ((vec->traits.location == GHOST_LOCATION_HOST) && !vec->val) {
+    if ((vec->traits.location == GHOST_LOCATION_HOST || vec->traits.location == GHOST_LOCATION_HOSTDEVICE) && !vec->val) {
         DEBUG_LOG(2,"Allocating host side of vector");
-        if (vec->traits.location == GHOST_LOCATION_DEVICE) {
+        if (vec->traits.location == GHOST_LOCATION_HOSTDEVICE) {
             GHOST_CALL_RETURN(ghost_malloc_pinned((void **)&vec->val,
                         (size_t)vec->traits.ncolspadded*vec->traits.nrowspadded*
                         vec->elSize));
@@ -43,17 +43,16 @@ ghost_error_t FUNCNAME(malloc(ghost_densemat_t *vec))
         }
     }
 
-    if (vec->traits.location == GHOST_LOCATION_DEVICE) {
+    if (vec->traits.location == GHOST_LOCATION_DEVICE || vec->traits.location == GHOST_LOCATION_HOSTDEVICE && !vec->cu_val) {
         DEBUG_LOG(2,"Allocating device side of vector");
 #ifdef GHOST_HAVE_CUDA
-        if (vec->cu_val == NULL) {
 #ifdef GHOST_HAVE_CUDA_PINNEDMEM
-            WARNING_LOG("CUDA pinned memory is disabled");
-            GHOST_CALL_RETURN(ghost_cu_malloc((void **)&vec->cu_val,vec->traits.nrowspadded*vec->traits.ncolspadded*vec->elSize));
+        WARNING_LOG("CUDA pinned memory is disabled");
+        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&vec->cu_val,vec->traits.nrowspadded*vec->traits.ncolspadded*vec->elSize));
 #else
-            GHOST_CALL_RETURN(ghost_cu_malloc((void **)&vec->cu_val,vec->traits.nrowspadded*vec->traits.ncolspadded*vec->elSize));
+        WARNING_LOG("malloc %zu",vec->traits.nrowspadded*vec->traits.ncolspadded*vec->elSize);
+        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&vec->cu_val,vec->traits.nrowspadded*vec->traits.ncolspadded*vec->elSize));
 #endif
-        }
 #endif
     }   
 

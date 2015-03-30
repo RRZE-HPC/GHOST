@@ -27,7 +27,8 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_gidx_t gnrow
     GHOST_CALL_GOTO(ghost_malloc((void **)context,sizeof(ghost_context_t)),err,ret);
     (*context)->flags = context_flags;
     (*context)->mpicomm = comm;
-    (*context)->permutation = NULL;
+    (*context)->perm_local = NULL;
+    (*context)->perm_global = NULL;
     (*context)->wishes   = NULL;
     (*context)->dues     = NULL;
     (*context)->hput_pos = NULL;
@@ -66,6 +67,24 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_gidx_t gnrow
             ERROR_LOG("The correct dimensions have to be given if the sparsemat source is a function!");
             return GHOST_ERR_INVALID_ARG;
         } else if (srcType == GHOST_SPARSEMAT_SRC_FILE) {
+            ghost_sparsemat_rowfunc_bincrs_initargs args;
+            args.filename = (char *)matrixSource;
+            
+            ghost_gidx_t dim[2]; 
+            ghost_sparsemat_rowfunc_bincrs(GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_GETDIM,NULL,dim,&args);
+#ifndef GHOST_HAVE_LONGIDX_GLOBAL
+            if (dim[0] >= (int64_t)INT_MAX) {
+                ERROR_LOG("The matrix is too big for 32-bit indices. Recompile with LONGIDX enabled!");
+                return GHOST_ERR_DATATYPE;
+            }
+#endif
+            if (gnrows == 0) {
+                (*context)->gnrows = (ghost_gidx_t)dim[0];
+            }
+            if (gncols == 0) {
+                (*context)->gncols = (ghost_gidx_t)dim[1];
+            }
+#if 0
             ghost_bincrs_header_t fileheader;
             GHOST_CALL_GOTO(ghost_bincrs_header_read(&fileheader,(char *)matrixSource),err,ret);
 #ifndef GHOST_HAVE_LONGIDX_GLOBAL
@@ -80,6 +99,7 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_gidx_t gnrow
             if (gncols == 0) {
                 (*context)->gncols = (ghost_gidx_t)fileheader.ncols;
             }
+#endif
         } else if (srcType == GHOST_SPARSEMAT_SRC_MM) {
             ghost_sparsemat_rowfunc_mm_initargs args;
             args.filename = (char *)matrixSource;
@@ -245,7 +265,11 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_gidx_t gnrow
                 (*context)->rpt[row] = 0;
             }
             if (srcType == GHOST_SPARSEMAT_SRC_FILE) {
-                GHOST_CALL_GOTO(ghost_bincrs_rpt_read((*context)->rpt,(char *)matrixSource,0,(*context)->gnrows+1,NULL),err,ret);
+                ghost_sparsemat_rowfunc_bincrs_initargs args;
+                args.filename = (char *)matrixSource;
+                
+                ghost_sparsemat_rowfunc_bincrs(GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_GETRPT,NULL,(*context)->rpt,&args);
+                //GHOST_CALL_GOTO(ghost_bincrs_rpt_read((*context)->rpt,(char *)matrixSource,0,(*context)->gnrows+1,NULL),err,ret);
             } else if (srcType == GHOST_SPARSEMAT_SRC_MM) {
                 ghost_sparsemat_rowfunc_mm_initargs args;
                 args.filename = (char *)matrixSource;

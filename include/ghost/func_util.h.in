@@ -22,15 +22,15 @@ typedef enum
     int __funcnameoffset;\
     bool __ghost_instr_enable_backup;\
     char * __prefixbackup;\
-    char __prefix[256];\
-    char __ghost_functag[256];\
+    char __prefix[1024];\
+    char __ghost_functag[1024];\
     if (${INSTRUMENTATION_FUNCTYPES}) {\
         __funcnameoffset = strncmp(__FUNCTION__,"ghost_",6)?0:6;\
         __ghost_instr_enable_backup = ghost_instr_enable;\
         __prefixbackup = ghost_instr_prefix_get();\
-        snprintf(__ghost_functag,256,"%s%s",__prefixbackup,\
+        snprintf(__ghost_functag,1024,"%s%s",__prefixbackup,\
                 __FUNCTION__+__funcnameoffset);\
-        snprintf(__prefix,256,"%s%s->",__prefixbackup,\
+        snprintf(__prefix,1024,"%s%s->",__prefixbackup,\
             __FUNCTION__+__funcnameoffset);\
         ghost_instr_enable = true;\
         GHOST_INSTR_START(__FUNCTION__+__funcnameoffset);\
@@ -45,6 +45,9 @@ typedef enum
             PERFWARNING_LOG("A mathematical kernel has been called outside a task!");\
         }\
     }\
+    if (GHOST_VERBOSITY > 1) {\
+        DEBUG_LOG(1,"Enter function %s",__FUNCTION__);\
+    } 
 
 #define GHOST_FUNC_EXIT(functype)\
     if (${INSTRUMENTATION_FUNCTYPES}) {\
@@ -52,5 +55,8 @@ typedef enum
         GHOST_INSTR_STOP(__FUNCTION__+__funcnameoffset);\
         ghost_instr_enable = __ghost_instr_enable_backup;\
     }\
+    if (GHOST_VERBOSITY > 1) {\
+        DEBUG_LOG(1,"Exit function %s",__FUNCTION__);\
+    } 
 
 #endif

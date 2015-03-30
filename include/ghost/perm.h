@@ -6,9 +6,17 @@
 #ifndef GHOST_PERM_H
 #define GHOST_PERM_H
 
+#include "types.h"
+
 typedef enum
 {
+    /**
+     * @brief A local permutation only contains local indices in the range [0..perm->len-1].
+     */
     GHOST_PERMUTATION_LOCAL,
+    /**
+     * @brief A global permutation contains global indices in the range [0..context->gnrows-1].
+     */
     GHOST_PERMUTATION_GLOBAL
 }
 ghost_permutation_scope_t;
@@ -19,7 +27,7 @@ typedef enum
     GHOST_PERMUTATION_PERM2ORIG
 }
 ghost_permutation_direction_t;
-
+    
 typedef struct
 {
     /**

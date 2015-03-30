@@ -502,3 +502,23 @@ out:
     return GHOST_ERR_NOT_IMPLEMENTED;
 #endif
 }
+
+void ghost_densemat_destroy( ghost_densemat_t* vec ) 
+{
+    if (vec) {
+        if (!(vec->traits.flags & GHOST_DENSEMAT_VIEW)) {
+            if (vec->traits.location == GHOST_LOCATION_DEVICE) {
+                ghost_cu_free(vec->cu_val); vec->cu_val = NULL;
+            } else if (vec->traits.location == GHOST_LOCATION_HOST) {
+                free(vec->val); vec->val = NULL;
+            } else {
+                ghost_cu_free(vec->cu_val); vec->cu_val = NULL;
+                ghost_cu_free_host(vec->val); vec->val = NULL;
+            }
+        }
+        ghost_bitmap_free(vec->rowmask); vec->rowmask = NULL;
+        ghost_bitmap_free(vec->colmask); vec->colmask = NULL;
+        free(vec);
+    }
+}
+

@@ -523,8 +523,7 @@ struct ghost_densemat_t
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t (*permute) (ghost_densemat_t *vec, ghost_permutation_t *perm, 
-            ghost_permutation_direction_t dir);
+    ghost_error_t (*permute) (ghost_densemat_t *vec, ghost_permutation_direction_t dir);
     /**
      * @ingroup stringification
      *
@@ -699,6 +698,8 @@ inline ghost_densemat_flags_t operator|(ghost_densemat_flags_t a, ghost_densemat
 return static_cast<ghost_densemat_flags_t>(static_cast<int>(a) | static_cast<int>(b));}
 inline ghost_densemat_flags_t operator|=(ghost_densemat_flags_t a, ghost_densemat_flags_t b){
 return static_cast<ghost_densemat_flags_t>(static_cast<int>(a) | static_cast<int>(b));}
+inline ghost_densemat_flags_t operator&=(ghost_densemat_flags_t a, ghost_densemat_flags_t b){
+return static_cast<ghost_densemat_flags_t>(static_cast<int>(a) & static_cast<int>(b));}
 
 extern "C" {
 #endif
@@ -808,6 +809,9 @@ extern "C" {
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t ghost_densemat_halocommFinalize_common(ghost_densemat_halo_comm_t *comm);
+
+    void ghost_densemat_destroy(ghost_densemat_t* vec);
+
 
 #ifdef __cplusplus
 }

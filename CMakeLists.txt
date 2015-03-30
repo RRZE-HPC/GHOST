@@ -61,7 +61,6 @@ set(GHOST_VERBOSITY ${VERBOSITY})
 set(GHOST_ERR_WARN_INFO_PRINTONCE ${ERR_WARN_INFO_PRINTONCE})
 
 set (SOURCES
-    src/bincrs.cpp
     src/crs.cpp
     src/crs_kacz.cpp
     src/crs_spmv.cpp
@@ -82,7 +81,7 @@ set (SOURCES
     src/tsmm_inplace.cpp
     src/tsmttsm.cpp
     src/tsmttsm_kahan.cpp
-    src/bincrs.c
+    src/bincrs_func.c
     src/bitmap.c
     src/blas_util.c
     src/carp.c
