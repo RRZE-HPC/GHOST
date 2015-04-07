@@ -198,7 +198,7 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
         rl = tmprl;
     }
 
-#pragma omp parallel private(maxRowLenInChunk,i,tmpval,tmpcol,row) reduction (+:gnents,gnnz,funcerrs) reduction (max:maxRowLen)
+#pragma omp parallel private(maxRowLenInChunk,i,tmpval,tmpcol,row) shared (maxRowLen) reduction (+:gnents,gnnz,funcerrs) 
     {
         ghost_lidx_t rowlen;
         maxRowLenInChunk = 0; 
@@ -240,8 +240,10 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
             clp[chunk] = PAD(maxRowLenInChunk,P);
 
             gnents += clp[chunk]*C;
-            
+
+#pragma omp critical
             maxRowLen = MAX(maxRowLen,maxRowLenInChunk);
+
             maxRowLenInChunk = 0;
         }
 
