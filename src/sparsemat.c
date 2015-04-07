@@ -150,7 +150,7 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
     ghost_lidx_t nchunks = (ghost_lidx_t)(ceil((double)mat->nrows/(double)C));
     ghost_lidx_t i,row,chunk,j,colidx;
     ghost_gidx_t gnents = 0, gnnz = 0;
-    ghost_lidx_t maxRowLenInChunk = 0;
+    ghost_lidx_t maxRowLenInChunk = 0, maxRowLen = 0;
     int me,nprocs;
     
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, mat->context->mpicomm),err,ret);
@@ -198,7 +198,7 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
         rl = tmprl;
     }
 
-#pragma omp parallel private(maxRowLenInChunk,i,tmpval,tmpcol,row) reduction (+:gnents,gnnz,funcerrs)
+#pragma omp parallel private(maxRowLenInChunk,i,tmpval,tmpcol,row) shared (maxRowLen) reduction (+:gnents,gnnz,funcerrs) 
     {
         ghost_lidx_t rowlen;
         maxRowLenInChunk = 0; 
@@ -240,6 +240,10 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
             clp[chunk] = PAD(maxRowLenInChunk,P);
 
             gnents += clp[chunk]*C;
+
+#pragma omp critical
+            maxRowLen = MAX(maxRowLen,maxRowLenInChunk);
+
             maxRowLenInChunk = 0;
         }
 
@@ -258,6 +262,11 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
     if (gnnz > (ghost_gidx_t)GHOST_LIDX_MAX) {
         ERROR_LOG("The local number of entries is too large: %"PRGIDX,gnents);
         return GHOST_ERR_DATATYPE;
+    }
+
+    if (src->maxrowlen != maxRowLen) {
+        INFO_LOG("The maximum row length was not correct. Setting it from %"PRLIDX" to %"PRLIDX,src->maxrowlen,maxRowLen); 
+        src->maxrowlen = maxRowLen;
     }
 
     mat->nnz = (ghost_lidx_t)gnnz;
