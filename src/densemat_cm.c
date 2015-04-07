@@ -969,7 +969,7 @@ static ghost_error_t densemat_cm_halocommFinalize(ghost_densemat_t *vec, ghost_d
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, vec->context->mpicomm),err,ret);
 
     ghost_densemat_halocommFinalize_common(comm);
-    if ((vec->traits.ncols > 1) && (vec->traits.location == GHOST_LOCATION_DEVICE)) {
+    if ((nprocs > 1) && (vec->traits.ncols > 1) && (vec->traits.location == GHOST_LOCATION_DEVICE)) {
         ERROR_LOG("Re-order from col-major not yet implemented for device densemats!");
         return GHOST_ERR_NOT_IMPLEMENTED;
     }

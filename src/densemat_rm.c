@@ -947,7 +947,7 @@ static ghost_error_t densemat_rm_halocommFinalize(ghost_densemat_t *vec, ghost_d
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, vec->context->mpicomm),err,ret);
 
     GHOST_CALL_GOTO(ghost_densemat_halocommFinalize_common(comm),err,ret);
-    if ((vec->stride != vec->traits.ncols) && (vec->traits.location == GHOST_LOCATION_DEVICE)) {
+    if ((nprocs > 1) && (vec->stride != vec->traits.ncols) && (vec->traits.location == GHOST_LOCATION_DEVICE)) {
         ERROR_LOG("Assemble row-major view not yet implemented for device densemats!");
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
