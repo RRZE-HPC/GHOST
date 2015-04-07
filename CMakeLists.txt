@@ -75,6 +75,7 @@ set (SOURCES
     src/sparsemat.cpp
     src/sparsemat_perm_colpack.cpp
     src/svqb.cpp
+    src/rayleigh_ritz.cpp
     src/timing.cpp
     src/tsmm.cpp
     src/tsmm_inplace.cpp
@@ -158,6 +159,8 @@ set (HEADERS
     include/ghost/tsmttsm_kahan.h
     include/ghost/types.h
     include/ghost/util.h
+    include/ghost/svqb.h
+    include/ghost/rayleigh_ritz.h
     )
 
 string(REPLACE "," ";" CFG_SELL_CHUNKHEIGHTS_LIST ${CFG_SELL_CHUNKHEIGHTS})
