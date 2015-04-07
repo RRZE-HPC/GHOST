@@ -75,7 +75,7 @@ static ghost_error_t ghost_svqb_tmpl (ghost_densemat_t * v_ot , ghost_densemat_t
     GHOST_CALL_GOTO(ghost_densemat_valptr(x,(void **)&xval),err,ret);
     
 
-    GHOST_CALL_GOTO(ghost_tsmttsm( x, v, v,&one,&zero,GHOST_GEMM_ALL_REDUCE,0),err,ret);
+    GHOST_CALL_GOTO(ghost_tsmttsm( x, v, v,&one,&zero,GHOST_GEMM_ALL_REDUCE,1),err,ret);
     
     for (i=0;i<n;i++) {
         D[i] = (T_b)1./std::sqrt(std::real(xval[i*ldx+i]));
@@ -140,7 +140,7 @@ static ghost_error_t ghost_blockortho_tmpl (ghost_densemat_t * w , ghost_densema
     T *  xval;
     GHOST_CALL_GOTO(ghost_densemat_valptr(x,(void **)&xval),err,ret);
     
-    GHOST_CALL_GOTO(ghost_tsmttsm( x, v, w,&one,&zero,GHOST_GEMM_ALL_REDUCE,0),err,ret);
+    GHOST_CALL_GOTO(ghost_tsmttsm( x, v, w,&one,&zero,GHOST_GEMM_ALL_REDUCE,1),err,ret);
     GHOST_CALL_GOTO(ghost_tsmm( w, v, x, &one, &minusone),err,ret);
        
     goto out;
