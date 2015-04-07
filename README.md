@@ -20,7 +20,7 @@ Computing ([SPPEXA](http://www.sppexa.de/)) of the German Research Foundation (D
 # Examples #
 ---
 
-Have a look at the [GHOST-Apps](https://bitbucket.org/essex/ghost-apps) project for some example applications using GHOST.
+Have a look at the [GHOST-Apps](https://bitbucket.org/essex/ghost-apps) and the [PHYSICS](https://bitbucket.org/essex/physics) project for some example applications using GHOST.
 
 ---
 # Dependencies and optional packages #
