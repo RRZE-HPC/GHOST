@@ -94,9 +94,6 @@ ghost_error_t ghost_tsmttsm_kahan(ghost_densemat_t *x, ghost_densemat_t *v, ghos
     ghost_tsmttsm_kahan_kernel_t kernel = NULL;
 
     p.impl = GHOST_IMPLEMENTATION_PLAIN;
-    if (x->traits.ncolspadded < 4 || x->traits.flags & GHOST_DENSEMAT_VIEW) {
-        p.impl = GHOST_IMPLEMENTATION_PLAIN;
-    }
 
     p.dt = x->traits.datatype;
     
@@ -111,10 +108,6 @@ ghost_error_t ghost_tsmttsm_kahan(ghost_densemat_t *x, ghost_densemat_t *v, ghos
         kernel = ghost_tsmttsm_kahan_kernels[p];
     }
     
-    if (!kernel) {
-        PERFWARNING_LOG("Try plain implementation");
-        p.impl = GHOST_IMPLEMENTATION_PLAIN;
-    }
     kernel = ghost_tsmttsm_kahan_kernels[p];
     
     if (!kernel) {
