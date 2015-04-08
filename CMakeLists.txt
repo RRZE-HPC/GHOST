@@ -231,6 +231,10 @@ configure_file (
     ${PROJECT_SOURCE_DIR}/src/tsmttsm_kahan_avx.c.in
     ${PROJECT_BINARY_DIR}/src/tsmttsm_kahan_avx.c
     )
+configure_file (
+    ${PROJECT_SOURCE_DIR}/src/tsmttsm_kahan.c.in
+    ${PROJECT_BINARY_DIR}/src/tsmttsm_kahan.c
+    )
 
 set (TO_PREPROCESS
     ${PROJECT_BINARY_DIR}/src/sell_spmv_avx.c
@@ -243,6 +247,7 @@ set (TO_PREPROCESS
     ${PROJECT_BINARY_DIR}/src/tsmm_inplace.c
     ${PROJECT_BINARY_DIR}/src/tsmttsm.c
     ${PROJECT_BINARY_DIR}/src/tsmttsm_avx.c
+    ${PROJECT_BINARY_DIR}/src/tsmttsm_kahan.c
     ${PROJECT_BINARY_DIR}/src/tsmttsm_kahan_avx.c
     )
 
@@ -280,6 +285,8 @@ endforeach()
 set (SOURCES ${SOURCES} ${PP_FILES})
 
 add_custom_target(preprocess DEPENDS ${PP_FILES})
+
+#set_source_files_properties(${PP_SRC_DIR}/tsmttsm_kahan.c PROPERTIES COMPILE_FLAGS "-fp-model strict")
 
 if (NOT CMAKE_BUILD_TYPE)
     message(STATUS "No build type specified. Setting it to Release.")

@@ -4,6 +4,7 @@
 #include "ghost/util.h"
 #include "ghost/math.h"
 #include "ghost/tsmttsm_kahan.h"
+#include "ghost/tsmttsm_kahan_gen.h"
 #include "ghost/tsmttsm_kahan_avx_gen.h"
 
 #include <map>
@@ -88,6 +89,7 @@ ghost_error_t ghost_tsmttsm_kahan(ghost_densemat_t *x, ghost_densemat_t *v, ghos
     
     if (ghost_tsmttsm_kahan_kernels.empty()) {
 #include "tsmttsm_kahan_avx.def"
+#include "tsmttsm_kahan.def"
     }
     
     ghost_tsmttsm_kahan_parameters_t p;
