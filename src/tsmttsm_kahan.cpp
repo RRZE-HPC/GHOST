@@ -5,7 +5,6 @@
 #include "ghost/math.h"
 #include "ghost/tsmttsm_kahan.h"
 #include "ghost/tsmttsm_kahan_gen.h"
-#include "ghost/tsmttsm_kahan_avx_gen.h"
 
 #include <map>
 
@@ -88,22 +87,13 @@ ghost_error_t ghost_tsmttsm_kahan(ghost_densemat_t *x, ghost_densemat_t *v, ghos
     }
     
     if (ghost_tsmttsm_kahan_kernels.empty()) {
-#include "tsmttsm_kahan_avx.def"
 #include "tsmttsm_kahan.def"
     }
     
     ghost_tsmttsm_kahan_parameters_t p;
     ghost_tsmttsm_kahan_kernel_t kernel = NULL;
 
-#ifdef GHOST_HAVE_MIC
-    p.impl = GHOST_IMPLEMENTATION_MIC;
-#elif defined(GHOST_HAVE_AVX)
-    p.impl = GHOST_IMPLEMENTATION_AVX;
-#elif defined(GHOST_HAVE_SSE)
-    p.impl = GHOST_IMPLEMENTATION_SSE;
-#else
     p.impl = GHOST_IMPLEMENTATION_PLAIN;
-#endif
     if (x->traits.ncolspadded < 4 || x->traits.flags & GHOST_DENSEMAT_VIEW) {
         p.impl = GHOST_IMPLEMENTATION_PLAIN;
     }
