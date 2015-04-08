@@ -201,6 +201,7 @@ ghost_error_t ghost_task_create(ghost_task_t **t, int nThreads, int LD, void *(*
     (*t)->next = NULL;
     (*t)->prev = NULL;
     (*t)->parent = NULL;
+    (*t)->ret = NULL;
 
     goto out;
 err:
