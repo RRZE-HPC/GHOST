@@ -88,7 +88,7 @@ static ghost_error_t ghost_rayleigh_ritz_tmpl (ghost_sparsemat_t * mat, void * v
     //spMVM_Options &=  ~GHOST_SPMV_SCALE;
     ghost_spmv( v_eigs, mat, v_res, &spMVM_Options, NULL);
         
-    GHOST_CALL_GOTO(ghost_tsmttsm( x, v_eigs, v_res,&one,&zero,GHOST_GEMM_ALL_REDUCE,0),err,ret);
+    GHOST_CALL_GOTO(ghost_tsmttsm( x, v_eigs, v_res,&one,&zero,GHOST_GEMM_ALL_REDUCE,1),err,ret);
     
     
     if (call_eig_function<T,T_b>( LAPACK_COL_MAJOR, 'V' , 'U', n, xval, ldx, eigs)) {
