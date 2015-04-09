@@ -177,8 +177,31 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
     if (!kernel) {
         PERFWARNING_LOG("Try plain implementation");
         p.impl = GHOST_IMPLEMENTATION_PLAIN;
+        p.xcols = x->traits.ncols;
+        p.vcols = v->traits.ncols;
         kernel = ghost_tsmm_kernels[p];
     }
+    if (!kernel) {
+        PERFWARNING_LOG("Try kernel with fixed xcols and arbitrary vcols");
+        p.xcols = x->traits.ncols;
+        p.vcols = -1;
+        kernel = ghost_tsmm_kernels[p];
+    }
+
+    if (!kernel) {
+        PERFWARNING_LOG("Try kernel with fixed vcols and arbitrary xcols");
+        p.xcols = -1;
+        p.vcols = v->traits.ncols;
+        kernel = ghost_tsmm_kernels[p];
+    }
+
+    if (!kernel) {
+        PERFWARNING_LOG("Try kernel with arbitrary block sizes");
+        p.xcols = -1;
+        p.vcols = -1;
+        kernel = ghost_tsmm_kernels[p];
+    }
+
 
     if (!kernel) {
         INFO_LOG("Could not find TSMM kernel with %d %d %d %d!",p.impl,p.dt,p.xcols,p.vcols);
