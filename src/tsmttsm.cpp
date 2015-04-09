@@ -145,8 +145,32 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
     if (!kernel) {
         PERFWARNING_LOG("Try plain implementation");
         p.impl = GHOST_IMPLEMENTATION_PLAIN;
+        p.vcols = v->traits.ncols;
+        p.wcols = w->traits.ncols;
+        kernel = ghost_tsmttsm_kernels[p];
     }
-    kernel = ghost_tsmttsm_kernels[p];
+    
+    if (!kernel) {
+        PERFWARNING_LOG("Try kernel with arbitrary wcols");
+        p.wcols = -1;
+        p.vcols = v->traits.ncols;
+        kernel = ghost_tsmttsm_kernels[p];
+    }
+    
+    if (!kernel) {
+        PERFWARNING_LOG("Try kernel with arbitrary vcols");
+        p.wcols = w->traits.ncols;
+        p.vcols = -1;
+        kernel = ghost_tsmttsm_kernels[p];
+    }
+
+    if (!kernel) {
+        PERFWARNING_LOG("Try kernel with arbitrary block sizes");
+        p.wcols = -1;
+        p.vcols = -1;
+        kernel = ghost_tsmttsm_kernels[p];
+    }
+    
     
     if (!kernel) {
         INFO_LOG("Could not find TSMTTSM kernel with %d %d %d. Fallback to GEMM",p.dt,p.wcols,p.vcols);
