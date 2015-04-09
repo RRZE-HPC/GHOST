@@ -5,8 +5,8 @@
 #include "ghost/util.h"
 #include "ghost/tsmm_gen.h"
 
-#GHOST_FUNC_BEGIN#BLOCKSZ1=${CFG_BLOCKVECTOR_SIZES}#BLOCKSZ2=${CFG_BLOCKVECTOR_SIZES}
-ghost_error_t ghost_tsmm__u_plain_d_BLOCKSZ1_BLOCKSZ2(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
+#GHOST_FUNC_BEGIN#CFGK=${CFG_BLOCKVECTOR_SIZES}#CFGM=${CFG_BLOCKVECTOR_SIZES}
+ghost_error_t ghost_tsmm__u_plain_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
     ghost_error_t ret = GHOST_SUCCESS;
@@ -36,19 +36,19 @@ ghost_error_t ghost_tsmm__u_plain_d_BLOCKSZ1_BLOCKSZ2(ghost_densemat_t *x, ghost
     
 #pragma omp parallel for private(j,s,tmp) schedule(runtime)
     for (i=0; i<n; i++) {
-#if BLOCKSZ1 > 1
+#if CFGK > 1
 #pragma simd
 #endif
-        for (s=0; s<BLOCKSZ1; s++) {
+        for (s=0; s<CFGK; s++) {
             tmp = dbeta*xval[i*ldx+s];
-#if BLOCKSZ1 > 1
+#if CFGK > 1
 #pragma unroll_and_jam
 #else
-#if BLOCKSZ2 > 1
+#if CFGM > 1
 #pragma simd
 #endif
 #endif
-            for (j=0; j<BLOCKSZ2; j++) {
+            for (j=0; j<CFGM; j++) {
                 tmp += dalpha*vval[i*ldv+j]*wval[s*ldw+j];
             }
             xval[i*ldx+s] = tmp;
