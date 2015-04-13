@@ -13,7 +13,7 @@ using namespace std;
 
 static bool operator<(const ghost_tsmttsm_parameters_t &a, const ghost_tsmttsm_parameters_t &b) 
 { 
-    return ghost_hash(a.dt,a.wcols,ghost_hash(a.vcols,a.impl,0)) < ghost_hash(b.dt,b.wcols,ghost_hash(b.vcols,b.impl,0)); 
+    return ghost_hash(a.dt,a.wcols,ghost_hash(a.vcols,a.impl,ghost_hash(a.xstor,a.wstor,0))) < ghost_hash(b.dt,b.wcols,ghost_hash(b.vcols,b.impl,ghost_hash(b.xstor,b.wstor,0))); 
 }
 
 static map<ghost_tsmttsm_parameters_t, ghost_tsmttsm_kernel_t> ghost_tsmttsm_kernels;
@@ -22,7 +22,6 @@ static map<ghost_tsmttsm_parameters_t, ghost_tsmttsm_kernel_t> ghost_tsmttsm_ker
 ghost_error_t ghost_tsmttsm_valid(ghost_densemat_t *x, ghost_densemat_t *v, const char * transv, 
 ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce, int printerror) 
 {
-    printerror = 1;
     if (w->traits.storage != GHOST_DENSEMAT_ROWMAJOR) {
         if (printerror) {
             ERROR_LOG("w must be stored row-major!");

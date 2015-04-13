@@ -14,7 +14,7 @@ using namespace std;
 
 static bool operator<(const ghost_tsmm_parameters_t &a, const ghost_tsmm_parameters_t &b) 
 { 
-    return ghost_hash(a.dt,a.xcols,ghost_hash(a.vcols,a.impl,0)) < ghost_hash(b.dt,b.xcols,ghost_hash(b.vcols,b.impl,0)); 
+    return ghost_hash(a.dt,a.xcols,ghost_hash(a.vcols,a.impl,ghost_hash(a.xstor,a.wstor,0))) < ghost_hash(b.dt,b.xcols,ghost_hash(b.vcols,b.impl,ghost_hash(b.xstor,b.wstor,0))); 
 }
 
 static map<ghost_tsmm_parameters_t, ghost_tsmm_kernel_t> ghost_tsmm_kernels;
@@ -34,7 +34,7 @@ ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce, in
         }
         return GHOST_ERR_INVALID_ARG;
     }
-
+/*
     if (w->traits.storage != GHOST_DENSEMAT_COLMAJOR) {
         if (printerror) {
            ERROR_LOG("w must be stored col-major!");
@@ -52,7 +52,7 @@ ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce, in
            ERROR_LOG("v must be stored row-major!");
         }
         return GHOST_ERR_INVALID_ARG;
-    }
+    }*/
     if ((x->traits.flags & GHOST_DENSEMAT_SCATTERED) || (v->traits.flags & GHOST_DENSEMAT_SCATTERED) || (w->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
         if (printerror) {
             ERROR_LOG("Scattered views not supported!");
@@ -114,6 +114,10 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
 
     p.alignment = GHOST_ALIGNED;
     p.dt = x->traits.datatype;
+    p.xstor = x->traits.storage;
+    p.wstor = w->traits.storage;
+
+    WARNING_LOG("%d %d %d",x->traits.storage,v->traits.storage,w->traits.storage);
     
     p.xcols = x->traits.ncols;
     p.vcols = v->traits.ncols;
@@ -205,7 +209,7 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
 
 
     if (!kernel) {
-        INFO_LOG("Could not find TSMM kernel with %d %d %d %d!",p.impl,p.dt,p.xcols,p.vcols);
+        INFO_LOG("Could not find TSMM kernel with %d %d %d %d %d %d!",p.impl,p.dt,p.xcols,p.vcols,p.xstor,p.wstor);
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
 
