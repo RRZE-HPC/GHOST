@@ -34,25 +34,6 @@ ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce, in
         }
         return GHOST_ERR_INVALID_ARG;
     }
-/*
-    if (w->traits.storage != GHOST_DENSEMAT_COLMAJOR) {
-        if (printerror) {
-           ERROR_LOG("w must be stored col-major!");
-        }
-        return GHOST_ERR_INVALID_ARG;
-    }
-    if (x->traits.storage != GHOST_DENSEMAT_ROWMAJOR) {
-        if (printerror) {
-            ERROR_LOG("x must be stored row-major!");
-        }
-        return GHOST_ERR_INVALID_ARG;
-    }
-    if (v->traits.storage != GHOST_DENSEMAT_ROWMAJOR) {
-        if (printerror) {
-           ERROR_LOG("v must be stored row-major!");
-        }
-        return GHOST_ERR_INVALID_ARG;
-    }*/
     if ((x->traits.flags & GHOST_DENSEMAT_SCATTERED) || (v->traits.flags & GHOST_DENSEMAT_SCATTERED) || (w->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
         if (printerror) {
             ERROR_LOG("Scattered views not supported!");
@@ -117,8 +98,6 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
     p.xstor = x->traits.storage;
     p.wstor = w->traits.storage;
 
-    WARNING_LOG("%d %d %d",x->traits.storage,v->traits.storage,w->traits.storage);
-    
     p.xcols = x->traits.ncols;
     p.vcols = v->traits.ncols;
     if (p.xcols == 2) {

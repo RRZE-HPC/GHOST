@@ -55,11 +55,11 @@ extern "C" {
      *
      * Compute \f$ x = \alpha \cdot v \cdot w  + \beta \cdot x\f$.
      *
-     * v is NxM, distributed, row-major.
+     * v is NxM, distributed.
      *
-     * w is MxK, redundant, col-major.
+     * w is MxK, redundant.
      *
-     * x is NxK, distributed, row-major.
+     * x is NxK, distributed.
      *
      * M<<N
      *
