@@ -212,6 +212,11 @@ ghost_error_t ghost_tsmttsm_kahan__plain_z_x_x(ghost_densemat_t *x, ghost_densem
     complex double dalpha = *(complex double *)alpha;
     complex double dbeta = *(complex double *)beta;
     
+    ghost_mpi_op_t mpiop_zadd;
+    ghost_mpi_datatype_t mpidt_z;
+    ghost_mpi_op_sum(&mpiop_zadd,(ghost_datatype_t)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
+    ghost_mpi_datatype(&mpidt_z,(ghost_datatype_t)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
+    
     // make sure that the initial x only gets added up once
     if (myrank) {
         dbeta = 0.;
@@ -298,10 +303,10 @@ ghost_error_t ghost_tsmttsm_kahan__plain_z_x_x(ghost_densemat_t *x, ghost_densem
         if (v->context) {
             if (x->traits.flags & GHOST_DENSEMAT_VIEW) {
                 for (k=0; k<K; k++) {
-                    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval+k*ldx,m,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
+                    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval+k*ldx,m,mpidt_z,mpiop_zadd,v->context->mpicomm),err,ret);
                 }
             } else {
-                MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,K*ldx,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
+                MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,K*ldx,mpidt_z,mpiop_zadd,v->context->mpicomm),err,ret);
             }
         }
 #endif
@@ -365,10 +370,10 @@ ghost_error_t ghost_tsmttsm_kahan__plain_z_x_x(ghost_densemat_t *x, ghost_densem
         if (v->context) {
             if (x->traits.flags & GHOST_DENSEMAT_VIEW) {
                 for (j=0; j<m; j++) {
-                    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval+j*ldx,K,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
+                    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval+j*ldx,K,mpidt_z,mpiop_zadd,v->context->mpicomm),err,ret);
                 }
             } else {
-                MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,ldx*m,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
+                MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,ldx*m,mpidt_z,mpiop_zadd,v->context->mpicomm),err,ret);
             }
         }
 #endif
@@ -546,6 +551,11 @@ ghost_error_t ghost_tsmttsm_kahan__plain_z_CFGK_CFGM(ghost_densemat_t *x, ghost_
     complex double dalpha = *(complex double *)alpha;
     complex double dbeta = *(complex double *)beta;
     
+    ghost_mpi_op_t mpiop_zadd;
+    ghost_mpi_datatype_t mpidt_z;
+    ghost_mpi_op_sum(&mpiop_zadd,(ghost_datatype_t)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
+    ghost_mpi_datatype(&mpidt_z,(ghost_datatype_t)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
+    
     // make sure that the initial x only gets added up once
     if (myrank) {
         dbeta = 0.;
@@ -645,10 +655,10 @@ ghost_error_t ghost_tsmttsm_kahan__plain_z_CFGK_CFGM(ghost_densemat_t *x, ghost_
         if (v->context) {
             if (x->traits.flags & GHOST_DENSEMAT_VIEW) {
                 for (k=0; k<x->traits.ncols; k++) {
-                    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval+k*ldx,x->traits.nrows,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
+                    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval+k*ldx,x->traits.nrows,mpidt_z,mpiop_zadd,v->context->mpicomm),err,ret);
                 }
             } else {
-                MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,x->traits.ncols*ldx,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
+                MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,x->traits.ncols*ldx,mpidt_z,mpiop_zadd,v->context->mpicomm),err,ret);
             }
         }
 #endif
