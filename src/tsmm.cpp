@@ -198,7 +198,11 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
     ghost_gemm_perf_args_t tsmm_perfargs;
     tsmm_perfargs.xcols = p.xcols;
     tsmm_perfargs.vcols = p.vcols;
-    tsmm_perfargs.vrows = v->context->gnrows;
+    if (v->context) {
+        tsmm_perfargs.vrows = v->context->gnrows;
+    } else {
+        tsmm_perfargs.vrows = v->traits.nrows;
+    }
     tsmm_perfargs.dt = x->traits.datatype;
     ghost_timing_set_perfFunc(__ghost_functag,ghost_tsmm_perf_GBs,(void *)&tsmm_perfargs,sizeof(tsmm_perfargs),"GB/s");
     ghost_timing_set_perfFunc(__ghost_functag,ghost_gemm_perf_GFs,(void *)&tsmm_perfargs,sizeof(tsmm_perfargs),"GF/s");
