@@ -13,7 +13,7 @@ using namespace std;
 
 static bool operator<(const ghost_tsmttsm_parameters_t &a, const ghost_tsmttsm_parameters_t &b) 
 { 
-    return ghost_hash(a.dt,a.wcols,ghost_hash(a.vcols,a.impl,0)) < ghost_hash(b.dt,b.wcols,ghost_hash(b.vcols,b.impl,0)); 
+    return ghost_hash(a.dt,a.wcols,ghost_hash(a.vcols,a.impl,ghost_hash(a.xstor,a.wstor,0))) < ghost_hash(b.dt,b.wcols,ghost_hash(b.vcols,b.impl,ghost_hash(b.xstor,b.wstor,0))); 
 }
 
 static map<ghost_tsmttsm_parameters_t, ghost_tsmttsm_kernel_t> ghost_tsmttsm_kernels;
@@ -108,6 +108,7 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
     /*if (x->traits.ncolspadded < 4 || x->traits.flags & GHOST_DENSEMAT_VIEW) {
         p.impl = GHOST_IMPLEMENTATION_PLAIN;
     }*/
+    //p.impl = GHOST_IMPLEMENTATION_PLAIN;
 
     p.dt = x->traits.datatype;
     
