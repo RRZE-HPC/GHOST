@@ -22,6 +22,7 @@ static map<ghost_tsmttsm_parameters_t, ghost_tsmttsm_kernel_t> ghost_tsmttsm_ker
 ghost_error_t ghost_tsmttsm_valid(ghost_densemat_t *x, ghost_densemat_t *v, const char * transv, 
 ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce, int printerror) 
 {
+    printerror = 1;
     if (w->traits.storage != GHOST_DENSEMAT_ROWMAJOR) {
         if (printerror) {
             ERROR_LOG("w must be stored row-major!");
@@ -108,6 +109,7 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
     /*if (x->traits.ncolspadded < 4 || x->traits.flags & GHOST_DENSEMAT_VIEW) {
         p.impl = GHOST_IMPLEMENTATION_PLAIN;
     }*/
+    //p.impl = GHOST_IMPLEMENTATION_PLAIN;
 
     p.dt = x->traits.datatype;
     

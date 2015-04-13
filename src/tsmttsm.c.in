@@ -7,7 +7,7 @@
 #include "ghost/tsmttsm_gen.h"
 
 
-ghost_error_t ghost_tsmttsm__plain_d_x_x(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conjv)
+ghost_error_t ghost_tsmttsm__plain_d_x_x_cm_rm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conjv)
 {
     UNUSED(conjv);
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
@@ -158,7 +158,7 @@ out:
     return ret;
 }
 
-ghost_error_t ghost_tsmttsm__plain_z_x_x(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conjv)
+ghost_error_t ghost_tsmttsm__plain_z_x_x_cm_rm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conjv)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error_t ret = GHOST_SUCCESS;
@@ -338,7 +338,7 @@ out:
 
 
 #GHOST_FUNC_BEGIN#CFGM=${CFG_BLOCKVECTOR_SIZES}
-ghost_error_t ghost_tsmttsm__plain_d_x_CFGM(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conjv)
+ghost_error_t ghost_tsmttsm__plain_d_x_CFGM_cm_rm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conjv)
 {
     UNUSED(conjv);
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
@@ -490,7 +490,7 @@ out:
 #GHOST_FUNC_END
 
 #GHOST_FUNC_BEGIN#CFGK=${CFG_BLOCKVECTOR_SIZES}
-ghost_error_t ghost_tsmttsm__plain_d_CFGK_x(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conjv)
+ghost_error_t ghost_tsmttsm__plain_d_CFGK_x_cm_rm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conjv)
 {
     UNUSED(conjv);
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
@@ -642,7 +642,7 @@ out:
 #GHOST_FUNC_END
 
 #GHOST_FUNC_BEGIN#CFGK=${CFG_BLOCKVECTOR_SIZES}#CFGM=${CFG_BLOCKVECTOR_SIZES}
-ghost_error_t ghost_tsmttsm__plain_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conjv)
+ghost_error_t ghost_tsmttsm__plain_d_CFGK_CFGM_cm_rm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conjv)
 {
     UNUSED(conjv);
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
@@ -751,7 +751,7 @@ out:
 #GHOST_FUNC_END
 
 #GHOST_FUNC_BEGIN#CFGM=${CFG_BLOCKVECTOR_SIZES}
-ghost_error_t ghost_tsmttsm__plain_z_x_CFGM(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conjv)
+ghost_error_t ghost_tsmttsm__plain_z_x_CFGM_cm_rm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conjv)
 {
     UNUSED(conjv);
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
@@ -941,7 +941,7 @@ out:
 #GHOST_FUNC_END
 
 #GHOST_FUNC_BEGIN#CFGK=${CFG_BLOCKVECTOR_SIZES}
-ghost_error_t ghost_tsmttsm__plain_z_CFGK_x(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conjv)
+ghost_error_t ghost_tsmttsm__plain_z_CFGK_x_cm_rm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conjv)
 {
     UNUSED(conjv);
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
@@ -1135,7 +1135,7 @@ out:
 #GHOST_FUNC_END
 
 #GHOST_FUNC_BEGIN#CFGK=${CFG_BLOCKVECTOR_SIZES}#CFGM=${CFG_BLOCKVECTOR_SIZES}
-ghost_error_t ghost_tsmttsm__plain_z_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conjv)
+ghost_error_t ghost_tsmttsm__plain_z_CFGK_CFGM_cm_rm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conjv)
 {
     UNUSED(conjv);
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)

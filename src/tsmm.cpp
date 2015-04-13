@@ -135,6 +135,7 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
         PERFWARNING_LOG("Use plain for non-even column count");
         p.impl = GHOST_IMPLEMENTATION_PLAIN;
     }
+    //p.impl = GHOST_IMPLEMENTATION_PLAIN;
 
     void *xptr, *vptr, *wptr;
     ghost_densemat_valptr(x,&xptr);

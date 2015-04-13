@@ -62,6 +62,8 @@ while (<>) {
             } else {
                 print "pars.vcols = ".$funcpars[3].";\n";
             }
+            print "pars.xstor = ".$storages{$funcpars[4]}.";\n";
+            print "pars.wstor = ".$storages{$funcpars[5]}.";\n";
             print $funcname."_kernels[pars] = ".$funcname_full.";\n"; 
             print "}\n";
         } elsif ($funcname eq "ghost_tsmttsm_kahan") {
