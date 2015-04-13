@@ -174,7 +174,7 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
     
     
     if (!kernel) {
-        INFO_LOG("Could not find TSMTTSM kernel with %d %d %d. Fallback to GEMM",p.dt,p.wcols,p.vcols);
+        INFO_LOG("Could not find TSMTTSM kernel with %d %d %d %d %d. Fallback to GEMM",p.dt,p.wcols,p.vcols,p.xstor,p.wstor);
         return GHOST_ERR_INVALID_ARG;
         
             //return ghost_gemm(x,v,"T",w,"N",alpha,beta,GHOST_GEMM_ALL_REDUCE,GHOST_GEMM_NOT_SPECIAL);
