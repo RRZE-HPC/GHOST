@@ -27,6 +27,8 @@ typedef struct
     int vcols;
     ghost_implementation_t impl;
     ghost_alignment_t alignment;
+    ghost_densemat_storage_t xstor;
+    ghost_densemat_storage_t wstor;
 } ghost_tsmm_parameters_t;
 
 /**
@@ -53,11 +55,11 @@ extern "C" {
      *
      * Compute \f$ x = \alpha \cdot v \cdot w  + \beta \cdot x\f$.
      *
-     * v is NxM, distributed, row-major.
+     * v is NxM, distributed.
      *
-     * w is MxK, redundant, col-major.
+     * w is MxK, redundant.
      *
-     * x is NxK, distributed, row-major.
+     * x is NxK, distributed.
      *
      * M<<N
      *
