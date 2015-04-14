@@ -105,7 +105,6 @@ out:
     return ret;
 }
 
-
 ghost_error_t ghost_tsmttsm__plain_d_x_x_rm_rm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conjv)
 {
     UNUSED(conjv);
@@ -197,6 +196,105 @@ ghost_error_t ghost_tsmttsm__plain_d_x_x_rm_rm(ghost_densemat_t *x, ghost_densem
     }
 #endif
 
+    goto out;
+err:
+
+out:
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
+    return ret;
+}
+
+ghost_error_t ghost_tsmttsm__plain_d_x_x_cm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conjv)
+{
+    UNUSED(conjv);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
+    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_lidx_t K = w->traits.ncols;
+
+#ifdef GHOST_TSMTTSM_KAHAN
+    WARNING_LOG("Kahan summation not implemented for this kernel. Falling back to normal summation!");
+#endif
+    
+    int myrank=0;
+
+    if (v->context) {
+        GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
+    }
+
+    ghost_lidx_t n = v->traits.nrows;
+    ghost_lidx_t m = v->traits.ncols;
+    
+    INFO_LOG("In TSMTTSM with arbitrary block sizes %dx%d <- %dx%d * %dx%d",m,K,m,n,n,K);
+    
+    double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
+    ghost_lidx_t ldv, ldw, ldx;
+
+    ldv = v->stride;
+    ldw = w->stride;
+    ldx = x->stride;
+
+    ghost_densemat_valptr(v,(void **)&vval);
+    ghost_densemat_valptr(w,(void **)&wval);
+    ghost_densemat_valptr(x,(void **)&xval);
+    
+    double dalpha = *(double *)alpha;
+    double dbeta = *(double *)beta;
+    
+    // make sure that the initial x only gets added up once
+    if (myrank) {
+        dbeta = 0.;
+    }
+
+    ghost_lidx_t i,j;
+    
+    ghost_lidx_t k;
+    for (j=0; j<m; j++) {
+        for (k=0; k<K; k++) {
+            xval[k*ldx+j] = dbeta*xval[k*ldx+j];
+        }
+    }
+#pragma omp parallel private(j,k)
+    {
+        double x_priv[m*K];
+        memset(x_priv,0,sizeof(x_priv));
+#pragma omp for schedule(runtime)
+        for (i=0; i<n; i++) {
+#pragma vector aligned
+#pragma ivdep
+#pragma simd
+            for (k=0; k<K; k++) {
+#pragma unroll_and_jam
+              for (j=0; j<m; j++) {
+                    x_priv[j*K+k] += dalpha*vval[j*ldv+i]*wval[k*ldw+i];
+                }
+            }
+
+        }
+#pragma omp critical
+        {
+#pragma vector aligned
+#pragma ivdep
+#pragma simd
+            for (k=0; k<K; k++) {
+#pragma unroll_and_jam
+                for (j=0; j<m; j++) {
+                    xval[k*ldx+j] += x_priv[j*K+k];
+                }
+            }
+        }
+    }
+#ifdef GHOST_HAVE_MPI
+    if (v->context) {
+        if (x->traits.flags & GHOST_DENSEMAT_VIEW) {
+            for (k=0; k<K; k++) {
+                MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval+k*ldx,m,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
+            }
+        } else {
+            MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,K*ldx,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
+        }
+    }
+#endif
+    
     goto out;
 err:
 
@@ -427,6 +525,115 @@ ghost_error_t ghost_tsmttsm__plain_z_x_x_rm_rm(ghost_densemat_t *x, ghost_densem
 #endif
 
    
+    goto out;
+err:
+
+out:
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
+    return ret;
+}
+
+ghost_error_t ghost_tsmttsm__plain_z_x_x_cm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conjv)
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
+    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_lidx_t K = w->traits.ncols;
+
+#ifdef GHOST_TSMTTSM_KAHAN
+    WARNING_LOG("Kahan summation not implemented for this kernel. Falling back to normal summation!");
+#endif
+    
+    int myrank=0;
+
+    if (v->context) {
+        GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
+    }
+
+    ghost_lidx_t n = v->traits.nrows;
+    ghost_lidx_t m = v->traits.ncols;
+    
+    INFO_LOG("In TSMTTSM with arbitrary block sizes %dx%d <- %dx%d * %dx%d",m,K,m,n,n,K);
+    
+    double complex * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
+    ghost_lidx_t ldv, ldw, ldx;
+
+    ldv = v->stride;
+    ldw = w->stride;
+    ldx = x->stride;
+
+    ghost_densemat_valptr(v,(void **)&vval);
+    ghost_densemat_valptr(w,(void **)&wval);
+    ghost_densemat_valptr(x,(void **)&xval);
+    
+    double complex dalpha = *(double complex *)alpha;
+    double complex dbeta = *(double complex *)beta;
+
+    ghost_mpi_op_t mpiop_zadd;
+    ghost_mpi_datatype_t mpidt_z;
+    ghost_mpi_op_sum(&mpiop_zadd,(ghost_datatype_t)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
+    ghost_mpi_datatype(&mpidt_z,(ghost_datatype_t)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
+    
+    // make sure that the initial x only gets added up once
+    if (myrank) {
+        dbeta = 0.+I*0.;
+    }
+
+    ghost_lidx_t i,j;
+    
+    ghost_lidx_t k;
+    for (j=0; j<m; j++) {
+        for (k=0; k<K; k++) {
+            xval[k*ldx+j] = dbeta*xval[k*ldx+j];
+        }
+    }
+#pragma omp parallel private(j,k)
+    {
+        double complex x_priv[m*K];
+        memset(x_priv,0,sizeof(x_priv));
+
+        if (conjv) {
+#pragma omp for schedule(runtime)
+            for (i=0; i<n; i++) {
+#pragma simd
+                for (k=0; k<K; k++) {
+                  for (j=0; j<m; j++) {
+                        x_priv[j*K+k] += dalpha*conj(vval[j*ldv+i])*wval[k*ldw+i];
+                    }
+                }
+
+            }
+        } else {
+#pragma omp for schedule(runtime)
+            for (i=0; i<n; i++) {
+#pragma simd
+                for (k=0; k<K; k++) {
+                  for (j=0; j<m; j++) {
+                        x_priv[j*K+k] += dalpha*vval[j*ldv+i]*wval[k*ldw+i];
+                    }
+                }
+
+            }
+        }
+#pragma omp critical
+#pragma simd
+        for (k=0; k<K; k++) {
+            for (j=0; j<m; j++) {
+                xval[k*ldx+j] += x_priv[j*K+k];
+            }
+        }
+    }
+#ifdef GHOST_HAVE_MPI
+    if (v->context) {
+        if (x->traits.flags & GHOST_DENSEMAT_VIEW) {
+            for (k=0; k<K; k++) {
+                MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval+k*ldx,m,mpidt_z,mpiop_zadd,v->context->mpicomm),err,ret);
+            }
+        } else {
+            MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,K*ldx,mpidt_z,mpiop_zadd,v->context->mpicomm),err,ret);
+        }
+    }
+#endif
+    
     goto out;
 err:
 
