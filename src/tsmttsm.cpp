@@ -22,7 +22,7 @@ static map<ghost_tsmttsm_parameters_t, ghost_tsmttsm_kernel_t> ghost_tsmttsm_ker
 ghost_error_t ghost_tsmttsm_valid(ghost_densemat_t *x, ghost_densemat_t *v, const char * transv, 
 ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce, int printerror) 
 {
-    if (w->traits.storage != GHOST_DENSEMAT_ROWMAJOR) {
+    /*if (w->traits.storage != GHOST_DENSEMAT_ROWMAJOR) {
         if (printerror) {
             ERROR_LOG("w must be stored row-major!");
         }
@@ -39,7 +39,7 @@ ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce, in
             ERROR_LOG("x must be stored col-major!");
         }
         return GHOST_ERR_INVALID_ARG;
-    }
+    }*/
     if (v->traits.datatype != w->traits.datatype || v->traits.datatype != x->traits.datatype) {
         if (printerror) {
             ERROR_LOG("Different data types!");
@@ -111,6 +111,8 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
     //p.impl = GHOST_IMPLEMENTATION_PLAIN;
 
     p.dt = x->traits.datatype;
+    p.xstor = x->traits.storage;
+    p.wstor = w->traits.storage;
     
     p.vcols = v->traits.ncols;
     p.wcols = w->traits.ncols;

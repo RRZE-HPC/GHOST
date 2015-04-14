@@ -48,7 +48,7 @@ extern "C" {
      *
      * w is NxK, distributed, row-major.
      *
-     * x is NxK, distributed, row- or col-major.
+     * x is NxK, redundant, row- or col-major.
      *
      * M<<N
      * 
