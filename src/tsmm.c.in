@@ -61,6 +61,61 @@ ghost_error_t ghost_tsmm__u_plain_d_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_d
 #GHOST_FUNC_END
 
 #GHOST_FUNC_BEGIN#CFGK=${CFG_BLOCKVECTOR_SIZES}#CFGM=${CFG_BLOCKVECTOR_SIZES}
+ghost_error_t ghost_tsmm__u_plain_d_CFGK_CFGM_rm_rm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
+    ghost_error_t ret = GHOST_SUCCESS;
+
+    ghost_lidx_t k = w->traits.ncols;
+    ghost_lidx_t m = v->traits.ncols;
+    ghost_lidx_t n = v->traits.nrows;
+
+    INFO_LOG("In TSMM with two fixed block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
+
+    double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
+    ghost_lidx_t ldv, ldw, ldx;
+
+    ldv = v->stride;
+    ldw = w->stride;
+    ldx = x->stride;
+
+    ghost_densemat_valptr(v,(void **)&vval);
+    ghost_densemat_valptr(w,(void **)&wval);
+    ghost_densemat_valptr(x,(void **)&xval);
+
+    double dalpha = *(double *)alpha;
+    double dbeta = *(double *)beta;
+    ghost_lidx_t i,j,s;
+
+    double tmp;
+    
+#pragma omp parallel for private(j,s,tmp) schedule(runtime)
+    for (i=0; i<n; i++) {
+#if CFGK > 1
+#pragma simd
+#endif
+        for (s=0; s<CFGK; s++) {
+            tmp = dbeta*xval[i*ldx+s];
+#if CFGK > 1
+#pragma unroll_and_jam
+#else
+#if CFGM > 1
+#pragma simd
+#endif
+#endif
+            for (j=0; j<CFGM; j++) {
+                tmp += dalpha*vval[i*ldv+j]*wval[j*ldw+s];
+            }
+            xval[i*ldx+s] = tmp;
+        }
+    }
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
+    return ret;
+}
+#GHOST_FUNC_END
+
+#GHOST_FUNC_BEGIN#CFGK=${CFG_BLOCKVECTOR_SIZES}#CFGM=${CFG_BLOCKVECTOR_SIZES}
 ghost_error_t ghost_tsmm__u_plain_d_CFGK_CFGM_cm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
@@ -246,6 +301,76 @@ ghost_error_t ghost_tsmm__u_plain_d_x_x_cm_cm(ghost_densemat_t *x, ghost_densema
 #pragma ivdep
                 for (s=0; s<w->traits.ncols; s++) {
                     xval[s*ldx+i] += dalpha*vval[j*ldv+i]*wval[s*ldw+j];
+                }
+            }
+        }
+    }    
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
+    return ret;
+}
+
+ghost_error_t ghost_tsmm__u_plain_d_x_x_rm_rm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
+    ghost_error_t ret = GHOST_SUCCESS;
+
+    ghost_lidx_t k = w->traits.ncols;
+    ghost_lidx_t m = v->traits.ncols;
+    ghost_lidx_t n = v->traits.nrows;
+
+    
+    INFO_LOG("In TSMM with arbitrary block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
+
+    double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
+    ghost_lidx_t ldv, ldw, ldx;
+
+    ldv = v->stride;
+    ldw = w->stride;
+    ldx = x->stride;
+
+    ghost_densemat_valptr(v,(void **)&vval);
+    ghost_densemat_valptr(w,(void **)&wval);
+    ghost_densemat_valptr(x,(void **)&xval);
+
+    double dalpha = *(double *)alpha;
+    double dbeta = *(double *)beta;
+    ghost_lidx_t i,j,s;
+    
+    if (w->traits.ncolspadded <= 4) 
+    {
+#pragma omp parallel for private(j,s) schedule(runtime)
+        for (i=0; i<n; i++) {
+            for (s=0; s<w->traits.ncols; s++) {
+                xval[i*ldx+s] = dbeta*xval[i*ldx+s];
+#pragma simd
+#pragma vector aligned
+#pragma vector always
+#pragma ivdep
+                for (j=0; j<m; j++) {
+                    xval[i*ldx+s] += dalpha*vval[i*ldv+j]*wval[j*ldw+s];
+                }
+            }
+        }
+    } 
+    else 
+    {
+#pragma omp parallel for private(j,s) schedule(runtime)
+        for (i=0; i<n; i++) {
+#pragma simd
+#pragma vector aligned
+#pragma vector always
+#pragma ivdep
+            for (s=0; s<w->traits.ncols; s++) {
+                xval[i*ldx+s] = dbeta*xval[i*ldx+s];
+            }
+            for (j=0; j<m; j++) {
+#pragma simd
+#pragma vector aligned
+#pragma vector always
+#pragma ivdep
+                for (s=0; s<w->traits.ncols; s++) {
+                    xval[i*ldx+s] += dalpha*vval[i*ldv+j]*wval[j*ldw+s];
                 }
             }
         }
@@ -481,6 +606,76 @@ ghost_error_t ghost_tsmm__u_plain_z_x_x_rm_cm(ghost_densemat_t *x, ghost_densema
     return ret;
 }
 
+ghost_error_t ghost_tsmm__u_plain_z_x_x_rm_rm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
+    ghost_error_t ret = GHOST_SUCCESS;
+
+    ghost_lidx_t k = w->traits.ncols;
+    ghost_lidx_t m = v->traits.ncols;
+    ghost_lidx_t n = v->traits.nrows;
+
+    
+    INFO_LOG("In TSMM with arbitrary block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
+
+    double complex * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
+    ghost_lidx_t ldv, ldw, ldx;
+
+    ldv = v->stride;
+    ldw = w->stride;
+    ldx = x->stride;
+
+    ghost_densemat_valptr(v,(void **)&vval);
+    ghost_densemat_valptr(w,(void **)&wval);
+    ghost_densemat_valptr(x,(void **)&xval);
+
+    double complex dalpha = *(double complex *)alpha;
+    double complex dbeta = *(double complex *)beta;
+    ghost_lidx_t i,j,s;
+    
+    if (w->traits.ncolspadded <= 4) 
+    {
+#pragma omp parallel for private(j,s) schedule(runtime)
+        for (i=0; i<n; i++) {
+            for (s=0; s<w->traits.ncols; s++) {
+                xval[i*ldx+s] = dbeta*xval[i*ldx+s];
+#pragma simd
+#pragma vector aligned
+#pragma vector always
+#pragma ivdep
+                for (j=0; j<m; j++) {
+                    xval[i*ldx+s] += dalpha*vval[i*ldv+j]*wval[j*ldw+s];
+                }
+            }
+        }
+    } 
+    else 
+    {
+#pragma omp parallel for private(j,s) schedule(runtime)
+        for (i=0; i<n; i++) {
+#pragma simd
+#pragma vector aligned
+#pragma vector always
+#pragma ivdep
+            for (s=0; s<w->traits.ncols; s++) {
+                xval[i*ldx+s] = dbeta*xval[i*ldx+s];
+            }
+            for (j=0; j<m; j++) {
+#pragma simd
+#pragma vector aligned
+#pragma vector always
+#pragma ivdep
+                for (s=0; s<w->traits.ncols; s++) {
+                    xval[i*ldx+s] += dalpha*vval[i*ldv+j]*wval[j*ldw+s];
+                }
+            }
+        }
+    }    
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
+    return ret;
+}
+
 #GHOST_FUNC_BEGIN#CFGK=${CFG_BLOCKVECTOR_SIZES}#CFGM=${CFG_BLOCKVECTOR_SIZES}
 ghost_error_t ghost_tsmm__u_plain_z_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
 {
@@ -526,6 +721,61 @@ ghost_error_t ghost_tsmm__u_plain_z_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_d
 #endif
             for (j=0; j<CFGM; j++) {
                 tmp += dalpha*vval[i*ldv+j]*wval[s*ldw+j];
+            }
+            xval[i*ldx+s] = tmp;
+        }
+    }
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
+    return ret;
+}
+#GHOST_FUNC_END
+
+#GHOST_FUNC_BEGIN#CFGK=${CFG_BLOCKVECTOR_SIZES}#CFGM=${CFG_BLOCKVECTOR_SIZES}
+ghost_error_t ghost_tsmm__u_plain_z_CFGK_CFGM_rm_rm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
+    ghost_error_t ret = GHOST_SUCCESS;
+
+    ghost_lidx_t k = w->traits.ncols;
+    ghost_lidx_t m = v->traits.ncols;
+    ghost_lidx_t n = v->traits.nrows;
+
+    INFO_LOG("In TSMM with two fixed block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
+
+    complex double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
+    ghost_lidx_t ldv, ldw, ldx;
+
+    ldv = v->stride;
+    ldw = w->stride;
+    ldx = x->stride;
+
+    ghost_densemat_valptr(v,(void **)&vval);
+    ghost_densemat_valptr(w,(void **)&wval);
+    ghost_densemat_valptr(x,(void **)&xval);
+
+    complex double dalpha = *(complex double *)alpha;
+    complex double dbeta = *(complex double *)beta;
+    ghost_lidx_t i,j,s;
+
+    complex double tmp;
+    
+#pragma omp parallel for private(j,s,tmp) schedule(runtime)
+    for (i=0; i<n; i++) {
+#if CFGK > 1
+#pragma simd
+#endif
+        for (s=0; s<CFGK; s++) {
+            tmp = dbeta*xval[i*ldx+s];
+#if CFGK > 1
+#pragma unroll_and_jam
+#else
+#if CFGM > 1
+#pragma simd
+#endif
+#endif
+            for (j=0; j<CFGM; j++) {
+                tmp += dalpha*vval[i*ldv+j]*wval[j*ldw+s];
             }
             xval[i*ldx+s] = tmp;
         }
