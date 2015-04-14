@@ -17,10 +17,6 @@ ghost_error_t ghost_tsmttsm_kahan__plain_d_x_x(ghost_densemat_t *x, ghost_densem
     ghost_lidx_t m = v->traits.ncols;
     double finalc[m*K];
 
-#ifdef GHOST_TSMTTSM_KAHAN
-    WARNING_LOG("Kahan summation not implemented for this kernel. Falling back to normal summation!");
-#endif
-    
     int myrank=0;
 
     if (v->context) {
@@ -185,10 +181,6 @@ ghost_error_t ghost_tsmttsm_kahan__plain_z_x_x(ghost_densemat_t *x, ghost_densem
     ghost_lidx_t m = v->traits.ncols;
     complex double finalc[m*K];
 
-#ifdef GHOST_TSMTTSM_KAHAN
-    WARNING_LOG("Kahan summation not implemented for this kernel. Falling back to normal summation!");
-#endif
-    
     int myrank=0;
 
     if (v->context) {
@@ -395,10 +387,6 @@ ghost_error_t ghost_tsmttsm_kahan__plain_d_CFGK_CFGM(ghost_densemat_t *x, ghost_
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error_t ret = GHOST_SUCCESS;
 
-#ifdef GHOST_TSMTTSM_KAHAN
-    WARNING_LOG("Kahan summation not implemented for this kernel. Falling back to normal summation!");
-#endif
-    
     int myrank=0;
 
     if (v->context) {
@@ -524,10 +512,6 @@ ghost_error_t ghost_tsmttsm_kahan__plain_z_CFGK_CFGM(ghost_densemat_t *x, ghost_
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error_t ret = GHOST_SUCCESS;
 
-#ifdef GHOST_TSMTTSM_KAHAN
-    WARNING_LOG("Kahan summation not implemented for this kernel. Falling back to normal summation!");
-#endif
-    
     int myrank=0;
 
     if (v->context) {
