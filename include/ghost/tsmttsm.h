@@ -44,11 +44,11 @@ extern "C" {
      *
      * \f$ x = \alpha \cdot v^T \cdot w + \beta \cdot x \f$.
      *
-     * v is NxM, distributed, row-major.
+     * v is NxM, distributed.
      *
-     * w is NxK, distributed, row-major.
+     * w is NxK, distributed.
      *
-     * x is NxK, redundant, row- or col-major.
+     * x is NxK, redundant.
      *
      * M<<N
      * 
