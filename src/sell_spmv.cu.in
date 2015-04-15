@@ -807,9 +807,10 @@ static ghost_error_t ghost_cu_sell_spmv_tmpl(ghost_sparsemat_t *mat, ghost_dense
     v_dt_device *cu_localdot = NULL;
     v_dt_device *cu_shift = NULL;
     v_dt_host *localdot = NULL;
-    v_dt_device *shift, scale, beta;
+    v_dt_device *shift, scale, beta, sdelta,seta;
+    ghost_densemat_t *z;
     dim3 block, grid;
-    GHOST_SPMV_PARSE_ARGS(flags,argp,scale,beta,shift,localdot,v_dt_host,v_dt_device);
+    GHOST_SPMV_PARSE_ARGS(flags,argp,scale,beta,shift,localdot,z,sdelta,seta,v_dt_host,v_dt_device);
     if (flags & GHOST_SPMV_AXPY) {
         v_dt_host hbeta = 1.;
         beta = *((v_dt_device *)&hbeta);
@@ -962,6 +963,10 @@ static ghost_error_t ghost_cu_sell_spmv_tmpl(ghost_sparsemat_t *mat, ghost_dense
         rhs->dot(rhs,&localdot[2*rhs->traits.ncols],rhs);
         GHOST_INSTR_STOP("spmv_cuda_dot")
 #endif
+    }
+    if (flags & GHOST_SPMV_CHAIN_AXPBY) {
+        PERFWARNING_LOG("AXPBY will not be done on-the-fly!");
+        z->axpby(z,lhs,&seta,&sdelta);
     }
     if (flags & GHOST_SPMV_DOT_ANY) {
         GHOST_CALL_RETURN(ghost_cu_free(cu_localdot));

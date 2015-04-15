@@ -45,11 +45,12 @@ static ghost_error_t ghost_cu_crsspmv_tmpl(ghost_sparsemat_t *mat, ghost_densema
     GHOST_CALL_RETURN(ghost_cu_cusparse_handle(&cusparse_handle));
 
     dt2 *localdot = NULL;
-    dt1 *shift = NULL, scale, beta;
+    dt1 *shift = NULL, scale, beta, sdelta, seta;
+    ghost_densemat_t *z = NULL;
 
     one<dt1>(scale);
 
-    GHOST_SPMV_PARSE_ARGS(options,argp,scale,beta,shift,localdot,dt2,dt1);
+    GHOST_SPMV_PARSE_ARGS(options,argp,scale,beta,shift,localdot,z,sdelta,seta,dt2,dt1);
 
     if (options & GHOST_SPMV_AXPY) {
         one<dt1>(beta);
@@ -89,6 +90,10 @@ static ghost_error_t ghost_cu_crsspmv_tmpl(ghost_sparsemat_t *mat, ghost_densema
         }
             
     }
+    if (options & GHOST_SPMV_CHAIN_AXPBY) {
+        PERFWARNING_LOG("AXPBY will not be done on-the-fly!");
+        z->axpby(z,lhs,&seta,&sdelta);
+    }
     
     if (origlhs != lhs) {
         PERFWARNING_LOG("Scatter the result back");
@@ -108,11 +113,12 @@ static ghost_error_t ghost_cu_crsspmmv_cm_tmpl(ghost_sparsemat_t *mat, ghost_den
     GHOST_CALL_RETURN(ghost_cu_cusparse_handle(&cusparse_handle));
 
     dt2 *localdot = NULL;
-    dt1 *shift = NULL, scale, beta;
+    dt1 *shift = NULL, scale, beta, sdelta, seta;
+    ghost_densemat_t *z = NULL;
 
     one<dt1>(scale);
 
-    GHOST_SPMV_PARSE_ARGS(options,argp,scale,beta,shift,localdot,dt2,dt1);
+    GHOST_SPMV_PARSE_ARGS(options,argp,scale,beta,shift,localdot,z,sdelta,seta,dt2,dt1);
 
     if (options & GHOST_SPMV_AXPY) {
         one<dt1>(beta);
@@ -152,6 +158,11 @@ static ghost_error_t ghost_cu_crsspmmv_cm_tmpl(ghost_sparsemat_t *mat, ghost_den
         }
             
     }
+    if (options & GHOST_SPMV_CHAIN_AXPBY) {
+        PERFWARNING_LOG("AXPBY will not be done on-the-fly!");
+        z->axpby(z,lhs,&seta,&sdelta);
+    }
+    
     
     if (origlhs != lhs) {
         PERFWARNING_LOG("Scatter the result back");
@@ -171,11 +182,12 @@ static ghost_error_t ghost_cu_crsspmmv_rm_tmpl(ghost_sparsemat_t *mat, ghost_den
     GHOST_CALL_RETURN(ghost_cu_cusparse_handle(&cusparse_handle));
 
     dt2 *localdot = NULL;
-    dt1 *shift = NULL, scale, beta;
+    dt1 *shift = NULL, scale, beta, sdelta, seta;
+    ghost_densemat_t *z = NULL;
 
     one<dt1>(scale);
 
-    GHOST_SPMV_PARSE_ARGS(options,argp,scale,beta,shift,localdot,dt2,dt1);
+    GHOST_SPMV_PARSE_ARGS(options,argp,scale,beta,shift,localdot,z,sdelta,seta,dt2,dt1);
 
     if (options & GHOST_SPMV_AXPY) {
         one<dt1>(beta);
@@ -221,6 +233,11 @@ static ghost_error_t ghost_cu_crsspmmv_rm_tmpl(ghost_sparsemat_t *mat, ghost_den
         }
             
     }
+    if (options & GHOST_SPMV_CHAIN_AXPBY) {
+        PERFWARNING_LOG("AXPBY will not be done on-the-fly!");
+        z->axpby(z,lhs,&seta,&sdelta);
+    }
+    
     
     return GHOST_SUCCESS;
 }
