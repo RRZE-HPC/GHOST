@@ -381,6 +381,9 @@ int ghost_spmv_perf(double *perf, double time, void *varg)
     if (arg.flags & GHOST_SPMV_DOT_XX) {
         flops += (flopsPerMulSame+1)*nrow*ncol;
     }
+    if (arg.flags & GHOST_SPMV_CHAIN_AXPBY) {
+        flops += (2*flopsPerMul+flopsPerAdd)*nrow*ncol;
+    }
 
     *perf = flops/1.e9/time;
 
