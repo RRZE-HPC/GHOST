@@ -131,7 +131,7 @@ extern "C" {
      * @param mat The sparse matrix.
      * @param invec The right hand side vector.
      * @param flags Configuration flags for the spMV operation.
-     * @param ... Further arguments \f$\alpha\f$ , \f$\beta\f$, \f$\gamma\f$, and \a dot (in that exact order) if configured in the flags (cf. detailed description).
+     * @param ... Further arguments \f$\alpha\f$ , \f$\beta\f$, \f$\gamma\f$, \a dot, \a z, \f$\delta\f$, and \f$\eta\f$ (in that exact order) if configured in the flags (cf. detailed description).
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      *
@@ -149,6 +149,9 @@ extern "C" {
      *
      * In case ::GHOST_SPMV_DOT is set, \a dot has to point to a memory destination of the size
      * of three vector values.
+     *
+     * This operation maybe changed with an additional AXPBY operation on the vector z: \f$z = \delta z + \eta y\f$
+     * If this should be done, ::GHOST_SPMV_CHAIN_AXPBY has to be set in the flags and the variadic arguments have to be set accordingly.
      *
      * \warning If there is something wrong with the variadic arguments, i.e., if (following from the flags) more arguments are expected than present, random errors may occur. In order to avoid this, passing NULL as the last argument is a good practice.
      *

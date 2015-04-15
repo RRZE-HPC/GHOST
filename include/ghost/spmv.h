@@ -52,6 +52,9 @@ typedef enum {
  * @param beta Where to store beta.
  * @param gamma Where to store gamma.
  * @param dot Where to store the dot array.
+ * @param z Where to store the z densemat.
+ * @param delta Where to store deltea.
+ * @param eta Where to store eta.
  * @param dt_in The data type in which the args are present. 
  * @param dt_out The data of which alpha, beta, gamma, and dot.
  *
