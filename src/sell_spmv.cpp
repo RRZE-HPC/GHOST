@@ -26,7 +26,7 @@ static ghost_error_t ghost_sell_spmv_plain_rm(ghost_sparsemat_t *mat,
     PERFWARNING_LOG("In plain row-major SEL SpMV with scatteredvecs=%d, blocksz=%d",scatteredvecs,rhs->traits.ncols);
     ghost_sell_t *sell = (ghost_sell_t *)(mat->data);
     v_t *local_dot_product = NULL, *partsums = NULL;
-    ghost_lidx_t i,j,c,rcol,lcol,cidx;
+    ghost_lidx_t i,j,c,rcol,lcol,zcol,cidx;
     ghost_lidx_t v;
     int nthreads = 1;
     int ch = sell->chunkHeight;
@@ -52,7 +52,7 @@ static ghost_error_t ghost_sell_spmv_plain_rm(ghost_sparsemat_t *mat,
             partsums[i] = 0.;
         }
     }
-#pragma omp parallel private(c,j,rcol,lcol,cidx,i,v) shared(partsums)
+#pragma omp parallel private(c,j,rcol,lcol,zcol,cidx,i,v) shared(partsums)
     {
         v_t **tmp;
         ghost_malloc((void **)&tmp,sizeof(v_t *)*ch);
@@ -62,7 +62,7 @@ static ghost_error_t ghost_sell_spmv_plain_rm(ghost_sparsemat_t *mat,
             tmp[i] = tmp[i-1] + rhs->traits.ncols;
         }
         int tid = ghost_omp_threadnum();
-        v_t * rhsrow, *lhsrow;
+        v_t * rhsrow, *lhsrow, *zrow;
         v_t matrixval;
 
 #pragma omp for schedule(runtime) 
@@ -95,8 +95,12 @@ static ghost_error_t ghost_sell_spmv_plain_rm(ghost_sparsemat_t *mat,
             for (i=0; (i<ch) && (c*ch+i < mat->nrows); i++) {
                 lhsrow = ((v_t *)lhs->val)+lhs->stride*(c*ch+i);
                 rhsrow = ((v_t *)rhs->val)+rhs->stride*(c*ch+i);
+                if (z) {
+                    zrow = ((v_t *)z->val)+z->stride*(c*ch+i);
+                }
                 rcol = 0;
                 lcol = 0;
+                zcol = 0;
                 for (cidx = 0; cidx<lhs->traits.ncols; cidx++) {
                     if ((options & GHOST_SPMV_SHIFT) && shift) {
                         tmp[i][cidx] = tmp[i][cidx]-shift[0]*rhsrow[rcol];
@@ -114,6 +118,9 @@ static ghost_error_t ghost_sell_spmv_plain_rm(ghost_sparsemat_t *mat,
                     } else {
                         lhsrow[lcol] = tmp[i][cidx];
                     }
+                    if (options & GHOST_SPMV_CHAIN_AXPBY) {
+                        zrow[zcol] = delta*zrow[zcol] + eta*lhsrow[lcol];
+                    }
 
                     if (options & GHOST_SPMV_DOT_ANY) {
                         partsums[((pad+3*lhs->traits.ncols)*tid)+3*cidx+0] += 
@@ -126,9 +133,13 @@ static ghost_error_t ghost_sell_spmv_plain_rm(ghost_sparsemat_t *mat,
                     if (scatteredvecs) {
                         rcol = ghost_bitmap_next(rhs->colmask,rcol);
                         lcol = ghost_bitmap_next(lhs->colmask,lcol);
+                        if (z) {
+                            zcol = ghost_bitmap_next(z->colmask,zcol);
+                        }
                     } else {
                         rcol++;
                         lcol++;
+                        zcol++;
                     }
                 }
             }
