@@ -343,110 +343,6 @@ static ghost_error_t ghost_sell_spmv_plain_cm_selector(ghost_sparsemat_t *mat,
     }
 }
 
-    template<typename m_t, typename v_t> 
-static ghost_error_t ghost_sell_spmv_kernel_ellpack_cm(
-        ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, 
-        ghost_spmv_flags_t options, va_list argp)
-{
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
-    v_t *rhsv = NULL;
-    v_t *lhsv = NULL;
-    v_t *local_dot_product = NULL, *partsums = NULL;
-    int nthreads = 1;
-    ghost_lidx_t i,j;
-    ghost_lidx_t v;
-    v_t tmp;
-    ghost_sell_t *sell = (ghost_sell_t *)(mat->data);
-    m_t *sellv = (m_t*)(sell->val);
-
-    unsigned clsize;
-    ghost_machine_cacheline_size(&clsize);
-    int pad = (int) clsize/sizeof(v_t);
-
-    v_t scale = 1., beta = 1.;
-    v_t *shift = NULL;
-    v_t delta = 0., eta = 0.;
-    ghost_densemat_t *z = NULL;
-    GHOST_SPMV_PARSE_ARGS(options,argp,scale,beta,shift,local_dot_product,z,delta,eta,v_t,
-            v_t);
-
-    if (options & GHOST_SPMV_DOT_ANY) {
-#pragma omp parallel
-        nthreads = ghost_omp_nthread();
-
-        GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,
-                    (3*lhs->traits.ncols+pad)*nthreads*sizeof(v_t))); 
-        for (i=0; i<(3*lhs->traits.ncols+pad)*nthreads; i++) {
-            partsums[i] = 0.;
-        }
-    }
-
-#pragma omp parallel private(i,j,tmp,v)
-    {
-        int tid = ghost_omp_threadnum();
-#pragma omp for schedule(runtime)
-        for (i=0; i<mat->nrows; i++) 
-        {
-            for (v=0; v<lhs->traits.ncols; v++)
-            {
-                rhsv = (v_t *)rhs->val+v*rhs->stride;
-                lhsv = (v_t *)lhs->val+v*rhs->stride;
-                tmp = (v_t)0;
-
-                for (j=0; j<sell->rowLen[i]; j++) 
-                {
-                    tmp += (v_t)sellv[mat->nrowsPadded*j+i] * 
-                        rhsv[sell->col[mat->nrowsPadded*j+i]];
-                }
-
-                if ((options & GHOST_SPMV_SHIFT) && shift) {
-                    tmp = tmp-shift[0]*rhsv[i];
-                }
-                if ((options & GHOST_SPMV_VSHIFT) && shift) {
-                    tmp = tmp-shift[v]*rhsv[i];
-                }
-                if (options & GHOST_SPMV_SCALE) {
-                    tmp = tmp*scale;
-                }
-                if (options & GHOST_SPMV_AXPY) {
-                    lhsv[i] += tmp;
-                } else if (options & GHOST_SPMV_AXPBY) {
-                    lhsv[i] = beta*lhsv[i] + tmp;
-                } else {
-                    lhsv[i] = tmp;
-                }
-                if (options & GHOST_SPMV_DOT_ANY) {
-                    partsums[(v+tid*lhs->traits.ncols)*16 + 0] += 
-                        conjugate(&lhsv[i])*lhsv[i];
-                    partsums[(v+tid*lhs->traits.ncols)*16 + 1] += 
-                        conjugate(&lhsv[i])*rhsv[i];
-                    partsums[(v+tid*lhs->traits.ncols)*16 + 2] += 
-                        conjugate(&rhsv[i])*rhsv[i];
-                }
-            }
-        }
-    }
-    if (options & GHOST_SPMV_DOT_ANY) {
-        for (v=0; v<lhs->traits.ncols; v++) {
-            local_dot_product[v                       ] = 0.; 
-            local_dot_product[v  +   lhs->traits.ncols] = 0.;
-            local_dot_product[v  + 2*lhs->traits.ncols] = 0.;
-            for (i=0; i<nthreads; i++) {
-                local_dot_product[v                      ] += 
-                    partsums[(v+i*lhs->traits.ncols)*16 + 0];
-                local_dot_product[v +   lhs->traits.ncols] += 
-                    partsums[(v+i*lhs->traits.ncols)*16 + 1];
-                local_dot_product[v + 2*lhs->traits.ncols] += 
-                    partsums[(v+i*lhs->traits.ncols)*16 + 2];
-            }
-        }
-        free(partsums);
-    }
-
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
-    return GHOST_SUCCESS;
-}
-
 static bool operator<(const ghost_sellspmv_parameters_t &a, 
         const ghost_sellspmv_parameters_t &b) 
 { 
@@ -644,16 +540,9 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
         PERFWARNING_LOG("Execute fallback SELL SpMV kernel which is potentially"
                 " slow!");
         if (lhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
-            if (SELL(mat)->chunkHeight == GHOST_SELL_CHUNKHEIGHT_ELLPACK) {
-                SELECT_TMPL_2DATATYPES(mat->traits->datatype,
-                        rhs->traits.datatype,ghost_complex,ret,
-                        ghost_sell_spmv_kernel_ellpack_cm,mat,lhs,rhs,options,
-                        argp);
-            } else {
-                SELECT_TMPL_2DATATYPES(mat->traits->datatype,
-                        rhs->traits.datatype,ghost_complex,ret,
-                        ghost_sell_spmv_plain_cm_selector,mat,lhs,rhs,options,argp);
-            }
+            SELECT_TMPL_2DATATYPES(mat->traits->datatype,
+                    rhs->traits.datatype,ghost_complex,ret,
+                    ghost_sell_spmv_plain_cm_selector,mat,lhs,rhs,options,argp);
 
         } else {
             SELECT_TMPL_2DATATYPES(mat->traits->datatype,
