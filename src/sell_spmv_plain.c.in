@@ -239,6 +239,10 @@ ghost_error_t ghost_sellspmv__a_plain_d_d_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t
                 memset(tmp,0,sizeof(tmp));
                 double *lcol = ((double *)(res->val))+res->stride*v;
                 double *rcol = rhsval+invec->stride*v;
+                double *zcol;
+                if (z) { 
+                    zcol = (double *)z->val+z->stride*v;
+                }
 
 #pragma simd
                 for (j=0; j<SELL(mat)->chunkLen[c]; j++) { // loop inside chunk
@@ -268,6 +272,9 @@ ghost_error_t ghost_sellspmv__a_plain_d_d_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t
                         lcol[row] = beta*lcol[row] + tmp[r];
                     } else {
                         lcol[row] = tmp[r];
+                    }
+                    if (spmvmOptions & GHOST_SPMV_CHAIN_AXPBY) {
+                        zcol[row] = delta*zcol[row] + eta*lcol[row];
                     }
                     
                     if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
