@@ -37,7 +37,9 @@ static ghost_error_t ghost_sell_spmv_plain_rm(ghost_sparsemat_t *mat,
 
     v_t scale = 1., beta = 1.;
     v_t *shift = NULL;
-    GHOST_SPMV_PARSE_ARGS(options,argp,scale,beta,shift,local_dot_product,v_t,
+    v_t delta = 0., eta = 0.;
+    ghost_densemat_t *z = NULL;
+    GHOST_SPMV_PARSE_ARGS(options,argp,scale,beta,shift,local_dot_product,z,delta,eta,v_t,
             v_t);
 
     if (options & GHOST_SPMV_DOT_ANY) {
@@ -191,7 +193,9 @@ static ghost_error_t ghost_sell_spmv_plain_cm(ghost_sparsemat_t *mat,
 
     v_t scale = 1., beta = 1.;
     v_t *shift = NULL;
-    GHOST_SPMV_PARSE_ARGS(options,argp,scale,beta,shift,local_dot_product,v_t,
+    v_t delta = 0., eta = 0.;
+    ghost_densemat_t *z = NULL;
+    GHOST_SPMV_PARSE_ARGS(options,argp,scale,beta,shift,local_dot_product,z,delta,eta,v_t,
             v_t);
 
     if (options & GHOST_SPMV_DOT_ANY) {
@@ -339,7 +343,9 @@ static ghost_error_t ghost_sell_spmv_kernel_ellpack_cm(
 
     v_t scale = 1., beta = 1.;
     v_t *shift = NULL;
-    GHOST_SPMV_PARSE_ARGS(options,argp,scale,beta,shift,local_dot_product,v_t,
+    v_t delta = 0., eta = 0.;
+    ghost_densemat_t *z = NULL;
+    GHOST_SPMV_PARSE_ARGS(options,argp,scale,beta,shift,local_dot_product,z,delta,eta,v_t,
             v_t);
 
     if (options & GHOST_SPMV_DOT_ANY) {

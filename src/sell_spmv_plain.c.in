@@ -21,11 +21,13 @@ ghost_error_t ghost_sellspmv__a_plain_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t
     ghost_lidx_t v;
    
     double *shift = NULL, scale = 1., beta = 1.; 
+    double delta = 0., eta = 0.;
+    ghost_densemat_t *z = NULL;
     unsigned clsize;
     ghost_machine_cacheline_size(&clsize);
     int pad = (int) clsize/sizeof(double);
 
-    GHOST_SPMV_PARSE_ARGS(spmvmOptions,argp,scale,beta,shift,local_dot_product,double,
+    GHOST_SPMV_PARSE_ARGS(spmvmOptions,argp,scale,beta,shift,local_dot_product,z,delta,eta,double,
             double);
 
     if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
@@ -175,11 +177,13 @@ ghost_error_t ghost_sellspmv__a_plain_d_d_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t
     ghost_lidx_t v;
    
     double *shift = NULL, scale = 1., beta = 1.; 
+    double delta = 0., eta = 0.;
+    ghost_densemat_t *z = NULL;
     unsigned clsize;
     ghost_machine_cacheline_size(&clsize);
     int pad = (int) clsize/sizeof(double);
 
-    GHOST_SPMV_PARSE_ARGS(spmvmOptions,argp,scale,beta,shift,local_dot_product,double,
+    GHOST_SPMV_PARSE_ARGS(spmvmOptions,argp,scale,beta,shift,local_dot_product,z,delta,eta,double,
             double);
 
     if (spmvmOptions & GHOST_SPMV_DOT_ANY) {

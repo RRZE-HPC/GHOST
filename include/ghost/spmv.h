@@ -20,7 +20,6 @@ typedef enum {
     GHOST_SPMV_MODE_OVERLAP = 8,
     GHOST_SPMV_MODE_TASK = 16,
     GHOST_SPMV_SHIFT = 32,
-    GHOST_SPMV_VSHIFT = 32768,
     GHOST_SPMV_SCALE = 64,
     GHOST_SPMV_AXPBY = 128,
     GHOST_SPMV_DOT = 256,
@@ -29,7 +28,9 @@ typedef enum {
     GHOST_SPMV_DOT_XX = 2048,
     GHOST_SPMV_NOT_REDUCE = 4096,
     GHOST_SPMV_LOCAL = 8192,
-    GHOST_SPMV_REMOTE = 16384
+    GHOST_SPMV_REMOTE = 16384,
+    GHOST_SPMV_VSHIFT = 32768,
+    GHOST_SPMV_CHAIN_AXPBY = 65536
 } ghost_spmv_flags_t;
 
 
@@ -56,7 +57,7 @@ typedef enum {
  *
  * @return 
  */
-#define GHOST_SPMV_PARSE_ARGS(flags,argp,alpha,beta,gamma,dot,dt_in,dt_out){\
+#define GHOST_SPMV_PARSE_ARGS(flags,argp,alpha,beta,gamma,dot,z,delta,eta,dt_in,dt_out){\
     dt_in *arg = NULL;\
     if (flags & GHOST_SPMV_SCALE) {\
         arg = va_arg(argp,dt_in *);\
@@ -89,6 +90,27 @@ typedef enum {
             return GHOST_ERR_INVALID_ARG;\
         }\
         dot = arg;\
+    }\
+    if (flags & GHOST_SPMV_CHAIN_AXPBY) {\
+        ghost_densemat_t *zarg;\
+        zarg = va_arg(argp,ghost_densemat_t *);\
+        if (!zarg) {\
+            ERROR_LOG("z argument is NULL!");\
+            return GHOST_ERR_INVALID_ARG;\
+        }\
+        z = zarg;\
+        arg = va_arg(argp,dt_in *);\
+        if (!arg) {\
+            ERROR_LOG("delta argument is NULL!");\
+            return GHOST_ERR_INVALID_ARG;\
+        }\
+        delta = *(dt_out *)arg;\
+        arg = va_arg(argp,dt_in *);\
+        if (!arg) {\
+            ERROR_LOG("eta argument is NULL!");\
+            return GHOST_ERR_INVALID_ARG;\
+        }\
+        eta = *(dt_out *)arg;\
     }\
     if (flags & GHOST_SPMV_REMOTE) {\
         flags = (ghost_spmv_flags_t)(flags & ~GHOST_SPMV_AXPBY);\

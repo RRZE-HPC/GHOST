@@ -693,10 +693,12 @@ ghost_error_t ghost_sellspmv__a_avx_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
     
     complex double sscale = 1., sbeta = 1.;
     complex double *sshift = NULL;
+    complex double delta = 0., eta = 0.;
+    ghost_densemat_t *z = NULL;
     __m256d scale, beta, shift;
     #GHOST_UNROLL#__m256d vshift@;#NVECS/2
 
-    GHOST_SPMV_PARSE_ARGS(spmvmOptions,argp,sscale,sbeta,sshift,local_dot_product,complex double,complex double);
+    GHOST_SPMV_PARSE_ARGS(spmvmOptions,argp,sscale,sbeta,sshift,local_dot_product,z,delta,eta,complex double,complex double);
     
     complex double *sshiftpadded = NULL;
     int sshiftcopied = 0;

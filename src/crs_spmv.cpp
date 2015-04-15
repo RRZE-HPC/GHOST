@@ -22,7 +22,7 @@ static ghost_error_t ghost_crs_spmv_plain_rm(ghost_sparsemat_t *mat, ghost_dense
     v_t *local_dot_product = NULL, *partsums = NULL;
     m_t *mval = (m_t *)(cr->val);
     ghost_lidx_t i, j;
-    ghost_lidx_t rcol,lcol;
+    ghost_lidx_t rcol,lcol,zcol;
     ghost_lidx_t cidx;
     int nthreads = 1;
 
@@ -32,9 +32,11 @@ static ghost_error_t ghost_crs_spmv_plain_rm(ghost_sparsemat_t *mat, ghost_dense
 
     v_t scale = 1., beta = 1.;
     v_t *shift = NULL;
+    v_t delta = 0., eta = 0.;
+    ghost_densemat_t *z = NULL;
 
-    GHOST_SPMV_PARSE_ARGS(options,argp,scale,beta,shift,local_dot_product,v_t,v_t);
-    
+    GHOST_SPMV_PARSE_ARGS(options,argp,scale,beta,shift,local_dot_product,z,delta,eta,v_t,v_t);
+   
         
     if (options & GHOST_SPMV_DOT_ANY) {
 
@@ -48,10 +50,10 @@ static ghost_error_t ghost_crs_spmv_plain_rm(ghost_sparsemat_t *mat, ghost_dense
         memset(partsums,0,(3*lhs->traits.ncols+padding)*nthreads*sizeof(v_t));
         memset(local_dot_product,0,3*lhs->traits.ncols*sizeof(v_t));
     }
-#pragma omp parallel private (i, j, lhsv,rcol,lcol,cidx) shared (partsums)
+#pragma omp parallel private (i, j, lhsv,rcol,lcol,zcol,cidx) shared (partsums)
     {
         v_t matrixval;
-        v_t * rhsrow;
+        v_t * rhsrow, *zrow;
         v_t *tmp;
         ghost_malloc((void **)&tmp,rhs->traits.ncols*sizeof(v_t));
         int tid = ghost_omp_threadnum();
@@ -77,6 +79,7 @@ static ghost_error_t ghost_crs_spmv_plain_rm(ghost_sparsemat_t *mat, ghost_dense
             lhsv = (v_t *)lhs->val + i*lhs->stride;
             rcol = 0;
             lcol = 0;
+            zcol = 0;
 
             for (cidx = 0; cidx<rhs->traits.ncols; cidx++) {
                 if ((options & GHOST_SPMV_SHIFT) && shift) {
@@ -95,6 +98,10 @@ static ghost_error_t ghost_crs_spmv_plain_rm(ghost_sparsemat_t *mat, ghost_dense
                 } else {
                     lhsv[lcol] = tmp[cidx];
                 }
+                if (options & GHOST_SPMV_CHAIN_AXPBY) {
+                    zrow = (v_t *)z->val + i*z->stride;
+                    zrow[zcol] = delta*zrow[zcol] + eta*lhsv[lcol];
+                }
                 if (options & GHOST_SPMV_DOT_ANY) {
                     partsums[((padding+3*lhs->traits.ncols)*tid)+3*cidx+0] += conjugate(&lhsv[lcol])*lhsv[lcol];
                     partsums[((padding+3*lhs->traits.ncols)*tid)+3*cidx+1] += conjugate(&lhsv[lcol])*rhsrow[rcol];
@@ -103,9 +110,13 @@ static ghost_error_t ghost_crs_spmv_plain_rm(ghost_sparsemat_t *mat, ghost_dense
                 if (scatteredrows) {
                     rcol = ghost_bitmap_next(rhs->colmask,rcol);
                     lcol = ghost_bitmap_next(lhs->colmask,lcol);
+                    if (z) {
+                        zcol = ghost_bitmap_next(z->colmask,zcol);
+                    }
                 } else {
                     rcol++;
                     lcol++;
+                    zcol++;
                 }
             }
         }
@@ -144,6 +155,7 @@ static ghost_error_t ghost_crs_spmv_plain_cm(ghost_sparsemat_t *mat, ghost_dense
     ghost_crs_t *cr = CR(mat);
     v_t *rhsv = NULL;
     v_t *lhsv = NULL;
+    v_t *zv = NULL;
     v_t *local_dot_product = NULL, *partsums = NULL;
     m_t *mval = (m_t *)(cr->val);
     ghost_lidx_t i, j;
@@ -157,8 +169,10 @@ static ghost_error_t ghost_crs_spmv_plain_cm(ghost_sparsemat_t *mat, ghost_dense
     v_t hlp1 = (v_t)0.;
     v_t scale = (v_t)1., beta = (v_t)1.;
     v_t *shift = NULL;
+    v_t delta = 0., eta = 0.;
+    ghost_densemat_t *z = NULL;
 
-    GHOST_SPMV_PARSE_ARGS(options,argp,scale,beta,shift,local_dot_product,v_t,v_t);
+    GHOST_SPMV_PARSE_ARGS(options,argp,scale,beta,shift,local_dot_product,z,delta,eta,v_t,v_t);
     
         
     if (options & GHOST_SPMV_DOT_ANY) {
@@ -174,16 +188,19 @@ static ghost_error_t ghost_crs_spmv_plain_cm(ghost_sparsemat_t *mat, ghost_dense
         memset(local_dot_product,0,3*lhs->traits.ncols*sizeof(v_t));
     }
 
-#pragma omp parallel private (i,hlp1, j, rhsv, lhsv,v) shared (partsums)
+#pragma omp parallel private (i,hlp1, j, rhsv, lhsv, zv, v) shared (partsums)
     {
         int tid = ghost_omp_threadnum();
 #pragma omp for schedule(runtime) 
         for (i=0; i<mat->nrows; i++){
             
-            ghost_lidx_t rcol = 0, lcol = 0;
+            ghost_lidx_t rcol = 0, lcol = 0, zcol = 0;
             for (v=0; v<lhs->traits.ncols; v++) {
                 rhsv = (v_t *)rhs->val+rcol*rhs->stride;
                 lhsv = (v_t *)lhs->val+lcol*rhs->stride;
+                if (z) {
+                    zv = (v_t *)z->val+zcol*z->stride;
+                }
                 
                 hlp1 = (v_t)0.0;
                 for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){
@@ -206,6 +223,10 @@ static ghost_error_t ghost_crs_spmv_plain_cm(ghost_sparsemat_t *mat, ghost_dense
                 } else {
                     lhsv[i] = (hlp1);
                 }
+                if (options & GHOST_SPMV_CHAIN_AXPBY) {
+                    zv[i] = delta*zv[i] + eta*lhsv[i];
+                }
+                    
 
                 if (options & GHOST_SPMV_DOT_ANY) {
                     partsums[((padding+3*lhs->traits.ncols)*tid)+3*v+0] += conjugate(&lhsv[i])*lhsv[i];
@@ -216,9 +237,13 @@ static ghost_error_t ghost_crs_spmv_plain_cm(ghost_sparsemat_t *mat, ghost_dense
                 if (scatteredvecs) {
                     rcol = ghost_bitmap_next(rhs->colmask,rcol);
                     lcol = ghost_bitmap_next(lhs->colmask,lcol);
+                    if (z) {
+                        zcol = ghost_bitmap_next(z->colmask,zcol);
+                    }
                 } else {
                     rcol++;
                     lcol++;
+                    zcol++;
                 }
             }
         }
