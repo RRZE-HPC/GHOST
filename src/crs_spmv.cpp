@@ -77,6 +77,9 @@ static ghost_error_t ghost_crs_spmv_plain_rm(ghost_sparsemat_t *mat, ghost_dense
 
             rhsrow = (v_t *)rhs->val + i*rhs->stride;
             lhsv = (v_t *)lhs->val + i*lhs->stride;
+            if (z) {
+                zrow = (v_t *)z->val + i*z->stride;
+            }
             rcol = 0;
             lcol = 0;
             zcol = 0;
@@ -99,7 +102,6 @@ static ghost_error_t ghost_crs_spmv_plain_rm(ghost_sparsemat_t *mat, ghost_dense
                     lhsv[lcol] = tmp[cidx];
                 }
                 if (options & GHOST_SPMV_CHAIN_AXPBY) {
-                    zrow = (v_t *)z->val + i*z->stride;
                     zrow[zcol] = delta*zrow[zcol] + eta*lhsv[lcol];
                 }
                 if (options & GHOST_SPMV_DOT_ANY) {
