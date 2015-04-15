@@ -214,19 +214,23 @@ static ghost_error_t ghost_sell_spmv_plain_cm(ghost_sparsemat_t *mat,
         ghost_malloc((void **)&tmp,ch*sizeof(v_t));
         v_t *lhsv = NULL;
         v_t *rhsv = NULL;
+        v_t *zv = NULL;
         int tid = ghost_omp_threadnum();
 
 
 #pragma omp for schedule(runtime) 
         for (c=0; c<mat->nrowsPadded/ch; c++) { // loop over chunks
                     
-            ghost_lidx_t rcol = 0, lcol = 0;
+            ghost_lidx_t rcol = 0, lcol = 0, zcol = 0;
 
             for (v=0; v<lhs->traits.ncols; v++)
             {
 
                 rhsv = (v_t *)rhs->val+rcol*rhs->stride;
                 lhsv = (v_t *)lhs->val+lcol*rhs->stride;
+                if (z) {
+                    zv = (v_t *)z->val+zcol*z->stride;
+                }
 
                 for (i=0; i<ch; i++) {
                     tmp[i] = (v_t)0;
@@ -257,6 +261,9 @@ static ghost_error_t ghost_sell_spmv_plain_cm(ghost_sparsemat_t *mat,
                         } else {
                             lhsv[c*ch+i] = tmp[i];
                         }
+                        if (options & GHOST_SPMV_CHAIN_AXPBY) {
+                            zv[c*ch+i] = delta*zv[c*ch+i] + eta*lhsv[c*ch+i];
+                        }
 
                         if (options & GHOST_SPMV_DOT_ANY) {
                             partsums[((pad+3*lhs->traits.ncols)*tid)+3*v+0] += 
@@ -276,9 +283,13 @@ static ghost_error_t ghost_sell_spmv_plain_cm(ghost_sparsemat_t *mat,
                 if (scatteredvecs) {
                     rcol = ghost_bitmap_next(rhs->colmask,rcol);
                     lcol = ghost_bitmap_next(lhs->colmask,lcol);
+                    if (z) {
+                        zcol = ghost_bitmap_next(z->colmask,zcol);
+                    }
                 } else {
                     rcol++;
                     lcol++;
+                    zcol++;
                 }
             }
         }
