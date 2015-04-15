@@ -47,6 +47,10 @@ ghost_error_t ghost_sellspmv__a_plain_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t
         ghost_lidx_t offs;
         double tmp[CHUNKHEIGHT][NVECS];
         double *rhsval = (double *)invec->val;
+        double *zval = NULL;
+        if (z) {
+            zval = (double *)z->val;
+        }
         int tid = ghost_omp_threadnum();
 
 #pragma omp for schedule(runtime)
@@ -74,6 +78,10 @@ ghost_error_t ghost_sellspmv__a_plain_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t
                 row = c*CHUNKHEIGHT+r;
                 double *lrow = ((double *)(res->val))+res->stride*row;
                 double *rrow = rhsval+invec->stride*row;
+                double *zrow = NULL;
+                if (z) {
+                    zrow = zval+z->stride*row;
+                }
                 if ((spmvmOptions & GHOST_SPMV_SHIFT) && shift) {
 #if NVECS > 1
 #pragma simd
@@ -113,12 +121,29 @@ ghost_error_t ghost_sellspmv__a_plain_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t
                         lrow[v] = beta*lrow[v] + tmp[r][v];
                     }
                 } else {
+                    if (spmvmOptions & GHOST_SPMV_CHAIN_AXPBY) {
+#if NVECS > 1
+#pragma simd
+#endif
+                        for (v=0; v<NVECS; v++) {
+                            lrow[v] = tmp[r][v];
+                        }
+                    } else {
 #pragma vector nontemporal
 #if NVECS > 1
 #pragma simd
 #endif
+                        for (v=0; v<NVECS; v++) {
+                            lrow[v] = tmp[r][v];
+                        }
+                    }
+                }
+                if (spmvmOptions & GHOST_SPMV_CHAIN_AXPBY) {
+#if NVECS > 1
+#pragma simd
+#endif
                     for (v=0; v<NVECS; v++) {
-                        lrow[v] = tmp[r][v];
+                        zrow[v] = delta*zrow[v] + eta*lrow[v];
                     }
                 }
                     
