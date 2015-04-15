@@ -122,6 +122,7 @@ typedef enum {
         flags = (ghost_spmv_flags_t)(flags | GHOST_SPMV_AXPY);\
     } else if (flags & GHOST_SPMV_LOCAL) {\
         flags = (ghost_spmv_flags_t)(flags & ~GHOST_SPMV_DOT_ANY);\
+        flags = (ghost_spmv_flags_t)(flags & ~GHOST_SPMV_CHAIN_AXPBY);\
     }\
 }\
 
