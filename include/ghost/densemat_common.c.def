@@ -31,7 +31,7 @@ ghost_error_t FUNCNAME(malloc(ghost_densemat_t *vec))
     }
 
     if ((vec->traits.location == GHOST_LOCATION_HOST || vec->traits.location == GHOST_LOCATION_HOSTDEVICE) && !vec->val) {
-        DEBUG_LOG(2,"Allocating host side of vector");
+        DEBUG_LOG(2,"Allocating host side of densemat with %"PRLIDX"x%"PRLIDX" padded elements",vec->traits.nrowspadded,vec->traits.ncolspadded);
         if (vec->traits.location == GHOST_LOCATION_HOSTDEVICE) {
             GHOST_CALL_RETURN(ghost_malloc_pinned((void **)&vec->val,
                         (size_t)vec->traits.ncolspadded*vec->traits.nrowspadded*
