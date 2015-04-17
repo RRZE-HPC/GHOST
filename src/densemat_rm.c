@@ -644,6 +644,7 @@ static ghost_error_t vec_rm_fromFunc(ghost_densemat_t *vec, void (*fp)(ghost_gid
         ghost_densemat_t *hostVec;
         ghost_densemat_traits_t htraits = vec->traits;
         htraits.location = GHOST_LOCATION_HOST;
+        htraits.flags &= ~GHOST_DENSEMAT_VIEW;
         GHOST_CALL_RETURN(ghost_densemat_create(&hostVec,vec->context,htraits));
         GHOST_CALL_RETURN(hostVec->fromFunc(hostVec,fp));
         GHOST_CALL_RETURN(vec->fromVec(vec,hostVec,0,0));
