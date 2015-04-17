@@ -76,6 +76,11 @@ if (do_fallback) {\
                 flags&GHOST_SPMV_DOT_ANY,\
                 flags&GHOST_SPMV_CHAIN_AXPBY);\
     } else {\
+        block.x/=2; /* Otherwise, too many registers per thread! */\
+        grid.x*=2;\
+        ghost_cu_free(cu_localdot);\
+        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(dt2)\
+                    *rhs->traits.ncols*3*grid.x));\
         PERFWARNING_LOG("Executing col-major fallback kernel with grid %dx%d "\
                 "and block %dx%d smem %zu",grid.x,grid.y,block.x,block.y,smem);\
         SELL_kernel_cm_fallback_tmpl<dt1,dt2,dt2_b><<<grid,block,smem>>>(\
