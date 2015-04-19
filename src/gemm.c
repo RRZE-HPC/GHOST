@@ -383,6 +383,9 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
         for (i=0; i<dima; ++i) {
             int copied = 0;
             void *val = NULL;
+            if (x->traits.location == GHOST_LOCATION_HOSTDEVICE) {
+                GHOST_CALL_GOTO(x->download(x),err,ret);
+            }
             if (x->traits.location == GHOST_LOCATION_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
                 size_t sizeofdt;
