@@ -244,14 +244,14 @@ static ghost_error_t vec_cm_downloadNonHalo(ghost_densemat_t *vec)
             }
         } else {
             GHOST_CALL_RETURN(ghost_cu_download(
-                        DENSEMAT_CUVALPTR(vec,0,0),
-                        DENSEMAT_VALPTR(vec,0,0), 
+                        DENSEMAT_VALPTR(vec,0,0),
+                        DENSEMAT_CUVALPTR(vec,0,0), 
                         vec->traits.nrowspadded*vec->traits.ncols*vec->elSize));
         }
     } else {
         DENSEMAT_ITER(vec,ghost_cu_download(
-                    DENSEMAT_CUVALPTR(vec,memrow,memcol),
-                    DENSEMAT_VALPTR(vec,memrow,col),
+                    DENSEMAT_VALPTR(vec,memrow,memcol),
+                    DENSEMAT_CUVALPTR(vec,memrow,col),
                     vec->elSize));
     }
     
