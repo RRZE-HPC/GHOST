@@ -40,6 +40,13 @@ ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce, in
         }
         return GHOST_ERR_INVALID_ARG;
     }*/
+    if (x->traits.location != GHOST_LOCATION_HOST || v->traits.location != GHOST_LOCATION_HOST || w->traits.location != GHOST_LOCATION_HOST) {
+        if (printerror) {
+            ERROR_LOG("TSMTTSM only implemented for host densemats!");
+        }
+        return GHOST_ERR_INVALID_ARG;
+    }
+
     if (v->traits.datatype != w->traits.datatype || v->traits.datatype != x->traits.datatype) {
         if (printerror) {
             ERROR_LOG("Different data types!");
@@ -84,7 +91,13 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
     ghost_error_t ret;
 
     if ((ret = ghost_tsmttsm_valid(x,v,"T",w,"N",alpha,beta,reduce,1)) != GHOST_SUCCESS) {
-        return ret;
+        INFO_LOG("TSMM cannot be applied. Checking whether GEMM is fine!");
+        if ((ret = ghost_gemm_valid(x,v,"T",w,"N",alpha,beta,reduce,GHOST_GEMM_DEFAULT,1)) != GHOST_SUCCESS) {
+            ERROR_LOG("GEMM cannot be applied!");
+            return ret;
+        } else {
+            return ghost_gemm(x,v,"T",w,"N",alpha,beta,reduce,GHOST_GEMM_NOT_SPECIAL);
+        }
     }
     
     if (ghost_tsmttsm_kernels.empty()) {
