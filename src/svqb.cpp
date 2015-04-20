@@ -81,7 +81,7 @@ static ghost_error_t ghost_svqb_tmpl (ghost_densemat_t * v_ot , ghost_densemat_t
 
     GHOST_CALL_GOTO(ghost_tsmttsm_kahan( x, v, v,&one,&zero,GHOST_GEMM_ALL_REDUCE,1),err,ret);
     x->download(x);
-    
+   
     for (i=0;i<n;i++) {
         D[i] = (T_b)1./std::sqrt(std::real(xval[i*ldx+i]));
     }
@@ -97,6 +97,7 @@ static ghost_error_t ghost_svqb_tmpl (ghost_densemat_t * v_ot , ghost_densemat_t
         ret = GHOST_ERR_LAPACK;
         goto err;
     }
+    
     for ( i=0;i<n;i++){  
         if( eigs[i] <  0. ){
            eigs[i] = -eigs[i];
@@ -114,6 +115,9 @@ static ghost_error_t ghost_svqb_tmpl (ghost_densemat_t * v_ot , ghost_densemat_t
             xval[i*ldx+j] *= D[j]*eigs[i];
          }
     }
+    
+    x->upload(x);
+    
     GHOST_CALL_GOTO(ghost_tsmm( v_ot, v, x, &one, &zero),err,ret);
    
    if( n_set_rand > 0 ){
