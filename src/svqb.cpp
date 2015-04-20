@@ -102,8 +102,8 @@ static ghost_error_t ghost_svqb_tmpl (ghost_densemat_t * v_ot , ghost_densemat_t
         if( eigs[i] <  0. ){
            eigs[i] = -eigs[i];
         }
-        if( eigs[i] <  1.e-14*eigs[n-1] ){  // TODO make it for single precision, too
-           eigs[i] += 1.e-14*eigs[n-1];
+        if(eigs[i] <  (T_b)1.e-14*eigs[n-1] ){  // TODO make it for single precision, too
+           eigs[i] += (T_b)1.e-14*eigs[n-1];
            set_rand[n_set_rand] = i;
            n_set_rand++;
         }
