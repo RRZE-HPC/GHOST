@@ -91,7 +91,7 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
     ghost_error_t ret;
 
     if ((ret = ghost_tsmttsm_valid(x,v,"T",w,"N",alpha,beta,reduce,1)) != GHOST_SUCCESS) {
-        INFO_LOG("TSMM cannot be applied. Checking whether GEMM is fine!");
+        INFO_LOG("TSMTTSM cannot be applied. Checking whether GEMM is fine!");
         if ((ret = ghost_gemm_valid(x,v,"T",w,"N",alpha,beta,reduce,GHOST_GEMM_DEFAULT,1)) != GHOST_SUCCESS) {
             ERROR_LOG("GEMM cannot be applied!");
             return ret;
