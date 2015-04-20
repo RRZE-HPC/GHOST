@@ -21,7 +21,7 @@ ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce,gho
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
     if ((v->traits.location != w->traits.location) || (v->traits.location != x->traits.location)) { 
-        ERROR_LOG("The storage of all densemats has to be uniform (host or device)!");
+        ERROR_LOG("The location of all densemats has to be uniform (host or device)!");
         return GHOST_ERR_INVALID_ARG;
     }
     
