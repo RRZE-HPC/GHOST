@@ -70,6 +70,7 @@ static ghost_error_t ghost_svqb_tmpl (ghost_densemat_t * v_ot , ghost_densemat_t
     xtraits.nrows = n;
     xtraits.storage = GHOST_DENSEMAT_COLMAJOR;
     xtraits.datatype = DT;
+    xtraits.location = GHOST_LOCATION_HOST|GHOST_LOCATION_DEVICE;
     GHOST_CALL_GOTO(ghost_densemat_create(&x,NULL,xtraits),err,ret);
     GHOST_CALL_GOTO(x->fromScalar(x,&zero),err,ret);
     ldx = x->stride;
@@ -79,6 +80,7 @@ static ghost_error_t ghost_svqb_tmpl (ghost_densemat_t * v_ot , ghost_densemat_t
     
 
     GHOST_CALL_GOTO(ghost_tsmttsm_kahan( x, v, v,&one,&zero,GHOST_GEMM_ALL_REDUCE,1),err,ret);
+    x->download(x);
     
     for (i=0;i<n;i++) {
         D[i] = (T_b)1./std::sqrt(std::real(xval[i*ldx+i]));
