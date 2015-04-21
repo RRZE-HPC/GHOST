@@ -45,7 +45,7 @@ ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce, in
         }
         return GHOST_ERR_INVALID_ARG;
     }
-    if (x->traits.location != GHOST_LOCATION_HOST || v->traits.location != GHOST_LOCATION_HOST || w->traits.location != GHOST_LOCATION_HOST) {
+    if (!(x->traits.location & GHOST_LOCATION_HOST) || !(v->traits.location & GHOST_LOCATION_HOST) || !(w->traits.location & GHOST_LOCATION_HOST)) {
         if (printerror) {
             ERROR_LOG("TSMTTSM only implemented for host densemats!");
         }
