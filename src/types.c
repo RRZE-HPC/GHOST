@@ -167,4 +167,18 @@ ghost_error_t ghost_idx2datatype(ghost_datatype_t *datatype, ghost_datatype_idx_
     }
     return GHOST_SUCCESS;
 }
-    
+   
+char * ghost_location_string(ghost_location_t location)
+{
+    if (location & GHOST_LOCATION_HOST) {
+        if (location & GHOST_LOCATION_DEVICE) {
+            return "Host&Device";
+        } else {
+            return "Host";
+        }
+    } else if (location & GHOST_LOCATION_DEVICE) {
+        return "Device";
+    } else {
+        return "Invalid";
+    }
+}

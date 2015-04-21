@@ -478,6 +478,7 @@ extern "C" {
      * @return A string representation of the data type. 
      */
     char * ghost_datatype_string(ghost_datatype_t datatype);
+    char * ghost_location_string(ghost_location_t location);
     ghost_error_t ghost_datatype_idx(ghost_datatype_idx_t *idx, ghost_datatype_t datatype);
     ghost_error_t ghost_idx2datatype(ghost_datatype_t *datatype, ghost_datatype_idx_t idx);
     ghost_error_t ghost_datatype_size(size_t *size, ghost_datatype_t datatype);
