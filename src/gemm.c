@@ -21,7 +21,7 @@ ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce,gho
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
     if (!((v->traits.location & w->traits.location) & x->traits.location)) { 
-        ERROR_LOG("Invalid densemat locations!");
+        ERROR_LOG("Invalid densemat locations: %s <- %s x %s",ghost_location_string(x->traits.location),ghost_location_string(v->traits.location),ghost_location_string(w->traits.location));
         return GHOST_ERR_INVALID_ARG;
     }
     
