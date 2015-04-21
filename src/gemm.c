@@ -20,8 +20,8 @@ ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce,gho
         }
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
-    if ((v->traits.location != w->traits.location) || (v->traits.location != x->traits.location)) { 
-        ERROR_LOG("The storage of all densemats has to be uniform (host or device)!");
+    if (!((v->traits.location & w->traits.location) & x->traits.location)) { 
+        ERROR_LOG("Invalid densemat locations: %s <- %s x %s",ghost_location_string(x->traits.location),ghost_location_string(v->traits.location),ghost_location_string(w->traits.location));
         return GHOST_ERR_INVALID_ARG;
     }
     
@@ -179,8 +179,7 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
         printf("\nv\n%s\n%s\nw\n%s\n%s\nx\n%s\n%s\n\n",vstr,vvstr,wstr,wvstr,xstr,xvstr);
         WARNING_LOG("GEMM %dx%d * %dx%d = %dx%d",*m,*k,*k,*n,*m,*n);
         WARNING_LOG("%s %s",transv,transw);*/
-    if ((v->traits.location == w->traits.location) && (v->traits.location ==  x->traits.location) && 
-            (v->traits.location == GHOST_LOCATION_DEVICE)) {
+    if (((v->traits.location & w->traits.location) & x->traits.location) & GHOST_LOCATION_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
         cublasHandle_t ghost_cublas_handle;
         ghost_blas_idx_t culdv,culdw,culdx;
@@ -331,7 +330,7 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
 #endif
     } else
     if ((v->traits.location == w->traits.location) && (v->traits.location ==  x->traits.location) && 
-            (v->traits.location == GHOST_LOCATION_HOST)) {
+            (v->traits.location & GHOST_LOCATION_HOST)) {
         if (v->traits.datatype & GHOST_DT_COMPLEX) 
         {
             if (v->traits.datatype & GHOST_DT_DOUBLE) 
@@ -383,10 +382,7 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
         for (i=0; i<dima; ++i) {
             int copied = 0;
             void *val = NULL;
-            if (x->traits.location == GHOST_LOCATION_HOSTDEVICE) {
-                GHOST_CALL_GOTO(x->download(x),err,ret);
-            }
-            if (x->traits.location == GHOST_LOCATION_DEVICE) {
+            if (x->traits.location & GHOST_LOCATION_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
                 size_t sizeofdt;
                 ghost_datatype_size(&sizeofdt,x->traits.datatype);

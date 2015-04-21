@@ -315,7 +315,7 @@ ghost_error_t ghost_densemat_info_string(char **str, ghost_densemat_t *densemat)
 
     }
    
-    ghost_line_string(str,"Location",NULL,"%s",densemat->traits.location==GHOST_LOCATION_DEVICE?"Device":densemat->traits.location==GHOST_LOCATION_HOST?"Host":"Undefined");
+    ghost_line_string(str,"Location",NULL,"%s",ghost_location_string(densemat->traits.location));
     ghost_line_string(str,"Storage order",NULL,"%s",ghost_densemat_storage_string(densemat));
     ghost_footer_string(str);
     

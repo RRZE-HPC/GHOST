@@ -206,25 +206,33 @@ typedef enum {
     /**
      * @brief Default location. This is only a placeholder and the actual location has to be specified by GHOST.
      */
-    GHOST_LOCATION_DEFAULT,
+    GHOST_LOCATION_DEFAULT = 0,
     /**
      * @brief Data is located on host.
      */
-    GHOST_LOCATION_HOST,
+    GHOST_LOCATION_HOST = 1,
     /**
      * @brief Data is located on device (accelerator, GPU).
      */
-    GHOST_LOCATION_DEVICE,
-    /**
-     * @brief Data is located on host and device.
-     */
-    GHOST_LOCATION_HOSTDEVICE
+    GHOST_LOCATION_DEVICE = 2,
 }
 ghost_location_t;
 
 #ifdef __cplusplus
-inline ghost_datatype_t operator|(const ghost_datatype_t &a, const ghost_datatype_t &b)
-{return static_cast<ghost_datatype_t>(static_cast<int>(a) | static_cast<int>(b));}
+inline ghost_location_t operator|(const ghost_location_t &a, const ghost_location_t &b) {
+    return static_cast<ghost_location_t>(static_cast<int>(a) | static_cast<int>(b));
+}
+inline ghost_location_t& operator&=(ghost_location_t &a, const ghost_location_t &b) {
+    a = static_cast<ghost_location_t>(static_cast<int>(a) & static_cast<int>(b));
+    return a;
+}
+inline ghost_location_t& operator|=(ghost_location_t &a, const ghost_location_t &b) {
+    a = static_cast<ghost_location_t>(static_cast<int>(a) | static_cast<int>(b));
+    return a;
+}
+inline ghost_datatype_t operator|(const ghost_datatype_t &a, const ghost_datatype_t &b) {
+    return static_cast<ghost_datatype_t>(static_cast<int>(a) | static_cast<int>(b));
+}
 #endif
 
 /**
@@ -470,6 +478,7 @@ extern "C" {
      * @return A string representation of the data type. 
      */
     char * ghost_datatype_string(ghost_datatype_t datatype);
+    char * ghost_location_string(ghost_location_t location);
     ghost_error_t ghost_datatype_idx(ghost_datatype_idx_t *idx, ghost_datatype_t datatype);
     ghost_error_t ghost_idx2datatype(ghost_datatype_t *datatype, ghost_datatype_idx_t idx);
     ghost_error_t ghost_datatype_size(size_t *size, ghost_datatype_t datatype);

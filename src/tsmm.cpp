@@ -22,7 +22,7 @@ static map<ghost_tsmm_parameters_t, ghost_tsmm_kernel_t> ghost_tsmm_kernels;
 ghost_error_t ghost_tsmm_valid(ghost_densemat_t *x, ghost_densemat_t *v,  const char * transv, 
 ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce, int printerror)
 {
-    if (x->traits.location != GHOST_LOCATION_HOST || v->traits.location != GHOST_LOCATION_HOST || w->traits.location != GHOST_LOCATION_HOST) {
+    if (!(x->traits.location & GHOST_LOCATION_HOST) || !(v->traits.location & GHOST_LOCATION_HOST) || !(w->traits.location & GHOST_LOCATION_HOST)) {
         if (printerror) {
             ERROR_LOG("TSMM only implemented for host densemats!");
         }
