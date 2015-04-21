@@ -297,8 +297,11 @@ ghost_error_t ghost_init(int argc, char **argv)
             
             // restrict CUDA cpuset to CPUs which are still in global cpuset
             hwloc_bitmap_and(fullCuCpuset,fullCuCpuset,globcpuset);
-            
-            reducedCuCpuset = hwloc_get_next_obj_inside_cpuset_by_type(topology,fullCuCpuset,HWLOC_OBJ_CORE,NULL)->cpuset;
+           
+            if (nnoderanks > 1) {
+                // select a single core for this CUDA rank 
+                reducedCuCpuset = hwloc_get_next_obj_inside_cpuset_by_type(topology,fullCuCpuset,HWLOC_OBJ_CORE,NULL)->cpuset;
+            }
         
             // delete CUDA cores from global cpuset
             hwloc_bitmap_andnot(globcpuset,globcpuset,reducedCuCpuset);
