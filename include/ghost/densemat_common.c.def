@@ -30,9 +30,9 @@ ghost_error_t FUNCNAME(malloc(ghost_densemat_t *vec))
         return GHOST_SUCCESS;
     }
 
-    if ((vec->traits.location == GHOST_LOCATION_HOST || vec->traits.location == GHOST_LOCATION_HOSTDEVICE) && !vec->val) {
-        DEBUG_LOG(2,"Allocating host side of vector");
-        if (vec->traits.location == GHOST_LOCATION_HOSTDEVICE) {
+    if ((vec->traits.location & GHOST_LOCATION_HOST) && !vec->val) {
+        DEBUG_LOG(2,"Allocating host side of densemat with %"PRLIDX"x%"PRLIDX" padded elements",vec->traits.nrowspadded,vec->traits.ncolspadded);
+        if (vec->traits.location & GHOST_LOCATION_DEVICE) {
             GHOST_CALL_RETURN(ghost_malloc_pinned((void **)&vec->val,
                         (size_t)vec->traits.ncolspadded*vec->traits.nrowspadded*
                         vec->elSize));
@@ -43,7 +43,7 @@ ghost_error_t FUNCNAME(malloc(ghost_densemat_t *vec))
         }
     }
 
-    if (vec->traits.location == GHOST_LOCATION_DEVICE || vec->traits.location == GHOST_LOCATION_HOSTDEVICE && !vec->cu_val) {
+    if (vec->traits.location & GHOST_LOCATION_DEVICE && !vec->cu_val) {
         DEBUG_LOG(2,"Allocating device side of vector");
 #ifdef GHOST_HAVE_CUDA
 #ifdef GHOST_HAVE_CUDA_PINNEDMEM
@@ -109,13 +109,13 @@ static ghost_error_t FUNCNAME(viewPlain(ghost_densemat_t *vec, void *data, ghost
 
     FUNCNAME(malloc(vec));
 
-    if (vec->traits.location == GHOST_LOCATION_DEVICE) {
+    if (vec->traits.location & GHOST_LOCATION_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
         INFO_LOG("The plain memory has to be valid CUDA device memory!");
         vec->cu_val = data;
 #endif
     } 
-    if (vec->traits.location == GHOST_LOCATION_HOST) {
+    if (vec->traits.location & GHOST_LOCATION_HOST) {
         vec->val = data;
     }
     vec->traits.flags |= (ghost_densemat_flags_t)GHOST_DENSEMAT_VIEW;

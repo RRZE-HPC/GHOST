@@ -45,6 +45,12 @@ ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce, in
         }
         return GHOST_ERR_INVALID_ARG;
     }
+    if (x->traits.location != GHOST_LOCATION_HOST || v->traits.location != GHOST_LOCATION_HOST || w->traits.location != GHOST_LOCATION_HOST) {
+        if (printerror) {
+            ERROR_LOG("TSMTTSM only implemented for host densemats!");
+        }
+        return GHOST_ERR_INVALID_ARG;
+    }
     if (v->traits.flags & GHOST_DENSEMAT_SCATTERED || w->traits.flags & GHOST_DENSEMAT_SCATTERED || x->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         if (printerror) {
             ERROR_LOG("Scattered densemats not supported!");
@@ -83,7 +89,13 @@ ghost_error_t ghost_tsmttsm_kahan(ghost_densemat_t *x, ghost_densemat_t *v, ghos
     ghost_error_t ret;
 
     if ((ret = ghost_tsmttsm_kahan_valid(x,v,"T",w,"N",alpha,beta,reduce,1)) != GHOST_SUCCESS) {
-        return ret;
+        INFO_LOG("TSMTTSM-Kahan cannot be applied. Checking whether (non-Kahan) GEMM is fine!");
+        if ((ret = ghost_gemm_valid(x,v,"T",w,"N",alpha,beta,reduce,GHOST_GEMM_DEFAULT,1)) != GHOST_SUCCESS) {
+            ERROR_LOG("GEMM cannot be applied!");
+            return ret;
+        } else {
+            return ghost_gemm(x,v,"T",w,"N",alpha,beta,reduce,GHOST_GEMM_NOT_SPECIAL);
+        }
     }
     
     if (ghost_tsmttsm_kahan_kernels.empty()) {

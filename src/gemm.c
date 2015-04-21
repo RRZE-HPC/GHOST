@@ -11,6 +11,49 @@
 #include <cublas_v2.h>
 #endif
 
+ghost_error_t ghost_gemm_valid(ghost_densemat_t *x, ghost_densemat_t *v, const char * transv, 
+ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce,ghost_gemm_flags_t flags, int printerror) 
+{
+    if (v->traits.datatype != w->traits.datatype) {
+        if (printerror) {
+            ERROR_LOG("GEMM with mixed datatypes does not work!");
+        }
+        return GHOST_ERR_NOT_IMPLEMENTED;
+    }
+    if (!((v->traits.location & w->traits.location) & x->traits.location)) { 
+        ERROR_LOG("Invalid densemat locations!");
+        return GHOST_ERR_INVALID_ARG;
+    }
+    
+
+    ghost_lidx_t nrV,ncV,nrW,ncW,nrX,ncX;
+
+    if (strncasecmp(transv,"N",1)) {
+        nrV=v->traits.ncols; ncV=v->traits.nrows;
+    } else {
+        nrV=v->traits.nrows; ncV=v->traits.ncols;
+    }
+    if (strncasecmp(transw,"N",1)) {
+        nrW=w->traits.ncols; ncW=w->traits.nrows;
+    } else {
+        nrW=w->traits.nrows; ncW=w->traits.ncols;
+    }
+
+    nrX=x->traits.nrows;
+    ncX=x->traits.ncols;
+    
+    if (ncV!=nrW || nrV!=nrX || ncW!=ncX) {
+        if (printerror) {
+            ERROR_LOG("GEMM with incompatible vectors: %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX" = %"PRLIDX"x%"PRLIDX,nrV,ncV,nrW,ncW,nrX,ncX);
+        }
+        return GHOST_ERR_INVALID_ARG;
+    }
+
+    return GHOST_SUCCESS;
+
+}
+
+
 static ghost_error_t ghost_gemm_blas(ghost_densemat_t *x_in, ghost_densemat_t *v_in, const char * transv_in, 
 ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int reduce,ghost_gemm_flags_t flags) 
 {
@@ -28,10 +71,10 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
     ghost_densemat_t *w = w_in;
     
     
-    if ((v->traits.storage != w->traits.storage) || (x->traits.storage != w->traits.storage)){
+    /*if ((v->traits.storage != w->traits.storage) || (x->traits.storage != w->traits.storage)){
         ERROR_LOG("Different storage layouts of input densemats!");
         return GHOST_ERR_INVALID_ARG;
-    }
+    }*/
 
     if (v == x && !(flags & GHOST_GEMM_NOT_CLONE_ALIASED)) {
         WARNING_LOG("x equals v! v will be cloned.");
@@ -47,11 +90,6 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
         w = wc;
     }
     
-    if (v->traits.datatype != w->traits.datatype) {
-        ERROR_LOG("GEMM with mixed datatypes does not work!");
-        return GHOST_ERR_NOT_IMPLEMENTED;
-    }
-
     if (v->context == NULL && w->context == NULL && x->context == NULL && reduce != GHOST_GEMM_NO_REDUCE) {
         INFO_LOG("Reduction should be done but none of the vectors has a context. Ommitting the reduction...");
         reduce = GHOST_GEMM_NO_REDUCE;
@@ -84,16 +122,6 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
     nrX=x->traits.nrows;
     ncX=x->traits.ncols;
     
-    if (ncV!=nrW || nrV!=nrX || ncW!=ncX) {
-        ERROR_LOG("GEMM with incompatible vectors: %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX" = %"PRLIDX"x%"PRLIDX,nrV,ncV,nrW,ncW,nrX,ncX);
-       // return GHOST_ERR_INVALID_ARG;
-    }
-    if (v->traits.datatype != w->traits.datatype) {
-        ERROR_LOG("GEMM with vectors of different datatype does not work");
-        return GHOST_ERR_INVALID_ARG;
-    }
-
-
     complex double zero = 0.+I*0.;
 
     ghost_blas_idx_t *m, *n, *k;
@@ -151,8 +179,7 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
         printf("\nv\n%s\n%s\nw\n%s\n%s\nx\n%s\n%s\n\n",vstr,vvstr,wstr,wvstr,xstr,xvstr);
         WARNING_LOG("GEMM %dx%d * %dx%d = %dx%d",*m,*k,*k,*n,*m,*n);
         WARNING_LOG("%s %s",transv,transw);*/
-    if ((v->traits.location == w->traits.location) && (v->traits.location ==  x->traits.location) && 
-            (v->traits.location == GHOST_LOCATION_DEVICE)) {
+    if (((v->traits.location & w->traits.location) & x->traits.location) & GHOST_LOCATION_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
         cublasHandle_t ghost_cublas_handle;
         ghost_blas_idx_t culdv,culdw,culdx;
@@ -164,7 +191,16 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
         culdv = *ldv;
         culdw = *ldw;
         culdx = *ldx;
-        if (v->traits.storage == GHOST_DENSEMAT_ROWMAJOR && w->traits.storage == GHOST_DENSEMAT_ROWMAJOR && (cutransv == CUBLAS_OP_T || cutransv == CUBLAS_OP_C) && cutransw == CUBLAS_OP_N) {
+
+        void *xcuval;
+        void *vcuval;
+        void *wcuval;
+        GHOST_CALL_GOTO(ghost_densemat_cu_valptr(x,&xcuval),err,ret);
+        GHOST_CALL_GOTO(ghost_densemat_cu_valptr(v,&vcuval),err,ret);
+        GHOST_CALL_GOTO(ghost_densemat_cu_valptr(w,&wcuval),err,ret);
+
+
+        /*if (v->traits.storage == GHOST_DENSEMAT_ROWMAJOR && w->traits.storage == GHOST_DENSEMAT_ROWMAJOR && (cutransv == CUBLAS_OP_T || cutransv == CUBLAS_OP_C) && cutransw == CUBLAS_OP_N) {
             INFO_LOG("special case 1");
             cutransw = cutransv;
             cutransv = CUBLAS_OP_N;
@@ -174,6 +210,69 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
             //needMemTransposeX = 1;
             cutransv = CUBLAS_OP_T;
             culdx = x->traits.nrows;
+        }*/
+
+        // TSMM hack
+        if (v->traits.storage == GHOST_DENSEMAT_ROWMAJOR && x->traits.storage == GHOST_DENSEMAT_ROWMAJOR &&
+                !strncasecmp(transv_in,"N",1) && !strncasecmp(transw_in,"N",1)) {
+            INFO_LOG("v and x are row-major and no transposing should be done. Tricking CUBLAS into thinking they are col-major!");
+            
+            void *tmp;
+            tmp = vcuval;
+            vcuval = wcuval;
+            wcuval = tmp;
+
+            tmp = m;
+            m = n;
+            n = tmp;
+            
+            ghost_blas_idx_t ldtmp = culdv;
+            culdv = culdw;
+            culdw = ldtmp;
+
+            if (w->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
+                cutransv = CUBLAS_OP_T;
+            }
+        }
+        
+        // TSMTTSM hack
+        if (v->traits.storage == GHOST_DENSEMAT_ROWMAJOR && w->traits.storage == GHOST_DENSEMAT_ROWMAJOR &&
+                strncasecmp(transv_in,"N",1) && !strncasecmp(transw_in,"N",1)) {
+            INFO_LOG("v and w are row-major and v is (conjugate) transposed. Tricking CUBLAS into thinking they are col-major!");
+
+            /* 
+             * Double-transpose W and interpret V as col-major as it is transposed
+             *
+             * [CM]   [CM ]   [CM ] 
+             *
+             * (X ) = (V^T) * (W^T)^T
+             */
+
+            cutransw = cutransv; 
+            cutransv = CUBLAS_OP_N;
+            
+            if (x->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
+                
+                /* 
+                 * Fake-transpose X and interchange V and W
+                 *
+                 * [CM ]   [CM ]    [CM ] 
+                 *
+                 * (X^T) = (W^T)^T * V^T
+                 */
+                void *tmp;
+                tmp = vcuval;
+                vcuval = wcuval;
+                wcuval = tmp;
+
+                tmp = m;
+                m = n;
+                n = tmp;
+                
+                ghost_blas_idx_t ldtmp = culdv;
+                culdv = culdw;
+                culdw = ldtmp;
+            }
         }
             
 /*
@@ -206,14 +305,6 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
         WARNING_LOG("CUBLAS GEMM v %s:%d ::: w %s:%d ::: x %s:%d",ghost_densemat_storage_string(v),culdv,ghost_densemat_storage_string(w),culdw,ghost_densemat_storage_string(x),culdx);*/
 
 
-
-        void *xcuval;
-        void *vcuval;
-        void *wcuval;
-        GHOST_CALL_GOTO(ghost_densemat_cu_valptr(x,&xcuval),err,ret);
-        GHOST_CALL_GOTO(ghost_densemat_cu_valptr(v,&vcuval),err,ret);
-        GHOST_CALL_GOTO(ghost_densemat_cu_valptr(w,&wcuval),err,ret);
-
         if (v->traits.datatype & GHOST_DT_COMPLEX) 
         {
             if (v->traits.datatype & GHOST_DT_DOUBLE) 
@@ -239,7 +330,7 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
 #endif
     } else
     if ((v->traits.location == w->traits.location) && (v->traits.location ==  x->traits.location) && 
-            (v->traits.location == GHOST_LOCATION_HOST)) {
+            (v->traits.location & GHOST_LOCATION_HOST)) {
         if (v->traits.datatype & GHOST_DT_COMPLEX) 
         {
             if (v->traits.datatype & GHOST_DT_DOUBLE) 
@@ -291,7 +382,7 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
         for (i=0; i<dima; ++i) {
             int copied = 0;
             void *val = NULL;
-            if (x->traits.location == GHOST_LOCATION_DEVICE) {
+            if (x->traits.location & GHOST_LOCATION_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
                 size_t sizeofdt;
                 ghost_datatype_size(&sizeofdt,x->traits.datatype);
@@ -374,11 +465,6 @@ ghost_densemat_t *w_in, const char *transw, void *alpha, void *beta, int reduce,
     ghost_error_t ret = GHOST_SUCCESS;
     int donespecial = 0;
       
-    if ((v_in->traits.location != w_in->traits.location) || (v_in->traits.location != x_in->traits.location)) { 
-        ERROR_LOG("The storage of all densemats has to be uniform (host or device)!");
-        return GHOST_ERR_INVALID_ARG;
-    }
-    
     ghost_densemat_t *x = NULL;
     ghost_densemat_t *v = v_in;
     ghost_densemat_t *w = w_in;
@@ -439,6 +525,10 @@ ghost_densemat_t *w_in, const char *transw, void *alpha, void *beta, int reduce,
     }
 
     if (!donespecial) {
+
+        if ((ret = ghost_gemm_valid(x,v,transv,w,transw,alpha,beta,reduce,flags,1)) != GHOST_SUCCESS) {
+            return ret;
+        }
         ret = ghost_gemm_blas(x,v,transv,w,transw,alpha,beta,reduce,flags);
     }
     

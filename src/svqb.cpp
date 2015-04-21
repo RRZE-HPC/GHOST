@@ -129,6 +129,7 @@ static ghost_error_t ghost_svqb_tmpl (ghost_densemat_t * v_ot , ghost_densemat_t
     xtraits.nrows = n;
     xtraits.storage = GHOST_DENSEMAT_COLMAJOR;
     xtraits.datatype = DT;
+    xtraits.location = GHOST_LOCATION_HOST|GHOST_LOCATION_DEVICE;
     GHOST_CALL_GOTO(ghost_densemat_create(&x,NULL,xtraits),err,ret);
     GHOST_CALL_GOTO(x->fromScalar(x,&zero),err,ret);
     ldx = x->stride;
@@ -136,11 +137,18 @@ static ghost_error_t ghost_svqb_tmpl (ghost_densemat_t * v_ot , ghost_densemat_t
     T *  xval;
     GHOST_CALL_GOTO(ghost_densemat_valptr(x,(void **)&xval),err,ret);
     
+<<<<<<< HEAD
     printf("SVQB call ghost_tsmttsm..\n");
     GHOST_CALL_GOTO(ghost_tsmttsm( x, v, v,&one,&zero,GHOST_GEMM_ALL_REDUCE,1),err,ret);
     //GHOST_CALL_GOTO(ghost_tsmttsm_kahan( x, v, v,&one,&zero,GHOST_GEMM_ALL_REDUCE,1),err,ret);
     printf("SVQB ghost_tsmttsm finshed\n");
     
+=======
+
+    GHOST_CALL_GOTO(ghost_tsmttsm_kahan( x, v, v,&one,&zero,GHOST_GEMM_ALL_REDUCE,1),err,ret);
+    x->download(x);
+   
+>>>>>>> 590d127f693fa88ca97c1b957117d913ca0be2c4
     for (i=0;i<n;i++) {
        if( std::real(xval[i*ldx+i]) <  0. ){
            xval[i*ldx+i] = -xval[i*ldx+i];
@@ -158,6 +166,7 @@ static ghost_error_t ghost_svqb_tmpl (ghost_densemat_t * v_ot , ghost_densemat_t
         ret = GHOST_ERR_LAPACK;
         goto err;
     }
+<<<<<<< HEAD
 #ifdef GHOST_HAVE_MPI
         ghost_mpi_datatype_t dt, dt_b;
         ghost_mpi_datatype(&dt,DT);
@@ -166,13 +175,20 @@ static ghost_error_t ghost_svqb_tmpl (ghost_densemat_t * v_ot , ghost_densemat_t
         MPI_Bcast( eigs,     n, dt_b, 0, MPI_COMM_WORLD);
 #endif
     
+=======
+>>>>>>> 590d127f693fa88ca97c1b957117d913ca0be2c4
     
     for ( i=0;i<n;i++){  
         if( eigs[i] <  0. ){
            eigs[i] = -eigs[i];
         }
+<<<<<<< HEAD
         if( eigs[i] <  1.e-13*eigs[n-1] ){  // TODO make it for single precision, too
            eigs[i] +=  1.e-13*eigs[n-1];
+=======
+        if(eigs[i] <  (T_b)1.e-14*eigs[n-1] ){  // TODO make it for single precision, too
+           eigs[i] += (T_b)1.e-14*eigs[n-1];
+>>>>>>> 590d127f693fa88ca97c1b957117d913ca0be2c4
            set_rand[n_set_rand] = i;
            n_set_rand++;
         }
@@ -184,6 +200,9 @@ static ghost_error_t ghost_svqb_tmpl (ghost_densemat_t * v_ot , ghost_densemat_t
             xval[i*ldx+j] *= D[j]*eigs[i];
          }
     }
+    
+    x->upload(x);
+    
     GHOST_CALL_GOTO(ghost_tsmm( v_ot, v, x, &one, &zero),err,ret);
 
 #ifdef GHOST_HAVE_MPI   

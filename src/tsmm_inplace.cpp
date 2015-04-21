@@ -20,6 +20,13 @@ static map<ghost_tsmm_inplace_parameters_t, ghost_tsmm_inplace_kernel_t> ghost_t
 ghost_error_t ghost_tsmm_inplace_valid(ghost_densemat_t *x, ghost_densemat_t *v, const char * transv, 
 ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce, int printerror)
 {
+    if (x->traits.location != GHOST_LOCATION_HOST || v->traits.location != GHOST_LOCATION_HOST) {
+        if (printerror) {
+            ERROR_LOG("TSMM-inplace only implemented for host densemats!");
+        }
+        return GHOST_ERR_INVALID_ARG;
+    }
+
     if (x->traits.datatype != w->traits.datatype) {
         if (printerror) {
             ERROR_LOG("Different data types!");
@@ -82,7 +89,13 @@ ghost_error_t ghost_tsmm_inplace(ghost_densemat_t *x, ghost_densemat_t *w, void 
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
 
     if ((ret = ghost_tsmm_inplace_valid(x,x,"N",w,"N",alpha,beta,GHOST_GEMM_NO_REDUCE,1)) != GHOST_SUCCESS) {
-        return ret;
+        INFO_LOG("TSMM-inplace cannot be applied. Checking whether GEMM is fine!");
+        if ((ret = ghost_gemm_valid(x,x,"N",w,"N",alpha,beta,GHOST_GEMM_NO_REDUCE,GHOST_GEMM_DEFAULT,1)) != GHOST_SUCCESS) {
+            ERROR_LOG("GEMM cannot be applied!");
+            return ret;
+        } else {
+            return ghost_gemm(x,x,"N",w,"N",alpha,beta,GHOST_GEMM_NO_REDUCE,GHOST_GEMM_NOT_SPECIAL);
+        }
     }
     
     if (ghost_tsmm_inplace_kernels.empty()) {
