@@ -1795,8 +1795,9 @@ ghost_error_t ghost_tsmttsm__plain_z_CFGK_CFGM_cm_rm(ghost_densemat_t *x, ghost_
     }
 #pragma omp parallel private(j,k)
     {
-        complex double x_priv[CFGM*CFGK];
-        memset(x_priv,0,sizeof(x_priv));
+        complex double *x_priv;
+        ghost_malloc((void **)&x_priv,CFGM*CFGK*sizeof(complex double));
+        memset(x_priv,0,CFGM*CFGK*sizeof(complex double));
         
         if (conjv) {
 #pragma omp for schedule(runtime)
@@ -1844,6 +1845,8 @@ ghost_error_t ghost_tsmttsm__plain_z_CFGK_CFGM_cm_rm(ghost_densemat_t *x, ghost_
                 xval[k*ldx+j] += x_priv[j*CFGK+k];
             }
         }
+
+        free(x_priv);
     }
 #ifdef GHOST_HAVE_MPI
     if (v->context) {
