@@ -70,7 +70,10 @@ static ghost_error_t ghost_svqb_tmpl (ghost_densemat_t * v_ot , ghost_densemat_t
     xtraits.nrows = n;
     xtraits.storage = GHOST_DENSEMAT_COLMAJOR;
     xtraits.datatype = DT;
-    xtraits.location = GHOST_LOCATION_HOST|GHOST_LOCATION_DEVICE;
+    xtraits.location = GHOST_LOCATION_HOST;
+    if (v->traits.location & GHOST_LOCATION_DEVICE) {
+        xtraits.location |= GHOST_LOCATION_DEVICE;
+    }
     GHOST_CALL_GOTO(ghost_densemat_create(&x,NULL,xtraits),err,ret);
     GHOST_CALL_GOTO(x->fromScalar(x,&zero),err,ret);
     ldx = x->stride;
@@ -91,7 +94,7 @@ static ghost_error_t ghost_svqb_tmpl (ghost_densemat_t * v_ot , ghost_densemat_t
             xval[i*ldx+j] *= D[i]*D[j];
         }
     }
-    
+
     if (call_eig_function<T,T_b>( LAPACK_COL_MAJOR, 'V' , 'U', n, xval, ldx, eigs)) {
         ERROR_LOG("LAPACK eigenvalue function failed!");
         ret = GHOST_ERR_LAPACK;
@@ -102,7 +105,7 @@ static ghost_error_t ghost_svqb_tmpl (ghost_densemat_t * v_ot , ghost_densemat_t
         if( eigs[i] <  0. ){
            eigs[i] = -eigs[i];
         }
-        if(eigs[i] <  (T_b)1.e-14*eigs[n-1] ){  // TODO make it for single precision, too
+        if( eigs[i] <  (T_b)1.e-14*eigs[n-1] ){  // TODO make it for single precision, too
            eigs[i] += (T_b)1.e-14*eigs[n-1];
            set_rand[n_set_rand] = i;
            n_set_rand++;

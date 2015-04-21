@@ -107,6 +107,10 @@ static ghost_error_t ghost_rayleigh_ritz_tmpl (ghost_sparsemat_t * mat, void * v
     xtraits.nrows = n;
     xtraits.storage = GHOST_DENSEMAT_COLMAJOR;
     xtraits.datatype = DT;
+    xtraits.location = GHOST_LOCATION_HOST;
+    if (v_eigs->traits.location & GHOST_LOCATION_DEVICE) {
+        xtraits.location |= GHOST_LOCATION_DEVICE;
+    }
     GHOST_CALL_GOTO(ghost_densemat_create(&x,NULL,xtraits),err,ret);
     GHOST_CALL_GOTO(x->fromScalar(x,&zero),err,ret);
     ldx = x->stride;
@@ -121,6 +125,7 @@ static ghost_error_t ghost_rayleigh_ritz_tmpl (ghost_sparsemat_t * mat, void * v
         
     GHOST_CALL_GOTO(ghost_tsmttsm_kahan( x, v_eigs, v_res,&one,&zero,GHOST_GEMM_ALL_REDUCE,1),err,ret);
     
+    x->download(x); 
     
     if (call_eig_function<T,T_b>( LAPACK_COL_MAJOR, 'V' , 'U', n, xval, ldx, eigs)) {
         ERROR_LOG("LAPACK eigenvalue function failed!");
@@ -128,6 +133,7 @@ static ghost_error_t ghost_rayleigh_ritz_tmpl (ghost_sparsemat_t * mat, void * v
         goto err;
     }
 
+    x->upload(x); 
 
     GHOST_CALL_GOTO(ghost_tsmm( v_eigs, v_res, x, &one, &zero),err,ret);
 
@@ -197,6 +203,10 @@ static ghost_error_t ghost_grayleigh_ritz_tmpl (ghost_sparsemat_t * mat, void * 
     xtraits.nrows = n;
     xtraits.storage = GHOST_DENSEMAT_COLMAJOR;
     xtraits.datatype = DT;
+    xtraits.location = GHOST_LOCATION_HOST;
+    if (v_eigs->traits.location & GHOST_LOCATION_DEVICE) {
+        xtraits.location |= GHOST_LOCATION_DEVICE;
+    }
     GHOST_CALL_GOTO(ghost_densemat_create(&x,NULL,xtraits),err,ret);
     GHOST_CALL_GOTO(x->fromScalar(x,&zero),err,ret);
     ldx = x->stride;
@@ -221,13 +231,16 @@ static ghost_error_t ghost_grayleigh_ritz_tmpl (ghost_sparsemat_t * mat, void * 
         
     GHOST_CALL_GOTO(ghost_tsmttsm_kahan( x, v_eigs, v_res,&one,&zero,GHOST_GEMM_ALL_REDUCE,1),err,ret);
     
-    
+    x->download(x); 
+    b->download(b); 
+
     if (call_geig_function<T,T_b>( LAPACK_COL_MAJOR, 'V' , 'U', n, xval, ldx, bval, ldb, eigs)) {
         ERROR_LOG("LAPACK eigenvalue function failed!");
         ret = GHOST_ERR_LAPACK;
         goto err;
     }
-
+    
+    x->upload(x); 
 
     GHOST_CALL_GOTO(ghost_tsmm( v_eigs, v_res, x, &one, &zero),err,ret);
 
