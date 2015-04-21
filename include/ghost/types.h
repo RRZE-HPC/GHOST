@@ -219,12 +219,20 @@ typedef enum {
 ghost_location_t;
 
 #ifdef __cplusplus
-inline ghost_location_t operator|(const ghost_location_t &a, const ghost_location_t &b)
-{return static_cast<ghost_location_t>(static_cast<int>(a) | static_cast<int>(b));}
-inline ghost_location_t operator&=(ghost_location_t a, ghost_location_t b){
-return static_cast<ghost_location_t>(static_cast<int>(a) & static_cast<int>(b));}
-inline ghost_datatype_t operator|(const ghost_datatype_t &a, const ghost_datatype_t &b)
-{return static_cast<ghost_datatype_t>(static_cast<int>(a) | static_cast<int>(b));}
+inline ghost_location_t operator|(const ghost_location_t &a, const ghost_location_t &b) {
+    return static_cast<ghost_location_t>(static_cast<int>(a) | static_cast<int>(b));
+}
+inline ghost_location_t& operator&=(ghost_location_t &a, const ghost_location_t &b) {
+    a = static_cast<ghost_location_t>(static_cast<int>(a) & static_cast<int>(b));
+    return a;
+}
+inline ghost_location_t& operator|=(ghost_location_t &a, const ghost_location_t &b) {
+    a = static_cast<ghost_location_t>(static_cast<int>(a) | static_cast<int>(b));
+    return a;
+}
+inline ghost_datatype_t operator|(const ghost_datatype_t &a, const ghost_datatype_t &b) {
+    return static_cast<ghost_datatype_t>(static_cast<int>(a) | static_cast<int>(b));
+}
 #endif
 
 /**
