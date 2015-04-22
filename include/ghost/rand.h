@@ -38,6 +38,7 @@ extern "C" {
      *
      * @return 
      *
+     * The seed depends on the process rank, the core, and the provided seed.
      * This assumes that there at most as many OpenMP threads as there are PUs.
      */
     ghost_error_t ghost_rand_seed(unsigned int global_seed);
@@ -54,8 +55,16 @@ extern "C" {
      *
      * This sets the random seed to the same value for each thread and results in a predictable sequence of random numbers.
      * This is only sensible for testing purposes.
+     * This function has no effect for CUDA random numbers!
      */
     ghost_error_t ghost_rand_set1(unsigned int seed);
+
+    /**
+     * @brief Get the CUDA random seed.
+     *
+     * @return The CUDA random seed.
+     */
+    int ghost_rand_cu_seed_get();
 
 #ifdef __cplusplus
 }
