@@ -59,12 +59,6 @@ ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce, in
         }
         return GHOST_ERR_INVALID_ARG;
     }
-    if (reduce != GHOST_GEMM_ALL_REDUCE) {
-        if (printerror) {
-            ERROR_LOG("Only Allreduce supported currently!");
-        }
-        return GHOST_ERR_INVALID_ARG;
-    }
     if (!strncasecmp(transv,"N",1)) {
         if (printerror) {
             ERROR_LOG("v must be transposed!");
@@ -80,6 +74,7 @@ ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce, in
 
     UNUSED(alpha);
     UNUSED(beta);
+    UNUSED(reduce);
 
     return GHOST_SUCCESS;
 }
@@ -203,6 +198,10 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
     }
     
     ret = kernel(x,v,w,alpha,beta,conjv);
+
+    if (reduce != GHOST_GEMM_NO_REDUCE && v->context) {
+        x->reduce(x,v->context->mpicomm,reduce);
+    }
 
 #ifdef GHOST_HAVE_INSTR_TIMING
     ghost_gemm_perf_args_t tsmttsm_perfargs;

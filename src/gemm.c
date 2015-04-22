@@ -49,6 +49,10 @@ ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce,gho
         return GHOST_ERR_INVALID_ARG;
     }
 
+    UNUSED(alpha);
+    UNUSED(beta);
+    UNUSED(reduce);
+    UNUSED(flags);
     return GHOST_SUCCESS;
 
 }
@@ -106,7 +110,7 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
         reduce = 0;
     }
 
-    ghost_lidx_t nrV,ncV,nrW,ncW,nrX,ncX;
+    ghost_lidx_t nrV,ncV,ncW;
 
     if (strncasecmp(transv_in,"N",1)) {
         nrV=v->traits.ncols; ncV=v->traits.nrows;
@@ -114,14 +118,11 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
         nrV=v->traits.nrows; ncV=v->traits.ncols;
     }
     if (strncasecmp(transw_in,"N",1)) {
-        nrW=w->traits.ncols; ncW=w->traits.nrows;
+        ncW=w->traits.nrows;
     } else {
-        nrW=w->traits.nrows; ncW=w->traits.ncols;
+        ncW=w->traits.ncols;
     }
 
-    nrX=x->traits.nrows;
-    ncX=x->traits.ncols;
-    
     complex double zero = 0.+I*0.;
 
     ghost_blas_idx_t *m, *n, *k;
@@ -354,78 +355,10 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
             }    
         }
     }
-        /*x->string(x,&xvstr);
 
-        printf("\n\n%s\n\n",xvstr);*/
-
-#ifdef GHOST_HAVE_MPI 
-    ghost_lidx_t i;
-    if (reduce != GHOST_GEMM_NO_REDUCE) {
-
-#ifdef GHOST_HAVE_CUDA
-        ghost_lidx_t lda = x->stride;
-#endif
-        ghost_lidx_t dima;
-        ghost_lidx_t dimb;
-        if (x->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
-            dima = x->traits.nrows;
-            dimb = x->traits.ncols;
-        } else if (x->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
-            dima = x->traits.ncols;
-            dimb = x->traits.nrows;
-        } else {
-            ERROR_LOG("Invalid vector storage");
-            return GHOST_ERR_NOT_IMPLEMENTED;
-        }
-
-
-        for (i=0; i<dima; ++i) {
-            int copied = 0;
-            void *val = NULL;
-            if (x->traits.location & GHOST_LOCATION_DEVICE) {
-#ifdef GHOST_HAVE_CUDA
-                size_t sizeofdt;
-                ghost_datatype_size(&sizeofdt,x->traits.datatype);
-
-                GHOST_CALL_GOTO(ghost_malloc((void **)&val,dimb*sizeofdt),err,ret);
-                ghost_cu_download(val, &x->cu_val[i*lda*sizeofdt], dimb*sizeofdt);
-                copied = 1;
-#endif
-            } else if (x->traits.location & GHOST_LOCATION_HOST) {
-                val = x->val+i*x->stride*x->elSize;
-            }
-            ghost_mpi_op_t sumOp;
-            ghost_mpi_datatype_t mpiDt;
-            GHOST_CALL_GOTO(ghost_mpi_op_sum(&sumOp,x->traits.datatype),err,ret);
-            GHOST_CALL_GOTO(ghost_mpi_datatype(&mpiDt,x->traits.datatype),err,ret);
-
-            if (v->context) {
-                if (reduce == GHOST_GEMM_ALL_REDUCE) {
-                    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,val,dimb,mpiDt,sumOp,v->context->mpicomm),err,ret);
-                } else {
-                    if (myrank == reduce) 
-                    {
-                        MPI_CALL_GOTO(MPI_Reduce(MPI_IN_PLACE,val,dimb,mpiDt,sumOp,reduce,v->context->mpicomm),err,ret);
-                    } 
-                    else 
-                    {
-                        MPI_CALL_GOTO(MPI_Reduce(val,NULL,dimb,mpiDt,sumOp,reduce,v->context->mpicomm),err,ret);
-                    }
-                }
-                if (copied) {
-#ifdef GHOST_HAVE_CUDA
-                    size_t sizeofdt;
-                    ghost_datatype_size(&sizeofdt,x->traits.datatype);
-                    GHOST_CALL_GOTO(ghost_cu_upload(&x->cu_val[i*lda*sizeofdt],val,dimb*sizeofdt),err,ret);
-                    free(val);
-#endif
-                }
-            }
-        }
+    if ((reduce != GHOST_GEMM_NO_REDUCE) && (v->context)) {
+        x->reduce(x,v->context->mpicomm,reduce);
     }
-#else
-    UNUSED(reduce);
-#endif
 
 #ifdef GHOST_HAVE_INSTR_TIMING
     ghost_gemm_perf_args_t gemm_perfargs;

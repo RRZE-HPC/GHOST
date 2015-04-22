@@ -131,18 +131,6 @@ ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM_cm_rm(ghost_densemat_t *x, ghost_de
             free(x_priv);
     }
             
-#ifdef GHOST_HAVE_MPI
-        if (v->context) {
-            if (x->traits.flags & GHOST_DENSEMAT_VIEW) {
-                for (k=0; k<CFGK; k++) {
-                    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval+k*ldx,x->traits.nrows,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
-                }
-            } else {
-                MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,CFGK*ldx,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
-            }
-        }
-#endif
-    
     } else {
         ERROR_LOG("Will be implemented soon :-)!");
         ret = GHOST_ERR_NOT_IMPLEMENTED;

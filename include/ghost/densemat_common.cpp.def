@@ -560,7 +560,6 @@ extern "C" ghost_error_t FUNCNAME(fromRand_selector(ghost_densemat_t *vec))
     return ret;
 }
 
-
 extern "C" ghost_error_t FUNCNAME(fromScalar_selector(ghost_densemat_t *vec, void *val))
 { 
     ghost_error_t ret = GHOST_SUCCESS;

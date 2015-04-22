@@ -95,9 +95,13 @@ ghost_error_t ghost_densemat_create(ghost_densemat_t **vec, ghost_context_t *ctx
     if ((*vec)->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
         ghost_densemat_rm_setfuncs(*vec);
         (*vec)->stride = (*vec)->traits.ncolspadded;
+        (*vec)->nblock = (*vec)->traits.nrows;
+        (*vec)->blocklen = (*vec)->traits.ncols;
     } else {
         ghost_densemat_cm_setfuncs(*vec);
         (*vec)->stride = (*vec)->traits.nrowspadded;
+        (*vec)->nblock = (*vec)->traits.ncols;
+        (*vec)->blocklen = (*vec)->traits.nrows;
     }
 #ifdef GHOST_HAVE_MPI
     GHOST_CALL_RETURN(ghost_mpi_datatype(&(*vec)->mpidt,(*vec)->traits.datatype));
@@ -295,7 +299,8 @@ ghost_error_t ghost_densemat_info_string(char **str, ghost_densemat_t *densemat)
     ghost_line_string(str,"Dimension",NULL,"%"PRLIDX"x%"PRLIDX,densemat->traits.nrows,densemat->traits.ncols);
     ghost_line_string(str,"Dimension w/ halo",NULL,"%"PRLIDX"x%"PRLIDX,densemat->traits.nrowshalo,densemat->traits.ncols);
     ghost_line_string(str,"Padded dimension",NULL,"%"PRLIDX"x%"PRLIDX,densemat->traits.nrowspadded,densemat->traits.ncolspadded);
-    ghost_line_string(str,"Stride",NULL,"%"PRLIDX,densemat->stride);
+    ghost_line_string(str,"Number of blocks",NULL,"%"PRLIDX,densemat->nblock);
+    ghost_line_string(str,"Stride between blocks",NULL,"%"PRLIDX,densemat->stride);
     ghost_line_string(str,"View",NULL,"%s",densemat->traits.flags&GHOST_DENSEMAT_VIEW?"Yes":"No");
     ghost_line_string(str,"Scattered",NULL,"%s",densemat->traits.flags&GHOST_DENSEMAT_SCATTERED?"Yes":"No");
     if (densemat->traits.flags&GHOST_DENSEMAT_VIEW) {

@@ -38,7 +38,7 @@ ghost_gemm_perf_args_t;
 
 
 
-#define GHOST_GEMM_ALL_REDUCE -1
+#define GHOST_GEMM_ALL_REDUCE GHOST_ALLREDUCE
 #define GHOST_GEMM_NO_REDUCE -2
 
 typedef struct {
@@ -179,7 +179,8 @@ ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce,gho
     ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v, const char *transv, ghost_densemat_t *w, const char * transw, void *alpha, void *beta, int reduce,ghost_gemm_flags_t flags); 
     ghost_error_t ghost_mpi_operations_create();
     ghost_error_t ghost_mpi_operations_destroy();
-    ghost_error_t ghost_mpi_op_sum(ghost_mpi_op_t * op, int datatype);
+    ghost_error_t ghost_mpi_op_densemat_sum(ghost_mpi_op_t * op, ghost_datatype_t datatype);
+    ghost_error_t ghost_mpi_op_sum(ghost_mpi_op_t * op, ghost_datatype_t datatype);
     
     ghost_error_t ghost_spmv_nflops(int *nFlops, ghost_datatype_t m_t, ghost_datatype_t v_t);
     /**

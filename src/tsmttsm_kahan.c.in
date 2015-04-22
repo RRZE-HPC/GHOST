@@ -100,17 +100,6 @@ ghost_error_t ghost_tsmttsm_kahan__plain_d_x_x(ghost_densemat_t *x, ghost_densem
                 }
             }
         }
-#ifdef GHOST_HAVE_MPI
-        if (v->context) {
-            if (x->traits.flags & GHOST_DENSEMAT_VIEW) {
-                for (k=0; k<K; k++) {
-                    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval+k*ldx,m,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
-                }
-            } else {
-                MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,K*ldx,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
-            }
-        }
-#endif
     
     } else {
         ghost_lidx_t k;
@@ -149,17 +138,6 @@ ghost_error_t ghost_tsmttsm_kahan__plain_d_x_x(ghost_densemat_t *x, ghost_densem
                 }
             }
         }
-#ifdef GHOST_HAVE_MPI
-        if (v->context) {
-            if (x->traits.flags & GHOST_DENSEMAT_VIEW) {
-                for (j=0; j<m; j++) {
-                    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval+j*ldx,K,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
-                }
-            } else {
-                MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,ldx*m,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
-            }
-        }
-#endif
 
     }
    
@@ -291,17 +269,6 @@ ghost_error_t ghost_tsmttsm_kahan__plain_z_x_x(ghost_densemat_t *x, ghost_densem
                 }
             }
         }
-#ifdef GHOST_HAVE_MPI
-        if (v->context) {
-            if (x->traits.flags & GHOST_DENSEMAT_VIEW) {
-                for (k=0; k<K; k++) {
-                    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval+k*ldx,m,mpidt_z,mpiop_zadd,v->context->mpicomm),err,ret);
-                }
-            } else {
-                MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,K*ldx,mpidt_z,mpiop_zadd,v->context->mpicomm),err,ret);
-            }
-        }
-#endif
     
     } else {
         ghost_lidx_t k;
@@ -358,17 +325,6 @@ ghost_error_t ghost_tsmttsm_kahan__plain_z_x_x(ghost_densemat_t *x, ghost_densem
                 }
             }
         }
-#ifdef GHOST_HAVE_MPI
-        if (v->context) {
-            if (x->traits.flags & GHOST_DENSEMAT_VIEW) {
-                for (j=0; j<m; j++) {
-                    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval+j*ldx,K,mpidt_z,mpiop_zadd,v->context->mpicomm),err,ret);
-                }
-            } else {
-                MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,ldx*m,mpidt_z,mpiop_zadd,v->context->mpicomm),err,ret);
-            }
-        }
-#endif
 
     }
    
@@ -479,17 +435,6 @@ ghost_error_t ghost_tsmttsm_kahan__plain_d_CFGK_CFGM(ghost_densemat_t *x, ghost_
                 }
             }
         }
-#ifdef GHOST_HAVE_MPI
-        if (v->context) {
-            if (x->traits.flags & GHOST_DENSEMAT_VIEW) {
-                for (k=0; k<x->traits.ncols; k++) {
-                    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval+k*ldx,x->traits.nrows,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
-                }
-            } else {
-                MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,x->traits.ncols*ldx,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
-            }
-        }
-#endif
     } else {
         ERROR_LOG("Will be implemented soon :-)!");
         ret = GHOST_ERR_NOT_IMPLEMENTED;
@@ -642,17 +587,6 @@ ghost_error_t ghost_tsmttsm_kahan__plain_z_CFGK_CFGM(ghost_densemat_t *x, ghost_
             free(y);
             free(t);
         }
-#ifdef GHOST_HAVE_MPI
-        if (v->context) {
-            if (x->traits.flags & GHOST_DENSEMAT_VIEW) {
-                for (k=0; k<x->traits.ncols; k++) {
-                    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval+k*ldx,x->traits.nrows,mpidt_z,mpiop_zadd,v->context->mpicomm),err,ret);
-                }
-            } else {
-                MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,x->traits.ncols*ldx,mpidt_z,mpiop_zadd,v->context->mpicomm),err,ret);
-            }
-        }
-#endif
     } else {
         ERROR_LOG("Will be implemented soon :-)!");
         ret = GHOST_ERR_NOT_IMPLEMENTED;

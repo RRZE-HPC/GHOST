@@ -12,7 +12,6 @@
 #include "perm.h"
 #include "bitmap.h"
 
-
 #define GHOST_DENSEMAT_CHECK_SIMILARITY(vec1,vec2)\
     if (vec1->traits.nrows != vec2->traits.nrows) {\
         ERROR_LOG("Number of rows do not match!");\
@@ -234,7 +233,21 @@ struct ghost_densemat_t
      */
     size_t elSize;
     /**
+     * @brief The trailing dimensions of the densemat.
+     *
+     * Contains nrows if the densemat has row-major storage and 
+     * ncols if it has col-major storage.
+     */
+    ghost_lidx_t nblock;
+    /**
      * @brief The leading dimensions of the densemat.
+     *
+     * Contains ncols if the densemat has row-major storage and 
+     * nrows if it has col-major storage.
+     */
+    ghost_lidx_t blocklen;
+    /**
+     * @brief The leading dimensions of the densemat in memory.
      *
      * Points to ncolspadded if the densemat has row-major storage and 
      * nrowspadded if it has col-major storage.
@@ -466,6 +479,18 @@ struct ghost_densemat_t
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t (*syncValues) (ghost_densemat_t *vec, ghost_mpi_comm_t, int root);
+    /**
+     * @ingroup denseinit
+     *
+     * @brief Reduces the densemats in a given communicator.
+     *
+     * @param vec The densemat.
+     * @param comm The communicator.
+     * @param dest The destination rank or GHOST_ALLREDUCE
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error_t (*reduce) (ghost_densemat_t *vec, ghost_mpi_comm_t comm, int dest);
     /**
      * @ingroup denseinit
      *

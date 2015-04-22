@@ -8,6 +8,8 @@
 
 #include "config.h"
 
+#define GHOST_ALLREDUCE -1
+
 #ifdef GHOST_HAVE_MPI
 #include <mpi.h>
 typedef MPI_Comm ghost_mpi_comm_t;

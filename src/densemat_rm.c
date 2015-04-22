@@ -75,6 +75,7 @@ ghost_error_t ghost_densemat_rm_setfuncs(ghost_densemat_t *vec)
         vec->fromRand = &ghost_densemat_rm_fromRand_selector;
     }
 
+    vec->reduce = &ghost_densemat_rm_reduce;
     vec->compress = &vec_rm_compress;
     vec->string = &ghost_densemat_rm_string_selector;
     vec->fromFunc = &vec_rm_fromFunc;
@@ -635,7 +636,7 @@ static ghost_error_t vec_rm_fromFunc(ghost_densemat_t *vec, void (*fp)(ghost_gid
         ghost_densemat_t *hostVec;
         ghost_densemat_traits_t htraits = vec->traits;
         htraits.location = GHOST_LOCATION_HOST;
-        htraits.flags &= ~GHOST_DENSEMAT_VIEW;
+        htraits.flags &= (ghost_densemat_flags_t)~GHOST_DENSEMAT_VIEW;
         GHOST_CALL_RETURN(ghost_densemat_create(&hostVec,vec->context,htraits));
         GHOST_CALL_RETURN(hostVec->fromFunc(hostVec,fp));
         GHOST_CALL_RETURN(vec->fromVec(vec,hostVec,0,0));
@@ -868,7 +869,7 @@ static ghost_error_t densemat_rm_halocommInit(ghost_densemat_t *vec, ghost_dense
     if (vec->context->perm_local) {
 #ifdef GHOST_HAVE_CUDA
         if (vec->traits.location & GHOST_LOCATION_DEVICE) {
-            ghost_densemat_rm_cu_communicationassembly(comm->cu_work,comm->dueptr,vec,vec->context->perm_local->cu_perm);
+            ghost_densemat_rm_cu_communicationassembly(comm->cu_work,comm->dueptr,vec,(ghost_lidx_t *)vec->context->perm_local->cu_perm);
         } else 
 #endif
             if (vec->traits.location & GHOST_LOCATION_HOST) {

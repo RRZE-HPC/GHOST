@@ -75,6 +75,7 @@ ghost_error_t ghost_densemat_cm_setfuncs(ghost_densemat_t *vec)
         vec->fromRand = &ghost_densemat_cm_fromRand_selector;
     }
 
+    vec->reduce = &ghost_densemat_cm_reduce;
     vec->compress = &vec_cm_compress;
     vec->string = &ghost_densemat_cm_string_selector;
     vec->fromFunc = &vec_cm_fromFunc;
@@ -636,6 +637,7 @@ static ghost_error_t vec_cm_fromFunc(ghost_densemat_t *vec, void (*fp)(ghost_gid
         ghost_densemat_t *hostVec;
         ghost_densemat_traits_t htraits = vec->traits;
         htraits.location = GHOST_LOCATION_HOST;
+        htraits.flags &= (ghost_densemat_flags_t)~GHOST_DENSEMAT_VIEW;
         GHOST_CALL_RETURN(ghost_densemat_create(&hostVec,vec->context,htraits));
         GHOST_CALL_RETURN(hostVec->fromFunc(hostVec,fp));
         GHOST_CALL_RETURN(vec->fromVec(vec,hostVec,0,0));

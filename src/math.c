@@ -12,6 +12,10 @@
 
 static ghost_mpi_op_t GHOST_MPI_OP_SUM_C = MPI_OP_NULL;
 static ghost_mpi_op_t GHOST_MPI_OP_SUM_Z = MPI_OP_NULL;
+static ghost_mpi_op_t GHOST_MPI_OP_SUM_DENSEMAT_S = MPI_OP_NULL;
+static ghost_mpi_op_t GHOST_MPI_OP_SUM_DENSEMAT_D = MPI_OP_NULL;
+static ghost_mpi_op_t GHOST_MPI_OP_SUM_DENSEMAT_C = MPI_OP_NULL;
+static ghost_mpi_op_t GHOST_MPI_OP_SUM_DENSEMAT_Z = MPI_OP_NULL;
 
 static void ghost_spmv_selectMode(ghost_context_t * context, ghost_spmv_flags_t *flags);
 
@@ -205,6 +209,174 @@ static void ghost_mpi_add_z(ghost_mpi_z *invec, ghost_mpi_z *inoutvec, int *len)
     }
 }
 
+// taken from stackoverflow.com/questions/29285883
+static void ghost_mpi_add_densemat_d(void *in, void *inout, int *len, MPI_Datatype *dtype)
+{
+    double *invec = in;
+    double *inoutvec = inout;
+    int nints, naddresses, ntypes;
+    int combiner;
+
+    if (*len != 1) {
+        ERROR_LOG("Only len==1 supported at the moment!");
+        return;
+    } 
+
+    MPI_Type_get_envelope(*dtype, &nints, &naddresses, &ntypes, &combiner); 
+    if (combiner != MPI_COMBINER_VECTOR) {
+        ERROR_LOG("Do not understand composite datatype!");
+        return;
+    } 
+
+    int vecargs [nints];
+    MPI_Aint vecaddrs[naddresses];
+    MPI_Datatype vectypes[ntypes];
+
+    MPI_Type_get_contents(*dtype, nints, naddresses, ntypes, 
+            vecargs, vecaddrs, vectypes);
+
+    if (vectypes[0] != MPI_DOUBLE) {
+        ERROR_LOG("Not a densemat of doubles!");
+        return;
+    }
+
+    int count    = vecargs[0];
+    int blocklen = vecargs[1];
+    int stride   = vecargs[2];
+
+    for ( int i=0; i<count; i++ ) {
+        for ( int j=0; j<blocklen; j++) {
+            inoutvec[i*stride+j] += invec[i*stride+j]; 
+        } 
+    }
+}
+
+static void ghost_mpi_add_densemat_s(void *in, void *inout, int *len, MPI_Datatype *dtype)
+{
+    float *invec = in;
+    float *inoutvec = inout;
+    int nints, naddresses, ntypes;
+    int combiner;
+
+    if (*len != 1) {
+        ERROR_LOG("Only len==1 supported at the moment!");
+        return;
+    } 
+
+    MPI_Type_get_envelope(*dtype, &nints, &naddresses, &ntypes, &combiner); 
+    if (combiner != MPI_COMBINER_VECTOR) {
+        ERROR_LOG("Do not understand composite datatype!");
+        return;
+    } 
+
+    int vecargs [nints];
+    MPI_Aint vecaddrs[naddresses];
+    MPI_Datatype vectypes[ntypes];
+
+    MPI_Type_get_contents(*dtype, nints, naddresses, ntypes, 
+            vecargs, vecaddrs, vectypes);
+
+    if (vectypes[0] != MPI_FLOAT) {
+        ERROR_LOG("Not a densemat of floats!");
+        return;
+    }
+
+    int count    = vecargs[0];
+    int blocklen = vecargs[1];
+    int stride   = vecargs[2];
+
+    for ( int i=0; i<count; i++ ) {
+        for ( int j=0; j<blocklen; j++) {
+            inoutvec[i*stride+j] += invec[i*stride+j]; 
+        } 
+    }
+}
+
+static void ghost_mpi_add_densemat_z(void *in, void *inout, int *len, MPI_Datatype *dtype)
+{
+    complex double *invec = in;
+    complex double *inoutvec = inout;
+    int nints, naddresses, ntypes;
+    int combiner;
+
+    if (*len != 1) {
+        ERROR_LOG("Only len==1 supported at the moment!");
+        return;
+    } 
+
+    MPI_Type_get_envelope(*dtype, &nints, &naddresses, &ntypes, &combiner); 
+    if (combiner != MPI_COMBINER_VECTOR) {
+        ERROR_LOG("Do not understand composite datatype!");
+        return;
+    } 
+
+    int vecargs [nints];
+    MPI_Aint vecaddrs[naddresses];
+    MPI_Datatype vectypes[ntypes];
+
+    MPI_Type_get_contents(*dtype, nints, naddresses, ntypes, 
+            vecargs, vecaddrs, vectypes);
+
+    ghost_mpi_datatype_t dt_z;
+    ghost_mpi_datatype(&dt_z,(ghost_datatype_t)(GHOST_DT_DOUBLE|GHOST_DT_COMPLEX));
+    if (vectypes[0] != dt_z) {
+        ERROR_LOG("Not a densemat of complex doubles!");
+        return;
+    }
+
+    int count    = vecargs[0];
+    int blocklen = vecargs[1];
+    int stride   = vecargs[2];
+
+    for ( int i=0; i<count; i++ ) {
+        for ( int j=0; j<blocklen; j++) {
+            inoutvec[i*stride+j] += invec[i*stride+j]; 
+        } 
+    }
+}
+
+static void ghost_mpi_add_densemat_c(void *in, void *inout, int *len, MPI_Datatype *dtype)
+{
+    complex float *invec = in;
+    complex float *inoutvec = inout;
+    int nints, naddresses, ntypes;
+    int combiner;
+
+    if (*len != 1) {
+        ERROR_LOG("Only len==1 supported at the moment!");
+        return;
+    } 
+
+    MPI_Type_get_envelope(*dtype, &nints, &naddresses, &ntypes, &combiner); 
+    if (combiner != MPI_COMBINER_VECTOR) {
+        ERROR_LOG("Do not understand composite datatype!");
+        return;
+    } 
+
+    int vecargs [nints];
+    MPI_Aint vecaddrs[naddresses];
+    MPI_Datatype vectypes[ntypes];
+
+    MPI_Type_get_contents(*dtype, nints, naddresses, ntypes, 
+            vecargs, vecaddrs, vectypes);
+
+    ghost_mpi_datatype_t dt_c;
+    ghost_mpi_datatype(&dt_c,(ghost_datatype_t)(GHOST_DT_FLOAT|GHOST_DT_COMPLEX));
+    if (vectypes[0] != dt_c) {
+        ERROR_LOG("Not a densemat of complex floats!");
+        return;
+    }
+
+    int count    = vecargs[0];
+    int blocklen = vecargs[1];
+    int stride   = vecargs[2];
+
+    for ( int i=0; i<count; i++ ) {
+        for ( int j=0; j<blocklen; j++) {
+            inoutvec[i*stride+j] += invec[i*stride+j]; 
+        } 
+    }
+}
 #endif
 
 static void ghost_spmv_selectMode(ghost_context_t * context, ghost_spmv_flags_t *flags)
@@ -234,7 +406,7 @@ static void ghost_spmv_selectMode(ghost_context_t * context, ghost_spmv_flags_t 
     }
 }
 
-ghost_error_t ghost_mpi_op_sum(ghost_mpi_op_t * op, int datatype)
+ghost_error_t ghost_mpi_op_sum(ghost_mpi_op_t * op, ghost_datatype_t datatype)
 {
     if (!op) {
         ERROR_LOG("NULL pointer");
@@ -263,14 +435,51 @@ ghost_error_t ghost_mpi_op_sum(ghost_mpi_op_t * op, int datatype)
 
 }
 
+ghost_error_t ghost_mpi_op_densemat_sum(ghost_mpi_op_t * op, ghost_datatype_t datatype)
+{
+    if (!op) {
+        ERROR_LOG("NULL pointer");
+        return GHOST_ERR_INVALID_ARG;
+    }
+#ifdef GHOST_HAVE_MPI
+    if (datatype & GHOST_DT_FLOAT) {
+        if (datatype & GHOST_DT_COMPLEX) {
+            *op = GHOST_MPI_OP_SUM_DENSEMAT_C;
+        } else {
+            *op = GHOST_MPI_OP_SUM_DENSEMAT_S;
+        }
+    } else {
+        if (datatype & GHOST_DT_COMPLEX) {
+            *op = GHOST_MPI_OP_SUM_DENSEMAT_Z;
+        } else {
+            *op = GHOST_MPI_OP_SUM_DENSEMAT_D;
+        }
+    }
+#else
+    UNUSED(datatype);
+    *op = MPI_OP_NULL;
+#endif
+
+    return GHOST_SUCCESS;
+}
+
+
 ghost_error_t ghost_mpi_operations_create()
 {
 #ifdef GHOST_HAVE_MPI
     MPI_CALL_RETURN(MPI_Op_create((MPI_User_function *)&ghost_mpi_add_c,1,&GHOST_MPI_OP_SUM_C));
     MPI_CALL_RETURN(MPI_Op_create((MPI_User_function *)&ghost_mpi_add_z,1,&GHOST_MPI_OP_SUM_Z));
+    MPI_CALL_RETURN(MPI_Op_create((MPI_User_function *)&ghost_mpi_add_densemat_d,1,&GHOST_MPI_OP_SUM_DENSEMAT_D));
+    MPI_CALL_RETURN(MPI_Op_create((MPI_User_function *)&ghost_mpi_add_densemat_s,1,&GHOST_MPI_OP_SUM_DENSEMAT_S));
+    MPI_CALL_RETURN(MPI_Op_create((MPI_User_function *)&ghost_mpi_add_densemat_c,1,&GHOST_MPI_OP_SUM_DENSEMAT_C));
+    MPI_CALL_RETURN(MPI_Op_create((MPI_User_function *)&ghost_mpi_add_densemat_z,1,&GHOST_MPI_OP_SUM_DENSEMAT_Z));
 #else
     UNUSED(GHOST_MPI_OP_SUM_C);
     UNUSED(GHOST_MPI_OP_SUM_Z);
+    UNUSED(GHOST_MPI_OP_SUM_DENSEMAT_S);
+    UNUSED(GHOST_MPI_OP_SUM_DENSEMAT_D);
+    UNUSED(GHOST_MPI_OP_SUM_DENSEMAT_C);
+    UNUSED(GHOST_MPI_OP_SUM_DENSEMAT_Z);
 #endif
 
     return GHOST_SUCCESS;
@@ -281,6 +490,10 @@ ghost_error_t ghost_mpi_operations_destroy()
 #ifdef GHOST_HAVE_MPI
     MPI_CALL_RETURN(MPI_Op_free(&GHOST_MPI_OP_SUM_C));
     MPI_CALL_RETURN(MPI_Op_free(&GHOST_MPI_OP_SUM_Z));
+    MPI_CALL_RETURN(MPI_Op_free(&GHOST_MPI_OP_SUM_DENSEMAT_S));
+    MPI_CALL_RETURN(MPI_Op_free(&GHOST_MPI_OP_SUM_DENSEMAT_D));
+    MPI_CALL_RETURN(MPI_Op_free(&GHOST_MPI_OP_SUM_DENSEMAT_C));
+    MPI_CALL_RETURN(MPI_Op_free(&GHOST_MPI_OP_SUM_DENSEMAT_Z));
 #endif
 
     return GHOST_SUCCESS;
