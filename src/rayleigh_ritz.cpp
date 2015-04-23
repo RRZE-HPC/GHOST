@@ -134,7 +134,6 @@ static ghost_error_t ghost_rayleigh_ritz_tmpl (ghost_sparsemat_t * mat, void * v
         goto err;
     }
 
-    x->upload(x); 
 #ifdef GHOST_HAVE_MPI
         ghost_mpi_datatype_t dt, dt_b;
         ghost_mpi_datatype(&dt,DT);
@@ -143,6 +142,7 @@ static ghost_error_t ghost_rayleigh_ritz_tmpl (ghost_sparsemat_t * mat, void * v
         MPI_Bcast( eigs,     n, dt_b, 0, MPI_COMM_WORLD);
 #endif
 
+    x->upload(x); 
     GHOST_CALL_GOTO(ghost_tsmm( v_eigs, v_res, x, &one, &zero),err,ret);
 
 
@@ -250,7 +250,6 @@ static ghost_error_t ghost_grayleigh_ritz_tmpl (ghost_sparsemat_t * mat, void * 
         goto err;
     }
     
-    x->upload(x); 
 #ifdef GHOST_HAVE_MPI
         ghost_mpi_datatype_t dt, dt_b;
         ghost_mpi_datatype(&dt,DT);
@@ -259,6 +258,7 @@ static ghost_error_t ghost_grayleigh_ritz_tmpl (ghost_sparsemat_t * mat, void * 
         MPI_Bcast( eigs,     n, dt_b, 0, MPI_COMM_WORLD);
 #endif
 
+    x->upload(x); 
     GHOST_CALL_GOTO(ghost_tsmm( v_eigs, v_res, x, &one, &zero),err,ret);
 
 

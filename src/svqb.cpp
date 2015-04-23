@@ -263,6 +263,10 @@ static ghost_error_t ghost_svd_deflation_tmpl ( ghost_lidx_t *svd_offset, ghost_
     xtraits.ncols = n;
     xtraits.nrows = n;
     xtraits.storage = GHOST_DENSEMAT_COLMAJOR;
+    xtraits.location = GHOST_LOCATION_HOST;
+    if (ot_vec->traits.location & GHOST_LOCATION_DEVICE) {
+        xtraits.location |= GHOST_LOCATION_DEVICE;
+    }
     xtraits.datatype = DT;
     GHOST_CALL_GOTO(ghost_densemat_create(&x,NULL,xtraits),err,ret);
     GHOST_CALL_GOTO(x->fromScalar(x,&zero),err,ret);
@@ -275,6 +279,8 @@ static ghost_error_t ghost_svd_deflation_tmpl ( ghost_lidx_t *svd_offset, ghost_
     GHOST_CALL_GOTO(ghost_tsmttsm( x, vec, vec,&one,&zero,GHOST_GEMM_ALL_REDUCE,1),err,ret);
     //GHOST_CALL_GOTO(ghost_tsmttsm_kahan( x, vec, vec,&one,&zero,GHOST_GEMM_ALL_REDUCE,1),err,ret);
     
+    x->download(x);
+
     if (call_eig_function<T,T_b>( LAPACK_COL_MAJOR, 'V' , 'U', n, xval, ldx, eigs)) {
         ERROR_LOG("LAPACK eigenvalue function failed!");
         ret = GHOST_ERR_LAPACK;
@@ -309,6 +315,7 @@ static ghost_error_t ghost_svd_deflation_tmpl ( ghost_lidx_t *svd_offset, ghost_
     MPI_Bcast( svd_offset, 1, ghost_mpi_dt_lidx , 0, MPI_COMM_WORLD);
 #endif
 
+    x->upload(x);
     GHOST_CALL_GOTO(ghost_tsmm( ot_vec, vec, x, &one, &zero),err,ret);
     
     goto out;
