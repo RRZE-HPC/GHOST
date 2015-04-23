@@ -57,8 +57,9 @@ ghost_error_t ghost_tsmttsm__plain_d_x_x_cm_rm(ghost_densemat_t *x, ghost_densem
     }
 #pragma omp parallel private(j,k)
     {
-        double x_priv[m*K];
-        memset(x_priv,0,sizeof(x_priv));
+        double *x_priv;
+        ghost_malloc((void **)&x_priv,m*K*sizeof(double));
+        memset(x_priv,0,m*K*sizeof(double));
 #pragma omp for schedule(runtime)
         for (i=0; i<n; i++) {
 #pragma vector aligned
@@ -84,6 +85,7 @@ ghost_error_t ghost_tsmttsm__plain_d_x_x_cm_rm(ghost_densemat_t *x, ghost_densem
                 }
             }
         }
+        free(x_priv);
     }
     
     goto out;
@@ -145,8 +147,9 @@ ghost_error_t ghost_tsmttsm__plain_d_x_x_rm_rm(ghost_densemat_t *x, ghost_densem
     }
 #pragma omp parallel private(j,k)
     {
-        double x_priv[m*K];
-        memset(x_priv,0,sizeof(x_priv));
+        double *x_priv;
+        ghost_malloc((void **)&x_priv,m*K*sizeof(double));
+        memset(x_priv,0,m*K*sizeof(double));
 #pragma omp for schedule(runtime)
         for (i=0; i<n; i++) {
             for (j=0; j<m; j++) {
@@ -172,6 +175,7 @@ ghost_error_t ghost_tsmttsm__plain_d_x_x_rm_rm(ghost_densemat_t *x, ghost_densem
                 xval[j*ldx+k] += x_priv[j*K+k];
             }
         }
+        free(x_priv);
     }
 
     goto out;
@@ -233,8 +237,9 @@ ghost_error_t ghost_tsmttsm__plain_d_x_x_cm_cm(ghost_densemat_t *x, ghost_densem
     }
 #pragma omp parallel private(j,k)
     {
-        double x_priv[m*K];
-        memset(x_priv,0,sizeof(x_priv));
+        double *x_priv;
+        ghost_malloc((void **)&x_priv,m*K*sizeof(double));
+        memset(x_priv,0,m*K*sizeof(double));
 #pragma omp for schedule(runtime)
         for (i=0; i<n; i++) {
 #pragma vector aligned
@@ -260,6 +265,7 @@ ghost_error_t ghost_tsmttsm__plain_d_x_x_cm_cm(ghost_densemat_t *x, ghost_densem
                 }
             }
         }
+        free(x_priv);
     }
     
     goto out;
@@ -325,8 +331,9 @@ ghost_error_t ghost_tsmttsm__plain_z_x_x_cm_rm(ghost_densemat_t *x, ghost_densem
     }
 #pragma omp parallel private(j,k)
     {
-        double complex x_priv[m*K];
-        memset(x_priv,0,sizeof(x_priv));
+        complex double *x_priv;
+        ghost_malloc((void **)&x_priv,m*K*sizeof(complex double));
+        memset(x_priv,0,m*K*sizeof(complex double));
 
         if (conjv) {
 #pragma omp for schedule(runtime)
@@ -358,6 +365,7 @@ ghost_error_t ghost_tsmttsm__plain_z_x_x_cm_rm(ghost_densemat_t *x, ghost_densem
                 xval[k*ldx+j] += x_priv[j*K+k];
             }
         }
+        free(x_priv);
     }
     
     goto out;
@@ -423,8 +431,9 @@ ghost_error_t ghost_tsmttsm__plain_z_x_x_rm_rm(ghost_densemat_t *x, ghost_densem
     }
 #pragma omp parallel private(j,k)
     {
-        double complex x_priv[m*K];
-        memset(x_priv,0,sizeof(x_priv));
+        complex double *x_priv;
+        ghost_malloc((void **)&x_priv,m*K*sizeof(complex double));
+        memset(x_priv,0,m*K*sizeof(complex double));
         
         if (conjv) {
 #pragma omp for schedule(runtime)
@@ -467,6 +476,7 @@ ghost_error_t ghost_tsmttsm__plain_z_x_x_rm_rm(ghost_densemat_t *x, ghost_densem
                 xval[j*ldx+k] += x_priv[j*K+k];
             }
         }
+        free(x_priv);
     }
    
     goto out;
@@ -532,8 +542,9 @@ ghost_error_t ghost_tsmttsm__plain_z_x_x_cm_cm(ghost_densemat_t *x, ghost_densem
     }
 #pragma omp parallel private(j,k)
     {
-        double complex x_priv[m*K];
-        memset(x_priv,0,sizeof(x_priv));
+        complex double *x_priv;
+        ghost_malloc((void **)&x_priv,m*K*sizeof(complex double));
+        memset(x_priv,0,m*K*sizeof(complex double));
 
         if (conjv) {
 #pragma omp for schedule(runtime)
@@ -565,6 +576,7 @@ ghost_error_t ghost_tsmttsm__plain_z_x_x_cm_cm(ghost_densemat_t *x, ghost_densem
                 xval[k*ldx+j] += x_priv[j*K+k];
             }
         }
+        free(x_priv);
     }
     
     goto out;
@@ -626,8 +638,9 @@ ghost_error_t ghost_tsmttsm__plain_d_x_CFGM_cm_rm(ghost_densemat_t *x, ghost_den
     }
 #pragma omp parallel private(j,k)
     {
-        double x_priv[CFGM*K];
-        memset(x_priv,0,sizeof(x_priv));
+        double *x_priv;
+        ghost_malloc((void **)&x_priv,CFGM*K*sizeof(double));
+        memset(x_priv,0,CFGM*K*sizeof(double));
 #pragma omp for schedule(runtime)
         for (i=0; i<n; i++) {
 #pragma vector aligned
@@ -653,6 +666,7 @@ ghost_error_t ghost_tsmttsm__plain_d_x_CFGM_cm_rm(ghost_densemat_t *x, ghost_den
                 }
             }
         }
+        free(x_priv);
     }
     
     goto out;
@@ -715,8 +729,9 @@ ghost_error_t ghost_tsmttsm__plain_d_x_CFGM_rm_rm(ghost_densemat_t *x, ghost_den
     }
 #pragma omp parallel private(j,k)
     {
-        double x_priv[CFGM*K];
-        memset(x_priv,0,sizeof(x_priv));
+        double *x_priv;
+        ghost_malloc((void **)&x_priv,CFGM*K*sizeof(double));
+        memset(x_priv,0,CFGM*K*sizeof(double));
 #pragma omp for schedule(runtime)
         for (i=0; i<n; i++) {
 #pragma vector aligned
@@ -742,6 +757,7 @@ ghost_error_t ghost_tsmttsm__plain_d_x_CFGM_rm_rm(ghost_densemat_t *x, ghost_den
                 }
             }
         }
+        free(x_priv);
     }
     
     goto out;
@@ -804,8 +820,9 @@ ghost_error_t ghost_tsmttsm__plain_d_CFGK_x_cm_rm(ghost_densemat_t *x, ghost_den
     }
 #pragma omp parallel private(j,k)
     {
-        double x_priv[m*CFGK];
-        memset(x_priv,0,sizeof(x_priv));
+        double *x_priv;
+        ghost_malloc((void **)&x_priv,m*CFGK*sizeof(double));
+        memset(x_priv,0,m*CFGK*sizeof(double));
 #pragma omp for schedule(runtime)
         for (i=0; i<n; i++) {
 #pragma vector aligned
@@ -831,6 +848,7 @@ ghost_error_t ghost_tsmttsm__plain_d_CFGK_x_cm_rm(ghost_densemat_t *x, ghost_den
                 }
             }
         }
+        free(x_priv);
     }
     
     goto out;
@@ -893,8 +911,9 @@ ghost_error_t ghost_tsmttsm__plain_d_CFGK_x_rm_rm(ghost_densemat_t *x, ghost_den
     }
 #pragma omp parallel private(j,k)
     {
-        double x_priv[m*CFGK];
-        memset(x_priv,0,sizeof(x_priv));
+        double *x_priv;
+        ghost_malloc((void **)&x_priv,m*CFGK*sizeof(double));
+        memset(x_priv,0,m*CFGK*sizeof(double));
 #pragma omp for schedule(runtime)
         for (i=0; i<n; i++) {
 #pragma vector aligned
@@ -920,6 +939,7 @@ ghost_error_t ghost_tsmttsm__plain_d_CFGK_x_rm_rm(ghost_densemat_t *x, ghost_den
                 }
             }
         }
+        free(x_priv);
     }
     
     goto out;
@@ -983,8 +1003,9 @@ ghost_error_t ghost_tsmttsm__plain_d_CFGK_CFGM_cm_rm(ghost_densemat_t *x, ghost_
     }
 #pragma omp parallel private(j,k)
     {
-        double x_priv[CFGM*CFGK];
-        memset(x_priv,0,sizeof(x_priv));
+        double *x_priv;
+        ghost_malloc((void **)&x_priv,CFGM*CFGK*sizeof(double));
+        memset(x_priv,0,CFGM*CFGK*sizeof(double));
 #pragma omp for schedule(runtime)
         for (i=0; i<n; i++) {
 #if CFGK>1
@@ -1012,6 +1033,7 @@ ghost_error_t ghost_tsmttsm__plain_d_CFGK_CFGM_cm_rm(ghost_densemat_t *x, ghost_
                 xval[k*ldx+j] += x_priv[j*CFGK+k];
             }
         }
+        free(x_priv);
     }
    
     goto out;
@@ -1075,8 +1097,9 @@ ghost_error_t ghost_tsmttsm__plain_d_CFGK_CFGM_cm_cm(ghost_densemat_t *x, ghost_
     }
 #pragma omp parallel private(j,k)
     {
-        double x_priv[CFGM*CFGK];
-        memset(x_priv,0,sizeof(x_priv));
+        double *x_priv;
+        ghost_malloc((void **)&x_priv,CFGM*CFGK*sizeof(double));
+        memset(x_priv,0,CFGM*CFGK*sizeof(double));
 #pragma omp for schedule(runtime)
         for (i=0; i<n; i++) {
 #if CFGK>1
@@ -1104,6 +1127,7 @@ ghost_error_t ghost_tsmttsm__plain_d_CFGK_CFGM_cm_cm(ghost_densemat_t *x, ghost_
                 xval[k*ldx+j] += x_priv[j*CFGK+k];
             }
         }
+        free(x_priv);
     }
    
     goto out;
@@ -1171,8 +1195,9 @@ ghost_error_t ghost_tsmttsm__plain_z_x_CFGM_cm_rm(ghost_densemat_t *x, ghost_den
     }
 #pragma omp parallel private(j,k)
     {
-        complex double x_priv[CFGM*K];
-        memset(x_priv,0,sizeof(x_priv));
+        complex double *x_priv;
+        ghost_malloc((void **)&x_priv,CFGM*K*sizeof(complex double));
+        memset(x_priv,0,CFGM*K*sizeof(complex double));
         if (conjv) {
 #pragma omp for schedule(runtime)
             for (i=0; i<n; i++) {
@@ -1214,6 +1239,7 @@ ghost_error_t ghost_tsmttsm__plain_z_x_CFGM_cm_rm(ghost_densemat_t *x, ghost_den
                 }
             }
         }
+        free(x_priv);
     }
 
     goto out;
@@ -1281,8 +1307,9 @@ ghost_error_t ghost_tsmttsm__plain_z_CFGK_x_cm_rm(ghost_densemat_t *x, ghost_den
     }
 #pragma omp parallel private(j,k)
     {
-        complex double x_priv[m*CFGK];
-        memset(x_priv,0,sizeof(x_priv));
+        complex double *x_priv;
+        ghost_malloc((void **)&x_priv,m*CFGK*sizeof(complex double));
+        memset(x_priv,0,m*CFGK*sizeof(complex double));
 
         if (conjv) {
 #pragma omp for schedule(runtime)
@@ -1326,6 +1353,7 @@ ghost_error_t ghost_tsmttsm__plain_z_CFGK_x_cm_rm(ghost_densemat_t *x, ghost_den
                 }
             }
         }
+        free(x_priv);
     }
     
     goto out;
@@ -1393,8 +1421,9 @@ ghost_error_t ghost_tsmttsm__plain_z_CFGK_x_rm_rm(ghost_densemat_t *x, ghost_den
     }
 #pragma omp parallel private(j,k)
     {
-        complex double x_priv[m*CFGK];
-        memset(x_priv,0,sizeof(x_priv));
+        complex double *x_priv;
+        ghost_malloc((void **)&x_priv,m*CFGK*sizeof(complex double));
+        memset(x_priv,0,m*CFGK*sizeof(complex double));
 
         if (conjv) {
 #pragma omp for schedule(runtime)
@@ -1439,6 +1468,7 @@ ghost_error_t ghost_tsmttsm__plain_z_CFGK_x_rm_rm(ghost_densemat_t *x, ghost_den
                 xval[j*ldx+k] += x_priv[j*CFGK+k];
             }
         }
+        free(x_priv);
     }
 
     goto out;
