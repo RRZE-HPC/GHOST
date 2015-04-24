@@ -141,11 +141,13 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
     if (p.impl == GHOST_IMPLEMENTATION_SSE) {
         if (!IS_ALIGNED(xptr,16) || !IS_ALIGNED(vptr,16) || !IS_ALIGNED(wptr,16)) {
             p.alignment = GHOST_UNALIGNED;
+            PERFWARNING_LOG("Switching to the unaligned kernel!");
         }
     }
     if (p.impl == GHOST_IMPLEMENTATION_AVX) {
         if (!IS_ALIGNED(xptr,32) || !IS_ALIGNED(vptr,32) || !IS_ALIGNED(wptr,32)) {
             p.alignment = GHOST_UNALIGNED;
+            PERFWARNING_LOG("Switching to the unaligned kernel!");
         }
     }
     kernel = ghost_tsmm_kernels[p];
