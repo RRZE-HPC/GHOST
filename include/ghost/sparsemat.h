@@ -330,6 +330,14 @@ struct ghost_sparsemat_t
      */
     ghost_gidx_t nMaxRows;
     /**
+     * @brief optimal block length of block vectors. 
+     * 
+     * default it is disabled with value 0
+     * seted by user
+     * TODO: seted by a test function
+     */
+    ghost_lidx_t opt_vec_length;
+    /**
      * @brief Row length variance
      */
     double variance;
