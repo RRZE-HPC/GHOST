@@ -429,7 +429,7 @@ ghost_densemat_t *w_in, const char *transw, void *alpha, void *beta, int reduce,
         w = wc;
     }
     
-    if ((v->traits.location == GHOST_LOCATION_HOST) && !(flags & GHOST_GEMM_NOT_SPECIAL)) { 
+    if (!(flags & GHOST_GEMM_NOT_SPECIAL)) { 
         if (flags & GHOST_GEMM_KAHAN) {
             if (ghost_tsmttsm_kahan_valid(x,v,transv,w,transw,alpha,beta,reduce,0) == GHOST_SUCCESS) {
                 INFO_LOG("Transparently call special implementation Kahan-TSMTTSM");
