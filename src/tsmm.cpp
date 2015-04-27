@@ -86,7 +86,9 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
 #include "tsmm.def"
 #include "tsmm_avx.def"
 #include "tsmm_sse.def"
+#ifdef GHOST_HAVE_CUDA
 #include "tsmm_cu.def"
+#endif
     }
 
     ghost_tsmm_parameters_t p;
