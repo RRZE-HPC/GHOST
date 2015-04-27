@@ -7,6 +7,7 @@
 #include "ghost/tsmm_gen.h"
 #include "ghost/tsmm_avx_gen.h"
 #include "ghost/tsmm_sse_gen.h"
+#include "ghost/tsmm_cu_gen.h"
 
 #include <map>
 
@@ -22,13 +23,6 @@ static map<ghost_tsmm_parameters_t, ghost_tsmm_kernel_t> ghost_tsmm_kernels;
 ghost_error_t ghost_tsmm_valid(ghost_densemat_t *x, ghost_densemat_t *v,  const char * transv, 
 ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce, int printerror)
 {
-    if (!(x->traits.location & GHOST_LOCATION_HOST) || !(v->traits.location & GHOST_LOCATION_HOST) || !(w->traits.location & GHOST_LOCATION_HOST)) {
-        if (printerror) {
-            ERROR_LOG("TSMM only implemented for host densemats!");
-        }
-        return GHOST_ERR_INVALID_ARG;
-    }
-
     if (x->traits.datatype != v->traits.datatype || x->traits.datatype != w->traits.datatype) {
         if (printerror) {
             ERROR_LOG("Different data types!");
@@ -92,9 +86,13 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
 #include "tsmm.def"
 #include "tsmm_avx.def"
 #include "tsmm_sse.def"
+#include "tsmm_cu.def"
     }
 
     ghost_tsmm_parameters_t p;
+    p.dt = x->traits.datatype;
+    p.alignment = GHOST_ALIGNED;
+    
     ghost_tsmm_kernel_t kernel = NULL;
 #ifdef GHOST_HAVE_MIC
     p.impl = GHOST_IMPLEMENTATION_MIC;
@@ -105,9 +103,14 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
 #else
     p.impl = GHOST_IMPLEMENTATION_PLAIN;
 #endif
+#ifdef GHOST_HAVE_CUDA
+    if (x->traits.location & GHOST_LOCATION_DEVICE) {
+        p.impl = GHOST_IMPLEMENTATION_CUDA;
+        p.dt = GHOST_DT_ANY;
+        p.alignment = GHOST_UNALIGNED;
+    }
+#endif
 
-    p.alignment = GHOST_ALIGNED;
-    p.dt = x->traits.datatype;
     p.xstor = x->traits.storage;
     p.wstor = w->traits.storage;
 
@@ -123,11 +126,11 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
         PERFWARNING_LOG("Use plain for ncols==1");
         p.impl = GHOST_IMPLEMENTATION_PLAIN;
     }
-    if (p.xcols % 4 || p.vcols % 4) {
-        PERFWARNING_LOG("Use plain for non-multiple of four");
+    if ((p.xcols % 4 || p.vcols % 4) && (p.impl != GHOST_IMPLEMENTATION_CUDA)) {
+        PERFWARNING_LOG("Use SSE for non-multiple of four");
         p.impl = GHOST_IMPLEMENTATION_SSE;
     }
-    if (p.xcols % 2 || p.vcols % 2) {
+    if ((p.xcols % 2 || p.vcols % 2) && (p.impl != GHOST_IMPLEMENTATION_CUDA)) {
         PERFWARNING_LOG("Use plain for non-even column count");
         p.impl = GHOST_IMPLEMENTATION_PLAIN;
     }

@@ -204,6 +204,8 @@ typedef enum {
     GHOST_DT_COMPLEX = 8
 } ghost_datatype_t;
 
+#define GHOST_DT_ANY (ghost_datatype_t)-1
+
 typedef enum {
     /**
      * @brief Default location. This is only a placeholder and the actual location has to be specified by GHOST.
@@ -252,7 +254,8 @@ typedef enum {
     GHOST_IMPLEMENTATION_PLAIN = 0,
     GHOST_IMPLEMENTATION_SSE = 1,
     GHOST_IMPLEMENTATION_AVX = 2,
-    GHOST_IMPLEMENTATION_MIC = 3
+    GHOST_IMPLEMENTATION_MIC = 3,
+    GHOST_IMPLEMENTATION_CUDA = 4
 } ghost_implementation_t;
 
 /**
