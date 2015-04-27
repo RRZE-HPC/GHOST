@@ -437,20 +437,28 @@ static ghost_error_t FUNCNAME(fromVec_tmpl(ghost_densemat_t *vec, ghost_densemat
                     (vec->traits.nrows == vec->traits.nrowsorig) && (vec2->traits.nrows == vec2->traits.nrowsorig)) {
                         ghost_cu_memcpy(DENSEMAT_CUVALPTR(vec,0,0),DENSEMAT_CUVALPTR(vec2,roffs,coffs),vec->traits.nrowspadded*vec->traits.ncolspadded*vec->elSize);
                 } else {
-                    PERFWARNING_LOG("Potentially slow element-wise copy!");
+                    PERFWARNING_LOG("Potentially slow element-wise memcpy!");
                     DENSEMAT_ITER2_OFFS(vec,vec2,roffs,coffs,
                             ghost_cu_memcpy(cuvalptr1,cuvalptr2,vec->elSize));
                 }
             } else {
-                PERFWARNING_LOG("Potentially slow element-wise copy! (Fast copying not yet implemented)");
-                DENSEMAT_ITER2_OFFS(vec,vec2,roffs,coffs,
-                        ghost_cu_upload(cuvalptr1,valptr2,vec->elSize));
+                if (DENSEMAT_COMPACT(vec) && DENSEMAT_COMPACT(vec2)) {
+                    ghost_cu_upload2d(vec->cu_val,vec->stride,vec2->val,vec2->stride,vec2->blocklen,vec2->nblock);
+                } else {
+                    PERFWARNING_LOG("Potentially slow element-wise upload! (Fast copying not yet implemented)");
+                    DENSEMAT_ITER2_OFFS(vec,vec2,roffs,coffs,
+                            ghost_cu_upload(cuvalptr1,valptr2,vec->elSize));
+                }
             }
         } else {
             if (vec2->traits.location == GHOST_LOCATION_DEVICE) {
-                PERFWARNING_LOG("Potentially slow element-wise copy! (Fast copying not yet implemented)");
-                DENSEMAT_ITER2_OFFS(vec,vec2,roffs,coffs,
-                        ghost_cu_download(valptr1,cuvalptr2,vec->elSize));
+                if (DENSEMAT_COMPACT(vec) && DENSEMAT_COMPACT(vec2)) {
+                    ghost_cu_download2d(vec->val,vec->stride,vec2->cu_val,vec2->stride,vec2->blocklen,vec2->nblock);
+                } else {
+                    PERFWARNING_LOG("Potentially slow element-wise download! (Fast copying not yet implemented)");
+                    DENSEMAT_ITER2_OFFS(vec,vec2,roffs,coffs,
+                            ghost_cu_download(valptr1,cuvalptr2,vec->elSize));
+                }
             } else {
                 DENSEMAT_ITER2_OFFS(vec,vec2,roffs,coffs,
                         *(v_t *)valptr1 = *(v_t *)valptr2);
