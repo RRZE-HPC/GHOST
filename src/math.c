@@ -10,6 +10,8 @@
 #include <math.h>
 #include <complex.h>
 
+#define GHOST_MAX_SPMMV_WIDTH INT_MAX
+
 static ghost_mpi_op_t GHOST_MPI_OP_SUM_C = MPI_OP_NULL;
 static ghost_mpi_op_t GHOST_MPI_OP_SUM_Z = MPI_OP_NULL;
 static ghost_mpi_op_t GHOST_MPI_OP_SUM_DENSEMAT_S = MPI_OP_NULL;
@@ -92,6 +94,7 @@ ghost_error_t ghost_normalize(ghost_densemat_t *vec)
 static ghost_error_t ghost_vspmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_densemat_t *invec, ghost_spmv_flags_t *flags, va_list argp)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
+    ghost_lidx_t ncolsbackup = res->traits.ncols, remcols = res->traits.ncols, donecols = 0;
     va_list argp_backup;
     va_copy(argp_backup,argp);
     DEBUG_LOG(1,"Performing SpMV");
@@ -112,25 +115,76 @@ static ghost_error_t ghost_vspmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, 
         return GHOST_ERR_INVALID_ARG;
     }
 
-    solver(res,mat,invec,*flags,argp);
+    void *alpha = NULL, *beta = NULL, *gamma = NULL, *dot = NULL, *delta = NULL, *eta = NULL;
+    ghost_densemat_t *z = NULL;
 
-#ifdef GHOST_HAVE_MPI
-
-    if (!(*flags & GHOST_SPMV_NOT_REDUCE) && (*flags & GHOST_SPMV_DOT_ANY)) {
+    // need to process varargs if CHAIN_AXPBY or DOT
+    if ((!(*flags & GHOST_SPMV_NOT_REDUCE) && (*flags & GHOST_SPMV_DOT_ANY)) || (*flags & GHOST_SPMV_CHAIN_AXPBY)) {
         GHOST_INSTR_START("dot_reduce");
-        void *dot = NULL;
         if (*flags & GHOST_SPMV_SCALE) {
-            dot = va_arg(argp_backup,void *);
+            alpha = va_arg(argp_backup,void *);
         }
         if (*flags & GHOST_SPMV_AXPBY) {
-            dot = va_arg(argp_backup,void *);
+            beta = va_arg(argp_backup,void *);
         }
         if ((*flags & GHOST_SPMV_SHIFT) || (*flags & GHOST_SPMV_VSHIFT)) {
-            dot = va_arg(argp_backup,void *);
+            gamma = va_arg(argp_backup,void *);
         }
         if (*flags & GHOST_SPMV_DOT_ANY) {
             dot = va_arg(argp_backup,void *);
         }
+        if (*flags & GHOST_SPMV_CHAIN_AXPBY) {
+            z = va_arg(argp_backup,ghost_densemat_t *);
+            delta = va_arg(argp_backup,void *);
+            eta = va_arg(argp_backup,void *);
+        }
+
+    }
+
+    // TODO only of densemats are compact!
+    while (remcols > GHOST_MAX_SPMMV_WIDTH) {
+
+        INFO_LOG("Restricting vector block width!");
+
+        res->traits.ncols = GHOST_MAX_SPMMV_WIDTH;
+        invec->traits.ncols = GHOST_MAX_SPMMV_WIDTH;
+        
+        invec->val += donecols*invec->elSize;
+        res->val += donecols*res->elSize;
+        
+        if (z) {
+            z->val += donecols*z->elSize;
+            z->traits.ncols = GHOST_MAX_SPMMV_WIDTH;
+        }
+        solver(res,mat,invec,*flags,argp);
+
+        donecols += GHOST_MAX_SPMMV_WIDTH;
+        remcols -= donecols;
+    }
+    res->traits.ncols = remcols;
+    invec->traits.ncols = remcols;
+    invec->val += donecols*invec->elSize;
+    res->val += donecols*res->elSize;
+    
+    if (z) {
+        z->val += donecols*z->elSize;
+        z->traits.ncols = remcols;
+    }
+    
+    solver(res,mat,invec,*flags,argp);
+
+    res->val -= (ncolsbackup-remcols)*res->elSize;
+    invec->val -= (ncolsbackup-remcols)*invec->elSize;
+    
+    res->traits.ncols = ncolsbackup;
+    invec->traits.ncols = ncolsbackup;
+    if (z) {
+        z->traits.ncols = ncolsbackup;
+        z->val -= (ncolsbackup-remcols)*z->elSize;
+    }
+
+    if (!(*flags & GHOST_SPMV_NOT_REDUCE) && (*flags & GHOST_SPMV_DOT_ANY)) {
+#ifdef GHOST_HAVE_MPI
         ghost_mpi_op_t op;
         ghost_mpi_datatype_t dt;
         ghost_mpi_op_sum(&op,res->traits.datatype);
@@ -138,8 +192,8 @@ static ghost_error_t ghost_vspmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, 
 
         MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE, dot, 3*invec->traits.ncols, dt, op, mat->context->mpicomm));
         GHOST_INSTR_STOP("dot_reduce");
-    }
 #endif
+    }
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
 
