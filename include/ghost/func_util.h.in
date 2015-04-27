@@ -7,6 +7,7 @@
 #define GHOST_FUNC_UTIL_H
 
 #include <ghost/task.h>
+#include <ghost/core.h>
 
 typedef enum
 {
@@ -51,6 +52,7 @@ typedef enum
 
 #define GHOST_FUNC_EXIT(functype)\
     if (${INSTRUMENTATION_FUNCTYPES}) {\
+        ghost_barrier();\
         ghost_instr_prefix_set(__prefixbackup);\
         GHOST_INSTR_STOP(__FUNCTION__+__funcnameoffset);\
         ghost_instr_enable = __ghost_instr_enable_backup;\

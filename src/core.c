@@ -557,7 +557,7 @@ ghost_error_t ghost_string(char **str)
 
 ghost_error_t ghost_barrier()
 {
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
+//    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
 #ifdef GHOST_HAVE_MPI
     MPI_CALL_RETURN(MPI_Barrier(MPI_COMM_WORLD));
 #endif
@@ -568,7 +568,7 @@ ghost_error_t ghost_barrier()
         GHOST_CALL_RETURN(ghost_cu_barrier());
     }
 #endif
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_COMMUNICATION);
+//    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_COMMUNICATION);
 
     return GHOST_SUCCESS;
 }
