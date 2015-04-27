@@ -30,7 +30,8 @@ const ghost_sparsemat_traits_t GHOST_SPARSEMAT_TRAITS_INITIALIZER = {
     .aux = NULL,
     .scotchStrat = (char*)GHOST_SCOTCH_STRAT_DEFAULT,
     .sortScope = 1,
-    .datatype = (ghost_datatype_t) (GHOST_DT_DOUBLE|GHOST_DT_REAL)
+    .datatype = (ghost_datatype_t) (GHOST_DT_DOUBLE|GHOST_DT_REAL),
+    .opt_blockvec_width = 0
 };
 
 
@@ -74,7 +75,6 @@ ghost_error_t ghost_sparsemat_create(ghost_sparsemat_t ** mat, ghost_context_t *
     (*mat)->smartRowBand = 0.;
     (*mat)->maxRowLen = 0;
     (*mat)->nMaxRows = 0;
-    (*mat)->opt_vec_length = 0;
     (*mat)->variance = 0.;
     (*mat)->deviation = 0.;
     (*mat)->cv = 0.;

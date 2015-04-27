@@ -197,6 +197,12 @@ struct ghost_sparsemat_traits_t {
      * @brief The data type.
      */
     ghost_datatype_t datatype;
+    /**
+     * @brief Optimal width of block vectors multiplied with this matrix.
+     *
+     * Set to zero if not applicable. 
+     */
+    ghost_lidx_t opt_blockvec_width;
 };
 
 #ifdef GHOST_HAVE_MPI
@@ -329,14 +335,6 @@ struct ghost_sparsemat_t
      * @brief The number of rows with length maxRowLen.
      */
     ghost_gidx_t nMaxRows;
-    /**
-     * @brief optimal block length of block vectors. 
-     * 
-     * default it is disabled with value 0
-     * seted by user
-     * TODO: seted by a test function
-     */
-    ghost_lidx_t opt_vec_length;
     /**
      * @brief Row length variance
      */
