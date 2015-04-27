@@ -234,9 +234,10 @@ inline ghost_location_t& operator|=(ghost_location_t &a, const ghost_location_t 
     a = static_cast<ghost_location_t>(static_cast<int>(a) | static_cast<int>(b));
     return a;
 }
-inline ghost_datatype_t operator|(const ghost_datatype_t &a, const ghost_datatype_t &b) {
-    return static_cast<ghost_datatype_t>(static_cast<int>(a) | static_cast<int>(b));
-}
+// Melven: somehow this doesn't compile here (with GCC)
+//inline ghost_datatype_t operator|(const ghost_datatype_t &a, const ghost_datatype_t &b) {
+//    return static_cast<ghost_datatype_t>(static_cast<int>(a) | static_cast<int>(b));
+//}
 #endif
 
 /**
