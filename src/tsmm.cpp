@@ -181,6 +181,7 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
     if (!kernel) {
         PERFWARNING_LOG("Try plain implementation");
         p.impl = GHOST_IMPLEMENTATION_PLAIN;
+        p.alignment = GHOST_UNALIGNED; // plain kernels do not have alignment restrictions
         p.xcols = x->traits.ncols;
         p.vcols = v->traits.ncols;
         kernel = ghost_tsmm_kernels[p];
@@ -208,7 +209,7 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
 
 
     if (!kernel) {
-        INFO_LOG("Could not find TSMM kernel with %d %d %d %d %d %d!",p.impl,p.dt,p.xcols,p.vcols,p.xstor,p.wstor);
+        INFO_LOG("Could not find TSMM kernel with %d %d %d %d %d %d %d!",p.alignment,p.impl,p.dt,p.xcols,p.vcols,p.xstor,p.wstor);
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
 
