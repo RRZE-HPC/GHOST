@@ -90,6 +90,7 @@ ghost_error_t ghost_tsmm__u_cuda_x_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_de
     }
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL); 
+    CUDA_CALL_RETURN(cudaGetLastError());
     return ret;
 }
 #GHOST_FUNC_END
@@ -125,5 +126,6 @@ ghost_error_t ghost_tsmm__u_cuda_x_x_x_rm_cm(ghost_densemat_t *x, ghost_densemat
     }
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL); 
+    CUDA_CALL_RETURN(cudaGetLastError());
     return ret;
 }
