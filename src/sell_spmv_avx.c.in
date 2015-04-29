@@ -549,7 +549,7 @@ ghost_error_t ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat,
     ghost_lidx_t ncolspadded = PAD(invec->traits.ncols,4);
     ghost_lidx_t donecols = 0;
 
-    
+    const bool resultisview = res->traits.flags & GHOST_DENSEMAT_VIEW;
     unsigned clsize;
     ghost_machine_cacheline_size(&clsize);
     int padding = (int)clsize/sizeof(double);
@@ -656,72 +656,59 @@ ghost_error_t ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat,
 
             for (donecols=0; donecols < ncolspadded; donecols+=4) {
                 tmp[donecols/4] = _mm256_setzero_pd();
-            }
             
-            for (j=0; j<SELL(mat)->rowLen[c]; j++) { // loop inside chunk
-                matval=_mm256_set1_pd(mval[offs+j*CHUNKHEIGHT]);
-                ghost_lidx_t matcol = SELL(mat)->col[offs+j*CHUNKHEIGHT];
+                for (j=0; j<SELL(mat)->rowLen[c]; j++) { // loop inside chunk
+                    matval=_mm256_set1_pd(mval[offs+j*CHUNKHEIGHT]);
+                    ghost_lidx_t matcol = SELL(mat)->col[offs+j*CHUNKHEIGHT];
 
-                for (donecols=0; donecols < ncolspadded/4; donecols++) {
-                    rhs = _mm256_load_pd((double *)((double *)(invec->val)+invec->stride*(matcol)+donecols*4));
-                    tmp[donecols] = _mm256_add_pd(tmp[donecols],_mm256_mul_pd(rhs,matval));
+                    rhs = _mm256_load_pd((double *)((double *)(invec->val)+invec->stride*(matcol)+donecols));
+                    tmp[donecols/4] = _mm256_add_pd(tmp[donecols/4],_mm256_mul_pd(rhs,matval));
                 }
-            }
-            
-            if (spmvmOptions & GHOST_SPMV_SHIFT) {
-                for (donecols=0; donecols < ncolspadded; donecols+=4) {
+                
+                if (spmvmOptions & GHOST_SPMV_SHIFT) {
                     tmp[donecols/4] = _mm256_sub_pd(tmp[donecols/4],_mm256_mul_pd(shift,_mm256_load_pd((double *)(rval+donecols))));
-                }
-            } else if (spmvmOptions & GHOST_SPMV_VSHIFT) {
-                for (donecols=0; donecols < ncolspadded; donecols+=4) {
+                } else if (spmvmOptions & GHOST_SPMV_VSHIFT) {
                     tmp[donecols/4] = _mm256_sub_pd(tmp[donecols/4],_mm256_mul_pd(vshift[donecols/4],_mm256_load_pd((double *)(rval+donecols))));
                 }
-            }
-            if (spmvmOptions & GHOST_SPMV_SCALE) {
-                for (donecols=0; donecols < ncolspadded; donecols+=4) {
+                if (spmvmOptions & GHOST_SPMV_SCALE) {
                     tmp[donecols/4] = _mm256_mul_pd(scale,tmp[donecols/4]);
                 }
+                if (!resultisview || (resultisview && donecols<ncolspadded-4)) {
+                    if (spmvmOptions & GHOST_SPMV_AXPY) {
+                        _mm256_store_pd((double *)(lval+donecols),_mm256_add_pd(tmp[donecols/4],_mm256_load_pd((double *)(lval+donecols))));
+                    } else if (spmvmOptions & GHOST_SPMV_AXPBY) {
+                        _mm256_store_pd((double *)(lval+donecols),_mm256_add_pd(tmp[donecols/4],_mm256_mul_pd(_mm256_load_pd((double *)(lval+donecols)),beta)));
+                    } else if (spmvmOptions & GHOST_SPMV_CHAIN_AXPBY) {
+                        _mm256_store_pd((double *)(lval+donecols),tmp[donecols/4]);
+                    } else {
+                        _mm256_stream_pd((double *)(lval+donecols),tmp[donecols/4]);
+                    }
+                    if (spmvmOptions & GHOST_SPMV_CHAIN_AXPBY) {
+                        _mm256_store_pd((double *)(zval+donecols),_mm256_add_pd(_mm256_mul_pd(_mm256_load_pd((double *)(zval+donecols)),delta),_mm256_mul_pd(_mm256_load_pd((double *)(lval+donecols)),eta)));
+                    }
+                }
             }
-            if (spmvmOptions & GHOST_SPMV_AXPY) {
-                for (donecols=0; donecols < ncolspadded-4; donecols+=4) {
-                    _mm256_store_pd((double *)(lval+donecols),_mm256_add_pd(tmp[donecols/4],_mm256_load_pd((double *)(lval+donecols))));
+            if (resultisview) {
+                if (spmvmOptions & GHOST_SPMV_AXPY) {
+                    _mm256_maskstore_pd((double *)(lval+donecols),mask,_mm256_add_pd(tmp[donecols/4],_mm256_load_pd((double *)(lval+donecols))));
+                } else if (spmvmOptions & GHOST_SPMV_AXPBY) {
+                    _mm256_maskstore_pd((double *)(lval+donecols),mask,_mm256_add_pd(tmp[donecols/4],_mm256_mul_pd(_mm256_load_pd((double *)(lval+donecols)),beta)));
+                } else {
+                    _mm256_maskstore_pd((double *)(lval+donecols),mask,tmp[donecols/4]);
                 }
-                _mm256_maskstore_pd((double *)(lval+donecols),mask,_mm256_add_pd(tmp[donecols/4],_mm256_load_pd((double *)(lval+donecols))));
-            } else if (spmvmOptions & GHOST_SPMV_AXPBY) {
-                for (donecols=0; donecols < ncolspadded-4; donecols+=4) {
-                    _mm256_store_pd((double *)(lval+donecols),_mm256_add_pd(tmp[donecols/4],_mm256_mul_pd(_mm256_load_pd((double *)(lval+donecols)),beta)));
+                if (spmvmOptions & GHOST_SPMV_CHAIN_AXPBY) {
+                    _mm256_maskstore_pd((double *)(zval+donecols),mask,_mm256_add_pd(_mm256_mul_pd(_mm256_load_pd((double *)(zval+donecols)),delta),_mm256_mul_pd(_mm256_load_pd((double *)(lval+donecols)),eta)));
                 }
-                _mm256_maskstore_pd((double *)(lval+donecols),mask,_mm256_add_pd(tmp[donecols/4],_mm256_mul_pd(_mm256_load_pd((double *)(lval+donecols)),beta)));
-            } else if (spmvmOptions & GHOST_SPMV_CHAIN_AXPBY) {
-                for (donecols=0; donecols < ncolspadded-4; donecols+=4) {
-                    _mm256_store_pd((double *)(lval+donecols),tmp[donecols/4]);
-                }
-                _mm256_maskstore_pd((double *)(lval+donecols),mask,tmp[donecols/4]);
-            } else {
-                for (donecols=0; donecols < ncolspadded-4; donecols+=4) {
-                    _mm256_stream_pd((double *)(lval+donecols),tmp[donecols/4]);
-                }
-                _mm256_maskstore_pd((double *)(lval+donecols),mask,tmp[donecols/4]);
-            }
-            if (spmvmOptions & GHOST_SPMV_CHAIN_AXPBY) {
-                for (donecols=0; donecols < ncolspadded-4; donecols+=4) {
-                    _mm256_store_pd((double *)(zval+donecols),_mm256_add_pd(_mm256_mul_pd(_mm256_load_pd((double *)(zval+donecols)),delta),_mm256_mul_pd(_mm256_load_pd((double *)(lval+donecols)),eta)));
-                }
-                _mm256_maskstore_pd((double *)(zval+donecols),mask,_mm256_add_pd(_mm256_mul_pd(_mm256_load_pd((double *)(zval+donecols)),delta),_mm256_mul_pd(_mm256_load_pd((double *)(lval+donecols)),eta)));
             }
 
-            if (spmvmOptions & GHOST_SPMV_DOT_YY) {
-                for (donecols=0; donecols < ncolspadded; donecols+=4) {
+            for (donecols=0; donecols < ncolspadded; donecols+=4) {
+                if (spmvmOptions & GHOST_SPMV_DOT_YY) {
                     dot1[donecols/4] = _mm256_add_pd(dot1[donecols/4],_mm256_mul_pd(_mm256_load_pd((const double*)(lval+donecols)),_mm256_load_pd((const double*)(lval+donecols))));
                 }
-            }
-            if (spmvmOptions & GHOST_SPMV_DOT_XY) {
-                for (donecols=0; donecols < ncolspadded; donecols+=4) {
+                if (spmvmOptions & GHOST_SPMV_DOT_XY) {
                     dot2[donecols/4] = _mm256_add_pd(dot2[donecols/4],_mm256_mul_pd(_mm256_load_pd((const double*)(rval+donecols)),_mm256_load_pd((const double*)(lval+donecols))));
                 }
-            }
-            if (spmvmOptions & GHOST_SPMV_DOT_XX) {
-                for (donecols=0; donecols < ncolspadded; donecols+=4) {
+                if (spmvmOptions & GHOST_SPMV_DOT_XX) {
                     dot3[donecols/4] = _mm256_add_pd(dot3[donecols/4],_mm256_mul_pd(_mm256_load_pd((const double*)(rval+donecols)),_mm256_load_pd((const double*)(rval+donecols))));
                 }
             }
