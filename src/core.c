@@ -157,8 +157,8 @@ ghost_error_t ghost_init(int argc, char **argv)
 
     if (nnoderanks != nnumanodes+ncudadevs) {
         PERFWARNING_LOG("The number of MPI processes (%d) on this node is not "
-                "optimal! Suggested number: %d (%d CUDA devices + %d NUMA "
-                "domains)",nnoderanks,nnumanodes+ncudadevs,ncudadevs,nnumanodes);
+                "optimal! Suggested number: %d (%d CUDA device%s + %d NUMA "
+                "domain%s)",nnoderanks,nnumanodes+ncudadevs,ncudadevs,ncudadevs==1?"":"s",nnumanodes,nnumanodes==1?"":"s");
     }
 
     ghost_type_t settype;
