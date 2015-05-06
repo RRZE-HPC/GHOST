@@ -69,11 +69,11 @@ ghost_error_t ghost_sellspmv__a_avx_d_d_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat,
             dot3[v] = _mm256_setzero_pd();
         }
 
-        for (v=0; v<invec->traits.ncols; v++)
-        {
 #pragma omp for schedule(runtime)
-            for (c=0; c<mat->nrowsPadded/CHUNKHEIGHT; c++) 
-            { // loop over chunks
+        for (c=0; c<mat->nrowsPadded/CHUNKHEIGHT; c++) 
+        { // loop over chunks
+            for (v=0; v<invec->traits.ncols; v++)
+            {
 
                 #GHOST_UNROLL#tmp@ = _mm256_setzero_pd();#CHUNKHEIGHT/4
                 lval = (double *)res->val+v*res->stride;
@@ -242,11 +242,11 @@ ghost_error_t ghost_sellspmv__a_avx_z_z_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat,
             dot3[v] = _mm256_setzero_pd();
         }
 
-        for (v=0; v<invec->traits.ncols; v++)
-        {
 #pragma omp for schedule(runtime)
-            for (c=0; c<mat->nrowsPadded/CHUNKHEIGHT; c++) 
-            { // loop over chunks
+        for (c=0; c<mat->nrowsPadded/CHUNKHEIGHT; c++) 
+        { // loop over chunks
+            for (v=0; v<invec->traits.ncols; v++)
+            {
 
                 #GHOST_UNROLL#tmp@ = _mm256_setzero_pd();#CHUNKHEIGHT/2
                 lval = (complex double *)res->val+v*res->stride;
