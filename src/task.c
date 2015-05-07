@@ -64,7 +64,13 @@ ghost_error_t ghost_task_enqueue(ghost_task_t *t)
 
     hwloc_bitmap_zero(t->coremap);
     hwloc_bitmap_zero(t->childusedmap);
-    GHOST_CALL_RETURN(ghost_task_cur(&t->parent));
+
+    if( t->parent != NULL ) {
+      DEBUG_LOG(1,"Task's parent overwritten!");
+    }
+    else {
+      GHOST_CALL_RETURN(ghost_task_cur(&t->parent));
+    }
 
     ghost_taskq_add(t);
     t->state = GHOST_TASK_ENQUEUED;

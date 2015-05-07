@@ -44,6 +44,8 @@ typedef enum
         ghost_task_cur(&cur);\
         if (!cur) {\
             PERFWARNING_LOG("A mathematical kernel has been called outside a task!");\
+        }else if(cur->nThreads == 0) {\
+            PERFWARNING_LOG("A mathematical kernel has been called in a task with 0 threads!");\
         }\
     }\
     if (GHOST_VERBOSITY > 1) {\
