@@ -9,6 +9,7 @@
 #include "ghost/log.h"
 #include "ghost/machine.h"
 
+#include "ghost/sell_spmv_mic_gen.h"
 #include "ghost/sell_spmv_avx_gen.h"
 #include "ghost/sell_spmv_sse_gen.h"
 #include "ghost/sell_spmv_plain_gen.h"
@@ -387,6 +388,7 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
 
     // if map is empty include generated code for map construction
     if (ghost_sellspmv_kernels.empty()) {
+#include "sell_spmv_mic.def"
 #include "sell_spmv_avx.def"
 #include "sell_spmv_sse.def"
 #include "sell_spmv_plain.def"
