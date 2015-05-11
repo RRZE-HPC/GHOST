@@ -57,6 +57,7 @@ ghost_error_t ghost_cu_init(int dev)
     UNUSED(dev);
 #endif
 
+
     return GHOST_SUCCESS;
 }
 
@@ -206,6 +207,8 @@ ghost_error_t ghost_cu_gpu_info_create(ghost_gpu_info_t **devInfo)
 {
     ghost_error_t ret = GHOST_SUCCESS;
 #ifdef GHOST_HAVE_CUDA
+    ghost_mpi_comm_t ghost_cuda_comm;
+    GHOST_CALL_GOTO(ghost_cuda_comm_get(&ghost_cuda_comm),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)devInfo,sizeof(ghost_gpu_info_t)),err,ret);
     (*devInfo)->ndistinctdevice = 1;
     (*devInfo)->names = NULL;
@@ -218,8 +221,8 @@ ghost_error_t ghost_cu_gpu_info_create(ghost_gpu_info_t **devInfo)
     int *displs = NULL;
     int *recvcounts = NULL;
 
-    GHOST_CALL_RETURN(ghost_rank(&me, MPI_COMM_WORLD));
-    GHOST_CALL_RETURN(ghost_nrank(&size, MPI_COMM_WORLD));
+    GHOST_CALL_RETURN(ghost_rank(&me, ghost_cuda_comm));
+    GHOST_CALL_RETURN(ghost_nrank(&size, ghost_cuda_comm));
     GHOST_CALL_RETURN(ghost_type_get(&ghost_type));
 
     if (ghost_type == GHOST_TYPE_CUDA) {
@@ -246,7 +249,7 @@ ghost_error_t ghost_cu_gpu_info_create(ghost_gpu_info_t **devInfo)
 
 #ifdef GHOST_HAVE_MPI
     MPI_CALL_RETURN(MPI_Gatherv(name,ghost_cu_MAX_DEVICE_NAME_LEN,MPI_CHAR,names,
-                recvcounts,displs,MPI_CHAR,0,MPI_COMM_WORLD));
+                recvcounts,displs,MPI_CHAR,0,ghost_cuda_comm));
 #else
     strncpy(names,name,ghost_cu_MAX_DEVICE_NAME_LEN);
 #endif
@@ -262,7 +265,7 @@ ghost_error_t ghost_cu_gpu_info_create(ghost_gpu_info_t **devInfo)
     }
 
 #ifdef GHOST_HAVE_MPI
-    MPI_CALL_GOTO(MPI_Bcast(&((*devInfo)->ndistinctdevice),1,MPI_INT,0,MPI_COMM_WORLD),err,ret);
+    MPI_CALL_GOTO(MPI_Bcast(&((*devInfo)->ndistinctdevice),1,MPI_INT,0,ghost_cuda_comm),err,ret);
 #endif
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&(*devInfo)->ndevice,sizeof(int)*(*devInfo)->ndistinctdevice),err,ret);
@@ -289,10 +292,10 @@ ghost_error_t ghost_cu_gpu_info_create(ghost_gpu_info_t **devInfo)
     }
 
 #ifdef GHOST_HAVE_MPI
-    MPI_CALL_GOTO(MPI_Bcast((*devInfo)->ndevice,(*devInfo)->ndistinctdevice,MPI_INT,0,MPI_COMM_WORLD),err,ret);
+    MPI_CALL_GOTO(MPI_Bcast((*devInfo)->ndevice,(*devInfo)->ndistinctdevice,MPI_INT,0,ghost_cuda_comm),err,ret);
 
     for (i=0; i<(*devInfo)->ndistinctdevice; i++) {
-        MPI_CALL_GOTO(MPI_Bcast((*devInfo)->names[i],ghost_cu_MAX_DEVICE_NAME_LEN,MPI_CHAR,0,MPI_COMM_WORLD),err,ret);
+        MPI_CALL_GOTO(MPI_Bcast((*devInfo)->names[i],ghost_cu_MAX_DEVICE_NAME_LEN,MPI_CHAR,0,ghost_cuda_comm),err,ret);
     }
 #endif
 

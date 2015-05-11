@@ -7,6 +7,7 @@
 #define GHOST_CORE_H
 
 #include "error.h"
+#include "types.h"
 
 /**
  * @ingroup core
@@ -85,6 +86,15 @@ extern "C" {
     ghost_error_t ghost_string(char **str);
 
     ghost_error_t ghost_barrier();
+
+    /**
+     * @brief Get a communicator containing only processes with GHOST_HAVE_CUDA enabled.
+     *
+     * @param comm Where to store the communicator
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error_t ghost_cuda_comm_get(ghost_mpi_comm_t *comm);
 
 #ifdef __cplusplus
 }

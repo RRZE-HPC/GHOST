@@ -33,6 +33,13 @@ static ghost_type_t ghost_type = GHOST_TYPE_INVALID;
 static int MPIwasInitialized = 0;
 static int initialized = 0;
 
+/**
+ * @brief A communicator containing only the processes with GHOST_HAVE_CUDA enabled.
+ *
+ * This is necessary, e.g., for gathering CUDA information in heterogeneous runs containing Xeon Phis.
+ */
+static ghost_mpi_comm_t ghost_cuda_comm = MPI_COMM_NULL;
+
 char * ghost_type_string(ghost_type_t t)
 {
 
@@ -267,7 +274,9 @@ ghost_error_t ghost_init(int argc, char **argv)
         free(cpusetStr);
     }
 
+    int hasCuda = 0;
 #ifdef GHOST_HAVE_CUDA
+    hasCuda = 1;
     int cudaDevice = 0;
 
     if (hwconfig.cudevice != GHOST_HWCONFIG_INVALID) {
@@ -314,6 +323,16 @@ ghost_error_t ghost_init(int argc, char **argv)
             cudaDevice++;
         }
     }
+#endif
+
+#ifdef GHOST_HAVE_MPI
+    int rank;
+    ghost_mpi_comm_t tmpcomm;
+    GHOST_CALL_RETURN(ghost_rank(&rank,MPI_COMM_WORLD));
+    MPI_CALL_RETURN(MPI_Comm_dup(MPI_COMM_WORLD,&tmpcomm));
+    MPI_CALL_RETURN(MPI_Comm_split(tmpcomm,hasCuda,rank,&ghost_cuda_comm));
+    MPI_CALL_RETURN(MPI_Comm_split(tmpcomm,hasCuda,rank,&ghost_cuda_comm));
+    MPI_CALL_RETURN(MPI_Comm_free(&tmpcomm));
 #endif
 
     if (ghost_hybridmode == GHOST_HYBRIDMODE_ONEPERNODE) {
@@ -570,5 +589,11 @@ ghost_error_t ghost_barrier()
 #endif
 //    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_COMMUNICATION);
 
+    return GHOST_SUCCESS;
+}
+    
+ghost_error_t ghost_cuda_comm_get(ghost_mpi_comm_t *comm)
+{
+    *comm = ghost_cuda_comm;
     return GHOST_SUCCESS;
 }
