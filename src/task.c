@@ -64,7 +64,13 @@ ghost_error_t ghost_task_enqueue(ghost_task_t *t)
 
     hwloc_bitmap_zero(t->coremap);
     hwloc_bitmap_zero(t->childusedmap);
-    GHOST_CALL_RETURN(ghost_task_cur(&t->parent));
+
+    if( t->parent != NULL ) {
+      DEBUG_LOG(1,"Task's parent overwritten!");
+    }
+    else {
+      GHOST_CALL_RETURN(ghost_task_cur(&t->parent));
+    }
 
     ghost_taskq_add(t);
     t->state = GHOST_TASK_ENQUEUED;
@@ -139,6 +145,7 @@ char *ghost_task_state_string(ghost_task_state_t state)
 void ghost_task_destroy(ghost_task_t *t)
 {
     if (t) {
+        sem_destroy(t->progressSem);
         pthread_mutex_destroy(t->mutex);
         pthread_cond_destroy(t->finishedCond);
 
@@ -146,6 +153,7 @@ void ghost_task_destroy(ghost_task_t *t)
         hwloc_bitmap_free(t->coremap);
         hwloc_bitmap_free(t->childusedmap);
         free(t->ret);
+        free(t->progressSem);
         free(t->mutex);
         free(t->finishedCond);
     }
@@ -184,9 +192,11 @@ ghost_error_t ghost_task_create(ghost_task_t **t, int nThreads, int LD, void *(*
     (*t)->ndepends = ndepends;
 
 //    GHOST_CALL_GOTO(ghost_malloc((void **)&(*t)->cores,sizeof(int)*(*t)->nThreads),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&(*t)->progressSem,sizeof(sem_t)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&(*t)->finishedCond,sizeof(pthread_cond_t)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&(*t)->mutex,sizeof(pthread_mutex_t)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&(*t)->ret,sizeof(void *)),err,ret);
+    sem_init((*t)->progressSem,0,0);
     pthread_mutex_init((*t)->mutex,NULL);
     pthread_cond_init((*t)->finishedCond,NULL);
     (*t)->state = GHOST_TASK_CREATED;

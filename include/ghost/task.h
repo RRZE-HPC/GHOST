@@ -8,6 +8,7 @@
 #define GHOST_TASK_H
 
 #include <pthread.h>
+#include <semaphore.h>
 #include <hwloc.h>
 #include "error.h"
 
@@ -110,6 +111,10 @@ typedef struct ghost_task_t {
      * @brief The number of dependencies. (user-defined)
      */
     int ndepends;
+    /**
+     * @brief A semaphore for the *user* to mark progress in this thread. (set by the library)
+     */
+    sem_t *progressSem;
 
     // set by the library
     /**
@@ -141,8 +146,8 @@ typedef struct ghost_task_t {
      */
     struct ghost_task_t *prev;
     /**
-     * @brief The adding task if the task has been added from within a task.
-     * (set by the library)
+     * @brief The enqueueing task if the task has been enqueued from within a task.
+     * (set by the library, can be overwritten by the user *before* enqueueing)
      */
     struct ghost_task_t *parent;
     /**
