@@ -418,7 +418,13 @@ static ghost_error_t vec_cm_toFile(ghost_densemat_t *vec, char *path, bool singl
             return GHOST_ERR_IO;
         }
 
-        GHOST_SINGLETHREAD(DENSEMAT_ITER(vec,fwrite(valptr, vec->elSize, 1, filed)));
+        if (DENSEMAT_SINGLECOL_STRIDE1(vec)) {
+            INFO_LOG("Fast write");
+            fwrite(vec->val,vec->elSize*vec->traits.nrows,1,filed);
+        } else {
+            PERFWARNING_LOG("Serial file writing!");
+            GHOST_SINGLETHREAD(DENSEMAT_ITER(vec,fwrite(valptr, vec->elSize, 1, filed)));
+        }
         /*ghost_lidx_t v;
         for (v=0; v<vec->traits.ncols; v++) {
             char *val = NULL;
