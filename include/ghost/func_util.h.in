@@ -44,6 +44,8 @@ typedef enum
         ghost_task_cur(&cur);\
         if (!cur) {\
             PERFWARNING_LOG("A mathematical kernel has been called outside a task!");\
+        }else if(cur->nThreads == 0) {\
+            PERFWARNING_LOG("A mathematical kernel has been called in a task with 0 threads!");\
         }\
     }\
     if (GHOST_VERBOSITY > 1) {\
@@ -52,6 +54,7 @@ typedef enum
 
 #define GHOST_FUNC_EXIT(functype)\
     if (${INSTRUMENTATION_FUNCTYPES}) {\
+        /*ghost_barrier();*/\
         ghost_instr_prefix_set(__prefixbackup);\
         GHOST_INSTR_STOP(__FUNCTION__+__funcnameoffset);\
         ghost_instr_enable = __ghost_instr_enable_backup;\

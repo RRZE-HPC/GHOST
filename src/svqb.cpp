@@ -140,10 +140,8 @@ static ghost_error_t ghost_svqb_tmpl (ghost_densemat_t * v_ot , ghost_densemat_t
     T *  xval;
     GHOST_CALL_GOTO(ghost_densemat_valptr(x,(void **)&xval),err,ret);
     
-    printf("SVQB call ghost_tsmttsm..\n");
     //GHOST_CALL_GOTO(ghost_tsmttsm( x, v, v,&one,&zero,GHOST_GEMM_ALL_REDUCE,1),err,ret);
     GHOST_CALL_GOTO(ghost_tsmttsm_kahan( x, v, v,&one,&zero,GHOST_GEMM_ALL_REDUCE,1),err,ret);
-    printf("SVQB ghost_tsmttsm finshed\n");
     
 
     x->download(x);
