@@ -52,7 +52,6 @@ typedef enum
 
 #define GHOST_FUNC_EXIT(functype)\
     if (${INSTRUMENTATION_FUNCTYPES}) {\
-        ghost_barrier();\
         ghost_instr_prefix_set(__prefixbackup);\
         GHOST_INSTR_STOP(__FUNCTION__+__funcnameoffset);\
         ghost_instr_enable = __ghost_instr_enable_backup;\
