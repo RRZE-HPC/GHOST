@@ -347,6 +347,13 @@ static ghost_error_t CRS_split(ghost_sparsemat_t *mat)
     {
         DEBUG_LOG(1,"Duplicate col array!");
         GHOST_CALL_GOTO(ghost_malloc((void **)&CR(mat)->col,sizeof(ghost_lidx_t)*mat->nnz),err,ret);
+
+#pragma omp parallel for private(j) schedule(runtime)
+        for (i=0; i<mat->context->lnrows[me]; i++) {
+            for (j=fullCR->rpt[i]; j<fullCR->rpt[i+1]; j++) {
+                CR(mat)->col[j] = 0;
+            }
+        }
     }
    
     GHOST_CALL_GOTO(ghost_context_comm_init(mat->context,mat->col_orig,fullCR->col),err,ret);

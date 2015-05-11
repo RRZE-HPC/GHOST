@@ -78,8 +78,15 @@ int ghost_sparsemat_rowfunc_bincrs(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost
         ghost_malloc((void **)&rowPtr,(header.nrows + 1) * sizeof(ghost_gidx_t));
         ghost_malloc((void **)&values,header.nnz * dtsize);
 
+#pragma omp parallel for
         for(i=0; i < header.nrows+1; ++i){
             rowPtr[i] = 0;
+        }
+
+#pragma omp parallel for
+        for(i=0; i < header.nrows; ++i){
+            values[rowPtr[i]] = 0;
+            colInd[rowPtr[i]] = 0;
         }
             
         if (fseeko(f,GHOST_BINCRS_SIZE_HEADER,SEEK_SET)) {

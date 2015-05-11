@@ -254,6 +254,12 @@ static ghost_error_t SELL_split(ghost_sparsemat_t *mat)
     {
         DEBUG_LOG(1,"Duplicate col array!");
         GHOST_CALL_GOTO(ghost_malloc_align((void **)&SELL(mat)->col,sizeof(ghost_lidx_t)*mat->nEnts,GHOST_DATA_ALIGNMENT),err,ret);
+#pragma omp parallel for private(j) schedule(runtime)
+        for (i=0; i<mat->nrowsPadded/SELL(mat)->chunkHeight; i++) {
+            for (j=SELL(mat)->chunkStart[i]; j<SELL(mat)->chunkStart[i]; j++) {
+                SELL(mat)->col[j] = 0;
+            }
+        }
     }
    
     GHOST_CALL_GOTO(ghost_context_comm_init(mat->context,mat->col_orig,fullSELL->col),err,ret);
@@ -291,12 +297,15 @@ static ghost_error_t SELL_split(ghost_sparsemat_t *mat)
     GHOST_CALL_GOTO(ghost_malloc((void **)&remoteSELL->rowLen, (mat->nrowsPadded)*sizeof(ghost_lidx_t)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&remoteSELL->rowLenPadded, (mat->nrowsPadded)*sizeof(ghost_lidx_t)),err,ret);
 
+#pragma omp parallel for schedule(runtime)
     for (i=0; i<mat->nrowsPadded; i++) {
         localSELL->rowLen[i] = 0;
         remoteSELL->rowLen[i] = 0;
         localSELL->rowLenPadded[i] = 0;
         remoteSELL->rowLenPadded[i] = 0;
     }
+
+#pragma omp parallel for schedule(runtime)
     for(chunk = 0; chunk < mat->nrowsPadded/fullSELL->chunkHeight; chunk++) {
         localSELL->chunkLen[chunk] = 0;
         remoteSELL->chunkLen[chunk] = 0;

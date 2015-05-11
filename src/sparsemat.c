@@ -272,8 +272,13 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
 
     mat->nnz = (ghost_lidx_t)gnnz;
     mat->nEnts = (ghost_lidx_t)gnents;
-   
-    chunkptr[0] = 0; 
+
+    // NUMA first touch   
+#pragma omp parallel for schedule (runtime)
+    for(chunk = 0; chunk < nchunks+1; chunk++ ) {
+        chunkptr[chunk] = 0;
+    }
+
     for(chunk = 0; chunk < nchunks; chunk++ ) {
         chunkptr[chunk+1] = chunkptr[chunk] + clp[chunk]*C;
     }
@@ -296,7 +301,6 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
     
     GHOST_CALL_GOTO(ghost_malloc_align((void **)val,mat->elSize*(size_t)mat->nEnts,GHOST_DATA_ALIGNMENT),err,ret);
     GHOST_CALL_GOTO(ghost_malloc_align((void **)col,sizeof(ghost_gidx_t)*(size_t)mat->nEnts,GHOST_DATA_ALIGNMENT),err,ret);
-
 
 #pragma omp parallel for schedule(runtime) private (i,j)
     for (chunk = 0; chunk < nchunks; chunk++) {
