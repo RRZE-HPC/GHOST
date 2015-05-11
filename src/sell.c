@@ -256,7 +256,7 @@ static ghost_error_t SELL_split(ghost_sparsemat_t *mat)
         GHOST_CALL_GOTO(ghost_malloc_align((void **)&SELL(mat)->col,sizeof(ghost_lidx_t)*mat->nEnts,GHOST_DATA_ALIGNMENT),err,ret);
 #pragma omp parallel for private(j) schedule(runtime)
         for (i=0; i<mat->nrowsPadded/SELL(mat)->chunkHeight; i++) {
-            for (j=SELL(mat)->chunkStart[i]; j<SELL(mat)->chunkStart[i]; j++) {
+            for (j=SELL(mat)->chunkStart[i]; j<SELL(mat)->chunkStart[i+1]; j++) {
                 SELL(mat)->col[j] = 0;
             }
         }
