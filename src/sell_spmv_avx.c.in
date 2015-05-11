@@ -1361,7 +1361,11 @@ ghost_error_t ghost_sellspmv__a_avx_z_z_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat,
                 for (donecols=0; donecols < ncolspadded-2; donecols+=2) {
                     _mm256_stream_pd((double *)(lval+donecols),tmp[donecols/2]);
                 }
-                _mm256_maskstore_pd((double *)(lval+donecols),mask,tmp[donecols/2]);
+                if (!(res->traits.ncols%2) || !(res->traits.flags & GHOST_DENSEMAT_VIEW)) {
+                    _mm256_stream_pd((double *)(lval+donecols),tmp[donecols/2]);
+                } else {
+                    _mm_stream_pd((double *)(lval+donecols),_mm256_extractf128_pd(tmp[donecols/2],0));
+                }
             }
             if (spmvmOptions & GHOST_SPMV_CHAIN_AXPBY) {
                 for (donecols=0; donecols < ncolspadded-2; donecols+=2) {
