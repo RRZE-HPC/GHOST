@@ -74,6 +74,10 @@ typedef struct
      * @brief The accumulated runtime.
      */
     double accTime;
+    /**
+     * @brief The average time omitting the first ten calls (useful for benchmarking).
+     */
+    double skip10avgTime;
     
 }
 ghost_timing_region_t;

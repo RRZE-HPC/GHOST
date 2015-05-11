@@ -99,6 +99,12 @@ ghost_error_t ghost_timing_region_create(ghost_timing_region_t ** ri, const char
     (*ri)->maxTime = *max_element(ti.times.begin(),ti.times.end());
     (*ri)->accTime = accumulate(ti.times.begin(),ti.times.end(),0.);
     (*ri)->avgTime = (*ri)->accTime/(*ri)->nCalls;
+    if ((*ri)->nCalls > 10) {
+        (*ri)->skip10avgTime = accumulate(ti.times.begin()+10,ti.times.end(),0.)/((*ri)->nCalls-10);
+    } else {
+        (*ri)->skip10avgTime = 0.;
+    }
+
 
     GHOST_CALL_GOTO(ghost_malloc((void **)(&((*ri)->times)),sizeof(double)*(*ri)->nCalls),err,ret);
     memcpy((*ri)->times,&ti.times[0],(*ri)->nCalls*sizeof(double));
@@ -166,8 +172,9 @@ ghost_error_t ghost_timing_summarystring(char **str)
     buffer << "   t_min | ";
     buffer << "   t_max | ";
     buffer << "   t_avg | ";
+    buffer << "   t_s10 | ";
     buffer << "   t_acc" << endl;
-    buffer << string(maxRegionLen+maxCallsLen+7+4*11,'-') << endl;
+    buffer << string(maxRegionLen+maxCallsLen+7+5*11,'-') << endl;
 
     buffer.precision(2);
     for (iter = timings.begin(); iter != timings.end(); ++iter) {
@@ -180,6 +187,7 @@ ghost_error_t ghost_timing_summarystring(char **str)
                 region->minTime << " | " <<
                 region->maxTime << " | " <<
                 region->avgTime << " | " <<
+                region->skip10avgTime << " | " <<
                 region->accTime << endl;
 
             ghost_timing_region_destroy(region);
