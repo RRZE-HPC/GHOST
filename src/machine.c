@@ -46,6 +46,11 @@ ghost_error_t ghost_topology_create()
         return GHOST_ERR_HWLOC;
     }
 
+    if (hwloc_topology_set_flags(ghost_topology,HWLOC_TOPOLOGY_FLAG_IO_DEVICES)) {
+        ERROR_LOG("Could not set topology flags");
+        return GHOST_ERR_HWLOC;
+    }
+
     if (hwloc_topology_load(ghost_topology)) {
         ERROR_LOG("Could not load topology");
         return GHOST_ERR_HWLOC;
