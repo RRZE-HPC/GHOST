@@ -18,6 +18,7 @@
 #include "ghost/instr.h"
 
 #include <hwloc.h>
+#include <hwloc/intel-mic.h>
 #ifdef GHOST_HAVE_INSTR_LIKWID
 #include <likwid.h>
 #endif
@@ -155,6 +156,7 @@ ghost_error_t ghost_init(int argc, char **argv)
     GHOST_CALL_RETURN(ghost_rank( &noderank,  nodeComm));
 
     int ncudadevs = 0;
+    int nxeonphis = -1;
     int nnumanodes;
     ghost_machine_nnuma(&nnumanodes);
 
@@ -164,8 +166,37 @@ ghost_error_t ghost_init(int argc, char **argv)
 
     if (nnoderanks != nnumanodes+ncudadevs) {
         PERFWARNING_LOG("The number of MPI processes (%d) on this node is not "
-                "optimal! Suggested number: %d (%d CUDA device%s + %d NUMA "
-                "domain%s)",nnoderanks,nnumanodes+ncudadevs,ncudadevs,ncudadevs==1?"":"s",nnumanodes,nnumanodes==1?"":"s");
+                "optimal! Suggested number: %d (%d NUMA domain%s + %d CUDA device%s)",
+                nnoderanks,nnumanodes+ncudadevs,nnumanodes,nnumanodes==1?"":"s",ncudadevs,ncudadevs==1?"":"s");
+    }
+
+    hwloc_obj_t phi = NULL;
+
+    do {
+        nxeonphis++;
+        phi = hwloc_intel_mic_get_device_osdev_by_index(topology,nxeonphis);
+    } while (phi);
+
+    int nxeonphis_total;
+    if (noderank == 0) {
+        nxeonphis_total = nxeonphis;
+    } else {
+        nxeonphis_total = 0;
+    }
+    
+    MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&nxeonphis_total,1,MPI_INT,MPI_SUM,MPI_COMM_WORLD));
+
+    int nactivephis = 0;
+
+#ifdef GHOST_HAVE_MIC
+    nactivephis = 1;
+#endif
+    
+    MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&nactivephis,1,MPI_INT,MPI_SUM,MPI_COMM_WORLD));
+
+    if (nactivephis < nxeonphis_total) {
+        PERFWARNING_LOG("There %s %d Xeon Phi%s in the set of active nodes but only %d %s used!",
+                nxeonphis_total>1?"are":"is",nxeonphis_total,nxeonphis_total>1?"s":"",nactivephis,nactivephis==1?"is":"are");
     }
 
     ghost_type_t settype;
