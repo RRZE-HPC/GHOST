@@ -540,6 +540,16 @@ struct ghost_densemat_t
      */
     ghost_error_t (*normalize) (ghost_densemat_t *vec);
     /**
+     * @brief Compute the norm of a densemat: sum_i [conj(vec_i) * vec_i]^pow
+     *
+     * @param vec The densemat.
+     * @param norm Where to store the norm. Must be a pointer to the densemat's data type.
+     * @param pow The power. Must be a pointer to the densemat's data type.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error_t (*norm) (ghost_densemat_t *vec, void *norm, void *pow);
+    /**
      * @brief Permute a densemat with a given permutation.
      *
      * @param vec The densemat.

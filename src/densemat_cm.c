@@ -64,6 +64,7 @@ ghost_error_t ghost_densemat_cm_setfuncs(ghost_densemat_t *vec)
     }
     else 
     {
+        vec->norm = &ghost_densemat_cm_norm_selector;
         vec->dot = &ghost_densemat_cm_dotprod_selector;
         vec->vaxpy = &ghost_densemat_cm_vaxpy_selector;
         vec->vaxpby = &ghost_densemat_cm_vaxpby_selector;
