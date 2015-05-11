@@ -39,6 +39,8 @@ ghost_error_t ghost_spmv_goodfaith(ghost_densemat_t* res, ghost_sparsemat_t* mat
     va_copy(remote_argp,argp);
 
     GHOST_CALL_RETURN(invec->halocommInit(invec,&comm));
+
+    GHOST_INSTR_START("comm+localcomp");
     GHOST_CALL_RETURN(invec->halocommStart(invec,&comm));
     
     GHOST_INSTR_START("local");
@@ -46,6 +48,7 @@ ghost_error_t ghost_spmv_goodfaith(ghost_densemat_t* res, ghost_sparsemat_t* mat
     GHOST_INSTR_STOP("local");
 
     GHOST_CALL_RETURN(invec->halocommFinalize(invec,&comm));
+    GHOST_INSTR_STOP("comm+localcomp");
     
     GHOST_INSTR_START("remote");
     GHOST_CALL_GOTO(mat->remotePart->spmv(mat->remotePart,res,invec,remoteopts,remote_argp),err,ret);
