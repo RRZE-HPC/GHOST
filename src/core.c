@@ -178,6 +178,7 @@ ghost_error_t ghost_init(int argc, char **argv)
                 nnoderanks,nnumanodes+ncudadevs,nnumanodes,nnumanodes==1?"":"s",ncudadevs,ncudadevs==1?"":"s");
     }
 
+    int nxeonphis_total;
 #if HWLOC_API_VERSION >= 0x00010700
     hwloc_obj_t phi = NULL;
 
@@ -186,7 +187,6 @@ ghost_error_t ghost_init(int argc, char **argv)
         phi = hwloc_intel_mic_get_device_osdev_by_index(topology,nxeonphis);
     } while (phi);
 
-    int nxeonphis_total;
     if (noderank == 0) {
         nxeonphis_total = nxeonphis;
     } else {
