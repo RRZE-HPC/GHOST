@@ -152,7 +152,6 @@ void ghost_task_destroy(ghost_task_t *t)
 //        free(t->cores);
         hwloc_bitmap_free(t->coremap);
         hwloc_bitmap_free(t->childusedmap);
-        free(t->ret);
         free(t->progressSem);
         free(t->mutex);
         free(t->finishedCond);
@@ -195,7 +194,6 @@ ghost_error_t ghost_task_create(ghost_task_t **t, int nThreads, int LD, void *(*
     GHOST_CALL_GOTO(ghost_malloc((void **)&(*t)->progressSem,sizeof(sem_t)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&(*t)->finishedCond,sizeof(pthread_cond_t)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&(*t)->mutex,sizeof(pthread_mutex_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&(*t)->ret,sizeof(void *)),err,ret);
     sem_init((*t)->progressSem,0,0);
     pthread_mutex_init((*t)->mutex,NULL);
     pthread_cond_init((*t)->finishedCond,NULL);

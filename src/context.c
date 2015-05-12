@@ -438,6 +438,12 @@ void ghost_context_destroy(ghost_context_t *context)
         free(context->lnrows);
         free(context->lnEnts);
         free(context->lfEnt);
+        if( context->perm_local )
+        {
+          free(context->perm_local->perm);
+          free(context->perm_local->invPerm);
+          free(context->perm_local);
+        }
     }
 
     free(context);

@@ -237,8 +237,8 @@ ghost_error_t ghost_pumap_string(char **str)
     
 
     int nIdle = 0;
-    char *cpusetstr;
-    char *busystr;
+    char *cpusetstr = NULL;
+    char *busystr = NULL;
     
     hwloc_bitmap_list_asprintf(&cpusetstr,pumap->cpuset);
     hwloc_bitmap_list_asprintf(&busystr,pumap->busy);
@@ -249,6 +249,9 @@ ghost_error_t ghost_pumap_string(char **str)
     ghost_line_string(str,"Busy CPU set",NULL,"%s",cpusetstr);
     ghost_line_string(str,"No. of idle PUs",NULL,"%d",nIdle);
     ghost_footer_string(str);
+
+    free(cpusetstr);
+    free(busystr);
 
     return GHOST_SUCCESS;
 
