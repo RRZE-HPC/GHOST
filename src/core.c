@@ -18,7 +18,12 @@
 #include "ghost/instr.h"
 
 #include <hwloc.h>
+#if HWLOC_API_VERSION >= 0x00010700
 #include <hwloc/intel-mic.h>
+#else
+#warning "The HWLOC version is too old. Cannot detect Intel Xeon Phis!"
+#endif
+
 #ifdef GHOST_HAVE_INSTR_LIKWID
 #include <likwid.h>
 #endif
@@ -173,6 +178,7 @@ ghost_error_t ghost_init(int argc, char **argv)
                 nnoderanks,nnumanodes+ncudadevs,nnumanodes,nnumanodes==1?"":"s",ncudadevs,ncudadevs==1?"":"s");
     }
 
+#if HWLOC_API_VERSION >= 0x00010700
     hwloc_obj_t phi = NULL;
 
     do {
@@ -188,6 +194,10 @@ ghost_error_t ghost_init(int argc, char **argv)
     }
     
     MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&nxeonphis_total,1,MPI_INT,MPI_SUM,MPI_COMM_WORLD));
+#else
+    WARNING_LOG("Possibly wrong information about the number of Xeon Phis due to outdated HWLOC!");
+    nxeonphis_total = 0;
+#endif
 
     int nactivephis = 0;
 
