@@ -373,10 +373,8 @@ static void ghost_mpi_add_densemat_z(void *in, void *inout, int *len, MPI_Dataty
 
     ghost_mpi_datatype_t dt_z;
     ghost_mpi_datatype(&dt_z,(ghost_datatype_t)(GHOST_DT_DOUBLE|GHOST_DT_COMPLEX));
-    if (vectypes[0] != dt_z) {
-        ERROR_LOG("Not a densemat of complex doubles!");
-        return;
-    }
+    // the complex double MPI datatype is derived and must be free'd
+    MPI_Type_free(&vectypes[0]);
 
     int count    = vecargs[0];
     int blocklen = vecargs[1];
@@ -416,10 +414,8 @@ static void ghost_mpi_add_densemat_c(void *in, void *inout, int *len, MPI_Dataty
 
     ghost_mpi_datatype_t dt_c;
     ghost_mpi_datatype(&dt_c,(ghost_datatype_t)(GHOST_DT_FLOAT|GHOST_DT_COMPLEX));
-    if (vectypes[0] != dt_c) {
-        ERROR_LOG("Not a densemat of complex floats!");
-        return;
-    }
+    // the complex double MPI datatype is derived and must be free'd
+    MPI_Type_free(&vectypes[0]);
 
     int count    = vecargs[0];
     int blocklen = vecargs[1];
