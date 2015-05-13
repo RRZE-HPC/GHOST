@@ -246,6 +246,7 @@ ghost_error_t ghost_sellspmv__a_mic_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat,
             }
             
         }
+        free(tmpresult);
     }
     if (spmvmOptions & GHOST_SPMV_DOT) {
         for (col=0; col<invec->traits.ncols; col++) {
