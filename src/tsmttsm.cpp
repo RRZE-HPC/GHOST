@@ -132,11 +132,6 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
     p.vcols = v->traits.ncols;
     p.wcols = w->traits.ncols;
     
-    if (p.vcols % 4 || p.wcols % 4) {
-        PERFWARNING_LOG("Use plain for non-multiple of four");
-        p.impl = GHOST_IMPLEMENTATION_PLAIN;
-    }
-    
     kernel = ghost_tsmttsm_kernels[p];
     
     if (!kernel) {

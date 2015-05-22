@@ -118,25 +118,34 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
 
     p.xcols = x->traits.ncols;
     p.vcols = v->traits.ncols;
-    if (p.xcols == 2) {
+    
+    if (p.vcols < 4 || p.xcols < 4) {
+        p.impl = GHOST_IMPLEMENTATION_PLAIN;
+    } else if (p.vcols % 4 || p.xcols % 4) {
+        if (!(x->traits.flags & GHOST_DENSEMAT_VIEW) && (!(v->traits.ncolspadded % 4) && !(x->traits.ncolspadded % 4))) {
+            p.vcols = v->traits.ncolspadded;
+            p.xcols = x->traits.ncolspadded;
+        } else {
+            if (p.xcols == 2) {
 #ifdef GHOST_HAVE_SSE
-        PERFWARNING_LOG("Use SSE for ncols==2");
-        p.impl = GHOST_IMPLEMENTATION_SSE;
+                PERFWARNING_LOG("Use SSE for ncols==2");
+                p.impl = GHOST_IMPLEMENTATION_SSE;
 #endif
+            }
+            if (p.xcols == 1) {
+                PERFWARNING_LOG("Use plain for ncols==1");
+                p.impl = GHOST_IMPLEMENTATION_PLAIN;
+            }
+            if ((p.xcols % 4 || p.vcols % 4) && (p.impl != GHOST_IMPLEMENTATION_CUDA)) {
+                PERFWARNING_LOG("Use SSE for non-multiple of four");
+                p.impl = GHOST_IMPLEMENTATION_SSE;
+            }
+            if ((p.xcols % 2 || p.vcols % 2) && (p.impl != GHOST_IMPLEMENTATION_CUDA)) {
+                PERFWARNING_LOG("Use plain for non-even column count");
+                p.impl = GHOST_IMPLEMENTATION_PLAIN;
+            }
+        }
     }
-    if (p.xcols == 1) {
-        PERFWARNING_LOG("Use plain for ncols==1");
-        p.impl = GHOST_IMPLEMENTATION_PLAIN;
-    }
-    if ((p.xcols % 4 || p.vcols % 4) && (p.impl != GHOST_IMPLEMENTATION_CUDA)) {
-        PERFWARNING_LOG("Use SSE for non-multiple of four");
-        p.impl = GHOST_IMPLEMENTATION_SSE;
-    }
-    if ((p.xcols % 2 || p.vcols % 2) && (p.impl != GHOST_IMPLEMENTATION_CUDA)) {
-        PERFWARNING_LOG("Use plain for non-even column count");
-        p.impl = GHOST_IMPLEMENTATION_PLAIN;
-    }
-    //p.impl = GHOST_IMPLEMENTATION_PLAIN;
 
     void *xptr, *vptr, *wptr;
     ghost_densemat_valptr(x,&xptr);
