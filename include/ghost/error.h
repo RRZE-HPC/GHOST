@@ -34,6 +34,8 @@ typedef enum {
     GHOST_ERR_BLAS
 } ghost_error_t;
 
+#include "errorhandler.h"
+
 /**
  * @brief This macro should be used for calling a GHOST function inside
  * a function which itself returns a ghost_error_t.
@@ -106,6 +108,10 @@ typedef enum {
         int strlen;\
         MPI_Error_string(mpicallmacroerr,errstr,&strlen);\
         ERROR_LOG("MPI Error: %s",errstr);\
+        ghost_errorhandler_t h = ghost_errorhandler_get(GHOST_ERR_MPI);\
+        if (h) {\
+            h((void *)&mpicallmacroerr);\
+        }\
         __err = GHOST_ERR_MPI;\
     }\
 }\
@@ -129,6 +135,10 @@ typedef enum {
     int __hwlocerr = call;\
     if (__hwlocerr) {\
         ERROR_LOG("HWLOC Error: %d",__hwlocerr);\
+        ghost_errorhandler_t h = ghost_errorhandler_get(GHOST_ERR_HWLOC);\
+        if (h) {\
+            h((void *)&__hwlocerr);\
+        }\
         __err = GHOST_ERR_HWLOC;\
     }\
 }\
@@ -152,6 +162,10 @@ typedef enum {
     cudaError_t __cuerr = call;\
     if (__cuerr != cudaSuccess) {\
         ERROR_LOG("CUDA Error: %s (%d)",cudaGetErrorString(__cuerr),(int)__cuerr);\
+        ghost_errorhandler_t h = ghost_errorhandler_get(GHOST_ERR_CUDA);\
+        if (h) {\
+            h((void *)&__cuerr);\
+        }\
         __err = GHOST_ERR_CUDA;\
     }\
 }\
@@ -175,6 +189,10 @@ typedef enum {
     cublasStatus_t err = call;\
     if (err != CUBLAS_STATUS_SUCCESS) {\
         ERROR_LOG("CUBLAS Error: %d",(int)err);\
+        ghost_errorhandler_t h = ghost_errorhandler_get(GHOST_ERR_CUBLAS);\
+        if (h) {\
+            h((void *)&err);\
+        }\
         __err = GHOST_ERR_CUBLAS;\
     }\
 }\
@@ -198,6 +216,10 @@ typedef enum {
     curandStatus_t err = call;\
     if (err != CURAND_STATUS_SUCCESS) {\
         ERROR_LOG("CURAND Error: %d",(int)err);\
+        ghost_errorhandler_t h = ghost_errorhandler_get(GHOST_ERR_CURAND);\
+        if (h) {\
+            h((void *)&err);\
+        }\
         __err = GHOST_ERR_CURAND;\
     }\
 }\
@@ -221,6 +243,10 @@ typedef enum {
     cusparseStatus_t err = call;\
     if (err != CUSPARSE_STATUS_SUCCESS) {\
         ERROR_LOG("CUSPARSE Error: %d",(int)err);\
+        ghost_errorhandler_t h = ghost_errorhandler_get(GHOST_ERR_CUSPARSE);\
+        if (h) {\
+            h((void *)&err);\
+        }\
         __err = GHOST_ERR_CUSPARSE;\
     }\
 }\
@@ -244,6 +270,10 @@ typedef enum {
     int err = call;\
     if (err) {\
         ERROR_LOG("SCOTCH Error: %d",err);\
+        ghost_errorhandler_t h = ghost_errorhandler_get(GHOST_ERR_SCOTCH);\
+        if (h) {\
+            h((void *)&err);\
+        }\
         __err = GHOST_ERR_SCOTCH;\
     }\
 }\
@@ -267,6 +297,10 @@ typedef enum {
     int err = call;\
     if (err != _TRUE) {\
         ERROR_LOG("ColPack Error: %d",err);\
+        ghost_errorhandler_t h = ghost_errorhandler_get(GHOST_ERR_COLPACK);\
+        if (h) {\
+            h((void *)&err);\
+        }\
         __err = GHOST_ERR_COLPACK;\
     }\
 }\
@@ -288,7 +322,13 @@ typedef enum {
 
 #define BLAS_CALL(call,__err) {\
     call;\
-    if (ghost_blas_err_pop()) {\
+    int err = ghost_blas_err_pop();\
+    if (err) {\
+        ERROR_LOG("BLAS Error: %d",err);\
+        ghost_errorhandler_t h = ghost_errorhandler_get(GHOST_ERR_BLAS);\
+        if (h) {\
+            h((void *)&err);\
+        }\
         __err = GHOST_ERR_BLAS;\
     }\
 }\

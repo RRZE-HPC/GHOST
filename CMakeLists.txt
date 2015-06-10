@@ -69,6 +69,7 @@ set (SOURCES
     src/densemat_cm.cpp 
     src/densemat_rm_averagehalo.cpp
     src/densemat_rm.cpp 
+    src/errorhandler.cpp
     src/sell.cpp
     src/sell_kacz.cpp
     src/sell_spmv.cpp
@@ -134,6 +135,7 @@ set (HEADERS
     include/ghost/densemat_iter_macros.h
     include/ghost/densemat_rm.h
     include/ghost/error.h
+    include/ghost/errorhandler.h
     include/ghost/helper.h
     include/ghost/instr.h
     include/ghost/locality.h	
