@@ -299,7 +299,7 @@ ghost_error_t ghost_tsmm__u_sse_d_x_x_rm_cm(ghost_densemat_t *x, ghost_densemat_
     double * restrict wtran = NULL;
     ghost_lidx_t ncols_wtran = PAD(w->traits.ncols,2);
     ghost_lidx_t nrows_wtran = PAD(w->traits.ncols,2);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&wtran,sizeof(double)*nrows_tran*ncols_wtran),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&wtran,sizeof(double)*nrows_wtran*ncols_wtran),err,ret);
     for (s=0; s<w->traits.ncols; s++) {
         for (j=0; j<w->traits.nrows; j++) {
             wtran[j*ncols_wtran+s] = wval[s*ldw+j];
