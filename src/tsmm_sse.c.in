@@ -224,7 +224,7 @@ ghost_error_t ghost_tsmm__a_sse_d_x_x_rm_cm(ghost_densemat_t *x, ghost_densemat_
     if (fabs(dalpha-1.) > DBL_MIN || fabs(dbeta) > DBL_MIN) { // general case: X = b*X + a*V*W
 #pragma omp parallel for private(j,s,tmp) schedule(runtime)
         for (i=0; i<n; i++) {
-            for (s=0; s+2<=w->traits.ncols; s+=2) {
+            for (s=0; s+2<=w->traits.ncolspadded; s+=2) {
                 tmp = _mm_mul_pd(betavec,_mm_load_pd(&xval[i*ldx+s]));
                 for (j=0; j<m; j++) {
                     tmp = _mm_add_pd(tmp,_mm_mul_pd(alphavec,_mm_mul_pd(
@@ -236,7 +236,7 @@ ghost_error_t ghost_tsmm__a_sse_d_x_x_rm_cm(ghost_densemat_t *x, ghost_densemat_
     } else { // common case: X = V*W
 #pragma omp parallel for private(j,s,tmp) schedule(runtime)
         for (i=0; i<n; i++) {
-            for (s=0; s+2<=w->traits.ncols; s+=2) {
+            for (s=0; s+2<=w->traits.ncolspadded; s+=2) {
                 tmp = _mm_setzero_pd();
                 for (j=0; j<m; j++) {
                     tmp = _mm_add_pd(tmp,_mm_mul_pd(
@@ -310,7 +310,7 @@ ghost_error_t ghost_tsmm__u_sse_d_x_x_rm_cm(ghost_densemat_t *x, ghost_densemat_
     if (fabs(dalpha-1.) > DBL_MIN || fabs(dbeta) > DBL_MIN) { // general case: X = b*X + a*V*W
 #pragma omp parallel for private(j,s,tmp) schedule(runtime)
         for (i=0; i<n; i++) {
-            for (s=0; s+2<=w->traits.ncols; s+=2) {
+            for (s=0; s+2<=w->traits.ncolspadded; s+=2) {
                 tmp = _mm_mul_pd(betavec,_mm_loadu_pd(&xval[i*ldx+s]));
                 for (j=0; j<m; j++) {
                     tmp = _mm_add_pd(tmp,_mm_mul_pd(alphavec,_mm_mul_pd(
@@ -322,7 +322,7 @@ ghost_error_t ghost_tsmm__u_sse_d_x_x_rm_cm(ghost_densemat_t *x, ghost_densemat_
     } else { // common case: X = V*W
 #pragma omp parallel for private(j,s,tmp) schedule(runtime)
         for (i=0; i<n; i++) {
-            for (s=0; s+2<=w->traits.ncols; s+=2) {
+            for (s=0; s+2<=w->traits.ncolspadded; s+=2) {
                 tmp = _mm_setzero_pd();
                 for (j=0; j<m; j++) {
                     tmp = _mm_add_pd(tmp,_mm_mul_pd(
