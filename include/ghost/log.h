@@ -55,8 +55,10 @@
     if (logmacroerr != MPI_SUCCESS) {\
         logmacrome = -1;\
     }\
-    fprintf(stderr, color "[GHOST] PE%d " #type " at %s() <%s:%d>: " FIRST(__VA_ARGS__) ANSI_COLOR_RESET "\n", logmacrome, __func__, FILE_BASENAME, __LINE__ REST(__VA_ARGS__)); \
-    fflush(stderr);\
+    if (logmacrome == GHOST_LOG_MPIRANK || -1 == GHOST_LOG_MPIRANK) {\
+        fprintf(stderr, color "[GHOST] PE%d " #type " at %s() <%s:%d>: " FIRST(__VA_ARGS__) ANSI_COLOR_RESET "\n", logmacrome, __func__, FILE_BASENAME, __LINE__ REST(__VA_ARGS__)); \
+        fflush(stderr);\
+    }\
 }\
 
 #else
