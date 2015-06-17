@@ -25,7 +25,7 @@ option(USE_LONGIDX_LOCAL "Enable 64-bit indices for local quantities" 0)
 option(USE_LONGIDX_GLOBAL "Enable 64-bit indices for global quantities" 1)
 option(OPTIMIZE_HOSTARCH "Create optimized code for the host's architecture" 1)
 option(BUILD_MIC "Build for Intel MIC" 0)
-option(ERR_WARN_INFO_PRINTONCE "Print all errors, warnings and info only once for each occurence" 1)
+option(LOG_ONLY_FIRST_OCCURENCE "Print all errors, warnings and info only once for each occurence" 1)
 option(TRACK_DATATRANSFERS "Track MPI and CUDA data transfers" 0)
 option(GATHER_GLOBAL_INFO "Gather some global information (should be disabled for large-scale runs)" 0)
 set(LOG_MPIRANK "-1" CACHE STRING "The MPI rank for which the log messages will be printed. -1 for full verbosity.")
@@ -59,7 +59,7 @@ if (GATHER_GLOBAL_INFO)
 endif()
 
 set(GHOST_VERBOSITY ${VERBOSITY})
-set(GHOST_ERR_WARN_INFO_PRINTONCE ${ERR_WARN_INFO_PRINTONCE})
+set(GHOST_LOG_ONLY_FIRST_OCCURENCE ${LOG_ONLY_FIRST_OCCURENCE})
 set(GHOST_LOG_MPIRANK ${LOG_MPIRANK})
 
 set (SOURCES
