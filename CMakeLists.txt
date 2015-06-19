@@ -236,6 +236,10 @@ configure_file (
     ${PROJECT_BINARY_DIR}/src/tsmttsm_avx.c
     )
 configure_file (
+    ${PROJECT_SOURCE_DIR}/src/tsmttsm_sse.c.in
+    ${PROJECT_BINARY_DIR}/src/tsmttsm_sse.c
+    )
+configure_file (
     ${PROJECT_SOURCE_DIR}/src/tsmttsm_kahan.c.in
     ${PROJECT_BINARY_DIR}/src/tsmttsm_kahan.c
     )
@@ -252,6 +256,7 @@ set (TO_PREPROCESS
     ${PROJECT_BINARY_DIR}/src/tsmm_inplace.c
     ${PROJECT_BINARY_DIR}/src/tsmttsm.c
     ${PROJECT_BINARY_DIR}/src/tsmttsm_avx.c
+    ${PROJECT_BINARY_DIR}/src/tsmttsm_sse.c
     ${PROJECT_BINARY_DIR}/src/tsmttsm_kahan.c
     )
 

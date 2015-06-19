@@ -6,6 +6,7 @@
 #include "ghost/tsmttsm.h"
 #include "ghost/tsmttsm_gen.h"
 #include "ghost/tsmttsm_avx_gen.h"
+#include "ghost/tsmttsm_sse_gen.h"
 
 #include <map>
 
@@ -105,6 +106,7 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
     if (ghost_tsmttsm_kernels.empty()) {
 #include "tsmttsm.def"
 #include "tsmttsm_avx.def"
+#include "tsmttsm_sse.def"
     }
     
     ghost_tsmttsm_parameters_t p;
