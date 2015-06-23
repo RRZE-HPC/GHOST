@@ -12,6 +12,18 @@
 
 using namespace std;
 
+static int ghost_tsmttsm_perf_GBs(double *perf, double time, void *varg)
+{
+    size_t size;
+    ghost_gemm_perf_args_t arg = *(ghost_gemm_perf_args_t *)varg;
+    
+    ghost_datatype_size(&size,arg.dt);
+
+    *perf = size*(arg.vrows*(arg.vcols+arg.xcols)+arg.vcols*arg.xcols)/1.e9/time;
+
+    return 0;
+}
+
 static bool operator<(const ghost_tsmttsm_parameters_t &a, const ghost_tsmttsm_parameters_t &b) 
 { 
     return ghost_hash(a.dt,a.wcols,ghost_hash(a.vcols,a.impl,ghost_hash(a.xstor,a.wstor,0))) < ghost_hash(b.dt,b.wcols,ghost_hash(b.vcols,b.impl,ghost_hash(b.xstor,b.wstor,0))); 
@@ -210,6 +222,7 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
         tsmttsm_perfargs.vrows = v->traits.nrows;
     }
     tsmttsm_perfargs.dt = x->traits.datatype;
+    ghost_timing_set_perfFunc(__ghost_functag,ghost_tsmttsm_perf_GBs,(void *)&tsmttsm_perfargs,sizeof(tsmttsm_perfargs),"GB/s");
     ghost_timing_set_perfFunc(__ghost_functag,ghost_gemm_perf_GFs,(void *)&tsmttsm_perfargs,sizeof(tsmttsm_perfargs),"GF/s");
 #endif
 
@@ -217,4 +230,5 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
 
     return ret;
 }
+
 
