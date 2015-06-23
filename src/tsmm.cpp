@@ -164,6 +164,12 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
             PERFWARNING_LOG("Switching to the unaligned kernel!");
         }
     }
+    if (p.impl == GHOST_IMPLEMENTATION_PLAIN) {
+        if (!IS_ALIGNED(xptr,64) || !IS_ALIGNED(vptr,64) || !IS_ALIGNED(wptr,64)) {
+            p.alignment = GHOST_UNALIGNED;
+            PERFWARNING_LOG("Switching to the unaligned kernel!");
+        }
+    }
     kernel = ghost_tsmm_kernels[p];
     
     if (!kernel) {
@@ -190,7 +196,12 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
     if (!kernel) {
         PERFWARNING_LOG("Try plain implementation");
         p.impl = GHOST_IMPLEMENTATION_PLAIN;
-        p.alignment = GHOST_UNALIGNED; // plain kernels do not have alignment restrictions
+        if (!IS_ALIGNED(xptr,64) || !IS_ALIGNED(vptr,64) || !IS_ALIGNED(wptr,64)) {
+            p.alignment = GHOST_UNALIGNED;
+            PERFWARNING_LOG("Switching to the unaligned kernel!");
+        } else {
+            p.alignment = GHOST_ALIGNED;
+        }
         p.xcols = x->traits.ncols;
         p.vcols = v->traits.ncols;
         kernel = ghost_tsmm_kernels[p];
