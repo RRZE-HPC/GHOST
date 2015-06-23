@@ -484,7 +484,7 @@ int ghost_gemm_perf_GFs(double *perf, double time, void *varg)
 {
     ghost_gemm_perf_args_t arg = *(ghost_gemm_perf_args_t *)varg;
     
-    *perf = (arg.vrows*arg.xcols*(1+arg.vcols*3))/1.e9/time;
+    *perf = (2*arg.vrows*arg.xcols*arg.vcols)/1.e9/time;
 
     return 0;
 }
