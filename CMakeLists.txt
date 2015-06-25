@@ -548,7 +548,7 @@ if (${CBLAS_H} STREQUAL "mkl_cblas.h")
         find_library(LIBMKL_X_THREAD mkl_sequential ${MKL_LIBDIR})
     endif()
 
-    set (BLAS_LIBRARIES "${LIBMKL_INTEL_XLP64};${LIBMKL_CORE};${LIBMKL_X_THREAD}" CACHE STRING "BLAS libraries")
+    set (BLAS_LIBRARIES "${LIBMKL_INTEL_XLP64};${LIBMKL_CORE};${LIBMKL_X_THREAD}")
     mark_as_advanced(LIBMKL_CORE LIBMKL_INTEL_XLP64 LIBMKL_X_THREAD) 
 elseif (${CBLAS_H} STREQUAL "gsl_cblas.h")
     set(GHOST_HAVE_GSL 1)
