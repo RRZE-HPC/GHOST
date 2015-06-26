@@ -19,6 +19,7 @@
 #cmakedefine GHOST_HAVE_AVX
 #cmakedefine GHOST_HAVE_SSE
 #cmakedefine GHOST_HAVE_INSTR_TIMING
+#cmakedefine GHOST_HAVE_INSTR_IACA
 #cmakedefine GHOST_HAVE_INSTR_LIKWID
 #cmakedefine GHOST_HAVE_LONGIDX_GLOBAL
 #cmakedefine GHOST_HAVE_LONGIDX_LOCAL
