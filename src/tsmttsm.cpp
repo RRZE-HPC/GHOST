@@ -214,8 +214,8 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
 
 #ifdef GHOST_HAVE_INSTR_TIMING
     ghost_gemm_perf_args_t tsmttsm_perfargs;
-    tsmttsm_perfargs.xcols = p.wcols;
-    tsmttsm_perfargs.vcols = p.vcols;
+    tsmttsm_perfargs.xcols = w->traits.ncols;
+    tsmttsm_perfargs.vcols = v->traits.ncols;
     if (v->context) {
         tsmttsm_perfargs.vrows = v->context->gnrows;
     } else {
