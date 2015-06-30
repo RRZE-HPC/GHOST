@@ -483,8 +483,12 @@ out:
 int ghost_gemm_perf_GFs(double *perf, double time, void *varg)
 {
     ghost_gemm_perf_args_t arg = *(ghost_gemm_perf_args_t *)varg;
+    int flopsperent = 2;
+    if (arg.dt & GHOST_DT_COMPLEX) {
+        flopsperent = 8;
+    }
     
-    *perf = (2*arg.vrows/1.e9*arg.xcols*arg.vcols)/time;
+    *perf = (flopsperent*arg.vrows/1.e9*arg.xcols*arg.vcols)/time;
 
     return 0;
 }
