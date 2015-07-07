@@ -51,17 +51,16 @@ ghost_error_t ghost_tsmm__a_avx_z_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_den
     alphavec = _mm256_broadcast_pd(alpha);
     ghost_lidx_t i,m,k,j,s;
 
-    complex double * const restrict wnonpad = NULL, *wtran;
+    complex double * const restrict wnonpad = NULL;
     ghost_lidx_t ncols_wnonpad = w->traits.ncols;
     ghost_lidx_t nrows_wnonpad = w->traits.nrows;
-    ghost_malloc((void **)&wnonpad,sizeof(complex double)*nrows_wnonpad*ncols_wnonpad);
+    ghost_malloc_align((void **)&wnonpad,sizeof(complex double)*nrows_wnonpad*ncols_wnonpad,32);
     for (s=0; s<w->traits.ncols; s++) {
         for (j=0; j<w->traits.nrows; j++) {
             wnonpad[s*nrows_wnonpad+j] = cimag(wval[s*ldw+j])+I*creal(wval[s*ldw+j]);
         }
     }
 
-    __m256d tmp;
     if (fabs(creal(dalpha)-1.) > DBL_MIN || fabs(cimag(dalpha)) > DBL_MIN || fabs(creal(dbeta)) > DBL_MIN || fabs(cimag(dbeta)) > DBL_MIN) { // general case: X = b*X + a*V*W
 #pragma omp parallel private(k,m)
         {
@@ -144,7 +143,7 @@ ghost_error_t ghost_tsmm__a_avx_z_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_den
         }
     }
 
-    free(wtran);
+    free(wnonpad);
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 #else
@@ -189,23 +188,22 @@ ghost_error_t ghost_tsmm__a_avx_d_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_den
     alphavec = _mm256_broadcast_sd(alpha);
     ghost_lidx_t i,m,k,j,s;
 
-    double * const restrict wnonpad = NULL, *wtran;
+    double * const restrict wnonpad = NULL;
     ghost_lidx_t ncols_wnonpad = w->traits.ncols;
     ghost_lidx_t nrows_wnonpad = w->traits.nrows;
-    ghost_malloc((void **)&wnonpad,sizeof(double)*nrows_wnonpad*ncols_wnonpad);
+    ghost_malloc_align((void **)&wnonpad,sizeof(double)*nrows_wnonpad*ncols_wnonpad,32);
     for (s=0; s<w->traits.ncols; s++) {
         for (j=0; j<w->traits.nrows; j++) {
             wnonpad[s*nrows_wnonpad+j] = wval[s*ldw+j];
         }
     }
 
-    __m256d tmp;
     if (fabs(dalpha-1.) > DBL_MIN || fabs(dbeta) > DBL_MIN) { // general case: X = b*X + a*V*W
 #pragma omp parallel private(k,m)
         {
             #GHOST_UNROLL#__m256d tmp@;#8
-            __m256d vrow1,vrow2,vrow3,sum1,sum2,sum3,res;
-            __m128d sumh1,sumh2,sumh3,result1,result2,result3;
+            __m256d vrow1,vrow2,sum1,sum2,res;
+            __m128d sumh1,sumh2,result1,result2;
 #pragma omp for schedule(runtime)
             for (i=0; i<n-1; i+=2) {
                 for (k=0; k<=CFGK-4; k+=4) {
@@ -249,8 +247,8 @@ ghost_error_t ghost_tsmm__a_avx_d_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_den
 #pragma omp parallel private(k,m)
         {
             #GHOST_UNROLL#__m256d tmp@;#8
-            __m256d vrow1,vrow2,vrow3,sum1,sum2,sum3,res;
-            __m128d sumh1,sumh2,sumh3,result1,result2,result3;
+            __m256d vrow1,vrow2,sum1,sum2,res;
+            __m128d sumh1,sumh2,result1,result2;
 #pragma omp for schedule(runtime)
             for (i=0; i<n-1; i+=2) {
                 for (k=0; k<=CFGK-4; k+=4) {
@@ -290,7 +288,7 @@ ghost_error_t ghost_tsmm__a_avx_d_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_den
         }
     }
 
-    free(wtran);
+    free(wnonpad);
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 #else
