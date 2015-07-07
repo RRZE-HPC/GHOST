@@ -58,7 +58,7 @@ ghost_error_t ghost_tsmm__a_avx_z_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_den
     }
 
     __m256d tmp;
-    if (fabs(dalpha-1.) > DBL_MIN || fabs(dbeta) > DBL_MIN) { // general case: X = b*X + a*V*W
+    if (fabs(creal(dalpha)-1.) > DBL_MIN || fabs(cimag(dalpha)) > DBL_MIN || fabs(creal(dbeta)) > DBL_MIN || fabs(cimag(dbeta)) > DBL_MIN) { // general case: X = b*X + a*V*W
 #pragma omp parallel private(k,m)
         {
             #GHOST_UNROLL#__m256d tmp@;#4
