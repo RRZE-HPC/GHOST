@@ -10,8 +10,281 @@
 #include <float.h>
 #include <stdlib.h>
 
-#GHOST_FUNC_BEGIN#BLOCKSZ1=${CFG_BLOCKVECTOR_SIZES}#BLOCKSZ2=${CFG_BLOCKVECTOR_SIZES}
-ghost_error_t ghost_tsmm__a_avx_d_BLOCKSZ1_BLOCKSZ2_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
+#define complex_mul(a,b) _mm256_addsub_pd(_mm256_mul_pd(_mm256_shuffle_pd(b,b,0),a),_mm256_mul_pd(_mm256_shuffle_pd(b,b,0xF),_mm256_shuffle_pd(a,a,5)))
+
+#GHOST_FUNC_BEGIN#CFGK=${CFG_BLOCKVECTOR_SIZES}#CFGM=${CFG_BLOCKVECTOR_SIZES}
+ghost_error_t ghost_tsmm__a_avx_z_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
+{
+#ifdef GHOST_HAVE_AVX
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
+    ghost_error_t ret = GHOST_SUCCESS;
+
+    ghost_lidx_t n = v->traits.nrows;
+
+    INFO_LOG("In AVX TSMM with two fixed block sizes [CFGK][CFGM] %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,x->traits.ncols,n,v->traits.ncols,v->traits.ncols,x->traits.ncols);
+    
+    if (n%2) {
+        n+=1;
+        INFO_LOG("Padding large dimension to %d\n",n);
+    }
+
+    complex double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
+    ghost_lidx_t ldv, ldw, ldx;
+
+    ldv = v->stride;
+    ldw = w->stride;
+    ldx = x->stride;
+
+    ghost_densemat_valptr(v,(void **)&vval);
+    ghost_densemat_valptr(w,(void **)&wval);
+    ghost_densemat_valptr(x,(void **)&xval);
+
+    complex double dalpha = *(complex double *)alpha;
+    complex double dbeta = *(complex double *)beta;
+    __m256d betavec, alphavec;
+   
+    betavec = _mm256_broadcast_pd(beta);
+    alphavec = _mm256_broadcast_pd(alpha);
+    ghost_lidx_t i,m,k,j,s;
+
+    complex double * const restrict wnonpad = NULL, *wtran;
+    ghost_lidx_t ncols_wnonpad = w->traits.ncols;
+    ghost_lidx_t nrows_wnonpad = w->traits.nrows;
+    ghost_malloc((void **)&wnonpad,sizeof(complex double)*nrows_wnonpad*ncols_wnonpad);
+    for (s=0; s<w->traits.ncols; s++) {
+        for (j=0; j<w->traits.nrows; j++) {
+            wnonpad[s*nrows_wnonpad+j] = wval[s*ldw+j];
+        }
+    }
+
+    __m256d tmp;
+    if (fabs(dalpha-1.) > DBL_MIN || fabs(dbeta) > DBL_MIN) { // general case: X = b*X + a*V*W
+#pragma omp parallel private(k,m)
+        {
+            #GHOST_UNROLL#__m256d tmp@;#4
+            __m256d vrow1,vrow2,res;
+#pragma omp for schedule(runtime)
+            for (i=0; i<n-1; i+=2) {
+                for (k=0; k<=CFGK-2; k+=2) {
+                    #GHOST_UNROLL#tmp@ = _mm256_setzero_pd();#4
+
+                    for (m=0; m<=CFGM-2; m+=2) {
+                        vrow1 = _mm256_load_pd((double *)&vval[i*ldv+m]);
+                        tmp0 = _mm256_add_pd(tmp0,complex_mul(alphavec,complex_mul(vrow1,_mm256_load_pd((double *)&wnonpad[(k+0)*CFGM+m]))));
+                        tmp1 = _mm256_add_pd(tmp1,complex_mul(alphavec,complex_mul(vrow1,_mm256_load_pd((double *)&wnonpad[(k+1)*CFGM+m]))));
+                        vrow2 = _mm256_load_pd((double *)&vval[(i+1)*ldv+m]);
+                        tmp2 = _mm256_add_pd(tmp2,complex_mul(alphavec,complex_mul(vrow2,_mm256_load_pd((double *)&wnonpad[(k+0)*CFGM+m]))));
+                        tmp3 = _mm256_add_pd(tmp3,complex_mul(alphavec,complex_mul(vrow2,_mm256_load_pd((double *)&wnonpad[(k+1)*CFGM+m]))));
+                    }
+                  
+                    res = _mm256_add_pd(_mm256_permute2f128_pd(tmp0,tmp1,0x20),_mm256_permute2f128_pd(tmp0,tmp1,0x31));
+                    _mm256_store_pd((double *)&xval[i*ldx+k],_mm256_add_pd(complex_mul(_mm256_load_pd((double *)&xval[i*ldx+k]),betavec),res));
+
+                    res = _mm256_add_pd(_mm256_permute2f128_pd(tmp2,tmp3,0x20),_mm256_permute2f128_pd(tmp2,tmp3,0x31));
+                    _mm256_store_pd((double *)&xval[(i+1)*ldx+k],_mm256_add_pd(complex_mul(_mm256_load_pd((double *)&xval[(i+1)*ldx+k]),betavec),res));
+                }
+            }
+        }
+    } else { // common case: X = V*W
+        INFO_LOG("Fast case: alpha=1 and beta=0");
+#pragma omp parallel private(k,m)
+        {
+            #GHOST_UNROLL#__m256d tmp@;#8
+            __m256d vrow1,vrow2,res;
+#pragma omp for schedule(runtime)
+            for (i=0; i<n-1; i+=2) {
+                for (k=0; k<=CFGK-4; k+=4) {
+                    #GHOST_UNROLL#tmp@ = _mm256_setzero_pd();#8
+                    for (m=0; m<=CFGM-2; m+=2) {
+                        vrow1 = _mm256_load_pd((double *)&vval[i*ldv+m]);
+                        tmp0 = _mm256_add_pd(tmp0,complex_mul(vrow1,_mm256_load_pd((double *)&wnonpad[(k+0)*CFGM+m])));
+                        tmp1 = _mm256_add_pd(tmp1,complex_mul(vrow1,_mm256_load_pd((double *)&wnonpad[(k+1)*CFGM+m])));
+                        tmp2 = _mm256_add_pd(tmp2,complex_mul(vrow1,_mm256_load_pd((double *)&wnonpad[(k+2)*CFGM+m])));
+                        tmp3 = _mm256_add_pd(tmp3,complex_mul(vrow1,_mm256_load_pd((double *)&wnonpad[(k+3)*CFGM+m])));
+                        vrow2 = _mm256_load_pd((double *)&vval[(i+1)*ldv+m]);
+                        tmp4 = _mm256_add_pd(tmp4,complex_mul(vrow2,_mm256_load_pd((double *)&wnonpad[(k+0)*CFGM+m])));
+                        tmp5 = _mm256_add_pd(tmp5,complex_mul(vrow2,_mm256_load_pd((double *)&wnonpad[(k+1)*CFGM+m])));
+                        tmp6 = _mm256_add_pd(tmp6,complex_mul(vrow2,_mm256_load_pd((double *)&wnonpad[(k+2)*CFGM+m])));
+                        tmp7 = _mm256_add_pd(tmp7,complex_mul(vrow2,_mm256_load_pd((double *)&wnonpad[(k+3)*CFGM+m])));
+                    }
+                    
+                    res = _mm256_add_pd(_mm256_permute2f128_pd(tmp0,tmp1,0x20),_mm256_permute2f128_pd(tmp0,tmp1,0x31));
+                    _mm256_stream_pd((double *)&xval[i*ldx+k],res);
+                    res = _mm256_add_pd(_mm256_permute2f128_pd(tmp2,tmp3,0x20),_mm256_permute2f128_pd(tmp2,tmp3,0x31));
+                    _mm256_stream_pd((double *)&xval[i*ldx+k+2],res);
+                    res = _mm256_add_pd(_mm256_permute2f128_pd(tmp4,tmp5,0x20),_mm256_permute2f128_pd(tmp4,tmp5,0x31));
+                    _mm256_stream_pd((double *)&xval[(i+1)*ldx+k],res);
+                    res = _mm256_add_pd(_mm256_permute2f128_pd(tmp6,tmp7,0x20),_mm256_permute2f128_pd(tmp6,tmp7,0x31));
+                    _mm256_stream_pd((double *)&xval[(i+1)*ldx+k+2],res);
+
+                }
+            }
+        }
+    }
+
+    free(wtran);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
+    return ret;
+#else
+    UNUSED(x);
+    UNUSED(v);
+    UNUSED(w);
+    UNUSED(alpha);
+    UNUSED(beta);
+    ERROR_LOG("AVX not available!");
+    return GHOST_ERR_UNKNOWN;
+#endif
+}
+#GHOST_FUNC_END
+
+#GHOST_FUNC_BEGIN#CFGK=${CFG_BLOCKVECTOR_SIZES}#CFGM=${CFG_BLOCKVECTOR_SIZES}
+ghost_error_t ghost_tsmm__a_avx_d_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
+{
+#ifdef GHOST_HAVE_AVX
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
+    ghost_error_t ret = GHOST_SUCCESS;
+
+    ghost_lidx_t n = v->traits.nrows;
+
+    INFO_LOG("In AVX TSMM with two fixed block sizes [CFGK][CFGM] %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,x->traits.ncols,n,v->traits.ncols,v->traits.ncols,x->traits.ncols);
+
+    double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
+    ghost_lidx_t ldv, ldw, ldx;
+
+    ldv = v->stride;
+    ldw = w->stride;
+    ldx = x->stride;
+
+    ghost_densemat_valptr(v,(void **)&vval);
+    ghost_densemat_valptr(w,(void **)&wval);
+    ghost_densemat_valptr(x,(void **)&xval);
+
+    double dalpha = *(double *)alpha;
+    double dbeta = *(double *)beta;
+    __m256d betavec, alphavec;
+   
+    betavec = _mm256_broadcast_sd(beta);
+    alphavec = _mm256_broadcast_sd(alpha);
+    ghost_lidx_t i,m,k,j,s;
+
+    double * const restrict wnonpad = NULL, *wtran;
+    ghost_lidx_t ncols_wnonpad = w->traits.ncols;
+    ghost_lidx_t nrows_wnonpad = w->traits.nrows;
+    ghost_malloc((void **)&wnonpad,sizeof(double)*nrows_wnonpad*ncols_wnonpad);
+    for (s=0; s<w->traits.ncols; s++) {
+        for (j=0; j<w->traits.nrows; j++) {
+            wnonpad[s*nrows_wnonpad+j] = wval[s*ldw+j];
+        }
+    }
+
+    __m256d tmp;
+    if (fabs(dalpha-1.) > DBL_MIN || fabs(dbeta) > DBL_MIN) { // general case: X = b*X + a*V*W
+#pragma omp parallel private(k,m)
+        {
+            #GHOST_UNROLL#__m256d tmp@;#8
+            __m256d vrow1,vrow2,vrow3,sum1,sum2,sum3,res;
+            __m128d sumh1,sumh2,sumh3,result1,result2,result3;
+#pragma omp for schedule(runtime)
+            for (i=0; i<n-1; i+=2) {
+                for (k=0; k<=CFGK-4; k+=4) {
+                    #GHOST_UNROLL#tmp@ = _mm256_mul_pd(_mm256_load_pd(&xval[(i+0)*ldx+k]),betavec);#4
+                    #GHOST_UNROLL#tmp@+4 = _mm256_mul_pd(_mm256_load_pd(&xval[(i+1)*ldx+k]),betavec);#4
+
+                    for (m=0; m<=CFGM-4; m+=4) {
+                        vrow1 = _mm256_load_pd(&vval[i*ldv+m]);
+                        tmp0 = _mm256_add_pd(tmp0,_mm256_mul_pd(alphavec,_mm256_mul_pd(vrow1,_mm256_load_pd(&wnonpad[(k+0)*CFGM+m]))));
+                        tmp1 = _mm256_add_pd(tmp1,_mm256_mul_pd(alphavec,_mm256_mul_pd(vrow1,_mm256_load_pd(&wnonpad[(k+1)*CFGM+m]))));
+                        tmp2 = _mm256_add_pd(tmp2,_mm256_mul_pd(alphavec,_mm256_mul_pd(vrow1,_mm256_load_pd(&wnonpad[(k+2)*CFGM+m]))));
+                        tmp3 = _mm256_add_pd(tmp3,_mm256_mul_pd(alphavec,_mm256_mul_pd(vrow1,_mm256_load_pd(&wnonpad[(k+3)*CFGM+m]))));
+                        vrow2 = _mm256_load_pd(&vval[(i+1)*ldv+m]);
+                        tmp4 = _mm256_add_pd(tmp4,_mm256_mul_pd(alphavec,_mm256_mul_pd(vrow2,_mm256_load_pd(&wnonpad[(k+0)*CFGM+m]))));
+                        tmp5 = _mm256_add_pd(tmp5,_mm256_mul_pd(alphavec,_mm256_mul_pd(vrow2,_mm256_load_pd(&wnonpad[(k+1)*CFGM+m]))));
+                        tmp6 = _mm256_add_pd(tmp6,_mm256_mul_pd(alphavec,_mm256_mul_pd(vrow2,_mm256_load_pd(&wnonpad[(k+2)*CFGM+m]))));
+                        tmp7 = _mm256_add_pd(tmp7,_mm256_mul_pd(alphavec,_mm256_mul_pd(vrow2,_mm256_load_pd(&wnonpad[(k+3)*CFGM+m]))));
+                    }
+                    sum1 = _mm256_hadd_pd(tmp0,tmp1);
+                    sum2 = _mm256_hadd_pd(tmp2,tmp3);
+                    sumh1 = _mm256_extractf128_pd(sum1,1);
+                    sumh2 = _mm256_extractf128_pd(sum2,1);
+                    result1 = _mm_add_pd(sumh1,_mm256_castpd256_pd128(sum1));
+                    result2 = _mm_add_pd(sumh2,_mm256_castpd256_pd128(sum2));
+                    res = _mm256_set_m128d(result2,result1);
+                    _mm256_store_pd(&xval[i*ldx+k],res);
+                    
+                    sum1 = _mm256_hadd_pd(tmp4,tmp5);
+                    sum2 = _mm256_hadd_pd(tmp6,tmp7);
+                    sumh1 = _mm256_extractf128_pd(sum1,1);
+                    sumh2 = _mm256_extractf128_pd(sum2,1);
+                    result1 = _mm_add_pd(sumh1,_mm256_castpd256_pd128(sum1));
+                    result2 = _mm_add_pd(sumh2,_mm256_castpd256_pd128(sum2));
+                    res = _mm256_set_m128d(result2,result1);
+                    _mm256_store_pd(&xval[(i+1)*ldx+k],res);
+                }
+            }
+        }
+    } else { // common case: X = V*W
+        INFO_LOG("Fast case: alpha=1 and beta=0");
+#pragma omp parallel private(k,m)
+        {
+            #GHOST_UNROLL#__m256d tmp@;#8
+            __m256d vrow1,vrow2,vrow3,sum1,sum2,sum3,res;
+            __m128d sumh1,sumh2,sumh3,result1,result2,result3;
+#pragma omp for schedule(runtime)
+            for (i=0; i<n-1; i+=2) {
+                for (k=0; k<=CFGK-4; k+=4) {
+                    #GHOST_UNROLL#tmp@ = _mm256_setzero_pd();#8
+
+                    for (m=0; m<=CFGM-4; m+=4) {
+                        vrow1 = _mm256_load_pd(&vval[i*ldv+m]);
+                        tmp0 = _mm256_add_pd(tmp0,_mm256_mul_pd(vrow1,_mm256_load_pd(&wnonpad[(k+0)*CFGM+m])));
+                        tmp1 = _mm256_add_pd(tmp1,_mm256_mul_pd(vrow1,_mm256_load_pd(&wnonpad[(k+1)*CFGM+m])));
+                        tmp2 = _mm256_add_pd(tmp2,_mm256_mul_pd(vrow1,_mm256_load_pd(&wnonpad[(k+2)*CFGM+m])));
+                        tmp3 = _mm256_add_pd(tmp3,_mm256_mul_pd(vrow1,_mm256_load_pd(&wnonpad[(k+3)*CFGM+m])));
+                        vrow2 = _mm256_load_pd(&vval[(i+1)*ldv+m]);
+                        tmp4 = _mm256_add_pd(tmp4,_mm256_mul_pd(vrow2,_mm256_load_pd(&wnonpad[(k+0)*CFGM+m])));
+                        tmp5 = _mm256_add_pd(tmp5,_mm256_mul_pd(vrow2,_mm256_load_pd(&wnonpad[(k+1)*CFGM+m])));
+                        tmp6 = _mm256_add_pd(tmp6,_mm256_mul_pd(vrow2,_mm256_load_pd(&wnonpad[(k+2)*CFGM+m])));
+                        tmp7 = _mm256_add_pd(tmp7,_mm256_mul_pd(vrow2,_mm256_load_pd(&wnonpad[(k+3)*CFGM+m])));
+                    }
+                    sum1 = _mm256_hadd_pd(tmp0,tmp1);
+                    sum2 = _mm256_hadd_pd(tmp2,tmp3);
+                    sumh1 = _mm256_extractf128_pd(sum1,1);
+                    sumh2 = _mm256_extractf128_pd(sum2,1);
+                    result1 = _mm_add_pd(sumh1,_mm256_castpd256_pd128(sum1));
+                    result2 = _mm_add_pd(sumh2,_mm256_castpd256_pd128(sum2));
+                    res = _mm256_set_m128d(result2,result1);
+                    _mm256_stream_pd(&xval[i*ldx+k],res);
+                    
+                    sum1 = _mm256_hadd_pd(tmp4,tmp5);
+                    sum2 = _mm256_hadd_pd(tmp6,tmp7);
+                    sumh1 = _mm256_extractf128_pd(sum1,1);
+                    sumh2 = _mm256_extractf128_pd(sum2,1);
+                    result1 = _mm_add_pd(sumh1,_mm256_castpd256_pd128(sum1));
+                    result2 = _mm_add_pd(sumh2,_mm256_castpd256_pd128(sum2));
+                    res = _mm256_set_m128d(result2,result1);
+                    _mm256_stream_pd(&xval[(i+1)*ldx+k],res);
+                }
+            }
+        }
+    }
+
+    free(wtran);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
+    return ret;
+#else
+    UNUSED(x);
+    UNUSED(v);
+    UNUSED(w);
+    UNUSED(alpha);
+    UNUSED(beta);
+    ERROR_LOG("AVX not available!");
+    return GHOST_ERR_UNKNOWN;
+#endif
+}
+#GHOST_FUNC_END
+
+#GHOST_FUNC_BEGIN#CFGK=${CFG_BLOCKVECTOR_SIZES}#CFGM=${CFG_BLOCKVECTOR_SIZES}
+ghost_error_t ghost_tsmm1__a_avx_d_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
 {
 #ifdef GHOST_HAVE_AVX
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
@@ -21,7 +294,7 @@ ghost_error_t ghost_tsmm__a_avx_d_BLOCKSZ1_BLOCKSZ2_rm_cm(ghost_densemat_t *x, g
     ghost_lidx_t m = v->traits.ncols;
     ghost_lidx_t n = v->traits.nrows;
 
-    INFO_LOG("In AVX TSMM with two fixed block sizes [BLOCKSZ1][BLOCKSZ2] %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
+    INFO_LOG("In AVX TSMM with two fixed block sizes [CFGK][CFGM] %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
     double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
     ghost_lidx_t ldv, ldw, ldx;
@@ -56,9 +329,9 @@ ghost_error_t ghost_tsmm__a_avx_d_BLOCKSZ1_BLOCKSZ2_rm_cm(ghost_densemat_t *x, g
     if (fabs(dalpha-1.) > DBL_MIN || fabs(dbeta) > DBL_MIN) { // general case: X = b*X + a*V*W
 #pragma omp parallel for private(j,s,tmp) schedule(runtime)
         for (i=0; i<n; i++) {
-            for (s=0; s+4<=BLOCKSZ1; s+=4) {
+            for (s=0; s+4<=CFGK; s+=4) {
                 tmp = _mm256_mul_pd(betavec,_mm256_load_pd(&xval[i*ldx+s]));
-                for (j=0; j<BLOCKSZ2; j++) {
+                for (j=0; j<CFGM; j++) {
                     tmp = _mm256_add_pd(tmp,_mm256_mul_pd(alphavec,_mm256_mul_pd(
                                     _mm256_set1_pd(vval[i*ldv+j]),_mm256_load_pd(&wtran[j*ncols_wtran+s]))));
                 }
@@ -69,9 +342,9 @@ ghost_error_t ghost_tsmm__a_avx_d_BLOCKSZ1_BLOCKSZ2_rm_cm(ghost_densemat_t *x, g
         INFO_LOG("Fast case: alpha=1 and beta=0");
 #pragma omp parallel for private(j,s,tmp) schedule(runtime)
         for (i=0; i<n; i++) {
-            for (s=0; s+4<=BLOCKSZ1; s+=4) {
+            for (s=0; s+4<=CFGK; s+=4) {
                 tmp = _mm256_setzero_pd();
-                for (j=0; j<BLOCKSZ2; j++) {
+                for (j=0; j<CFGM; j++) {
                     tmp = _mm256_add_pd(tmp,_mm256_mul_pd(
                                     _mm256_set1_pd(vval[i*ldv+j]),_mm256_load_pd(&wtran[j*ncols_wtran+s])));
                 }
@@ -95,8 +368,8 @@ ghost_error_t ghost_tsmm__a_avx_d_BLOCKSZ1_BLOCKSZ2_rm_cm(ghost_densemat_t *x, g
 }
 #GHOST_FUNC_END
 
-#GHOST_FUNC_BEGIN#BLOCKSZ1=${CFG_BLOCKVECTOR_SIZES}#BLOCKSZ2=${CFG_BLOCKVECTOR_SIZES}
-ghost_error_t ghost_tsmm__u_avx_d_BLOCKSZ1_BLOCKSZ2_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
+#GHOST_FUNC_BEGIN#CFGK=${CFG_BLOCKVECTOR_SIZES}#CFGM=${CFG_BLOCKVECTOR_SIZES}
+ghost_error_t ghost_tsmm__u_avx_d_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
 {
 #ifdef GHOST_HAVE_AVX
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
@@ -106,7 +379,7 @@ ghost_error_t ghost_tsmm__u_avx_d_BLOCKSZ1_BLOCKSZ2_rm_cm(ghost_densemat_t *x, g
     ghost_lidx_t m = v->traits.ncols;
     ghost_lidx_t n = v->traits.nrows;
 
-    INFO_LOG("In AVX TSMM with two fixed block sizes [BLOCKSZ1][BLOCKSZ2] %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
+    INFO_LOG("In AVX TSMM with two fixed block sizes [CFGK][CFGM] %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
     double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
     ghost_lidx_t ldv, ldw, ldx;
@@ -141,9 +414,9 @@ ghost_error_t ghost_tsmm__u_avx_d_BLOCKSZ1_BLOCKSZ2_rm_cm(ghost_densemat_t *x, g
     if (fabs(dalpha-1.) > DBL_MIN || fabs(dbeta) > DBL_MIN) { // general case: X = b*X + a*V*W
 #pragma omp parallel for private(j,s,tmp) schedule(runtime)
         for (i=0; i<n; i++) {
-            for (s=0; s+4<=BLOCKSZ1; s+=4) {
+            for (s=0; s+4<=CFGK; s+=4) {
                 tmp = _mm256_mul_pd(betavec,_mm256_loadu_pd(&xval[i*ldx+s]));
-                for (j=0; j<BLOCKSZ2; j++) {
+                for (j=0; j<CFGM; j++) {
                     tmp = _mm256_add_pd(tmp,_mm256_mul_pd(alphavec,_mm256_mul_pd(
                                     _mm256_set1_pd(vval[i*ldv+j]),_mm256_loadu_pd(&wtran[j*ncols_wtran+s]))));
                 }
@@ -154,9 +427,9 @@ ghost_error_t ghost_tsmm__u_avx_d_BLOCKSZ1_BLOCKSZ2_rm_cm(ghost_densemat_t *x, g
         INFO_LOG("Fast case: alpha=1 and beta=0");
 #pragma omp parallel for private(j,s,tmp) schedule(runtime)
         for (i=0; i<n; i++) {
-            for (s=0; s+4<=BLOCKSZ1; s+=4) {
+            for (s=0; s+4<=CFGK; s+=4) {
                 tmp = _mm256_setzero_pd();
-                for (j=0; j<BLOCKSZ2; j++) {
+                for (j=0; j<CFGM; j++) {
                     tmp = _mm256_add_pd(tmp,_mm256_mul_pd(
                                     _mm256_set1_pd(vval[i*ldv+j]),_mm256_loadu_pd(&wtran[j*ncols_wtran+s])));
                 }
