@@ -158,7 +158,7 @@ ghost_error_t ghost_machine_ncore(int *ncore, int numanode)
     }
 
     if (nPUs % smt) {
-        ERROR_LOG("The number of PUs is not a multiple of the SMT level");
+        ERROR_LOG("The number of PUs (%d) is not a multiple of the SMT level (%d)");
         return GHOST_ERR_UNKNOWN;
     }
 
