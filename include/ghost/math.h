@@ -30,8 +30,14 @@ typedef enum {
 } ghost_gemm_flags_t;
 
 typedef struct {
-    ghost_lidx_t vcols,xcols;
-    ghost_gidx_t vrows;
+    /* C = alpha(A*B) + beta(C)
+     * C is mxn
+     * A is mxk
+     * B is kxn
+     */ 
+    ghost_gidx_t m,n,k;
+    bool alphaisone;
+    bool betaiszero;
     ghost_datatype_t dt;
 }
 ghost_gemm_perf_args_t;
@@ -199,6 +205,7 @@ ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce,gho
     int ghost_scale_perf(double *perf, double time, void *arg);
     int ghost_dot_perf(double *perf, double time, void *arg);
     int ghost_gemm_perf_GFs(double *perf, double time, void *arg);
+    int ghost_gemm_perf_GBs(double *perf, double time, void *arg);
 
 #ifdef __cplusplus
 } //extern "C"

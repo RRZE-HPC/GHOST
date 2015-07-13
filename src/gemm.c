@@ -110,18 +110,50 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
         reduce = 0;
     }
 
-    ghost_lidx_t nrV,ncV,ncW;
+    ghost_lidx_t nrV,ncV,ncW,nrVglob,ncVglob,ncWglob;
 
     if (strncasecmp(transv_in,"N",1)) {
-        nrV=v->traits.ncols; ncV=v->traits.nrows;
+        nrV = v->traits.ncols; 
+        ncV = v->traits.nrows;
+        if (v->context) {
+            ncVglob = v->context->gnrows;
+        } else {
+            ncVglob = w->traits.nrows;
+        }
+        nrVglob = v->traits.ncols;
     } else {
-        nrV=v->traits.nrows; ncV=v->traits.ncols;
+        nrV = v->traits.nrows; 
+        ncV = v->traits.ncols;
+        if (v->context) {
+            nrVglob = v->context->gnrows;
+        } else {
+            nrVglob = v->traits.nrows;
+        }
+        ncVglob = v->traits.ncols;
     }
     if (strncasecmp(transw_in,"N",1)) {
-        ncW=w->traits.nrows;
+        ncW = w->traits.nrows;
+        if (w->context) {
+            ncWglob = w->context->gnrows;
+        } else {
+            ncWglob = w->traits.nrows;
+        }
     } else {
-        ncW=w->traits.ncols;
+        ncW = w->traits.ncols;
+        ncWglob = w->traits.ncols;
     }
+
+#ifdef GHOST_HAVE_INSTR_TIMING
+    ghost_gemm_perf_args_t gemm_perfargs;
+    gemm_perfargs.m = nrVglob;
+    gemm_perfargs.k = ncVglob;
+    gemm_perfargs.n = ncWglob;
+    gemm_perfargs.dt = x->traits.datatype;
+    gemm_perfargs.betaiszero = ghost_iszero(beta,v->traits.datatype);
+    gemm_perfargs.alphaisone = ghost_isone(alpha,v->traits.datatype);
+    ghost_timing_set_perfFunc(__ghost_functag,ghost_gemm_perf_GFs,(void *)&gemm_perfargs,sizeof(gemm_perfargs),"GF/s");
+#endif
+
 
     complex double zero = 0.+I*0.;
 
@@ -360,19 +392,6 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
         x->reduce(x,v->context->mpicomm,reduce);
     }
 
-#ifdef GHOST_HAVE_INSTR_TIMING
-    ghost_gemm_perf_args_t gemm_perfargs;
-    gemm_perfargs.xcols = x->traits.ncols;
-    gemm_perfargs.vcols = v->traits.ncols;
-    if (v->context) {
-        gemm_perfargs.vrows = v->context->gnrows;
-    } else {
-        gemm_perfargs.vrows = v->traits.nrows;
-    }
-    gemm_perfargs.dt = x->traits.datatype;
-    ghost_timing_set_perfFunc(__ghost_functag,ghost_gemm_perf_GFs,(void *)&gemm_perfargs,sizeof(gemm_perfargs),"GF/s");
-#endif
-
     //char *str;
     //x->string(x,&str);
     //printf("$$$$$\n%s\n$$$$$",str);
@@ -483,12 +502,32 @@ out:
 int ghost_gemm_perf_GFs(double *perf, double time, void *varg)
 {
     ghost_gemm_perf_args_t arg = *(ghost_gemm_perf_args_t *)varg;
-    int flopsperent = 2;
+    int maddflops = 2;
+    int mulflops = 1;
+
     if (arg.dt & GHOST_DT_COMPLEX) {
-        flopsperent = 8;
+        maddflops = 8;
+        mulflops = 6;
     }
     
-    *perf = (flopsperent*arg.vrows/1.e9*arg.xcols*arg.vcols)/time;
+    *perf = (maddflops*arg.n/1.e9*arg.m*arg.k)/time;
+
+    return 0;
+}
+
+int ghost_gemm_perf_GBs(double *perf, double time, void *varg)
+{
+    size_t size;
+    ghost_gemm_perf_args_t arg = *(ghost_gemm_perf_args_t *)varg;
+    
+    ghost_datatype_size(&size,arg.dt);
+
+    if (arg.betaiszero) {
+        *perf = size*(arg.m*arg.n+arg.m*arg.k+arg.n*arg.k)/1.e9/time;
+    } else {
+        *perf = size*(2*arg.m*arg.n+arg.m*arg.k+arg.n*arg.k)/1.e9/time;
+    }
+
 
     return 0;
 }
