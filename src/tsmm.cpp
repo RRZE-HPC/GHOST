@@ -170,6 +170,7 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
             PERFWARNING_LOG("Switching to the unaligned kernel!");
         }
     }
+    INFO_LOG("Initial search for kernel %d %d %d %d %d %d %d!",p.alignment,p.impl,p.dt,p.xcols,p.vcols,p.xstor,p.wstor);
     kernel = ghost_tsmm_kernels[p];
     
     if (!kernel) {
