@@ -702,3 +702,46 @@ int ghost_scale_perf(double *perf, double time, void *varg)
 
     return 0;
 }
+
+bool ghost_iszero(void *vnumber, ghost_datatype_t dt) 
+{
+    if (dt & GHOST_DT_COMPLEX) {
+        if (dt & GHOST_DT_FLOAT) {
+            complex float number = *(complex float *)vnumber;
+            return fabsf(crealf(number)) < FLT_MIN && fabsf(cimagf(number)) < FLT_MIN;
+        } else {
+            complex double number = *(complex double *)vnumber;
+            return fabs(creal(number)) < DBL_MIN && fabs(cimag(number)) < DBL_MIN;
+        }
+    } else {
+        if (dt & GHOST_DT_FLOAT) {
+            float number = *(float *)vnumber;
+            return number < FLT_MIN;
+        } else {
+            double number = *(double *)vnumber;
+            return number < DBL_MIN;
+        }
+    }
+
+}
+
+bool ghost_isone(void *vnumber, ghost_datatype_t dt) 
+{
+    if (dt & GHOST_DT_COMPLEX) {
+        if (dt & GHOST_DT_FLOAT) {
+            complex float number = *(complex float *)vnumber;
+            return fabsf(crealf(number)-1.f) < FLT_MIN && fabsf(cimagf(number)) < FLT_MIN;
+        } else {
+            complex double number = *(complex double *)vnumber;
+            return fabs(creal(number)-1.) < DBL_MIN && fabs(cimag(number)) < DBL_MIN;
+        }
+    } else {
+        if (dt & GHOST_DT_FLOAT) {
+            float number = *(float *)vnumber;
+            return (number-1.f) < FLT_MIN;
+        } else {
+            double number = *(double *)vnumber;
+            return (number-1.) < DBL_MIN;
+        }
+    }
+}
