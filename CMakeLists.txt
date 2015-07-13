@@ -232,6 +232,10 @@ configure_file (
     ${PROJECT_BINARY_DIR}/src/tsmttsm.c
     )
 configure_file (
+    ${PROJECT_SOURCE_DIR}/src/tsmttsm_avx2.c.in
+    ${PROJECT_BINARY_DIR}/src/tsmttsm_avx2.c
+    )
+configure_file (
     ${PROJECT_SOURCE_DIR}/src/tsmttsm_avx.c.in
     ${PROJECT_BINARY_DIR}/src/tsmttsm_avx.c
     )
@@ -255,6 +259,7 @@ set (TO_PREPROCESS
     ${PROJECT_BINARY_DIR}/src/tsmm_cu.cu
     ${PROJECT_BINARY_DIR}/src/tsmm_inplace.c
     ${PROJECT_BINARY_DIR}/src/tsmttsm.c
+    ${PROJECT_BINARY_DIR}/src/tsmttsm_avx2.c
     ${PROJECT_BINARY_DIR}/src/tsmttsm_avx.c
     ${PROJECT_BINARY_DIR}/src/tsmttsm_sse.c
     ${PROJECT_BINARY_DIR}/src/tsmttsm_kahan.c
@@ -702,6 +707,9 @@ if (BUILD_MIC)
 else()
     if (OPTIMIZE_HOSTARCH)
         AutodetectHostArchitecture()
+        if (USE_AVX2)
+            set(GHOST_HAVE_AVX2 1 CACHE BOOL "Generate AVX2 kernels")
+        endif()
         if (USE_AVX)
             set(GHOST_HAVE_AVX 1 CACHE BOOL "Generate AVX kernels")
         endif()

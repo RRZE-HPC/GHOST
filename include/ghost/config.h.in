@@ -16,6 +16,7 @@
 #cmakedefine GHOST_HAVE_LIBSCI
 #cmakedefine GHOST_HAVE_LAPACK
 #cmakedefine GHOST_HAVE_MIC
+#cmakedefine GHOST_HAVE_AVX2
 #cmakedefine GHOST_HAVE_AVX
 #cmakedefine GHOST_HAVE_SSE
 #cmakedefine GHOST_HAVE_INSTR_TIMING
