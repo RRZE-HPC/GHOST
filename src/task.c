@@ -107,15 +107,12 @@ ghost_error_t ghost_task_wait(ghost_task_t * task)
     //    WARNING_LOG("Now idle PUs: %d",NIDLECORES);
     //    }
 
-    pthread_mutex_lock(task->mutex);
+    pthread_mutex_lock(task->stateMutex);
     while (task->state != GHOST_TASK_FINISHED) {
         DEBUG_LOG(1,"Waiting for signal @ cond %p from task %p",(void *)task->finishedCond,(void *)task);
-        pthread_cond_wait(task->finishedCond,task->mutex);
+        pthread_cond_wait(task->finishedCond,task->stateMutex);
     }
-
-    // pin again if have been unpinned
-
-    pthread_mutex_unlock(task->mutex);
+    pthread_mutex_unlock(task->stateMutex);
     DEBUG_LOG(1,"Finished waitung for task %p!",(void *)task);
 
     return GHOST_SUCCESS;
@@ -200,9 +197,11 @@ ghost_error_t ghost_task_create(ghost_task_t **t, int nThreads, int LD, void *(*
     GHOST_CALL_GOTO(ghost_malloc((void **)&(*t)->finishedCond,sizeof(pthread_cond_t)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&(*t)->mutex,sizeof(pthread_mutex_t)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&(*t)->finishedMutex,sizeof(pthread_mutex_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&(*t)->stateMutex,sizeof(pthread_mutex_t)),err,ret);
     sem_init((*t)->progressSem,0,0);
     pthread_mutex_init((*t)->mutex,NULL);
     pthread_mutex_init((*t)->finishedMutex,NULL);
+    pthread_mutex_init((*t)->stateMutex,NULL);
     pthread_cond_init((*t)->finishedCond,NULL);
     (*t)->state = GHOST_TASK_CREATED;
     (*t)->coremap = hwloc_bitmap_alloc();
