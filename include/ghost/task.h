@@ -248,6 +248,7 @@ extern "C" {
     ghost_error_t ghost_task_string(char **str, ghost_task_t *t); 
 
     ghost_error_t ghost_task_cur(ghost_task_t **task);
+
 #ifdef __cplusplus
 }// extern "C"
 #endif

@@ -22,8 +22,6 @@
 #endif
 
 
-static pthread_mutex_t ghost_task_create_mutex = PTHREAD_MUTEX_INITIALIZER;
-
 ghost_error_t ghost_task_unpin(ghost_task_t *task)
 {
     unsigned int pu;
@@ -151,20 +149,18 @@ char *ghost_task_state_string(ghost_task_state_t state)
 void ghost_task_destroy(ghost_task_t *t)
 {
     if (t) {
-        pthread_mutex_t *mutex = t->mutex;
-        pthread_mutex_lock(mutex);
-
+        if (t->state != GHOST_TASK_FINISHED) {
+            WARNING_LOG("The task is not finished but should be destroyed!");
+        }
         sem_destroy(t->progressSem);
         pthread_cond_destroy(t->finishedCond);
-
         hwloc_bitmap_free(t->coremap);
         hwloc_bitmap_free(t->childusedmap);
         free(t->progressSem);
         free(t->finishedCond);
+        pthread_mutex_destroy(t->mutex);
+        free(t->mutex);
         free(t);
-        pthread_mutex_unlock(mutex);
-        pthread_mutex_destroy(mutex);
-        free(mutex);
     }
 }
 
@@ -172,7 +168,6 @@ ghost_error_t ghost_task_create(ghost_task_t **t, int nThreads, int LD, void *(*
 {
     ghost_error_t ret = GHOST_SUCCESS;
 
-    pthread_mutex_lock(&ghost_task_create_mutex);
     GHOST_CALL_GOTO(ghost_malloc((void **)t,sizeof(ghost_task_t)),err,ret);
     
     if (nThreads == GHOST_TASK_FILL_LD) {
@@ -235,7 +230,6 @@ err:
     }
     free(*t); *t = NULL;
 out:
-    pthread_mutex_unlock(&ghost_task_create_mutex);
 
     return ret;
 }

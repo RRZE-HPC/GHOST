@@ -14,7 +14,6 @@ static pthread_key_t ghost_thread_key = 0;
  */
 static ghost_thpool_t *ghost_thpool = NULL;
 
-static pthread_mutex_t ghost_thpool_mutex;
 
 
 ghost_error_t ghost_thpool_create(int nThreads, void *(func)(void *))
@@ -23,8 +22,6 @@ ghost_error_t ghost_thpool_create(int nThreads, void *(func)(void *))
     int oldthreads = 0; 
 
     if (!ghost_thpool) {
-        pthread_mutex_init(&ghost_thpool_mutex,NULL);
-        pthread_mutex_lock(&ghost_thpool_mutex);
         GHOST_CALL_RETURN(ghost_malloc((void **)&ghost_thpool,sizeof(ghost_thpool_t)));
         ghost_thpool->nThreads = nThreads;
         GHOST_CALL_RETURN(ghost_malloc((void **)&ghost_thpool->threads,ghost_thpool->nThreads*sizeof(pthread_t)));
@@ -34,7 +31,6 @@ ghost_error_t ghost_thpool_create(int nThreads, void *(func)(void *))
 
         DEBUG_LOG(1,"All threads are initialized and waiting for tasks");
     } else {
-        pthread_mutex_lock(&ghost_thpool_mutex);
         DEBUG_LOG(1,"Resizing the thread pool");
        
         oldthreads = ghost_thpool->nThreads; 
@@ -53,22 +49,18 @@ ghost_error_t ghost_thpool_create(int nThreads, void *(func)(void *))
         sem_wait(ghost_thpool->sem);
     }
         
-    pthread_mutex_unlock(&ghost_thpool_mutex);
     return GHOST_SUCCESS;
 }
 
 ghost_error_t ghost_thpool_thread_add(void *(func)(void *), intptr_t arg)
 {
-    pthread_mutex_lock(&ghost_thpool_mutex);
     ghost_thpool->nThreads++;
     sem_init(ghost_thpool->sem, 0, 0);
 
     ghost_thpool->threads = realloc(ghost_thpool->threads,ghost_thpool->nThreads*sizeof(pthread_t));
     pthread_create(&(ghost_thpool->threads[ghost_thpool->nThreads-1]), NULL, func, (void *)arg);
-    WARNING_LOG("Created thread %d with arg %"PRIiPTR"",(int)ghost_thpool->threads[ghost_thpool->nThreads-1],arg);
     sem_wait(ghost_thpool->sem);
     
-    pthread_mutex_unlock(&ghost_thpool_mutex);
     return GHOST_SUCCESS;
 
 
@@ -98,7 +90,6 @@ ghost_error_t ghost_thpool_destroy()
 //    hwloc_bitmap_free(ghost_thpool->busy); ghost_thpool->busy = NULL;
     free(ghost_thpool); ghost_thpool = NULL;
         
-    pthread_mutex_destroy(&ghost_thpool_mutex);
 
     return GHOST_SUCCESS;
 }
