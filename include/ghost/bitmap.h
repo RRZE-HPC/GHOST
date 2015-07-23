@@ -10,6 +10,7 @@
 #include "types.h"
 #include "error.h"
 #include <hwloc/bitmap.h>
+#include <hwloc.h>
 
 /**
  * @brief ghost_bitmap_t is just an alias for hwloc_bitmap_t
@@ -36,7 +37,11 @@ typedef hwloc_bitmap_t ghost_bitmap_t;
 #ifdef __cplusplus
 extern "C" {
 #endif
-    ghost_error_t ghost_bitmap_copy_indices(ghost_bitmap_t dst, ghost_lidx_t *offset, ghost_bitmap_t src, ghost_lidx_t *idx, ghost_lidx_t nidx); 
+    ghost_error_t ghost_bitmap_copy_indices(ghost_bitmap_t dst, ghost_lidx_t *offset, ghost_bitmap_t src, ghost_lidx_t *idx, ghost_lidx_t nidx);
+    int ghost_bitmap_first_safe(hwloc_const_bitmap_t bitmap);
+    hwloc_obj_t ghost_get_obj_inside_cpuset_by_type_safe(hwloc_topology_t topology,hwloc_const_cpuset_t cpuset,hwloc_obj_type_t type, unsigned idx);
+
+    extern pthread_mutex_t ghost_bitmap_mutex;
 
 #ifdef __cplusplus
 }

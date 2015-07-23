@@ -158,6 +158,7 @@ typedef struct ghost_task_t {
      * @brief Protect accesses to the task's members. (set by the library)
      */
     pthread_mutex_t *mutex;
+    pthread_mutex_t *finishedMutex;
     /**
      * @brief Set to one as soon as the task's resources have been free'd.
      * This can be the case when the task waits for a child-task to finish or

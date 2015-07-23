@@ -18,6 +18,7 @@
 extern char ** environ;
 /** \endcond */
 
+pthread_mutex_t ghost_topology_mutex = PTHREAD_MUTEX_INITIALIZER;
 static hwloc_topology_t ghost_topology = NULL;
 
 static char *env(char *key)
@@ -77,8 +78,10 @@ ghost_error_t ghost_topology_get(hwloc_topology_t *topo)
         ERROR_LOG("Topology does not exist!");
         return GHOST_ERR_UNKNOWN;
     }
-    
+
+    pthread_mutex_lock(&ghost_topology_mutex);    
     *topo = ghost_topology;
+    pthread_mutex_unlock(&ghost_topology_mutex);    
 
     return GHOST_SUCCESS;
 

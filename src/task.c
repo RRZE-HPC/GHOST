@@ -22,6 +22,7 @@
 #endif
 
 
+static pthread_mutex_t ghost_task_create_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 ghost_error_t ghost_task_unpin(ghost_task_t *task)
 {
@@ -60,6 +61,7 @@ ghost_error_t ghost_task_string(char **str, ghost_task_t *t)
 ghost_error_t ghost_task_enqueue(ghost_task_t *t)
 {
     pthread_mutex_lock(t->mutex);
+    pthread_mutex_lock(&taskq->mutex);
     t->state = GHOST_TASK_INVALID;
 
     hwloc_bitmap_zero(t->coremap);
@@ -75,6 +77,7 @@ ghost_error_t ghost_task_enqueue(ghost_task_t *t)
     ghost_taskq_add(t);
     t->state = GHOST_TASK_ENQUEUED;
     pthread_mutex_unlock(t->mutex);
+    pthread_mutex_unlock(&taskq->mutex);
 
     DEBUG_LOG(1,"Task added successfully");
 
@@ -86,7 +89,12 @@ ghost_task_state_t ghost_task_test(ghost_task_t * t)
     if (!t) {
         return GHOST_TASK_INVALID;
     }
-    return t->state;
+    ghost_task_state_t state;
+    pthread_mutex_lock(t->mutex);
+    state = t->state;
+    pthread_mutex_unlock(t->mutex);
+
+    return state;
 }
 
 ghost_error_t ghost_task_wait(ghost_task_t * task)
@@ -102,11 +110,9 @@ ghost_error_t ghost_task_wait(ghost_task_t * task)
     //    }
 
     pthread_mutex_lock(task->mutex);
-    if (task->state != GHOST_TASK_FINISHED) {
+    while (task->state != GHOST_TASK_FINISHED) {
         DEBUG_LOG(1,"Waiting for signal @ cond %p from task %p",(void *)task->finishedCond,(void *)task);
         pthread_cond_wait(task->finishedCond,task->mutex);
-    } else {
-        DEBUG_LOG(1,"Task %p has already finished",(void *)task);
     }
 
     // pin again if have been unpinned
@@ -145,25 +151,29 @@ char *ghost_task_state_string(ghost_task_state_t state)
 void ghost_task_destroy(ghost_task_t *t)
 {
     if (t) {
+        pthread_mutex_t *mutex = t->mutex;
+        pthread_mutex_lock(mutex);
+
         sem_destroy(t->progressSem);
-        pthread_mutex_destroy(t->mutex);
         pthread_cond_destroy(t->finishedCond);
 
-//        free(t->cores);
         hwloc_bitmap_free(t->coremap);
         hwloc_bitmap_free(t->childusedmap);
         free(t->progressSem);
-        free(t->mutex);
         free(t->finishedCond);
+        free(t);
+        pthread_mutex_unlock(mutex);
+        pthread_mutex_destroy(mutex);
+        free(mutex);
     }
-    free(t); t = NULL;
 }
 
 ghost_error_t ghost_task_create(ghost_task_t **t, int nThreads, int LD, void *(*func)(void *), void *arg, ghost_task_flags_t flags, ghost_task_t **depends, int ndepends)
 {
     ghost_error_t ret = GHOST_SUCCESS;
 
-    GHOST_CALL_RETURN(ghost_malloc((void **)t,sizeof(ghost_task_t)));
+    pthread_mutex_lock(&ghost_task_create_mutex);
+    GHOST_CALL_GOTO(ghost_malloc((void **)t,sizeof(ghost_task_t)),err,ret);
     
     if (nThreads == GHOST_TASK_FILL_LD) {
         if (LD < 0) {
@@ -194,8 +204,10 @@ ghost_error_t ghost_task_create(ghost_task_t **t, int nThreads, int LD, void *(*
     GHOST_CALL_GOTO(ghost_malloc((void **)&(*t)->progressSem,sizeof(sem_t)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&(*t)->finishedCond,sizeof(pthread_cond_t)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&(*t)->mutex,sizeof(pthread_mutex_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&(*t)->finishedMutex,sizeof(pthread_mutex_t)),err,ret);
     sem_init((*t)->progressSem,0,0);
     pthread_mutex_init((*t)->mutex,NULL);
+    pthread_mutex_init((*t)->finishedMutex,NULL);
     pthread_cond_init((*t)->finishedCond,NULL);
     (*t)->state = GHOST_TASK_CREATED;
     (*t)->coremap = hwloc_bitmap_alloc();
@@ -223,6 +235,7 @@ err:
     }
     free(*t); *t = NULL;
 out:
+    pthread_mutex_unlock(&ghost_task_create_mutex);
 
     return ret;
 }

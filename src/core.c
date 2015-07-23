@@ -486,11 +486,11 @@ ghost_error_t ghost_init(int argc, char **argv)
 
     hwloc_bitmap_free(backup);
 
-    void *(*threadFunc)(void *);
+//    void *(*threadFunc)(void *);
 
     ghost_taskq_create();
-    ghost_taskq_startroutine(&threadFunc);
-    ghost_thpool_create(hwloc_bitmap_weight(mycpuset)+1,threadFunc);
+//    ghost_taskq_startroutine(&threadFunc);
+//    ghost_thpool_create(2*hwloc_bitmap_weight(mycpuset)+1,threadFunc);
     ghost_pumap_create(mycpuset);
 
     ghost_rand_create();

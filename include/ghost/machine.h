@@ -129,6 +129,7 @@ extern "C" {
      */
     ghost_error_t ghost_machine_string(char **str);
 
+    extern pthread_mutex_t ghost_topology_mutex;
 #ifdef __cplusplus
 }
 #endif

@@ -123,6 +123,8 @@ extern "C" {
      */
     ghost_error_t ghost_pumap_string(char **str);
 
+    extern pthread_mutex_t ghost_pumap_mutex;
+
 #ifdef __cplusplus
 }
 #endif

@@ -4,6 +4,7 @@
 #include "ghost/locality.h"
 
 static ghost_pumap_t *pumap = NULL;
+pthread_mutex_t ghost_pumap_mutex;
 
 ghost_error_t ghost_pumap_npu(int *nPUs, int numanode)
 {
@@ -109,6 +110,7 @@ ghost_error_t ghost_pumap_create(hwloc_cpuset_t cpuset)
         return GHOST_ERR_INVALID_ARG;
     }
     ghost_error_t ret = GHOST_SUCCESS;
+    pthread_mutex_init(&ghost_pumap_mutex,NULL);
     
     pumap = NULL;
     hwloc_nodeset_t nodeset = NULL;
@@ -181,6 +183,7 @@ ghost_error_t ghost_pumap_create(hwloc_cpuset_t cpuset)
             }
         }
     }
+
 
     goto out;
 err:
