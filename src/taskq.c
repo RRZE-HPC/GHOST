@@ -586,8 +586,19 @@ ghost_error_t ghost_taskq_waitall()
         return GHOST_SUCCESS;
     }
 
+    int canremain = 0;
+
+    ghost_task_t *cur;
+    ghost_task_cur(&cur);
+    if (cur) {
+        WARNING_LOG("This function has been called inside a task! I will allow one task (this one) to remain active in order to avoid deadlocks.");
+        canremain = 1;
+    }
+    
+
+
     pthread_mutex_lock(&anyTaskFinishedMutex);
-    while(num_pending_tasks > 0) {
+    while(num_pending_tasks > canremain) {
         pthread_cond_wait(&anyTaskFinishedCond,&anyTaskFinishedMutex);
     }
     pthread_mutex_unlock(&anyTaskFinishedMutex);
