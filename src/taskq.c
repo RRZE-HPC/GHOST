@@ -555,12 +555,12 @@ ghost_error_t ghost_taskq_destroy()
 
     int t,n;
     for (t=0; t<nthreadcount; t++) {
+        pthread_mutex_lock(&newTaskMutex_by_threadcount[t]);
+        num_tasks_by_threadcount[t]=num_shep_by_threadcount[t];                    
         for (n=0; n<num_shep_by_threadcount[t]; n++) {
-            pthread_mutex_lock(&newTaskMutex_by_threadcount[t]);
-            num_tasks_by_threadcount[t]=1;                    
-            pthread_mutex_unlock(&newTaskMutex_by_threadcount[t]);
             pthread_cond_signal(&newTaskCond_by_threadcount[t][n]);
         }
+        pthread_mutex_unlock(&newTaskMutex_by_threadcount[t]);
     }
     if (taskq) {
         pthread_mutex_destroy(&taskq->mutex);
