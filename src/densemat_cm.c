@@ -843,7 +843,7 @@ static ghost_error_t vec_cm_compress(ghost_densemat_t *vec)
                     DENSEMAT_CUVALPTR(vec,memrow,memcol),vec->elSize));
 
         if (!(vec->traits.flags & GHOST_DENSEMAT_VIEW)) {
-            ghost_cu_free(vec->cu_val);
+            GHOST_CALL_RETURN(ghost_cu_free(vec->cu_val));
         }
         vec->cu_val = cu_val;
 #endif 
@@ -996,7 +996,7 @@ static ghost_error_t densemat_cm_halocommFinalize(ghost_densemat_t *vec, ghost_d
 
         if (vec->traits.location & GHOST_LOCATION_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
-            ghost_cu_free(comm->cu_work);
+            GHOST_CALL_GOTO(ghost_cu_free(comm->cu_work),err,ret);
             cudaFreeHost(comm->work); comm->work = NULL;
 #endif
         } else {

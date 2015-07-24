@@ -44,7 +44,8 @@ ghost_error_t FUNCNAME(malloc(ghost_densemat_t *vec))
         }
     }
 
-    if (vec->traits.location & GHOST_LOCATION_DEVICE && !vec->cu_val) {
+    if ((vec->traits.location & GHOST_LOCATION_DEVICE) && !vec->cu_val) {
+        INFO_LOG("alloc");
         DEBUG_LOG(2,"Allocating device side of vector");
 #ifdef GHOST_HAVE_CUDA
 #ifdef GHOST_HAVE_CUDA_PINNEDMEM
