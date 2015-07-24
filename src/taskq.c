@@ -411,7 +411,7 @@ static void * thread_main(void *arg)
         while(num_tasks_by_threadcount[nthreads] == 0) {
             DEBUG_LOG(1,"No tasks with %d threads --> shep #%d (%d) waiting for them",nthreads,shepidx,(int)pthread_self());
             pthread_cond_wait(&(newTaskCond_by_threadcount[nthreads][shepidx]),&newTaskMutex_by_threadcount[nthreads]);
-            INFO_LOG("Shep #%d (%d) woken up by new task with %d threads, actual number: %d",shepidx,(int)pthread_self(),nthreads,num_tasks_by_threadcount[nthreads]);
+            DEBUG_LOG(1,"Shep #%d (%d) woken up by new task with %d threads, actual number: %d",shepidx,(int)pthread_self(),nthreads,num_tasks_by_threadcount[nthreads]);
         }
         num_tasks_by_threadcount[nthreads]--;
         pthread_mutex_unlock(&newTaskMutex_by_threadcount[nthreads]);
@@ -463,7 +463,6 @@ static void * thread_main(void *arg)
 
         pthread_setspecific(key,myTask);
         myTask->ret = myTask->func(myTask->arg);
-        PERFWARNING_LOG("fire finished");  
         pthread_setspecific(key,NULL);
         
         pthread_mutex_lock(myTask->mutex);
