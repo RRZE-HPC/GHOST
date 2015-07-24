@@ -465,6 +465,11 @@ static void * thread_main(void *arg)
         myTask->ret = myTask->func(myTask->arg);
         pthread_setspecific(key,NULL);
         
+        pthread_mutex_lock(&anyTaskFinishedMutex);
+        num_pending_tasks--;
+        pthread_mutex_unlock(&anyTaskFinishedMutex);
+        pthread_cond_broadcast(&anyTaskFinishedCond);
+        
         pthread_mutex_lock(myTask->mutex);
         ghost_task_unpin(myTask);
         pthread_mutex_unlock(myTask->mutex);
@@ -474,10 +479,6 @@ static void * thread_main(void *arg)
         pthread_cond_broadcast(myTask->finishedCond);
         pthread_mutex_unlock(myTask->stateMutex);
 
-        pthread_mutex_lock(&anyTaskFinishedMutex);
-        num_pending_tasks--;
-        pthread_mutex_unlock(&anyTaskFinishedMutex);
-        pthread_cond_broadcast(&anyTaskFinishedCond);
 
     }
     return NULL;
