@@ -480,8 +480,8 @@ static ghost_error_t FUNCNAME(fromVec_tmpl(ghost_densemat_t *vec, ghost_densemat
     FUNCNAME(malloc(vec));
     
     if (vec2->traits.storage == vec->traits.storage) { 
-        if (vec->traits.location == GHOST_LOCATION_DEVICE) {
-            if (vec2->traits.location == GHOST_LOCATION_DEVICE) {
+        if (vec->traits.location & GHOST_LOCATION_DEVICE) {
+            if (vec2->traits.location & GHOST_LOCATION_DEVICE) {
                 if (!(vec->traits.flags & GHOST_DENSEMAT_SCATTERED) && !(vec2->traits.flags & GHOST_DENSEMAT_SCATTERED) &&
                     (vec->traits.ncols == vec->traits.ncolsorig) && (vec2->traits.ncols == vec2->traits.ncolsorig) &&
                     (vec->traits.nrows == vec->traits.nrowsorig) && (vec2->traits.nrows == vec2->traits.nrowsorig)) {
@@ -501,7 +501,7 @@ static ghost_error_t FUNCNAME(fromVec_tmpl(ghost_densemat_t *vec, ghost_densemat
                 }
             }
         } else {
-            if (vec2->traits.location == GHOST_LOCATION_DEVICE) {
+            if (vec2->traits.location & GHOST_LOCATION_DEVICE) {
                 if (DENSEMAT_COMPACT(vec) && DENSEMAT_COMPACT(vec2)) {
                     ghost_cu_download2d(vec->val,vec->stride,vec2->cu_val,vec2->stride,vec2->blocklen,vec2->nblock);
                 } else {
@@ -525,8 +525,8 @@ static ghost_error_t FUNCNAME(fromVec_tmpl(ghost_densemat_t *vec, ghost_densemat
             return GHOST_ERR_NOT_IMPLEMENTED;
         }
            
-        if (vec->traits.location == GHOST_LOCATION_DEVICE && 
-                vec2->traits.location == GHOST_LOCATION_DEVICE) {
+        if (vec->traits.location & GHOST_LOCATION_DEVICE && 
+                vec2->traits.location & GHOST_LOCATION_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
             v_t alpha = 1., beta = 0.;
             ghost_lidx_t m,n;
