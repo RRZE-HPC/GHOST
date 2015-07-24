@@ -413,7 +413,7 @@ static void * thread_main(void *arg)
             pthread_cond_wait(&(newTaskCond_by_threadcount[nthreads][shepidx]),&newTaskMutex_by_threadcount[nthreads]);
             INFO_LOG("Shep #%d (%d) woken up by new task with %d threads, actual number: %d",shepidx,(int)pthread_self(),nthreads,num_tasks_by_threadcount[nthreads]);
         }
-            INFO_LOG("Shep #%d (%d) woken up by new task with %d threads, actual number: %d",shepidx,(int)pthread_self(),nthreads,num_tasks_by_threadcount[nthreads]);
+        num_tasks_by_threadcount[nthreads]--;
         pthread_mutex_unlock(&newTaskMutex_by_threadcount[nthreads]);
 
         pthread_mutex_lock(&globalMutex);
@@ -432,12 +432,14 @@ static void * thread_main(void *arg)
         pthread_mutex_unlock(&newTaskMutex_by_threadcount[nthreads]);
 
         if (!myTask) {
+            pthread_mutex_lock(&newTaskMutex_by_threadcount[nthreads]);
+            num_tasks_by_threadcount[nthreads]++;
+            pthread_mutex_unlock(&newTaskMutex_by_threadcount[nthreads]);
             continue;
         } 
         
         pthread_mutex_lock(&newTaskMutex_by_threadcount[nthreads]);
         
-        num_tasks_by_threadcount[nthreads]--;
         
         DEBUG_LOG(1,"Found task with %d threads. Similar shephs waiting: %d",nthreads,waiting_shep_by_threadcount[nthreads]);
         
