@@ -185,10 +185,13 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q, int nthreads)
     }
     ghost_task_t *curTask = q->head;
 
+    DEBUG_LOG(1,"Try to find a suitable task");
+
     while(curTask != NULL)
     {
         pthread_mutex_lock(curTask->mutex);
         if (curTask->nThreads != nthreads) {
+            DEBUG_LOG(2,"Incorrect thread count! Try next task...");
             pthread_mutex_unlock(curTask->mutex);
             curTask = curTask->next;
             continue;
@@ -248,7 +251,6 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q, int nthreads)
         }
         hwloc_bitmap_t parentscores = hwloc_bitmap_alloc(); 
         if (curTask->parent && !(curTask->parent->flags & GHOST_TASK_NOT_ALLOW_CHILD)) {
-
             hwloc_bitmap_andnot(parentscores,curTask->parent->coremap,curTask->parent->childusedmap);
             if (curTask->flags & GHOST_TASK_LD_STRICT) {
                 hwloc_bitmap_and(parentscores,parentscores,numanode->cpuset);
@@ -409,7 +411,7 @@ static void * thread_main(void *arg)
         pthread_mutex_lock(&newTaskMutex_by_threadcount[nthreads]);
         waiting_shep_by_threadcount[nthreads]++; 
         while(num_tasks_by_threadcount[nthreads] == 0) {
-            DEBUG_LOG(1,"No tasks with %d threads --> shep #%d (%d) waiting for them",nthreads,shepidx,(int)pthread_self());
+            DEBUG_LOG(1,"No tasks with %d threads --> shep #%d (%d) waiting for them on cond %p",nthreads,shepidx,(int)pthread_self(),(void *)&(newTaskCond_by_threadcount[nthreads][shepidx]));
             pthread_cond_wait(&(newTaskCond_by_threadcount[nthreads][shepidx]),&newTaskMutex_by_threadcount[nthreads]);
             DEBUG_LOG(1,"Shep #%d (%d) woken up by new task with %d threads, actual number: %d",shepidx,(int)pthread_self(),nthreads,num_tasks_by_threadcount[nthreads]);
         }
@@ -461,9 +463,11 @@ static void * thread_main(void *arg)
         pthread_mutex_unlock(myTask->stateMutex);
         
 
+        DEBUG_LOG(1,"Starting exeuction of task %p",(void *)myTask);
         pthread_setspecific(key,myTask);
         myTask->ret = myTask->func(myTask->arg);
         pthread_setspecific(key,NULL);
+        DEBUG_LOG(1,"Task %p finished",(void *)myTask);
         
         pthread_mutex_lock(&anyTaskFinishedMutex);
         num_pending_tasks--;
@@ -500,6 +504,7 @@ ghost_error_t ghost_taskq_add(ghost_task_t *t)
         return GHOST_ERR_INVALID_ARG;
     }
 
+    pthread_mutex_lock(&taskq->mutex);
     if ((taskq->tail == NULL) || (taskq->head == NULL)) {
         DEBUG_LOG(1,"Adding task %p to empty queue",(void *)t);
         taskq->head = t;
@@ -524,15 +529,24 @@ ghost_error_t ghost_taskq_add(ghost_task_t *t)
             taskq->tail = t;
         }
     }
+    
+    ghost_task_t *cur;
+    ghost_task_cur(&cur);
+    if (cur) {
+        DEBUG_LOG(1,"Adding task from within another task");
+    }
 
     pthread_mutex_lock(&newTaskMutex_by_threadcount[t->nThreads]);
 
     num_tasks_by_threadcount[t->nThreads]++;
+    DEBUG_LOG(1,"Sending signal to cond [%d][%d] %p",t->nThreads,MIN(num_shep_by_threadcount[t->nThreads]-1,num_tasks_by_threadcount[t->nThreads]-1),(void *)&(newTaskCond_by_threadcount[t->nThreads][MIN(num_shep_by_threadcount[t->nThreads]-1,num_tasks_by_threadcount[t->nThreads]-1)]));
     pthread_cond_signal(&(newTaskCond_by_threadcount[t->nThreads][MIN(num_shep_by_threadcount[t->nThreads]-1,num_tasks_by_threadcount[t->nThreads]-1)]));
     pthread_mutex_unlock(&newTaskMutex_by_threadcount[t->nThreads]);
     pthread_mutex_lock(&anyTaskFinishedMutex);
     num_pending_tasks++;
     pthread_mutex_unlock(&anyTaskFinishedMutex);
+    pthread_mutex_unlock(&taskq->mutex);
+    
     return GHOST_SUCCESS;
 }
 

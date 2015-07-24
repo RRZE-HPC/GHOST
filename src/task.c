@@ -58,12 +58,14 @@ ghost_error_t ghost_task_string(char **str, ghost_task_t *t)
 
 ghost_error_t ghost_task_enqueue(ghost_task_t *t)
 {
-    pthread_mutex_lock(t->mutex);
-    pthread_mutex_lock(&taskq->mutex);
+    pthread_mutex_lock(t->stateMutex);
     t->state = GHOST_TASK_INVALID;
+    pthread_mutex_unlock(t->stateMutex);
 
+    pthread_mutex_lock(t->mutex);
     hwloc_bitmap_zero(t->coremap);
     hwloc_bitmap_zero(t->childusedmap);
+    pthread_mutex_unlock(t->mutex);
 
     if( t->parent != NULL ) {
       DEBUG_LOG(1,"Task's parent overwritten!");
@@ -73,9 +75,9 @@ ghost_error_t ghost_task_enqueue(ghost_task_t *t)
     }
 
     ghost_taskq_add(t);
+    pthread_mutex_lock(t->stateMutex);
     t->state = GHOST_TASK_ENQUEUED;
-    pthread_mutex_unlock(t->mutex);
-    pthread_mutex_unlock(&taskq->mutex);
+    pthread_mutex_unlock(t->stateMutex);
 
     DEBUG_LOG(1,"Task added successfully");
 
@@ -106,6 +108,11 @@ ghost_error_t ghost_task_wait(ghost_task_t * task)
     //    ghost_task_unpin(parent);
     //    WARNING_LOG("Now idle PUs: %d",NIDLECORES);
     //    }
+    ghost_task_t *cur;
+    ghost_task_cur(&cur);
+    if (cur == task) {
+        WARNING_LOG("Should wait on myself. Bad idea!");
+    }
 
     pthread_mutex_lock(task->stateMutex);
     while (task->state != GHOST_TASK_FINISHED) {
