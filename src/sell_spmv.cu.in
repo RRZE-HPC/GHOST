@@ -18,7 +18,7 @@
 #include "ghost/cu_sell_kernel.h"
 
 #define MAX_COLS_PER_BLOCK 32
-#define SELL_CUDA_THREADSPERBLOCK 1024
+#define SELL_CUDA_THREADSPERBLOCK 512
 
 /*
    comment this out if the dot products should not be computed on the fly but 
