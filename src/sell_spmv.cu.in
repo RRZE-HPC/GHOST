@@ -55,10 +55,6 @@ static char boolstr[256];
 ${SELL_CU_SPMV_SWITCHCASCADE}\
 if (do_fallback) {\
     if (rhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {\
-        block.x*=block.y;/* ignore special thread mapping for nvecs=32 */\
-        block.y= 1;\
-        block.x/=2; /* Otherwise, too many registers per thread! */\
-        grid.x*=2;\
         ghost_cu_free(cu_localdot);\
         GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(dt2)\
                     *rhs->traits.ncols*3*grid.x));\
@@ -76,8 +72,6 @@ if (do_fallback) {\
                 flags&GHOST_SPMV_DOT_ANY,\
                 flags&GHOST_SPMV_CHAIN_AXPBY);\
     } else {\
-        block.x/=2; /* Otherwise, too many registers per thread! */\
-        grid.x*=2;\
         ghost_cu_free(cu_localdot);\
         GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(dt2)\
                     *rhs->traits.ncols*3*grid.x));\
