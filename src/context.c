@@ -56,7 +56,9 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_gidx_t gnrow
         (*context)->dues[i] = 0;
         (*context)->wishlist[i] = NULL;
         (*context)->duelist[i] = NULL;
+#ifdef GHOST_HAVE_CUDA
         (*context)->cu_duelist[i] = NULL;
+#endif
     }
 
     if (!((*context)->flags & GHOST_CONTEXT_DIST_NZ)) {
