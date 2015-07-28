@@ -57,7 +57,9 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_gidx_t gnrow
         (*context)->wishlist[i] = NULL;
         (*context)->duelist[i] = NULL;
 #ifdef GHOST_HAVE_CUDA
-        (*context)->cu_duelist[i] = NULL;
+    if (type == GHOST_TYPE_CUDA) {
+          (*context)->cu_duelist[i] = NULL;
+    }
 #endif
     }
 
