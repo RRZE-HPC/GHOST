@@ -90,9 +90,9 @@ ghost_task_state_t ghost_task_test(ghost_task_t * t)
         return GHOST_TASK_INVALID;
     }
     ghost_task_state_t state;
-    pthread_mutex_lock(t->mutex);
+    pthread_mutex_lock(t->stateMutex);
     state = t->state;
-    pthread_mutex_unlock(t->mutex);
+    pthread_mutex_unlock(t->stateMutex);
 
     return state;
 }

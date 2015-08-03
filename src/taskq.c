@@ -453,7 +453,10 @@ static void * thread_main(void *arg)
             void *(*threadFunc)(void *);
             ghost_taskq_startroutine(&threadFunc);
             pthread_mutex_unlock(&newTaskMutex_by_threadcount[nthreads]);
+            // protect threadpool (possible reallocation) by global mutex!
+            pthread_mutex_lock(&globalMutex);
             ghost_thpool_thread_add(threadFunc,nthreads);
+            pthread_mutex_unlock(&globalMutex);
         } else {
             pthread_mutex_unlock(&newTaskMutex_by_threadcount[nthreads]);
         }

@@ -55,7 +55,6 @@ ghost_error_t ghost_thpool_create(int nThreads, void *(func)(void *))
 ghost_error_t ghost_thpool_thread_add(void *(func)(void *), intptr_t arg)
 {
     ghost_thpool->nThreads++;
-    sem_init(ghost_thpool->sem, 0, 0);
 
     ghost_thpool->threads = realloc(ghost_thpool->threads,ghost_thpool->nThreads*sizeof(pthread_t));
     pthread_create(&(ghost_thpool->threads[ghost_thpool->nThreads-1]), NULL, func, (void *)arg);
