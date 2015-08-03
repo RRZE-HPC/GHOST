@@ -74,8 +74,8 @@ ghost_error_t ghost_task_enqueue(ghost_task_t *t)
       GHOST_CALL_RETURN(ghost_task_cur(&t->parent));
     }
 
-    ghost_taskq_add(t);
     pthread_mutex_lock(t->stateMutex);
+    ghost_taskq_add(t);
     t->state = GHOST_TASK_ENQUEUED;
     pthread_mutex_unlock(t->stateMutex);
 
