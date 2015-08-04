@@ -35,7 +35,6 @@ set(CFG_SELL_CUDA_KERNELS "true,true,true,true,true,true,true;true,false,false,f
 set(VERBOSITY 1 CACHE STRING "Level of verbosity information. Valid values: 0 (be totally silent), 1 (print warnings, errors and further important information), 2, 3, 4 (increasing level of verbosity)")
 set(INSTRUMENTATION "" CACHE STRING "Type of instrumentation (semicolon separated list). Valid values: TIMING, LIKWID")
 set(INSTRUMENTATION_FUNCTYPES "((functype) & GHOST_FUNCTYPE_MATH) && ((functype) & GHOST_FUNCTYPE_KERNEL)" CACHE STRING "Logical selection of function types to instrument. Check the variable functype against valid values as defined in func_util.h. Example: functype & (GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_COMMUNICATION) ")
-set(MAX_THREADS "288" CACHE STRING "The maximum number of threads for a single process. 288 is for Knight's Landing.")
 
 find_package(PkgConfig)
 
@@ -62,7 +61,6 @@ endif()
 set(GHOST_VERBOSITY ${VERBOSITY})
 set(GHOST_LOG_ONLY_FIRST_OCCURENCE ${LOG_ONLY_FIRST_OCCURENCE})
 set(GHOST_LOG_MPIRANK ${LOG_MPIRANK})
-set(GHOST_MAX_THREADS ${MAX_THREADS})
 
 set (SOURCES
     src/crs.cpp
