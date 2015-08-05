@@ -49,12 +49,11 @@ ghost_error_t ghost_tsmm__a_avx_z_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_den
 
     complex double dalpha = *(complex double *)alpha;
     complex double dbeta = *(complex double *)beta;
-    __m256d betare, betaim, alphare, alphaim, betavec;
-   
-    betare = _mm256_set1_pd(creal(dbeta));
-    betaim = _mm256_set1_pd(cimag(dbeta));
+    __m256d alphare, alphaim;
     alphare = _mm256_set1_pd(creal(dalpha));
     alphaim = _mm256_set1_pd(cimag(dalpha));
+
+    __m256d betavec;
     betavec = _mm256_broadcast_pd(beta);
     ghost_lidx_t i,m,k,j,s;
 
@@ -72,7 +71,6 @@ ghost_error_t ghost_tsmm__a_avx_z_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_den
 #pragma omp parallel private(k,m)
         {
             #GHOST_UNROLL#__m256d vrev@,vimv@,tmpre@,tmpim@,tmpref@,tmpimf@,res0@,res1@;#2
-            __m256d vrow1,vrow2,res;
 #pragma omp for schedule(runtime)
             for (i=0; i<n-1; i+=2) {
                 for (k=0; k<CFGK/4; k++) {
@@ -92,10 +90,11 @@ ghost_error_t ghost_tsmm__a_avx_z_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_den
                     #GHOST_UNROLL#tmpimf@ = _mm256_shuffle_pd(tmpimf@,tmpimf@,0b0101);#2
                     #GHOST_UNROLL#res0@ = _mm256_permute2f128_pd(_mm256_blend_pd(tmpref@,tmpimf@,0b1010),_mm256_shuffle_pd(_mm256_blend_pd(tmpref@,tmpimf@,0b0101),_mm256_blend_pd(tmpref@,tmpimf@,0b0101),0b0101),0x20);#2
                     #GHOST_UNROLL#res1@ = _mm256_permute2f128_pd(_mm256_blend_pd(tmpref@,tmpimf@,0b1010),_mm256_shuffle_pd(_mm256_blend_pd(tmpref@,tmpimf@,0b0101),_mm256_blend_pd(tmpref@,tmpimf@,0b0101),0b0101),0x31);#2
-                    #GHOST_UNROLL#_mm256_store_pd(&xval[(i+@)*ldx+(4*k)],_mm256_add_pd(complex_mul(betavec,_mm256_load_pd(&xval[(i+@)*ldx+(4*k)])),res0@));#2
-                    #GHOST_UNROLL#_mm256_store_pd(&xval[(i+@)*ldx+(4*k)+2],_mm256_add_pd(complex_mul(betavec,_mm256_load_pd(&xval[(i+@)*ldx+(4*k)+2])),res1@));#2
+                    #GHOST_UNROLL#_mm256_store_pd((double *)&xval[(i+@)*ldx+(4*k)],_mm256_add_pd(complex_mul(betavec,_mm256_load_pd((double *)&xval[(i+@)*ldx+(4*k)])),res0@));#2
+                    #GHOST_UNROLL#_mm256_store_pd((double *)&xval[(i+@)*ldx+(4*k)+2],_mm256_add_pd(complex_mul(betavec,_mm256_load_pd((double *)&xval[(i+@)*ldx+(4*k)+2])),res1@));#2
                 }
 #if 0
+            __m256d vrow1,vrow2,res;
                 for (k=0; k<=CFGK-4; k+=4) {
                     #GHOST_UNROLL#tmp@ = _mm256_setzero_pd();#8
 
@@ -148,8 +147,8 @@ ghost_error_t ghost_tsmm__a_avx_z_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_den
                     #GHOST_UNROLL#tmpim@ = _mm256_shuffle_pd(tmpim@,tmpim@,0b0101);#2
                     #GHOST_UNROLL#res0@ = _mm256_permute2f128_pd(_mm256_blend_pd(tmpre@,tmpim@,0b1010),_mm256_shuffle_pd(_mm256_blend_pd(tmpre@,tmpim@,0b0101),_mm256_blend_pd(tmpre@,tmpim@,0b0101),0b0101),0x20);#2
                     #GHOST_UNROLL#res1@ = _mm256_permute2f128_pd(_mm256_blend_pd(tmpre@,tmpim@,0b1010),_mm256_shuffle_pd(_mm256_blend_pd(tmpre@,tmpim@,0b0101),_mm256_blend_pd(tmpre@,tmpim@,0b0101),0b0101),0x31);#2
-                    #GHOST_UNROLL#_mm256_stream_pd(&xval[(i+@)*ldx+(4*k)],res0@);#2
-                    #GHOST_UNROLL#_mm256_stream_pd(&xval[(i+@)*ldx+(4*k)+2],res1@);#2
+                    #GHOST_UNROLL#_mm256_stream_pd((double *)&xval[(i+@)*ldx+(4*k)],res0@);#2
+                    #GHOST_UNROLL#_mm256_stream_pd((double *)&xval[(i+@)*ldx+(4*k)+2],res1@);#2
                 }
             }
         }

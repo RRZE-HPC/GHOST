@@ -504,13 +504,23 @@ int ghost_gemm_perf_GFs(double *perf, double time, void *varg)
     ghost_gemm_perf_args_t arg = *(ghost_gemm_perf_args_t *)varg;
     int maddflops = 2;
     int mulflops = 1;
+    double totalflops = 0;
 
     if (arg.dt & GHOST_DT_COMPLEX) {
         maddflops = 8;
         mulflops = 6;
     }
-    
-    *perf = (maddflops*arg.n/1.e9*arg.m*arg.k)/time;
+    totalflops = maddflops*arg.n*arg.m*arg.k;
+  
+    WARNING_LOG("The performance computation has to be checked for correctness!"); 
+    if (!arg.alphaisone) {
+        totalflops += mulflops*arg.m*arg.n; 
+    }
+    if (!arg.betaiszero) {
+        totalflops += maddflops*arg.m*arg.n; 
+    }
+
+    *perf = totalflops/1.e9/time;
 
     return 0;
 }
