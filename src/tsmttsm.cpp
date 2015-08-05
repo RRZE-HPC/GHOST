@@ -5,7 +5,9 @@
 #include "ghost/math.h"
 #include "ghost/tsmttsm.h"
 #include "ghost/tsmttsm_gen.h"
+#include "ghost/tsmttsm_avx2_gen.h"
 #include "ghost/tsmttsm_avx_gen.h"
+#include "ghost/tsmttsm_sse_gen.h"
 
 #include <map>
 
@@ -104,7 +106,9 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
     
     if (ghost_tsmttsm_kernels.empty()) {
 #include "tsmttsm.def"
+#include "tsmttsm_avx2.def"
 #include "tsmttsm_avx.def"
+#include "tsmttsm_sse.def"
     }
     
     ghost_tsmttsm_parameters_t p;
@@ -112,6 +116,8 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
 
 #ifdef GHOST_HAVE_MIC
     p.impl = GHOST_IMPLEMENTATION_MIC;
+#elif defined(GHOST_HAVE_AVX2)
+    p.impl = GHOST_IMPLEMENTATION_AVX2;
 #elif defined(GHOST_HAVE_AVX)
     p.impl = GHOST_IMPLEMENTATION_AVX;
 #elif defined(GHOST_HAVE_SSE)
@@ -200,14 +206,17 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
 
 #ifdef GHOST_HAVE_INSTR_TIMING
     ghost_gemm_perf_args_t tsmttsm_perfargs;
-    tsmttsm_perfargs.xcols = p.wcols;
-    tsmttsm_perfargs.vcols = p.vcols;
+    tsmttsm_perfargs.n = w->traits.ncols;
+    tsmttsm_perfargs.m = v->traits.ncols;
     if (v->context) {
-        tsmttsm_perfargs.vrows = v->context->gnrows;
+        tsmttsm_perfargs.k = v->context->gnrows;
     } else {
-        tsmttsm_perfargs.vrows = v->traits.nrows;
+        tsmttsm_perfargs.k = v->traits.nrows;
     }
     tsmttsm_perfargs.dt = x->traits.datatype;
+    tsmttsm_perfargs.betaiszero = ghost_iszero(beta,p.dt);
+    tsmttsm_perfargs.alphaisone = ghost_isone(alpha,p.dt);
+    ghost_timing_set_perfFunc(__ghost_functag,ghost_gemm_perf_GBs,(void *)&tsmttsm_perfargs,sizeof(tsmttsm_perfargs),"GB/s");
     ghost_timing_set_perfFunc(__ghost_functag,ghost_gemm_perf_GFs,(void *)&tsmttsm_perfargs,sizeof(tsmttsm_perfargs),"GF/s");
 #endif
 
@@ -215,4 +224,5 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
 
     return ret;
 }
+
 

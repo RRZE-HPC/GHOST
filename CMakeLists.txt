@@ -33,7 +33,7 @@ set(CFG_BLOCKVECTOR_SIZES "1" CACHE STRING "The block vector sizes for which gen
 set(CFG_SELL_CHUNKHEIGHTS "32" CACHE STRING "The SELL chunk heights for which generated kernels are being created (comma-separated list)")
 set(CFG_SELL_CUDA_KERNELS "true,true,true,true,true,true,true;true,false,false,false,false,false,false;false,false,false,false,false,false,false" CACHE STRING "The permutations of SELL SpMV CUDA kernels to instantiate (semicolon-separated list of comma-separated lists). AXP(B)Y,SCALE,(V)SHIFT,DOT_YY,DOT_XY,DOT_XX,CHAIN_AXPBY")
 set(VERBOSITY 1 CACHE STRING "Level of verbosity information. Valid values: 0 (be totally silent), 1 (print warnings, errors and further important information), 2, 3, 4 (increasing level of verbosity)")
-set(INSTRUMENTATION "" CACHE STRING "Type of instrumentation (semicolon separated list). Valid values: TIMING, LIKWID")
+set(INSTRUMENTATION "" CACHE STRING "Type of instrumentation (semicolon separated list). Valid values: TIMING, LIKWID, IACA")
 set(INSTRUMENTATION_FUNCTYPES "((functype) & GHOST_FUNCTYPE_MATH) && ((functype) & GHOST_FUNCTYPE_KERNEL)" CACHE STRING "Logical selection of function types to instrument. Check the variable functype against valid values as defined in func_util.h. Example: functype & (GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_COMMUNICATION) ")
 
 find_package(PkgConfig)
@@ -232,8 +232,16 @@ configure_file (
     ${PROJECT_BINARY_DIR}/src/tsmttsm.c
     )
 configure_file (
+    ${PROJECT_SOURCE_DIR}/src/tsmttsm_avx2.c.in
+    ${PROJECT_BINARY_DIR}/src/tsmttsm_avx2.c
+    )
+configure_file (
     ${PROJECT_SOURCE_DIR}/src/tsmttsm_avx.c.in
     ${PROJECT_BINARY_DIR}/src/tsmttsm_avx.c
+    )
+configure_file (
+    ${PROJECT_SOURCE_DIR}/src/tsmttsm_sse.c.in
+    ${PROJECT_BINARY_DIR}/src/tsmttsm_sse.c
     )
 configure_file (
     ${PROJECT_SOURCE_DIR}/src/tsmttsm_kahan.c.in
@@ -251,7 +259,9 @@ set (TO_PREPROCESS
     ${PROJECT_BINARY_DIR}/src/tsmm_cu.cu
     ${PROJECT_BINARY_DIR}/src/tsmm_inplace.c
     ${PROJECT_BINARY_DIR}/src/tsmttsm.c
+    ${PROJECT_BINARY_DIR}/src/tsmttsm_avx2.c
     ${PROJECT_BINARY_DIR}/src/tsmttsm_avx.c
+    ${PROJECT_BINARY_DIR}/src/tsmttsm_sse.c
     ${PROJECT_BINARY_DIR}/src/tsmttsm_kahan.c
     )
 
@@ -343,7 +353,16 @@ foreach(instr ${INSTRUMENTATION})
         get_filename_component(LIKWID_LIBDIR ${LIKWID_INCLUDE_DIR}/../lib REALPATH)
         find_library(LIKWID_LIBRARIES likwid ${LIKWID_LIBDIR})
     endif()
+    if (${instr} STREQUAL "IACA")
+        message(STATUS "Disabling OpenMP because IACA instrumentation is enabled")
+        set(GHOST_HAVE_INSTR_IACA 1)
+        set(USE_OPENMP OFF)
+    endif()
 endforeach()
+
+if (NOT GHOST_HAVE_INSTR_IACA)
+    add_definitions(-DIACA_MARKS_OFF)
+endif()
 
 if (USE_MPI)
     set(MPI_LIBRARIES "-lmpi_mt")
@@ -547,7 +566,7 @@ if (${CBLAS_H} STREQUAL "mkl_cblas.h")
         find_library(LIBMKL_X_THREAD mkl_sequential ${MKL_LIBDIR})
     endif()
 
-    set (BLAS_LIBRARIES "${LIBMKL_INTEL_XLP64};${LIBMKL_CORE};${LIBMKL_X_THREAD}" CACHE STRING "BLAS libraries")
+    set (BLAS_LIBRARIES "${LIBMKL_INTEL_XLP64};${LIBMKL_CORE};${LIBMKL_X_THREAD}")
     mark_as_advanced(LIBMKL_CORE LIBMKL_INTEL_XLP64 LIBMKL_X_THREAD) 
 elseif (${CBLAS_H} STREQUAL "gsl_cblas.h")
     set(GHOST_HAVE_GSL 1)
@@ -692,6 +711,9 @@ if (BUILD_MIC)
 else()
     if (OPTIMIZE_HOSTARCH)
         AutodetectHostArchitecture()
+        if (USE_AVX2)
+            set(GHOST_HAVE_AVX2 1 CACHE BOOL "Generate AVX2 kernels")
+        endif()
         if (USE_AVX)
             set(GHOST_HAVE_AVX 1 CACHE BOOL "Generate AVX kernels")
         endif()

@@ -14,6 +14,7 @@ my %storages = (
 my %implementations = (
         'plain' => 'GHOST_IMPLEMENTATION_PLAIN',
         'avx' => 'GHOST_IMPLEMENTATION_AVX',
+        'avx2' => 'GHOST_IMPLEMENTATION_AVX2',
         'sse' => 'GHOST_IMPLEMENTATION_SSE',
         'mic' => 'GHOST_IMPLEMENTATION_MIC',
         'cuda' => 'GHOST_IMPLEMENTATION_CUDA',

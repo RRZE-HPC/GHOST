@@ -4,9 +4,11 @@
 #include "ghost/instr.h"
 #include "ghost/util.h"
 #include "ghost/tsmm_gen.h"
+#include <math.h>
+#include <float.h>
 
 #GHOST_FUNC_BEGIN#CFGK=${CFG_BLOCKVECTOR_SIZES}#CFGM=${CFG_BLOCKVECTOR_SIZES}
-ghost_error_t ghost_tsmm__u_plain_d_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
+ghost_error_t ghost_tsmm__a_plain_d_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
     ghost_error_t ret = GHOST_SUCCESS;
@@ -34,13 +36,14 @@ ghost_error_t ghost_tsmm__u_plain_d_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_d
 
     double tmp;
     
+    if (fabs(dalpha-1.) > DBL_MIN || fabs(dbeta) > DBL_MIN) { // general case: X = b*X + a*V*W
 #pragma omp parallel for private(j,s,tmp) schedule(runtime)
-    for (i=0; i<n; i++) {
+        for (i=0; i<n; i++) {
 #if CFGK > 1
 #pragma simd
 #endif
-        for (s=0; s<CFGK; s++) {
-            tmp = dbeta*xval[i*ldx+s];
+            for (s=0; s<CFGK; s++) {
+                tmp = dbeta*xval[i*ldx+s];
 #if CFGK > 1
 #pragma unroll_and_jam
 #else
@@ -48,10 +51,33 @@ ghost_error_t ghost_tsmm__u_plain_d_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_d
 #pragma simd
 #endif
 #endif
-            for (j=0; j<CFGM; j++) {
-                tmp += dalpha*vval[i*ldv+j]*wval[s*ldw+j];
+                for (j=0; j<CFGM; j++) {
+                    tmp += dalpha*vval[i*ldv+j]*wval[s*ldw+j];
+                }
+                xval[i*ldx+s] = tmp;
             }
-            xval[i*ldx+s] = tmp;
+        }
+    } else { // common case: X = V*W
+#pragma omp parallel for private(j,s,tmp) schedule(runtime)
+        for (i=0; i<n; i++) {
+#if CFGK > 1
+#pragma simd
+#endif
+#pragma vector always aligned nontemporal
+            for (s=0; s<CFGK; s++) {
+                tmp = 0.;
+#if CFGK > 1
+#pragma unroll_and_jam
+#else
+#if CFGM > 1
+#pragma simd
+#endif
+#endif
+                for (j=0; j<CFGM; j++) {
+                    tmp += vval[i*ldv+j]*wval[s*ldw+j];
+                }
+                xval[i*ldx+s] = tmp;
+            }
         }
     }
 

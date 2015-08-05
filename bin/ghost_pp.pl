@@ -2,6 +2,7 @@
 
 use strict;
 use warnings;
+use integer;
 
 my $function;
 my %vrs; # all variants, array of hashes
@@ -95,6 +96,7 @@ sub unroll {
     my $codeline =  (split /#/,$_[0])[2];
     my $unrollsize = (split /#/,$_[0])[3];
     chomp($unrollsize);
+    $unrollsize =~ s/([\d]+)\*([\d]+)/$1 * $2/ge; # evaulate a*b
     
     $_[0] = "";
     for (my $i=0; $i<$unrollsize; $i++) {
@@ -102,6 +104,9 @@ sub unroll {
         $modcodeline =~ s/@/$i/g;
         $modcodeline =~ s/([\d]+)\*([\d]+)\+([\d]+)/$1 * $2 + $3/ge; # evaulate a*b+c
         $modcodeline =~ s/([\d]+)\*([\d]+)/$1 * $2/ge; # evaulate a*b
+        $modcodeline =~ s/([\d]+)\+([\d]+)/$1 + $2/ge; # evaulate a+b
+        $modcodeline =~ s/([\d]+)\/([\d]+)/$1 \/ $2/ge; # evaulate a/b
+        $modcodeline =~ s/([\d]+)%([\d]+)/$1 % $2/ge; # evaulate a%b
         $_[0] = $_[0].$spaces.$modcodeline."\n";
     }
 }

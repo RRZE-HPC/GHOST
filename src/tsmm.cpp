@@ -164,6 +164,13 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
             PERFWARNING_LOG("Switching to the unaligned kernel!");
         }
     }
+    if (p.impl == GHOST_IMPLEMENTATION_PLAIN) {
+        if (!IS_ALIGNED(xptr,64) || !IS_ALIGNED(vptr,64) || !IS_ALIGNED(wptr,64)) {
+            p.alignment = GHOST_UNALIGNED;
+            PERFWARNING_LOG("Switching to the unaligned kernel!");
+        }
+    }
+    INFO_LOG("Initial search for kernel %d %d %d %d %d %d %d!",p.alignment,p.impl,p.dt,p.xcols,p.vcols,p.xstor,p.wstor);
     kernel = ghost_tsmm_kernels[p];
     
     if (!kernel) {
@@ -190,7 +197,12 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
     if (!kernel) {
         PERFWARNING_LOG("Try plain implementation");
         p.impl = GHOST_IMPLEMENTATION_PLAIN;
-        p.alignment = GHOST_UNALIGNED; // plain kernels do not have alignment restrictions
+        if (!IS_ALIGNED(xptr,64) || !IS_ALIGNED(vptr,64) || !IS_ALIGNED(wptr,64)) {
+            p.alignment = GHOST_UNALIGNED;
+            PERFWARNING_LOG("Switching to the unaligned kernel!");
+        } else {
+            p.alignment = GHOST_ALIGNED;
+        }
         p.xcols = x->traits.ncols;
         p.vcols = v->traits.ncols;
         kernel = ghost_tsmm_kernels[p];
@@ -226,15 +238,17 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
     
 #ifdef GHOST_HAVE_INSTR_TIMING
     ghost_gemm_perf_args_t tsmm_perfargs;
-    tsmm_perfargs.xcols = p.xcols;
-    tsmm_perfargs.vcols = p.vcols;
+    tsmm_perfargs.n = p.xcols;
+    tsmm_perfargs.k = p.vcols;
     if (v->context) {
-        tsmm_perfargs.vrows = v->context->gnrows;
+        tsmm_perfargs.m = v->context->gnrows;
     } else {
-        tsmm_perfargs.vrows = v->traits.nrows;
+        tsmm_perfargs.m = v->traits.nrows;
     }
     tsmm_perfargs.dt = x->traits.datatype;
-    ghost_timing_set_perfFunc(__ghost_functag,ghost_tsmm_perf_GBs,(void *)&tsmm_perfargs,sizeof(tsmm_perfargs),"GB/s");
+    tsmm_perfargs.betaiszero = ghost_iszero(beta,p.dt);
+    tsmm_perfargs.alphaisone = ghost_isone(alpha,p.dt);
+    ghost_timing_set_perfFunc(__ghost_functag,ghost_gemm_perf_GBs,(void *)&tsmm_perfargs,sizeof(tsmm_perfargs),"GB/s");
     ghost_timing_set_perfFunc(__ghost_functag,ghost_gemm_perf_GFs,(void *)&tsmm_perfargs,sizeof(tsmm_perfargs),"GF/s");
 #endif
 
@@ -243,15 +257,4 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
     return ret;
 }
 
-int ghost_tsmm_perf_GBs(double *perf, double time, void *varg)
-{
-    size_t size;
-    ghost_gemm_perf_args_t arg = *(ghost_gemm_perf_args_t *)varg;
-    
-    ghost_datatype_size(&size,arg.dt);
-
-    *perf = size*(arg.vrows*arg.vcols+arg.vrows*arg.xcols+arg.vcols*arg.xcols)/1.e9/time;
-
-    return 0;
-}
 

@@ -139,11 +139,18 @@ ghost_error_t ghost_tsmttsm_kahan(ghost_densemat_t *x, ghost_densemat_t *v, ghos
 
 #ifdef GHOST_HAVE_INSTR_TIMING
     ghost_gemm_perf_args_t tsmttsm_perfargs;
-    tsmttsm_perfargs.xcols = p.wcols;
-    tsmttsm_perfargs.vcols = p.vcols;
-    tsmttsm_perfargs.vrows = v->context->gnrows;
+    tsmttsm_perfargs.n = w->traits.ncols;
+    tsmttsm_perfargs.m = v->traits.ncols;
+    if (v->context) {
+        tsmttsm_perfargs.k = v->context->gnrows;
+    } else {
+        tsmttsm_perfargs.k = v->traits.nrows;
+    }
     tsmttsm_perfargs.dt = x->traits.datatype;
+    tsmttsm_perfargs.betaiszero = ghost_iszero(beta,p.dt);
+    tsmttsm_perfargs.alphaisone = ghost_isone(alpha,p.dt);
     ghost_timing_set_perfFunc(__ghost_functag,ghost_gemm_perf_GFs,(void *)&tsmttsm_perfargs,sizeof(tsmttsm_perfargs),"GF/s");
+    ghost_timing_set_perfFunc(__ghost_functag,ghost_gemm_perf_GBs,(void *)&tsmttsm_perfargs,sizeof(tsmttsm_perfargs),"GB/s");
 #endif
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
