@@ -745,7 +745,8 @@ ghost_error_t ghost_tsmm__a_avx_d_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_den
                     sumh2 = _mm256_extractf128_pd(sum2,1);
                     result1 = _mm_add_pd(sumh1,_mm256_castpd256_pd128(sum1));
                     result2 = _mm_add_pd(sumh2,_mm256_castpd256_pd128(sum2));
-                    res = _mm256_set_m128d(result2,result1);
+                    //res = _mm256_set_m128d(result2,result1);
+                    res = _mm256_insertf128_pd(_mm256_castpd128_pd256(result2),result1,1);
                     _mm256_store_pd(&xval[i*ldx+k],res);
                     
                     sum1 = _mm256_hadd_pd(tmp4,tmp5);
@@ -754,7 +755,8 @@ ghost_error_t ghost_tsmm__a_avx_d_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_den
                     sumh2 = _mm256_extractf128_pd(sum2,1);
                     result1 = _mm_add_pd(sumh1,_mm256_castpd256_pd128(sum1));
                     result2 = _mm_add_pd(sumh2,_mm256_castpd256_pd128(sum2));
-                    res = _mm256_set_m128d(result2,result1);
+                    //res = _mm256_set_m128d(result2,result1);
+                    res = _mm256_insertf128_pd(_mm256_castpd128_pd256(result2),result1,1);
                     _mm256_store_pd(&xval[(i+1)*ldx+k],res);
                 }
             }
