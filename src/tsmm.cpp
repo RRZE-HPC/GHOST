@@ -227,6 +227,13 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
         p.vcols = -1;
         kernel = ghost_tsmm_kernels[p];
     }
+    
+    if (!kernel) {
+        PERFWARNING_LOG("Try unaligned kernel");
+        p.alignment = GHOST_UNALIGNED;
+        kernel = ghost_tsmm_kernels[p];
+    }
+
 
 
     if (!kernel) {
