@@ -140,6 +140,11 @@ static ghost_error_t ghost_vspmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, 
         }
 
     }
+    UNUSED(alpha);
+    UNUSED(beta);
+    UNUSED(gamma);
+    UNUSED(delta);
+    UNUSED(eta);
 
     // TODO only of densemats are compact!
     while (remcols > GHOST_MAX_SPMMV_WIDTH) {

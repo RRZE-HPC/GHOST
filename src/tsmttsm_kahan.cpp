@@ -83,7 +83,7 @@ ghost_error_t ghost_tsmttsm_kahan(ghost_densemat_t *x, ghost_densemat_t *v, ghos
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error_t ret;
 
-    char *vtrans;
+    const char *vtrans;
     if (conjv && v->traits.datatype & GHOST_DT_COMPLEX) {
         vtrans = "C";
     } else {
