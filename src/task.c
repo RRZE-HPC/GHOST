@@ -163,7 +163,11 @@ void ghost_task_destroy(ghost_task_t *t)
         free(t->progressSem);
         free(t->finishedCond);
         pthread_mutex_destroy(t->mutex);
+        pthread_mutex_destroy(t->stateMutex);
+        pthread_mutex_destroy(t->finishedMutex);
         free(t->mutex);
+        free(t->stateMutex);
+        free(t->finishedMutex);
         free(t);
     }
 }
