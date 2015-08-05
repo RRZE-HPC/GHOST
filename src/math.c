@@ -9,6 +9,7 @@
 #include "ghost/spmv_solvers.h"
 #include <math.h>
 #include <complex.h>
+#include <float.h>
 
 #define GHOST_MAX_SPMMV_WIDTH INT_MAX
 
