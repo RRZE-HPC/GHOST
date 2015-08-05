@@ -122,7 +122,7 @@ ghost_error_t ghost_tsmm_inplace__plain_d_NCOLSIN_x(ghost_densemat_t *x, ghost_d
                 tmp[s] += xval[i*ldx+j]*wtmp[s][j];
             }
         }
-        memcpy(&xval[i*ldx],tmp,x->traits.ncols*sizeof(double));
+        memcpy(&xval[i*ldx],tmp,ncolsout*sizeof(double));
     }
     
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
@@ -183,7 +183,7 @@ ghost_error_t ghost_tsmm_inplace__plain_d_x_NCOLSOUT(ghost_densemat_t *x, ghost_
                 tmp[s] += xval[i*ldx+j]*wtmp[s][j];
             }
         }
-        memcpy(&xval[i*ldx],tmp,x->traits.ncols*sizeof(double));
+        memcpy(&xval[i*ldx],tmp,NCOLSOUT*sizeof(double));
     }
     
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
@@ -291,7 +291,7 @@ ghost_error_t ghost_tsmm_inplace__plain_z_x_x(ghost_densemat_t *x, ghost_densema
                 tmp[s] += dalpha*xval[i*ldx+j]*wval[s*ldw+j];
             }
         }
-        memcpy(&xval[i*ldx],tmp,x->traits.ncols*sizeof(double complex));
+        memcpy(&xval[i*ldx],tmp,ncolsout*sizeof(double complex));
     }
     
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
