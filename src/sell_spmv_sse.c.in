@@ -46,7 +46,7 @@ ghost_error_t ghost_sellspmv__a_sse_d_d_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat,
         }
     }
 
-#pragma omp parallel shared(partsums)
+#pragma omp parallel private(shift) shared(partsums)
     {
         ghost_lidx_t j,c,v;
         ghost_lidx_t offs;
@@ -81,7 +81,7 @@ ghost_error_t ghost_sellspmv__a_sse_d_d_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat,
                     if (spmvmOptions & GHOST_SPMV_SHIFT) {
                         shift = _mm_load1_pd(&sshift[0]);
                     } else {
-                        shift = _mm_load1_pd(&sshift[v]);
+                        shift = _mm_loadu_pd(&sshift[v]);
                     }
                     #GHOST_UNROLL#tmp@ = _mm_sub_pd(tmp@,_mm_mul_pd(shift,_mm_load_pd(&rval[c*CHUNKHEIGHT+2*@])));#CHUNKHEIGHT/2
                 }
@@ -203,7 +203,7 @@ ghost_error_t ghost_sellspmv__a_sse_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat,
         }
     }
 
-#pragma omp parallel private(c,j,offs,rhs,col) shared (partsums)
+#pragma omp parallel private(shift,c,j,offs,rhs,col) shared (partsums)
     {
         int tid = ghost_omp_threadnum();
         #GHOST_UNROLL#__m128d tmp@;#CHUNKHEIGHT
@@ -232,7 +232,7 @@ ghost_error_t ghost_sellspmv__a_sse_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat,
                     if (spmvmOptions & GHOST_SPMV_SHIFT) {
                         shift = _mm_load1_pd(&sshift[0]);
                     } else {
-                        shift = _mm_load_pd(&sshift[donecols]);
+                        shift = _mm_loadu_pd(&sshift[donecols]);
                     }
                     #GHOST_UNROLL#tmp@ = _mm_sub_pd(tmp@,_mm_mul_pd(shift,_mm_load_pd((double *)invec->val+(c*CHUNKHEIGHT+@)*invec->stride+donecols)));#CHUNKHEIGHT
                 }
@@ -366,7 +366,7 @@ ghost_error_t ghost_sellspmv__a_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
             if (spmvmOptions & GHOST_SPMV_SHIFT) {
                 #GHOST_UNROLL#tmp@ = _mm_sub_pd(tmp@,_mm_mul_pd(_mm_load1_pd(&sshift[0]),_mm_load_pd(rval+@*2)));#NVECS/2
             } else if (spmvmOptions & GHOST_SPMV_VSHIFT) {
-                #GHOST_UNROLL#tmp@ = _mm_sub_pd(tmp@,_mm_mul_pd(_mm_load_pd(&sshift[(@%(NVECS/2))*2]),_mm_load_pd(rval+@*2)));#NVECS/2
+                #GHOST_UNROLL#tmp@ = _mm_sub_pd(tmp@,_mm_mul_pd(_mm_loadu_pd(&sshift[(@%(NVECS/2))*2]),_mm_load_pd(rval+@*2)));#NVECS/2
             }
             if (spmvmOptions & GHOST_SPMV_SCALE) {
                 #GHOST_UNROLL#tmp@ = _mm_mul_pd(scale,tmp@);#NVECS/2
