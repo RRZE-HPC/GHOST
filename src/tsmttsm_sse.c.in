@@ -120,8 +120,6 @@ ghost_error_t ghost_tsmttsm__sse_d_CFGK_CFGM_cm_rm(ghost_densemat_t *x, ghost_de
                 for (; m<CFGM; m++) {
                     x_priv[(k+0)*ldxpriv+m] += dalpha*vval[i*ldv+m]*wval[i*ldw+(k+0)];
                     x_priv[(k+1)*ldxpriv+m] += dalpha*vval[i*ldv+m]*wval[i*ldw+(k+1)];
-                    x_priv[(k+2)*ldxpriv+m] += dalpha*vval[i*ldv+m]*wval[i*ldw+(k+2)];
-                    x_priv[(k+3)*ldxpriv+m] += dalpha*vval[i*ldv+m]*wval[i*ldw+(k+3)];
                 }
             }
             for (; k<CFGK; k++) {
@@ -146,8 +144,6 @@ ghost_error_t ghost_tsmttsm__sse_d_CFGK_CFGM_cm_rm(ghost_densemat_t *x, ghost_de
                 for (; m<CFGM; m++) {
                     xval[(k+0)*ldx+m] += x_priv[(k+0)*ldxpriv+m];
                     xval[(k+1)*ldx+m] += x_priv[(k+1)*ldxpriv+m];
-                    xval[(k+2)*ldx+m] += x_priv[(k+2)*ldxpriv+m];
-                    xval[(k+3)*ldx+m] += x_priv[(k+3)*ldxpriv+m];
                 }
             }
             for (; k<CFGK; k++) {
