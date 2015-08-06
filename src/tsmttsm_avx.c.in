@@ -11,10 +11,10 @@
 #include "iaca/iacaMarks.h"
 
 #define complex_mul(a,b) _mm256_addsub_pd(_mm256_mul_pd(_mm256_shuffle_pd(b,b,0),a),_mm256_mul_pd(_mm256_shuffle_pd(b,b,0xF),_mm256_shuffle_pd(a,a,5)))
-#define complex_mul_conj1(a,b) _mm256_addsub_pd(_mm256_mul_pd(_mm256_shuffle_pd(b,b,0),a),_mm256_mul_pd(_mm256_xor_pd(_mm256_shuffle_pd(b,b,0xF),_mm256_set1_pd(-0.)),_mm256_shuffle_pd(a,a,5)))
+#define complex_mul_conj1(b,a) _mm256_addsub_pd(_mm256_mul_pd(_mm256_shuffle_pd(b,b,0),a),_mm256_mul_pd(_mm256_xor_pd(_mm256_shuffle_pd(b,b,0xF),_mm256_set1_pd(-0.)),_mm256_shuffle_pd(a,a,5)))
 
 #define complex_mulf(a,b) _mm256_addsub_ps(_mm256_mul_ps(_mm256_shuffle_ps(b,b,0xA0),a),_mm256_mul_ps(_mm256_shuffle_ps(b,b,0xF5),_mm256_shuffle_ps(a,a,0xB1)))
-#define complex_mulf_conj1(a,b) _mm256_addsub_ps(_mm256_mul_ps(_mm256_shuffle_ps(b,b,0xA0),a),_mm256_mul_ps(_mm256_xor_ps(_mm256_shuffle_ps(b,b,0xF5),_mm256_set1_ps(-0.f)),_mm256_shuffle_ps(a,a,0xB1)))
+#define complex_mulf_conj1(b,a) _mm256_addsub_ps(_mm256_mul_ps(_mm256_shuffle_ps(b,b,0xA0),a),_mm256_mul_ps(_mm256_xor_ps(_mm256_shuffle_ps(b,b,0xF5),_mm256_set1_ps(-0.f)),_mm256_shuffle_ps(a,a,0xB1)))
 
 /* This version unrolls the inner (4x) and outer (2x) loop and uses a default storage scheme for the result matrix. */
 #GHOST_FUNC_BEGIN#CFGK=${CFG_BLOCKVECTOR_SIZES}#CFGM=${CFG_BLOCKVECTOR_SIZES}

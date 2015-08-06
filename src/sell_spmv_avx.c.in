@@ -11,7 +11,7 @@
 
 
 #define complex_mul(a,b) _mm256_addsub_pd(_mm256_mul_pd(_mm256_shuffle_pd(b,b,0),a),_mm256_mul_pd(_mm256_shuffle_pd(b,b,0xF),_mm256_shuffle_pd(a,a,5)))
-#define complex_mul_conj1(a,b) _mm256_addsub_pd(_mm256_mul_pd(_mm256_shuffle_pd(b,b,0),a),_mm256_mul_pd(_mm256_mul_pd(_mm256_shuffle_pd(b,b,0xF),_mm256_set1_pd(-1.)),_mm256_shuffle_pd(a,a,5)))
+#define complex_mul_conj1(b,a) _mm256_addsub_pd(_mm256_mul_pd(_mm256_shuffle_pd(b,b,0),a),_mm256_mul_pd(_mm256_mul_pd(_mm256_shuffle_pd(b,b,0xF),_mm256_set1_pd(-1.)),_mm256_shuffle_pd(a,a,5)))
 
 #GHOST_FUNC_BEGIN#CHUNKHEIGHT=${CFG_SELL_CHUNKHEIGHTS}
 ghost_error_t ghost_sellspmv__a_avx_d_d_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
@@ -1097,7 +1097,7 @@ ghost_error_t ghost_sellspmv__a_avx_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
             #GHOST_UNROLL#tmp@ = _mm256_setzero_pd();#NVECS/2
             
             for (j=0; j<SELL(mat)->rowLen[c]; j++) { // loop inside chunk
-                    #GHOST_UNROLL#rhs = _mm256_load_pd(((double *)(invec->val))+invec->stride*(SELL(mat)->col[offs+j*CHUNKHEIGHT])*2+@*4);matval=_mm256_insertf128_pd(matval,_mm_load_pd(&mval[2*(offs+j*CHUNKHEIGHT)]),0);matval=_mm256_insertf128_pd(matval,_mm_load_pd(&mval[2*(offs+j*CHUNKHEIGHT)]),1);tmp@ = _mm256_add_pd(tmp@,complex_mul(rhs,matval));#NVECS/2
+                    #GHOST_UNROLL#rhs = _mm256_load_pd(((double *)(invec->val))+invec->stride*(SELL(mat)->col[offs+j*CHUNKHEIGHT])*2+(@*4));matval=_mm256_insertf128_pd(matval,_mm_load_pd(&mval[2*(offs+j*CHUNKHEIGHT)]),0);matval=_mm256_insertf128_pd(matval,_mm_load_pd(&mval[2*(offs+j*CHUNKHEIGHT)]),1);tmp@ = _mm256_add_pd(tmp@,complex_mul(rhs,matval));#NVECS/2
             }
             if (spmvmOptions & GHOST_SPMV_SHIFT) {
                 #GHOST_UNROLL#tmp@ = _mm256_sub_pd(tmp@,complex_mul(shift,_mm256_load_pd(((double *)rval)+@*4)));#NVECS/2
