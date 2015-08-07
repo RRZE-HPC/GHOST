@@ -1323,10 +1323,10 @@ ghost_error_t ghost_tsmttsm1__avx_z_CFGK_CFGM_cm_rm(ghost_densemat_t *x, ghost_d
     }
 
     double *vreal, *vimag, *wreal, *wimag;
-    ghost_malloc((void **)&vreal,CFGM*n*sizeof(double));
-    ghost_malloc((void **)&vimag,CFGM*n*sizeof(double));
-    ghost_malloc((void **)&wreal,CFGK*n*sizeof(double));
-    ghost_malloc((void **)&wimag,CFGK*n*sizeof(double));
+    ghost_malloc_align((void **)&vreal,CFGM*n*sizeof(double),32);
+    ghost_malloc_align((void **)&vimag,CFGM*n*sizeof(double),32);
+    ghost_malloc_align((void **)&wreal,CFGK*n*sizeof(double),32);
+    ghost_malloc_align((void **)&wimag,CFGK*n*sizeof(double),32);
 
 #pragma omp parallel for schedule(runtime) private(m,k)
     for (i=0; i<n; i++) {
@@ -2018,7 +2018,7 @@ ghost_error_t ghost_tsmttsm__avx_d_x_x_cm_rm(ghost_densemat_t *x, ghost_densemat
         ghost_lidx_t k;
         for (k=0; k<ldw; k++) {
             for (m=0; m+4<=ldv; m+=4) {
-                _mm256_store_pd(&xval[k*ldx+m],_mm256_mul_pd(_mm256_load_pd(&xval[k*ldx+m]),betavec));
+                _mm256_storeu_pd(&xval[k*ldx+m],_mm256_mul_pd(_mm256_loadu_pd(&xval[k*ldx+m]),betavec));
             }
             for (; m<ldv; m++) {
                 xval[k*ldx+m] = dbeta*xval[k*ldx+m];
@@ -2106,7 +2106,7 @@ ghost_error_t ghost_tsmttsm__avx_d_x_x_cm_rm(ghost_densemat_t *x, ghost_densemat
                 m=0;
                 for (k=0; k+4<=ldw; k+=4) {
                     for (m=0; m+4<=ldv; m+=4) {
-                        #GHOST_UNROLL#_mm256_store_pd(&xval[(k+@)*ldx+m],_mm256_add_pd(_mm256_load_pd(&xval[(k+@)*ldx+m]),_mm256_load_pd(&x_priv[(k+@)*ldxpriv+m])));#4
+                        #GHOST_UNROLL#_mm256_storeu_pd(&xval[(k+@)*ldx+m],_mm256_add_pd(_mm256_loadu_pd(&xval[(k+@)*ldx+m]),_mm256_load_pd(&x_priv[(k+@)*ldxpriv+m])));#4
                     }
                     for (; m<ldv; m++) {
                         xval[(k+0)*ldx+m] += x_priv[(k+0)*ldxpriv+m];
@@ -2117,7 +2117,7 @@ ghost_error_t ghost_tsmttsm__avx_d_x_x_cm_rm(ghost_densemat_t *x, ghost_densemat
                 }
                 for (; k<ldw; k++) {
                     for (m=0; m+4<=ldv; m+=4) {
-                        _mm256_store_pd(&xval[(k+0)*ldx+m],_mm256_add_pd(_mm256_load_pd(&xval[(k+0)*ldx+m]),_mm256_load_pd(&x_priv[(k+0)*ldxpriv+m])));
+                        _mm256_storeu_pd(&xval[(k+0)*ldx+m],_mm256_add_pd(_mm256_loadu_pd(&xval[(k+0)*ldx+m]),_mm256_load_pd(&x_priv[(k+0)*ldxpriv+m])));
                     }
                     for (; m<ldv; m++) {
                         xval[k*ldx+m] += x_priv[k*ldxpriv+m];
