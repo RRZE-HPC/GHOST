@@ -12,6 +12,7 @@
 ghost_error_t ghost_sellspmv__a_sse_d_d_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
 {
 #if defined(GHOST_HAVE_SSE) && CHUNKHEIGHT>=2
+    INFO_LOG("In variable-ncols kernel with %"PRLIDX" cols",invec->traits.ncols);
     ghost_lidx_t i;
     double *lval = NULL, *rval = NULL;
     double *mval = (double *)SELL(mat)->val;
