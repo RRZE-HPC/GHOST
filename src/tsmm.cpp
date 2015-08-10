@@ -238,7 +238,7 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
 
     if (!kernel) {
         INFO_LOG("Could not find TSMM kernel with %d %d %d %d %d %d %d!",p.alignment,p.impl,p.dt,p.xcols,p.vcols,p.xstor,p.wstor);
-        return GHOST_ERR_NOT_IMPLEMENTED;
+        return GHOST_ERR_INVALID_ARG;
     }
 
     ret = kernel(x,v,w,alpha,beta);

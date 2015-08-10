@@ -364,26 +364,53 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
     } else
     if ((v->traits.location == w->traits.location) && (v->traits.location ==  x->traits.location) && 
             (v->traits.location & GHOST_LOCATION_HOST)) {
+        // BLAS cannot handle different storage layouts at once:
+        if( x->traits.storage != v->traits.storage )
+        {
+          if( strncasecmp(transv,"N",1) == 0 )
+            transv[0] = 'T';
+          else if( strncasecmp(transv,"T",1) == 0 )
+            transv[0] = 'N';
+          else
+          {
+            // cannot do it
+            ret = GHOST_ERR_NOT_IMPLEMENTED;
+            goto err;
+          }
+        }
+        if( x->traits.storage != w->traits.storage )
+        {
+          if( strncasecmp(transw,"N",1) == 0 )
+            transw[0] = 'T';
+          else if( strncasecmp(transw,"T",1) == 0 )
+            transw[0] = 'N';
+          else
+          {
+            // cannot do it
+            ret = GHOST_ERR_NOT_IMPLEMENTED;
+            goto err;
+          }
+        }
         if (v->traits.datatype & GHOST_DT_COMPLEX) 
         {
             if (v->traits.datatype & GHOST_DT_DOUBLE) 
             {
-                BLAS_CALL_GOTO(zgemm(v->traits.storage,transv,transw, m,n, k, alpha, vdata, ldv, wdata, ldw, mybeta, xdata, ldx),err,ret);
+                BLAS_CALL_GOTO(zgemm(x->traits.storage,transv,transw, m,n, k, alpha, vdata, ldv, wdata, ldw, mybeta, xdata, ldx),err,ret);
             } 
             else 
             {
-                BLAS_CALL_GOTO(cgemm(v->traits.storage,transv,transw, m,n, k, alpha, vdata, ldv, wdata, ldw, mybeta, xdata, ldx),err,ret);
+                BLAS_CALL_GOTO(cgemm(x->traits.storage,transv,transw, m,n, k, alpha, vdata, ldv, wdata, ldw, mybeta, xdata, ldx),err,ret);
             }
         } 
         else 
         {
             if (v->traits.datatype & GHOST_DT_DOUBLE) 
             {
-                BLAS_CALL_GOTO(dgemm(v->traits.storage,transv,transw, m,n, k, (double *)alpha, vdata, ldv, wdata, ldw, (double *)mybeta, xdata, ldx),err,ret);
+                BLAS_CALL_GOTO(dgemm(x->traits.storage,transv,transw, m,n, k, (double *)alpha, vdata, ldv, wdata, ldw, (double *)mybeta, xdata, ldx),err,ret);
             } 
             else 
             {
-                BLAS_CALL_GOTO(sgemm(v->traits.storage,transv,transw, m,n, k, (float *)alpha, vdata, ldv, wdata, ldw, (float *)mybeta, xdata, ldx),err,ret);
+                BLAS_CALL_GOTO(sgemm(x->traits.storage,transv,transw, m,n, k, (float *)alpha, vdata, ldv, wdata, ldw, (float *)mybeta, xdata, ldx),err,ret);
             }    
         }
     }
@@ -452,27 +479,41 @@ ghost_densemat_t *w_in, const char *transw, void *alpha, void *beta, int reduce,
         if (flags & GHOST_GEMM_KAHAN) {
             if (ghost_tsmttsm_kahan_valid(x,v,transv,w,transw,alpha,beta,reduce,0) == GHOST_SUCCESS) {
                 INFO_LOG("Transparently call special implementation Kahan-TSMTTSM");
-                GHOST_CALL_GOTO(ghost_tsmttsm_kahan(x,v,w,alpha,beta,reduce,transv[0] == 'C' || transv[0] == 'c'),err,ret);
-                donespecial = 1;
-            } else {
+
+                ret = ghost_tsmttsm_kahan(x,v,w,alpha,beta,reduce,transv[0] == 'C' || transv[0] == 'c');
+                if( ret == GHOST_SUCCESS )
+                  donespecial = 1;
+                else if( ret != GHOST_ERR_INVALID_ARG )
+                  goto err;
+            }
+            if( !donespecial ) {
                 WARNING_LOG("Will not do Kahan summation although requested!");
             }
         }
 
         if (ghost_tsmttsm_valid(x,v,transv,w,transw,alpha,beta,reduce,0) == GHOST_SUCCESS) {
             INFO_LOG("Transparently call special implementation TSMTTSM");
-            GHOST_CALL_GOTO(ghost_tsmttsm(x,v,w,alpha,beta,reduce,transv[0] == 'C' || transv[0] == 'c'),err,ret);
-            donespecial = 1;
+            ret = ghost_tsmttsm(x,v,w,alpha,beta,reduce,transv[0] == 'C' || transv[0] == 'c');
+            if( ret == GHOST_SUCCESS )
+              donespecial = 1;
+            else if( ret != GHOST_ERR_INVALID_ARG )
+              goto err;
         }
         if (ghost_tsmm_valid(x,v,transv,w,transw,alpha,beta,reduce,0) == GHOST_SUCCESS) {
             INFO_LOG("Transparently call special implementation TSMM");
-            GHOST_CALL_GOTO(ghost_tsmm(x,v,w,alpha,beta),err,ret);
-            donespecial = 1;
+            ret = ghost_tsmm(x,v,w,alpha,beta);
+            if( ret == GHOST_SUCCESS )
+              donespecial = 1;
+            else if( ret != GHOST_ERR_INVALID_ARG )
+              goto err;
         }
         if (ghost_tsmm_inplace_valid(x,v,transv,w,transw,alpha,beta,reduce,0) == GHOST_SUCCESS) {
             INFO_LOG("Transparently call special implementation TSMM-inplace");
-            GHOST_CALL_GOTO(ghost_tsmm_inplace(x,w,alpha,beta),err,ret);
-            donespecial = 1;
+            ret = ghost_tsmm_inplace(x,w,alpha,beta);
+            if( ret == GHOST_SUCCESS )
+              donespecial = 1;
+            else if( ret != GHOST_ERR_INVALID_ARG )
+              goto err;
         }
     }
 
