@@ -2024,7 +2024,7 @@ ghost_error_t ghost_tsmttsm__avx_d_x_x_cm_rm(ghost_densemat_t *x, ghost_densemat
                         #GHOST_UNROLL#wvec@ = _mm256_mul_pd(_mm256_set1_pd(wval[i*ldw+(k+@)]),alphavec);#4
                        
                         for (m=0; m+4<=x->traits.nrows; m+=4) {
-                            #GHOST_UNROLL#vvec@ = _mm256_mul_pd(_mm256_load_pd(&vval[i*ldv+m]),wvec@);#4
+                            #GHOST_UNROLL#vvec@ = _mm256_mul_pd(_mm256_loadu_pd(&vval[i*ldv+m]),wvec@);#4
                             #GHOST_UNROLL#_mm256_store_pd(&x_priv[(k+@)*ldxpriv+m],_mm256_add_pd(_mm256_load_pd(&x_priv[(k+@)*ldxpriv+m]),vvec@));#4
 
                         }
@@ -2038,7 +2038,7 @@ ghost_error_t ghost_tsmttsm__avx_d_x_x_cm_rm(ghost_densemat_t *x, ghost_densemat
                     for (; k<x->traits.ncols; k++) {
                         wvec0 = _mm256_mul_pd(_mm256_set1_pd(wval[i*ldw+(k+0)]),alphavec);
                         for (m=0; m+4<=x->traits.nrows; m+=4) {
-                            vvec0 = _mm256_mul_pd(_mm256_load_pd(&vval[i*ldv+m]),wvec0);
+                            vvec0 = _mm256_mul_pd(_mm256_loadu_pd(&vval[i*ldv+m]),wvec0);
                             _mm256_store_pd(&x_priv[(k+0)*ldxpriv+m],_mm256_add_pd(_mm256_load_pd(&x_priv[(k+0)*ldxpriv+m]),vvec0));
                         }
                         for (; m<x->traits.nrows; m++) {
@@ -2054,7 +2054,7 @@ ghost_error_t ghost_tsmttsm__avx_d_x_x_cm_rm(ghost_densemat_t *x, ghost_densemat
                         #GHOST_UNROLL#wvec@ = _mm256_set1_pd(wval[i*ldw+(k+@)]);#4
                        
                         for (m=0; m+4<=x->traits.nrows; m+=4) {
-                            #GHOST_UNROLL#vvec@ = _mm256_mul_pd(_mm256_load_pd(&vval[i*ldv+m]),wvec@);#4
+                            #GHOST_UNROLL#vvec@ = _mm256_mul_pd(_mm256_loadu_pd(&vval[i*ldv+m]),wvec@);#4
                             #GHOST_UNROLL#_mm256_store_pd(&x_priv[(k+@)*ldxpriv+m],_mm256_add_pd(_mm256_load_pd(&x_priv[(k+@)*ldxpriv+m]),vvec@));#4
 
                         }
@@ -2068,7 +2068,7 @@ ghost_error_t ghost_tsmttsm__avx_d_x_x_cm_rm(ghost_densemat_t *x, ghost_densemat
                     for (; k<x->traits.ncols; k++) {
                         wvec0 = _mm256_set1_pd(wval[i*ldw+(k+0)]);
                         for (m=0; m+4<=x->traits.nrows; m+=4) {
-                            vvec0 = _mm256_mul_pd(_mm256_load_pd(&vval[i*ldv+m]),wvec0);
+                            vvec0 = _mm256_mul_pd(_mm256_loadu_pd(&vval[i*ldv+m]),wvec0);
                             _mm256_store_pd(&x_priv[(k+0)*ldxpriv+m],_mm256_add_pd(_mm256_load_pd(&x_priv[(k+0)*ldxpriv+m]),vvec0));
                         }
                         for (; m<x->traits.nrows; m++) {
