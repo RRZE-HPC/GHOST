@@ -480,7 +480,8 @@ static ghost_error_t vec_rm_fromFile(ghost_densemat_t *vec, char *path, bool sin
         offset = vec->context->lfRow[rank]*vec->traits.ncols;
     }
 
-    ghost_densemat_rm_malloc(vec);
+    int needInit = 0;
+    ghost_densemat_rm_malloc(vec,&needInit);
     DEBUG_LOG(1,"Reading vector from file %s",path);
 
     FILE *filed;
@@ -574,7 +575,11 @@ static ghost_error_t vec_rm_fromFile(ghost_densemat_t *vec, char *path, bool sin
         return GHOST_ERR_IO;
     }
 
-    GHOST_SINGLETHREAD(DENSEMAT_ITER(vec,fread(valptr, vec->elSize, 1,filed)));
+    if( needInit ) {
+      GHOST_SINGLETHREAD(DENSEMAT_ITER_INIT(vec,fread(valptr, vec->elSize, 1,filed)));
+    } else {
+      GHOST_SINGLETHREAD(DENSEMAT_ITER(vec,fread(valptr, vec->elSize, 1,filed)));
+    }
     /*int v;
     for (v=0; v<vec->traits.nrows; v++) {
         if (vec->traits.location == GHOST_LOCATION_HOST)
@@ -626,11 +631,16 @@ static ghost_error_t vec_rm_fromFunc(ghost_densemat_t *vec, void (*fp)(ghost_gid
         rank = 0;
         offset = 0;
     }
-    GHOST_CALL_RETURN(ghost_densemat_rm_malloc(vec));
+    int needInit = 0;
+    GHOST_CALL_RETURN(ghost_densemat_rm_malloc(vec,&needInit));
 
 
     if (vec->traits.location & GHOST_LOCATION_HOST) { // vector is stored on host
-        DENSEMAT_ITER(vec,fp(offset+row,col,valptr));
+        if( needInit ) {
+          DENSEMAT_ITER_INIT(vec,fp(offset+row,col,valptr));
+        } else {
+          DENSEMAT_ITER(vec,fp(offset+row,col,valptr));
+        }
         vec->uploadNonHalo(vec);
     } else {
         INFO_LOG("Need to create dummy HOST densemat!");

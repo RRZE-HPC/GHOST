@@ -398,14 +398,19 @@ template <typename v_t>
 static ghost_error_t FUNCNAME(fromRand_tmpl(ghost_densemat_t *vec))
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
-    
-    FUNCNAME(malloc(vec));
+
+    int needInit = 0;
+    FUNCNAME(malloc(vec,&needInit));
 
 #pragma omp parallel
     {
         unsigned int *state;
         ghost_rand_get(&state);
-        DENSEMAT_ITER(vec,my_rand(state,(v_t *)valptr));
+        if( needInit ) {
+          DENSEMAT_ITER_INIT(vec,my_rand(state,(v_t *)valptr));
+        } else {
+          DENSEMAT_ITER(vec,my_rand(state,(v_t *)valptr));
+        }
     }
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
@@ -416,10 +421,16 @@ template <typename v_t>
 static ghost_error_t FUNCNAME(fromScalar_tmpl(ghost_densemat_t *vec, void *val))
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
-    
-    FUNCNAME(malloc(vec));
 
-    DENSEMAT_ITER(vec,*(v_t *)valptr = *(v_t *)val);
+    int needInit = 0;
+    FUNCNAME(malloc(vec,&needInit));
+
+    if( needInit ) {
+      DENSEMAT_ITER_INIT(vec,*(v_t *)valptr = *(v_t *)val);
+    } else {
+      DENSEMAT_ITER(vec,*(v_t *)valptr = *(v_t *)val);
+    }
+    
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
     
@@ -477,7 +488,16 @@ inline cublasStatus_t cublasGgeam(cublasHandle_t handle, cublasOperation_t trans
 template <typename v_t> 
 static ghost_error_t FUNCNAME(fromVec_tmpl(ghost_densemat_t *vec, ghost_densemat_t *vec2, ghost_lidx_t roffs, ghost_lidx_t coffs))
 {
-    FUNCNAME(malloc(vec));
+    int needInit = 0;
+    FUNCNAME(malloc(vec,&needInit));
+    if( needInit ) {
+        if( vec->traits.ncolspadded != vec->traits.ncols || vec->traits.nrowspadded != vec->traits.nrows || roffs != 0 ) {
+            PERFWARNING_LOG("Fast initializing of padded vector block from another vector not implemented, filling with zeros first");
+            DENSEMAT_ITER_INIT(vec,memset(valptr,0,sizeof(v_t)));
+        }
+    }
+
+
     
     if (vec2->traits.storage == vec->traits.storage) { 
         if (vec->traits.location & GHOST_LOCATION_DEVICE) {
