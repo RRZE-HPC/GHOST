@@ -5,21 +5,25 @@ set -e
 # kernel lib
 PRGENV="gcc-4.9.2-openmpi" # intel-13.0.1-mpich gcc-4.8.2-openmpi
 BUILD_TYPE=Release
+VECT_EXT="native"
 
 # list of modules to load
 MODULES_BASIC="cmake ccache cppcheck lapack gsl/gsl-1.16/sled11.x86_64.gcc-4.8.2.release"
 
 ## parse command line arguments
-usage() { echo "Usage: $0 [-e <PrgEnv/module-string>] [-b <Release|Debug|...>]" 1>&2; 
+usage() { echo "Usage: $0 [-e <PrgEnv/module-string>] [-b <Release|Debug|...>] [-v <native|none|SSE|AVX|AVX2>]" 1>&2; 
 exit 1; }
 
-while getopts "e:b:h" o; do
+while getopts "e:b:v:h" o; do
     case "${o}" in
         e)
             PRGENV=${OPTARG}
             ;;
         b)
             BUILD_TYPE=${OPTARG}
+            ;;
+        v)
+            VECT_EXT=${OPTARG}
             ;;
         h)
             usage
@@ -74,13 +78,33 @@ if [[ "${BUILD_TYPE}" = *"Rel"* ]]; then
   BLOCKSZ="1,2,4,8"
 fi;
 
+# setup vector extension flags
+VECT_FLAGS=""
+if [ "${VECT_EXT}" != "native" ]; then
+  if [[ "${VECT_EXT}" = "SSE|AVX|AVX2" ]]; then
+    VECT_FLAGS="${VECT_FLAGS} -DGHOST_HAVE_SSE=On"
+  else
+    VECT_FLAGS="${VECT_FLAGS} -DGHOST_HAVE_SSE=Off"
+  fi
+  if [[ "${VECT_EXT}" = "AVX|AVX2" ]]; then
+    VECT_FLAGS="${VECT_FLAGS} -DGHOST_HAVE_AVX=On"
+  else
+    VECT_FLAGS="${VECT_FLAGS} -DGHOST_HAVE_AVX=Off"
+  fi
+  if [[ "${VECT_EXT}" = "AVX2" ]]; then
+    VECT_FLAGS="${VECT_FLAGS} -DGHOST_HAVE_AVX2=On"
+  else
+    VECT_FLAGS="${VECT_FLAGS} -DGHOST_HAVE_AVX2=Off"
+  fi
+fi
+
 error=0
 # build and install
-mkdir build_${PRGENV}_${BUILD_TYPE}       || exit 1
-cd build_${PRGENV}_${BUILD_TYPE}          || exit 1
-cmake -DCMAKE_INSTALL_PREFIX=../../install-${PRGENV}-${BUILD_TYPE} \
+mkdir build_${PRGENV}_${BUILD_TYPE}_${VECT_EXT}       || exit 1
+cd build_${PRGENV}_${BUILD_TYPE}_${VECT_EXT}          || exit 1
+cmake -DCMAKE_INSTALL_PREFIX=../../install-${PRGENV}-${BUILD_TYPE}-${VECT_EXT} \
 -DCFG_BLOCKVECTOR_SIZES=${BLOCKSZ} -DCFG_SELL_CHUNKHEIGHTS=${SELL_CS} \
--DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DBUILD_SHARED_LIBS=ON ..              || error=1
+-DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DBUILD_SHARED_LIBS=ON ${VECT_FLAGS} ..              || error=1
 
 if [[ "${BUILD_TYPE}" = *"Rel"* ]]; then
   make doc                                  || error=1
