@@ -110,7 +110,9 @@ cmake -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX/install-${PRGENV}-${BUILD_TYPE}-${V
 -DCFG_BLOCKVECTOR_SIZES=${BLOCKSZ} -DCFG_SELL_CHUNKHEIGHTS=${SELL_CS} \
 -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DBUILD_SHARED_LIBS=ON ${VECT_FLAGS} ..              || error=1
 
-make doc                                  || error=1
+if [[ "${BUILD_TYPE}" = *"Rel"* ]]; then
+  make doc                                  || error=1
+fi
 make -j 24 || make || exit 1
 make check                                || error=1
 make install                              || error=1
