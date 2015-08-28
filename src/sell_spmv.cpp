@@ -63,7 +63,7 @@ static ghost_error_t ghost_sell_spmv_plain_rm(ghost_sparsemat_t *mat,
             tmp[i] = tmp[i-1] + rhs->traits.ncols;
         }
         int tid = ghost_omp_threadnum();
-        v_t * rhsrow, *lhsrow, *zrow;
+        v_t * rhsrow, *lhsrow, *zrow = NULL;
         v_t matrixval;
 
 #pragma omp for schedule(runtime) 
