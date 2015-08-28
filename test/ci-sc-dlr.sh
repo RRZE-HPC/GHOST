@@ -6,13 +6,13 @@ set -e
 PRGENV="gcc-4.9.2-openmpi" # intel-13.0.1-mpich gcc-4.8.2-openmpi
 BUILD_TYPE=Release
 INSTALL_PREFIX=../../
-VECT_EXT="native"
+VECT_EXT="native" # none SSE AVX AVX2 CUDA
 
 # list of modules to load
-MODULES_BASIC="cmake ccache cppcheck lapack gsl/gsl-1.16/sled11.x86_64.gcc-4.8.2.release"
+MODULES_BASIC="cmake ccache cppcheck lapack gsl"
 
 ## parse command line arguments
-usage() { echo "Usage: $0 [-e <PrgEnv/module-string>] [-b <Release|Debug|...>] [-v <native|none|SSE|AVX|AVX2>]" 1>&2; 
+usage() { echo "Usage: $0 [-e <PrgEnv/module-string>] [-b <Release|Debug|...>] [-v <native|none|SSE|AVX|AVX2|CUDA>]" 1>&2; 
 exit 1; }
 
 while getopts "e:b:v:p:h" o; do
@@ -59,6 +59,9 @@ export FC=$1
 echo "compilers: CC=$CC, CXX=$CXX, FC=$FC"
 
 for m in $MODULES_BASIC; do module load $m; done
+if [ "${VECT_EXT}" = "CUDA" ]; then
+  module load cuda
+fi
 
 module list
 
@@ -74,17 +77,20 @@ ulimit -v unlimited
 
 
 # setup which optimized kernels should be built
-# by default use something not tested in PHIST (can't leave the strings empty)
-SELL_CS="33"
-BLOCKSZ="13"
-if [[ "${BUILD_TYPE}" = *"Rel"* ]]; then
+if [ "${VECT_EXT}" = "none" ]; then
+  SELL_CS="33"
+  BLOCKSZ="13"
+else
   SELL_CS="1,4,16,32"
   BLOCKSZ="1,2,4,8"
 fi;
 
 # setup vector extension flags
 VECT_FLAGS=""
-if [ "${VECT_EXT}" != "native" ]; then
+if [ "${VECT_EXT}" = "CUDA" ]; then
+  VECT_FLAGS="${VECT_FLAGS} -DUSE_CUDA=On"
+elif [ "${VECT_EXT}" != "native" ]; then
+  VECT_FLAGS="${VECT_FLAGS} -DUSE_CUDA=Off"
   if [[ "${VECT_EXT}" = "SSE|AVX|AVX2" ]]; then
     VECT_FLAGS="${VECT_FLAGS} -DGHOST_HAVE_SSE=On"
   else
