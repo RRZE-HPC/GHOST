@@ -433,7 +433,7 @@ ghost_error_t ghost_tsmttsm__avx_s_CFGK_CFGM_cm_rm(ghost_densemat_t *x, ghost_de
         betavec = _mm256_setzero_ps();
     }
 
-    ghost_lidx_t i,m;
+    ghost_lidx_t i,m,m_rem;
 
     ghost_lidx_t k;
     for (k=0; k<CFGK; k++) {
@@ -535,8 +535,8 @@ ghost_error_t ghost_tsmttsm__avx_s_CFGK_CFGM_cm_rm(ghost_densemat_t *x, ghost_de
 #pragma vector aligned
 #pragma vector always
 #pragma ivdep
-                        for (; m<CFGM; m++) {
-                            #GHOST_UNROLL#x_priv[m+k*CFGM] += vval[(i+@)*ldv+m]*wval[(i+@)*ldw+k];#OUTERUNROLL
+                        for (m_rem=m; m_rem<CFGM; m_rem++) {
+                            #GHOST_UNROLL#x_priv[m_rem+k*CFGM] += vval[(i+@)*ldv+m_rem]*wval[(i+@)*ldw+k];#OUTERUNROLL
                         }
 #endif
                     }
