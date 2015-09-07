@@ -53,7 +53,7 @@ static ghost_error_t ghost_crs_spmv_plain_rm(ghost_sparsemat_t *mat, ghost_dense
 #pragma omp parallel private (i, j, lhsv,rcol,lcol,zcol,cidx) shared (partsums)
     {
         v_t matrixval;
-        v_t * rhsrow, *zrow;
+        v_t * rhsrow, *zrow = NULL;
         v_t *tmp;
         ghost_malloc((void **)&tmp,rhs->traits.ncols*sizeof(v_t));
         int tid = ghost_omp_threadnum();
@@ -157,7 +157,6 @@ static ghost_error_t ghost_crs_spmv_plain_cm(ghost_sparsemat_t *mat, ghost_dense
     ghost_crs_t *cr = CR(mat);
     v_t *rhsv = NULL;
     v_t *lhsv = NULL;
-    v_t *zv = NULL;
     v_t *local_dot_product = NULL, *partsums = NULL;
     m_t *mval = (m_t *)(cr->val);
     ghost_lidx_t i, j;
@@ -190,9 +189,10 @@ static ghost_error_t ghost_crs_spmv_plain_cm(ghost_sparsemat_t *mat, ghost_dense
         memset(local_dot_product,0,3*lhs->traits.ncols*sizeof(v_t));
     }
 
-#pragma omp parallel private (i,hlp1, j, rhsv, lhsv, zv, v) shared (partsums)
+#pragma omp parallel private (i,hlp1, j, rhsv, lhsv, v) shared (partsums)
     {
         int tid = ghost_omp_threadnum();
+        v_t *zv = NULL; // prevents quite a few warnings for some compilers
 #pragma omp for schedule(runtime) 
         for (i=0; i<mat->nrows; i++){
             

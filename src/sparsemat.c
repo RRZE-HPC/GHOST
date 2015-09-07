@@ -207,20 +207,24 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
         GHOST_CALL(ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx_t)),ret);
 #pragma omp for schedule(runtime)
         for( chunk = 0; chunk < nchunks; chunk++ ) {
-            for (i=0; (i<C) && (chunk*C+i < mat->nrows); i++) {
+            for (i=0; i < C; i++) {
                 row = chunk*C+i;
 
-                if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
-                    if (mat->context->perm_global && mat->context->perm_local) {
+                if( row >= mat->nrows ) {
+                    rowlen = 0;
+                } else {
+                    if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
+                      if (mat->context->perm_global && mat->context->perm_local) {
                         INFO_LOG("Global _and_ local permutation");
                         funcerrs += src->func(mat->context->perm_global->invPerm[mat->context->perm_local->invPerm[row]],&rowlen,tmpcol,tmpval);
-                    } else if (mat->context->perm_global) {
+                      } else if (mat->context->perm_global) {
                         funcerrs += src->func(mat->context->perm_global->invPerm[row],&rowlen,tmpcol,tmpval);
-                    } else if (mat->context->perm_local) {
+                      } else if (mat->context->perm_local) {
                         funcerrs += src->func(mat->context->lfRow[me]+mat->context->perm_local->invPerm[row],&rowlen,tmpcol,tmpval);
+                      }
+                    } else {
+                      funcerrs += src->func(mat->context->lfRow[me]+row,&rowlen,tmpcol,tmpval);
                     }
-                } else {
-                    funcerrs += src->func(mat->context->lfRow[me]+row,&rowlen,tmpcol,tmpval);
                 }
 
                 // rl _must_ not be NULL because we need it for the statistics

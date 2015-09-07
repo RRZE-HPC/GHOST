@@ -58,7 +58,7 @@ ghost_error_t ghost_tsmttsm__plain_d_x_x_cm_rm(ghost_densemat_t *x, ghost_densem
 #pragma omp parallel private(j,k)
     {
         double *x_priv;
-        ghost_malloc((void **)&x_priv,m*K*sizeof(double));
+        ghost_malloc_align((void **)&x_priv,m*K*sizeof(double),32);
         memset(x_priv,0,m*K*sizeof(double));
 #pragma omp for schedule(runtime)
         for (i=0; i<n; i++) {

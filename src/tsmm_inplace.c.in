@@ -28,24 +28,27 @@ ghost_error_t ghost_tsmm_inplace__plain_d_NCOLSIN_NCOLSOUT(ghost_densemat_t *x, 
     ghost_densemat_valptr(w,(void **)&wval);
     ghost_densemat_valptr(x,(void **)&xval);
 
-    double tmp[NCOLSOUT];
     ghost_lidx_t i,j,s;
 
     /* construct dense wval... we can safely copy it as it is small! */
-    double wtmp[NCOLSOUT][NCOLSIN];
+    double * restrict wtmp = NULL;
+    ghost_lidx_t ncolsin_padded = PAD(NCOLSIN,4);
+    ghost_malloc_align((void**)&wtmp,ncolsin_padded*NCOLSOUT*sizeof(double),32);
+    memset(wtmp,0,ncolsin_padded*NCOLSOUT*sizeof(double));
     for(s=0; s<NCOLSOUT; s++)
     {
       for(j=0; j<NCOLSIN; j++)
       {
-        wtmp[s][j] = dalpha*wval[s*ldw+j];
+        wtmp[s*ncolsin_padded+j] = dalpha*wval[s*ldw+j];
         if(s==j)
-          wtmp[s][j] += dbeta;
+          wtmp[s*ncolsin_padded+j] += dbeta;
       }
     }
 
 
-#pragma omp parallel for private(j,s,tmp) schedule(runtime)
+#pragma omp parallel for private(j,s) schedule(runtime)
     for (i=0; i<n; i++) {
+        double tmp[NCOLSOUT];
 #pragma unroll_and_jam(MIN(16,NCOLSOUT))
         for (s=0; s<NCOLSOUT; s++) {
             tmp[s] = 0.;
@@ -57,11 +60,13 @@ ghost_error_t ghost_tsmm_inplace__plain_d_NCOLSIN_NCOLSOUT(ghost_densemat_t *x, 
 #endif
 #pragma unroll_and_jam(MIN(16,NCOLSIN))
             for (j=0; j<NCOLSIN; j++) {
-                tmp[s] += xval[i*ldx+j]*wtmp[s][j];
+                tmp[s] += xval[i*ldx+j]*wtmp[s*ncolsin_padded+j];
             }
         }
         memcpy(&xval[i*ldx],tmp,NCOLSOUT*sizeof(double));
     }
+    
+    free(wtmp);
     
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
@@ -92,23 +97,26 @@ ghost_error_t ghost_tsmm_inplace__plain_d_NCOLSIN_x(ghost_densemat_t *x, ghost_d
     ghost_densemat_valptr(w,(void **)&wval);
     ghost_densemat_valptr(x,(void **)&xval);
 
-    double tmp[ncolsout];
     ghost_lidx_t i,j,s;
 
     /* construct dense wval... we can safely copy it as it is small! */
-    double wtmp[ncolsout][NCOLSIN];
+    double * restrict wtmp = NULL;
+    ghost_lidx_t ncolsin_padded = PAD(NCOLSIN,4);
+    ghost_malloc_align((void**)&wtmp,ncolsin_padded*ncolsout*sizeof(double),32);
+    memset(wtmp,0,ncolsin_padded*ncolsout*sizeof(double));
     for(s=0; s<ncolsout; s++)
     {
       for(j=0; j<NCOLSIN; j++)
       {
-        wtmp[s][j] = dalpha*wval[s*ldw+j];
+        wtmp[s*ncolsin_padded+j] = dalpha*wval[s*ldw+j];
         if(s==j)
-          wtmp[s][j] += dbeta;
+          wtmp[s*ncolsin_padded+j] += dbeta;
       }
     }
 
-#pragma omp parallel for private(j,s,tmp) schedule(runtime)
+#pragma omp parallel for private(j,s) schedule(runtime)
     for (i=0; i<n; i++) {
+        double tmp[ncolsout];
         for (s=0; s<ncolsout; s++) {
             tmp[s] = 0.;
 #if NCOLSIN > 1
@@ -119,11 +127,13 @@ ghost_error_t ghost_tsmm_inplace__plain_d_NCOLSIN_x(ghost_densemat_t *x, ghost_d
 #endif
 #pragma unroll_and_jam(MIN(16,NCOLSIN))
             for (j=0; j<NCOLSIN; j++) {
-                tmp[s] += xval[i*ldx+j]*wtmp[s][j];
+                tmp[s] += xval[i*ldx+j]*wtmp[s*ncolsin_padded+j];
             }
         }
         memcpy(&xval[i*ldx],tmp,ncolsout*sizeof(double));
     }
+    
+    free(wtmp);
     
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
@@ -154,24 +164,26 @@ ghost_error_t ghost_tsmm_inplace__plain_d_x_NCOLSOUT(ghost_densemat_t *x, ghost_
     ghost_densemat_valptr(w,(void **)&wval);
     ghost_densemat_valptr(x,(void **)&xval);
 
-    double tmp[NCOLSOUT];
     ghost_lidx_t i,j,s;
 
     /* construct dense wval... we can safely copy it as it is small! */
-    double wtmp[NCOLSOUT][ncolsin];
+    double * restrict wtmp = NULL;
+    ghost_lidx_t ncolsin_padded = PAD(ncolsin,4);
+    ghost_malloc_align((void**)&wtmp,ncolsin_padded*NCOLSOUT*sizeof(double),32);
+    memset(wtmp,0,ncolsin_padded*NCOLSOUT*sizeof(double));
     for(s=0; s<NCOLSOUT; s++)
     {
       for(j=0; j<ncolsin; j++)
       {
-        wtmp[s][j] = dalpha*wval[s*ldw+j];
+        wtmp[s*ncolsin_padded+j] = dalpha*wval[s*ldw+j];
         if(s==j)
-          wtmp[s][j] += dbeta;
+          wtmp[s*ncolsin_padded+j] += dbeta;
       }
     }
 
-
-#pragma omp parallel for private(j,s,tmp) schedule(runtime)
+#pragma omp parallel for private(j,s) schedule(runtime)
     for (i=0; i<n; i++) {
+        double tmp[NCOLSOUT];
 #pragma unroll_and_jam(MIN(16,NCOLSOUT))
         for (s=0; s<NCOLSOUT; s++) {
             tmp[s] = 0.;
@@ -180,11 +192,13 @@ ghost_error_t ghost_tsmm_inplace__plain_d_x_NCOLSOUT(ghost_densemat_t *x, ghost_
 #pragma ivdep
 #pragma simd
             for (j=0; j<ncolsin; j++) {
-                tmp[s] += xval[i*ldx+j]*wtmp[s][j];
+                tmp[s] += xval[i*ldx+j]*wtmp[s*ncolsin_padded+j];
             }
         }
         memcpy(&xval[i*ldx],tmp,NCOLSOUT*sizeof(double));
     }
+    
+    free(wtmp);
     
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
@@ -204,7 +218,7 @@ ghost_error_t ghost_tsmm_inplace__plain_d_x_x(ghost_densemat_t *x, ghost_densema
     double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
     
-    INFO_LOG("In in-place TSMM with arbitrary block size (%"PRLIDX"x%"PRLIDX") <- %f * (%"PRLIDX"x%"PRLIDX") * (%"PRLIDX"x%"PRLIDX")",n,m,dalpha,n,m,m,m);
+    INFO_LOG("In in-place TSMM with arbitrary block size (%"PRLIDX"x%"PRLIDX") <- %f * (%"PRLIDX"x%"PRLIDX") * (%"PRLIDX"x%"PRLIDX")",n,ncolsout,dalpha,n,m,ncolsin,ncolsout);
 
     double * wval = NULL, * xval = NULL;
     ghost_lidx_t ldw, ldx;
@@ -215,23 +229,27 @@ ghost_error_t ghost_tsmm_inplace__plain_d_x_x(ghost_densemat_t *x, ghost_densema
     ghost_densemat_valptr(w,(void **)&wval);
     ghost_densemat_valptr(x,(void **)&xval);
 
+    ghost_lidx_t i,j,s;
+
     /* construct dense wval... we can safely copy it as it is small! */
-    double wtmp[ncolsout][ncolsin];
-    for(ghost_lidx_t s=0; s<ncolsout; s++)
+    double * restrict wtmp = NULL;
+    ghost_lidx_t ncolsin_padded = PAD(ncolsin,4);
+    ghost_malloc_align((void**)&wtmp,ncolsin_padded*ncolsout*sizeof(double),32);
+    memset(wtmp,0,ncolsin_padded*ncolsout*sizeof(double));
+    for(s=0; s<ncolsout; s++)
     {
-      for(ghost_lidx_t j=0; j<ncolsin; j++)
+      for(j=0; j<ncolsin; j++)
       {
-        wtmp[s][j] = dalpha*wval[s*ldw+j];
+        wtmp[s*ncolsin_padded+j] = dalpha*wval[s*ldw+j];
         if(s==j)
-          wtmp[s][j] += dbeta;
+          wtmp[s*ncolsin_padded+j] += dbeta;
       }
     }
 
-
-#pragma omp parallel 
+#pragma omp parallel private(j,s)
     {
-        double tmp[ncolsout];
-        ghost_lidx_t i,j,s;
+        double * restrict tmp = NULL;
+        ghost_malloc_align((void**)&tmp,ncolsout*sizeof(double),32);
 #pragma omp for schedule(runtime)
         for (i=0; i<n; i++) {
             for (s=0; s<ncolsout; s++) {
@@ -241,12 +259,15 @@ ghost_error_t ghost_tsmm_inplace__plain_d_x_x(ghost_densemat_t *x, ghost_densema
 #pragma ivdep
 #pragma simd
                 for (j=0; j<ncolsin; j++) {
-                    tmp[s] += xval[i*ldx+j]*wtmp[s][j];
+                    tmp[s] += xval[i*ldx+j]*wtmp[s*ncolsin_padded+j];
                 }
             }
-            memcpy(&xval[i*ldx],tmp,x->traits.ncols*sizeof(double));
+            memcpy(&xval[i*ldx],tmp,ncolsout*sizeof(double));
         }
+        free(tmp);
     }
+
+    free(wtmp);
     
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
@@ -276,22 +297,25 @@ ghost_error_t ghost_tsmm_inplace__plain_z_x_x(ghost_densemat_t *x, ghost_densema
     ghost_densemat_valptr(w,(void **)&wval);
     ghost_densemat_valptr(x,(void **)&xval);
 
-    double complex tmp[ncolsout];
     ghost_lidx_t i,j,s;
 
-#pragma omp parallel for private(j,s,tmp) schedule(runtime)
-    for (i=0; i<n; i++) {
-        for (s=0; s<ncolsout; s++) {
-            tmp[s] = dbeta*xval[i*ldx+s];
+#pragma omp parallel private(j,s)
+    {
+#pragma omp for schedule(runtime)
+        for (i=0; i<n; i++) {
+            double complex tmp[ncolsout];
+            for (s=0; s<ncolsout; s++) {
+                tmp[s] = dbeta*xval[i*ldx+s];
 #pragma vector aligned
 #pragma vector always
 #pragma ivdep
 #pragma simd
-            for (j=0; j<ncolsin; j++) {
-                tmp[s] += dalpha*xval[i*ldx+j]*wval[s*ldw+j];
+                for (j=0; j<ncolsin; j++) {
+                    tmp[s] += dalpha*xval[i*ldx+j]*wval[s*ldw+j];
+                }
             }
+            memcpy(&xval[i*ldx],tmp,ncolsout*sizeof(double complex));
         }
-        memcpy(&xval[i*ldx],tmp,ncolsout*sizeof(double complex));
     }
     
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)

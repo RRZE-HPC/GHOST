@@ -239,7 +239,7 @@ ghost_error_t ghost_sellspmv__a_plain_d_d_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t
                 memset(tmp,0,sizeof(tmp));
                 double *lcol = ((double *)(res->val))+res->stride*v;
                 double *rcol = rhsval+invec->stride*v;
-                double *zcol;
+                double *zcol = NULL;
                 if (z) { 
                     zcol = (double *)z->val+z->stride*v;
                 }
@@ -365,7 +365,7 @@ ghost_error_t ghost_sellspmv__a_plain_z_z_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t
                 memset(tmp,0,sizeof(tmp));
                 complex double *lcol = ((complex double *)(res->val))+res->stride*v;
                 complex double *rcol = rhsval+invec->stride*v;
-                complex double *zcol;
+                complex double *zcol = NULL;
                 if (z) { 
                     zcol = (complex double *)z->val+z->stride*v;
                 }

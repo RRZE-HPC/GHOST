@@ -553,9 +553,10 @@ ghost_error_t ghost_tsmm__a_avx_d_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_den
     ghost_lidx_t i,m,k,j,s;
 
     double * const restrict wnonpad = NULL;
-    ghost_lidx_t ncols_wnonpad = w->traits.ncols;
-    ghost_lidx_t nrows_wnonpad = w->traits.nrows;
+    ghost_lidx_t ncols_wnonpad = PAD(w->traits.ncols,4);
+    ghost_lidx_t nrows_wnonpad = PAD(w->traits.nrows,4);
     ghost_malloc_align((void **)&wnonpad,sizeof(double)*nrows_wnonpad*ncols_wnonpad,32);
+    memset(wnonpad,0,sizeof(double)*nrows_wnonpad*ncols_wnonpad);
     for (s=0; s<w->traits.ncols; s++) {
         for (j=0; j<w->traits.nrows; j++) {
             wnonpad[s*nrows_wnonpad+j] = wval[s*ldw+j];
@@ -698,23 +699,23 @@ ghost_error_t ghost_tsmm__a_avx_d_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_den
 
     double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
-    __m256d betavec, alphavec;
+    __m256d betavec;
    
     betavec = _mm256_broadcast_sd(beta);
-    alphavec = _mm256_broadcast_sd(alpha);
     ghost_lidx_t i,m,k,j,s;
 
     double * const restrict wnonpad = NULL;
-    ghost_lidx_t ncols_wnonpad = w->traits.ncols;
-    ghost_lidx_t nrows_wnonpad = w->traits.nrows;
+    ghost_lidx_t ncols_wnonpad = PAD(w->traits.ncols,4);
+    ghost_lidx_t nrows_wnonpad = PAD(w->traits.nrows,4);
     ghost_malloc_align((void **)&wnonpad,sizeof(double)*nrows_wnonpad*ncols_wnonpad,32);
+    memset(wnonpad,0,sizeof(double)*nrows_wnonpad*ncols_wnonpad);
     for (s=0; s<w->traits.ncols; s++) {
         for (j=0; j<w->traits.nrows; j++) {
             wnonpad[s*nrows_wnonpad+j] = dalpha*wval[s*ldw+j];
         }
     }
 
-    if (fabs(dalpha-1.) > DBL_MIN || fabs(dbeta) > DBL_MIN) { // general case: X = b*X + a*V*W
+    if ( fabs(dbeta) > DBL_MIN) { // general case: X = b*X + a*V*W
 #pragma omp parallel private(k,m)
         {
             #GHOST_UNROLL#__m256d tmp@;#8
@@ -740,7 +741,7 @@ ghost_error_t ghost_tsmm__a_avx_d_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_den
             }
         }
     } else { // common case: X = V*W
-        INFO_LOG("Fast case: alpha=1 and beta=0");
+        INFO_LOG("Fast case: beta=0");
 #pragma omp parallel private(k,m)
         {
 #if 0
@@ -836,6 +837,7 @@ ghost_error_t ghost_tsmm1__a_avx_d_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_de
     ghost_lidx_t ncols_wtran = PAD(w->traits.ncols,4);
     ghost_lidx_t nrows_wtran = PAD(w->traits.nrows,4);
     ghost_malloc_align((void **)&wtran,sizeof(double)*nrows_wtran*ncols_wtran,32);
+    memset(wtran,0,sizeof(double)*nrows_wtran*ncols_wtran);
     for (s=0; s<w->traits.ncols; s++) {
         for (j=0; j<w->traits.nrows; j++) {
             wtran[j*ncols_wtran+s] = wval[s*ldw+j];
@@ -921,6 +923,7 @@ ghost_error_t ghost_tsmm__u_avx_d_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_den
     ghost_lidx_t ncols_wtran = PAD(w->traits.ncols,4);
     ghost_lidx_t nrows_wtran = PAD(w->traits.nrows,4);
     ghost_malloc_align((void **)&wtran,sizeof(double)*nrows_wtran*ncols_wtran,32);
+    memset(wtran,0,sizeof(double)*nrows_wtran*ncols_wtran);
     for (s=0; s<w->traits.ncols; s++) {
         for (j=0; j<w->traits.nrows; j++) {
             wtran[j*ncols_wtran+s] = wval[s*ldw+j];
@@ -1092,6 +1095,7 @@ ghost_error_t ghost_tsmm__u_avx_d_x_x_rm_cm(ghost_densemat_t *x, ghost_densemat_
     ghost_lidx_t ncols_wtran = PAD(w->traits.ncols,4);
     ghost_lidx_t nrows_wtran = PAD(w->traits.nrows,4);
     GHOST_CALL_GOTO(ghost_malloc_align((void **)&wtran,sizeof(double)*nrows_wtran*ncols_wtran,32),err,ret);
+    memset(wtran,0,sizeof(double)*nrows_wtran*ncols_wtran);
     for (s=0; s<w->traits.ncols; s++) {
         for (j=0; j<w->traits.nrows; j++) {
             wtran[j*ncols_wtran+s] = wval[s*ldw+j];
