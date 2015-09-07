@@ -28,7 +28,7 @@ extern "C" {
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t ghost_densemat_rm_setfuncs(ghost_densemat_t *vec);
-    ghost_error_t ghost_densemat_rm_malloc(ghost_densemat_t *vec);
+    ghost_error_t ghost_densemat_rm_malloc(ghost_densemat_t *vec, int* needInit);
     ghost_error_t ghost_densemat_rm_string_selector(ghost_densemat_t *vec, char **str);
     ghost_error_t ghost_densemat_rm_normalize_selector(ghost_densemat_t *vec);
     ghost_error_t ghost_densemat_rm_dotprod_selector(ghost_densemat_t *vec, void *, ghost_densemat_t *);
