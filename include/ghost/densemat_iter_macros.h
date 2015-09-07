@@ -39,7 +39,7 @@
                 valptr = DENSEMAT_VALPTR_SINGLECOL_STRIDE1(vec,row,col);\
                 cuvalptr = DENSEMAT_CUVALPTR(vec,row,col);\
                 call;\
-                DENSEMAT_ITER_END_SINGLECOL();\
+                DENSEMAT_ITER_END();\
             } else {\
                 DENSEMAT_ITER_BEGIN_COMPACT(vec,valptr,row,col,memrow,memcol);\
                 valptr = DENSEMAT_VALPTR(vec,row,col);\
@@ -55,7 +55,7 @@
                     valptr = DENSEMAT_VALPTR_SINGLECOL_STRIDE1(vec,row,col);\
                     cuvalptr = DENSEMAT_CUVALPTR(vec,row,col);\
                     call;\
-                    DENSEMAT_ITER_END_SINGLECOL()\
+                    DENSEMAT_ITER_END()\
                 }\
             } else {\
                 _Pragma("omp parallel")\
@@ -64,6 +64,76 @@
                     valptr = DENSEMAT_VALPTR(vec,row,col);\
                     cuvalptr = DENSEMAT_CUVALPTR(vec,row,col);\
                     call;\
+                    DENSEMAT_ITER_END()\
+                }\
+            }\
+        }\
+    } else {\
+        _Pragma("omp single")\
+        {\
+            WARNING_LOG("Serialized operation for scattered densemat!");\
+            DENSEMAT_ITER_BEGIN_SCATTERED(vec,row,col,memrow,memcol);\
+            call;\
+            DENSEMAT_ITER_END();\
+        }\
+    }\
+    /* Trick the compiler to not produce warnings about unused variables */\
+    if ((row+col+memrow+memcol < 0) || \
+            (valptr == (DENSEMAT_DT *)0xbeef) || (cuvalptr == (DENSEMAT_DT *)0xbeef)) \
+            {printf("Never happens\n");}
+
+
+/**
+ * @brief Iterate over a densemats and execute a statement for each entry. 
+ *
+ * This macro sets the following variables: 
+ * row,col,memrow,memcol,valptr
+ * In addition to DENSEMAT_ITER, this macro intializes padding to zero
+ *
+ * @param vec The densemat.
+ * @param call The statement to call for each entry.
+ *
+ * @return 
+ */
+#define DENSEMAT_ITER_INIT(vec,call)\
+    ghost_lidx_t row=0,col=0,memrow=0,memcol=0;\
+    DENSEMAT_DT *valptr = NULL, *cuvalptr = NULL;\
+    if (DENSEMAT_COMPACT(vec)) {\
+        if (ghost_omp_in_parallel()) {\
+            if (DENSEMAT_SINGLECOL_STRIDE1(vec)) {\
+                DENSEMAT_ITER_BEGIN_COMPACT_SINGLECOL(vec,valptr,row,col,memrow,memcol);\
+                valptr = DENSEMAT_VALPTR_SINGLECOL_STRIDE1(vec,row,col);\
+                cuvalptr = DENSEMAT_CUVALPTR(vec,row,col);\
+                call;\
+                DENSEMAT_ITER_COMPACT_SINGLECOL_PAD(vec,valptr,row,col,memrow,memcol);\
+                DENSEMAT_ITER_END();\
+            } else {\
+                DENSEMAT_ITER_BEGIN_COMPACT(vec,valptr,row,col,memrow,memcol);\
+                valptr = DENSEMAT_VALPTR(vec,row,col);\
+                cuvalptr = DENSEMAT_CUVALPTR(vec,row,col);\
+                call;\
+                DENSEMAT_ITER_COMPACT_PAD(vec,valptr,row,col,memrow,memcol);\
+                DENSEMAT_ITER_END();\
+            }\
+        } else {\
+            if (DENSEMAT_SINGLECOL_STRIDE1(vec)) {\
+                _Pragma("omp parallel")\
+                {\
+                    DENSEMAT_ITER_BEGIN_COMPACT_SINGLECOL(vec,valptr,row,col,memrow,memcol)\
+                    valptr = DENSEMAT_VALPTR_SINGLECOL_STRIDE1(vec,row,col);\
+                    cuvalptr = DENSEMAT_CUVALPTR(vec,row,col);\
+                    call;\
+                    DENSEMAT_ITER_COMPACT_SINGLECOL_PAD(vec,valptr,row,col,memrow,memcol);\
+                    DENSEMAT_ITER_END()\
+                }\
+            } else {\
+                _Pragma("omp parallel")\
+                {\
+                    DENSEMAT_ITER_BEGIN_COMPACT(vec,valptr,row,col,memrow,memcol)\
+                    valptr = DENSEMAT_VALPTR(vec,row,col);\
+                    cuvalptr = DENSEMAT_CUVALPTR(vec,row,col);\
+                    call;\
+                    DENSEMAT_ITER_COMPACT_PAD(vec,valptr,row,col,memrow,memcol);\
                     DENSEMAT_ITER_END()\
                 }\
             }\
@@ -114,7 +184,7 @@
                 cuvalptr1 = DENSEMAT_CUVALPTR(vec1,row,0);\
                 cuvalptr2 = DENSEMAT_CUVALPTR(vec2,row+vec2roffs,vec2coffs);\
                 call;\
-                DENSEMAT_ITER_END_SINGLECOL();\
+                DENSEMAT_ITER_END();\
             } else {\
                 DENSEMAT_ITER2_BEGIN_COMPACT_OFFS(vec1,vec2,valptr1,valptr2,row,col,memrow1,memrow2,memcol1,memcol2,vec2roffs,vec2coffs);\
                 valptr1 = DENSEMAT_VALPTR(vec1,row,col);\
@@ -134,7 +204,7 @@
                     cuvalptr1 = DENSEMAT_CUVALPTR(vec1,row,0);\
                     cuvalptr2 = DENSEMAT_CUVALPTR(vec2,row+vec2roffs,vec2coffs);\
                     call;\
-                    DENSEMAT_ITER_END_SINGLECOL();\
+                    DENSEMAT_ITER_END();\
                 }\
             } else {\
                 _Pragma("omp parallel")\
@@ -232,22 +302,34 @@
     col = 0;\
     memcol = 0;\
     _Pragma("omp for schedule(runtime) private(memrow,valptr,cuvalptr)")\
-    for (row = 0; row<vec->traits.nrows; row++) {\
+    for (row = 0; row<vec->traits.nrowspadded; row++) {\
         memrow = row;\
+        if( row < vec->traits.nrows ) {\
+
+#define DENSEMAT_ITER_COMPACT_SINGLECOL_PAD(vec,valptr,row,col,memrow,memcol)\
+        } else {\
+            valptr = DENSEMAT_VALPTR_SINGLECOL_STRIDE1(vec,row,col);\
+            memset(valptr,0,DENSEMAT_ELSIZE(vec)*sizeof(DENSEMAT_DT));\
 
 #define DENSEMAT_ITER_BEGIN_COMPACT(vec,valptr,row,col,memrow,memcol)\
     _Pragma("omp for schedule(runtime) private(col,memrow,memcol,valptr,cuvalptr)")\
-    for (row = 0; row<vec->traits.nrows; row++) {\
+    for (row = 0; row<vec->traits.nrowspadded; row++) {\
         memrow = row;\
-        for (col = 0; col<vec->traits.ncols; col++) {\
+        col = 0;\
+        if( row<vec->traits.nrows )\
+        for (; col<vec->traits.ncols; col++) {\
             memcol = col;\
+
+#define DENSEMAT_ITER_COMPACT_PAD(vec,valptr,row,col,memrow,memcol)\
+        }\
+        for (; col<vec->traits.ncolspadded; col++) {\
+            valptr = DENSEMAT_VALPTR(vec,row,col);\
+            memset(valptr,0,DENSEMAT_ELSIZE(vec)*sizeof(DENSEMAT_DT));\
 
 #define DENSEMAT_ITER_END()\
         }\
     }
 
-#define DENSEMAT_ITER_END_SINGLECOL()\
-    }
 
 #define DENSEMAT_ITER2_BEGIN_COMPACT(vec1,vec2,row,col,memrow1,memrow2,memcol1,memcol2)\
     DENSEMAT_ITER2_BEGIN_COMPACT_OFFS(vec1,vec2,row,col,memrow1,memrow2,memcol1,memcol2,0,0)
@@ -268,7 +350,8 @@
     _Pragma("omp for schedule(runtime) private(memrow1,memrow2,valptr1,valptr2,cuvalptr1,cuvalptr2)")\
     for (row=0; row<vec1->traits.nrows; row++) {\
         memrow1 = row;\
-        memrow2 = row;
+        memrow2 = row;\
+        {\
 
 #define DENSEMAT_ITER2_BEGIN_COMPACT_OFFS_TRANSPOSED(vec1,vec2,row,col,memrow1,memrow2,memcol1,memcol2,vec2roffs,vec2coffs)\
     _Pragma("omp for schedule(runtime) private(col,memcol1,memcol2,memrow1,memrow2,valptr1,valptr2,cuvalptr1,cuvalptr2)")\

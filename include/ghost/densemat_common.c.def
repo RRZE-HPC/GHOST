@@ -16,7 +16,7 @@
 #define EVALUATOR(x,y) PASTER(x,y)
 #define FUNCNAME(fun) EVALUATOR(ghost_densemat,EVALUATOR(PREFIX,fun))
 
-ghost_error_t FUNCNAME(malloc(ghost_densemat_t *vec))
+ghost_error_t FUNCNAME(malloc(ghost_densemat_t *vec, int* needsInit))
 {
     if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         if (vec->rowmask == NULL) {
@@ -27,6 +27,8 @@ ghost_error_t FUNCNAME(malloc(ghost_densemat_t *vec))
         }
     }
 
+    if( needsInit )
+      *needsInit = 0;
     if (vec->traits.flags & GHOST_DENSEMAT_VIEW) {
         return GHOST_SUCCESS;
     }
@@ -42,6 +44,8 @@ ghost_error_t FUNCNAME(malloc(ghost_densemat_t *vec))
                         (size_t)vec->traits.ncolspadded*vec->traits.nrowspadded*
                         vec->elSize,GHOST_DATA_ALIGNMENT));
         }
+        if( needsInit )
+          *needsInit |= 1;
     }
 
     if ((vec->traits.location & GHOST_LOCATION_DEVICE) && !vec->cu_val) {
@@ -54,6 +58,8 @@ ghost_error_t FUNCNAME(malloc(ghost_densemat_t *vec))
 #else
         GHOST_CALL_RETURN(ghost_cu_malloc((void **)&vec->cu_val,vec->traits.nrowspadded*vec->traits.ncolspadded*vec->elSize));
 #endif
+        if( needsInit )
+          *needsInit |= 2;
 #endif
     }   
 
@@ -71,7 +77,7 @@ static ghost_error_t FUNCNAME(view(ghost_densemat_t *src, ghost_densemat_t **new
     newTraits.flags |= (ghost_densemat_flags_t)GHOST_DENSEMAT_VIEW;
 
     ghost_densemat_create(new,src->context,newTraits);
-    FUNCNAME(malloc(*new));
+    FUNCNAME(malloc(*new,NULL));
 
     (*new)->stride = src->stride;
     (*new)->src = src->src;
@@ -108,7 +114,7 @@ static ghost_error_t FUNCNAME(viewPlain(ghost_densemat_t *vec, void *data, ghost
         return GHOST_ERR_INVALID_ARG;
     }
 
-    FUNCNAME(malloc(vec));
+    FUNCNAME(malloc(vec,NULL));
 
     if (vec->traits.location & GHOST_LOCATION_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
@@ -138,7 +144,7 @@ static ghost_error_t FUNCNAME(viewCols(ghost_densemat_t *src, ghost_densemat_t *
     newTraits.flags |= (ghost_densemat_flags_t)GHOST_DENSEMAT_VIEW;
 
     ghost_densemat_create(new,src->context,newTraits);
-    FUNCNAME(malloc(*new));
+    FUNCNAME(malloc(*new,NULL));
     (*new)->stride = src->stride;
     (*new)->src = src->src;
 
@@ -184,7 +190,7 @@ static ghost_error_t FUNCNAME(viewScatteredCols(ghost_densemat_t *src, ghost_den
     newTraits.flags |= (ghost_densemat_flags_t)GHOST_DENSEMAT_SCATTERED;
 
     ghost_densemat_create(new,src->context,newTraits);
-    FUNCNAME(malloc(*new));
+    FUNCNAME(malloc(*new,NULL));
     (*new)->stride = src->stride;
     (*new)->src = src->src;
 
@@ -223,7 +229,7 @@ static ghost_error_t FUNCNAME(viewScatteredVec(ghost_densemat_t *src, ghost_dens
     newTraits.flags |= (ghost_densemat_flags_t)GHOST_DENSEMAT_SCATTERED;
 
     ghost_densemat_create(new,src->context,newTraits);
-    FUNCNAME(malloc(*new));
+    FUNCNAME(malloc(*new,NULL));
     (*new)->stride = src->stride;
     (*new)->src = src->src;
 

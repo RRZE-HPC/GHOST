@@ -30,7 +30,7 @@ extern "C" {
     ghost_error_t ghost_densemat_cm_setfuncs(ghost_densemat_t *vec);
 
 
-    ghost_error_t ghost_densemat_cm_malloc(ghost_densemat_t *vec);
+    ghost_error_t ghost_densemat_cm_malloc(ghost_densemat_t *vec, int* needInit);
     ghost_error_t ghost_densemat_cm_string_selector(ghost_densemat_t *vec, char **str);
     ghost_error_t ghost_densemat_cm_normalize_selector(ghost_densemat_t *vec);
     ghost_error_t ghost_densemat_cm_dotprod_selector(ghost_densemat_t *vec, void *, ghost_densemat_t *);

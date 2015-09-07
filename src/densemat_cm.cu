@@ -642,7 +642,8 @@ out:
 extern "C" ghost_error_t ghost_densemat_cm_cu_fromScalar(ghost_densemat_t *vec, void *a)
 {
     ghost_error_t ret = GHOST_SUCCESS;
-    ghost_densemat_cm_malloc(vec);
+    int needInit = 0;
+    ghost_densemat_cm_malloc(vec,&needInit);
     
     void *vecval;
     ghost_densemat_t *veccompact;
@@ -710,7 +711,8 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_fromRand(ghost_densemat_t *vec)
     float fminusahalf[] = {-0.5,0.};
     
     ghost_timing_wcmilli(&time);
-    ghost_densemat_cm_malloc(vec);
+    int needInit = 0;
+    ghost_densemat_cm_malloc(vec,&needInit);
     curandGenerator_t gen;
     CURAND_CALL_GOTO(curandCreateGenerator(&gen,CURAND_RNG_PSEUDO_DEFAULT),err,ret);
     CURAND_CALL_GOTO(curandSetPseudoRandomGeneratorSeed(gen,ghost_rand_cu_seed_get()),err,ret);
