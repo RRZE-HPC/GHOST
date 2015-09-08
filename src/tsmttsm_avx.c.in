@@ -246,8 +246,6 @@ ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM_cm_rm(ghost_densemat_t *x, ghost_de
 #pragma omp parallel private(m,k)
     {
         m=0;
-        #GHOST_UNROLL#__m256d wvec@;#2
-        #GHOST_UNROLL#__m256d vvec@;#2
 
         double * restrict x_priv;
         const ghost_lidx_t ldxpriv = PAD(CFGM,4);
@@ -255,6 +253,8 @@ ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM_cm_rm(ghost_densemat_t *x, ghost_de
         memset(x_priv,0,ldxpriv*CFGK*sizeof(double));
 
         if( true ) { // other case's code doesn't work! if (fabs(dalpha-1.) > DBL_MIN) { 
+            #GHOST_UNROLL#__m256d wvec@;#2
+            #GHOST_UNROLL#__m256d vvec@;#2
 
 #pragma omp for schedule(runtime)
             for (i=0; i<=n-2; i+=2) {
@@ -275,6 +275,8 @@ ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM_cm_rm(ghost_densemat_t *x, ghost_de
                     for (; m<CFGM; m++) {
                         x_priv[m+k*ldxpriv] += dalpha*(vval[i*ldv+m]*wval[i*ldw+k] + vval[(i+1)*ldv+m]*wval[(i+1)*ldw+k]);
                     }
+#else
+                    UNUSED(dalpha);
 #endif
                 }
             }
@@ -282,28 +284,20 @@ ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM_cm_rm(ghost_densemat_t *x, ghost_de
             #GHOST_UNROLL#__m256d wvec@;#OUTERUNROLL*4
             #GHOST_UNROLL#__m256d vvec@;#OUTERUNROLL
             INFO_LOG("fast case alpha=1 foo");
-            const int kblocksz = CFGK;
-            int kblock = 0;
-            const int mblocksz = CFGM;
-            int mblock = 0;
             #GHOST_UNROLL#__m256d wtmp@;#OUTERUNROLL
             __m256d wshuf;
-
-            for (mblock = 0; mblock<CFGM/mblocksz; mblock++) {
-            for (kblock = 0; kblock<CFGK/kblocksz; kblock++) {
-
 
 #pragma omp for schedule(runtime)
                 for (i=0; i<=n-OUTERUNROLL; i+=OUTERUNROLL) {
                     IACA_START
 
-                    for (k=kblock*kblocksz; k<=(kblock+1)*kblocksz-4; k+=4) {
+                    for (k=0; k<CFGK; k+=4) {
                         #GHOST_UNROLL#wtmp@ = _mm256_load_pd(&wval[(i+@)*CFGK+k]);#OUTERUNROLL
                        
                         #GHOST_UNROLL#wshuf = _mm256_shuffle_pd(wtmp@,wtmp@,0b0000);wvec@ = _mm256_permute2f128_pd(wshuf,wshuf,0x02);wvec2*OUTERUNROLL+@ = _mm256_permute2f128_pd(wshuf,wshuf,0x13);wshuf = _mm256_shuffle_pd(wtmp@,wtmp@,0b1111);wvecOUTERUNROLL+@ = _mm256_permute2f128_pd(wshuf,wshuf,0x02);wvec3*OUTERUNROLL+@ = _mm256_permute2f128_pd(wshuf,wshuf,0x13);#OUTERUNROLL
 
-#pragma unroll(mblocksz/4)
-                        for (m=mblock*mblocksz; m<=(mblock+1)*mblocksz-4; m+=4) {
+#pragma unroll(CFGM/4)
+                        for (m=0; m<CFGM; m+=4) {
                             #GHOST_UNROLL#vvec@ = _mm256_load_pd(&vval[(i+@)*CFGM+m]);#OUTERUNROLL
 #if OUTERUNROLL == 1
                             #GHOST_UNROLL#_mm256_store_pd(&x_priv[m+(k+@)*ldxpriv],_mm256_add_pd(_mm256_load_pd(&x_priv[m+(k+@)*ldxpriv]),_mm256_mul_pd(vvec0,wvecOUTERUNROLL*@+0)));#4
@@ -338,8 +332,6 @@ ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM_cm_rm(ghost_densemat_t *x, ghost_de
                     
                 }
                 IACA_END
-            }
-            }
         }
         
 #pragma omp critical
@@ -434,7 +426,7 @@ ghost_error_t ghost_tsmttsm__avx_s_CFGK_CFGM_cm_rm(ghost_densemat_t *x, ghost_de
         betavec = _mm256_setzero_ps();
     }
 
-    ghost_lidx_t i,m,m_rem;
+    ghost_lidx_t i,m;
 
     ghost_lidx_t k;
     for (k=0; k<CFGK; k++) {
@@ -448,14 +440,14 @@ ghost_error_t ghost_tsmttsm__avx_s_CFGK_CFGM_cm_rm(ghost_densemat_t *x, ghost_de
 #pragma omp parallel private(m,k)
     {
         m=0;
-        #GHOST_UNROLL#__m256 wvec@;#2
-        #GHOST_UNROLL#__m256 vvec@;#2
 
         float * restrict x_priv;
         ghost_malloc_align((void **)&x_priv,CFGM*CFGK*sizeof(float),32);
         memset(x_priv,0,CFGM*CFGK*sizeof(float));
 
         if (fabs(dalpha-1.) > DBL_MIN) { 
+            #GHOST_UNROLL#__m256 wvec@;#2
+            #GHOST_UNROLL#__m256 vvec@;#2
 
 #pragma omp for schedule(runtime)
             for (i=0; i<=n-2; i+=2) {
@@ -536,6 +528,7 @@ ghost_error_t ghost_tsmttsm__avx_s_CFGK_CFGM_cm_rm(ghost_densemat_t *x, ghost_de
 #pragma vector aligned
 #pragma vector always
 #pragma ivdep
+                        ghost_lidx_t m_rem;
                         for (m_rem=m; m_rem<CFGM; m_rem++) {
                             #GHOST_UNROLL#x_priv[m_rem+k*CFGM] += vval[(i+@)*ldv+m_rem]*wval[(i+@)*ldw+k];#OUTERUNROLL
                         }
@@ -679,10 +672,10 @@ ghost_error_t ghost_tsmttsm__avx_z_CFGK_CFGM_cm_rm(ghost_densemat_t *x, ghost_de
 #pragma unroll(CFGM/2)
 #endif
                         for (m=0; m<=CFGM-2; m+=2) {
-                            vvec0 = _mm256_load_pd((const double * const restrict)&vval[(i+0)*CFGM+m]);
-                            vvec1 = _mm256_load_pd((const double * const restrict)&vval[(i+1)*CFGM+m]);
-                            _mm256_store_pd((double * const restrict)&x_priv[m+k*CFGM],
-                                    _mm256_add_pd(_mm256_load_pd((double * const restrict)&x_priv[m+k*CFGM]),
+                            vvec0 = _mm256_load_pd((double *)&vval[(i+0)*CFGM+m]);
+                            vvec1 = _mm256_load_pd((double *)&vval[(i+1)*CFGM+m]);
+                            _mm256_store_pd((double *)&x_priv[m+k*CFGM],
+                                    _mm256_add_pd(_mm256_load_pd((double *)&x_priv[m+k*CFGM]),
                                             _mm256_add_pd(complex_mul_conj1(vvec0,wvec0),complex_mul_conj1(vvec1,wvec1))));
 
                         }
@@ -903,12 +896,12 @@ ghost_error_t ghost_tsmttsm__avx_c_CFGK_CFGM_cm_rm(ghost_densemat_t *x, ghost_de
                         wvec3 = _mm256_castpd_ps(_mm256_broadcast_sd((const double *)&wval[(i+3)*CFGK+k]));
 #pragma unroll(CFGM/4)
                         for (m=0; m<=CFGM-4; m+=4) {
-                            vvec0 = _mm256_load_ps((const float * const restrict)&vval[(i+0)*CFGM+m]);
-                            vvec1 = _mm256_load_ps((const float * const restrict)&vval[(i+1)*CFGM+m]);
-                            vvec2 = _mm256_load_ps((const float * const restrict)&vval[(i+2)*CFGM+m]);
-                            vvec3 = _mm256_load_ps((const float * const restrict)&vval[(i+3)*CFGM+m]);
-                            _mm256_store_ps((float * const restrict)&x_priv[m+k*CFGM],
-                                    _mm256_add_ps(_mm256_load_ps((float * const restrict)&x_priv[m+k*CFGM]),
+                            vvec0 = _mm256_load_ps((float *)&vval[(i+0)*CFGM+m]);
+                            vvec1 = _mm256_load_ps((float *)&vval[(i+1)*CFGM+m]);
+                            vvec2 = _mm256_load_ps((float *)&vval[(i+2)*CFGM+m]);
+                            vvec3 = _mm256_load_ps((float *)&vval[(i+3)*CFGM+m]);
+                            _mm256_store_ps((float *)&x_priv[m+k*CFGM],
+                                    _mm256_add_ps(_mm256_load_ps((float *)&x_priv[m+k*CFGM]),
                                         _mm256_add_ps(
                                             _mm256_add_ps(complex_mulf_conj1(vvec0,wvec0),complex_mulf_conj1(vvec1,wvec1)),
                                             _mm256_add_ps(complex_mulf_conj1(vvec2,wvec2),complex_mulf_conj1(vvec3,wvec3)))));
@@ -1127,12 +1120,12 @@ ghost_error_t ghost_tsmttsm2__avx_z_CFGK_CFGM_cm_rm(ghost_densemat_t *x, ghost_d
                         wvec7 = _mm256_broadcast_pd((const __m128d *)&wval[(i+3)*CFGK+k+1]);*/
 #pragma unroll(CFGM/2)
                         for (m=0; m<=CFGM-2; m+=2) {
-                            vvec0 = _mm256_load_pd((const double * const restrict)&vval[(i+0)*CFGM+m]);
-                            vvec1 = _mm256_load_pd((const double * const restrict)&vval[(i+1)*CFGM+m]);
-                            vvec2 = _mm256_load_pd((const double * const restrict)&vval[(i+2)*CFGM+m]);
-                            vvec3 = _mm256_load_pd((const double * const restrict)&vval[(i+3)*CFGM+m]);
-                            _mm256_store_pd((double * const restrict)&x_priv[m+k*CFGM],
-                                    _mm256_add_pd(_mm256_load_pd((double * const restrict)&x_priv[m+k*CFGM]),
+                            vvec0 = _mm256_load_pd((double *)&vval[(i+0)*CFGM+m]);
+                            vvec1 = _mm256_load_pd((double *)&vval[(i+1)*CFGM+m]);
+                            vvec2 = _mm256_load_pd((double *)&vval[(i+2)*CFGM+m]);
+                            vvec3 = _mm256_load_pd((double *)&vval[(i+3)*CFGM+m]);
+                            _mm256_store_pd((double *)&x_priv[m+k*CFGM],
+                                    _mm256_add_pd(_mm256_load_pd((double *)&x_priv[m+k*CFGM]),
                                         _mm256_add_pd(
                                             _mm256_add_pd(complex_mul_conj1(wvec0,vvec0),complex_mul_conj1(wvec1,vvec1)),
                                             _mm256_add_pd(complex_mul_conj1(wvec2,vvec2),complex_mul_conj1(wvec3,vvec3))))); // TODO interchange v,w
