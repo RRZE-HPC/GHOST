@@ -551,7 +551,7 @@ int ghost_gemm_perf_GFs(double *perf, double time, void *varg)
         maddflops = 8;
         mulflops = 6;
     }
-    totalflops = maddflops*arg.n*arg.m*arg.k;
+    totalflops = (double)maddflops*arg.n*arg.m*arg.k;
   
     WARNING_LOG("The performance computation has to be checked for correctness!"); 
     if (!arg.alphaisone) {
