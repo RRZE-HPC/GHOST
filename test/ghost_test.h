@@ -16,7 +16,7 @@
                     return EXIT_FAILURE;\
                 }\
             } else {\
-                float return_if_differ_err = fabs(*((float *)a) - *((float *)b));\
+                float return_if_differ_err = fabsf(*((float *)a) - *((float *)b));\
                 if (return_if_differ_err > S_EPS*f) {\
                     ERROR_LOG("Values differ: error %8.4e > %8.4e", return_if_differ_err, S_EPS*f);\
                     return EXIT_FAILURE;\
@@ -35,12 +35,12 @@
                     return EXIT_FAILURE;\
                 }\
             } else {\
-                float return_if_differ_err = fabs((*(ghost_complex<float> *)a).re - (*(ghost_complex<float> *)b).re);\
+                float return_if_differ_err = fabsf((*(ghost_complex<float> *)a).re - (*(ghost_complex<float> *)b).re);\
                 if (return_if_differ_err > D_EPS*f) {\
                     ERROR_LOG("Values differ: real part error %8.4e > %8.4e", return_if_differ_err, D_EPS*f);\
                     return EXIT_FAILURE;\
                 }\
-                return_if_differ_err = fabs((*(ghost_complex<float> *)a).im - (*(ghost_complex<float> *)b).im);\
+                return_if_differ_err = fabsf((*(ghost_complex<float> *)a).im - (*(ghost_complex<float> *)b).im);\
                 if (return_if_differ_err > D_EPS*f) {\
                     ERROR_LOG("Values differ: imag part error %8.4e > %8.4e", return_if_differ_err, D_EPS*f);\
                     return EXIT_FAILURE;\
