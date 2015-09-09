@@ -398,6 +398,7 @@ endif()
 
 
 if (USE_CUDA)
+    set(CUDA_USE_STATIC_CUDA_RUNTIME Off)
     find_package(CUDA)
     if (CUDA_FOUND)
         set(GHOST_HAVE_CUDA 1)
