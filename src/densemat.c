@@ -150,7 +150,7 @@ static ghost_error_t getNrowsFromContext(ghost_densemat_t *vec)
         if (vec->traits.nrows > 1) {
 #ifdef GHOST_HAVE_MIC
             padding = 64; // 64 byte padding
-#elif defined(GHOST_HAVE_AVX)
+#elif defined(GHOST_HAVE_AVX) || defined(GHOST_HAVE_AVX2)
             padding = 32; // 32 byte padding
             if (vec->traits.ncols == 2) {
                 PERFWARNING_LOG("Force SSE over AVX padding for densemat with 2 cols!");
