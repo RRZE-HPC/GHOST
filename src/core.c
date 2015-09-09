@@ -276,12 +276,16 @@ ghost_error_t ghost_init(int argc, char **argv)
 
     ghost_hybridmode_t ghost_hybridmode;
     GHOST_CALL_RETURN(ghost_hybridmode_get(&ghost_hybridmode));
+    ghost_hwconfig_t hwconfig;
+    ghost_hwconfig_get(&hwconfig);
+    int maxcore;
+    ghost_machine_ncore(&maxcore, GHOST_NUMANODE_ANY);
 
     int oversubscribed = 0;
     if (ghost_hybridmode == GHOST_HYBRIDMODE_INVALID) {
         if (nnoderanks <=  nLocalCuda+1) {
             ghost_hybridmode = GHOST_HYBRIDMODE_ONEPERNODE;
-        } else if (nnoderanks == nLocalCuda+nnumanodes) {
+        } else if (nnoderanks == nLocalCuda+nnumanodes || hwconfig.ncore == maxcore/nnumanodes) {
             ghost_hybridmode = GHOST_HYBRIDMODE_ONEPERNUMA;
         } else if (nnoderanks == hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_CORE)) {
             ghost_hybridmode = GHOST_HYBRIDMODE_ONEPERCORE;
@@ -291,8 +295,6 @@ ghost_error_t ghost_init(int argc, char **argv)
     }
     GHOST_CALL_RETURN(ghost_hybridmode_set(ghost_hybridmode));
 
-    int maxcore;
-    ghost_machine_ncore(&maxcore, GHOST_NUMANODE_ANY);
     
     int maxpu;
     ghost_machine_npu(&maxpu, GHOST_NUMANODE_ANY);
@@ -301,8 +303,6 @@ ghost_error_t ghost_init(int argc, char **argv)
     hwloc_cpuset_t globcpuset = hwloc_bitmap_alloc();
 
     hwloc_bitmap_copy(globcpuset,hwloc_topology_get_allowed_cpuset(topology));
-    ghost_hwconfig_t hwconfig;
-    ghost_hwconfig_get(&hwconfig);
 
     if (hwconfig.ncore == GHOST_HWCONFIG_INVALID) {
         ghost_machine_ncore(&hwconfig.ncore, GHOST_NUMANODE_ANY);
