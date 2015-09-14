@@ -542,8 +542,12 @@ ghost_error_t ghost_taskq_add(ghost_task_t *t)
     pthread_mutex_lock(&newTaskMutex_by_threadcount[t->nThreads]);
 
     num_tasks_by_threadcount[t->nThreads]++;
-    DEBUG_LOG(1,"Sending signal to cond [%d][%d] %p",t->nThreads,MIN(num_shep_by_threadcount[t->nThreads]-1,num_tasks_by_threadcount[t->nThreads]-1),(void *)&(newTaskCond_by_threadcount[t->nThreads][MIN(num_shep_by_threadcount[t->nThreads]-1,num_tasks_by_threadcount[t->nThreads]-1)]));
-    pthread_cond_signal(&(newTaskCond_by_threadcount[t->nThreads][MIN(num_shep_by_threadcount[t->nThreads]-1,num_tasks_by_threadcount[t->nThreads]-1)]));
+
+    int s = 0;
+    for (;s<num_shep_by_threadcount[t->nThreads];s++) {
+        DEBUG_LOG(1,"Sending signal to cond [%d][%d]",t->nThreads,s);
+        pthread_cond_signal(&(newTaskCond_by_threadcount[t->nThreads][s]));
+    }
     pthread_mutex_unlock(&newTaskMutex_by_threadcount[t->nThreads]);
     pthread_mutex_lock(&anyTaskFinishedMutex);
     num_pending_tasks++;
