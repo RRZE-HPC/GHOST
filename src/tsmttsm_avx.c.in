@@ -861,7 +861,7 @@ ghost_error_t ghost_tsmttsm__avx_c_CFGK_CFGM_cm_rm(ghost_densemat_t *x, ghost_de
 
 
         if (conjv) {
-            if (fabs(creal(dalpha)-1.) > DBL_MIN || fabs(cimag(dalpha)) > DBL_MIN) { 
+            if (fabsf(crealf(dalpha)-1.) > DBL_MIN || fabsf(cimagf(dalpha)) > DBL_MIN) { 
 
 #pragma omp for schedule(runtime)
                 for (i=0; i<=n-2; i+=2) {
@@ -880,7 +880,7 @@ ghost_error_t ghost_tsmttsm__avx_c_CFGK_CFGM_cm_rm(ghost_densemat_t *x, ghost_de
                         }
 #if CFGM%4
                         for (; m<CFGM; m++) {
-                            x_priv[m+k*CFGM] += dalpha*(conj(vval[i*ldv+m])*wval[i*ldw+k] + conj(vval[(i+1)*ldv+m])*wval[(i+1)*ldw+k]);
+                            x_priv[m+k*CFGM] += dalpha*(conjf(vval[i*ldv+m])*wval[i*ldw+k] + conjf(vval[(i+1)*ldv+m])*wval[(i+1)*ldw+k]);
                         }
 #endif
                     }
@@ -909,7 +909,7 @@ ghost_error_t ghost_tsmttsm__avx_c_CFGK_CFGM_cm_rm(ghost_densemat_t *x, ghost_de
                         }
 #if CFGM%4
                         for (; m<CFGM; m++) {
-                            x_priv[m+k*CFGM] += conj(vval[i*ldv+m])*wval[i*ldw+k] + conj(vval[(i+1)*ldv+m])*wval[(i+1)*ldw+k];
+                            x_priv[m+k*CFGM] += conjf(vval[i*ldv+m])*wval[i*ldw+k] + conjf(vval[(i+1)*ldv+m])*wval[(i+1)*ldw+k] + conjf(vval[(i+2)*ldv+m])*wval[(i+2)*ldw+k] + conjf(vval[(i+3)*ldv+m])*wval[(i+3)*ldw+k];
                         }
 #endif
                     }
