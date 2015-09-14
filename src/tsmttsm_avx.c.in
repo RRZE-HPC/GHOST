@@ -861,7 +861,7 @@ ghost_error_t ghost_tsmttsm__avx_c_CFGK_CFGM_cm_rm(ghost_densemat_t *x, ghost_de
 
 
         if (conjv) {
-            if (fabsf(crealf(dalpha)-1.) > DBL_MIN || fabsf(cimagf(dalpha)) > DBL_MIN) { 
+            if (fabsf(crealf(dalpha)-1.) > FLT_MIN || fabsf(cimagf(dalpha)) > FLT_MIN) { 
 
 #pragma omp for schedule(runtime)
                 for (i=0; i<=n-2; i+=2) {
@@ -917,7 +917,7 @@ ghost_error_t ghost_tsmttsm__avx_c_CFGK_CFGM_cm_rm(ghost_densemat_t *x, ghost_de
                 }
             }
         } else {
-            if (fabs(creal(dalpha)-1.) > DBL_MIN || fabs(cimag(dalpha)) > DBL_MIN) { 
+            if (fabsf(crealf(dalpha)-1.) > FLT_MIN || fabsf(cimagf(dalpha)) > FLT_MIN) { 
 
 #pragma omp for schedule(runtime)
                 for (i=0; i<=n-2; i+=2) {
