@@ -91,17 +91,17 @@ if [ "${VECT_EXT}" = "CUDA" ]; then
   VECT_FLAGS="${VECT_FLAGS} -DUSE_CUDA=On"
 elif [ "${VECT_EXT}" != "native" ]; then
   VECT_FLAGS="${VECT_FLAGS} -DUSE_CUDA=Off"
-  if [[ "${VECT_EXT}" = "SSE|AVX|AVX2" ]]; then
+  if [[ "${VECT_EXT}" =~ SSE|AVX|AVX2 ]]; then
     VECT_FLAGS="${VECT_FLAGS} -DGHOST_HAVE_SSE=On"
   else
     VECT_FLAGS="${VECT_FLAGS} -DGHOST_HAVE_SSE=Off"
   fi
-  if [[ "${VECT_EXT}" = "AVX|AVX2" ]]; then
+  if [[ "${VECT_EXT}" =~ AVX|AVX2 ]]; then
     VECT_FLAGS="${VECT_FLAGS} -DGHOST_HAVE_AVX=On"
   else
     VECT_FLAGS="${VECT_FLAGS} -DGHOST_HAVE_AVX=Off"
   fi
-  if [[ "${VECT_EXT}" = "AVX2" ]]; then
+  if [[ "${VECT_EXT}" =~ AVX2 ]]; then
     VECT_FLAGS="${VECT_FLAGS} -DGHOST_HAVE_AVX2=On"
   else
     VECT_FLAGS="${VECT_FLAGS} -DGHOST_HAVE_AVX2=Off"
@@ -116,7 +116,7 @@ cmake -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX/install-${PRGENV}-${BUILD_TYPE}-${V
 -DCFG_BLOCKVECTOR_SIZES=${BLOCKSZ} -DCFG_SELL_CHUNKHEIGHTS=${SELL_CS} \
 -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DBUILD_SHARED_LIBS=ON ${VECT_FLAGS} ..              || error=1
 
-if [[ "${BUILD_TYPE}" = *"Rel"* ]]; then
+if [[ "${BUILD_TYPE}" =~ *Rel* ]]; then
   make doc                                  || error=1
 fi
 make -j 24 || make || exit 1
