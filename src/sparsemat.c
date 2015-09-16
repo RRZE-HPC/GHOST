@@ -152,7 +152,7 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
     ghost_lidx_t nchunks = (ghost_lidx_t)(ceil((double)mat->nrows/(double)C));
     ghost_lidx_t i,row,chunk,j,colidx;
     ghost_gidx_t gnents = 0, gnnz = 0;
-    ghost_lidx_t maxRowLenInChunk = 0, maxRowLen = 0;
+    ghost_lidx_t maxRowLenInChunk = 0, maxRowLen = 0, privateMaxRowLen = 0;
     int me,nprocs;
     
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, mat->context->mpicomm),err,ret);
@@ -200,7 +200,8 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
         rl = tmprl;
     }
 
-#pragma omp parallel private(maxRowLenInChunk,i,tmpval,tmpcol,row) shared (maxRowLen) reduction (+:gnents,gnnz,funcerrs) 
+    GHOST_INSTR_START("rowlens");
+#pragma omp parallel private(i,tmpval,tmpcol,row) reduction (+:gnents,gnnz,funcerrs) reduction (max:privateMaxRowLen) 
     {
         ghost_lidx_t rowlen;
         maxRowLenInChunk = 0; 
@@ -247,15 +248,16 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
 
             gnents += clp[chunk]*C;
 
-#pragma omp critical
-            maxRowLen = MAX(maxRowLen,maxRowLenInChunk);
-
+            privateMaxRowLen = MAX(privateMaxRowLen,maxRowLenInChunk);
             maxRowLenInChunk = 0;
         }
 
         free(tmpval); tmpval = NULL;
         free(tmpcol); tmpcol = NULL;
     }
+    GHOST_INSTR_STOP("rowlens");
+    maxRowLen = privateMaxRowLen;
+
     if (funcerrs) {
         ERROR_LOG("Matrix construction function returned error");
         ret = GHOST_ERR_UNKNOWN;
