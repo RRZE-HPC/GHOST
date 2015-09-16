@@ -11,6 +11,7 @@ using namespace std;
 template<typename m_t>
 static int diag(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, void *val, void *arg)
 {
+    (void)(arg);
     *rowlen = 1;
     col[0] = row;
     ((m_t *)val)[0] = (m_t)(row+1);
