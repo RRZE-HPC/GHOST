@@ -56,8 +56,6 @@ ghost_error_t ghost_sell_init(ghost_sparsemat_t *mat)
     GHOST_CALL_RETURN(ghost_type_get(&ghost_type));
 
     mat->upload = &SELL_upload;
-    mat->fromFile = &ghost_sparsemat_from_bincrs;
-    mat->fromMM = &ghost_sparsemat_from_mm;
     mat->toFile = &SELL_toBinCRS;
     mat->fromRowFunc = &SELL_fromRowFunc;
     mat->auxString = &SELL_printInfo;

@@ -56,6 +56,9 @@ ghost_error_t ghost_sparsemat_create(ghost_sparsemat_t ** mat, ghost_context_t *
     (*mat)->fromFile = NULL;
     (*mat)->toFile = NULL;
     (*mat)->fromRowFunc = NULL;
+    (*mat)->fromFile = &ghost_sparsemat_from_bincrs;
+    (*mat)->fromMM = &ghost_sparsemat_from_mm;
+    (*mat)->fromCRS = &ghost_sparsemat_from_crs;
     (*mat)->auxString = NULL;
     (*mat)->formatName = NULL;
     (*mat)->rowLen = NULL;
