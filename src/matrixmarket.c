@@ -3,7 +3,7 @@
 #include "ghost/mmio.h"
 #include "ghost/matrixmarket.h"
 
-int ghost_sparsemat_rowfunc_mm(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, void *val)
+int ghost_sparsemat_rowfunc_mm(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, void *val, void *arg)
 {
 
     static ghost_gidx_t *colInd = NULL, *rowPtr = NULL;

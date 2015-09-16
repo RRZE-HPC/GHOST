@@ -9,7 +9,7 @@
 using namespace std;
 
 template<typename m_t>
-static int diag(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, void *val)
+static int diag(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, void *val, void *arg)
 {
     *rowlen = 1;
     col[0] = row;
@@ -24,7 +24,7 @@ static void diag_ref(void *ref, ghost_gidx_t row, void *x)
     ghost_lidx_t dummyrowlen;
     ghost_gidx_t dummycol;
     m_t diagent;
-    diag<m_t>(row,&dummyrowlen,&dummycol,&diagent);
+    diag<m_t>(row,&dummyrowlen,&dummycol,&diagent,NULL);
     *((v_t *)ref) = (v_t)diagent*(*(v_t *)x);
 }
 

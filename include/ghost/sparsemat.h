@@ -74,7 +74,7 @@ typedef struct ghost_sparsemat_traits_t ghost_sparsemat_traits_t;
 typedef struct ghost_sparsemat_t ghost_sparsemat_t;
 
 typedef int (*ghost_sparsemat_fromRowFunc_t)(ghost_gidx_t, ghost_lidx_t *, 
-        ghost_gidx_t *, void *);
+        ghost_gidx_t *, void *, void *);
 typedef ghost_error_t (*ghost_spmv_kernel_t)(ghost_sparsemat_t *, 
         ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
 
@@ -108,6 +108,7 @@ typedef struct {
      * @brief Flags to the row function.
      */
     ghost_sparsemat_fromRowFunc_flags_t flags;
+    void *arg;
 } ghost_sparsemat_src_rowfunc_t;
 
 /**

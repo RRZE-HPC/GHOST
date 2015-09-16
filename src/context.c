@@ -76,7 +76,7 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_gidx_t gnrow
             args.filename = (char *)matrixSource;
             
             ghost_gidx_t dim[2]; 
-            ghost_sparsemat_rowfunc_bincrs(GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_GETDIM,NULL,dim,&args);
+            ghost_sparsemat_rowfunc_bincrs(GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_GETDIM,NULL,dim,&args,NULL);
 #ifndef GHOST_HAVE_LONGIDX_GLOBAL
             if (dim[0] >= (int64_t)INT_MAX) {
                 ERROR_LOG("The matrix is too big for 32-bit indices. Recompile with LONGIDX enabled!");
@@ -110,7 +110,7 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_gidx_t gnrow
             args.filename = (char *)matrixSource;
             
             ghost_gidx_t dim[2]; 
-            ghost_sparsemat_rowfunc_mm(GHOST_SPARSEMAT_ROWFUNC_MM_ROW_GETDIM,NULL,dim,&args);
+            ghost_sparsemat_rowfunc_mm(GHOST_SPARSEMAT_ROWFUNC_MM_ROW_GETDIM,NULL,dim,&args,NULL);
 #ifndef GHOST_HAVE_LONGIDX_GLOBAL
             if (dim[0] >= (int64_t)INT_MAX) {
                 ERROR_LOG("The matrix is too big for 32-bit indices. Recompile with LONGIDX enabled!");
@@ -273,13 +273,13 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_gidx_t gnrow
                 ghost_sparsemat_rowfunc_bincrs_initargs args;
                 args.filename = (char *)matrixSource;
                 
-                ghost_sparsemat_rowfunc_bincrs(GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_GETRPT,NULL,(*context)->rpt,&args);
+                ghost_sparsemat_rowfunc_bincrs(GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_GETRPT,NULL,(*context)->rpt,&args,NULL);
                 //GHOST_CALL_GOTO(ghost_bincrs_rpt_read((*context)->rpt,(char *)matrixSource,0,(*context)->gnrows+1,NULL),err,ret);
             } else if (srcType == GHOST_SPARSEMAT_SRC_MM) {
                 ghost_sparsemat_rowfunc_mm_initargs args;
                 args.filename = (char *)matrixSource;
                 
-                ghost_sparsemat_rowfunc_mm(GHOST_SPARSEMAT_ROWFUNC_MM_ROW_GETRPT,NULL,(*context)->rpt,&args);
+                ghost_sparsemat_rowfunc_mm(GHOST_SPARSEMAT_ROWFUNC_MM_ROW_GETRPT,NULL,(*context)->rpt,&args,NULL);
 
 
             } else if (srcType == GHOST_SPARSEMAT_SRC_FUNC) {
@@ -289,7 +289,7 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_gidx_t gnrow
                 (*context)->rpt[0] = 0;
                 ghost_lidx_t rowlen;
                 for(row = 0; row < (*context)->gnrows; row++) {
-                    matsrc->func(row,&rowlen,tmpcol,tmpval);
+                    matsrc->func(row,&rowlen,tmpcol,tmpval,matsrc->arg);
                     (*context)->rpt[row+1] = (*context)->rpt[row]+rowlen;
                 }
                 free(tmpval); tmpval = NULL;

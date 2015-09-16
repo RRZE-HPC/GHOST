@@ -110,7 +110,7 @@ extern "C" {
  * information filled in. The parameter \p col has to be a ghost_gidx_t[2] in 
  * which the number of rows and columns will be stored.
  */
-int ghost_sparsemat_rowfunc_bincrs(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, void *val);
+int ghost_sparsemat_rowfunc_bincrs(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, void *val, void *arg);
     ghost_error_t ghost_bincrs_header_read(ghost_bincrs_header_t *header, char *path);
 
 #if 0

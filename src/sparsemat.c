@@ -19,7 +19,8 @@ const ghost_sparsemat_src_rowfunc_t GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER = {
     .func = NULL,
     .maxrowlen = 0,
     .base = 0,
-    .flags = GHOST_SPARSEMAT_FROMROWFUNC_DEFAULT
+    .flags = GHOST_SPARSEMAT_FROMROWFUNC_DEFAULT,
+    .arg = NULL
 };
     
 
@@ -216,14 +217,14 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
                     if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
                       if (mat->context->perm_global && mat->context->perm_local) {
                         INFO_LOG("Global _and_ local permutation");
-                        funcerrs += src->func(mat->context->perm_global->invPerm[mat->context->perm_local->invPerm[row]],&rowlen,tmpcol,tmpval);
+                        funcerrs += src->func(mat->context->perm_global->invPerm[mat->context->perm_local->invPerm[row]],&rowlen,tmpcol,tmpval,src->arg);
                       } else if (mat->context->perm_global) {
-                        funcerrs += src->func(mat->context->perm_global->invPerm[row],&rowlen,tmpcol,tmpval);
+                        funcerrs += src->func(mat->context->perm_global->invPerm[row],&rowlen,tmpcol,tmpval,src->arg);
                       } else if (mat->context->perm_local) {
-                        funcerrs += src->func(mat->context->lfRow[me]+mat->context->perm_local->invPerm[row],&rowlen,tmpcol,tmpval);
+                        funcerrs += src->func(mat->context->lfRow[me]+mat->context->perm_local->invPerm[row],&rowlen,tmpcol,tmpval,src->arg);
                       }
                     } else {
-                      funcerrs += src->func(mat->context->lfRow[me]+row,&rowlen,tmpcol,tmpval);
+                      funcerrs += src->func(mat->context->lfRow[me]+row,&rowlen,tmpcol,tmpval,src->arg);
                     }
                 }
 
@@ -334,14 +335,14 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
                 if (row < mat->nrows) {
                     if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
                         if (mat->context->perm_global && mat->context->perm_local) {
-                            funcret = src->func(mat->context->perm_global->invPerm[mat->context->perm_local->invPerm[row]],&rl[row],&tmpcol[src->maxrowlen*i],&tmpval[src->maxrowlen*i*mat->elSize]);
+                            funcret = src->func(mat->context->perm_global->invPerm[mat->context->perm_local->invPerm[row]],&rl[row],&tmpcol[src->maxrowlen*i],&tmpval[src->maxrowlen*i*mat->elSize],src->arg);
                         } else if (mat->context->perm_global) {
-                            funcret = src->func(mat->context->perm_global->invPerm[row],&rl[row],&tmpcol[src->maxrowlen*i],&tmpval[src->maxrowlen*i*mat->elSize]);
+                            funcret = src->func(mat->context->perm_global->invPerm[row],&rl[row],&tmpcol[src->maxrowlen*i],&tmpval[src->maxrowlen*i*mat->elSize],src->arg);
                         } else if (mat->context->perm_local) {
-                            funcret = src->func(mat->context->lfRow[me]+mat->context->perm_local->invPerm[row],&rl[row],&tmpcol[src->maxrowlen*i],&tmpval[src->maxrowlen*i*mat->elSize]);
+                            funcret = src->func(mat->context->lfRow[me]+mat->context->perm_local->invPerm[row],&rl[row],&tmpcol[src->maxrowlen*i],&tmpval[src->maxrowlen*i*mat->elSize],src->arg);
                         }
                     } else {
-                        funcret = src->func(mat->context->lfRow[me]+row,&rl[row],&tmpcol[src->maxrowlen*i],&tmpval[src->maxrowlen*i*mat->elSize]);
+                        funcret = src->func(mat->context->lfRow[me]+row,&rl[row],&tmpcol[src->maxrowlen*i],&tmpval[src->maxrowlen*i*mat->elSize],src->arg);
                     }
                 }
                 if (funcret) {
@@ -532,13 +533,13 @@ ghost_error_t ghost_sparsemat_perm_sort(ghost_sparsemat_t *mat, void *matrixSour
             for (i=0; i<nrows; i++) {
                 if (mat->context->perm_global) {
                     INFO_LOG("global perm exists");
-                    if (src->func(mat->context->perm_global->invPerm[i],&rowSort[i].nEntsInRow,tmpcol,tmpval)) {
+                    if (src->func(mat->context->perm_global->invPerm[i],&rowSort[i].nEntsInRow,tmpcol,tmpval,src->arg)) {
                         ERROR_LOG("Matrix construction function returned error");
                         ret = GHOST_ERR_UNKNOWN;
                     }
 //                    printf("row %d <- %d rl %d\n",i,mat->context->perm_global->invPerm[i],rowSort[i].nEntsInRow);
                 } else {
-                    if (src->func(rowOffset+i,&rowSort[i].nEntsInRow,tmpcol,tmpval)) {
+                    if (src->func(rowOffset+i,&rowSort[i].nEntsInRow,tmpcol,tmpval,src->arg)) {
                         ERROR_LOG("Matrix construction function returned error");
                         ret = GHOST_ERR_UNKNOWN;
                     }
@@ -844,12 +845,12 @@ ghost_error_t ghost_sparsemat_from_bincrs(ghost_sparsemat_t *mat, char *path)
     src.func = &ghost_sparsemat_rowfunc_bincrs;
     args.filename = path;
     args.dt = mat->traits->datatype;
-    if (src.func(GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_GETDIM,NULL,dim,&args)) {
+    if (src.func(GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_GETDIM,NULL,dim,&args,src.arg)) {
         ERROR_LOG("Error in matrix creation function");
         ret = GHOST_ERR_UNKNOWN;
         goto err;
     }
-    if (src.func(GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_INIT,NULL,NULL,&args)) {
+    if (src.func(GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_INIT,NULL,NULL,&args,src.arg)) {
         ERROR_LOG("Error in matrix creation function");
         ret = GHOST_ERR_UNKNOWN;
         goto err;
@@ -858,7 +859,7 @@ ghost_error_t ghost_sparsemat_from_bincrs(ghost_sparsemat_t *mat, char *path)
     src.maxrowlen = dim[1];
     
     GHOST_CALL_GOTO(mat->fromRowFunc(mat,&src),err,ret);
-    if (src.func(GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_FINALIZE,NULL,NULL,NULL)) {
+    if (src.func(GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_FINALIZE,NULL,NULL,NULL,src.arg)) {
         ERROR_LOG("Error in matrix creation function");
         ret = GHOST_ERR_UNKNOWN;
         goto err;
@@ -888,12 +889,12 @@ ghost_error_t ghost_sparsemat_from_mm(ghost_sparsemat_t *mat, char *path)
     src.func = &ghost_sparsemat_rowfunc_mm;
     args.filename = path;
     args.dt = mat->traits->datatype;
-    if (src.func(GHOST_SPARSEMAT_ROWFUNC_MM_ROW_GETDIM,NULL,dim,&args)) {
+    if (src.func(GHOST_SPARSEMAT_ROWFUNC_MM_ROW_GETDIM,NULL,dim,&args,src.arg)) {
         ERROR_LOG("Error in matrix creation function");
         ret = GHOST_ERR_UNKNOWN;
         goto err;
     }
-    if (src.func(GHOST_SPARSEMAT_ROWFUNC_MM_ROW_INIT,NULL,NULL,&args)) {
+    if (src.func(GHOST_SPARSEMAT_ROWFUNC_MM_ROW_INIT,NULL,NULL,&args,src.arg)) {
         ERROR_LOG("Error in matrix creation function");
         ret = GHOST_ERR_UNKNOWN;
         goto err;
@@ -902,7 +903,7 @@ ghost_error_t ghost_sparsemat_from_mm(ghost_sparsemat_t *mat, char *path)
     src.maxrowlen = dim[1];
     
     GHOST_CALL_GOTO(mat->fromRowFunc(mat,&src),err,ret);
-    if (src.func(GHOST_SPARSEMAT_ROWFUNC_MM_ROW_FINALIZE,NULL,NULL,NULL)) {
+    if (src.func(GHOST_SPARSEMAT_ROWFUNC_MM_ROW_FINALIZE,NULL,NULL,NULL,src.arg)) {
         ERROR_LOG("Error in matrix creation function");
         ret = GHOST_ERR_UNKNOWN;
         goto err;
