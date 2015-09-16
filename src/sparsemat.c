@@ -35,7 +35,6 @@ const ghost_sparsemat_traits_t GHOST_SPARSEMAT_TRAITS_INITIALIZER = {
     .opt_blockvec_width = 0
 };
 
-
 ghost_error_t ghost_sparsemat_create(ghost_sparsemat_t ** mat, ghost_context_t *context, ghost_sparsemat_traits_t *traits, int nTraits)
 {
     UNUSED(nTraits);
@@ -148,6 +147,7 @@ ghost_error_t ghost_sparsemat_sortrow(ghost_gidx_t *col, char *val, size_t valSi
 
 ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rlp, ghost_lidx_t *cl, ghost_lidx_t *clp, ghost_lidx_t *chunkptr, char **val, ghost_gidx_t **col, ghost_sparsemat_src_rowfunc_t *src, ghost_sparsemat_t *mat, ghost_lidx_t C, ghost_lidx_t P)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     ghost_error_t ret = GHOST_SUCCESS;
     int funcerrs = 0;
     char *tmpval = NULL;
@@ -184,11 +184,15 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
         if (mat->traits->sortScope > 1) {
             ghost_sparsemat_perm_sort(mat,(void *)src,GHOST_SPARSEMAT_SRC_FUNC,mat->traits->sortScope);
         }
+        if (mat->traits->flags & GHOST_SPARSEMAT_NOT_SORT_COLS) {
+            PERFWARNING_LOG("Unsorted columns inside a row may yield to bad performance! However, matrix construnction will be faster.");
+        }
     } else {
         if (mat->traits->sortScope > 1) {
             WARNING_LOG("Ignoring sorting scope");
         }
         mat->traits->flags |= (ghost_sparsemat_flags_t)GHOST_SPARSEMAT_NOT_PERMUTE_COLS;
+        mat->traits->flags |= (ghost_sparsemat_flags_t)GHOST_SPARSEMAT_NOT_SORT_COLS;
     }
 
     ghost_lidx_t *tmpclp = NULL;
@@ -321,6 +325,7 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
         }
     }
 
+    GHOST_INSTR_START("cols_and_vals");
 #pragma omp parallel private(i,colidx,row,tmpval,tmpcol)
     {
         int funcret = 0;
@@ -382,15 +387,18 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
         free(tmpval); tmpval = NULL;
         free(tmpcol); tmpcol = NULL;
     }
+    GHOST_INSTR_STOP("cols_and_vals");
     
     if (mat->context->perm_global) {
         ghost_sparsemat_perm_global_cols(*col,mat->nEnts,mat->context);
     }
     
+    GHOST_INSTR_START("sort_and_register");
+    
     for( chunk = 0; chunk < nchunks; chunk++ ) {
         for (i=0; (i<C) && (chunk*C+i < mat->nrows); i++) {
             row = chunk*C+i;
-            if (mat->traits->flags & GHOST_SPARSEMAT_SORT_COLS) {
+            if (!(mat->traits->flags & GHOST_SPARSEMAT_NOT_SORT_COLS)) {
                 ghost_sparsemat_sortrow(&((*col)[chunkptr[chunk]+i]),&(*val)[(chunkptr[chunk]+i)*mat->elSize],mat->elSize,rl[row],C);
             }
 #ifdef GHOST_GATHER_SPARSEMAT_STATISTICS
@@ -402,6 +410,8 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
 #ifdef GHOST_GATHER_SPARSEMAT_STATISTICS
     ghost_sparsemat_registerrow_finalize(mat);
 #endif
+    GHOST_INSTR_STOP("sort_and_register");
+    
     mat->context->lnEnts[me] = mat->nEnts;
 
     for (i=0; i<nprocs; i++) {
@@ -421,6 +431,7 @@ err:
 
 out:
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
     return ret;
 }
 
@@ -712,8 +723,8 @@ ghost_error_t ghost_sparsemat_string(char **str, ghost_sparsemat_t *mat)
         ghost_line_string(str,"Permutation scope",NULL,"%s",mat->context->perm_global->scope==GHOST_PERMUTATION_GLOBAL?"Across processes":"Local to process");
 #endif
         ghost_line_string(str,"Permuted column indices",NULL,"%s",mat->traits->flags&GHOST_SPARSEMAT_NOT_PERMUTE_COLS?"No":"Yes");
-        ghost_line_string(str,"Ascending columns in row",NULL,"%s",mat->traits->flags&GHOST_SPARSEMAT_SORT_COLS?"Yes":"Maybe");
     }
+    ghost_line_string(str,"Ascending columns in row",NULL,"%s",mat->traits->flags&GHOST_SPARSEMAT_NOT_SORT_COLS?"Maybe":"Yes");
     ghost_line_string(str,"Max row length (# rows)",NULL,"%d (%d)",mat->maxRowLen,mat->nMaxRows);
     ghost_line_string(str,"Row length variance",NULL,"%f",mat->variance);
     ghost_line_string(str,"Row length standard deviation",NULL,"%f",mat->deviation);

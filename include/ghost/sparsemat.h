@@ -147,8 +147,7 @@ typedef enum {
      */
     GHOST_SPARSEMAT_PERMUTE       = 8,
     /**
-     * @brief If the matrix columns have been re-ordered, do _NOT_ care for 
-     * ascending column indices wrt. memory location. 
+     * @brief Do _not_ sort the matrix cols wrt. memory location.
      */
     GHOST_SPARSEMAT_NOT_SORT_COLS    = 16,
     /**
