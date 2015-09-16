@@ -93,7 +93,7 @@ ghost_error_t ghost_sparsemat_create(ghost_sparsemat_t ** mat, ghost_context_t *
         (*mat)->traits->sortScope = (*mat)->nrows;
     }
 
-#ifdef GHOST_GATHER_GLOBAL_INFO
+#ifdef GHOST_GATHER_SPARSEMAT_GLOBAL_STATISTICS
     GHOST_CALL_GOTO(ghost_malloc((void **)&((*mat)->nzDist),sizeof(ghost_gidx_t)*(2*context->gnrows-1)),err,ret);
 #endif
     GHOST_CALL_GOTO(ghost_datatype_size(&(*mat)->elSize,(*mat)->traits->datatype),err,ret);
@@ -161,7 +161,7 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
     mat->ncols = mat->context->gncols;
     mat->nrows = mat->context->lnrows[me];
 
-#ifdef GHOST_GATHER_GLOBAL_INFO
+#ifdef GHOST_GATHER_SPARSEMAT_GLOBAL_STATISTICS
     memset(mat->nzDist,0,sizeof(ghost_gidx_t)*(2*mat->context->gnrows-1));
 #endif
     mat->lowerBandwidth = 0;
@@ -186,7 +186,6 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
             WARNING_LOG("Ignoring sorting scope");
         }
         mat->traits->flags |= (ghost_sparsemat_flags_t)GHOST_SPARSEMAT_NOT_PERMUTE_COLS;
-        mat->traits->flags |= (ghost_sparsemat_flags_t)GHOST_SPARSEMAT_NOT_SORT_COLS;
     }
 
     ghost_lidx_t *tmpclp = NULL;
@@ -388,12 +387,18 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
     for( chunk = 0; chunk < nchunks; chunk++ ) {
         for (i=0; (i<C) && (chunk*C+i < mat->nrows); i++) {
             row = chunk*C+i;
-            ghost_sparsemat_sortrow(&((*col)[chunkptr[chunk]+i]),&(*val)[(chunkptr[chunk]+i)*mat->elSize],mat->elSize,rl[row],C);
+            if (mat->traits->flags & GHOST_SPARSEMAT_SORT_COLS) {
+                ghost_sparsemat_sortrow(&((*col)[chunkptr[chunk]+i]),&(*val)[(chunkptr[chunk]+i)*mat->elSize],mat->elSize,rl[row],C);
+            }
+#ifdef GHOST_GATHER_SPARSEMAT_STATISTICS
             ghost_sparsemat_registerrow(mat,mat->context->lfRow[me]+row,&(*col)[chunkptr[chunk]+i],rl[row],C);
+#endif
         }
     }
 
+#ifdef GHOST_GATHER_SPARSEMAT_STATISTICS
     ghost_sparsemat_registerrow_finalize(mat);
+#endif
     mat->context->lnEnts[me] = mat->nEnts;
 
     for (i=0; i<nprocs; i++) {
@@ -704,7 +709,7 @@ ghost_error_t ghost_sparsemat_string(char **str, ghost_sparsemat_t *mat)
         ghost_line_string(str,"Permutation scope",NULL,"%s",mat->context->perm_global->scope==GHOST_PERMUTATION_GLOBAL?"Across processes":"Local to process");
 #endif
         ghost_line_string(str,"Permuted column indices",NULL,"%s",mat->traits->flags&GHOST_SPARSEMAT_NOT_PERMUTE_COLS?"No":"Yes");
-        ghost_line_string(str,"Ascending columns in row",NULL,"%s",mat->traits->flags&GHOST_SPARSEMAT_NOT_SORT_COLS?"No":"Yes");
+        ghost_line_string(str,"Ascending columns in row",NULL,"%s",mat->traits->flags&GHOST_SPARSEMAT_SORT_COLS?"Yes":"Maybe");
     }
     ghost_line_string(str,"Max row length (# rows)",NULL,"%d (%d)",mat->maxRowLen,mat->nMaxRows);
     ghost_line_string(str,"Row length variance",NULL,"%f",mat->variance);

@@ -37,7 +37,7 @@ ghost_error_t ghost_sparsemat_registerrow(ghost_sparsemat_t *mat, ghost_gidx_t r
             lowerDists.push_back(row-col);
             lowerDistsAcc += row-col;
             lowerEnts++;
-#ifdef GHOST_GATHER_GLOBAL_INFO
+#ifdef GHOST_GATHER_SPARSEMAT_GLOBAL_STATISTICS
             mat->nzDist[mat->context->gnrows-1-(row-col)]++;
 #endif
         } else if (col > row) {
@@ -45,13 +45,13 @@ ghost_error_t ghost_sparsemat_registerrow(ghost_sparsemat_t *mat, ghost_gidx_t r
             upperDists.push_back(col-row);
             upperDistsAcc += col-row;
             upperEnts++;
-#ifdef GHOST_GATHER_GLOBAL_INFO
+#ifdef GHOST_GATHER_SPARSEMAT_GLOBAL_STATISTICS
             mat->nzDist[mat->context->gnrows-1+col-row]++;
 #endif
         } else {
             lowerDists.push_back(0);
             upperDists.push_back(0);
-#ifdef GHOST_GATHER_GLOBAL_INFO
+#ifdef GHOST_GATHER_SPARSEMAT_GLOBAL_STATISTICS
             mat->nzDist[mat->context->gnrows-1]++;
 #endif
         }
@@ -96,7 +96,7 @@ ghost_error_t ghost_sparsemat_registerrow_finalize(ghost_sparsemat_t *mat)
     MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&mat->upperBandwidth,1,ghost_mpi_dt_gidx,MPI_MAX,mat->context->mpicomm));
     MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&mat->avgRowBand,1,MPI_DOUBLE,MPI_SUM,mat->context->mpicomm));
     MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&mat->avgAvgRowBand,1,MPI_DOUBLE,MPI_SUM,mat->context->mpicomm));
-#ifdef GHOST_GATHER_GLOBAL_INFO
+#ifdef GHOST_GATHER_SPARSEMAT_GLOBAL_STATISTICS
     MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,mat->nzDist,2*mat->context->gnrows-1,ghost_mpi_dt_idx,MPI_SUM,mat->context->mpicomm));
 #endif
 #endif
