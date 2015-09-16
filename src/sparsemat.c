@@ -924,3 +924,34 @@ out:
     return ret;
 
 }
+
+extern inline int ghost_sparsemat_rowfunc_crs(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, void *val, void *arg);
+
+ghost_error_t ghost_sparsemat_from_crs(ghost_sparsemat_t *mat, ghost_gidx_t n, ghost_gidx_t *col, void *val, ghost_lidx_t *rpt)
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
+    
+    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_sparsemat_rowfunc_crs_arg args;
+    ghost_datatype_size(&args.dtsize,mat->traits->datatype);
+    args.dtsize = mat->traits->datatype;
+    args.col = col;
+    args.val = val;
+    args.rpt = rpt;
+
+    ghost_sparsemat_src_rowfunc_t src = GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER;
+    
+    src.func = &ghost_sparsemat_rowfunc_crs;
+    src.arg = &args;
+    src.maxrowlen = n;
+    
+    GHOST_CALL_GOTO(mat->fromRowFunc(mat,&src),err,ret);
+
+    goto out;
+err:
+
+out:
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
+    return ret;
+
+}
