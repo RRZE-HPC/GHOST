@@ -20,7 +20,7 @@ static ghost_mpi_op_t GHOST_MPI_OP_SUM_DENSEMAT_D = MPI_OP_NULL;
 static ghost_mpi_op_t GHOST_MPI_OP_SUM_DENSEMAT_C = MPI_OP_NULL;
 static ghost_mpi_op_t GHOST_MPI_OP_SUM_DENSEMAT_Z = MPI_OP_NULL;
 
-static void ghost_spmv_selectMode(ghost_context_t * context, ghost_spmv_flags_t *flags);
+static void ghost_spmv_selectMode(ghost_context_t * context, ghost_spmv_flags_t *flags, ghost_sparsemat_flags_t matflags);
 
 ghost_error_t ghost_dot(void *res, ghost_densemat_t *vec, ghost_densemat_t *vec2)
 {
@@ -100,7 +100,7 @@ static ghost_error_t ghost_vspmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, 
     va_copy(argp_backup,argp);
     DEBUG_LOG(1,"Performing SpMV");
     ghost_spmvsolver_t solver = NULL;
-    ghost_spmv_selectMode(mat->context,flags);
+    ghost_spmv_selectMode(mat->context,flags,mat->traits->flags);
     if (*flags & GHOST_SPMV_MODE_VECTOR) {
         solver = &ghost_spmv_vectormode;
     } else if (*flags & GHOST_SPMV_MODE_OVERLAP) {
@@ -435,7 +435,7 @@ static void ghost_mpi_add_densemat_c(void *in, void *inout, int *len, MPI_Dataty
 }
 #endif
 
-static void ghost_spmv_selectMode(ghost_context_t * context, ghost_spmv_flags_t *flags)
+static void ghost_spmv_selectMode(ghost_context_t * context, ghost_spmv_flags_t *flags, ghost_sparsemat_flags_t matflags)
 {
     int nranks;
     ghost_nrank(&nranks,context->mpicomm);
@@ -444,7 +444,11 @@ static void ghost_spmv_selectMode(ghost_context_t * context, ghost_spmv_flags_t 
         if (nranks == 1) {
             *flags |= (ghost_spmv_flags_t)GHOST_SPMV_MODE_NOMPI;
         } else {
-            *flags |= (ghost_spmv_flags_t)GHOST_SPMV_MODE_OVERLAP;
+            if (matflags & GHOST_SPARSEMAT_NOT_STORE_SPLIT) {
+                *flags |= (ghost_spmv_flags_t)GHOST_SPMV_MODE_VECTOR;
+            } else {
+                *flags |= (ghost_spmv_flags_t)GHOST_SPMV_MODE_OVERLAP;
+            }
         }
 #else
         UNUSED(context);
