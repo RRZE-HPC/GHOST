@@ -457,6 +457,7 @@ void ghost_context_destroy(ghost_context_t *context)
 
 ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_orig, ghost_lidx_t *col)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
 
     ghost_error_t ret = GHOST_SUCCESS;
     ghost_gidx_t j;
@@ -829,6 +830,7 @@ out:
     free(globcol); globcol = NULL;
     free(myrevcol); myrevcol = NULL;
     
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
     return ret;
 }
 

@@ -319,6 +319,7 @@ out:
 
 static ghost_error_t CRS_split(ghost_sparsemat_t *mat)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     if (!mat) {
         ERROR_LOG("Matrix is NULL");
         return GHOST_ERR_INVALID_ARG;
@@ -463,6 +464,7 @@ err:
     mat->remotePart->destroy(mat->remotePart); mat->remotePart = NULL;
 
 out:
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
     return ret;
 
 }
