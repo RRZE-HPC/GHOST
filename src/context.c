@@ -32,36 +32,14 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_gidx_t gnrow
     (*context)->wishes   = NULL;
     (*context)->dues     = NULL;
     (*context)->hput_pos = NULL;
-
+    (*context)->cu_duelist = NULL;
+    (*context)->duelist = NULL;
+    (*context)->wishlist = NULL;
+    (*context)->dues = NULL;
+    (*context)->wishes = NULL;
     
     GHOST_CALL_GOTO(ghost_nrank(&nranks, (*context)->mpicomm),err,ret);
     GHOST_CALL_GOTO(ghost_rank(&me, (*context)->mpicomm),err,ret);
-
-    (*context)->cu_duelist = NULL;
-    
-    GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->wishlist,nranks*sizeof(ghost_lidx_t *)),err,ret); 
-    GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->duelist,nranks*sizeof(ghost_lidx_t *)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->wishes,nranks*sizeof(ghost_lidx_t)),err,ret); 
-    GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->dues,nranks*sizeof(ghost_lidx_t)),err,ret); 
-#ifdef GHOST_HAVE_CUDA
-    ghost_type_t type;
-    ghost_type_get(&type);
-    if (type == GHOST_TYPE_CUDA) {
-        GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->cu_duelist,nranks*sizeof(ghost_lidx_t *)),err,ret);
-    }
-#endif
-
-    for (i=0; i<nranks; i++){
-        (*context)->wishes[i] = 0;
-        (*context)->dues[i] = 0;
-        (*context)->wishlist[i] = NULL;
-        (*context)->duelist[i] = NULL;
-#ifdef GHOST_HAVE_CUDA
-    if (type == GHOST_TYPE_CUDA) {
-          (*context)->cu_duelist[i] = NULL;
-    }
-#endif
-    }
 
     if (!((*context)->flags & GHOST_CONTEXT_DIST_NZ)) {
         (*context)->flags |= (ghost_context_flags_t)GHOST_CONTEXT_DIST_ROWS;
@@ -434,20 +412,21 @@ void ghost_context_destroy(ghost_context_t *context)
             ghost_cu_free(context->cu_duelist[0]);
         }
 #endif
-        free(context->wishlist);
-        free(context->duelist);
-        free(context->wishes);
-        free(context->dues);
-        free(context->hput_pos);
-        free(context->lfRow);
-        free(context->lnrows);
-        free(context->lnEnts);
-        free(context->lfEnt);
+        free(context->wishlist); context->wishlist = NULL;
+        free(context->duelist); context->duelist = NULL;
+        free(context->cu_duelist); context->cu_duelist = NULL;
+        free(context->wishes); context->wishes = NULL;
+        free(context->dues); context->dues = NULL;
+        free(context->hput_pos); context->hput_pos = NULL;
+        free(context->lfRow); context->lfRow = NULL;
+        free(context->lnrows); context->lnrows = NULL;
+        free(context->lnEnts); context->lnEnts = NULL;
+        free(context->lfEnt); context->lfEnt = NULL;
         if( context->perm_local )
         {
-          free(context->perm_local->perm);
-          free(context->perm_local->invPerm);
-          free(context->perm_local);
+          free(context->perm_local->perm); context->perm_local->perm = NULL;
+          free(context->perm_local->invPerm); context->perm_local->invPerm = NULL;
+          free(context->perm_local); context->perm_local = NULL;
         }
     }
 
@@ -457,6 +436,10 @@ void ghost_context_destroy(ghost_context_t *context)
 
 ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_orig, ghost_lidx_t *col)
 {
+    if (ctx->wishlist != NULL) {
+        INFO_LOG("The context already has communication information. This will not be done again! Destroy the context in case the matrix has changed!");
+        return GHOST_SUCCESS;
+    }
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
 
     ghost_error_t ret = GHOST_SUCCESS;
@@ -490,9 +473,10 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
     size_t size_nint, size_lcol, size_gcol;
     size_t size_a2ai, size_nptr, size_pval;  
     size_t size_wish, size_dues;
-
+    
     int nprocs;
     int me;
+    
     GHOST_CALL_RETURN(ghost_nrank(&nprocs, ctx->mpicomm));
     GHOST_CALL_RETURN(ghost_rank(&me, ctx->mpicomm));
 
@@ -500,6 +484,30 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
     MPI_Request req[2*nprocs];
     MPI_Status stat[2*nprocs];
 #endif
+
+    GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->wishlist,nprocs*sizeof(ghost_lidx_t *)),err,ret); 
+    GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->duelist,nprocs*sizeof(ghost_lidx_t *)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->wishes,nprocs*sizeof(ghost_lidx_t)),err,ret); 
+    GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->dues,nprocs*sizeof(ghost_lidx_t)),err,ret); 
+#ifdef GHOST_HAVE_CUDA
+    ghost_type_t type;
+    ghost_type_get(&type);
+    if (type == GHOST_TYPE_CUDA) {
+        GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->cu_duelist,nprocs*sizeof(ghost_lidx_t *)),err,ret);
+    }
+#endif
+
+    for (i=0; i<nprocs; i++){
+        ctx->wishes[i] = 0;
+        ctx->dues[i] = 0;
+        ctx->wishlist[i] = NULL;
+        ctx->duelist[i] = NULL;
+#ifdef GHOST_HAVE_CUDA
+        if (type == GHOST_TYPE_CUDA) {
+              ctx->cu_duelist[i] = NULL;
+        }
+#endif
+    }
 
     size_nint = (size_t)( (size_t)(nprocs)   * sizeof(ghost_lidx_t)  );
     size_nptr = (size_t)( nprocs             * sizeof(ghost_lidx_t*) );
