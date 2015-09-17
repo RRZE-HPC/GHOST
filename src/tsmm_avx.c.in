@@ -728,7 +728,7 @@ ghost_error_t ghost_tsmm__a_avx_d_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_den
 #pragma unroll(CFGM/4)
                     for (m=0; m<CFGM/4; m++) {
                         #GHOST_UNROLL#vrow@ = _mm256_load_pd(&vval[(i+@)*ldv+m*4]);#2
-                        #GHOST_UNROLL#tmp@ = _mm256_add_pd(tmp@,_mm256_mul_pd(vrow@/4,_mm256_load_pd(&wnonpad[(k*4+(@%4))*CFGM+m*4])));#8
+                        #GHOST_UNROLL#tmp@ = _mm256_add_pd(tmp@,_mm256_mul_pd(vrow~@/4~,_mm256_load_pd(&wnonpad[(k*4+(@%4))*CFGM+m*4])));#8
                     }
                     _mm256_store_pd(&xval[i*ldx+k*4],_mm256_add_pd(_mm256_mul_pd(betavec,_mm256_load_pd(&xval[i*ldx+k*4])),_mm256_hadd_pd(
                                 _mm256_hadd_pd(_mm256_permute2f128_pd(tmp0,tmp2,0x20),_mm256_permute2f128_pd(tmp0,tmp2,0x31)),
@@ -773,7 +773,7 @@ ghost_error_t ghost_tsmm__a_avx_d_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_den
 #pragma unroll(CFGM/4)
                     for (m=0; m<CFGM/4; m++) {
                         #GHOST_UNROLL#vrow@ = _mm256_load_pd(&vval[(i+@)*ldv+m*4]);#2
-                        #GHOST_UNROLL#tmp@ = _mm256_add_pd(tmp@,_mm256_mul_pd(vrow@/4,_mm256_load_pd(&wnonpad[(k*4+(@%4))*CFGM+m*4])));#8
+                        #GHOST_UNROLL#tmp@ = _mm256_add_pd(tmp@,_mm256_mul_pd(vrow~@/4~,_mm256_load_pd(&wnonpad[(k*4+(@%4))*CFGM+m*4])));#8
                     }
                     _mm256_stream_pd(&xval[i*ldx+k*4],_mm256_hadd_pd(
                                 _mm256_hadd_pd(_mm256_permute2f128_pd(tmp0,tmp2,0x20),_mm256_permute2f128_pd(tmp0,tmp2,0x31)),
