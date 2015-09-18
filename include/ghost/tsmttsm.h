@@ -13,6 +13,7 @@
 
 typedef struct
 {
+    ghost_alignment_t alignment;
     ghost_datatype_t dt;
     int wcols;
     int vcols;

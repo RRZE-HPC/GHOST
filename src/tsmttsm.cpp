@@ -15,7 +15,7 @@ using namespace std;
 
 static bool operator<(const ghost_tsmttsm_parameters_t &a, const ghost_tsmttsm_parameters_t &b) 
 { 
-    return ghost_hash(a.dt,a.wcols,ghost_hash(a.vcols,a.impl,ghost_hash(a.xstor,a.wstor,0))) < ghost_hash(b.dt,b.wcols,ghost_hash(b.vcols,b.impl,ghost_hash(b.xstor,b.wstor,0))); 
+    return ghost_hash(a.dt,a.wcols,ghost_hash(a.vcols,a.impl,ghost_hash(a.xstor,a.wstor,a.alignment))) < ghost_hash(b.dt,b.wcols,ghost_hash(b.vcols,b.impl,ghost_hash(b.xstor,b.wstor,b.alignment))); 
 }
 
 static map<ghost_tsmttsm_parameters_t, ghost_tsmttsm_kernel_t> ghost_tsmttsm_kernels;
@@ -131,13 +131,34 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
     }*/
     //p.impl = GHOST_IMPLEMENTATION_PLAIN;
 
+    p.alignment = GHOST_ALIGNED;
     p.dt = x->traits.datatype;
     p.xstor = x->traits.storage;
     p.wstor = w->traits.storage;
     
     p.vcols = v->traits.ncols;
+    
+    if (p.impl == GHOST_IMPLEMENTATION_SSE) {
+        if (!IS_ALIGNED(x->val,16) || !IS_ALIGNED(v->val,16) || !IS_ALIGNED(w->val,16)) {
+            p.alignment = GHOST_UNALIGNED;
+            PERFWARNING_LOG("Switching to the unaligned kernel!");
+        }
+    }
+    if (p.impl == GHOST_IMPLEMENTATION_AVX) {
+        if (!IS_ALIGNED(x->val,32) || !IS_ALIGNED(v->val,32) || !IS_ALIGNED(w->val,32)) {
+            p.alignment = GHOST_UNALIGNED;
+            PERFWARNING_LOG("Switching to the unaligned kernel!");
+        }
+    }
+    if (p.impl == GHOST_IMPLEMENTATION_PLAIN) {
+        if (!IS_ALIGNED(x->val,64) || !IS_ALIGNED(v->val,64) || !IS_ALIGNED(w->val,64)) {
+            p.alignment = GHOST_UNALIGNED;
+            PERFWARNING_LOG("Switching to the unaligned kernel!");
+        }
+    }
     p.wcols = w->traits.ncols;
     
+    INFO_LOG("Inital search for kernel %d %d %d %d %d %d!",p.dt,p.wcols,p.vcols,p.xstor,p.wstor,p.alignment);
     kernel = ghost_tsmttsm_kernels[p];
     
     if (!kernel) {
@@ -187,6 +208,12 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
         PERFWARNING_LOG("Try kernel with arbitrary block sizes");
         p.wcols = -1;
         p.vcols = -1;
+        kernel = ghost_tsmttsm_kernels[p];
+    }
+    
+    if (!kernel) {
+        PERFWARNING_LOG("Try unaligned kernel");
+        p.alignment = GHOST_UNALIGNED;
         kernel = ghost_tsmttsm_kernels[p];
     }
     
