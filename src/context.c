@@ -745,7 +745,6 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
     GHOST_CALL_GOTO(ghost_malloc((void **)&duel_mem,size_dues),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->hput_pos,size_nptr),err,ret); 
    
-    ghost_type_t type;
     ghost_type_get(&type); 
 #ifdef GHOST_HAVE_CUDA
     ghost_lidx_t *cu_duel_mem;
