@@ -495,15 +495,24 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
                 "unaligned addresses work with SSE.");
         p.alignment = GHOST_UNALIGNED;
     }*/
+    if (p.impl == GHOST_IMPLEMENTATION_MIC) {
+        if (!(IS_ALIGNED(lhs->val,64)) || !(IS_ALIGNED(rhs->val,64)) ||
+                (lhs->stride*lhs->elSize)%64 || (rhs->stride*rhs->elSize)%64) {
+            PERFWARNING_LOG("Using unaligned version for because (one of) the vectors are not aligned to 64 bytes.");
+            p.alignment = GHOST_UNALIGNED;
+        }
+    }
     if (p.impl == GHOST_IMPLEMENTATION_AVX) {
-        if (!(IS_ALIGNED(lhs->val,32)) || !(IS_ALIGNED(rhs->val,32))) {
+        if (!(IS_ALIGNED(lhs->val,32)) || !(IS_ALIGNED(rhs->val,32)) ||
+                (lhs->stride*lhs->elSize)%32 || (rhs->stride*rhs->elSize)%32) {
             PERFWARNING_LOG("Using unaligned version for because (one of) the vectors are not aligned to 32 bytes.");
             p.alignment = GHOST_UNALIGNED;
         }
     }
     if (p.impl == GHOST_IMPLEMENTATION_SSE) {
-        if (!(IS_ALIGNED(lhs->val,16)) || !(IS_ALIGNED(rhs->val,16))) {
-            PERFWARNING_LOG("Using unaligned version for because (one of) the vectors are not aligned to 32 bytes.");
+        if (!(IS_ALIGNED(lhs->val,16)) || !(IS_ALIGNED(rhs->val,16)) ||
+                (lhs->stride*lhs->elSize)%16 || (rhs->stride*rhs->elSize)%16) {
+            PERFWARNING_LOG("Using unaligned version for because (one of) the vectors are not aligned to 16 bytes.");
             p.alignment = GHOST_UNALIGNED;
         }
     }

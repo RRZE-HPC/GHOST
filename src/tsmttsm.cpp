@@ -139,19 +139,22 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
     p.vcols = v->traits.ncols;
     
     if (p.impl == GHOST_IMPLEMENTATION_SSE) {
-        if (!IS_ALIGNED(x->val,16) || !IS_ALIGNED(v->val,16) || !IS_ALIGNED(w->val,16)) {
+        if (!IS_ALIGNED(x->val,16) || !IS_ALIGNED(v->val,16) || !IS_ALIGNED(w->val,16) || 
+                (x->stride*x->elSize)%16 || (v->stride*v->elSize)%16 || (w->stride*w->elSize)%16) {
             p.alignment = GHOST_UNALIGNED;
             PERFWARNING_LOG("Switching to the unaligned kernel!");
         }
     }
     if (p.impl == GHOST_IMPLEMENTATION_AVX) {
-        if (!IS_ALIGNED(x->val,32) || !IS_ALIGNED(v->val,32) || !IS_ALIGNED(w->val,32)) {
+        if (!IS_ALIGNED(x->val,32) || !IS_ALIGNED(v->val,32) || !IS_ALIGNED(w->val,32) || 
+                (x->stride*x->elSize)%32 || (v->stride*v->elSize)%32 || (w->stride*w->elSize)%32) {
             p.alignment = GHOST_UNALIGNED;
             PERFWARNING_LOG("Switching to the unaligned kernel!");
         }
     }
-    if (p.impl == GHOST_IMPLEMENTATION_PLAIN) {
-        if (!IS_ALIGNED(x->val,64) || !IS_ALIGNED(v->val,64) || !IS_ALIGNED(w->val,64)) {
+    if (p.impl == GHOST_IMPLEMENTATION_PLAIN || p.impl == GHOST_IMPLEMENTATION_MIC) {
+        if (!IS_ALIGNED(x->val,64) || !IS_ALIGNED(v->val,64) || !IS_ALIGNED(w->val,64) || 
+                (x->stride*x->elSize)%64 || (v->stride*v->elSize)%64 || (w->stride*w->elSize)%64) {
             p.alignment = GHOST_UNALIGNED;
             PERFWARNING_LOG("Switching to the unaligned kernel!");
         }
@@ -187,6 +190,11 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
         p.impl = GHOST_IMPLEMENTATION_PLAIN;
         p.vcols = v->traits.ncols;
         p.wcols = w->traits.ncols;
+        if (!IS_ALIGNED(x->val,64) || !IS_ALIGNED(v->val,64) || !IS_ALIGNED(w->val,64) || 
+                (x->stride*x->elSize)%64 || (v->stride*v->elSize)%64 || (w->stride*w->elSize)%64) {
+            p.alignment = GHOST_UNALIGNED;
+            PERFWARNING_LOG("Switching to the unaligned kernel!");
+        }
         kernel = ghost_tsmttsm_kernels[p];
     }
     
