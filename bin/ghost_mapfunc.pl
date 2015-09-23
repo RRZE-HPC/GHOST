@@ -31,6 +31,9 @@ while (<>) {
         my $funcname_full = $header[1];
         my @funcname_parts = split /__/,$funcname_full;
         my $funcname = $funcname_parts[0];
+        my @funcnamestart_parts = split /_/,$funcname_full;
+        my $funcname_noprefix = $funcname_full;
+        $funcname_noprefix =~ s/ghost_//;
         my @funcpars = split /_/,$funcname_parts[1];
         
         if ($funcname eq "ghost_sellspmv") {
@@ -48,6 +51,24 @@ while (<>) {
                 print "pars.blocksz = ".$funcpars[6].";\n";
             }
             print $funcname."_kernels[pars] = ".$funcname_full.";\n"; 
+            if ($funcpars[6] ne "x") {
+                print "ghost_gidx_t nnz;\n";
+                print "ghost_gidx_t nrow;\n";
+                print "ghost_sparsemat_nnz(&nnz,mat);\n";
+                print "ghost_sparsemat_nrows(&nrow,mat);\n";
+                print "ghost_spmv_perf_args_t spmv_perfargs;\n";
+                print "spmv_perfargs.vecncols = rhs->traits.ncols;\n";
+                print "spmv_perfargs.globalnnz = nnz;\n";
+                print "spmv_perfargs.globalrows = nrow;\n";
+                print "spmv_perfargs.dt = rhs->traits.datatype;\n";
+                print "spmv_perfargs.flags = options;\n";
+                print "char *fullfuncname;";
+                print "ghost_malloc((void **)&fullfuncname,256);";
+                print "strncpy(fullfuncname,__ghost_functag,256);";
+                print "strncat(fullfuncname,\"->".$funcname_noprefix."\",256);";
+                print "ghost_timing_set_perfFunc(fullfuncname,ghost_spmv_perf,(void *)&spmv_perfargs,sizeof(spmv_perfargs),GHOST_SPMV_PERF_UNIT);";
+                print "free(fullfuncname);";
+            }
             print "}\n";
         } elsif ($funcname eq "ghost_tsmttsm") {
             print "{\n";
@@ -68,6 +89,28 @@ while (<>) {
             print "pars.xstor = ".$storages{$funcpars[5]}.";\n";
             print "pars.wstor = ".$storages{$funcpars[6]}.";\n";
             print $funcname."_kernels[pars] = ".$funcname_full.";\n"; 
+            if ($funcpars[3] ne "x" and $funcpars[4] ne "x" ) {
+                print "ghost_gemm_perf_args_t tsmttsm_perfargs;\n";
+                print "tsmttsm_perfargs.n = ".$funcpars[3].";\n";
+                print "tsmttsm_perfargs.m = ".$funcpars[4].";\n";
+                print "if (v->context) {\n";
+                print "    tsmttsm_perfargs.k = v->context->gnrows;\n";
+                print "} else {\n";
+                print "    tsmttsm_perfargs.k = v->traits.nrows;\n";
+                print "}\n";
+                print "tsmttsm_perfargs.dt = x->traits.datatype;\n";
+                print "if (tsmttsm_perfargs.dt == pars.dt) {\n";
+                print "tsmttsm_perfargs.betaiszero = ghost_iszero(beta,pars.dt);\n";
+                print "tsmttsm_perfargs.alphaisone = ghost_isone(alpha,pars.dt);\n";
+                print "char *fullfuncname;";
+                print "ghost_malloc((void **)&fullfuncname,256);";
+                print "strncpy(fullfuncname,__ghost_functag,256);";
+                print "strncat(fullfuncname,\"->".$funcname_noprefix."\",256);";
+                print "ghost_timing_set_perfFunc(fullfuncname,ghost_gemm_perf_GBs,(void *)&tsmttsm_perfargs,sizeof(tsmttsm_perfargs),\"GB/s\");\n";
+                print "ghost_timing_set_perfFunc(fullfuncname,ghost_gemm_perf_GFs,(void *)&tsmttsm_perfargs,sizeof(tsmttsm_perfargs),\"GF/s\");\n";
+                print "free(fullfuncname);";
+                print "}\n";
+            }
             print "}\n";
         } elsif ($funcname eq "ghost_tsmttsm_kahan") {
             print "{\n";
@@ -108,7 +151,29 @@ while (<>) {
             }
             print "pars.xstor = ".$storages{$funcpars[5]}.";\n";
             print "pars.wstor = ".$storages{$funcpars[6]}.";\n";
-            print $funcname."_kernels[pars] = ".$funcname_full.";\n"; 
+            print $funcname."_kernels[pars] = ".$funcname_full.";\n";
+            if ($funcpars[3] ne "x" and $funcpars[4] ne "x" ) {
+                print "ghost_gemm_perf_args_t tsmm_perfargs;\n";
+                print "tsmm_perfargs.n = ".$funcpars[3].";\n";
+                print "tsmm_perfargs.k = ".$funcpars[4].";\n";
+                print "if (v->context) {\n";
+                print "    tsmm_perfargs.m = v->context->gnrows;\n";
+                print "} else {\n";
+                print "    tsmm_perfargs.m = v->traits.nrows;\n";
+                print "}\n";
+                print "tsmm_perfargs.dt = x->traits.datatype;\n";
+                print "if (tsmm_perfargs.dt == pars.dt) {\n";
+                print "tsmm_perfargs.betaiszero = ghost_iszero(beta,pars.dt);\n";
+                print "tsmm_perfargs.alphaisone = ghost_isone(alpha,pars.dt);\n";
+                print "char *fullfuncname;";
+                print "ghost_malloc((void **)&fullfuncname,256);";
+                print "strncpy(fullfuncname,__ghost_functag,256);";
+                print "strncat(fullfuncname,\"->".$funcname_noprefix."\",256);";
+                print "ghost_timing_set_perfFunc(fullfuncname,ghost_gemm_perf_GBs,(void *)&tsmm_perfargs,sizeof(tsmm_perfargs),\"GB/s\");\n";
+                print "ghost_timing_set_perfFunc(fullfuncname,ghost_gemm_perf_GFs,(void *)&tsmm_perfargs,sizeof(tsmm_perfargs),\"GF/s\");\n";
+                print "free(fullfuncname);";
+                print "}\n";
+            }
             print "}\n";
         } elsif ($funcname eq "ghost_tsmm_inplace") {
             print "{\n";
