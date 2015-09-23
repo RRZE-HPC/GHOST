@@ -8,6 +8,7 @@
 #include "ghost/tsmm_avx_gen.h"
 #include "ghost/tsmm_sse_gen.h"
 #include "ghost/tsmm_cu_gen.h"
+#include "ghost/timing.h"
 
 #include <map>
 

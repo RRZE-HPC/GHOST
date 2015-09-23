@@ -4,6 +4,7 @@
 #include "ghost/complex.h"
 #include "ghost/util.h"
 #include "ghost/sell.h"
+#include "ghost/timing.h"
 
 #include <sstream>
 

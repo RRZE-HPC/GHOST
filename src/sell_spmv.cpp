@@ -8,6 +8,7 @@
 #include "ghost/math.h"
 #include "ghost/log.h"
 #include "ghost/machine.h"
+#include "ghost/timing.h"
 
 #include "ghost/sell_spmv_mic_gen.h"
 #include "ghost/sell_spmv_avx_gen.h"
