@@ -706,9 +706,16 @@ if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
 endif()
 
 
+set(GHOST_HAVE_MIC 0 CACHE BOOL "Generate MIC kernels")
+set(GHOST_HAVE_AVX2 0 CACHE BOOL "Generate AVX2 kernels")
+set(GHOST_HAVE_AVX 0 CACHE BOOL "Generate AVX kernels")
+set(GHOST_HAVE_SSE 0 CACHE BOOL "Generate SSE kernels")
 
 if (BUILD_MIC)
     set(GHOST_HAVE_MIC 1)
+    set(GHOST_HAVE_AVX2 0)
+    set(GHOST_HAVE_AVX 0)
+    set(GHOST_HAVE_SSE 0)
     if (NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
         message(FATAL_ERROR "The ${CMAKE_CXX_COMPILER_ID} compiler cannot build MIC code. Specify a suited compiler or set BUILD_MIC=OFF!")
     endif()
