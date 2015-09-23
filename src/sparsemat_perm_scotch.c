@@ -120,7 +120,7 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
             
 #pragma omp for
             for (i=0; i<mat->context->lnrows[me]; i++) {
-                src->func(mat->context->lfRow[me]+i,&rowlen,tmpcol,tmpval);
+                src->func(mat->context->lfRow[me]+i,&rowlen,tmpcol,tmpval,NULL);
                 nnz += rowlen;
             }
             free(tmpval); tmpval = NULL;
@@ -136,7 +136,7 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
             for (i=0; i<mat->context->lnrows[me]; i++) {
 #pragma omp ordered
                 {
-                    src->func(mat->context->lfRow[me]+i,&rowlen,&col[rpt[i]],tmpval);
+                    src->func(mat->context->lfRow[me]+i,&rowlen,&col[rpt[i]],tmpval,NULL);
                     /* remove the diagonal entry ("self-edge") */
                     for (j=0;j<rowlen;j++)
                     {
