@@ -360,6 +360,7 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
         ghost_densemat_t *lhs, ghost_densemat_t *rhs, 
         ghost_spmv_flags_t options, va_list argp)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     if (rhs->traits.storage != lhs->traits.storage) {
         ERROR_LOG("Different storage layout for in- and output densemats!");
         return GHOST_ERR_INVALID_ARG;
@@ -562,6 +563,7 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
         }
     } 
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
     return ret;
 }
 
