@@ -66,8 +66,8 @@ ghost_error_t ghost_sellspmv__a_mic_d_d_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat,
 #pragma omp for schedule(runtime) 
             for (c=0; c<mat->nrowsPadded/CHUNKHEIGHT; c++) {
                 #GHOST_UNROLL#tmp@ = _mm512_setzero_pd();#CHUNKHEIGHT/8
-                double *lval = (double *)res->val+v*res->stride*res->elSize;
-                double *rval = (double *)invec->val+v*invec->stride*invec->elSize;
+                double *lval = (double *)res->val+v*res->stride;
+                double *rval = (double *)invec->val+v*invec->stride;
                 offs = SELL(mat)->chunkStart[c];
 
                 for (j=0; j<(SELL(mat)->chunkStart[c+1]-SELL(mat)->chunkStart[c])/CHUNKHEIGHT; j++) 
