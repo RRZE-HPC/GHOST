@@ -191,10 +191,6 @@ ghost_error_t ghost_sellspmv__a_mic_d_d_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
 
 #pragma omp parallel private(j,idx,val,rhs,offs,v)
     {
-            int cpu;
-            ghost_cpu(&cpu);
-            printf("thread %d @ core %d\n",omp_get_thread_num());
-        
         #GHOST_UNROLL#__m512d tmp@;#CHUNKHEIGHT/8
         int tid = ghost_omp_threadnum();
         __m512d dot1[invec->traits.ncols],dot2[invec->traits.ncols],dot3[invec->traits.ncols];
