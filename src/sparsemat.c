@@ -430,6 +430,15 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
                     }
                 }
             }
+            if (mat->nrows % C) {
+                for (i=mat->nrows%C; i < C; i++) {
+                    for (colidx = 0; colidx<clp[nchunks-1]; colidx++) {
+                        (*col)[chunkptr[nchunks-1]+colidx*C+i] = mat->context->lfRow[me];
+                        memset(*val+mat->elSize*(chunkptr[nchunks-1]+colidx*C+i),0,mat->elSize);
+                    }
+                }
+            }
+
         }
         free(tmpval); tmpval = NULL;
         free(tmpcol); tmpcol = NULL;
