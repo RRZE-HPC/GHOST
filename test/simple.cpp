@@ -113,13 +113,18 @@ int main(int argc, char **argv) {
     
     GHOST_TEST_CALL(ghost_init(argc,argv));
     
-    GHOST_TEST_CALL(ghost_context_create(&ctx,N,N,GHOST_CONTEXT_DEFAULT,&matsrc,GHOST_SPARSEMAT_SRC_FUNC,MPI_COMM_WORLD,1.));
    
     for (vector<ghost_sparsemat_traits_t>::iterator mtraits_it = mtraits_vec.begin(); mtraits_it != mtraits_vec.end(); ++mtraits_it) {
         
         // create sparsemat with traits and set according source function
+        GHOST_TEST_CALL(ghost_context_create(&ctx,N,N,GHOST_CONTEXT_DEFAULT,&matsrc,GHOST_SPARSEMAT_SRC_FUNC,MPI_COMM_WORLD,1.));
         GHOST_TEST_CALL(ghost_sparsemat_create(&A, ctx, &(*mtraits_it), 1));
         GHOST_TEST_CALL(A->fromRowFunc(A,&mat_funcs_diag[mtraits_it->datatype]));
+            char *str;
+            A->string(A,&str,0);
+            printf("\n%s\n",str);
+
+
 
         for (vector<ghost_densemat_traits_t>::iterator vtraits_it = vtraits_vec.begin(); vtraits_it != vtraits_vec.end(); ++vtraits_it) {
             GHOST_TEST_CALL(ghost_densemat_create(&x, ctx, *vtraits_it));
@@ -148,6 +153,8 @@ int main(int argc, char **argv) {
         }
             
         A->destroy(A);
+        ghost_context_destroy(ctx);
+        ctx = NULL;
 
     }
 
