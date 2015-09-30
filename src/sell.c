@@ -176,6 +176,7 @@ static size_t SELL_byteSize (ghost_sparsemat_t *mat)
 static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src_rowfunc_t *src)
 {
     ghost_error_t ret = GHOST_SUCCESS;
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
 
     ghost_lidx_t nChunks = mat->nrowsPadded/SELL(mat)->chunkHeight;
     
@@ -216,6 +217,7 @@ err:
     mat->nnz = 0;
 
 out:
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
     return ret;
 
 }
@@ -227,6 +229,7 @@ static ghost_error_t SELL_split(ghost_sparsemat_t *mat)
         return GHOST_ERR_INVALID_ARG;
     }
     ghost_error_t ret = GHOST_SUCCESS;
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
 
 
     ghost_sell_t *fullSELL = SELL(mat);
@@ -460,6 +463,7 @@ err:
     mat->remotePart->destroy(mat->remotePart); mat->remotePart = NULL;
 
 out:
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
     return ret;
 }
 
