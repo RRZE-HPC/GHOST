@@ -488,6 +488,7 @@ inline cublasStatus_t cublasGgeam(cublasHandle_t handle, cublasOperation_t trans
 template <typename v_t> 
 static ghost_error_t FUNCNAME(fromVec_tmpl(ghost_densemat_t *vec, ghost_densemat_t *vec2, ghost_lidx_t roffs, ghost_lidx_t coffs))
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     int needInit = 0;
     FUNCNAME(malloc(vec,&needInit));
     if( needInit ) {
@@ -570,6 +571,7 @@ static ghost_error_t FUNCNAME(fromVec_tmpl(ghost_densemat_t *vec, ghost_densemat
 
     vec->traits.flags |= (ghost_densemat_flags_t)(vec2->traits.flags & GHOST_DENSEMAT_PERMUTED);
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
     return GHOST_SUCCESS;
 }
 
