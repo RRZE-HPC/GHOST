@@ -729,14 +729,14 @@ struct ghost_densemat_t
 };
 
 #ifdef __cplusplus
-inline ghost_densemat_flags_t operator|(const ghost_densemat_flags_t &a, const ghost_densemat_flags_t &b) {
+static inline ghost_densemat_flags_t operator|(const ghost_densemat_flags_t &a, const ghost_densemat_flags_t &b) {
 return static_cast<ghost_densemat_flags_t>(static_cast<int>(a) | static_cast<int>(b));
 }
-inline ghost_densemat_flags_t operator|=(ghost_densemat_flags_t &a, const ghost_densemat_flags_t &b) {
+static inline ghost_densemat_flags_t operator|=(ghost_densemat_flags_t &a, const ghost_densemat_flags_t &b) {
     a = static_cast<ghost_densemat_flags_t>(static_cast<int>(a) | static_cast<int>(b));
     return a;
 }
-inline ghost_densemat_flags_t operator&=(ghost_densemat_flags_t &a, const ghost_densemat_flags_t &b) {
+static inline ghost_densemat_flags_t operator&=(ghost_densemat_flags_t &a, const ghost_densemat_flags_t &b) {
     a = static_cast<ghost_densemat_flags_t>(static_cast<int>(a) & static_cast<int>(b));
     return a;
 }

@@ -731,7 +731,7 @@ extern "C" {
 
     ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rlp, ghost_lidx_t *cl, ghost_lidx_t *clp, ghost_lidx_t *chunkptr, char **val, ghost_gidx_t **col, ghost_sparsemat_src_rowfunc_t *src, ghost_sparsemat_t *mat, ghost_lidx_t C, ghost_lidx_t P);
 
-    inline int ghost_sparsemat_rowfunc_crs(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, void *val, void *crsdata)
+    static inline int ghost_sparsemat_rowfunc_crs(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, void *val, void *crsdata)
 {
     ghost_gidx_t *crscol = ((ghost_sparsemat_rowfunc_crs_arg *)crsdata)->col;
     ghost_lidx_t *crsrpt = ((ghost_sparsemat_rowfunc_crs_arg *)crsdata)->rpt;

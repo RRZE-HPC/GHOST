@@ -307,28 +307,20 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q, int nthreads)
 
 #pragma omp parallel 
         {
-            pthread_mutex_lock(&pinningMutex);
-            int t;
-            int core;
-            pthread_mutex_unlock(&pinningMutex);
-
 #pragma omp for ordered schedule(static,1) 
             for (curThread=0; curThread<nthreads; curThread++) {
 #pragma omp ordered
                 pthread_mutex_lock(&pinningMutex);
-                t = hwloc_bitmap_first(myfree);
-
-                hwloc_obj_t pu;
-                pu = hwloc_get_pu_obj_by_os_index(topology,t);
-                core = pu->os_index;
+                int core = hwloc_bitmap_first(myfree);
 
                 DEBUG_LOG(1,"Thread %d (%d): Core # %d is idle, using it",ghost_omp_threadnum(),
                         (int)pthread_self(),core);
 
                 hwloc_bitmap_set(mybusy,core);
-                ghost_thread_pin(core);
-                hwloc_bitmap_clr(myfree,t);
+                hwloc_bitmap_clr(myfree,core);
                 pthread_mutex_unlock(&pinningMutex);
+
+                ghost_thread_pin(core);
             }
 #ifdef GHOST_HAVE_INSTR_LIKWID
             LIKWID_MARKER_THREADINIT;
