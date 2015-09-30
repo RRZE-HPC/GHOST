@@ -174,7 +174,7 @@ static ghost_error_t getNrowsFromContext(ghost_densemat_t *vec)
         vec->traits.ncolspadded = PAD(vec->traits.ncols,padding);
         
         padding = MAX(padding,ghost_sell_max_cfg_chunkheight()); // pad for SELL SpMV
-        padding = MAX(padding,4); // pad for unrolled TSMM kernel
+        padding = MAX(padding,8); // pad for unrolled TSMM kernel
         
         vec->traits.nrowspadded = PAD(MAX(vec->traits.nrowshalo,vec->traits.nrows),padding);
     }
