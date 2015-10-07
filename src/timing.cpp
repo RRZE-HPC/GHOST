@@ -69,8 +69,6 @@ void ghost_timing_set_perfFunc(const char *tag, ghost_compute_performance_func_t
 {
     ghost_timing_perfFunc_t pf;
     pf.perfFunc = func;
-    ghost_malloc((void **)&(pf.perfFuncArg),sizeofarg);
-    memcpy(pf.perfFuncArg,arg,sizeofarg);
     pf.perfUnit = unit;
 
     for (std::vector<ghost_timing_perfFunc_t>::iterator it = timings[tag].perfFuncs.begin();
@@ -80,6 +78,8 @@ void ghost_timing_set_perfFunc(const char *tag, ghost_compute_performance_func_t
         }
     }
 
+    ghost_malloc((void **)&(pf.perfFuncArg),sizeofarg);
+    memcpy(pf.perfFuncArg,arg,sizeofarg);
     timings[tag].perfFuncs.push_back(pf);
 }
 
@@ -248,6 +248,15 @@ ghost_error_t ghost_timing_summarystring(char **str)
         }
     }
 
+    // clear all timings to prevent memory leaks
+    for (iter = timings.begin(); iter != timings.end(); ++iter) {
+        for (pf_iter = iter->second.perfFuncs.begin(); pf_iter != iter->second.perfFuncs.end(); ++pf_iter) {
+            if( pf_iter->perfFuncArg != NULL )
+                free(pf_iter->perfFuncArg);
+            pf_iter->perfFuncArg = NULL;
+        }
+    }
+    timings.clear();
 
     GHOST_CALL_RETURN(ghost_malloc((void **)str,buffer.str().length()+1));
     strcpy(*str,buffer.str().c_str());
