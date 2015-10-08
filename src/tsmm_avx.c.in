@@ -36,20 +36,16 @@ ghost_error_t ghost_tsmm__a_avx_z_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_den
         INFO_LOG("Padding large dimension to %d\n",n);
     }
 
-    const complex double * restrict vval = NULL, * restrict wval = NULL;
-    complex double * restrict xval = NULL;
-    ghost_lidx_t ldv, ldw, ldx;
+    const double complex * const restrict vval = (const double complex*) v->val;
+    const double complex * const restrict wval = (const double complex*) w->val;
+    double complex * const restrict xval = (double complex*) x->val;
 
-    ldv = v->stride;
-    ldw = w->stride;
-    ldx = x->stride;
+    const ghost_lidx_t ldv = v->stride;
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
 
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
-
-    complex double dalpha = *(complex double *)alpha;
-    complex double dbeta = *(complex double *)beta;
+    const double complex dalpha = *(double complex *)alpha;
+    const double complex dbeta = *(double complex *)beta;
     __m256d alphare, alphaim;
     alphare = _mm256_set1_pd(creal(dalpha));
     alphaim = _mm256_set1_pd(cimag(dalpha));
@@ -189,19 +185,16 @@ ghost_error_t ghost_tsmm2__a_avx_z_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_de
        // INFO_LOG("Padding large dimension to %d\n",n);
     }
 
-    complex double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    const double complex * const restrict vval = (const double complex*) v->val;
+    const double complex * const restrict wval = (const double complex*) w->val;
+    double complex * const restrict xval = (double complex*) x->val;
 
-    ldv = v->stride;
-    ldw = w->stride;
-    ldx = x->stride;
+    const ghost_lidx_t ldv = v->stride;
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
 
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
-
-    complex double dalpha = *(complex double *)alpha;
-    complex double dbeta = *(complex double *)beta;
+    const double complex dalpha = *(double complex *)alpha;
+    const double complex dbeta = *(double complex *)beta;
     __m256d betavec, alphavec;
    
     betavec = _mm256_broadcast_pd(beta);
@@ -367,19 +360,16 @@ ghost_error_t ghost_tsmm1__a_avx_z_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_de
         INFO_LOG("Padding large dimension to %d\n",n);
     }
 
-    complex double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    const double complex * const restrict vval = (const double complex*) v->val;
+    const double complex * const restrict wval = (const double complex*) w->val;
+    double complex * const restrict xval = (double complex*) x->val;
 
-    ldv = v->stride;
-    ldw = w->stride;
-    ldx = x->stride;
+    const ghost_lidx_t ldv = v->stride;
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
 
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
-
-    complex double dalpha = *(complex double *)alpha;
-    complex double dbeta = *(complex double *)beta;
+    const double complex dalpha = *(double complex *)alpha;
+    const double complex dbeta = *(double complex *)beta;
     __m256d betavec, alphavec;
    
     betavec = _mm256_broadcast_pd(beta);
@@ -534,19 +524,16 @@ ghost_error_t ghost_tsmm__a_avx_d_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_den
 
     INFO_LOG("In AVX TSMM with two fixed block sizes [CFGK][CFGM] %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,x->traits.ncols,n,v->traits.ncols,v->traits.ncols,x->traits.ncols);
 
-    double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    const double * const restrict vval = (const double *) v->val;
+    const double * const restrict wval = (const double *) w->val;
+    double * const restrict xval = (double *) x->val;
 
-    ldv = v->stride;
-    ldw = w->stride;
-    ldx = x->stride;
+    const ghost_lidx_t ldv = v->stride;
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
 
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
-
-    double dalpha = *(double *)alpha;
-    double dbeta = *(double *)beta;
+    const double dalpha = *(double *)alpha;
+    const double dbeta = *(double *)beta;
     __m256d betavec, alphavec;
    
     betavec = _mm256_broadcast_sd(beta);
@@ -687,19 +674,16 @@ ghost_error_t ghost_tsmm__a_avx_d_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_den
     }
 
 
-    double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    const double * const restrict vval = (const double *) v->val;
+    const double * const restrict wval = (const double *) w->val;
+    double * const restrict xval = (double *) x->val;
 
-    ldv = v->stride;
-    ldw = w->stride;
-    ldx = x->stride;
+    const ghost_lidx_t ldv = v->stride;
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
 
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
-
-    double dalpha = *(double *)alpha;
-    double dbeta = *(double *)beta;
+    const double dalpha = *(double *)alpha;
+    const double dbeta = *(double *)beta;
     __m256d betavec;
    
     betavec = _mm256_broadcast_sd(beta);
@@ -815,19 +799,16 @@ ghost_error_t ghost_tsmm1__a_avx_d_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_de
 
     INFO_LOG("In AVX TSMM with two fixed block sizes [CFGK][CFGM] %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
-    double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    const double * const restrict vval = (const double *) v->val;
+    const double * const restrict wval = (const double *) w->val;
+    double * const restrict xval = (double *) x->val;
 
-    ldv = v->stride;
-    ldw = w->stride;
-    ldx = x->stride;
+    const ghost_lidx_t ldv = v->stride;
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
 
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
-
-    double dalpha = *(double *)alpha;
-    double dbeta = *(double *)beta;
+    const double dalpha = *(double *)alpha;
+    const double dbeta = *(double *)beta;
     __m256d betavec, alphavec;
    
     betavec = _mm256_broadcast_sd(beta);
@@ -901,19 +882,16 @@ ghost_error_t ghost_tsmm__u_avx_d_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_den
 
     INFO_LOG("In AVX TSMM with two fixed block sizes [CFGK][CFGM] %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
-    double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    const double * const restrict vval = (const double *) v->val;
+    const double * const restrict wval = (const double *) w->val;
+    double * const restrict xval = (double *) x->val;
 
-    ldv = v->stride;
-    ldw = w->stride;
-    ldx = x->stride;
+    const ghost_lidx_t ldv = v->stride;
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
 
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
-
-    double dalpha = *(double *)alpha;
-    double dbeta = *(double *)beta;
+    const double dalpha = *(double *)alpha;
+    const double dbeta = *(double *)beta;
     __m256d betavec, alphavec;
    
     betavec = _mm256_broadcast_sd(beta);
@@ -986,19 +964,16 @@ ghost_error_t ghost_tsmm__a_avx_d_x_x_rm_cm(ghost_densemat_t *x, ghost_densemat_
 
     INFO_LOG("In AVX TSMM with arbitrary block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
-    double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    const double * const restrict vval = (const double *) v->val;
+    const double * const restrict wval = (const double *) w->val;
+    double * const restrict xval = (double *) x->val;
 
-    ldv = v->stride;
-    ldw = w->stride;
-    ldx = x->stride;
+    const ghost_lidx_t ldv = v->stride;
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
 
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
-
-    double dalpha = *(double *)alpha;
-    double dbeta = *(double *)beta;
+    const double dalpha = *(double *)alpha;
+    const double dbeta = *(double *)beta;
     __m256d betavec, alphavec;
    
     betavec = _mm256_broadcast_sd(beta);
@@ -1073,19 +1048,16 @@ ghost_error_t ghost_tsmm__u_avx_d_x_x_rm_cm(ghost_densemat_t *x, ghost_densemat_
 
     INFO_LOG("In AVX TSMM with arbitrary block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
-    double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    const double * const restrict vval = (const double *) v->val;
+    const double * const restrict wval = (const double *) w->val;
+    double * const restrict xval = (double *) x->val;
 
-    ldv = v->stride;
-    ldw = w->stride;
-    ldx = x->stride;
+    const ghost_lidx_t ldv = v->stride;
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
 
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
-
-    double dalpha = *(double *)alpha;
-    double dbeta = *(double *)beta;
+    const double dalpha = *(double *)alpha;
+    const double dbeta = *(double *)beta;
     __m256d betavec, alphavec;
    
     betavec = _mm256_broadcast_sd(beta);

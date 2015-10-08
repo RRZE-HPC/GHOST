@@ -19,19 +19,16 @@ ghost_error_t ghost_tsmm__a_plain_d_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_d
 
     INFO_LOG("In TSMM with two fixed block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
-    double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    const double * const restrict vval = (const double *) v->val;
+    const double * const restrict wval = (const double *) w->val;
+    double * const restrict xval = (double *) x->val;
 
-    ldv = v->stride;
-    ldw = w->stride;
-    ldx = x->stride;
+    const ghost_lidx_t ldv = v->stride;
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
 
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
-
-    double dalpha = *(double *)alpha;
-    double dbeta = *(double *)beta;
+    const double dalpha = *(double *)alpha;
+    const double dbeta = *(double *)beta;
     ghost_lidx_t i,j,s;
 
     double tmp;
@@ -98,19 +95,16 @@ ghost_error_t ghost_tsmm__u_plain_d_CFGK_CFGM_rm_rm(ghost_densemat_t *x, ghost_d
 
     INFO_LOG("In TSMM with two fixed block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
-    double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    const double * const restrict vval = (const double *) v->val;
+    const double * const restrict wval = (const double *) w->val;
+    double * const restrict xval = (double *) x->val;
 
-    ldv = v->stride;
-    ldw = w->stride;
-    ldx = x->stride;
+    const ghost_lidx_t ldv = v->stride;
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
 
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
-
-    double dalpha = *(double *)alpha;
-    double dbeta = *(double *)beta;
+    const double dalpha = *(double *)alpha;
+    const double dbeta = *(double *)beta;
     ghost_lidx_t i,j,s;
 
     double tmp;
@@ -158,19 +152,16 @@ ghost_error_t ghost_tsmm__a_plain_d_CFGK_CFGM_cm_cm(ghost_densemat_t *x, ghost_d
 
     INFO_LOG("In TSMM with two fixed block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
-    double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    const double * const restrict vval = (const double *) v->val;
+    const double * const restrict wval = (const double *) w->val;
+    double * const restrict xval = (double *) x->val;
 
-    ldv = v->stride;
-    ldw = w->stride;
-    ldx = x->stride;
+    const ghost_lidx_t ldv = v->stride;
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
 
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
-
-    double dalpha = *(double *)alpha;
-    double dbeta = *(double *)beta;
+    const double dalpha = *(double *)alpha;
+    const double dbeta = *(double *)beta;
     ghost_lidx_t i,j,s,t;
     
 #pragma omp parallel 
@@ -222,19 +213,16 @@ ghost_error_t ghost_tsmm__u_plain_d_CFGK_CFGM_cm_cm(ghost_densemat_t *x, ghost_d
 
     INFO_LOG("In TSMM with two fixed block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
-    double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    const double * const restrict vval = (const double *) v->val;
+    const double * const restrict wval = (const double *) w->val;
+    double * const restrict xval = (double *) x->val;
 
-    ldv = v->stride;
-    ldw = w->stride;
-    ldx = x->stride;
+    const ghost_lidx_t ldv = v->stride;
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
 
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
-
-    double dalpha = *(double *)alpha;
-    double dbeta = *(double *)beta;
+    const double dalpha = *(double *)alpha;
+    const double dbeta = *(double *)beta;
     ghost_lidx_t i,j,s,t;
     
 #pragma omp parallel 
@@ -281,19 +269,16 @@ ghost_error_t ghost_tsmm__u_plain_d_x_x_rm_cm(ghost_densemat_t *x, ghost_densema
     
     INFO_LOG("In TSMM with arbitrary block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
-    double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    const double * const restrict vval = (const double *) v->val;
+    const double * const restrict wval = (const double *) w->val;
+    double * const restrict xval = (double *) x->val;
 
-    ldv = v->stride;
-    ldw = w->stride;
-    ldx = x->stride;
+    const ghost_lidx_t ldv = v->stride;
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
 
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
-
-    double dalpha = *(double *)alpha;
-    double dbeta = *(double *)beta;
+    const double dalpha = *(double *)alpha;
+    const double dbeta = *(double *)beta;
     ghost_lidx_t i,j,s;
     
     if (w->traits.ncolspadded <= 4) 
@@ -351,19 +336,16 @@ ghost_error_t ghost_tsmm__u_plain_d_x_x_cm_cm(ghost_densemat_t *x, ghost_densema
     
     INFO_LOG("In TSMM with arbitrary block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
-    double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    const double * const restrict vval = (const double *) v->val;
+    const double * const restrict wval = (const double *) w->val;
+    double * const restrict xval = (double *) x->val;
 
-    ldv = v->stride;
-    ldw = w->stride;
-    ldx = x->stride;
+    const ghost_lidx_t ldv = v->stride;
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
 
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
-
-    double dalpha = *(double *)alpha;
-    double dbeta = *(double *)beta;
+    const double dalpha = *(double *)alpha;
+    const double dbeta = *(double *)beta;
     ghost_lidx_t i,j,s;
     
     if (w->traits.ncolspadded <= 4) 
@@ -421,19 +403,16 @@ ghost_error_t ghost_tsmm__u_plain_d_x_x_rm_rm(ghost_densemat_t *x, ghost_densema
     
     INFO_LOG("In TSMM with arbitrary block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
-    double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    const double * const restrict vval = (const double *) v->val;
+    const double * const restrict wval = (const double *) w->val;
+    double * const restrict xval = (double *) x->val;
 
-    ldv = v->stride;
-    ldw = w->stride;
-    ldx = x->stride;
+    const ghost_lidx_t ldv = v->stride;
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
 
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
-
-    double dalpha = *(double *)alpha;
-    double dbeta = *(double *)beta;
+    const double dalpha = *(double *)alpha;
+    const double dbeta = *(double *)beta;
     ghost_lidx_t i,j,s;
     
     if (w->traits.ncolspadded <= 4) 
@@ -491,19 +470,16 @@ ghost_error_t ghost_tsmm__u_plain_z_x_x_cm_cm(ghost_densemat_t *x, ghost_densema
     
     INFO_LOG("In TSMM with arbitrary block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
-    double complex * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    const double complex * const restrict vval = (const double complex*) v->val;
+    const double complex * const restrict wval = (const double complex*) w->val;
+    double complex * const restrict xval = (double complex*) x->val;
 
-    ldv = v->stride;
-    ldw = w->stride;
-    ldx = x->stride;
+    const ghost_lidx_t ldv = v->stride;
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
 
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
-
-    double complex dalpha = *(double complex *)alpha;
-    double complex dbeta = *(double complex *)beta;
+    const double complex dalpha = *(double complex *)alpha;
+    const double complex dbeta = *(double complex *)beta;
     ghost_lidx_t i,j,s;
     
     if (w->traits.ncolspadded <= 4) 
@@ -561,19 +537,16 @@ ghost_error_t ghost_tsmm__u_plain_d_CFGK_x_rm_cm(ghost_densemat_t *x, ghost_dens
     
     INFO_LOG("In TSMM with fixed K %"PRLIDX" and arbitrary M %"PRLIDX": %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,CFGK,m,n,CFGK,n,m,m,CFGK);
 
-    double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    const double * const restrict vval = (const double *) v->val;
+    const double * const restrict wval = (const double *) w->val;
+    double * const restrict xval = (double *) x->val;
 
-    ldv = v->stride;
-    ldw = w->stride;
-    ldx = x->stride;
+    const ghost_lidx_t ldv = v->stride;
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
 
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
-
-    double dalpha = *(double *)alpha;
-    double dbeta = *(double *)beta;
+    const double dalpha = *(double *)alpha;
+    const double dbeta = *(double *)beta;
     ghost_lidx_t i,j,s;
     
 #pragma omp parallel for private(j,s) schedule(runtime)
@@ -604,19 +577,16 @@ ghost_error_t ghost_tsmm__u_plain_d_x_CFGM_rm_cm(ghost_densemat_t *x, ghost_dens
     
     INFO_LOG("In TSMM with fixed M %"PRLIDX" and arbitrary K %"PRLIDX": %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,CFGM,k,n,CFGM,n,k,k,CFGM);
 
-    double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    const double * const restrict vval = (const double *) v->val;
+    const double * const restrict wval = (const double *) w->val;
+    double * const restrict xval = (double *) x->val;
 
-    ldv = v->stride;
-    ldw = w->stride;
-    ldx = x->stride;
+    const ghost_lidx_t ldv = v->stride;
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
 
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
-
-    double dalpha = *(double *)alpha;
-    double dbeta = *(double *)beta;
+    const double dalpha = *(double *)alpha;
+    const double dbeta = *(double *)beta;
     ghost_lidx_t i,j,s;
     
 #pragma omp parallel for private(j,s) schedule(runtime)
@@ -647,19 +617,16 @@ ghost_error_t ghost_tsmm__u_plain_z_x_x_rm_cm(ghost_densemat_t *x, ghost_densema
     
     INFO_LOG("In TSMM with arbitrary block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
-    double complex * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    const double complex * const restrict vval = (const double complex*) v->val;
+    const double complex * const restrict wval = (const double complex*) w->val;
+    double complex * const restrict xval = (double complex*) x->val;
 
-    ldv = v->stride;
-    ldw = w->stride;
-    ldx = x->stride;
+    const ghost_lidx_t ldv = v->stride;
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
 
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
-
-    double complex dalpha = *(double complex *)alpha;
-    double complex dbeta = *(double complex *)beta;
+    const double complex dalpha = *(double complex *)alpha;
+    const double complex dbeta = *(double complex *)beta;
     ghost_lidx_t i,j,s;
     
     if (w->traits.ncolspadded <= 4) 
@@ -717,19 +684,16 @@ ghost_error_t ghost_tsmm__u_plain_z_x_x_rm_rm(ghost_densemat_t *x, ghost_densema
     
     INFO_LOG("In TSMM with arbitrary block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
-    double complex * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    const double complex * const restrict vval = (const double complex*) v->val;
+    const double complex * const restrict wval = (const double complex*) w->val;
+    double complex * const restrict xval = (double complex*) x->val;
 
-    ldv = v->stride;
-    ldw = w->stride;
-    ldx = x->stride;
+    const ghost_lidx_t ldv = v->stride;
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
 
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
-
-    double complex dalpha = *(double complex *)alpha;
-    double complex dbeta = *(double complex *)beta;
+    const double complex dalpha = *(double complex *)alpha;
+    const double complex dbeta = *(double complex *)beta;
     ghost_lidx_t i,j,s;
     
     if (w->traits.ncolspadded <= 4) 
@@ -787,22 +751,19 @@ ghost_error_t ghost_tsmm__u_plain_z_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_d
 
     INFO_LOG("In TSMM with two fixed block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
-    complex double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    const double complex * const restrict vval = (const double complex*) v->val;
+    const double complex * const restrict wval = (const double complex*) w->val;
+    double complex * const restrict xval = (double complex*) x->val;
 
-    ldv = v->stride;
-    ldw = w->stride;
-    ldx = x->stride;
+    const ghost_lidx_t ldv = v->stride;
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
 
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
-
-    complex double dalpha = *(complex double *)alpha;
-    complex double dbeta = *(complex double *)beta;
+    const double complex dalpha = *(double complex *)alpha;
+    const double complex dbeta = *(double complex *)beta;
     ghost_lidx_t i,j,s;
 
-    complex double tmp;
+    double complex tmp;
     
 #pragma omp parallel for private(j,s,tmp) schedule(runtime)
     for (i=0; i<n; i++) {
@@ -842,22 +803,19 @@ ghost_error_t ghost_tsmm__u_plain_z_CFGK_CFGM_rm_rm(ghost_densemat_t *x, ghost_d
 
     INFO_LOG("In TSMM with two fixed block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
-    complex double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    const double complex * const restrict vval = (const double complex*) v->val;
+    const double complex * const restrict wval = (const double complex*) w->val;
+    double complex * const restrict xval = (double complex*) x->val;
 
-    ldv = v->stride;
-    ldw = w->stride;
-    ldx = x->stride;
+    const ghost_lidx_t ldv = v->stride;
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
 
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
-
-    complex double dalpha = *(complex double *)alpha;
-    complex double dbeta = *(complex double *)beta;
+    const double complex dalpha = *(double complex *)alpha;
+    const double complex dbeta = *(double complex *)beta;
     ghost_lidx_t i,j,s;
 
-    complex double tmp;
+    double complex tmp;
     
 #pragma omp parallel for private(j,s,tmp) schedule(runtime)
     for (i=0; i<n; i++) {
@@ -897,19 +855,16 @@ ghost_error_t ghost_tsmm__u_plain_z_CFGK_x_rm_cm(ghost_densemat_t *x, ghost_dens
     
     INFO_LOG("In TSMM with fixed K %"PRLIDX" and arbitrary M %"PRLIDX": %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,CFGK,m,n,CFGK,n,m,m,CFGK);
 
-    complex double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    const double complex * const restrict vval = (const double complex*) v->val;
+    const double complex * const restrict wval = (const double complex*) w->val;
+    double complex * const restrict xval = (double complex*) x->val;
 
-    ldv = v->stride;
-    ldw = w->stride;
-    ldx = x->stride;
+    const ghost_lidx_t ldv = v->stride;
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
 
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
-
-    complex double dalpha = *(complex double *)alpha;
-    complex double dbeta = *(complex double *)beta;
+    const double complex dalpha = *(double complex *)alpha;
+    const double complex dbeta = *(double complex *)beta;
     ghost_lidx_t i,j,s;
     
 #pragma omp parallel for private(j,s) schedule(runtime)
@@ -940,19 +895,16 @@ ghost_error_t ghost_tsmm__u_plain_z_x_CFGM_rm_cm(ghost_densemat_t *x, ghost_dens
     
     INFO_LOG("In TSMM with fixed M %"PRLIDX" and arbitrary K %"PRLIDX": %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,CFGM,k,n,CFGM,n,k,k,CFGM);
 
-    complex double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    const double complex * const restrict vval = (const double complex*) v->val;
+    const double complex * const restrict wval = (const double complex*) w->val;
+    double complex * const restrict xval = (double complex*) x->val;
 
-    ldv = v->stride;
-    ldw = w->stride;
-    ldx = x->stride;
+    const ghost_lidx_t ldv = v->stride;
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
 
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
-
-    complex double dalpha = *(complex double *)alpha;
-    complex double dbeta = *(complex double *)beta;
+    const double complex dalpha = *(double complex *)alpha;
+    const double complex dbeta = *(double complex *)beta;
     ghost_lidx_t i,j,s;
     
 #pragma omp parallel for private(j,s) schedule(runtime)

@@ -35,17 +35,13 @@ ghost_error_t ghost_tsmttsm__a_avx2_d_CFGK_CFGM_cm_rm(ghost_densemat_t *x, ghost
         INFO_LOG("Padding large dimension to %d\n",n);
     }
     
-    const double * restrict vval = NULL, * restrict wval = NULL;
-    double * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    const double * const restrict vval = (const double *) v->val;
+    const double * const restrict wval = (const double *) w->val;
+    double * const restrict xval = (double *) x->val;
 
-    ldv = v->stride;
-    ldw = w->stride;
-    ldx = x->stride;
-
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
+    const ghost_lidx_t ldv = v->stride;
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
 
     __m256d betavec, alphavec;
    
@@ -205,17 +201,13 @@ ghost_error_t ghost_tsmttsm__a_avx2_z_CFGK_CFGM_cm_rm(ghost_densemat_t *x, ghost
         INFO_LOG("Padding large dimension to %d\n",n);
     }
     
-    const double complex * restrict vval = NULL, * restrict wval = NULL;
-    double complex * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    const double complex * const restrict vval = (const double complex*) v->val;
+    const double complex * const restrict wval = (const double complex*) w->val;
+    double complex * const restrict xval = (double complex*) x->val;
 
-    ldv = v->stride;
-    ldw = w->stride;
-    ldx = x->stride;
-
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
+    const ghost_lidx_t ldv = v->stride;
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
 
     __m256d alphavec;
    
