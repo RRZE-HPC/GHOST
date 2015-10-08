@@ -36,7 +36,8 @@ ghost_error_t ghost_tsmm__a_avx_z_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_den
         INFO_LOG("Padding large dimension to %d\n",n);
     }
 
-    complex double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
+    const complex double * restrict vval = NULL, * restrict wval = NULL;
+    complex double * restrict xval = NULL;
     ghost_lidx_t ldv, ldw, ldx;
 
     ldv = v->stride;
@@ -57,7 +58,7 @@ ghost_error_t ghost_tsmm__a_avx_z_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_den
     betavec = _mm256_broadcast_pd(beta);
     ghost_lidx_t i,m,k,j,s;
 
-    double * const restrict wre = NULL, * const restrict wim = NULL;
+    double * restrict wre = NULL, * restrict wim = NULL;
     ghost_malloc_align((void **)&wre,sizeof(double)*w->traits.nrows*w->traits.ncols,32);
     ghost_malloc_align((void **)&wim,sizeof(double)*w->traits.nrows*w->traits.ncols,32);
     for (s=0; s<w->traits.ncols; s++) {
@@ -207,7 +208,7 @@ ghost_error_t ghost_tsmm2__a_avx_z_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_de
     alphavec = _mm256_broadcast_pd(alpha);
     ghost_lidx_t i,m,k,j,s;
 
-    double * const restrict wre = NULL, * const restrict wim = NULL;
+    double * restrict wre = NULL, * restrict wim = NULL;
     ghost_malloc_align((void **)&wre,sizeof(double)*w->traits.nrows*w->traits.ncols,32);
     ghost_malloc_align((void **)&wim,sizeof(double)*w->traits.nrows*w->traits.ncols,32);
     for (s=0; s<w->traits.ncols; s++) {
@@ -385,8 +386,8 @@ ghost_error_t ghost_tsmm1__a_avx_z_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_de
     alphavec = _mm256_broadcast_pd(alpha);
     ghost_lidx_t i,m,k,j,s;
 
-    double * const restrict wre = NULL, * const restrict wim = NULL;
-    double complex * const restrict wflip = NULL;
+    double * restrict wre = NULL, * restrict wim = NULL;
+    double complex * restrict wflip = NULL;
     ghost_malloc_align((void **)&wre,2*sizeof(double)*w->traits.nrows*w->traits.ncols,32);
     ghost_malloc_align((void **)&wim,2*sizeof(double)*w->traits.nrows*w->traits.ncols,32);
     ghost_malloc_align((void **)&wflip,sizeof(double complex)*w->traits.nrows*w->traits.ncols,32);
@@ -552,7 +553,7 @@ ghost_error_t ghost_tsmm__a_avx_d_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_den
     alphavec = _mm256_broadcast_sd(alpha);
     ghost_lidx_t i,m,k,j,s;
 
-    double * const restrict wnonpad = NULL;
+    double * restrict wnonpad = NULL;
     ghost_lidx_t ncols_wnonpad = PAD(w->traits.ncols,4);
     ghost_lidx_t nrows_wnonpad = PAD(w->traits.nrows,4);
     ghost_malloc_align((void **)&wnonpad,sizeof(double)*nrows_wnonpad*ncols_wnonpad,32);
@@ -704,7 +705,7 @@ ghost_error_t ghost_tsmm__a_avx_d_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_den
     betavec = _mm256_broadcast_sd(beta);
     ghost_lidx_t i,m,k,j,s;
 
-    double * const restrict wnonpad = NULL;
+    double * restrict wnonpad = NULL;
     ghost_lidx_t ncols_wnonpad = PAD(w->traits.ncols,4);
     ghost_lidx_t nrows_wnonpad = PAD(w->traits.nrows,4);
     ghost_malloc_align((void **)&wnonpad,sizeof(double)*nrows_wnonpad*ncols_wnonpad,32);
