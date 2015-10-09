@@ -1045,17 +1045,17 @@ ghost_error_t ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat,
                         _mm256_store_pd((double *)(zval+donecols),_mm256_add_pd(_mm256_mul_pd(_mm256_load_pd((double *)(zval+donecols)),delta),_mm256_mul_pd(_mm256_load_pd((double *)(lval+donecols)),eta)));
                     }
                 }
-            }
-            if (resultisview) {
-                if (spmvmOptions & GHOST_SPMV_AXPY) {
-                    _mm256_maskstore_pd((double *)(lval+donecols),mask,_mm256_add_pd(tmp[donecols/4],_mm256_load_pd((double *)(lval+donecols))));
-                } else if (spmvmOptions & GHOST_SPMV_AXPBY) {
-                    _mm256_maskstore_pd((double *)(lval+donecols),mask,_mm256_add_pd(tmp[donecols/4],_mm256_mul_pd(_mm256_load_pd((double *)(lval+donecols)),beta)));
-                } else {
-                    _mm256_maskstore_pd((double *)(lval+donecols),mask,tmp[donecols/4]);
-                }
-                if (spmvmOptions & GHOST_SPMV_CHAIN_AXPBY) {
-                    _mm256_maskstore_pd((double *)(zval+donecols),mask,_mm256_add_pd(_mm256_mul_pd(_mm256_load_pd((double *)(zval+donecols)),delta),_mm256_mul_pd(_mm256_load_pd((double *)(lval+donecols)),eta)));
+                else {
+                    if (spmvmOptions & GHOST_SPMV_AXPY) {
+                        _mm256_maskstore_pd((double *)(lval+donecols),mask,_mm256_add_pd(tmp[donecols/4],_mm256_load_pd((double *)(lval+donecols))));
+                    } else if (spmvmOptions & GHOST_SPMV_AXPBY) {
+                        _mm256_maskstore_pd((double *)(lval+donecols),mask,_mm256_add_pd(tmp[donecols/4],_mm256_mul_pd(_mm256_load_pd((double *)(lval+donecols)),beta)));
+                    } else {
+                        _mm256_maskstore_pd((double *)(lval+donecols),mask,tmp[donecols/4]);
+                    }
+                    if (spmvmOptions & GHOST_SPMV_CHAIN_AXPBY) {
+                        _mm256_maskstore_pd((double *)(zval+donecols),mask,_mm256_add_pd(_mm256_mul_pd(_mm256_load_pd((double *)(zval+donecols)),delta),_mm256_mul_pd(_mm256_load_pd((double *)(lval+donecols)),eta)));
+                    }
                 }
             }
 
