@@ -148,10 +148,6 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
         }
     }
 
-    void *xptr, *vptr, *wptr;
-    ghost_densemat_valptr(x,&xptr);
-    ghost_densemat_valptr(v,&vptr);
-    ghost_densemat_valptr(w,&wptr);
 
     if (p.impl == GHOST_IMPLEMENTATION_SSE) {
         if (!IS_ALIGNED(x->val,16) || !IS_ALIGNED(v->val,16) || !IS_ALIGNED(w->val,16) || 

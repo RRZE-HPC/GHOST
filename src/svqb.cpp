@@ -31,8 +31,6 @@ static ghost_error_t ghost_blockortho_tmpl (ghost_densemat_t * w , ghost_densema
     GHOST_CALL_GOTO(x->fromScalar(x,&zero),err,ret);
     //ldx = *x->stride;
 
-    T *  xval;
-    GHOST_CALL_GOTO(ghost_densemat_valptr(x,(void **)&xval),err,ret);
     
     //GHOST_CALL_GOTO(ghost_tsmttsm( x, v, w,&one,&zero,GHOST_GEMM_ALL_REDUCE,1),err,ret);
     GHOST_CALL_GOTO(ghost_tsmttsm_kahan( x, v, w,&one,&zero,GHOST_GEMM_ALL_REDUCE,1),err,ret);

@@ -62,12 +62,15 @@ while (<>) {
                 print "spmv_perfargs.globalrows = nrow;\n";
                 print "spmv_perfargs.dt = rhs->traits.datatype;\n";
                 print "spmv_perfargs.flags = options;\n";
-                print "char *fullfuncname;";
-                print "ghost_malloc((void **)&fullfuncname,256);";
-                print "strncpy(fullfuncname,__ghost_functag,256);";
-                print "strncat(fullfuncname,\"->".$funcname_noprefix."\",256);";
-                print "ghost_timing_set_perfFunc(fullfuncname,ghost_spmv_perf,(void *)&spmv_perfargs,sizeof(spmv_perfargs),GHOST_SPMV_PERF_UNIT);";
-                print "free(fullfuncname);";
+                print "if(__ghost_functag) {\n";
+                print "   char *fullfuncname = NULL;\n";
+                print "   ghost_malloc((void **)&fullfuncname,256*sizeof(char));\n";
+                print "   fullfuncname[255] = '\\0';\n";
+                print "   strncpy(fullfuncname,__ghost_functag,255);\n";
+                print "   strncat(fullfuncname,\"->".$funcname_noprefix."\",255);\n";
+                print "   ghost_timing_set_perfFunc(fullfuncname,ghost_spmv_perf,(void *)&spmv_perfargs,sizeof(spmv_perfargs),GHOST_SPMV_PERF_UNIT);\n";
+                print "   free(fullfuncname);\n";
+                print "}\n";
             }
             print "}\n";
         } elsif ($funcname eq "ghost_tsmttsm") {
@@ -102,13 +105,16 @@ while (<>) {
                 print "if (tsmttsm_perfargs.dt == pars.dt) {\n";
                 print "tsmttsm_perfargs.betaiszero = ghost_iszero(beta,pars.dt);\n";
                 print "tsmttsm_perfargs.alphaisone = ghost_isone(alpha,pars.dt);\n";
-                print "char *fullfuncname;";
-                print "ghost_malloc((void **)&fullfuncname,256);";
-                print "strncpy(fullfuncname,__ghost_functag,256);";
-                print "strncat(fullfuncname,\"->".$funcname_noprefix."\",256);";
-                print "ghost_timing_set_perfFunc(fullfuncname,ghost_gemm_perf_GBs,(void *)&tsmttsm_perfargs,sizeof(tsmttsm_perfargs),\"GB/s\");\n";
-                print "ghost_timing_set_perfFunc(fullfuncname,ghost_gemm_perf_GFs,(void *)&tsmttsm_perfargs,sizeof(tsmttsm_perfargs),\"GF/s\");\n";
-                print "free(fullfuncname);";
+                print "if(__ghost_functag) {\n";
+                print "   char *fullfuncname = NULL;\n";
+                print "   ghost_malloc((void **)&fullfuncname,256*sizeof(char));\n";
+                print "   fullfuncname[255] = '\\0';\n";
+                print "   strncpy(fullfuncname,__ghost_functag,255);\n";
+                print "   strncat(fullfuncname,\"->".$funcname_noprefix."\",255);\n";
+                print "   ghost_timing_set_perfFunc(fullfuncname,ghost_gemm_perf_GBs,(void *)&tsmttsm_perfargs,sizeof(tsmttsm_perfargs),\"GB/s\");\n";
+                print "   ghost_timing_set_perfFunc(fullfuncname,ghost_gemm_perf_GFs,(void *)&tsmttsm_perfargs,sizeof(tsmttsm_perfargs),\"GF/s\");\n";
+                print "   free(fullfuncname);";
+                print "}\n";
                 print "}\n";
             }
             print "}\n";
@@ -165,13 +171,16 @@ while (<>) {
                 print "if (tsmm_perfargs.dt == pars.dt) {\n";
                 print "tsmm_perfargs.betaiszero = ghost_iszero(beta,pars.dt);\n";
                 print "tsmm_perfargs.alphaisone = ghost_isone(alpha,pars.dt);\n";
-                print "char *fullfuncname;";
-                print "ghost_malloc((void **)&fullfuncname,256);";
-                print "strncpy(fullfuncname,__ghost_functag,256);";
-                print "strncat(fullfuncname,\"->".$funcname_noprefix."\",256);";
-                print "ghost_timing_set_perfFunc(fullfuncname,ghost_gemm_perf_GBs,(void *)&tsmm_perfargs,sizeof(tsmm_perfargs),\"GB/s\");\n";
-                print "ghost_timing_set_perfFunc(fullfuncname,ghost_gemm_perf_GFs,(void *)&tsmm_perfargs,sizeof(tsmm_perfargs),\"GF/s\");\n";
-                print "free(fullfuncname);";
+                print "if(__ghost_functag) {\n";
+                print "   char *fullfuncname = NULL;\n";
+                print "   ghost_malloc((void **)&fullfuncname,256*sizeof(char));\n";
+                print "   fullfuncname[255] = '\\0';\n";
+                print "   strncpy(fullfuncname,__ghost_functag,255);\n";
+                print "   strncat(fullfuncname,\"->".$funcname_noprefix."\",255);\n";
+                print "   ghost_timing_set_perfFunc(fullfuncname,ghost_gemm_perf_GBs,(void *)&tsmm_perfargs,sizeof(tsmm_perfargs),\"GB/s\");\n";
+                print "   ghost_timing_set_perfFunc(fullfuncname,ghost_gemm_perf_GFs,(void *)&tsmm_perfargs,sizeof(tsmm_perfargs),\"GF/s\");\n";
+                print "   free(fullfuncname);";
+                print "}\n";
                 print "}\n";
             }
             print "}\n";

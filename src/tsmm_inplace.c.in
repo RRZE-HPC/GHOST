@@ -19,14 +19,11 @@ ghost_error_t ghost_tsmm_inplace__plain_d_NCOLSIN_NCOLSOUT(ghost_densemat_t *x, 
     
     INFO_LOG("In in-place TSMM with fixed block sizes [NCOLSIN][NCOLSOUT] (%"PRLIDX"x%"PRLIDX") <- %f * (%"PRLIDX"x%"PRLIDX") * (%"PRLIDX"x%"PRLIDX")",n,NCOLSOUT,dalpha,n,m,w->traits.nrows,NCOLSOUT);
 
-    double * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldw, ldx;
+    const double * const restrict wval = (const double *) w->val;
+    double * const restrict xval = (double *) x->val;
 
-    ldw = w->stride;
-    ldx = x->stride;
-
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
 
     ghost_lidx_t i,j,s;
 
@@ -88,14 +85,11 @@ ghost_error_t ghost_tsmm_inplace__plain_d_NCOLSIN_x(ghost_densemat_t *x, ghost_d
     
     INFO_LOG("In in-place TSMM with arbitrary block size (%"PRLIDX"x%"PRLIDX") <- %f * (%"PRLIDX"x%"PRLIDX") * (%"PRLIDX"x%"PRLIDX")",n,ncolsout,dalpha,n,m,m,ncolsout);
 
-    double * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldw, ldx;
+    const double * const restrict wval = (const double *) w->val;
+    double * const restrict xval = (double *) x->val;
 
-    ldw = w->stride;
-    ldx = x->stride;
-
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
 
     ghost_lidx_t i,j,s;
 
@@ -155,14 +149,11 @@ ghost_error_t ghost_tsmm_inplace__plain_d_x_NCOLSOUT(ghost_densemat_t *x, ghost_
     
     INFO_LOG("In in-place TSMM with arbitrary block size (%"PRLIDX"x%"PRLIDX") <- %f * (%"PRLIDX"x%"PRLIDX") * (%"PRLIDX"x%"PRLIDX")",n,NCOLSOUT,dalpha,n,m,m,NCOLSOUT);
 
-    double * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldw, ldx;
+    const double * const restrict wval = (const double *) w->val;
+    double * const restrict xval = (double *) x->val;
 
-    ldw = w->stride;
-    ldx = x->stride;
-
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
 
     ghost_lidx_t i,j,s;
 
@@ -220,14 +211,11 @@ ghost_error_t ghost_tsmm_inplace__plain_d_x_x(ghost_densemat_t *x, ghost_densema
     
     INFO_LOG("In in-place TSMM with arbitrary block size (%"PRLIDX"x%"PRLIDX") <- %f * (%"PRLIDX"x%"PRLIDX") * (%"PRLIDX"x%"PRLIDX")",n,ncolsout,dalpha,n,m,ncolsin,ncolsout);
 
-    double * wval = NULL, * xval = NULL;
-    ghost_lidx_t ldw, ldx;
+    const double * const restrict wval = (const double *) w->val;
+    double * const restrict xval = (double *) x->val;
 
-    ldw = w->stride;
-    ldx = x->stride;
-
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
 
     ghost_lidx_t i,j,s;
 
@@ -288,14 +276,11 @@ ghost_error_t ghost_tsmm_inplace__plain_z_x_x(ghost_densemat_t *x, ghost_densema
     
     INFO_LOG("In in-place TSMM with arbitrary block size (%"PRLIDX"x%"PRLIDX") <- %f+I*%f * (%"PRLIDX"x%"PRLIDX") * (%"PRLIDX"x%"PRLIDX")",n,m,creal(dalpha),cimag(dalpha),n,m,m,m);
 
-    double complex * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldw, ldx;
+    const double complex * const restrict wval = (const double complex*) w->val;
+    double complex * const restrict xval = (double complex*) x->val;
 
-    ldw = w->stride;
-    ldx = x->stride;
-
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
 
     ghost_lidx_t i,j,s;
 
@@ -337,14 +322,11 @@ ghost_error_t ghost_tsmm_inplace__plain_s_x_x(ghost_densemat_t *x, ghost_densema
     
     INFO_LOG("In in-place TSMM with arbitrary block size (%"PRLIDX"x%"PRLIDX") <- %f * (%"PRLIDX"x%"PRLIDX") * (%"PRLIDX"x%"PRLIDX")",n,ncolsout,dalpha,n,m,ncolsin,ncolsout);
 
-    float * wval = NULL, * xval = NULL;
-    ghost_lidx_t ldw, ldx;
+    const float * const restrict wval = (const float *) w->val;
+    float * const restrict xval = (float *) x->val;
 
-    ldw = w->stride;
-    ldx = x->stride;
-
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
 
     ghost_lidx_t i,j,s;
 
@@ -406,14 +388,11 @@ ghost_error_t ghost_tsmm_inplace__plain_c_x_x(ghost_densemat_t *x, ghost_densema
     
     INFO_LOG("In in-place TSMM with arbitrary block size (%"PRLIDX"x%"PRLIDX") <- %f+I*%f * (%"PRLIDX"x%"PRLIDX") * (%"PRLIDX"x%"PRLIDX")",n,m,creal(dalpha),cimag(dalpha),n,m,m,m);
 
-    float complex * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldw, ldx;
+    const float complex * const restrict wval = (const float complex *) w->val;
+    float complex * const restrict xval = (float complex *) x->val;
 
-    ldw = w->stride;
-    ldx = x->stride;
-
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
 
     ghost_lidx_t i,j,s;
 

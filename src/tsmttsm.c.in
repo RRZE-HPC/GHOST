@@ -28,16 +28,13 @@ ghost_error_t ghost_tsmttsm__a_plain_d_x_x_cm_rm(ghost_densemat_t *x, ghost_dens
     
     INFO_LOG("In TSMTTSM with arbitrary block sizes %dx%d <- %dx%d * %dx%d",m,K,m,n,n,K);
     
-    double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    const double * const restrict vval = (const double *) v->val;
+    const double * const restrict wval = (const double *) w->val;
+    double * const restrict xval = (double *) x->val;
 
-    ldv = v->stride;
-    ldw = w->stride;
-    ldx = x->stride;
-
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
+    const ghost_lidx_t ldv = v->stride;
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
     
     double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
@@ -118,16 +115,13 @@ ghost_error_t ghost_tsmttsm__u_plain_d_x_x_cm_rm(ghost_densemat_t *x, ghost_dens
     
     INFO_LOG("In TSMTTSM with arbitrary block sizes %dx%d <- %dx%d * %dx%d",m,K,m,n,n,K);
     
-    double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    const double * const restrict vval = (const double *) v->val;
+    const double * const restrict wval = (const double *) w->val;
+    double * const restrict xval = (double *) x->val;
 
-    ldv = v->stride;
-    ldw = w->stride;
-    ldx = x->stride;
-
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
+    const ghost_lidx_t ldv = v->stride;
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
     
     double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
@@ -208,16 +202,13 @@ ghost_error_t ghost_tsmttsm__a_plain_d_x_x_rm_rm(ghost_densemat_t *x, ghost_dens
     
     INFO_LOG("In TSMTTSM with arbitrary block sizes %dx%d <- %dx%d * %dx%d",m,K,m,n,n,K);
     
-    double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    const double * const restrict vval = (const double *) v->val;
+    const double * const restrict wval = (const double *) w->val;
+    double * const restrict xval = (double *) x->val;
 
-    ldv = v->stride;
-    ldw = w->stride;
-    ldx = x->stride;
-
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
+    const ghost_lidx_t ldv = v->stride;
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
     
     double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
@@ -298,16 +289,13 @@ ghost_error_t ghost_tsmttsm__u_plain_d_x_x_cm_cm(ghost_densemat_t *x, ghost_dens
     
     INFO_LOG("In TSMTTSM with arbitrary block sizes %dx%d <- %dx%d * %dx%d",m,K,m,n,n,K);
     
-    double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    const double * const restrict vval = (const double *) v->val;
+    const double * const restrict wval = (const double *) w->val;
+    double * const restrict xval = (double *) x->val;
 
-    ldv = v->stride;
-    ldw = w->stride;
-    ldx = x->stride;
-
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
+    const ghost_lidx_t ldv = v->stride;
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
     
     double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
@@ -388,16 +376,13 @@ ghost_error_t ghost_tsmttsm__a_plain_d_x_x_cm_cm(ghost_densemat_t *x, ghost_dens
     
     INFO_LOG("In TSMTTSM with arbitrary block sizes %dx%d <- %dx%d * %dx%d",m,K,m,n,n,K);
     
-    double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    const double * const restrict vval = (const double *) v->val;
+    const double * const restrict wval = (const double *) w->val;
+    double * const restrict xval = (double *) x->val;
 
-    ldv = v->stride;
-    ldw = w->stride;
-    ldx = x->stride;
-
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
+    const ghost_lidx_t ldv = v->stride;
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
     
     double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
@@ -477,18 +462,15 @@ ghost_error_t ghost_tsmttsm__a_plain_z_x_x_cm_rm(ghost_densemat_t *x, ghost_dens
     
     INFO_LOG("In TSMTTSM with arbitrary block sizes %dx%d <- %dx%d * %dx%d",m,K,m,n,n,K);
     
-    double complex * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    const double complex * const restrict vval = (const double complex*) v->val;
+    const double complex * const restrict wval = (const double complex*) w->val;
+    double complex * const restrict xval = (double complex*) x->val;
 
-    ldv = v->stride;
-    ldw = w->stride;
-    ldx = x->stride;
-
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
+    const ghost_lidx_t ldv = v->stride;
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
     
-    double complex dalpha = *(double complex *)alpha;
+    const double complex dalpha = *(double complex *)alpha;
     double complex dbeta = *(double complex *)beta;
 
     ghost_mpi_op_t mpiop_zadd;
@@ -577,18 +559,15 @@ ghost_error_t ghost_tsmttsm__a_plain_c_x_x_cm_rm(ghost_densemat_t *x, ghost_dens
     
     INFO_LOG("In TSMTTSM with arbitrary block sizes %dx%d <- %dx%d * %dx%d",m,K,m,n,n,K);
     
-    float complex * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    const float complex * const restrict vval = (const float complex *) v->val;
+    const float complex * const restrict wval = (const float complex *) w->val;
+    float complex * const restrict xval = (float complex *) x->val;
 
-    ldv = v->stride;
-    ldw = w->stride;
-    ldx = x->stride;
+    const ghost_lidx_t ldv = v->stride;
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
 
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
-    
-    float complex dalpha = *(float complex *)alpha;
+    const float complex dalpha = *(float complex *)alpha;
     float complex dbeta = *(float complex *)beta;
 
     ghost_mpi_op_t mpiop_zadd;
@@ -677,18 +656,15 @@ ghost_error_t ghost_tsmttsm__a_plain_z_x_x_rm_rm(ghost_densemat_t *x, ghost_dens
     
     INFO_LOG("In TSMTTSM with arbitrary block sizes %dx%d <- %dx%d * %dx%d",m,K,m,n,n,K);
     
-    double complex * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    const double complex * const restrict vval = (const double complex*) v->val;
+    const double complex * const restrict wval = (const double complex*) w->val;
+    double complex * const restrict xval = (double complex*) x->val;
 
-    ldv = v->stride;
-    ldw = w->stride;
-    ldx = x->stride;
-
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
+    const ghost_lidx_t ldv = v->stride;
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
     
-    double complex dalpha = *(double complex *)alpha;
+    const double complex dalpha = *(double complex *)alpha;
     double complex dbeta = *(double complex *)beta;
 
     ghost_mpi_op_t mpiop_zadd;
@@ -788,16 +764,13 @@ ghost_error_t ghost_tsmttsm__a_plain_z_x_x_cm_cm(ghost_densemat_t *x, ghost_dens
     
     INFO_LOG("In TSMTTSM with arbitrary block sizes %dx%d <- %dx%d * %dx%d",m,K,m,n,n,K);
     
-    double complex * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    const double complex * const restrict vval = (const double complex*) v->val;
+    const double complex * const restrict wval = (const double complex*) w->val;
+    double complex * const restrict xval = (double complex*) x->val;
 
-    ldv = v->stride;
-    ldw = w->stride;
-    ldx = x->stride;
-
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
+    const ghost_lidx_t ldv = v->stride;
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
     
     double complex dalpha = *(double complex *)alpha;
     double complex dbeta = *(double complex *)beta;
@@ -889,18 +862,15 @@ ghost_error_t ghost_tsmttsm__a_plain_d_x_CFGM_cm_rm(ghost_densemat_t *x, ghost_d
     
     INFO_LOG("In TSMTTSM with fixed m CFGM and arbitrary k %d: %dx%d <- %dx%d * %dx%d",K,CFGM,K,CFGM,n,n,K);
     
-    double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    const double * const restrict vval = (const double *) v->val;
+    const double * const restrict wval = (const double *) w->val;
+    double * const restrict xval = (double *) x->val;
 
-    ldv = v->stride;
-    ldw = w->stride;
-    ldx = x->stride;
-
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
+    const ghost_lidx_t ldv = v->stride;
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
     
-    double dalpha = *(double *)alpha;
+    const double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
     
     // make sure that the initial x only gets added up once
@@ -980,18 +950,15 @@ ghost_error_t ghost_tsmttsm__a_plain_d_x_CFGM_rm_rm(ghost_densemat_t *x, ghost_d
     
     INFO_LOG("In TSMTTSM with fixed m CFGM and arbitrary k %d: %dx%d <- %dx%d * %dx%d",K,CFGM,K,CFGM,n,n,K);
     
-    double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    const double * const restrict vval = (const double *) v->val;
+    const double * const restrict wval = (const double *) w->val;
+    double * const restrict xval = (double *) x->val;
 
-    ldv = v->stride;
-    ldw = w->stride;
-    ldx = x->stride;
-
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
+    const ghost_lidx_t ldv = v->stride;
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
     
-    double dalpha = *(double *)alpha;
+    const double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
     
     // make sure that the initial x only gets added up once

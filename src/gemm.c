@@ -166,12 +166,9 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
     ghost_blas_idx_t *ldw = &w->stride;
     ghost_blas_idx_t *ldx = &x->stride;
 
-    void *vdata = NULL;
-    void *wdata = NULL;
-    void *xdata = NULL;
-    GHOST_CALL_GOTO(ghost_densemat_valptr(v,&vdata),err,ret);
-    GHOST_CALL_GOTO(ghost_densemat_valptr(w,&wdata),err,ret);
-    GHOST_CALL_GOTO(ghost_densemat_valptr(x,&xdata),err,ret);
+    void *vdata = v->val;
+    void *wdata = w->val;
+    void *xdata = x->val;
     
     //note: if no reduction is requested, none of the input vecs may have
     // a context (or an MPI comm). If any reduction is requested, only v

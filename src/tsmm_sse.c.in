@@ -23,16 +23,13 @@ ghost_error_t ghost_tsmm__a_sse_d_BLOCKSZ1_BLOCKSZ2_rm_cm(ghost_densemat_t *x, g
 
     INFO_LOG("In SSE TSMM with two fixed block sizes [BLOCKSZ1][BLOCKSZ2] %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
-    double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    const double * const restrict vval = (const double *) v->val;
+    const double * const restrict wval = (const double *) w->val;
+    double * const restrict xval = (double *) x->val;
 
-    ldv = v->stride;
-    ldw = w->stride;
-    ldx = x->stride;
-
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
+    const ghost_lidx_t ldv = v->stride;
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
 
     double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
@@ -108,16 +105,13 @@ ghost_error_t ghost_tsmm__u_sse_d_BLOCKSZ1_BLOCKSZ2_rm_cm(ghost_densemat_t *x, g
 
     INFO_LOG("In SSE TSMM with two fixed block sizes [BLOCKSZ1][BLOCKSZ2] %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
-    double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    const double * const restrict vval = (const double *) v->val;
+    const double * const restrict wval = (const double *) w->val;
+    double * const restrict xval = (double *) x->val;
 
-    ldv = v->stride;
-    ldw = w->stride;
-    ldx = x->stride;
-
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
+    const ghost_lidx_t ldv = v->stride;
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
 
     double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
@@ -193,16 +187,13 @@ ghost_error_t ghost_tsmm__a_sse_d_x_x_rm_cm(ghost_densemat_t *x, ghost_densemat_
 
     INFO_LOG("In SSE TSMM with arbitrary block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
-    double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    const double * const restrict vval = (const double *) v->val;
+    const double * const restrict wval = (const double *) w->val;
+    double * const restrict xval = (double *) x->val;
 
-    ldv = v->stride;
-    ldw = w->stride;
-    ldx = x->stride;
-
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
+    const ghost_lidx_t ldv = v->stride;
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
 
     double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
@@ -279,16 +270,13 @@ ghost_error_t ghost_tsmm__u_sse_d_x_x_rm_cm(ghost_densemat_t *x, ghost_densemat_
 
     INFO_LOG("In SSE TSMM with arbitrary block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
-    double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    const double * const restrict vval = (const double *) v->val;
+    const double * const restrict wval = (const double *) w->val;
+    double * const restrict xval = (double *) x->val;
 
-    ldv = v->stride;
-    ldw = w->stride;
-    ldx = x->stride;
-
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
+    const ghost_lidx_t ldv = v->stride;
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
 
     double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
