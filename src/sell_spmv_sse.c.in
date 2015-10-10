@@ -210,7 +210,7 @@ ghost_error_t ghost_sellspmv__a_sse_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat,
         #GHOST_UNROLL#__m128d tmp@;#CHUNKHEIGHT
         double *tmpresult = NULL;
         if (!axpy && ncolspadded>2) {
-            ghost_malloc((void **)&tmpresult,sizeof(double)*CHUNKHEIGHT*ncolspadded);
+            ghost_malloc_align((void **)&tmpresult,sizeof(double)*CHUNKHEIGHT*ncolspadded,128);
         }
 
         ghost_lidx_t donecols;
@@ -242,17 +242,17 @@ ghost_error_t ghost_sellspmv__a_sse_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat,
                 }
                 if (axpy || ncolspadded<=2 || CHUNKHEIGHT == 1) {
                     if (spmvmOptions & GHOST_SPMV_AXPY) {
-                        #GHOST_UNROLL#_mm_store_pd(&lval[invec->traits.ncolspadded*@+donecols],_mm_add_pd(tmp@,_mm_load_pd(&lval[invec->traits.ncolspadded*@+donecols])));#CHUNKHEIGHT
+                        #GHOST_UNROLL#_mm_store_pd(&lval[res->stride*@+donecols],_mm_add_pd(tmp@,_mm_load_pd(&lval[res->stride*@+donecols])));#CHUNKHEIGHT
                     } else if (spmvmOptions & GHOST_SPMV_AXPBY) {
-                        #GHOST_UNROLL#_mm_store_pd(&lval[invec->traits.ncolspadded*@+donecols],_mm_add_pd(tmp@,_mm_mul_pd(_mm_load_pd(&lval[invec->traits.ncolspadded*@+donecols]),beta)));#CHUNKHEIGHT
+                        #GHOST_UNROLL#_mm_store_pd(&lval[res->stride*@+donecols],_mm_add_pd(tmp@,_mm_mul_pd(_mm_load_pd(&lval[res->stride*@+donecols]),beta)));#CHUNKHEIGHT
                     } else {
-                        #GHOST_UNROLL#_mm_stream_pd(&lval[invec->traits.ncolspadded*@+donecols],tmp@);#CHUNKHEIGHT
+                        #GHOST_UNROLL#_mm_stream_pd(&lval[res->stride*@+donecols],tmp@);#CHUNKHEIGHT
                     }
                     if (spmvmOptions & GHOST_SPMV_DOT) {
                         for (col = donecols; col<donecols+2; col++) {
-                                #GHOST_UNROLL#partsums[((padding+3*invec->traits.ncols)*tid)+3*col+0] += lval[col+@*invec->traits.ncolspadded]*lval[col+@*invec->traits.ncolspadded];#CHUNKHEIGHT
-                                #GHOST_UNROLL#partsums[((padding+3*invec->traits.ncols)*tid)+3*col+1] += lval[col+@*invec->traits.ncolspadded]*rval[col+@*invec->traits.ncolspadded];#CHUNKHEIGHT
-                                #GHOST_UNROLL#partsums[((padding+3*invec->traits.ncols)*tid)+3*col+2] += rval[col+@*invec->traits.ncolspadded]*rval[col+@*invec->traits.ncolspadded];#CHUNKHEIGHT
+                                #GHOST_UNROLL#partsums[((padding+3*invec->traits.ncols)*tid)+3*col+0] += lval[col+@*res->stride]*lval[col+@*res->stride];#CHUNKHEIGHT
+                                #GHOST_UNROLL#partsums[((padding+3*invec->traits.ncols)*tid)+3*col+1] += lval[col+@*res->stride]*rval[col+@*invec->stride];#CHUNKHEIGHT
+                                #GHOST_UNROLL#partsums[((padding+3*invec->traits.ncols)*tid)+3*col+2] += rval[col+@*invec->stride]*rval[col+@*invec->stride];#CHUNKHEIGHT
                         }
                     }
                 } else {
@@ -262,7 +262,7 @@ ghost_error_t ghost_sellspmv__a_sse_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat,
 
             }
             if (!axpy && ncolspadded>2 && CHUNKHEIGHT != 1) {
-                #GHOST_UNROLL#for (donecols = 0; donecols < ncolspadded; donecols+=2) {tmp@ = _mm_load_pd(&tmpresult[@*ncolspadded+donecols]); _mm_stream_pd(&lval[@*ncolspadded+donecols],tmp@);}#CHUNKHEIGHT
+                #GHOST_UNROLL#for (donecols = 0; donecols < ncolspadded; donecols+=2) {tmp@ = _mm_load_pd(&tmpresult[@*ncolspadded+donecols]); _mm_stream_pd(&lval[@*res->stride+donecols],tmp@);}#CHUNKHEIGHT
             }
         }
         free(tmpresult);
