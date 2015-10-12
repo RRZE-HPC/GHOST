@@ -1411,10 +1411,7 @@ ghost_error_t ghost_tsmttsm__u_plain_d_CFGK_CFGM_cm_cm(ghost_densemat_t *x, ghos
     }
 
     ghost_lidx_t n = v->traits.nrows;
-    if (n%4) {
-        n+=(4-n%4);
-        INFO_LOG("Padding large dimension to %d\n",n);
-    }
+    // no padding! may be a view!
     INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
     
     double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
@@ -1446,19 +1443,15 @@ ghost_error_t ghost_tsmttsm__u_plain_d_CFGK_CFGM_cm_cm(ghost_densemat_t *x, ghos
     }
 #pragma omp parallel private(j,k)
     {
-        ghost_lidx_t t;
         double *x_priv;
         ghost_malloc_align((void **)&x_priv,CFGM*CFGK*sizeof(double),64);
         memset(x_priv,0,CFGM*CFGK*sizeof(double));
         
 #pragma omp for schedule(runtime)
-        for (i=0; i<=n-4; i+=4) {
+        for (i=0; i<n; i++) {
             for (j=0; j<CFGM; j++) {
                 for (k=0; k<CFGK; k++) {
-#pragma simd
-                  for (t=0; t<4; t++) {
-                        x_priv[j*CFGK+k] += vval[j*ldv+i+t]*wval[k*ldw+i+t];
-                  }
+                    x_priv[j*CFGK+k] += vval[j*ldv+i]*wval[k*ldw+i];
                 }
             }
         }
@@ -1695,7 +1688,7 @@ ghost_error_t ghost_tsmttsm__a_plain_z_CFGK_x_cm_rm(ghost_densemat_t *x, ghost_d
         {
 #pragma vector aligned
 #pragma ivdep
-#ifdef CFGK > 1
+#if CFGK > 1
 #pragma simd
 #endif
             for (k=0; k<CFGK; k++) {

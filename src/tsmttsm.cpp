@@ -145,6 +145,11 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
             p.alignment = GHOST_UNALIGNED;
             PERFWARNING_LOG("Switching to the unaligned kernel!");
         }
+        if ( (v->traits.nrowspadded*v->elSize)%16 || (w->traits.nrowspadded*w->elSize)%16 ) {
+            p.alignment = GHOST_UNALIGNED;
+            p.impl = GHOST_IMPLEMENTATION_PLAIN;
+            PERFWARNING_LOG("Switching to the unaligned plain kernel!");
+        }
     }
     if (p.impl == GHOST_IMPLEMENTATION_AVX || p.impl == GHOST_IMPLEMENTATION_AVX2) {
         if (!IS_ALIGNED(x->val,32) || !IS_ALIGNED(v->val,32) || !IS_ALIGNED(w->val,32) || 
@@ -154,10 +159,16 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
             p.alignment = GHOST_UNALIGNED;
             PERFWARNING_LOG("Switching to the unaligned kernel!");
         }
+        if ( (v->traits.nrowspadded*v->elSize)%32 || (w->traits.nrowspadded*w->elSize)%32 ) {
+            p.alignment = GHOST_UNALIGNED;
+            p.impl = GHOST_IMPLEMENTATION_PLAIN;
+            PERFWARNING_LOG("Switching to the unaligned plain kernel!");
+        }
     }
     if (p.impl == GHOST_IMPLEMENTATION_PLAIN || p.impl == GHOST_IMPLEMENTATION_MIC) {
         if (!IS_ALIGNED(x->val,64) || !IS_ALIGNED(v->val,64) || !IS_ALIGNED(w->val,64) || 
-                (x->stride*x->elSize)%64 || (v->stride*v->elSize)%64 || (w->stride*w->elSize)%64) {
+                (x->stride*x->elSize)%64 || (v->stride*v->elSize)%64 || (w->stride*w->elSize)%64 ||
+                (v->traits.nrowspadded*v->elSize)%64 || (w->traits.nrowspadded*w->elSize)%64 ) {
             p.alignment = GHOST_UNALIGNED;
             PERFWARNING_LOG("Switching to the unaligned kernel!");
         }
