@@ -276,56 +276,55 @@ static ghost_error_t SELL_split(ghost_sparsemat_t *mat)
         mat->col_orig = NULL;
     }
 #endif
-
-    ghost_sparsemat_create(&(mat->localPart),mat->context,&mat->traits[0],1);
-    localSELL = mat->localPart->data;
-    mat->localPart->traits->symmetry = mat->traits->symmetry;
-
-    ghost_sparsemat_create(&(mat->remotePart),mat->context,&mat->traits[0],1);
-    remoteSELL = mat->remotePart->data; 
-
-    localSELL->T = fullSELL->T;
-    remoteSELL->T = fullSELL->T;
-
-    ghost_lidx_t nChunks = mat->nrowsPadded/fullSELL->chunkHeight;
-    GHOST_CALL_GOTO(ghost_malloc((void **)&localSELL->chunkStart, (nChunks+1)*sizeof(ghost_lidx_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&localSELL->chunkMin, (nChunks)*sizeof(ghost_lidx_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&localSELL->chunkLen, (nChunks)*sizeof(ghost_lidx_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&localSELL->chunkLenPadded, (nChunks)*sizeof(ghost_lidx_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&localSELL->rowLen, (mat->nrowsPadded)*sizeof(ghost_lidx_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&localSELL->rowLenPadded, (mat->nrowsPadded)*sizeof(ghost_lidx_t)),err,ret);
-
-    GHOST_CALL_GOTO(ghost_malloc((void **)&remoteSELL->chunkStart, (nChunks+1)*sizeof(ghost_lidx_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&remoteSELL->chunkMin, (nChunks)*sizeof(ghost_lidx_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&remoteSELL->chunkLen, (nChunks)*sizeof(ghost_lidx_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&remoteSELL->chunkLenPadded, (nChunks)*sizeof(ghost_lidx_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&remoteSELL->rowLen, (mat->nrowsPadded)*sizeof(ghost_lidx_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&remoteSELL->rowLenPadded, (mat->nrowsPadded)*sizeof(ghost_lidx_t)),err,ret);
-
-#pragma omp parallel for schedule(runtime)
-    for (i=0; i<mat->nrowsPadded; i++) {
-        localSELL->rowLen[i] = 0;
-        remoteSELL->rowLen[i] = 0;
-        localSELL->rowLenPadded[i] = 0;
-        remoteSELL->rowLenPadded[i] = 0;
-    }
-
-#pragma omp parallel for schedule(runtime)
-    for(chunk = 0; chunk < mat->nrowsPadded/fullSELL->chunkHeight; chunk++) {
-        localSELL->chunkLen[chunk] = 0;
-        remoteSELL->chunkLen[chunk] = 0;
-        localSELL->chunkLenPadded[chunk] = 0;
-        remoteSELL->chunkLenPadded[chunk] = 0;
-        localSELL->chunkMin[chunk] = 0;
-        remoteSELL->chunkMin[chunk] = 0;
-    }
-    localSELL->chunkStart[0] = 0;
-    remoteSELL->chunkStart[0] = 0;
-
-    mat->localPart->nnz = 0;
-    mat->remotePart->nnz = 0;
-
     if (!(mat->traits->flags & GHOST_SPARSEMAT_NOT_STORE_SPLIT)) { // split computation
+
+        ghost_sparsemat_create(&(mat->localPart),mat->context,&mat->traits[0],1);
+        localSELL = mat->localPart->data;
+        mat->localPart->traits->symmetry = mat->traits->symmetry;
+
+        ghost_sparsemat_create(&(mat->remotePart),mat->context,&mat->traits[0],1);
+        remoteSELL = mat->remotePart->data; 
+
+        localSELL->T = fullSELL->T;
+        remoteSELL->T = fullSELL->T;
+
+        ghost_lidx_t nChunks = mat->nrowsPadded/fullSELL->chunkHeight;
+        GHOST_CALL_GOTO(ghost_malloc((void **)&localSELL->chunkStart, (nChunks+1)*sizeof(ghost_lidx_t)),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&localSELL->chunkMin, (nChunks)*sizeof(ghost_lidx_t)),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&localSELL->chunkLen, (nChunks)*sizeof(ghost_lidx_t)),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&localSELL->chunkLenPadded, (nChunks)*sizeof(ghost_lidx_t)),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&localSELL->rowLen, (mat->nrowsPadded)*sizeof(ghost_lidx_t)),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&localSELL->rowLenPadded, (mat->nrowsPadded)*sizeof(ghost_lidx_t)),err,ret);
+
+        GHOST_CALL_GOTO(ghost_malloc((void **)&remoteSELL->chunkStart, (nChunks+1)*sizeof(ghost_lidx_t)),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&remoteSELL->chunkMin, (nChunks)*sizeof(ghost_lidx_t)),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&remoteSELL->chunkLen, (nChunks)*sizeof(ghost_lidx_t)),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&remoteSELL->chunkLenPadded, (nChunks)*sizeof(ghost_lidx_t)),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&remoteSELL->rowLen, (mat->nrowsPadded)*sizeof(ghost_lidx_t)),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&remoteSELL->rowLenPadded, (mat->nrowsPadded)*sizeof(ghost_lidx_t)),err,ret);
+
+#pragma omp parallel for schedule(runtime)
+        for (i=0; i<mat->nrowsPadded; i++) {
+            localSELL->rowLen[i] = 0;
+            remoteSELL->rowLen[i] = 0;
+            localSELL->rowLenPadded[i] = 0;
+            remoteSELL->rowLenPadded[i] = 0;
+        }
+
+#pragma omp parallel for schedule(runtime)
+        for(chunk = 0; chunk < mat->nrowsPadded/fullSELL->chunkHeight; chunk++) {
+            localSELL->chunkLen[chunk] = 0;
+            remoteSELL->chunkLen[chunk] = 0;
+            localSELL->chunkLenPadded[chunk] = 0;
+            remoteSELL->chunkLenPadded[chunk] = 0;
+            localSELL->chunkMin[chunk] = 0;
+            remoteSELL->chunkMin[chunk] = 0;
+        }
+        localSELL->chunkStart[0] = 0;
+        remoteSELL->chunkStart[0] = 0;
+
+        mat->localPart->nnz = 0;
+        mat->remotePart->nnz = 0;
 
         lnEnts_l = 0;
         lnEnts_r = 0;
