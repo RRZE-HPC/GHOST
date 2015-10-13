@@ -73,7 +73,9 @@ static ghost_error_t FUNCNAME(view(ghost_densemat_t *src, ghost_densemat_t **new
 
     ghost_densemat_traits_t newTraits = src->traits;
     newTraits.ncols = nc;
+    newTraits.ncolspadded = nc;
     newTraits.nrows = nr;
+    newTraits.nrowspadded = nr;
     newTraits.flags |= (ghost_densemat_flags_t)GHOST_DENSEMAT_VIEW;
 
     ghost_densemat_create(new,src->context,newTraits);
@@ -140,6 +142,7 @@ static ghost_error_t FUNCNAME(viewCols(ghost_densemat_t *src, ghost_densemat_t *
     DEBUG_LOG(1,"Viewing a %"PRLIDX"x%"PRLIDX" contiguous dense matrix",src->traits.nrows,nc);
     ghost_densemat_traits_t newTraits = src->traits;
     newTraits.ncols = nc;
+    newTraits.ncolspadded = nc;
     newTraits.ncolsorig = src->traits.ncolsorig;
     newTraits.flags |= (ghost_densemat_flags_t)GHOST_DENSEMAT_VIEW;
 
@@ -182,6 +185,7 @@ static ghost_error_t FUNCNAME(viewScatteredCols(ghost_densemat_t *src, ghost_den
     ghost_lidx_t v;
     ghost_densemat_traits_t newTraits = src->traits;
     newTraits.ncols = nc;
+    newTraits.ncolspadded = nc;
     newTraits.flags |= (ghost_densemat_flags_t)GHOST_DENSEMAT_VIEW;
     newTraits.flags |= (ghost_densemat_flags_t)GHOST_DENSEMAT_SCATTERED;
 
@@ -219,7 +223,9 @@ static ghost_error_t FUNCNAME(viewScatteredVec(ghost_densemat_t *src, ghost_dens
     ghost_lidx_t i;
     ghost_densemat_traits_t newTraits = src->traits;
     newTraits.ncols = nc;
+    newTraits.ncolspadded = nc;
     newTraits.nrows = nr;
+    newTraits.nrowspadded = nr;
     newTraits.ncolsorig = src->traits.ncolsorig;
     newTraits.nrowsorig = src->traits.nrowsorig;
     newTraits.flags |= (ghost_densemat_flags_t)GHOST_DENSEMAT_VIEW;

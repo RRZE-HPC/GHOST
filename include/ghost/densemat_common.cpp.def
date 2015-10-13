@@ -88,26 +88,27 @@ static ghost_error_t FUNCNAME(dotprod_tmpl(ghost_densemat_t *vec, void *res, gho
     }
    
     ghost_machine_cacheline_size(&clsize);
-    int padding = 8*(int)clsize/sizeof(v_t);
+    int padding = (8*(int)clsize)/sizeof(v_t);
+    int ncolsPadded = PAD(vec->traits.ncols,padding);
         
-    GHOST_CALL_GOTO(ghost_malloc_align((void **)&partsums,nthreads*(vec->traits.ncols+padding)*sizeof(v_t),64),err,ret);
-    memset(partsums,0,nthreads*(vec->traits.ncols+padding)*sizeof(v_t));
+    GHOST_CALL_GOTO(ghost_malloc_align((void **)&partsums,nthreads*ncolsPadded*sizeof(v_t),64),err,ret);
+    memset(partsums,0,nthreads*ncolsPadded*sizeof(v_t));
    
     if (vec == vec2) { 
 #pragma omp parallel shared(partsums) 
         {
             int tid = ghost_omp_threadnum();
             DENSEMAT_ITER(vec,
-                partsums[(padding+vec->traits.ncols)*tid+col] += *(v_t *)valptr * 
-                    conjugate((v_t *)valptr));
+                partsums[ncolsPadded*tid+col] += *valptr * 
+                    conjugate(valptr));
         }
     } else {
 #pragma omp parallel shared(partsums) 
         {
             int tid = ghost_omp_threadnum();
             DENSEMAT_ITER2(vec,vec2,
-                partsums[(padding+vec->traits.ncols)*tid+col] += *(v_t *)valptr2 * 
-                    conjugate((v_t *)valptr1));
+                partsums[ncolsPadded*tid+col] += *valptr2 * 
+                    conjugate(valptr1));
         }
     }
     
@@ -116,7 +117,7 @@ static ghost_error_t FUNCNAME(dotprod_tmpl(ghost_densemat_t *vec, void *res, gho
         ((v_t *)res)[col] = 0.;
 
         for (i=0; i<nthreads; i++) {
-            ((v_t *)res)[col] += partsums[i*(vec->traits.ncols+padding)+col];
+            ((v_t *)res)[col] += partsums[i*ncolsPadded+col];
         }
     }
 

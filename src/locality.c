@@ -33,23 +33,38 @@ ghost_error_t ghost_thread_pin(int coreNumber)
     ghost_topology_get(&topology);
     
     hwloc_cpuset_t cpuset = hwloc_bitmap_alloc();
-    if (!cpuset) {
+    hwloc_cpuset_t old_cpuset = hwloc_bitmap_alloc();
+    if (!cpuset || !old_cpuset) {
         ERROR_LOG("Could not allocate bitmap");
         return GHOST_ERR_HWLOC;
     }
 
     hwloc_bitmap_set(cpuset,coreNumber);
-    if (hwloc_set_cpubind(topology,cpuset,HWLOC_CPUBIND_THREAD) == -1) {
-        ERROR_LOG("Pinning failed: %s",strerror(errno));
-        hwloc_bitmap_free(cpuset);
-        return GHOST_ERR_HWLOC;
+    int already_pinned = 0;
+
+    if (hwloc_get_cpubind(topology,old_cpuset,HWLOC_CPUBIND_THREAD) != -1) {
+        already_pinned = hwloc_bitmap_isequal(old_cpuset,cpuset);
     }
+
+    
+    if (!already_pinned) {
+        if (hwloc_set_cpubind(topology,cpuset,HWLOC_CPUBIND_THREAD) == -1) {
+            ERROR_LOG("Pinning failed: %s",strerror(errno));
+            hwloc_bitmap_free(cpuset);
+            return GHOST_ERR_HWLOC;
+        }
+    }
+    hwloc_bitmap_free(old_cpuset);
     hwloc_bitmap_free(cpuset);
     
     IF_DEBUG(2) {
         int core;
         GHOST_CALL_RETURN(ghost_cpu(&core));
-        DEBUG_LOG(2,"Successfully pinned OpenMP thread %d to core %d",ghost_omp_threadnum(),core);
+        if (already_pinned) {
+            DEBUG_LOG(2,"Successfully checked pinning of OpenMP thread %d to core %d",ghost_omp_threadnum(),core);
+        } else {
+            DEBUG_LOG(2,"Successfully pinned OpenMP thread %d to core %d",ghost_omp_threadnum(),core);
+        }
     }
 
     return GHOST_SUCCESS;

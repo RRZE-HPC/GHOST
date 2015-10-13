@@ -291,6 +291,11 @@ static ghost_error_t vec_cm_equalize(ghost_densemat_t *vec, ghost_mpi_comm_t com
                 MPI_CALL_RETURN(MPI_Bcast(DENSEMAT_VALPTR(vec,row,col),1,vecdt,root,comm));
             }
         }
+    } else if (vec->traits.flags & GHOST_DENSEMAT_VIEW) {
+        ghost_lidx_t col;
+        for (col=0; col<vec->traits.ncols; col++) {
+            MPI_CALL_RETURN(MPI_Bcast(DENSEMAT_VALPTR(vec,0,col),vec->traits.nrows,vecdt,root,comm));
+        }
     } else {
         MPI_CALL_RETURN(MPI_Bcast(vec->val,vec->traits.nrowspadded*vec->traits.ncols,vecdt,root,comm));
     }

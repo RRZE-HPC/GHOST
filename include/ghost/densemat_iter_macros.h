@@ -382,13 +382,13 @@
 #error "Only one of COLMAJOR or ROWMAJOR has to be defined for this header!"
 #endif
 
-#define DENSEMAT_VALPTR(vec,row,col) &((DENSEMAT_DT *)(vec->val))[((row)*(vec->stride)+(col))*DENSEMAT_ELSIZE(vec)]
+#define DENSEMAT_VALPTR(vec,row,col) (((DENSEMAT_DT *)(vec->val))+(((row)*(vec->stride)+(col))*DENSEMAT_ELSIZE(vec)))
 #define DENSEMAT_VAL(vec,row,col) ((DENSEMAT_DT *)(vec->val))[((row)*(vec->stride)+(col))*DENSEMAT_ELSIZE(vec)]
-#define DENSEMAT_VALPTR_SINGLECOL_STRIDE1(vec,row,col) &((DENSEMAT_DT *)(vec->val))[((row))*DENSEMAT_ELSIZE(vec)]
+#define DENSEMAT_VALPTR_SINGLECOL_STRIDE1(vec,row,col) (((DENSEMAT_DT *)(vec->val))+(((row))*DENSEMAT_ELSIZE(vec)))
 #define DENSEMAT_VAL_SINGLECOL_STRIDE1(vec,row,col) ((DENSEMAT_DT *)(vec->val))[((row))*DENSEMAT_ELSIZE(vec)]
-#define DENSEMAT_VALPTR_TRANSPOSED(vec,row,col) &((DENSEMAT_DT *)(vec->val))[((col)*vec->stride+(row))*DENSEMAT_ELSIZE(vec)]
-#define DENSEMAT_CUVALPTR(vec,row,col) &((DENSEMAT_DT *)(vec->cu_val))[((row)*vec->stride+(col))*DENSEMAT_ELSIZE(vec)]
-#define DENSEMAT_CUVALPTR_TRANSPOSED(vec,row,col) &((DENSEMAT_DT *)(vec->cu_val))[((col)*vec->stride+(row))*DENSEMAT_ELSIZE(vec)]
+#define DENSEMAT_VALPTR_TRANSPOSED(vec,row,col) (((DENSEMAT_DT *)(vec->val))+(((col)*vec->stride+(row))*DENSEMAT_ELSIZE(vec)))
+#define DENSEMAT_CUVALPTR(vec,row,col) (((DENSEMAT_DT *)(vec->cu_val))+(((row)*vec->stride+(col))*DENSEMAT_ELSIZE(vec)))
+#define DENSEMAT_CUVALPTR_TRANSPOSED(vec,row,col) (((DENSEMAT_DT *)(vec->cu_val))+(((col)*vec->stride+(row))*DENSEMAT_ELSIZE(vec)))
 
 #define DENSEMAT_ITER_BEGIN_COMPACT(vec,valptr,row,col,memrow,memcol)\
     _Pragma("omp for schedule(runtime) private(memrow,valptr,cuvalptr)")\

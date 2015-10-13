@@ -142,9 +142,10 @@ static ghost_error_t getNrowsFromContext(ghost_densemat_t *vec)
     }
 
     if (vec->traits.flags & GHOST_DENSEMAT_VIEW) {
-        INFO_LOG("No padding for view!");
-        vec->traits.nrowspadded = vec->traits.nrows;
-        vec->traits.ncolspadded = vec->traits.ncols;
+        //INFO_LOG("No padding for view!");
+        // already copied!
+        //vec->traits.nrowspadded = vec->traits.nrows;
+        //vec->traits.ncolspadded = vec->traits.ncols;
     } else {
         ghost_lidx_t padding = vec->elSize;
         if (vec->traits.nrows > 1) {

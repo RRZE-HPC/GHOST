@@ -290,7 +290,7 @@ static ghost_error_t vec_rm_equalize(ghost_densemat_t *vec, ghost_mpi_comm_t com
     } else if (vec->traits.flags & GHOST_DENSEMAT_VIEW) {
         ghost_lidx_t row;
         for (row=0; row<vec->traits.nrows; row++) {
-            MPI_CALL_RETURN(MPI_Bcast(DENSEMAT_VALPTR(vec,row,0),vec->traits.nrows,vecdt,root,comm));
+            MPI_CALL_RETURN(MPI_Bcast(DENSEMAT_VALPTR(vec,row,0),vec->traits.ncols,vecdt,root,comm));
         }
     } else {
         MPI_CALL_RETURN(MPI_Bcast(vec->val,vec->traits.ncolspadded*vec->traits.nrows,vecdt,root,comm));

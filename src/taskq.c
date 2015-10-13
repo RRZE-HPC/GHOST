@@ -37,7 +37,6 @@
 #include "ghost/cu_util.h"
 #endif
 
-static pthread_mutex_t pinningMutex = PTHREAD_MUTEX_INITIALIZER;
 
 /**
  * @brief The task queue created by ghost_taskq_init().
@@ -211,14 +210,18 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q, int nthreads)
             continue;
         }
 
+
         if (curTask->flags & GHOST_TASK_NOT_PIN) {
             taskq_deleteTask(q,curTask);    
-            ghost_omp_nthread_set(curTask->nThreads);
+            ghost_thread_unpin();
+            if( curTask->nThreads > 0 ) {
+                ghost_omp_nthread_set(curTask->nThreads);
 #ifdef GHOST_HAVE_MKL
-            mkl_set_num_threads(curTask->nThreads); 
+                mkl_set_num_threads(curTask->nThreads); 
 #endif
 #pragma omp parallel
-            ghost_thread_unpin();
+                ghost_thread_unpin();
+            }
             pthread_mutex_unlock(curTask->mutex);
             return curTask;
         }
@@ -267,11 +270,13 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q, int nthreads)
 
         DEBUG_LOG(1,"Deleting task itself");
         taskq_deleteTask(q,curTask);    
-        DEBUG_LOG(1,"Pinning the task's threads");
-        ghost_omp_nthread_set(curTask->nThreads);
+        DEBUG_LOG(1,"Determining task's threads");
+        if( curTask->nThreads > 0 ) {
+            ghost_omp_nthread_set(curTask->nThreads);
 #ifdef GHOST_HAVE_MKL
-        mkl_set_num_threads(curTask->nThreads); 
+            mkl_set_num_threads(curTask->nThreads); 
 #endif
+        }
 
         int curThread;
         ghost_pumap_t *pumap;
@@ -305,27 +310,38 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q, int nthreads)
             freepu = hwloc_get_next_obj_inside_cpuset_by_type(topology,myfree,HWLOC_OBJ_PU,freepu);
         }
 
-#pragma omp parallel 
+
+        DEBUG_LOG(1,"Pinning task's threads");
         {
-#pragma omp for ordered schedule(static,1) 
-            for (curThread=0; curThread<nthreads; curThread++) {
-#pragma omp ordered
-                pthread_mutex_lock(&pinningMutex);
-                int core = hwloc_bitmap_first(myfree);
+            int curCore = hwloc_bitmap_first(myfree);
+            // pin me
+            ghost_thread_pin(curCore);
+            if( curTask->nThreads > 0 ) {
+                int *cores = NULL;
+                ghost_malloc((void **)&cores,sizeof(int)*curTask->nThreads);
+                for(curThread=0; curThread<curTask->nThreads; curThread++) {
+                    cores[curThread] = curCore;
+                    hwloc_bitmap_set(mybusy,curCore);
+                    curCore = hwloc_bitmap_next(myfree,curCore);
+                }
+                // pin
+            
+#pragma omp parallel private(curThread)
+                {
+                    curThread = omp_get_thread_num();
+                    DEBUG_LOG(1,"Thread %d (%d): Core # %d is idle, using it",curThread,
+                            (int)pthread_self(),cores[curThread]);
 
-                DEBUG_LOG(1,"Thread %d (%d): Core # %d is idle, using it",ghost_omp_threadnum(),
-                        (int)pthread_self(),core);
+                    ghost_thread_pin(cores[curThread]);
 
-                hwloc_bitmap_set(mybusy,core);
-                hwloc_bitmap_clr(myfree,core);
-                pthread_mutex_unlock(&pinningMutex);
-
-                ghost_thread_pin(core);
-            }
 #ifdef GHOST_HAVE_INSTR_LIKWID
-            LIKWID_MARKER_THREADINIT;
+                    LIKWID_MARKER_THREADINIT;
 #endif
+                }
+                free(cores);
+            }
         }
+
         hwloc_bitmap_or(curTask->coremap,curTask->coremap,mybusy);
         if (curTask->parent && !(curTask->parent->flags & GHOST_TASK_NOT_ALLOW_CHILD)) {
             hwloc_bitmap_or(curTask->parent->childusedmap,curTask->parent->childusedmap,mybusy);

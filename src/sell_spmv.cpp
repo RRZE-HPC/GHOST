@@ -517,6 +517,14 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
                 (lhs->stride*lhs->elSize)%16 || (rhs->stride*rhs->elSize)%16) {
             PERFWARNING_LOG("Using unaligned version for because (one of) the vectors are not aligned to 16 bytes.");
             p.alignment = GHOST_UNALIGNED;
+        } else if ((lhs->traits.flags & GHOST_DENSEMAT_VIEW) && (lhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR)
+                                                             && (lhs->traits.ncols*lhs->elSize)%16 ) {
+            PERFWARNING_LOG("Using unaligned version for because (one of) the vectors are not aligned to 16 bytes.");
+            p.alignment = GHOST_UNALIGNED;
+        } else if ((rhs->traits.flags & GHOST_DENSEMAT_VIEW) && (rhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR)
+                                                             && (rhs->traits.ncols*rhs->elSize)%16 ) {
+            PERFWARNING_LOG("Using unaligned version for because (one of) the vectors are not aligned to 16 bytes.");
+            p.alignment = GHOST_UNALIGNED;
         }
     }
     /*if (lhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR && p.blocksz > 1 && p.blocksz % 4) {
