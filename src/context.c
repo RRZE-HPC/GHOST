@@ -8,6 +8,8 @@
 #include "ghost/bincrs.h"
 #include "ghost/matrixmarket.h"
 #include "ghost/log.h"
+#include "ghost/omp.h"
+#include "ghost/machine.h"
 
 
 ghost_error_t ghost_context_create(ghost_context_t **context, ghost_gidx_t gnrows, ghost_gidx_t gncols, ghost_context_flags_t context_flags, void *matrixSource, ghost_sparsemat_src_t srcType, ghost_mpi_comm_t comm, double weight) 
@@ -545,7 +547,6 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
      */
 
       
-
     GHOST_CALL_GOTO(ghost_malloc((void **)&item_from, size_nint),err,ret); 
     GHOST_CALL_GOTO(ghost_malloc((void **)&wishlist_counts, nprocs*sizeof(ghost_lidx_t)),err,ret); 
     GHOST_CALL_GOTO(ghost_malloc((void **)&comm_remotePE, size_lcol),err,ret);
@@ -555,17 +556,47 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
 
     for (i=0; i<nprocs; i++) wishlist_counts[i] = 0;
 
+    int nthreads;
+    unsigned clsize;
+#pragma omp parallel
+    {
+#pragma omp single
+    nthreads = ghost_omp_nthread();
+    }
     
-    for (i=0;i<ctx->lnEnts[me];i++){
-        for (j=nprocs-1;j>=0; j--){
-            if (ctx->lfRow[j]<col_orig[i]+1) {
-                comm_remotePE[i] = j;
-                wishlist_counts[j]++;
-                comm_remoteEl[i] = col_orig[i] -ctx->lfRow[j];
-                break;
+    ghost_machine_cacheline_size(&clsize);
+    int padding = 8*(int)clsize/sizeof(ghost_lidx_t);
+        
+    ghost_lidx_t *partial_wishlist_counts;
+    GHOST_CALL_GOTO(ghost_malloc((void **)&partial_wishlist_counts, nthreads*(nprocs+padding)*sizeof(ghost_lidx_t)),err,ret); 
+    memset(partial_wishlist_counts,0,nthreads*(nprocs+padding)*sizeof(ghost_lidx_t));
+
+    
+    GHOST_INSTR_START("comm_remote*");
+#pragma omp parallel shared (partial_wishlist_counts)
+    {
+        int thread = ghost_omp_threadnum();
+
+#pragma omp for private(j)
+        for (i=0;i<ctx->lnEnts[me];i++){
+            for (j=nprocs-1;j>=0; j--){
+                if (ctx->lfRow[j]<col_orig[i]+1) {
+                    comm_remotePE[i] = j;
+                    comm_remoteEl[i] = col_orig[i] -ctx->lfRow[j];
+                    partial_wishlist_counts[(padding+nprocs)*thread+j]++;
+                    break;
+                }
             }
         }
     }
+
+    for (j=0; j<nprocs; j++) {
+        for (i=0; i<nthreads; i++) {
+            wishlist_counts[j] += partial_wishlist_counts[(padding+nprocs)*i+j];
+        }
+    }
+    free(partial_wishlist_counts);
+    GHOST_INSTR_STOP("comm_remote*");
     /*
      * wishlist_counts = <{3,3,1},{3,2,1},{1,0,4}>
      * comm_remotePE   = <{0,0,1,2,0,1,1},{0,0,2,0,1,1},{2,2,0,2,2}>
@@ -600,17 +631,19 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
 
     for (i=0;i<nprocs;i++) item_from[i] = 0;
 
+    GHOST_INSTR_START("wishlist");
     for (i=0;i<ctx->lnEnts[me];i++){
         wishlist[comm_remotePE[i]][item_from[comm_remotePE[i]]] = comm_remoteEl[i];
         item_from[comm_remotePE[i]]++;
     }
+    GHOST_INSTR_STOP("wishlist");
     /*
      * wishlist  = <{{0,1,1},{1,0,1},{0}},{{0,1,1},{0,1},{1}},{{0},NULL,{0,1,0,1}}> local column idx of wishes
      * item_from = <{3,3,1},{3,2,1},{1,0,4}> equal to wishlist_counts
      */
 
 
-
+    GHOST_INSTR_START("wishes");
     for (i=0; i<nprocs; i++) {
         for (j=0; j<max_loc_elements; j++) 
             present_values[j] = -1;
@@ -640,12 +673,15 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
     MPI_CALL_GOTO(MPI_Allgather(ctx->wishes, nprocs, ghost_mpi_dt_lidx, tmp_transfers, 
                 nprocs, ghost_mpi_dt_lidx, ctx->mpicomm),err,ret);
 #endif
-
+    GHOST_INSTR_STOP("wishes");
+    
+    GHOST_INSTR_START("dues");
     for (i=0; i<nprocs; i++) {
         ctx->dues[i] = tmp_transfers[i*nprocs+me];
     }
 
     ctx->dues[me] = 0; 
+    GHOST_INSTR_STOP("dues");
     
     /* 
      * ctx->dues = <{0,2,1},{2,0,0},{1,1,0}>
@@ -676,6 +712,7 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
     ghost_lidx_t tt = 0;
     i = me;
     int meHandled = 0;
+    GHOST_INSTR_START("compress_cols")
 
     /*
      * col[i] = <{0,1,3,4,1,2,3},{0,1,5,1,2,3},{4,5,0,4,5}>
@@ -709,6 +746,7 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
              * 2nd iter: myrevcol = <{2,#},{#,2},{#,#}>
              */
 
+#pragma omp parallel for
             for (;t<ctx->lnEnts[me];t++) {
                 if (comm_remotePE[t] == i) { // local element for rank i
                     col[t] =  pseudocol[myrevcol[col_orig[t]-ctx->lfRow[i]]];
@@ -716,6 +754,7 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
             }
             free(myrevcol); myrevcol = NULL;
         } else { // first i iteration goes here
+#pragma omp parallel for
             for (;t<ctx->lnEnts[me];t++) {
                 if (comm_remotePE[t] == me) { // local element for myself
                     col[t] =  comm_remoteEl[t];
@@ -734,6 +773,7 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
 
 
     }
+    GHOST_INSTR_STOP("compress_cols")
     /*
      * col[i] = <{0,1,2,4,1,3,2},{2,3,4,3,0,1},{0,1,2,0,1}>
      */
