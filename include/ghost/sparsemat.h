@@ -75,6 +75,7 @@ typedef struct
     void *val;
     ghost_lidx_t *rpt;
     size_t dtsize;
+    ghost_gidx_t offs;
 } 
 ghost_sparsemat_rowfunc_crs_arg;
 
@@ -456,11 +457,13 @@ struct ghost_sparsemat_t
      * @brief Create the matrix from CRS data.
      *
      * @param mat The matrix. 
+     * @param offs The global index of this rank's first row.
+     * @param n The local number of rows.
      * @param col The (global) column indices.
      * @param val The values.
      * @param rpt The row pointers.
      */
-    ghost_error_t (*fromCRS)(ghost_sparsemat_t *mat, ghost_gidx_t n, ghost_gidx_t *col, void *val, ghost_lidx_t *rpt);
+    ghost_error_t (*fromCRS)(ghost_sparsemat_t *mat, ghost_gidx_t offs, ghost_gidx_t n, ghost_gidx_t *col, void *val, ghost_lidx_t *rpt);
     /**
      * @brief Create the matrix from a function which defined the matrix row 
      * by row.
@@ -721,15 +724,14 @@ extern "C" {
      */
     void ghost_sparsemat_destroy_common(ghost_sparsemat_t *mat);
 
-    int ghost_cmp_entsperrow(const void* a, const void* b);
 
     ghost_error_t ghost_sparsemat_from_bincrs(ghost_sparsemat_t *mat, char *path);
     ghost_error_t ghost_sparsemat_from_mm(ghost_sparsemat_t *mat, char *path);
-    ghost_error_t ghost_sparsemat_from_crs(ghost_sparsemat_t *mat, ghost_gidx_t n, ghost_gidx_t *col, void *val, ghost_lidx_t *rpt);
+    ghost_error_t ghost_sparsemat_from_crs(ghost_sparsemat_t *mat, ghost_gidx_t offs, ghost_gidx_t n, ghost_gidx_t *col, void *val, ghost_lidx_t *rpt);
 
     ghost_error_t ghost_sparsemat_perm_global_cols(ghost_gidx_t *cols, ghost_lidx_t ncols, ghost_context_t *context);
 
-    ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rlp, ghost_lidx_t *cl, ghost_lidx_t *clp, ghost_lidx_t *chunkptr, char **val, ghost_gidx_t **col, ghost_sparsemat_src_rowfunc_t *src, ghost_sparsemat_t *mat, ghost_lidx_t C, ghost_lidx_t P);
+    ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rlp, ghost_lidx_t *cl, ghost_lidx_t *clp, ghost_lidx_t **chunkptr, char **val, ghost_gidx_t **col, ghost_sparsemat_src_rowfunc_t *src, ghost_sparsemat_t *mat, ghost_lidx_t C, ghost_lidx_t P);
 
     static inline int ghost_sparsemat_rowfunc_crs(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, void *val, void *crsdata)
 {
@@ -737,10 +739,11 @@ extern "C" {
     ghost_lidx_t *crsrpt = ((ghost_sparsemat_rowfunc_crs_arg *)crsdata)->rpt;
     char *crsval = (char *)((ghost_sparsemat_rowfunc_crs_arg *)crsdata)->val;
     size_t dtsize = ((ghost_sparsemat_rowfunc_crs_arg *)crsdata)->dtsize;
+    ghost_gidx_t offs = ((ghost_sparsemat_rowfunc_crs_arg *)crsdata)->offs;
 
-    *rowlen = crsrpt[row+1]-crsrpt[row];
-    memcpy(col,&crscol[crsrpt[row]],*rowlen * sizeof(ghost_gidx_t));
-    memcpy(val,&crsval[dtsize*crsrpt[row]],*rowlen * dtsize);
+    *rowlen = crsrpt[row-offs+1]-crsrpt[row-offs];
+    memcpy(col,&crscol[crsrpt[row-offs]],*rowlen * sizeof(ghost_gidx_t));
+    memcpy(val,&crsval[dtsize*crsrpt[row-offs]],*rowlen * dtsize);
 
     return 0;
 }
