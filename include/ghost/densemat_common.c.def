@@ -214,6 +214,7 @@ static ghost_error_t FUNCNAME(viewScatteredCols(ghost_densemat_t *src, ghost_den
 
 static ghost_error_t FUNCNAME(viewScatteredVec(ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nr, ghost_lidx_t *roffs, ghost_lidx_t nc, ghost_lidx_t *coffs))
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     DEBUG_LOG(1,"Viewing a %"PRLIDX"x%"PRLIDX" scattered dense matrix",src->traits.nrows,nc);
     ghost_lidx_t i;
     ghost_densemat_traits_t newTraits = src->traits;
@@ -251,6 +252,7 @@ static ghost_error_t FUNCNAME(viewScatteredVec(ghost_densemat_t *src, ghost_dens
         (*new)->cu_val = DENSEMAT_CUVALPTR(src,roffs[0],coffs[0]);
     }
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
     return GHOST_SUCCESS;
 }
 
@@ -332,12 +334,14 @@ out:
 
 static ghost_error_t FUNCNAME(entry(ghost_densemat_t * vec, void *val, ghost_lidx_t r, ghost_lidx_t c)) 
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     ghost_densemat_t *singleent;
     GHOST_CALL_RETURN(vec->viewVec(vec,&singleent,1,r,1,c));
     memcpy(val,singleent->val,singleent->elSize);
 
     singleent->destroy(singleent);
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
     return GHOST_SUCCESS;
 }
 
@@ -378,7 +382,12 @@ static ghost_error_t FUNCNAME(reduce(ghost_densemat_t * vec_in, ghost_mpi_comm_t
     GHOST_CALL_GOTO(ghost_rank(&myrank,comm),err,ret);
 
     if (root == GHOST_ALLREDUCE) {
+        GHOST_INSTR_START("barrier");
+        MPI_CALL_GOTO(MPI_Barrier(comm),err,ret);
+        GHOST_INSTR_STOP("barrier");
+        GHOST_INSTR_START("actualreduce");
         MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,vec->val,1,vecDt,sumOp,comm),err,ret);
+        GHOST_INSTR_STOP("actualreduce");
     } else {
         if (myrank == root) {
             MPI_CALL_GOTO(MPI_Reduce(MPI_IN_PLACE,vec->val,1,vecDt,sumOp,root,comm),err,ret);
