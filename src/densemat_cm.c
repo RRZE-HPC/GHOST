@@ -984,6 +984,7 @@ static ghost_error_t densemat_cm_halocommFinalize(ghost_densemat_t *vec, ghost_d
     if ((vec->traits.ncols > 1) && (vec->traits.location & GHOST_LOCATION_HOST)) {
         GHOST_INSTR_START("re-order from col-major");
         for (from_PE=0; from_PE<nprocs; from_PE++){
+#pragma omp parallel for private(c)
             for (i=0; i<vec->context->wishes[from_PE]; i++){
                 for (c=0; c<vec->traits.ncols; c++) {
                     memcpy(DENSEMAT_VALPTR(vec,vec->context->hput_pos[from_PE]+i,c),&comm->tmprecv[from_PE][(i*vec->traits.ncols+c)*vec->elSize],vec->elSize);
