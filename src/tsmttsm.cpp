@@ -145,7 +145,7 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
             p.alignment = GHOST_UNALIGNED;
             PERFWARNING_LOG("Switching to the unaligned kernel!");
         }
-        if ( (v->traits.nrowspadded*v->elSize)%16 || (w->traits.nrowspadded*w->elSize)%16 ) {
+        if ( (v->traits.nrowspadded*v->elSize)%32 || (w->traits.nrowspadded*w->elSize)%32 ) {
             p.alignment = GHOST_UNALIGNED;
             p.impl = GHOST_IMPLEMENTATION_PLAIN;
             PERFWARNING_LOG("Switching to the unaligned plain kernel!");
