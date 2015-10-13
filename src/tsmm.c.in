@@ -3,9 +3,12 @@
 #include "ghost/math.h"
 #include "ghost/instr.h"
 #include "ghost/util.h"
+#include "ghost/omp.h"
+#include "ghost/locality.h"
 #include "ghost/tsmm_gen.h"
 #include <math.h>
 #include <float.h>
+#include <omp.h>
 
 #GHOST_FUNC_BEGIN#CFGK=${CFG_BLOCKVECTOR_SIZES}#CFGM=${CFG_BLOCKVECTOR_SIZES}
 ghost_error_t ghost_tsmm__a_plain_d_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
@@ -145,8 +148,8 @@ ghost_error_t ghost_tsmm__a_plain_d_CFGK_CFGM_cm_cm(ghost_densemat_t *x, ghost_d
     ghost_lidx_t m = v->traits.ncols;
     ghost_lidx_t n = v->traits.nrows;
     
-    if (n%4) {
-        n+=(4-n%4);
+    if (n%8) {
+        n+=(8-n%8);
         INFO_LOG("Padding large dimension to %d\n",n);
     }
 
@@ -164,32 +167,99 @@ ghost_error_t ghost_tsmm__a_plain_d_CFGK_CFGM_cm_cm(ghost_densemat_t *x, ghost_d
     const double dbeta = *(double *)beta;
     ghost_lidx_t i,j,s,t;
     
-#pragma omp parallel 
-    {
-    double *tmp;
-    ghost_malloc((void **)&tmp,4*sizeof(double));
-    
-#pragma omp for private(j,s,t) schedule(runtime)
-    for (i=0; i<=n-4; i+=4) {
-        for (s=0; s<CFGK; s++) {
-#pragma simd
-            for (t=0; t<4; t++) {
-                tmp[t] = dbeta*xval[s*ldx+i+t];
-            }
-            for (j=0; j<CFGM; j++) {
-#pragma simd
-                for (t=0; t<4; t++) {
-                    tmp[t] += dalpha*vval[j*ldv+i+t]*wval[s*ldw+j];
-                }
-            }
-#pragma simd
-            for (t=0; t<4; t++) {
-                xval[s*ldx+i+t] = tmp[t];
-            }
+    double *wscale;
+    ghost_malloc_align((void **)&wscale,CFGM*CFGK*sizeof(double),64);
+        
+    for (s=0; s<CFGK; s++) {
+        for (j=0; j<CFGM; j++) {
+            wscale[s*CFGM+j] = dalpha*wval[s*ldw+j];
         }
     }
-    free(tmp);
+    
+  
+    if (fabs(dbeta) > DBL_MIN) { 
+#pragma omp parallel 
+        {
+            double *tmp;
+            ghost_malloc_align((void **)&tmp,8*sizeof(double),64);
+            
+#pragma omp for private(j,s,t) schedule(runtime)
+            for (i=0; i<=n-8; i+=8) {
+
+#pragma unroll_and_jam(MIN(16,CFGK))
+                for (s=0; s<CFGK; s++) {
+
+#pragma vector aligned
+#pragma simd
+                    for (t=0; t<8; t++) {
+                        tmp[t] = dbeta*xval[s*ldx+i+t];
+                    }
+
+#pragma unroll_and_jam(MIN(16,CFGM))
+                    for (j=0; j<CFGM; j++) {
+                        double wtmp = wscale[s*CFGM+j];
+
+#pragma vector always
+#pragma ivdep
+#pragma vector aligned
+#pragma simd
+                        for (t=0; t<8; t++) {
+                            tmp[t] += vval[j*ldv+i+t]*wtmp;
+                        }
+                    }
+
+#pragma vector aligned
+#pragma simd
+                    for (t=0; t<8; t++) {
+                        xval[s*ldx+i+t] = tmp[t];
+                    }
+                }
+            }
+            free(tmp);
+        }
+    } else {
+#pragma omp parallel 
+        {
+            double *tmp;
+            ghost_malloc_align((void **)&tmp,8*sizeof(double),64);
+            
+#pragma omp for private(j,s,t) schedule(runtime)
+            for (i=0; i<=n-8; i+=8) {
+
+#pragma unroll_and_jam(MIN(16,CFGK))
+                for (s=0; s<CFGK; s++) {
+
+#pragma vector aligned
+#pragma simd
+                    for (t=0; t<8; t++) {
+                        tmp[t] = 0.;
+                    }
+
+#pragma unroll_and_jam(MIN(16,CFGM))
+                    for (j=0; j<CFGM; j++) {
+                        double wtmp = wscale[s*CFGM+j];
+
+#pragma vector always
+#pragma ivdep
+#pragma vector aligned
+#pragma simd
+                        for (t=0; t<8; t++) {
+                            tmp[t] += vval[j*ldv+i+t]*wtmp;
+                        }
+                    }
+
+#pragma vector nontemporal
+#pragma vector aligned
+#pragma simd
+                    for (t=0; t<8; t++) {
+                        xval[s*ldx+i+t] = tmp[t];
+                    }
+                }
+            }
+            free(tmp);
+        }
     }
+
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
     return ret;
@@ -206,8 +276,8 @@ ghost_error_t ghost_tsmm__u_plain_d_CFGK_CFGM_cm_cm(ghost_densemat_t *x, ghost_d
     ghost_lidx_t m = v->traits.ncols;
     ghost_lidx_t n = v->traits.nrows;
     
-    if (n%4) {
-        n+=(4-n%4);
+    if (n%8) {
+        n+=(8-n%8);
         INFO_LOG("Padding large dimension to %d\n",n);
     }
 
@@ -225,32 +295,56 @@ ghost_error_t ghost_tsmm__u_plain_d_CFGK_CFGM_cm_cm(ghost_densemat_t *x, ghost_d
     const double dbeta = *(double *)beta;
     ghost_lidx_t i,j,s,t;
     
+    double *wscale;
+    ghost_malloc((void **)&wscale,CFGM*CFGK*sizeof(double));
+        
+    for (s=0; s<CFGK; s++) {
+        for (j=0; j<CFGM; j++) {
+            wscale[s*CFGM+j] = dalpha*wval[s*ldw+j];
+        }
+    }
+    
 #pragma omp parallel 
     {
     double *tmp;
-    ghost_malloc((void **)&tmp,4*sizeof(double));
+    ghost_malloc_align((void **)&tmp,8*sizeof(double),64);
     
 #pragma omp for private(j,s,t) schedule(runtime)
-    for (i=0; i<=n-4; i+=4) {
+    for (i=0; i<=n-8; i+=8) {
+
+#pragma unroll_and_jam(MIN(16,CFGK))
         for (s=0; s<CFGK; s++) {
+
+#pragma vector unaligned
 #pragma simd
-            for (t=0; t<4; t++) {
+            for (t=0; t<8; t++) {
                 tmp[t] = dbeta*xval[s*ldx+i+t];
             }
+
+#pragma unroll_and_jam(MIN(16,CFGM))
             for (j=0; j<CFGM; j++) {
+
+#pragma vector always
+#pragma ivdep
+#pragma vector unaligned
 #pragma simd
-                for (t=0; t<4; t++) {
-                    tmp[t] += dalpha*vval[j*ldv+i+t]*wval[s*ldw+j];
+                for (t=0; t<8; t++) {
+                    tmp[t] += vval[j*ldv+i+t]*wscale[s*CFGM+j];
                 }
             }
+
+#pragma vector always
+#pragma ivdep
+#pragma vector unaligned
 #pragma simd
-            for (t=0; t<4; t++) {
+            for (t=0; t<8; t++) {
                 xval[s*ldx+i+t] = tmp[t];
             }
         }
     }
     free(tmp);
     }
+    free(wscale);
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
     return ret;
@@ -489,7 +583,6 @@ ghost_error_t ghost_tsmm__u_plain_z_x_x_cm_cm(ghost_densemat_t *x, ghost_densema
             for (s=0; s<w->traits.ncols; s++) {
                 xval[s*ldx+i] = dbeta*xval[s*ldx+i];
 #pragma simd
-#pragma vector aligned
 #pragma vector always
 #pragma ivdep
                 for (j=0; j<m; j++) {
@@ -503,7 +596,6 @@ ghost_error_t ghost_tsmm__u_plain_z_x_x_cm_cm(ghost_densemat_t *x, ghost_densema
 #pragma omp parallel for private(j,s) schedule(runtime)
         for (i=0; i<n; i++) {
 #pragma simd
-#pragma vector aligned
 #pragma vector always
 #pragma ivdep
             for (s=0; s<w->traits.ncols; s++) {
@@ -511,7 +603,6 @@ ghost_error_t ghost_tsmm__u_plain_z_x_x_cm_cm(ghost_densemat_t *x, ghost_densema
             }
             for (j=0; j<m; j++) {
 #pragma simd
-#pragma vector aligned
 #pragma vector always
 #pragma ivdep
                 for (s=0; s<w->traits.ncols; s++) {
