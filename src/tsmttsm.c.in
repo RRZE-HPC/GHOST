@@ -55,9 +55,8 @@ ghost_error_t ghost_tsmttsm__a_plain_d_x_x_cm_rm(ghost_densemat_t *x, ghost_dens
 #pragma omp parallel private(j,k)
     {
         double *x_priv;
-        ghost_lidx_t ldxpriv = PAD(K,4);
-        ghost_malloc_align((void **)&x_priv,m*ldxpriv*sizeof(double),64);
-        memset(x_priv,0,m*ldxpriv*sizeof(double));
+        ghost_malloc_align((void **)&x_priv,m*K*sizeof(double),32);
+        memset(x_priv,0,m*K*sizeof(double));
 #pragma omp for schedule(runtime)
         for (i=0; i<n; i++) {
 #pragma vector aligned
@@ -66,7 +65,7 @@ ghost_error_t ghost_tsmttsm__a_plain_d_x_x_cm_rm(ghost_densemat_t *x, ghost_dens
             for (k=0; k<K; k++) {
 #pragma unroll_and_jam
               for (j=0; j<m; j++) {
-                    x_priv[j*ldxpriv+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
+                    x_priv[j*K+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
                 }
             }
 
@@ -79,7 +78,7 @@ ghost_error_t ghost_tsmttsm__a_plain_d_x_x_cm_rm(ghost_densemat_t *x, ghost_dens
             for (k=0; k<K; k++) {
 #pragma unroll_and_jam
                 for (j=0; j<m; j++) {
-                    xval[k*ldx+j] += x_priv[j*ldxpriv+k];
+                    xval[k*ldx+j] += x_priv[j*K+k];
                 }
             }
         }
@@ -143,7 +142,7 @@ ghost_error_t ghost_tsmttsm__u_plain_d_x_x_cm_rm(ghost_densemat_t *x, ghost_dens
 #pragma omp parallel private(j,k)
     {
         double *x_priv;
-        ghost_malloc((void **)&x_priv,m*K*sizeof(double));
+        ghost_malloc_align((void **)&x_priv,m*K*sizeof(double),32);
         memset(x_priv,0,m*K*sizeof(double));
 #pragma omp for schedule(runtime)
         for (i=0; i<n; i++) {
@@ -230,9 +229,8 @@ ghost_error_t ghost_tsmttsm__a_plain_d_x_x_rm_rm(ghost_densemat_t *x, ghost_dens
 #pragma omp parallel private(j,k)
     {
         double *x_priv;
-        ghost_lidx_t ldxpriv = PAD(K,4);
-        ghost_malloc_align((void **)&x_priv,m*ldxpriv*sizeof(double),64);
-        memset(x_priv,0,m*ldxpriv*sizeof(double));
+        ghost_malloc((void **)&x_priv,m*K*sizeof(double));
+        memset(x_priv,0,m*K*sizeof(double));
 #pragma omp for schedule(runtime)
         for (i=0; i<n; i++) {
             for (j=0; j<m; j++) {
@@ -242,7 +240,7 @@ ghost_error_t ghost_tsmttsm__a_plain_d_x_x_rm_rm(ghost_densemat_t *x, ghost_dens
 #pragma ivdep
 #pragma unroll
                 for (k=0; k<K; k++) {
-                    x_priv[j*ldxpriv+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
+                    x_priv[j*K+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
                 }
             }
 
@@ -255,7 +253,7 @@ ghost_error_t ghost_tsmttsm__a_plain_d_x_x_rm_rm(ghost_densemat_t *x, ghost_dens
 #pragma ivdep
 #pragma unroll
             for (k=0; k<K; k++) {
-                xval[j*ldx+k] += x_priv[j*ldxpriv+k];
+                xval[j*ldx+k] += x_priv[j*K+k];
             }
         }
         free(x_priv);
@@ -318,7 +316,7 @@ ghost_error_t ghost_tsmttsm__u_plain_d_x_x_cm_cm(ghost_densemat_t *x, ghost_dens
 #pragma omp parallel private(j,k)
     {
         double *x_priv;
-        ghost_malloc((void **)&x_priv,m*K*sizeof(double));
+        ghost_malloc_align((void **)&x_priv,m*K*sizeof(double),64);
         memset(x_priv,0,m*K*sizeof(double));
 #pragma omp for schedule(runtime)
         for (i=0; i<n; i++) {
@@ -405,31 +403,26 @@ ghost_error_t ghost_tsmttsm__a_plain_d_x_x_cm_cm(ghost_densemat_t *x, ghost_dens
 #pragma omp parallel private(j,k)
     {
         double *x_priv;
-        ghost_lidx_t ldxpriv = PAD(K,4);
-        ghost_malloc_align((void **)&x_priv,m*ldxpriv*sizeof(double),64);
-        memset(x_priv,0,m*ldxpriv*sizeof(double));
+        ghost_malloc_align((void **)&x_priv,m*K*sizeof(double),64);
+        memset(x_priv,0,m*K*sizeof(double));
 #pragma omp for schedule(runtime)
         for (i=0; i<n; i++) {
-#pragma vector aligned
-#pragma ivdep
-#pragma simd
             for (k=0; k<K; k++) {
-#pragma unroll_and_jam
+#pragma vector aligned
+#pragma simd
               for (j=0; j<m; j++) {
-                    x_priv[j*ldxpriv+k] += dalpha*vval[j*ldv+i]*wval[k*ldw+i];
+                    x_priv[j*K+k] += dalpha*vval[j*ldv+i]*wval[k*ldw+i];
                 }
             }
 
         }
 #pragma omp critical
         {
-#pragma vector aligned
-#pragma ivdep
-#pragma simd
             for (k=0; k<K; k++) {
-#pragma unroll_and_jam
+#pragma vector aligned
+#pragma simd
                 for (j=0; j<m; j++) {
-                    xval[k*ldx+j] += x_priv[j*ldxpriv+k];
+                    xval[k*ldx+j] += x_priv[j*K+k];
                 }
             }
         }
@@ -497,9 +490,8 @@ ghost_error_t ghost_tsmttsm__a_plain_z_x_x_cm_rm(ghost_densemat_t *x, ghost_dens
 #pragma omp parallel private(j,k)
     {
         complex double *x_priv;
-        ghost_lidx_t ldxpriv = PAD(K,2);
-        ghost_malloc_align((void **)&x_priv,m*ldxpriv*sizeof(complex double),64);
-        memset(x_priv,0,m*ldxpriv*sizeof(complex double));
+        ghost_malloc((void **)&x_priv,m*K*sizeof(complex double));
+        memset(x_priv,0,m*K*sizeof(complex double));
 
         if (conjv) {
 #pragma omp for schedule(runtime)
@@ -507,7 +499,7 @@ ghost_error_t ghost_tsmttsm__a_plain_z_x_x_cm_rm(ghost_densemat_t *x, ghost_dens
 #pragma simd
                 for (k=0; k<K; k++) {
                   for (j=0; j<m; j++) {
-                        x_priv[j*ldxpriv+k] += dalpha*conj(vval[i*ldv+j])*wval[i*ldw+k];
+                        x_priv[j*K+k] += dalpha*conj(vval[i*ldv+j])*wval[i*ldw+k];
                     }
                 }
 
@@ -518,7 +510,7 @@ ghost_error_t ghost_tsmttsm__a_plain_z_x_x_cm_rm(ghost_densemat_t *x, ghost_dens
 #pragma simd
                 for (k=0; k<K; k++) {
                   for (j=0; j<m; j++) {
-                        x_priv[j*ldxpriv+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
+                        x_priv[j*K+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
                     }
                 }
 
@@ -528,7 +520,7 @@ ghost_error_t ghost_tsmttsm__a_plain_z_x_x_cm_rm(ghost_densemat_t *x, ghost_dens
 #pragma simd
         for (k=0; k<K; k++) {
             for (j=0; j<m; j++) {
-                xval[k*ldx+j] += x_priv[j*ldxpriv+k];
+                xval[k*ldx+j] += x_priv[j*K+k];
             }
         }
         free(x_priv);
@@ -595,9 +587,8 @@ ghost_error_t ghost_tsmttsm__a_plain_c_x_x_cm_rm(ghost_densemat_t *x, ghost_dens
 #pragma omp parallel private(j,k)
     {
         complex float *x_priv;
-        ghost_lidx_t ldxpriv = PAD(K,4);
-        ghost_malloc_align((void **)&x_priv,m*ldxpriv*sizeof(complex float),64);
-        memset(x_priv,0,m*ldxpriv*sizeof(complex float));
+        ghost_malloc((void **)&x_priv,m*K*sizeof(complex float));
+        memset(x_priv,0,m*K*sizeof(complex float));
 
         if (conjv) {
 #pragma omp for schedule(runtime)
@@ -605,7 +596,7 @@ ghost_error_t ghost_tsmttsm__a_plain_c_x_x_cm_rm(ghost_densemat_t *x, ghost_dens
 #pragma simd
                 for (k=0; k<K; k++) {
                   for (j=0; j<m; j++) {
-                        x_priv[j*ldxpriv+k] += dalpha*conjf(vval[i*ldv+j])*wval[i*ldw+k];
+                        x_priv[j*K+k] += dalpha*conjf(vval[i*ldv+j])*wval[i*ldw+k];
                     }
                 }
 
@@ -616,7 +607,7 @@ ghost_error_t ghost_tsmttsm__a_plain_c_x_x_cm_rm(ghost_densemat_t *x, ghost_dens
 #pragma simd
                 for (k=0; k<K; k++) {
                   for (j=0; j<m; j++) {
-                        x_priv[j*ldxpriv+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
+                        x_priv[j*K+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
                     }
                 }
 
@@ -626,7 +617,7 @@ ghost_error_t ghost_tsmttsm__a_plain_c_x_x_cm_rm(ghost_densemat_t *x, ghost_dens
 #pragma simd
         for (k=0; k<K; k++) {
             for (j=0; j<m; j++) {
-                xval[k*ldx+j] += x_priv[j*ldxpriv+k];
+                xval[k*ldx+j] += x_priv[j*K+k];
             }
         }
         free(x_priv);
@@ -693,9 +684,8 @@ ghost_error_t ghost_tsmttsm__a_plain_z_x_x_rm_rm(ghost_densemat_t *x, ghost_dens
 #pragma omp parallel private(j,k)
     {
         complex double *x_priv;
-        ghost_lidx_t ldxpriv = PAD(K,2);
-        ghost_malloc_align((void **)&x_priv,m*ldxpriv*sizeof(complex double),64);
-        memset(x_priv,0,m*ldxpriv*sizeof(complex double));
+        ghost_malloc((void **)&x_priv,m*K*sizeof(complex double));
+        memset(x_priv,0,m*K*sizeof(complex double));
         
         if (conjv) {
 #pragma omp for schedule(runtime)
@@ -707,7 +697,7 @@ ghost_error_t ghost_tsmttsm__a_plain_z_x_x_rm_rm(ghost_densemat_t *x, ghost_dens
 #pragma ivdep
 #pragma unroll
                     for (k=0; k<K; k++) {
-                        x_priv[j*ldxpriv+k] += dalpha*conj(vval[i*ldv+j])*wval[i*ldw+k];
+                        x_priv[j*K+k] += dalpha*conj(vval[i*ldv+j])*wval[i*ldw+k];
                     }
                 }
             }
@@ -721,7 +711,7 @@ ghost_error_t ghost_tsmttsm__a_plain_z_x_x_rm_rm(ghost_densemat_t *x, ghost_dens
 #pragma ivdep
 #pragma unroll
                     for (k=0; k<K; k++) {
-                        x_priv[j*ldxpriv+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
+                        x_priv[j*K+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
                     }
                 }
             }
@@ -735,7 +725,7 @@ ghost_error_t ghost_tsmttsm__a_plain_z_x_x_rm_rm(ghost_densemat_t *x, ghost_dens
 #pragma ivdep
 #pragma unroll
             for (k=0; k<K; k++) {
-                xval[j*ldx+k] += x_priv[j*ldxpriv+k];
+                xval[j*ldx+k] += x_priv[j*K+k];
             }
         }
         free(x_priv);
@@ -802,9 +792,8 @@ ghost_error_t ghost_tsmttsm__a_plain_z_x_x_cm_cm(ghost_densemat_t *x, ghost_dens
 #pragma omp parallel private(j,k)
     {
         complex double *x_priv;
-        ghost_lidx_t ldxpriv = PAD(K,2);
-        ghost_malloc_align((void **)&x_priv,m*ldxpriv*sizeof(complex double),64);
-        memset(x_priv,0,m*ldxpriv*sizeof(complex double));
+        ghost_malloc((void **)&x_priv,m*K*sizeof(complex double));
+        memset(x_priv,0,m*K*sizeof(complex double));
 
         if (conjv) {
 #pragma omp for schedule(runtime)
@@ -812,7 +801,7 @@ ghost_error_t ghost_tsmttsm__a_plain_z_x_x_cm_cm(ghost_densemat_t *x, ghost_dens
 #pragma simd
                 for (k=0; k<K; k++) {
                   for (j=0; j<m; j++) {
-                        x_priv[j*ldxpriv+k] += dalpha*conj(vval[j*ldv+i])*wval[k*ldw+i];
+                        x_priv[j*K+k] += dalpha*conj(vval[j*ldv+i])*wval[k*ldw+i];
                     }
                 }
 
@@ -823,7 +812,7 @@ ghost_error_t ghost_tsmttsm__a_plain_z_x_x_cm_cm(ghost_densemat_t *x, ghost_dens
 #pragma simd
                 for (k=0; k<K; k++) {
                   for (j=0; j<m; j++) {
-                        x_priv[j*ldxpriv+k] += dalpha*vval[j*ldv+i]*wval[k*ldw+i];
+                        x_priv[j*K+k] += dalpha*vval[j*ldv+i]*wval[k*ldw+i];
                     }
                 }
 
@@ -833,7 +822,7 @@ ghost_error_t ghost_tsmttsm__a_plain_z_x_x_cm_cm(ghost_densemat_t *x, ghost_dens
 #pragma simd
         for (k=0; k<K; k++) {
             for (j=0; j<m; j++) {
-                xval[k*ldx+j] += x_priv[j*ldxpriv+k];
+                xval[k*ldx+j] += x_priv[j*K+k];
             }
         }
         free(x_priv);
@@ -896,9 +885,8 @@ ghost_error_t ghost_tsmttsm__a_plain_d_x_CFGM_cm_rm(ghost_densemat_t *x, ghost_d
 #pragma omp parallel private(j,k)
     {
         double *x_priv;
-        ghost_lidx_t ldxpriv = PAD(K,4);
-        ghost_malloc_align((void **)&x_priv,CFGM*ldxpriv*sizeof(double),64);
-        memset(x_priv,0,CFGM*ldxpriv*sizeof(double));
+        ghost_malloc((void **)&x_priv,CFGM*K*sizeof(double));
+        memset(x_priv,0,CFGM*K*sizeof(double));
 #pragma omp for schedule(runtime)
         for (i=0; i<n; i++) {
 #pragma vector aligned
@@ -907,7 +895,7 @@ ghost_error_t ghost_tsmttsm__a_plain_d_x_CFGM_cm_rm(ghost_densemat_t *x, ghost_d
             for (k=0; k<K; k++) {
 #pragma unroll_and_jam
               for (j=0; j<CFGM; j++) {
-                    x_priv[j*ldxpriv+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
+                    x_priv[j*K+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
                 }
             }
 
@@ -920,7 +908,7 @@ ghost_error_t ghost_tsmttsm__a_plain_d_x_CFGM_cm_rm(ghost_densemat_t *x, ghost_d
             for (k=0; k<K; k++) {
 #pragma unroll_and_jam
                 for (j=0; j<CFGM; j++) {
-                    xval[k*ldx+j] += x_priv[j*ldxpriv+k];
+                    xval[k*ldx+j] += x_priv[j*K+k];
                 }
             }
         }
@@ -985,9 +973,8 @@ ghost_error_t ghost_tsmttsm__a_plain_d_x_CFGM_rm_rm(ghost_densemat_t *x, ghost_d
 #pragma omp parallel private(j,k)
     {
         double *x_priv;
-        ghost_lidx_t ldxpriv = PAD(K,4);
-        ghost_malloc_align((void **)&x_priv,CFGM*ldxpriv*sizeof(double),64);
-        memset(x_priv,0,CFGM*ldxpriv*sizeof(double));
+        ghost_malloc((void **)&x_priv,CFGM*K*sizeof(double));
+        memset(x_priv,0,CFGM*K*sizeof(double));
 #pragma omp for schedule(runtime)
         for (i=0; i<n; i++) {
 #pragma vector aligned
@@ -996,7 +983,7 @@ ghost_error_t ghost_tsmttsm__a_plain_d_x_CFGM_rm_rm(ghost_densemat_t *x, ghost_d
             for (k=0; k<K; k++) {
 #pragma unroll_and_jam
               for (j=0; j<CFGM; j++) {
-                    x_priv[j*ldxpriv+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
+                    x_priv[j*K+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
                 }
             }
 
@@ -1009,7 +996,7 @@ ghost_error_t ghost_tsmttsm__a_plain_d_x_CFGM_rm_rm(ghost_densemat_t *x, ghost_d
             for (k=0; k<K; k++) {
 #pragma unroll_and_jam
                 for (j=0; j<CFGM; j++) {
-                    xval[k*ldx+j] += x_priv[j*ldxpriv+k];
+                    xval[k*ldx+j] += x_priv[j*K+k];
                 }
             }
         }
@@ -1077,9 +1064,8 @@ ghost_error_t ghost_tsmttsm__a_plain_d_CFGK_x_cm_rm(ghost_densemat_t *x, ghost_d
 #pragma omp parallel private(j,k)
     {
         double *x_priv;
-        ghost_lidx_t ldxpriv = PAD(CFGK,4);
-        ghost_malloc_align((void **)&x_priv,m*ldxpriv*sizeof(double),64);
-        memset(x_priv,0,m*ldxpriv*sizeof(double));
+        ghost_malloc((void **)&x_priv,m*CFGK*sizeof(double));
+        memset(x_priv,0,m*CFGK*sizeof(double));
 #pragma omp for schedule(runtime)
         for (i=0; i<n; i++) {
 #pragma vector aligned
@@ -1088,7 +1074,7 @@ ghost_error_t ghost_tsmttsm__a_plain_d_CFGK_x_cm_rm(ghost_densemat_t *x, ghost_d
             for (k=0; k<CFGK; k++) {
 #pragma unroll_and_jam
               for (j=0; j<m; j++) {
-                    x_priv[j*ldxpriv+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
+                    x_priv[j*CFGK+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
                 }
             }
 
@@ -1101,7 +1087,7 @@ ghost_error_t ghost_tsmttsm__a_plain_d_CFGK_x_cm_rm(ghost_densemat_t *x, ghost_d
             for (k=0; k<CFGK; k++) {
 #pragma unroll_and_jam
                 for (j=0; j<m; j++) {
-                    xval[k*ldx+j] += x_priv[j*ldxpriv+k];
+                    xval[k*ldx+j] += x_priv[j*CFGK+k];
                 }
             }
         }
@@ -1169,9 +1155,8 @@ ghost_error_t ghost_tsmttsm__a_plain_d_CFGK_x_rm_rm(ghost_densemat_t *x, ghost_d
 #pragma omp parallel private(j,k)
     {
         double *x_priv;
-        ghost_lidx_t ldxpriv = PAD(CFGK,4);
-        ghost_malloc_align((void **)&x_priv,m*ldxpriv*sizeof(double),64);
-        memset(x_priv,0,m*ldxpriv*sizeof(double));
+        ghost_malloc((void **)&x_priv,m*CFGK*sizeof(double));
+        memset(x_priv,0,m*CFGK*sizeof(double));
 #pragma omp for schedule(runtime)
         for (i=0; i<n; i++) {
 #pragma vector aligned
@@ -1180,7 +1165,7 @@ ghost_error_t ghost_tsmttsm__a_plain_d_CFGK_x_rm_rm(ghost_densemat_t *x, ghost_d
             for (k=0; k<CFGK; k++) {
 #pragma unroll_and_jam
               for (j=0; j<m; j++) {
-                    x_priv[j*ldxpriv+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
+                    x_priv[j*CFGK+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
                 }
             }
 
@@ -1193,7 +1178,7 @@ ghost_error_t ghost_tsmttsm__a_plain_d_CFGK_x_rm_rm(ghost_densemat_t *x, ghost_d
             for (k=0; k<CFGK; k++) {
 #pragma unroll_and_jam
                 for (j=0; j<m; j++) {
-                    xval[k*ldx+j] += x_priv[j*ldxpriv+k];
+                    xval[k*ldx+j] += x_priv[j*CFGK+k];
                 }
             }
         }
@@ -1262,9 +1247,8 @@ ghost_error_t ghost_tsmttsm__a_plain_d_CFGK_CFGM_cm_rm(ghost_densemat_t *x, ghos
 #pragma omp parallel private(j,k)
     {
         double *x_priv;
-        ghost_lidx_t ldxpriv = PAD(CFGK,4);
-        ghost_malloc_align((void **)&x_priv,CFGM*ldxpriv*sizeof(double),64);
-        memset(x_priv,0,CFGM*ldxpriv*sizeof(double));
+        ghost_malloc((void **)&x_priv,CFGM*CFGK*sizeof(double));
+        memset(x_priv,0,CFGM*CFGK*sizeof(double));
 #pragma omp for schedule(runtime)
         for (i=0; i<n; i++) {
 #if CFGK>1
@@ -1275,7 +1259,7 @@ ghost_error_t ghost_tsmttsm__a_plain_d_CFGK_CFGM_cm_rm(ghost_densemat_t *x, ghos
             for (k=0; k<CFGK; k++) {
 #pragma unroll_and_jam
               for (j=0; j<CFGM; j++) {
-                    x_priv[j*ldxpriv+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
+                    x_priv[j*CFGK+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
                 }
             }
 
@@ -1289,7 +1273,7 @@ ghost_error_t ghost_tsmttsm__a_plain_d_CFGK_CFGM_cm_rm(ghost_densemat_t *x, ghos
         for (k=0; k<CFGK; k++) {
 #pragma unroll_and_jam
             for (j=0; j<CFGM; j++) {
-                xval[k*ldx+j] += x_priv[j*ldxpriv+k];
+                xval[k*ldx+j] += x_priv[j*CFGK+k];
             }
         }
         free(x_priv);
@@ -1357,9 +1341,8 @@ ghost_error_t ghost_tsmttsm__a_plain_d_CFGK_CFGM_cm_cm(ghost_densemat_t *x, ghos
 #pragma omp parallel private(j,k,t)
     {
         double *x_priv;
-        ghost_lidx_t ldxpriv = PAD(CFGK,4);
-        ghost_malloc_align((void **)&x_priv,CFGM*ldxpriv*sizeof(double),64);
-        memset(x_priv,0,CFGM*ldxpriv*sizeof(double));
+        ghost_malloc((void **)&x_priv,CFGM*CFGK*sizeof(double));
+        memset(x_priv,0,CFGM*CFGK*sizeof(double));
         
 #pragma omp for schedule(runtime)
         for (i=0; i<=n-4; i+=4) {
@@ -1367,7 +1350,7 @@ ghost_error_t ghost_tsmttsm__a_plain_d_CFGK_CFGM_cm_cm(ghost_densemat_t *x, ghos
                 for (k=0; k<CFGK; k++) {
 #pragma simd
                   for (t=0; t<4; t++) {
-                        x_priv[j*ldxpriv+k] += vval[j*ldv+i+t]*wval[k*ldw+i+t];
+                        x_priv[j*CFGK+k] += vval[j*ldv+i+t]*wval[k*ldw+i+t];
                   }
                 }
             }
@@ -1377,7 +1360,7 @@ ghost_error_t ghost_tsmttsm__a_plain_d_CFGK_CFGM_cm_cm(ghost_densemat_t *x, ghos
         {
             for (j=0; j<CFGM; j++) {
                 for (k=0; k<CFGK; k++) {
-                    xval[k*ldx+j] += dalpha*x_priv[j*ldxpriv+k];
+                    xval[k*ldx+j] += dalpha*x_priv[j*CFGK+k];
                 }
             }
         }
@@ -1392,6 +1375,24 @@ out:
     return ret;
 }
 #GHOST_FUNC_END
+
+
+#if 0
+#GHOST_FUNC_BEGIN#CFGK=${CFG_BLOCKVECTOR_SIZES}#CFGM=${CFG_BLOCKVECTOR_SIZES}
+struct dCFGKxCFGM { double v[CFGK*CFGM]; };
+static void add_CFGKxCFGM(struct dCFGKxCFGM * x,struct dCFGKxCFGM * y){
+      int i;
+        for (i=0;i<CFGK*CFGM;i++) {
+            x->v[i] += y->v[i];
+        }
+}
+#pragma omp declare reduction(dCFGKxCFGMAdd: struct dCFGKxCFGM: \
+        add_CFGKxCFGM(&omp_out,&omp_in)) initializer(\
+        omp_priv={{\
+#GHOST_UNROLL#0,\#CFGK*CFGM
+        }} )
+#GHOST_FUNC_END
+#endif
 
 #GHOST_FUNC_BEGIN#CFGK=${CFG_BLOCKVECTOR_SIZES}#CFGM=${CFG_BLOCKVECTOR_SIZES}
 ghost_error_t ghost_tsmttsm__u_plain_d_CFGK_CFGM_cm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conjv)
@@ -1411,7 +1412,10 @@ ghost_error_t ghost_tsmttsm__u_plain_d_CFGK_CFGM_cm_cm(ghost_densemat_t *x, ghos
     }
 
     ghost_lidx_t n = v->traits.nrows;
-    // no padding! may be a view!
+    if (n%8) {
+        n+=(8-n%8);
+        INFO_LOG("Padding large dimension to %d\n",n);
+    }
     INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
     
     double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
@@ -1433,25 +1437,72 @@ ghost_error_t ghost_tsmttsm__u_plain_d_CFGK_CFGM_cm_cm(ghost_densemat_t *x, ghos
         dbeta = 0.;
     }
 
-    ghost_lidx_t i,j;
-    
-    ghost_lidx_t k;
+    ghost_lidx_t i,j,k;
+#if 0
+    struct dCFGKxCFGM xnopad;
+
     for (k=0; k<CFGK; k++) {
         for (j=0; j<CFGM; j++) {
-            xval[k*ldx+j] = dbeta*xval[k*ldx+j];
+            xnopad.v[j*CFGK+k] = 0;
         }
     }
+#endif
+    
+#if 0
+#pragma omp parallel for private(j,k) reduction(dCFGKxCFGMAdd: xnopad)
+    for (i=0; i<n; i++) {
+        for (j=0; j<CFGM; j++) {
+            for (k=0; k<CFGK; k++) {
+                xnopad.v[j*CFGK+k] += dalpha*vval[j*ldv+i]*wval[k*ldw+i];
+            }
+        }
+    }
+    for (k=0; k<CFGK; k++) {
+        for (j=0; j<CFGM; j++) {
+            xval[k*ldx+j] = dbeta*xval[k*ldx+j] + xnopad.v[j*CFGK+k];
+        }
+    }
+#endif
+#GHOST_UNROLL#double sum@ = 0;#CFGM*CFGK
+#if 1//CFGM == 1 && CFGK == 1
+#pragma omp parallel for \
+#GHOST_UNROLL#reduction(+:sum@)\#CFGM*CFGK
+        schedule(runtime) 
+    for (i=0; i<n; i++) {
+#GHOST_UNROLL#sum@ += dalpha*vval[(@/CFGK)*ldv+i]*wval[(@%CFGK)*ldw+i];#CFGM*CFGK
+                    //x_priv[j*CFGK+k] += vval[j*ldv+i]*wval[k*ldw+i];
+    }
+#GHOST_UNROLL#xval[(@%CFGK)*ldx+(@/CFGK)] = dbeta*xval[(@%CFGK)*ldx+(@/CFGK)] + sum@;#CFGM*CFGK
+//    xval[0] = sum;
+   /* 
+#pragma omp critical
+        {
+            for (k=0; k<CFGK; k++) {
+                for (j=0; j<CFGM; j++) {
+                    xval[k*ldx+j] += dalpha*x_priv[j*CFGK+k];
+                }
+            }
+        }
+        free(x_priv);*/
+    
+#else
 #pragma omp parallel private(j,k)
     {
+        ghost_lidx_t t;
         double *x_priv;
         ghost_malloc_align((void **)&x_priv,CFGM*CFGK*sizeof(double),64);
         memset(x_priv,0,CFGM*CFGK*sizeof(double));
         
 #pragma omp for schedule(runtime)
-        for (i=0; i<n; i++) {
+        for (i=0; i<=n-8; i+=8) {
             for (j=0; j<CFGM; j++) {
                 for (k=0; k<CFGK; k++) {
-                    x_priv[j*CFGK+k] += vval[j*ldv+i]*wval[k*ldw+i];
+#pragma vector always
+#pragma ivdep
+#pragma simd
+                  for (t=0; t<8; t++) {
+                        x_priv[j*CFGK+k] += vval[j*ldv+i+t]*wval[k*ldw+i+t];
+                  }
                 }
             }
         }
@@ -1466,6 +1517,7 @@ ghost_error_t ghost_tsmttsm__u_plain_d_CFGK_CFGM_cm_cm(ghost_densemat_t *x, ghos
         }
         free(x_priv);
     }
+#endif
    
     goto out;
 err:
@@ -1533,9 +1585,8 @@ ghost_error_t ghost_tsmttsm__a_plain_z_x_CFGM_cm_rm(ghost_densemat_t *x, ghost_d
 #pragma omp parallel private(j,k)
     {
         complex double *x_priv;
-        ghost_lidx_t ldxpriv = PAD(K,2);
-        ghost_malloc_align((void **)&x_priv,CFGM*ldxpriv*sizeof(complex double),64);
-        memset(x_priv,0,CFGM*ldxpriv*sizeof(complex double));
+        ghost_malloc((void **)&x_priv,CFGM*K*sizeof(complex double));
+        memset(x_priv,0,CFGM*K*sizeof(complex double));
         if (conjv) {
 #pragma omp for schedule(runtime)
             for (i=0; i<n; i++) {
@@ -1545,7 +1596,7 @@ ghost_error_t ghost_tsmttsm__a_plain_z_x_CFGM_cm_rm(ghost_densemat_t *x, ghost_d
                 for (k=0; k<K; k++) {
 #pragma unroll_and_jam
                   for (j=0; j<CFGM; j++) {
-                        x_priv[j*ldxpriv+k] += dalpha*conj(vval[i*ldv+j])*wval[i*ldw+k];
+                        x_priv[j*K+k] += dalpha*conj(vval[i*ldv+j])*wval[i*ldw+k];
                     }
                 }
 
@@ -1559,7 +1610,7 @@ ghost_error_t ghost_tsmttsm__a_plain_z_x_CFGM_cm_rm(ghost_densemat_t *x, ghost_d
                 for (k=0; k<K; k++) {
 #pragma unroll_and_jam
                   for (j=0; j<CFGM; j++) {
-                        x_priv[j*ldxpriv+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
+                        x_priv[j*K+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
                     }
                 }
 
@@ -1573,7 +1624,7 @@ ghost_error_t ghost_tsmttsm__a_plain_z_x_CFGM_cm_rm(ghost_densemat_t *x, ghost_d
             for (k=0; k<K; k++) {
 #pragma unroll_and_jam
                 for (j=0; j<CFGM; j++) {
-                    xval[k*ldx+j] += x_priv[j*ldxpriv+k];
+                    xval[k*ldx+j] += x_priv[j*K+k];
                 }
             }
         }
@@ -1646,22 +1697,19 @@ ghost_error_t ghost_tsmttsm__a_plain_z_CFGK_x_cm_rm(ghost_densemat_t *x, ghost_d
 #pragma omp parallel private(j,k)
     {
         complex double *x_priv;
-        ghost_lidx_t ldxpriv = PAD(CFGK,2);
-        ghost_malloc_align((void **)&x_priv,m*ldxpriv*sizeof(complex double),64);
-        memset(x_priv,0,m*ldxpriv*sizeof(complex double));
+        ghost_malloc((void **)&x_priv,m*CFGK*sizeof(complex double));
+        memset(x_priv,0,m*CFGK*sizeof(complex double));
 
         if (conjv) {
 #pragma omp for schedule(runtime)
             for (i=0; i<n; i++) {
 #pragma vector aligned
 #pragma ivdep
-#if CFGK > 1
 #pragma simd
-#endif
                 for (k=0; k<CFGK; k++) {
 #pragma unroll_and_jam
                   for (j=0; j<m; j++) {
-                        x_priv[j*ldxpriv+k] += dalpha*conj(vval[i*ldv+j])*wval[i*ldw+k];
+                        x_priv[j*CFGK+k] += dalpha*conj(vval[i*ldv+j])*wval[i*ldw+k];
                     }
                 }
 
@@ -1671,13 +1719,11 @@ ghost_error_t ghost_tsmttsm__a_plain_z_CFGK_x_cm_rm(ghost_densemat_t *x, ghost_d
             for (i=0; i<n; i++) {
 #pragma vector aligned
 #pragma ivdep
-#if CFGK > 1
 #pragma simd
-#endif
                 for (k=0; k<CFGK; k++) {
 #pragma unroll_and_jam
                   for (j=0; j<m; j++) {
-                        x_priv[j*ldxpriv+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
+                        x_priv[j*CFGK+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
                     }
                 }
 
@@ -1688,13 +1734,11 @@ ghost_error_t ghost_tsmttsm__a_plain_z_CFGK_x_cm_rm(ghost_densemat_t *x, ghost_d
         {
 #pragma vector aligned
 #pragma ivdep
-#if CFGK > 1
 #pragma simd
-#endif
             for (k=0; k<CFGK; k++) {
 #pragma unroll_and_jam
                 for (j=0; j<m; j++) {
-                    xval[k*ldx+j] += x_priv[j*ldxpriv+k];
+                    xval[k*ldx+j] += x_priv[j*CFGK+k];
                 }
             }
         }
@@ -1767,9 +1811,8 @@ ghost_error_t ghost_tsmttsm__a_plain_z_CFGK_x_rm_rm(ghost_densemat_t *x, ghost_d
 #pragma omp parallel private(j,k)
     {
         complex double *x_priv;
-        ghost_lidx_t ldxpriv = PAD(CFGK,4);
-        ghost_malloc_align((void **)&x_priv,m*ldxpriv*sizeof(complex double),64);
-        memset(x_priv,0,m*ldxpriv*sizeof(complex double));
+        ghost_malloc((void **)&x_priv,m*CFGK*sizeof(complex double));
+        memset(x_priv,0,m*CFGK*sizeof(complex double));
 
         if (conjv) {
 #pragma omp for schedule(runtime)
@@ -1781,7 +1824,7 @@ ghost_error_t ghost_tsmttsm__a_plain_z_CFGK_x_rm_rm(ghost_densemat_t *x, ghost_d
 #pragma ivdep
 #pragma unroll
                     for (k=0; k<CFGK; k++) {
-                        x_priv[j*ldxpriv+k] += dalpha*conj(vval[i*ldv+j])*wval[i*ldw+k];
+                        x_priv[j*CFGK+k] += dalpha*conj(vval[i*ldv+j])*wval[i*ldw+k];
                     }
                 }
 
@@ -1796,7 +1839,7 @@ ghost_error_t ghost_tsmttsm__a_plain_z_CFGK_x_rm_rm(ghost_densemat_t *x, ghost_d
 #pragma ivdep
 #pragma unroll
                     for (k=0; k<CFGK; k++) {
-                        x_priv[j*ldxpriv+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
+                        x_priv[j*CFGK+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
                     }
                 }
 
@@ -1811,7 +1854,7 @@ ghost_error_t ghost_tsmttsm__a_plain_z_CFGK_x_rm_rm(ghost_densemat_t *x, ghost_d
 #pragma ivdep
 #pragma unroll
             for (k=0; k<CFGK; k++) {
-                xval[j*ldx+k] += x_priv[j*ldxpriv+k];
+                xval[j*ldx+k] += x_priv[j*CFGK+k];
             }
         }
         free(x_priv);
@@ -1884,9 +1927,8 @@ ghost_error_t ghost_tsmttsm__a_plain_z_CFGK_CFGM_cm_rm(ghost_densemat_t *x, ghos
 #pragma omp parallel private(j,k)
     {
         complex double *x_priv;
-        ghost_lidx_t ldxpriv = PAD(CFGK,2);
-        ghost_malloc_align((void **)&x_priv,CFGM*ldxpriv*sizeof(complex double),64);
-        memset(x_priv,0,CFGM*ldxpriv*sizeof(complex double));
+        ghost_malloc((void **)&x_priv,CFGM*CFGK*sizeof(complex double));
+        memset(x_priv,0,CFGM*CFGK*sizeof(complex double));
         
         if (conjv) {
 #pragma omp for schedule(runtime)
@@ -1899,7 +1941,7 @@ ghost_error_t ghost_tsmttsm__a_plain_z_CFGK_CFGM_cm_rm(ghost_densemat_t *x, ghos
                 for (k=0; k<CFGK; k++) {
 #pragma unroll_and_jam
                   for (j=0; j<CFGM; j++) {
-                        x_priv[j*ldxpriv+k] += dalpha*conj(vval[i*ldv+j])*wval[i*ldw+k];
+                        x_priv[j*CFGK+k] += dalpha*conj(vval[i*ldv+j])*wval[i*ldw+k];
                     }
                 }
 
@@ -1915,7 +1957,7 @@ ghost_error_t ghost_tsmttsm__a_plain_z_CFGK_CFGM_cm_rm(ghost_densemat_t *x, ghos
                 for (k=0; k<CFGK; k++) {
 #pragma unroll_and_jam
                   for (j=0; j<CFGM; j++) {
-                        x_priv[j*ldxpriv+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
+                        x_priv[j*CFGK+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
                     }
                 }
 
@@ -1931,7 +1973,7 @@ ghost_error_t ghost_tsmttsm__a_plain_z_CFGK_CFGM_cm_rm(ghost_densemat_t *x, ghos
         for (k=0; k<CFGK; k++) {
 #pragma unroll_and_jam
             for (j=0; j<CFGM; j++) {
-                xval[k*ldx+j] += x_priv[j*ldxpriv+k];
+                xval[k*ldx+j] += x_priv[j*CFGK+k];
             }
         }
 
