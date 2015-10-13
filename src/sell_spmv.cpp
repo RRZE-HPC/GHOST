@@ -421,6 +421,7 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
     p.storage = rhs->traits.storage;
     p.chunkheight = SELL(mat)->chunkHeight;
     
+    INFO_LOG("Initial search for SELL SpMV kernel with %d %d %d %d %d %d",p.alignment,p.impl,p.chunkheight,p.blocksz,p.vdt,p.mdt);
     if (!(lhs->traits.flags & GHOST_DENSEMAT_VIEW)) {
         p.blocksz = rhs->traits.ncols;
     } else {
