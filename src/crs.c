@@ -288,14 +288,7 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
 
     ghost_lidx_t i;
    
-    GHOST_CALL_GOTO(ghost_malloc((void **)&(CR(mat)->rpt),(mat->nrows+1)*sizeof(ghost_lidx_t)),err,ret);
-
-#pragma omp parallel for schedule(runtime)
-    for (i = 0; i < mat->nrows+1; i++) {
-        CR(mat)->rpt[i] = 0;
-    }
-
-    GHOST_CALL_GOTO(ghost_sparsemat_fromfunc_common(NULL,NULL,NULL,NULL,CR(mat)->rpt,&(CR(mat)->val),&mat->col_orig,src,mat,1,1),err,ret);
+    GHOST_CALL_GOTO(ghost_sparsemat_fromfunc_common(NULL,NULL,NULL,NULL,&(CR(mat)->rpt),&(CR(mat)->val),&mat->col_orig,src,mat,1,1),err,ret);
 
     GHOST_CALL_GOTO(mat->split(mat),err,ret);
 
@@ -344,13 +337,15 @@ static ghost_error_t CRS_split(ghost_sparsemat_t *mat)
     } else 
 #endif
     {
-        DEBUG_LOG(1,"Duplicate col array!");
-        GHOST_CALL_GOTO(ghost_malloc((void **)&CR(mat)->col,sizeof(ghost_lidx_t)*mat->nnz),err,ret);
+        if (!CR(mat)->col) {
+            DEBUG_LOG(1,"Duplicate col array!");
+            GHOST_CALL_GOTO(ghost_malloc((void **)&CR(mat)->col,sizeof(ghost_lidx_t)*mat->nnz),err,ret);
 
 #pragma omp parallel for private(j) schedule(runtime)
-        for (i=0; i<mat->context->lnrows[me]; i++) {
-            for (j=fullCR->rpt[i]; j<fullCR->rpt[i+1]; j++) {
-                CR(mat)->col[j] = 0;
+            for (i=0; i<mat->context->lnrows[me]; i++) {
+                for (j=fullCR->rpt[i]; j<fullCR->rpt[i+1]; j++) {
+                    CR(mat)->col[j] = 0;
+                }
             }
         }
     }
