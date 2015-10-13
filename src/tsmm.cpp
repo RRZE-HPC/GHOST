@@ -164,8 +164,8 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
         }
     }
     if (p.impl == GHOST_IMPLEMENTATION_PLAIN || p.impl == GHOST_IMPLEMENTATION_MIC) {
-        if (!IS_ALIGNED(x->val,64) || !IS_ALIGNED(v->val,64) || !IS_ALIGNED(w->val,64) || 
-                (x->stride*x->elSize)%64 || (v->stride*v->elSize)%64 || (w->stride*w->elSize)%64) {
+        if (!IS_ALIGNED(x->val,64) || !IS_ALIGNED(v->val,64) || 
+                (x->stride*x->elSize)%64 || (v->stride*v->elSize)%64) {
             p.alignment = GHOST_UNALIGNED;
             PERFWARNING_LOG("Switching to the unaligned kernel!");
         }
