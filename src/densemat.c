@@ -169,13 +169,17 @@ static ghost_error_t getNrowsFromContext(ghost_densemat_t *vec)
             }
 #endif
         }
-        
+       
         padding /= vec->elSize;
         
         vec->traits.ncolspadded = PAD(vec->traits.ncols,padding);
         
         padding = MAX(padding,ghost_sell_max_cfg_chunkheight()); // pad for SELL SpMV
         padding = MAX(padding,8); // pad for unrolled TSMM kernel
+#ifdef GHOST_HAVE_MIC
+        WARNING_LOG("Extremely large row padding because the performance for TSMM and a large dimension power of two is very bad. This has to be fixed!");
+        padding=500000; 
+#endif
         
         vec->traits.nrowspadded = PAD(MAX(vec->traits.nrowshalo,vec->traits.nrows),padding);
     }
