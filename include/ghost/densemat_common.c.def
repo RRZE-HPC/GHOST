@@ -173,14 +173,10 @@ static ghost_error_t FUNCNAME(viewScatteredCols(ghost_densemat_t *src, ghost_den
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
 
-#ifdef GHOST_HAVE_CUDA
-    if (src->traits.location == GHOST_LOCATION_DEVICE) {
-        if (!array_strictly_ascending(coffs,nc)) {
-            ERROR_LOG("Can only view sctrictly ascending scattered columns for row-major densemats!");
-            return GHOST_ERR_INVALID_ARG;
-        }
+    if (!array_strictly_ascending(coffs,nc)) {
+        ERROR_LOG("Can only view sctrictly ascending scattered columns for row-major densemats!");
+        return GHOST_ERR_INVALID_ARG;
     }
-#endif
 
     DEBUG_LOG(1,"Viewing a %"PRLIDX"x%"PRLIDX" scattered dense matrix",src->traits.nrows,nc);
     ghost_lidx_t v;
