@@ -46,6 +46,10 @@ struct ghost_context_t
      */
     ghost_gidx_t *rpt;
     /**
+     * @brief The global number of non-zeros
+     */
+    ghost_gidx_t gnnz;
+    /**
      * @brief The global number of rows
      */
     ghost_gidx_t gnrows;
