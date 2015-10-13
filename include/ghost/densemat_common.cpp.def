@@ -424,11 +424,12 @@ static ghost_error_t FUNCNAME(fromScalar_tmpl(ghost_densemat_t *vec, void *val))
 
     int needInit = 0;
     FUNCNAME(malloc(vec,&needInit));
+    v_t v = *(v_t *)val;
 
     if( needInit ) {
-      DENSEMAT_ITER_INIT(vec,*(v_t *)valptr = *(v_t *)val);
+      DENSEMAT_ITER_INIT(vec,targetval = v);
     } else {
-      DENSEMAT_ITER(vec,*(v_t *)valptr = *(v_t *)val);
+      DENSEMAT_ITER(vec,targetval = v);
     }
     
 
@@ -494,7 +495,7 @@ static ghost_error_t FUNCNAME(fromVec_tmpl(ghost_densemat_t *vec, ghost_densemat
     if( needInit ) {
         if( vec->traits.ncolspadded != vec->traits.ncols || vec->traits.nrowspadded != vec->traits.nrows || roffs != 0 ) {
             PERFWARNING_LOG("Fast initializing of padded vector block from another vector not implemented, filling with zeros first");
-            DENSEMAT_ITER_INIT(vec,memset(valptr,0,sizeof(v_t)));
+            DENSEMAT_ITER_INIT(vec,targetval = (v_t)0);
         }
     }
 
@@ -532,7 +533,7 @@ static ghost_error_t FUNCNAME(fromVec_tmpl(ghost_densemat_t *vec, ghost_densemat
                 }
             } else {
                 DENSEMAT_ITER2_OFFS(vec,vec2,roffs,coffs,
-                        *(v_t *)valptr1 = *(v_t *)valptr2);
+                        *(v_t *)valptr1 = targetval2);
             }
         }
     } else {
