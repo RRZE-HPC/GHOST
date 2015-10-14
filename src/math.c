@@ -25,7 +25,7 @@ static void ghost_spmv_selectMode(ghost_context_t * context, ghost_spmv_flags_t 
 ghost_error_t ghost_dot(void *res, ghost_densemat_t *vec, ghost_densemat_t *vec2)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
-    vec->dot(vec,res,vec2);
+    GHOST_CALL_RETURN(vec->dot(vec,res,vec2));
 #ifdef GHOST_HAVE_MPI
     if (vec->context) {
         GHOST_INSTR_START("reduce")
@@ -162,7 +162,7 @@ static ghost_error_t ghost_vspmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, 
             z->val += donecols*z->elSize;
             z->traits.ncols = GHOST_MAX_SPMMV_WIDTH;
         }
-        solver(res,mat,invec,*flags,argp);
+        GHOST_CALL_RETURN(solver(res,mat,invec,*flags,argp));
 
         donecols += GHOST_MAX_SPMMV_WIDTH;
         remcols -= donecols;
@@ -177,7 +177,7 @@ static ghost_error_t ghost_vspmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, 
         z->traits.ncols = remcols;
     }
     
-    solver(res,mat,invec,*flags,argp);
+    GHOST_CALL_RETURN(solver(res,mat,invec,*flags,argp));
 
     res->val -= (ncolsbackup-remcols)*res->elSize;
     invec->val -= (ncolsbackup-remcols)*invec->elSize;
