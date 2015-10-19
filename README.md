@@ -34,7 +34,7 @@ Have a look at the [GHOST-Apps](https://bitbucket.org/essex/ghost-apps) and the 
 In order to use GHOST at its best and make use of the full functionality 
 you can decide to enable (some of) the following optional dependencies:
 
-1. An OpenMP-capable C/C++ compiler
+1. An OpenMP-3.1-capable C/C++ compiler
 1. MPI ([Tested versions](https://bitbucket.org/essex/ghost/wiki/Compatibility))
 1. [CUDA](http://www.nvidia.com/cuda) for employing GPU computation ([Tested versions](https://bitbucket.org/essex/ghost/wiki/Compatibility))
 1. [SCOTCH](http://www.labri.fr/perso/pelegrin/scotch/) for sparse matrix re-ordering ([Tested versions](https://bitbucket.org/essex/ghost/wiki/Compatibility), [Install notes](https://bitbucket.org/essex/ghost/wiki/Dependencies))
