@@ -347,10 +347,15 @@ ghost_datatype_t name = (ghost_datatype_t)(GHOST_DT_DOUBLE|GHOST_DT_COMPLEX);
  * @brief Type for global indices.
  */
 typedef int64_t ghost_gidx_t; 
+#ifdef MPI_INT64_T
 /**
  * @brief MPI data type for matrix row/column indices
  */
 #define ghost_mpi_dt_gidx MPI_INT64_T
+#else
+#warning "Assuming that MPI_LONG_LONG_INT is 64 bits long"
+#define ghost_mpi_dt_gidx MPI_LONG_LONG_INT
+#endif
 /**
  * @brief Macro to print matrix/vector row/column indices depending on index size
  */
@@ -364,10 +369,15 @@ typedef int64_t ghost_gidx_t;
  * @brief Type for global indices.
  */
 typedef int32_t ghost_gidx_t; 
+#ifdef MPI_INT32_T
 /**
  * @brief MPI data type for matrix row/column indices
  */
 #define ghost_mpi_dt_gidx MPI_INT32_T
+#else
+#warning "Assuming that MPI_INT is 32 bits long"
+#define ghost_mpi_dt_gidx MPI_INT
+#endif
 /**
  * @brief Macro to print matrix/vector row/column indices depending on index size
  */
@@ -383,10 +393,15 @@ typedef int32_t ghost_gidx_t;
  * @brief Type for local indices.
  */
 typedef int64_t ghost_lidx_t; 
+#ifdef MPI_INT64_T
 /**
  * @brief MPI data type for matrix row/column indices
  */
 #define ghost_mpi_dt_lidx MPI_INT64_T
+#else
+#warning "Assuming that MPI_LONG_LONG_INT is 64 bits long"
+#define ghost_mpi_dt_gidx MPI_LONG_LONG_INT
+#endif
 /**
  * @brief Macro to print matrix/vector row/column indices depending on index size
  */
@@ -410,7 +425,12 @@ typedef int ghost_blas_idx_t;
 #else
 
 typedef int32_t ghost_lidx_t;
+#ifdef MPI_INT32_T
 #define ghost_mpi_dt_lidx MPI_INT32_T
+#else
+#warning "Assuming that MPI_INT is 32 bits long"
+#define ghost_mpi_dt_lidx MPI_INT
+#endif
 typedef int ghost_blas_idx_t;
 #define PRBLASIDX PRId32
 
