@@ -254,6 +254,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q, int nthreads)
         }
         hwloc_bitmap_t parentscores = hwloc_bitmap_alloc(); 
         if (curTask->parent && !(curTask->parent->flags & GHOST_TASK_NOT_ALLOW_CHILD)) {
+            pthread_mutex_lock(curTask->parent->mutex);
             hwloc_bitmap_andnot(parentscores,curTask->parent->coremap,curTask->parent->childusedmap);
             if (curTask->flags & GHOST_TASK_LD_STRICT) {
                 hwloc_bitmap_and(parentscores,parentscores,numanode->cpuset);
@@ -263,6 +264,9 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q, int nthreads)
         if (availcores < curTask->nThreads) {
             DEBUG_LOG(1,"Skipping task %p because it needs %d threads and only %d threads are available",(void *)curTask,curTask->nThreads,availcores);
             hwloc_bitmap_free(parentscores);
+            if (curTask->parent && !(curTask->parent->flags & GHOST_TASK_NOT_ALLOW_CHILD)) {
+                pthread_mutex_unlock(curTask->parent->mutex);
+            }
             pthread_mutex_unlock(curTask->mutex);
             curTask = curTask->next;
             continue;
@@ -345,6 +349,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q, int nthreads)
         hwloc_bitmap_or(curTask->coremap,curTask->coremap,mybusy);
         if (curTask->parent && !(curTask->parent->flags & GHOST_TASK_NOT_ALLOW_CHILD)) {
             hwloc_bitmap_or(curTask->parent->childusedmap,curTask->parent->childusedmap,mybusy);
+            pthread_mutex_unlock(curTask->parent->mutex);
         }
         ghost_pumap_setbusy(mybusy);
 
