@@ -60,7 +60,6 @@ ghost_error_t ghost_sparsemat_registerrow(ghost_sparsemat_t *mat, ghost_gidx_t r
         
     }
 
-    mat->maxRowLen = MAX(mat->maxRowLen,rowlen);
     rowlengths[mat][rowlen]++;
     mat->avgRowBand += lastcol-firstcol+1;
   
