@@ -277,6 +277,7 @@ static ghost_error_t SELL_split(ghost_sparsemat_t *mat)
     }
 #endif
     if (!(mat->traits->flags & GHOST_SPARSEMAT_NOT_STORE_SPLIT)) { // split computation
+        GHOST_INSTR_START("split");
 
         ghost_sparsemat_create(&(mat->localPart),mat->context,&mat->traits[0],1);
         localSELL = mat->localPart->data;
@@ -458,6 +459,7 @@ static ghost_error_t SELL_split(ghost_sparsemat_t *mat)
             mat->remotePart->upload(mat->remotePart);
         }
 #endif
+        GHOST_INSTR_STOP("split");
     }
 
     goto out;
