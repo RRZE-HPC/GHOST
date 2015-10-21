@@ -513,7 +513,7 @@ static ghost_error_t FUNCNAME(fromVec_tmpl(ghost_densemat_t *vec, ghost_densemat
                 }
             } else {
                 if (DENSEMAT_COMPACT(vec) && DENSEMAT_COMPACT(vec2)) {
-                    ghost_cu_upload2d(vec->cu_val,vec->stride&vec->elSize,DENSEMAT_VALPTR(vec2,roffs,coffs),vec2->stride*vec2->elSize,vec2->blocklen*vec2->elSize,vec2->nblock);
+                    ghost_cu_upload2d(vec->cu_val,vec->stride*vec->elSize,DENSEMAT_VALPTR(vec2,roffs,coffs),vec2->stride*vec2->elSize,vec2->blocklen*vec2->elSize,vec2->nblock);
                 } else {
                     PERFWARNING_LOG("Potentially slow element-wise upload! (Fast copying not yet implemented)");
                     DENSEMAT_ITER2_OFFS(vec,vec2,roffs,coffs,
