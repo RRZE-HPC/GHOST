@@ -5,6 +5,8 @@
 #include "ghost/locality.h"
 #include "ghost/blas_mangle.h"
 #include "ghost/blas_util.h"
+#include "ghost/tsmttsm.h"
+#include "ghost/tsmm.h"
 
 #include <strings.h>
 #ifdef GHOST_HAVE_CUDA
@@ -473,7 +475,7 @@ ghost_densemat_t *w_in, const char *transw, void *alpha, void *beta, int reduce,
     }
     
     if (!(flags & GHOST_GEMM_NOT_SPECIAL)) { 
-        if (flags & GHOST_GEMM_KAHAN) {
+        /*if (flags & GHOST_GEMM_KAHAN) {
             if (ghost_tsmttsm_kahan_valid(x,v,transv,w,transw,alpha,beta,reduce,0) == GHOST_SUCCESS) {
                 INFO_LOG("Transparently call special implementation Kahan-TSMTTSM");
 
@@ -486,11 +488,11 @@ ghost_densemat_t *w_in, const char *transw, void *alpha, void *beta, int reduce,
             if( !donespecial ) {
                 WARNING_LOG("Will not do Kahan summation although requested!");
             }
-        }
+        }*/
 
-        if (ghost_tsmttsm_valid(x,v,transv,w,transw,alpha,beta,reduce,0) == GHOST_SUCCESS) {
+        if (ghost_tsmttsm_valid(x,v,transv,w,transw,alpha,beta,reduce,flags,0) == GHOST_SUCCESS) {
             INFO_LOG("Transparently call special implementation TSMTTSM");
-            ret = ghost_tsmttsm(x,v,w,alpha,beta,reduce,transv[0] == 'C' || transv[0] == 'c');
+            ret = ghost_tsmttsm(x,v,w,alpha,beta,reduce,transv[0] == 'C' || transv[0] == 'c',flags);
             if( ret == GHOST_SUCCESS )
               donespecial = 1;
             else if( ret != GHOST_ERR_INVALID_ARG )

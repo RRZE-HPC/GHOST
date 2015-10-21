@@ -41,6 +41,7 @@ extern "C" {
      * @param[in] beta
      * @param[in] reduce
      * @param[in] conjv If v should be conjugated, set this to != 1.
+     * @param[in] flags Flags. Currently, they are only checked for ::GHOST_GEMM_KAHAN.
      *
      *
      * \f$ x = \alpha \cdot v^T \cdot w + \beta \cdot x \f$.
@@ -57,7 +58,7 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int reduce, int conjv);
+    ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int reduce, int conjv,ghost_gemm_flags_t flags);
     
     /**
      * @brief Check whether TSMTTSM can be applied instead of GEMM with the given arguments.
@@ -70,12 +71,13 @@ extern "C" {
      * @param alpha
      * @param beta
      * @param reduce
+     * @param flags
      * @param printerror Print an error message if application is not possible.
      *
      * @return 
      */
     ghost_error_t ghost_tsmttsm_valid(ghost_densemat_t *x, ghost_densemat_t *v, const char * transv, 
-        ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce, int printerror);
+        ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce, ghost_gemm_flags_t flags, int printerror);
 
 #ifdef __cplusplus
 }

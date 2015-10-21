@@ -14,8 +14,6 @@
 #include "error.h"
 #include "tsmm.h"
 #include "tsmm_inplace.h"
-#include "tsmttsm.h"
-#include "tsmttsm_kahan.h"
 
 #include <stdarg.h>
 

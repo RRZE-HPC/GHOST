@@ -33,7 +33,7 @@ static ghost_error_t ghost_blockortho_tmpl (ghost_densemat_t * w , ghost_densema
 
     
     //GHOST_CALL_GOTO(ghost_tsmttsm( x, v, w,&one,&zero,GHOST_GEMM_ALL_REDUCE,1),err,ret);
-    GHOST_CALL_GOTO(ghost_tsmttsm_kahan( x, v, w,&one,&zero,GHOST_GEMM_ALL_REDUCE,1),err,ret);
+    GHOST_CALL_GOTO(ghost_tsmttsm( x, v, w,&one,&zero,GHOST_GEMM_ALL_REDUCE,1,GHOST_GEMM_KAHAN),err,ret);
     GHOST_CALL_GOTO(ghost_tsmm( w, v, x, &one, &minusone),err,ret);
        
     goto out;
@@ -139,7 +139,7 @@ static ghost_error_t ghost_svqb_tmpl (ghost_densemat_t * v_ot , ghost_densemat_t
     GHOST_CALL_GOTO(ghost_densemat_valptr(x,(void **)&xval),err,ret);
     
     //GHOST_CALL_GOTO(ghost_tsmttsm( x, v, v,&one,&zero,GHOST_GEMM_ALL_REDUCE,1),err,ret);
-    GHOST_CALL_GOTO(ghost_tsmttsm_kahan( x, v, v,&one,&zero,GHOST_GEMM_ALL_REDUCE,1),err,ret);
+    GHOST_CALL_GOTO(ghost_tsmttsm( x, v, v,&one,&zero,GHOST_GEMM_ALL_REDUCE,1,GHOST_GEMM_KAHAN),err,ret);
     
 
     x->download(x);
@@ -273,7 +273,7 @@ static ghost_error_t ghost_svd_deflation_tmpl ( ghost_lidx_t *svd_offset, ghost_
     
     
     //GHOST_CALL_GOTO(ghost_tsmttsm( x, vec, vec,&one,&zero,GHOST_GEMM_ALL_REDUCE,1),err,ret);
-    GHOST_CALL_GOTO(ghost_tsmttsm_kahan( x, vec, vec,&one,&zero,GHOST_GEMM_ALL_REDUCE,1),err,ret);
+    GHOST_CALL_GOTO(ghost_tsmttsm( x, vec, vec,&one,&zero,GHOST_GEMM_ALL_REDUCE,1,GHOST_GEMM_KAHAN),err,ret);
     
     x->download(x);
 

@@ -88,7 +88,6 @@ set (SOURCES
     src/tsmm.cpp
     src/tsmm_inplace.cpp
     src/tsmttsm.cpp
-    src/tsmttsm_kahan.cpp
     src/bincrs_func.c
     src/bitmap.c
     src/blas_util.c
@@ -165,7 +164,6 @@ set (HEADERS
     include/ghost/tsmm.h
     include/ghost/tsmm_inplace.h
     include/ghost/tsmttsm.h
-    include/ghost/tsmttsm_kahan.h
     include/ghost/types.h
     include/ghost/util.h
     include/ghost/svqb.h

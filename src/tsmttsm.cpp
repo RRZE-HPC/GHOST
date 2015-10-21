@@ -8,10 +8,14 @@
 #include "ghost/tsmttsm_avx2_gen.h"
 #include "ghost/tsmttsm_avx_gen.h"
 #include "ghost/tsmttsm_sse_gen.h"
+#include "ghost/tsmttsm_kahan_gen.h"
 #include "ghost/timing.h"
 #include "ghost/machine.h"
 
 #include <map>
+
+typedef ghost_tsmttsm_parameters_t ghost_tsmttsm_kahan_parameters_t;
+typedef ghost_tsmttsm_parameters_t ghost_tsmttsm_kahan_parameters_t;
 
 using namespace std;
 
@@ -21,10 +25,11 @@ static bool operator<(const ghost_tsmttsm_parameters_t &a, const ghost_tsmttsm_p
 }
 
 static map<ghost_tsmttsm_parameters_t, ghost_tsmttsm_kernel_t> ghost_tsmttsm_kernels;
+static map<ghost_tsmttsm_parameters_t, ghost_tsmttsm_kernel_t> ghost_tsmttsm_kahan_kernels;
 
 
 ghost_error_t ghost_tsmttsm_valid(ghost_densemat_t *x, ghost_densemat_t *v, const char * transv, 
-ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce, int printerror) 
+ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce, ghost_gemm_flags_t flags, int printerror) 
 {
     /*if (w->traits.storage != GHOST_DENSEMAT_ROWMAJOR) {
         if (printerror) {
@@ -79,12 +84,13 @@ ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce, in
     UNUSED(alpha);
     UNUSED(beta);
     UNUSED(reduce);
+    UNUSED(flags);
 
     return GHOST_SUCCESS;
 }
 
 
-ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta,int reduce,int conjv)
+ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta,int reduce,int conjv,ghost_gemm_flags_t flags)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error_t ret;
@@ -96,7 +102,7 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
         vtrans = "T";
     }
 
-    if ((ret = ghost_tsmttsm_valid(x,v,vtrans,w,"N",alpha,beta,reduce,1)) != GHOST_SUCCESS) {
+    if ((ret = ghost_tsmttsm_valid(x,v,vtrans,w,"N",alpha,beta,reduce,flags,1)) != GHOST_SUCCESS) {
         INFO_LOG("TSMTTSM cannot be applied. Checking whether GEMM is fine!");
         if ((ret = ghost_gemm_valid(x,v,vtrans,w,"N",alpha,beta,reduce,GHOST_GEMM_DEFAULT,1)) != GHOST_SUCCESS) {
             ERROR_LOG("GEMM cannot be applied!");
@@ -105,13 +111,24 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
             return ghost_gemm(x,v,vtrans,w,"N",alpha,beta,reduce,GHOST_GEMM_NOT_SPECIAL);
         }
     }
-    
-    if (ghost_tsmttsm_kernels.empty()) {
+   
+    map<ghost_tsmttsm_parameters_t, ghost_tsmttsm_kernel_t> kernels;
+    if (flags & GHOST_GEMM_KAHAN) { 
+        if (ghost_tsmttsm_kahan_kernels.empty()) {
+#include "tsmttsm_kahan.def"
+        }
+        kernels = ghost_tsmttsm_kahan_kernels;
+    } else {
+        if (ghost_tsmttsm_kernels.empty()) {
 #include "tsmttsm.def"
 #include "tsmttsm_avx2.def"
 #include "tsmttsm_avx.def"
 #include "tsmttsm_sse.def"
+        }
+        kernels = ghost_tsmttsm_kernels;
     }
+
+
     
     ghost_tsmttsm_parameters_t p;
     ghost_tsmttsm_kernel_t kernel = NULL;
@@ -177,27 +194,27 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
     p.wcols = w->traits.ncols;
     
     INFO_LOG("Inital search for kernel %d %d %d %d %d %d!",p.dt,p.wcols,p.vcols,p.xstor,p.wstor,p.alignment);
-    kernel = ghost_tsmttsm_kernels[p];
+    kernel = kernels[p];
     
     if (!kernel) {
         PERFWARNING_LOG("Try kernel with arbitrary wcols");
         p.wcols = -1;
         p.vcols = v->traits.ncols;
-        kernel = ghost_tsmttsm_kernels[p];
+        kernel = kernels[p];
     }
     
     if (!kernel) {
         PERFWARNING_LOG("Try kernel with arbitrary vcols");
         p.wcols = w->traits.ncols;
         p.vcols = -1;
-        kernel = ghost_tsmttsm_kernels[p];
+        kernel = kernels[p];
     }
 
     if (!kernel) {
         PERFWARNING_LOG("Try kernel with arbitrary block sizes");
         p.wcols = -1;
         p.vcols = -1;
-        kernel = ghost_tsmttsm_kernels[p];
+        kernel = kernels[p];
     }
     
     if (!kernel) {
@@ -210,34 +227,34 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
             p.alignment = GHOST_UNALIGNED;
             PERFWARNING_LOG("Switching to the unaligned kernel!");
         }
-        kernel = ghost_tsmttsm_kernels[p];
+        kernel = kernels[p];
     }
     
     if (!kernel) {
         PERFWARNING_LOG("Try kernel with arbitrary wcols");
         p.wcols = -1;
         p.vcols = v->traits.ncols;
-        kernel = ghost_tsmttsm_kernels[p];
+        kernel = kernels[p];
     }
     
     if (!kernel) {
         PERFWARNING_LOG("Try kernel with arbitrary vcols");
         p.wcols = w->traits.ncols;
         p.vcols = -1;
-        kernel = ghost_tsmttsm_kernels[p];
+        kernel = kernels[p];
     }
 
     if (!kernel) {
         PERFWARNING_LOG("Try kernel with arbitrary block sizes");
         p.wcols = -1;
         p.vcols = -1;
-        kernel = ghost_tsmttsm_kernels[p];
+        kernel = kernels[p];
     }
     
     if (!kernel) {
         PERFWARNING_LOG("Try unaligned kernel");
         p.alignment = GHOST_UNALIGNED;
-        kernel = ghost_tsmttsm_kernels[p];
+        kernel = kernels[p];
     }
     
     

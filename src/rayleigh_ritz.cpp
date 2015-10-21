@@ -124,7 +124,7 @@ static ghost_error_t ghost_rayleigh_ritz_tmpl (ghost_sparsemat_t * mat, void * v
     ghost_spmv( v_eigs, mat, v_res, &spMVM_Options, NULL);
         
     //GHOST_CALL_GOTO(ghost_tsmttsm( x, v_eigs, v_res,&one,&zero,GHOST_GEMM_ALL_REDUCE,1),err,ret);
-    GHOST_CALL_GOTO(ghost_tsmttsm_kahan( x, v_eigs, v_res,&one,&zero,GHOST_GEMM_ALL_REDUCE,1),err,ret);
+    GHOST_CALL_GOTO(ghost_tsmttsm( x, v_eigs, v_res,&one,&zero,GHOST_GEMM_ALL_REDUCE,1,GHOST_GEMM_KAHAN),err,ret);
     
     x->download(x); 
     
@@ -234,12 +234,12 @@ static ghost_error_t ghost_grayleigh_ritz_tmpl (ghost_sparsemat_t * mat, void * 
     //spMVM_Options &=  ~GHOST_SPMV_SCALE;
     
     //GHOST_CALL_GOTO(ghost_tsmttsm( b, v_res, v_res,&one,&zero,GHOST_GEMM_ALL_REDUCE,1),err,ret);
-    GHOST_CALL_GOTO(ghost_tsmttsm_kahan( b, v_res, v_res,&one,&zero,GHOST_GEMM_ALL_REDUCE,1),err,ret);
+    GHOST_CALL_GOTO(ghost_tsmttsm( b, v_res, v_res,&one,&zero,GHOST_GEMM_ALL_REDUCE,1,GHOST_GEMM_KAHAN),err,ret);
     
     ghost_spmv( v_eigs, mat, v_res, &spMVM_Options, NULL);
         
     //GHOST_CALL_GOTO(ghost_tsmttsm( x, v_eigs, v_res,&one,&zero,GHOST_GEMM_ALL_REDUCE,1),err,ret);
-    GHOST_CALL_GOTO(ghost_tsmttsm_kahan( x, v_eigs, v_res,&one,&zero,GHOST_GEMM_ALL_REDUCE,1),err,ret);
+    GHOST_CALL_GOTO(ghost_tsmttsm( x, v_eigs, v_res,&one,&zero,GHOST_GEMM_ALL_REDUCE,1,GHOST_GEMM_KAHAN),err,ret);
     
     x->download(x); 
     b->download(b); 
