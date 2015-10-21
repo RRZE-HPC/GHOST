@@ -9,6 +9,7 @@
 #include "ghost/tsmttsm_avx_gen.h"
 #include "ghost/tsmttsm_sse_gen.h"
 #include "ghost/timing.h"
+#include "ghost/machine.h"
 
 #include <map>
 
@@ -138,6 +139,7 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
     p.wstor = w->traits.storage;
     
     p.vcols = v->traits.ncols;
+    size_t alignment = ghost_machine_alignment();
     
     if (p.impl == GHOST_IMPLEMENTATION_SSE) {
         if (!IS_ALIGNED(x->val,16) || !IS_ALIGNED(v->val,16) || !IS_ALIGNED(w->val,16) || 
@@ -166,9 +168,8 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
         }
     }
     if (p.impl == GHOST_IMPLEMENTATION_PLAIN || p.impl == GHOST_IMPLEMENTATION_MIC) {
-        if (!IS_ALIGNED(x->val,64) || !IS_ALIGNED(v->val,64) || !IS_ALIGNED(w->val,64) || 
-                (x->stride*x->elSize)%64 || (v->stride*v->elSize)%64 || (w->stride*w->elSize)%64 ||
-                (v->traits.nrowspadded*v->elSize)%64 || (w->traits.nrowspadded*w->elSize)%64 ) {
+        if (!IS_ALIGNED(x->val,alignment) || !IS_ALIGNED(v->val,alignment) || !IS_ALIGNED(w->val,alignment) || 
+                (x->stride*x->elSize)%alignment || (v->stride*v->elSize)%alignment || (w->stride*w->elSize)%alignment) {
             p.alignment = GHOST_UNALIGNED;
             PERFWARNING_LOG("Switching to the unaligned kernel!");
         }
