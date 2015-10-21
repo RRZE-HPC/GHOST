@@ -89,6 +89,23 @@ ghost_error_t ghost_cu_memcpy(void *dest, void *src, size_t bytesize)
 
 } 
 
+ghost_error_t ghost_cu_memcpy2d(void *dest, size_t dpitch, const void *src, size_t spitch, size_t width, size_t height)
+{
+#ifdef GHOST_HAVE_CUDA
+    if (width > 0 && height > 0) {
+        CUDA_CALL_RETURN(cudaMemcpy2D(dest,dpitch,src,spitch,width,height,cudaMemcpyDeviceToDevice));
+    }
+#else
+    UNUSED(dest);
+    UNUSED(dpitch);
+    UNUSED(src);
+    UNUSED(spitch);
+    UNUSED(width);
+    UNUSED(height);
+#endif
+    return GHOST_SUCCESS;
+}
+
 ghost_error_t ghost_cu_memset(void *s, int c, size_t n)
 {
 #ifdef GHOST_HAVE_CUDA

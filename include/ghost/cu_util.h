@@ -141,6 +141,20 @@ extern "C" {
      */
     ghost_error_t ghost_cu_memcpy(void *dest, void *src, size_t bytesize);
     /**
+     * @brief Memcpy strided GPU memory.
+     * Copy height rows of width bytes each.
+     *
+     * @param dest The device memory.
+     * @param dpitch The pitch in the device memory.
+     * @param src The host memory.
+     * @param spitch The pitch in the host memory.
+     * @param width The number of bytes per row. 
+     * @param height The number of rows.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error_t ghost_cu_memcpy2d(void *dest, size_t dpitch, const void *src, size_t spitch, size_t width, size_t height);
+    /**
      * @brief Memset GPU memory.
      *
      * @param s The memory location.
