@@ -73,7 +73,7 @@ while (<>) {
                 print "}\n";
             }
             print "}\n";
-        } elsif ($funcname eq "ghost_tsmttsm") {
+        } elsif ($funcname eq "ghost_tsmttsm" or $funcname eq "ghost_tsmttsm_kahan") {
             print "{\n";
             print $funcname."_parameters_t pars;\n";
             print "pars.alignment = ".$alignments{$funcpars[0]}.";\n";
@@ -117,23 +117,6 @@ while (<>) {
                 print "}\n";
                 print "}\n";
             }
-            print "}\n";
-        } elsif ($funcname eq "ghost_tsmttsm_kahan") {
-            print "{\n";
-            print $funcname."_parameters_t pars;\n";
-            print "pars.impl = ".$implementations{$funcpars[0]}.";\n";
-            print "pars.dt = ".$datatypes{$funcpars[1]}.";\n";
-            if ($funcpars[2] eq "x") {
-                print "pars.wcols = -1;\n";
-            } else {
-                print "pars.wcols = ".$funcpars[2].";\n";
-            }
-            if ($funcpars[3] eq "x") {
-                print "pars.vcols = -1;\n";
-            } else {
-                print "pars.vcols = ".$funcpars[3].";\n";
-            }
-            print $funcname."_kernels[pars] = ".$funcname_full.";\n"; 
             print "}\n";
         } elsif ($funcname eq "ghost_tsmm") {
             print "{\n";

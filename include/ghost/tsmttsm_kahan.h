@@ -13,10 +13,13 @@
 
 typedef struct
 {
+    ghost_alignment_t alignment;
     ghost_datatype_t dt;
     int wcols;
     int vcols;
     ghost_implementation_t impl;
+    ghost_densemat_storage_t xstor;
+    ghost_densemat_storage_t wstor;
 } ghost_tsmttsm_kahan_parameters_t;
 
 typedef ghost_error_t (*ghost_tsmttsm_kahan_kernel_t)(ghost_densemat_t *, ghost_densemat_t *, ghost_densemat_t *, void *, void *, int);
