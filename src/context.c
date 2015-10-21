@@ -719,7 +719,7 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
      */
 
     for (; i<nprocs; i++) { // iterate i=me,..,nprocs,0,..,me-1
-        ghost_lidx_t t = 0;
+        ghost_lidx_t t;
         if (meHandled && (i == me)) continue;
 
         if (i != me){ 
@@ -747,7 +747,7 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
              */
 
 #pragma omp parallel for
-            for (;t<ctx->lnEnts[me];t++) {
+            for (t=0; t<ctx->lnEnts[me]; t++) {
                 if (comm_remotePE[t] == i) { // local element for rank i
                     col[t] =  pseudocol[myrevcol[col_orig[t]-ctx->lfRow[i]]];
                 }
@@ -755,7 +755,7 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
             free(myrevcol); myrevcol = NULL;
         } else { // first i iteration goes here
 #pragma omp parallel for
-            for (;t<ctx->lnEnts[me];t++) {
+            for (t=0; t<ctx->lnEnts[me]; t++) {
                 if (comm_remotePE[t] == me) { // local element for myself
                     col[t] =  comm_remoteEl[t];
                 }
