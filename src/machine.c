@@ -227,6 +227,22 @@ bool ghost_machine_bigendian()
     return (endiantest[0] == 0);
 }
 
+size_t ghost_machine_alignment()
+{
+#ifdef GHOST_HAVE_MIC
+    size_t alignment = 64;
+#elif defined(GHOST_HAVE_AVX2)
+    size_t alignment = 32;
+#elif defined(GHOST_HAVE_AVX)
+    size_t alignment = 32;
+#elif defined(GHOST_HAVE_SSE)
+    size_t alignment = 16;
+#else
+    size_t alignment = 8;
+#endif
+   return alignment; 
+}
+
 ghost_error_t ghost_machine_numanode(hwloc_obj_t *node, int idx)
 {
     if (!node) {

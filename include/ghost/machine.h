@@ -129,6 +129,13 @@ extern "C" {
      */
     ghost_error_t ghost_machine_string(char **str);
 
+    /**
+     * @brief Get the machine's alignment restriction for aligned stores/loads.
+     *
+     * @return The alignment in bytes.
+     */
+    size_t ghost_machine_alignment();
+
 #ifdef __cplusplus
 }
 #endif
