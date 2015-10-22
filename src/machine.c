@@ -243,18 +243,18 @@ size_t ghost_machine_alignment()
    return alignment; 
 }
 
-size_t ghost_machine_simd_width()
+int ghost_machine_simd_width()
 {
 #ifdef GHOST_HAVE_MIC
-    size_t width = 64;
+    int width = 64;
 #elif defined(GHOST_HAVE_AVX2)
-    size_t width = 32;
+    int width = 32;
 #elif defined(GHOST_HAVE_AVX)
-    size_t width = 32;
+    int width = 32;
 #elif defined(GHOST_HAVE_SSE)
-    size_t width = 16;
+    int width = 16;
 #else
-    size_t width = 4;
+    int width = 4;
 #endif
    return width; 
 }

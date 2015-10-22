@@ -157,7 +157,7 @@ typedef struct
      */
     ghost_lidx_t nrowsorig;
     /**
-     * @brief The number of rows including halo elements.
+     * @brief The number of rows including padding and halo elements.
      */
     ghost_lidx_t nrowshalo;
     /**
@@ -811,6 +811,14 @@ extern "C" {
 
     void ghost_densemat_destroy(ghost_densemat_t* vec);
 
+    /**
+     * @brief Determine the number of padded rows.
+     *
+     * The offset from which halo elements begin and the column indices of remote matrix entries depend on this.
+     *
+     * @return The number of padded rows.
+     */
+    ghost_lidx_t ghost_densemat_row_padding();
 
 #ifdef __cplusplus
 }

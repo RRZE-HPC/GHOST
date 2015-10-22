@@ -481,6 +481,7 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
     int nprocs;
     int me;
     
+    ghost_lidx_t rowpadding = ghost_densemat_row_padding();
     GHOST_CALL_RETURN(ghost_nrank(&nprocs, ctx->mpicomm));
     GHOST_CALL_RETURN(ghost_rank(&me, ctx->mpicomm));
 
@@ -712,6 +713,7 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
     ghost_lidx_t tt = 0;
     i = me;
     int meHandled = 0;
+    ghost_lidx_t rowpaddingoffset = PAD(ctx->lnrows[me],rowpadding)-ctx->lnrows[me];
     GHOST_INSTR_START("compress_cols")
 
     /*
@@ -749,7 +751,7 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
 #pragma omp parallel for
             for (t=0; t<ctx->lnEnts[me]; t++) {
                 if (comm_remotePE[t] == i) { // local element for rank i
-                    col[t] =  pseudocol[myrevcol[col_orig[t]-ctx->lfRow[i]]];
+                    col[t] =  rowpaddingoffset + pseudocol[myrevcol[col_orig[t]-ctx->lfRow[i]]];
                 }
             }
             free(myrevcol); myrevcol = NULL;
@@ -808,7 +810,7 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
         }
 #endif
         ctx->wishlist[i]   = &(wishl_mem[acc_wishes]);
-        ctx->hput_pos[i]   = ctx->lnrows[me]+acc_wishes;
+        ctx->hput_pos[i]   = PAD(ctx->lnrows[me],rowpadding)+acc_wishes;
 
         if  ( (me != i) && !( (i == nprocs-2) && (me == nprocs-1) ) ){
             acc_dues   += ctx->dues[i];

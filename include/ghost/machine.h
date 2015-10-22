@@ -137,7 +137,7 @@ extern "C" {
      *
      * @return The SIMD width in bytes.
      */
-    size_t ghost_machine_simd_width();
+    int ghost_machine_simd_width();
 #ifdef __cplusplus
 }
 #endif

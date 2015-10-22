@@ -100,7 +100,7 @@ ghost_error_t ghost_densemat_create(ghost_densemat_t **vec, ghost_context_t *ctx
         (*vec)->blocklen = (*vec)->traits.ncols;
     } else {
         ghost_densemat_cm_setfuncs(*vec);
-        (*vec)->stride = (*vec)->traits.nrowspadded;
+        (*vec)->stride = (*vec)->traits.nrowshalo;
         (*vec)->nblock = (*vec)->traits.ncols;
         (*vec)->blocklen = (*vec)->traits.nrows;
     }
@@ -125,21 +125,11 @@ out:
 static ghost_error_t getNrowsFromContext(ghost_densemat_t *vec)
 {
     DEBUG_LOG(1,"Computing the number of vector rows from the context");
-
+    
     if (vec->context != NULL) {
         int rank;
         GHOST_CALL_RETURN(ghost_rank(&rank, vec->context->mpicomm));
         vec->traits.nrows = vec->context->lnrows[rank];
-        if (!(vec->traits.flags & GHOST_DENSEMAT_NO_HALO)) {
-            if (vec->context->halo_elements == -1) {
-                ERROR_LOG("You have to make sure to read in the matrix _before_ creating the right hand side vector in a distributed context! This is because we have to know the number of halo elements of the vector.");
-                return GHOST_ERR_UNKNOWN;
-            }
-            vec->traits.nrowshalo = vec->traits.nrows+vec->context->halo_elements+1;
-        }
-    } else {
-        // context->hput_pos[0] = nrows if only one process, so we need a dummy element 
-        vec->traits.nrowshalo = vec->traits.nrows+1; 
     }
 
     if (vec->traits.flags & GHOST_DENSEMAT_VIEW) {
@@ -174,16 +164,15 @@ static ghost_error_t getNrowsFromContext(ghost_densemat_t *vec)
         padding /= vec->elSize;
         
         vec->traits.ncolspadded = PAD(vec->traits.ncols,padding);
-       
+      
+        padding = ghost_densemat_row_padding(); 
 
-        padding = ghost_sell_max_cfg_chunkheight(); // pad for SELL SpMV
-        padding = MAX(padding,ghost_machine_simd_width()/vec->elSize * GHOST_MAX_ROWS_UNROLL); // pad for unrolled densemat kernels
 #ifdef GHOST_HAVE_MIC
         WARNING_LOG("Extremely large row padding because the performance for TSMM and a large dimension power of two is very bad. This has to be fixed!");
         padding=500000; 
 #endif
         
-        vec->traits.nrowspadded = PAD(MAX(vec->traits.nrowshalo,vec->traits.nrows),padding);
+        vec->traits.nrowspadded = PAD(vec->traits.nrows,padding);
     }
         
     if (vec->traits.ncolsorig == 0) {
@@ -193,6 +182,24 @@ static ghost_error_t getNrowsFromContext(ghost_densemat_t *vec)
         vec->traits.nrowsorig = vec->traits.nrows;
     }
 
+    if (vec->context != NULL) {
+        int rank;
+        GHOST_CALL_RETURN(ghost_rank(&rank, vec->context->mpicomm));
+        vec->traits.nrows = vec->context->lnrows[rank];
+        if (!(vec->traits.flags & GHOST_DENSEMAT_NO_HALO)) {
+            if (vec->context->halo_elements == -1) {
+                ERROR_LOG("You have to make sure to read in the matrix _before_ creating the right hand side vector in a distributed context! This is because we have to know the number of halo elements of the vector.");
+                return GHOST_ERR_UNKNOWN;
+            }
+            vec->traits.nrowshalo = vec->traits.nrowspadded+vec->context->halo_elements+1;
+        } else {
+            vec->traits.nrowshalo = vec->traits.nrowspadded;
+        }
+    } else {
+        // context->hput_pos[0] = nrows if only one process, so we need a dummy element 
+        vec->traits.nrowshalo = vec->traits.nrowspadded+1; 
+    }
+    
     DEBUG_LOG(1,"The vector has %"PRLIDX" w/ %"PRLIDX" halo elements (padded: %"PRLIDX") rows",
             vec->traits.nrows,vec->traits.nrowshalo-vec->traits.nrows,vec->traits.nrowspadded);
     return GHOST_SUCCESS; 
@@ -533,5 +540,15 @@ void ghost_densemat_destroy( ghost_densemat_t* vec )
         ghost_bitmap_free(vec->colmask); vec->colmask = NULL;
         free(vec);
     }
+}
+
+ghost_lidx_t ghost_densemat_row_padding()
+{
+    // pad for SELL SpMV
+    ghost_lidx_t padding = ghost_sell_max_cfg_chunkheight();  
+    // pad for unrolled densemat kernels, assume worst case: SP data with 4 bytes
+    padding = MAX(padding,ghost_machine_simd_width()/4 * GHOST_MAX_ROWS_UNROLL);
+
+    return padding;
 }
 
