@@ -422,6 +422,36 @@ out:
     UNUSED(vec);
     UNUSED(comm);
     UNUSED(root);
-    return GHOST_SUCCESS;
+    return GHOST_SUCCESS;endif
 #endif
+}
+
+static ghost_error_t FUNCNAME(download(ghost_densemat_t * vec)) 
+{
+    if (vec->traits.location != (GHOST_LOCATION_HOST|GHOST_LOCATION_DEVICE)) {
+        WARNING_LOG("Can only upload if densemat is stored on both host and device!");
+        return GHOST_SUCCESS;
+    }
+    if (DENSEMAT_COMPACT(vec)) {
+         ghost_cu_download2d(vec->val,vec->stride*vec->elSize,vec->cu_val,vec->stride*vec->elSize,vec->blocklen*vec->elSize,vec->nblock);
+    } else {
+        GHOST_SINGLETHREAD(DENSEMAT_ITER(vec,ghost_cu_download(valptr,cuvalptr,vec->elSize)));
+    }
+    
+    return GHOST_SUCCESS;
+}
+
+static ghost_error_t FUNCNAME(upload(ghost_densemat_t * vec)) 
+{
+    if (vec->traits.location != (GHOST_LOCATION_HOST|GHOST_LOCATION_DEVICE)) {
+        WARNING_LOG("Can only upload if densemat is stored on both host and device!");
+        return GHOST_SUCCESS;
+    }
+    if (DENSEMAT_COMPACT(vec)) {
+         ghost_cu_upload2d(vec->cu_val,vec->stride*vec->elSize,vec->val,vec->stride*vec->elSize,vec->blocklen*vec->elSize,vec->nblock);
+    } else {
+        GHOST_SINGLETHREAD(DENSEMAT_ITER(vec,ghost_cu_upload(cuvalptr,valptr,vec->elSize)));
+    }
+    
+    return GHOST_SUCCESS;
 }

@@ -34,12 +34,6 @@ static ghost_error_t ghost_distributeVector(ghost_densemat_t *vec, ghost_densema
 static ghost_error_t ghost_collectVectors(ghost_densemat_t *vec, ghost_densemat_t *totalVec); 
 static ghost_error_t ghost_cloneVector(ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nr, ghost_lidx_t roffs, ghost_lidx_t nc, ghost_lidx_t coffs);
 static ghost_error_t vec_cm_compress(ghost_densemat_t *vec);
-static ghost_error_t vec_cm_upload(ghost_densemat_t *vec);
-static ghost_error_t vec_cm_download(ghost_densemat_t *vec);
-static ghost_error_t vec_cm_uploadHalo(ghost_densemat_t *vec);
-static ghost_error_t vec_cm_downloadHalo(ghost_densemat_t *vec);
-static ghost_error_t vec_cm_uploadNonHalo(ghost_densemat_t *vec);
-static ghost_error_t vec_cm_downloadNonHalo(ghost_densemat_t *vec);
 static ghost_error_t vec_cm_equalize(ghost_densemat_t *vec, ghost_mpi_comm_t comm, int root);
 static ghost_error_t densemat_cm_halocommInit(ghost_densemat_t *vec, ghost_densemat_halo_comm_t *comm);
 static ghost_error_t densemat_cm_halocommFinalize(ghost_densemat_t *vec, ghost_densemat_halo_comm_t *comm);
@@ -102,148 +96,10 @@ ghost_error_t ghost_densemat_cm_setfuncs(ghost_densemat_t *vec)
 
     vec->averageHalo = &ghost_densemat_cm_averagehalo_selector;
 
-    vec->upload = &vec_cm_upload;
-    vec->download = &vec_cm_download;
-    vec->uploadHalo = &vec_cm_uploadHalo;
-    vec->downloadHalo = &vec_cm_downloadHalo;
-    vec->uploadNonHalo = &vec_cm_uploadNonHalo;
-    vec->downloadNonHalo = &vec_cm_downloadNonHalo;
+    vec->upload = &ghost_densemat_cm_upload;
+    vec->download = &ghost_densemat_cm_download;
 
     return ret;
-}
-
-static ghost_error_t vec_cm_uploadHalo(ghost_densemat_t *vec)
-{
-    if (vec->traits.location != (GHOST_LOCATION_HOST|GHOST_LOCATION_DEVICE)) {
-        WARNING_LOG("Can only upload if densemat is stored on both host and device!");
-        return GHOST_SUCCESS;
-    }
-    if (vec->traits.flags & GHOST_DENSEMAT_NO_HALO) {
-        ERROR_LOG("Cannot upload halo in NO_HALO densemat!");
-        return GHOST_ERR_INVALID_ARG;
-    }
-    if (DENSEMAT_COMPACT(vec)) {
-        if (vec->traits.ncolsorig != vec->traits.ncols) {
-            ghost_lidx_t col;
-            for (col=0; col<vec->traits.ncols; col++) {
-                GHOST_CALL_RETURN(ghost_cu_upload(
-                            DENSEMAT_CUVALPTR(vec,vec->traits.nrowsorig,col),
-                            DENSEMAT_VALPTR(vec,vec->traits.nrowsorig,col), 
-                            (vec->traits.nrowshalo-vec->traits.nrows)*vec->elSize));
-            }
-        } else {
-            GHOST_CALL_RETURN(ghost_cu_upload(
-                        DENSEMAT_CUVALPTR(vec,vec->traits.nrows,0),
-                        DENSEMAT_VALPTR(vec,vec->traits.nrows,0), 
-                        (vec->traits.nrowshalo-vec->traits.nrows)*
-                        vec->traits.ncolspadded*vec->elSize));
-        }
-    } else {
-        int col, memcol = -1;
-
-        for (col=0; col<vec->traits.ncols; col++) {
-            memcol = ghost_bitmap_next(vec->rowmask,memcol);
-            GHOST_CALL_RETURN(ghost_cu_upload2d(
-                        DENSEMAT_CUVALPTR(vec,vec->traits.nrowsorig,memcol),
-                        vec->traits.ncolspadded*vec->elSize,
-                        DENSEMAT_VALPTR(vec,vec->traits.nrows,memcol),
-                        vec->traits.ncolspadded*vec->elSize,vec->elSize,
-                        vec->context->halo_elements));
-        }
-    }
-    
-    return GHOST_SUCCESS;
-}
-
-static ghost_error_t vec_cm_downloadHalo(ghost_densemat_t *vec)
-{
-    if (vec->traits.location != (GHOST_LOCATION_HOST|GHOST_LOCATION_DEVICE)) {
-        WARNING_LOG("Can only upload if densemat is stored on both host and device!");
-        return GHOST_SUCCESS;
-    }
-    if (vec->traits.flags & GHOST_DENSEMAT_NO_HALO) {
-        ERROR_LOG("Cannot download halo in NO_HALO densemat!");
-        return GHOST_ERR_INVALID_ARG;
-    }
-    if (DENSEMAT_COMPACT(vec)) {
-        if (vec->traits.ncolsorig != vec->traits.ncols) {
-            ghost_lidx_t col;
-            for (col=0; col<vec->traits.ncols; col++) {
-                GHOST_CALL_RETURN(ghost_cu_download(
-                            DENSEMAT_VALPTR(vec,vec->traits.nrowsorig,col), 
-                            DENSEMAT_CUVALPTR(vec,vec->traits.nrowsorig,col),
-                            (vec->traits.nrowshalo-vec->traits.nrows)*vec->elSize));
-            }
-        } else {
-            GHOST_CALL_RETURN(ghost_cu_download(
-                        DENSEMAT_VALPTR(vec,vec->traits.nrows,0), 
-                        DENSEMAT_CUVALPTR(vec,vec->traits.nrows,0),
-                        (vec->traits.nrowshalo-vec->traits.nrows)*
-                        vec->traits.ncolspadded*vec->elSize));
-        }
-    } else {
-        int col, memcol = -1;
-
-        for (col=0; col<vec->traits.ncols; col++) {
-            memcol = ghost_bitmap_next(vec->rowmask,memcol);
-            GHOST_CALL_RETURN(ghost_cu_download2d(
-                        DENSEMAT_VALPTR(vec,vec->traits.nrows,col),
-                        vec->traits.ncolspadded*vec->elSize,
-                        DENSEMAT_CUVALPTR(vec,vec->traits.nrowsorig,memcol),
-                        vec->traits.ncolspadded*vec->elSize,
-                        vec->elSize,vec->context->halo_elements));
-        }
-    }
-    
-    return GHOST_SUCCESS;
-}
-
-static ghost_error_t vec_cm_uploadNonHalo(ghost_densemat_t *vec)
-{
-    if (vec->traits.location != (GHOST_LOCATION_HOST|GHOST_LOCATION_DEVICE)) {
-        WARNING_LOG("Can only upload if densemat is stored on both host and device!");
-        return GHOST_SUCCESS;
-    }
-    if (DENSEMAT_COMPACT(vec)) {
-         ghost_cu_upload2d(vec->cu_val,vec->stride*vec->elSize,vec->val,vec->stride*vec->elSize,vec->blocklen*vec->elSize,vec->nblock);
-    } else {
-        GHOST_SINGLETHREAD(DENSEMAT_ITER(vec,ghost_cu_upload(cuvalptr,valptr,vec->elSize)));
-    }
-    
-    return GHOST_SUCCESS;
-}
-
-static ghost_error_t vec_cm_downloadNonHalo(ghost_densemat_t *vec)
-{
-    if (vec->traits.location != (GHOST_LOCATION_HOST|GHOST_LOCATION_DEVICE)) {
-        WARNING_LOG("Can only upload if densemat is stored on both host and device!");
-        return GHOST_SUCCESS;
-    }
-    if (DENSEMAT_COMPACT(vec)) {
-         ghost_cu_download2d(vec->val,vec->stride*vec->elSize,vec->cu_val,vec->stride*vec->elSize,vec->blocklen*vec->elSize,vec->nblock);
-    } else {
-        GHOST_SINGLETHREAD(DENSEMAT_ITER(vec,ghost_cu_download(valptr,cuvalptr,vec->elSize)));
-    }
-    
-    return GHOST_SUCCESS;
-}
-
-static ghost_error_t vec_cm_upload(ghost_densemat_t *vec) 
-{
-    GHOST_CALL_RETURN(vec->uploadNonHalo(vec));
-    if (!(vec->traits.flags & GHOST_DENSEMAT_NO_HALO)) {
-        GHOST_CALL_RETURN(vec->uploadHalo(vec));
-    }
-    return GHOST_SUCCESS;
-}
-
-static ghost_error_t vec_cm_download(ghost_densemat_t *vec)
-{
-    GHOST_CALL_RETURN(vec->downloadNonHalo(vec));
-    if (!(vec->traits.flags & GHOST_DENSEMAT_NO_HALO)) {
-        GHOST_CALL_RETURN(vec->downloadHalo(vec));
-    }
-    return GHOST_SUCCESS;
 }
 
 static ghost_error_t vec_cm_equalize(ghost_densemat_t *vec, ghost_mpi_comm_t comm, int root)
@@ -253,7 +109,7 @@ static ghost_error_t vec_cm_equalize(ghost_densemat_t *vec, ghost_mpi_comm_t com
     ghost_mpi_datatype_t vecdt;
     ghost_mpi_datatype(&vecdt,vec->traits.datatype);
 
-    vec->downloadNonHalo(vec);
+    vec->download(vec);
 
     if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         ghost_lidx_t row,col;
@@ -271,7 +127,7 @@ static ghost_error_t vec_cm_equalize(ghost_densemat_t *vec, ghost_mpi_comm_t com
         MPI_CALL_RETURN(MPI_Bcast(vec->val,vec->traits.nrowspadded*vec->traits.ncols,vecdt,root,comm));
     }
 
-    vec->uploadNonHalo(vec);
+    vec->upload(vec);
      
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_COMMUNICATION);
 #else
@@ -624,7 +480,7 @@ static ghost_error_t vec_cm_fromFunc(ghost_densemat_t *vec, void (*fp)(ghost_gid
         } else {
           DENSEMAT_ITER(vec,fp(offset+row,col,valptr));
         }
-        vec->uploadNonHalo(vec);
+        vec->upload(vec);
     } else {
         INFO_LOG("Need to create dummy HOST densemat!");
         ghost_densemat_t *hostVec;

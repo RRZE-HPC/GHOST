@@ -286,7 +286,7 @@ static ghost_error_t FUNCNAME(permute_tmpl(ghost_densemat_t *vec, ghost_permutat
             
         GHOST_CALL_RETURN(ghost_rank(&me,vec->context->mpicomm));
         GHOST_CALL_RETURN(ghost_nrank(&nprocs,vec->context->mpicomm));
-        GHOST_CALL_RETURN(vec->downloadNonHalo(vec));
+        GHOST_CALL_RETURN(vec->download(vec));
             
         int* permcnt, *invpermcnt, *permdispl, *invpermdispl;
         GHOST_CALL_RETURN(ghost_malloc((void **)&permcnt,nprocs*sizeof(int)));

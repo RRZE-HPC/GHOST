@@ -368,8 +368,9 @@ struct ghost_densemat_t
     /**
      * @ingroup gputransfer
      * 
-     * @brief Downloads an entire densemat from a compute device. 
+     * @brief Downloads a densemat from a compute device, excluding halo elements. 
      *
+     * The densemat must be present on both host and device.
      * Does nothing if the densemat is not present on the device.
      *
      * @param vec The densemat.
@@ -380,34 +381,11 @@ struct ghost_densemat_t
     /**
      * @ingroup gputransfer
      * 
-     * @brief Downloads only a densemat's halo elements from a compute device.
-     * Does nothing if the densemat is not present on the device.
-     *
-     * @param vec The densemat.
-     *
-     * @return ::GHOST_SUCCESS on success or an error indicator.
-     */
-    ghost_error_t (*downloadHalo) (ghost_densemat_t *vec);
-    /**
-     * @ingroup gputransfer
-     * 
      * @brief Downloads only a densemat's local elements (i.e., without halo
      * elements) from a compute device. Does nothing if the densemat is not
      * present on the device.
      *
      * @param vec The densemat.
-     *
-     * @return ::GHOST_SUCCESS on success or an error indicator.
-     */
-    ghost_error_t (*downloadNonHalo) (ghost_densemat_t *vec);
-    /**
-     * @brief Stores the entry of the densemat at a given index (row i, col j)
-     * into entry.
-     *
-     * @param vec The densemat.
-     * @param entry Where to store the entry.
-     * @param i The row.
-     * @param j The column.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
@@ -596,21 +574,12 @@ struct ghost_densemat_t
     /**
      * @ingroup gputransfer
      * 
-     * @brief Uploads an entire densemat to a compute device. Does nothing if
-     * the densemat is not present on the device.
+     * @brief Uploads a densemat to a compute device, excluding halo elements. 
+     * The densemat must be present on both host and device.
      *
      * @param vec The densemat.
      */
     ghost_error_t (*upload) (ghost_densemat_t *vec);
-    /**
-     * @ingroup gputransfer
-     * 
-     * @brief Uploads only a densemat's halo elements to a compute device.
-     * Does nothing if the densemat is not present on the device.
-     *
-     * @param vec The densemat.
-     */
-    ghost_error_t (*uploadHalo) (ghost_densemat_t *vec);
     /**
      * @ingroup gputransfer
      * 
@@ -619,16 +588,6 @@ struct ghost_densemat_t
      * present on the device.
      *
      * @param vec The densemat.
-     */
-    ghost_error_t (*uploadNonHalo) (ghost_densemat_t *vec);
-    /**
-     * @brief View plain data in the densemat.
-     * That means that the densemat has no memory malloc'd but its data pointer 
-     * only points to the memory provided.
-     *
-     * @param vec The densemat.
-     * @param data The plain data.
-     * @param lda The leading dimension.
      */
     ghost_error_t (*viewPlain) (ghost_densemat_t *vec, void *data, 
             ghost_lidx_t lda);
