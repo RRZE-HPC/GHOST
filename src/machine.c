@@ -243,6 +243,22 @@ size_t ghost_machine_alignment()
    return alignment; 
 }
 
+size_t ghost_machine_simd_width()
+{
+#ifdef GHOST_HAVE_MIC
+    size_t width = 64;
+#elif defined(GHOST_HAVE_AVX2)
+    size_t width = 32;
+#elif defined(GHOST_HAVE_AVX)
+    size_t width = 32;
+#elif defined(GHOST_HAVE_SSE)
+    size_t width = 16;
+#else
+    size_t width = 4;
+#endif
+   return width; 
+}
+
 ghost_error_t ghost_machine_numanode(hwloc_obj_t *node, int idx)
 {
     if (!node) {

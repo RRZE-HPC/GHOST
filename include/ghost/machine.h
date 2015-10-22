@@ -11,10 +11,6 @@
 #include <hwloc.h>
 #include "ghost/error.h"
 
-/**
- * @brief This is the alignment size for memory allocated using `ghost_malloc_align()`.
- */
-#define GHOST_DATA_ALIGNMENT 1024
 #define GHOST_NUMANODE_ANY -1
 
 
@@ -136,6 +132,12 @@ extern "C" {
      */
     size_t ghost_machine_alignment();
 
+    /**
+     * @brief Get the machine's SIMD width.
+     *
+     * @return The SIMD width in bytes.
+     */
+    size_t ghost_machine_simd_width();
 #ifdef __cplusplus
 }
 #endif

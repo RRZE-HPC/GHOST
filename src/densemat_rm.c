@@ -11,6 +11,7 @@
 #include "ghost/log.h"
 #include "ghost/bindensemat.h"
 #include "ghost/densemat_cm.h"
+#include "ghost/constants.h"
 
 #include <stdio.h>
 #include <string.h>

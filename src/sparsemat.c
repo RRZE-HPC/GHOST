@@ -12,6 +12,7 @@
 #include "ghost/bincrs.h"
 #include "ghost/matrixmarket.h"
 #include "ghost/instr.h"
+#include "ghost/constants.h"
 
 #include <libgen.h>
 #include <math.h>

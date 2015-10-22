@@ -9,6 +9,7 @@
 #include "ghost/bincrs.h"
 #include "ghost/log.h"
 #include "ghost/machine.h"
+#include "ghost/constants.h"
 
 #include <libgen.h>
 #include <string.h>
