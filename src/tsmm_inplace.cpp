@@ -6,6 +6,7 @@
 #include "ghost/tsmm_inplace_gen.h"
 #include "ghost/tsmm_inplace.h"
 #include "ghost/math.h"
+#include "ghost/timing.h"
 #include <map>
 
 using namespace std;
