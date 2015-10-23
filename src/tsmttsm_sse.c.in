@@ -9,7 +9,7 @@
 
 
 #GHOST_FUNC_BEGIN#CFGK=${CFG_BLOCKVECTOR_SIZES}#CFGM=${CFG_BLOCKVECTOR_SIZES}
-ghost_error_t ghost_tsmttsm__a_sse_d_CFGK_CFGM_cm_rm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conmv)
+ghost_error_t ghost_tsmttsm__a_sse_d_CFGK_CFGM_1_cm_rm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conmv)
 {
     UNUSED(conmv);
 #ifdef GHOST_HAVE_SSE

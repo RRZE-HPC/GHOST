@@ -130,7 +130,7 @@ extern "C" {
      *
      * @return The alignment in bytes.
      */
-    size_t ghost_machine_alignment();
+    int ghost_machine_alignment();
 
     /**
      * @brief Get the machine's SIMD width.

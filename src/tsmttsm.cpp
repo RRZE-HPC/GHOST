@@ -11,6 +11,7 @@
 #include "ghost/tsmttsm_kahan_gen.h"
 #include "ghost/timing.h"
 #include "ghost/machine.h"
+#include "ghost/constants.h"
 
 #include <map>
 
@@ -21,7 +22,7 @@ using namespace std;
 
 static bool operator<(const ghost_tsmttsm_parameters_t &a, const ghost_tsmttsm_parameters_t &b) 
 { 
-    return ghost_hash(a.dt,a.wcols,ghost_hash(a.vcols,a.impl,ghost_hash(a.xstor,a.wstor,a.alignment))) < ghost_hash(b.dt,b.wcols,ghost_hash(b.vcols,b.impl,ghost_hash(b.xstor,b.wstor,b.alignment))); 
+    return ghost_hash(a.dt,a.wcols,ghost_hash(a.vcols,a.impl,ghost_hash(a.xstor,a.wstor,ghost_hash(a.alignment,a.unroll,0)))) < ghost_hash(b.dt,b.wcols,ghost_hash(b.vcols,b.impl,ghost_hash(b.xstor,b.wstor,ghost_hash(b.alignment,b.unroll,0)))); 
 }
 
 static map<ghost_tsmttsm_parameters_t, ghost_tsmttsm_kernel_t> ghost_tsmttsm_kernels;
@@ -132,7 +133,13 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
     
     ghost_tsmttsm_parameters_t p;
     ghost_tsmttsm_kernel_t kernel = NULL;
+    
+    // fix properties    
+    p.dt = x->traits.datatype;
+    p.xstor = x->traits.storage;
+    p.wstor = w->traits.storage;
 
+    // initial implementation
 #ifdef GHOST_HAVE_MIC
     p.impl = GHOST_IMPLEMENTATION_MIC;
 #elif defined(GHOST_HAVE_AVX2)
@@ -145,110 +152,38 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
     p.impl = GHOST_IMPLEMENTATION_PLAIN;
 #endif
     
-    /*if (x->traits.ncolspadded < 4 || x->traits.flags & GHOST_DENSEMAT_VIEW) {
-        p.impl = GHOST_IMPLEMENTATION_PLAIN;
-    }*/
-    //p.impl = GHOST_IMPLEMENTATION_PLAIN;
+    // alignment of large input data
+    // the alignment of the result array does not matter because we can easily re-allocate it accordingly
+    int al = ghost_machine_alignment();
+    if (IS_ALIGNED(x->val,al) && IS_ALIGNED(v->val,al) && !((x->stride*x->elSize) % al) && !((v->stride*x->elSize) % al)) {
+        p.alignment = GHOST_ALIGNED;
+    } else {
+        p.alignment = GHOST_UNALIGNED;
+    }
 
-    p.alignment = GHOST_ALIGNED;
-    p.dt = x->traits.datatype;
-    p.xstor = x->traits.storage;
-    p.wstor = w->traits.storage;
-    
     p.vcols = v->traits.ncols;
-    size_t alignment = ghost_machine_alignment();
-    
-    if (p.impl == GHOST_IMPLEMENTATION_SSE) {
-        if (!IS_ALIGNED(x->val,16) || !IS_ALIGNED(v->val,16) || !IS_ALIGNED(w->val,16) || 
-                (x->stride*x->elSize)%16 || (v->stride*v->elSize)%16 || (w->stride*w->elSize)%16) {
-            p.alignment = GHOST_UNALIGNED;
-            PERFWARNING_LOG("Switching to the unaligned kernel!");
-        }
-        if ( (v->traits.nrowspadded*v->elSize)%32 || (w->traits.nrowspadded*w->elSize)%32 ) {
-            p.alignment = GHOST_UNALIGNED;
-            p.impl = GHOST_IMPLEMENTATION_PLAIN;
-            PERFWARNING_LOG("Switching to the unaligned plain kernel!");
-        }
-    }
-    if (p.impl == GHOST_IMPLEMENTATION_AVX || p.impl == GHOST_IMPLEMENTATION_AVX2) {
-        if (!IS_ALIGNED(x->val,32) || !IS_ALIGNED(v->val,32) || !IS_ALIGNED(w->val,32) || 
-                ((x->stride*x->elSize)%32 && (x->stride*x->elSize)>32) ||
-                ((v->stride*v->elSize)%32 && (v->stride*v->elSize)>32) ||
-                ((w->stride*w->elSize)%32 && (w->stride*w->elSize)>32) ){
-            p.alignment = GHOST_UNALIGNED;
-            PERFWARNING_LOG("Switching to the unaligned kernel!");
-        }
-        if ( (v->traits.nrowspadded*v->elSize)%32 || (w->traits.nrowspadded*w->elSize)%32 ) {
-            p.alignment = GHOST_UNALIGNED;
-            p.impl = GHOST_IMPLEMENTATION_PLAIN;
-            PERFWARNING_LOG("Switching to the unaligned plain kernel!");
-        }
-    }
-    if (p.impl == GHOST_IMPLEMENTATION_PLAIN || p.impl == GHOST_IMPLEMENTATION_MIC) {
-        if (!IS_ALIGNED(x->val,alignment) || !IS_ALIGNED(v->val,alignment) || !IS_ALIGNED(w->val,alignment) || 
-                (x->stride*x->elSize)%alignment || (v->stride*v->elSize)%alignment || (w->stride*w->elSize)%alignment) {
-            p.alignment = GHOST_UNALIGNED;
-            PERFWARNING_LOG("Switching to the unaligned kernel!");
-        }
-    }
     p.wcols = w->traits.ncols;
     
-    INFO_LOG("Inital search for kernel %d %d %d %d %d %d!",p.dt,p.wcols,p.vcols,p.xstor,p.wstor,p.alignment);
+    if (x->traits.flags & GHOST_DENSEMAT_VIEW || v->traits.flags & GHOST_DENSEMAT_VIEW) {
+        p.unroll = 1;
+    } else {
+        p.unroll = GHOST_MAX_ROWS_UNROLL;
+    }
+    
+    INFO_LOG("Inital search for kernel dt=%d wcols=%d vcols=%d xstor=%d wstor=%d align=%d unroll=%d!",p.dt,p.wcols,p.vcols,p.xstor,p.wstor,p.alignment,p.unroll);
     kernel = kernels[p];
-    
-    if (!kernel) {
-        PERFWARNING_LOG("Try kernel with arbitrary wcols");
-        p.wcols = -1;
-        p.vcols = v->traits.ncols;
-        kernel = kernels[p];
-    }
-    
-    if (!kernel) {
-        PERFWARNING_LOG("Try kernel with arbitrary vcols");
-        p.wcols = w->traits.ncols;
-        p.vcols = -1;
-        kernel = kernels[p];
-    }
-
-    if (!kernel) {
-        PERFWARNING_LOG("Try kernel with arbitrary block sizes");
-        p.wcols = -1;
-        p.vcols = -1;
-        kernel = kernels[p];
-    }
     
     if (!kernel) {
         PERFWARNING_LOG("Try plain implementation");
         p.impl = GHOST_IMPLEMENTATION_PLAIN;
-        p.vcols = v->traits.ncols;
-        p.wcols = w->traits.ncols;
-        if (!IS_ALIGNED(x->val,64) || !IS_ALIGNED(v->val,64) || !IS_ALIGNED(w->val,64) || 
-                (x->stride*x->elSize)%64 || (v->stride*v->elSize)%64 || (w->stride*w->elSize)%64) {
-            p.alignment = GHOST_UNALIGNED;
-            PERFWARNING_LOG("Switching to the unaligned kernel!");
+        kernel = kernels[p];
+    }
+   
+    if (!kernel) {
+        PERFWARNING_LOG("Decrease unroll size");
+        while (p.unroll > 1 && !kernel) {
+            p.unroll /= 2;
         }
-        kernel = kernels[p];
-    }
-    
-    if (!kernel) {
-        PERFWARNING_LOG("Try kernel with arbitrary wcols");
-        p.wcols = -1;
-        p.vcols = v->traits.ncols;
-        kernel = kernels[p];
-    }
-    
-    if (!kernel) {
-        PERFWARNING_LOG("Try kernel with arbitrary vcols");
-        p.wcols = w->traits.ncols;
-        p.vcols = -1;
-        kernel = kernels[p];
-    }
-
-    if (!kernel) {
-        PERFWARNING_LOG("Try kernel with arbitrary block sizes");
-        p.wcols = -1;
-        p.vcols = -1;
-        kernel = kernels[p];
     }
     
     if (!kernel) {
@@ -257,15 +192,34 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
         kernel = kernels[p];
     }
     
+    if (!kernel) {
+        PERFWARNING_LOG("Try kernel with arbitrary wcols");
+        p.wcols = -1;
+        p.vcols = v->traits.ncols;
+        kernel = kernels[p];
+    }
+    
+    if (!kernel) {
+        PERFWARNING_LOG("Try kernel with arbitrary vcols");
+        p.wcols = w->traits.ncols;
+        p.vcols = -1;
+        kernel = kernels[p];
+    }
+
+    if (!kernel) {
+        PERFWARNING_LOG("Try kernel with arbitrary block sizes");
+        p.wcols = -1;
+        p.vcols = -1;
+        kernel = kernels[p];
+    }
+    
     
     if (!kernel) {
         INFO_LOG("Could not find TSMTTSM kernel with %d %d %d %d %d. Fallback to GEMM",p.dt,p.wcols,p.vcols,p.xstor,p.wstor);
-        return GHOST_ERR_INVALID_ARG;
-        
-            //return ghost_gemm(x,v,"T",w,"N",alpha,beta,GHOST_GEMM_ALL_REDUCE,GHOST_GEMM_NOT_SPECIAL);
+        ret = ghost_gemm(x,v,conjv?"C":"T",w,"N",alpha,beta,reduce,GHOST_GEMM_NOT_SPECIAL);
+    } else {
+        ret = kernel(x,v,w,alpha,beta,conjv);
     }
-    
-    ret = kernel(x,v,w,alpha,beta,conjv);
 
     if (reduce != GHOST_GEMM_NO_REDUCE && v->context) {
         x->reduce(x,v->context->mpicomm,reduce);
