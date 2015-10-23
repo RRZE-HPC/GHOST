@@ -15,6 +15,8 @@ typedef enum
     GHOST_RAND_SEED_TIME = 4,
 } ghost_rand_seed_t;
 
+#define GHOST_RAND_SEED_ALL (GHOST_RAND_SEED_PU|GHOST_RAND_SEED_RANK|GHOST_RAND_SEED_TIME)
+
 #ifdef __cplusplus
 extern "C" {
 #endif
