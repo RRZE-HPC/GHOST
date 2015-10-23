@@ -53,44 +53,6 @@ out:
     return ret;
 }
 
-ghost_error_t ghost_rand_seed(unsigned int global_seed)
-{
-    ghost_error_t ret = GHOST_SUCCESS;
-    int i;
-    int rank;
-
-    GHOST_CALL_GOTO(ghost_machine_npu(&nrand, GHOST_NUMANODE_ANY),err,ret);
-    GHOST_CALL_GOTO(ghost_rank(&rank, MPI_COMM_WORLD),err,ret);
-
-    if (!ghost_rand_states) {
-        GHOST_CALL_GOTO(ghost_malloc((void **)&ghost_rand_states,nrand*sizeof(unsigned int)),err,ret);
-    }
-
-    for (i=0; i<nrand; i++) {
-        //double dtime;
-        //GHOST_CALL_GOTO(ghost_timing_wcmilli(&dtime),err,ret);
-        //int time = (int)(((int64_t)(dtime)) & 0xFFFFFFLL);
-
-        unsigned int seed=(unsigned int)ghost_hash(
-                //time,
-                global_seed,
-                rank,
-                i);
-        ghost_rand_states[i] = seed;
-    }
-
-    cu_seed = global_seed;
-
-    goto out;
-err:
-    ERROR_LOG("Free rand states");
-    free(ghost_rand_states);
-
-out:
-
-    return ret;
-}
-
 ghost_error_t ghost_rand_get(unsigned int **s)
 {
     if (!s) {
@@ -102,22 +64,63 @@ ghost_error_t ghost_rand_get(unsigned int **s)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_rand_set1(unsigned int seed) 
+ghost_error_t ghost_rand_seed(ghost_rand_seed_t which, unsigned int seed)
 {
-    int i;
+    ghost_error_t ret = GHOST_SUCCESS;
+    double dtime;
+    int i, rank, time;
     ghost_type_t type;
 
-    GHOST_CALL_RETURN(ghost_type_get(&type));
-    if (type == GHOST_TYPE_CUDA) {
+    GHOST_CALL_GOTO(ghost_type_get(&type),err,ret);
+    GHOST_CALL_GOTO(ghost_machine_npu(&nrand, GHOST_NUMANODE_ANY),err,ret);
+    
+    if (which & GHOST_RAND_SEED_RANK) {
+        rank = (int)seed;
+    } else {
+        GHOST_CALL_GOTO(ghost_rank(&rank, MPI_COMM_WORLD),err,ret);
+    }
+
+    if (which & GHOST_RAND_SEED_TIME) {
+        GHOST_CALL_GOTO(ghost_timing_wcmilli(&dtime),err,ret);
+        time = (int)(((int64_t)(dtime)) & 0xFFFFFFLL);
+    } else {
+        time = (int)seed;
+    }
+
+    if (!ghost_rand_states) {
+        GHOST_CALL_GOTO(ghost_malloc((void **)&ghost_rand_states,nrand*sizeof(unsigned int)),err,ret);
+    }
+    
+    if ((type == GHOST_TYPE_CUDA) && (which & GHOST_RAND_SEED_PU)) {
         WARNING_LOG("This function does not really do what you would expect for CUDA random numbers, the random seed will differ between threads!");
-        cu_seed = seed;
+        cu_seed = ghost_hash(rank,time,0);
     }
 
     for (i=0; i<nrand; i++) {
-        ghost_rand_states[i] = seed;
+
+        if (which & GHOST_RAND_SEED_PU) {
+            ghost_rand_states[i] = (unsigned int)ghost_hash(
+                time,
+                rank,
+                seed);
+        } else {
+            ghost_rand_states[i] = (unsigned int)ghost_hash(
+                time,
+                rank,
+                i);
+        }
     }
 
-    return GHOST_SUCCESS;
+
+    goto out;
+err:
+    ERROR_LOG("Free rand states");
+    free(ghost_rand_states);
+
+out:
+
+    return ret;
+
 }
 
 void ghost_rand_destroy()
