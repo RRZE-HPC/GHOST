@@ -404,7 +404,7 @@ struct ghost_densemat_t
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t (*fromFunc) (ghost_densemat_t *vec, void (*fp)(ghost_gidx_t, 
+    ghost_error_t (*fromFunc) (ghost_densemat_t *vec, int (*fp)(ghost_gidx_t, 
                 ghost_lidx_t, void *));
     /**
      * @ingroup denseinit
