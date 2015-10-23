@@ -142,22 +142,6 @@ ghost_error_t ghost_tsmm_inplace(ghost_densemat_t *x, ghost_densemat_t *w, void 
 
     ret = kernel(x,w,alpha,beta);
 
-#ifdef GHOST_HAVE_INSTR_TIMING
-    ghost_gemm_perf_args_t tsmm_perfargs;
-    tsmm_perfargs.k = p.ncolsin;
-    tsmm_perfargs.n = p.ncolsout;
-    if (x->context) {
-        tsmm_perfargs.m = x->context->gnrows;
-    } else {
-        tsmm_perfargs.m = x->traits.nrows;
-    }
-    tsmm_perfargs.dt = x->traits.datatype;
-    tsmm_perfargs.betaiszero = ghost_iszero(beta,p.dt);
-    tsmm_perfargs.alphaisone = ghost_isone(alpha,p.dt);
-    ghost_timing_set_perfFunc(__ghost_functag,ghost_gemm_perf_GFs,(void *)&tsmm_perfargs,sizeof(tsmm_perfargs),"GF/s");
-    ghost_timing_set_perfFunc(__ghost_functag,ghost_gemm_perf_GBs,(void *)&tsmm_perfargs,sizeof(tsmm_perfargs),"GB/s");
-#endif
-
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
 
 
