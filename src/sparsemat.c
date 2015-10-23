@@ -211,7 +211,7 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
 
     if (!(*chunkptr)) {
         GHOST_INSTR_START("rowlens");
-        GHOST_CALL_GOTO(ghost_malloc_align((void **)chunkptr,mat->nrows*sizeof(ghost_lidx_t),GHOST_DATA_ALIGNMENT),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc_align((void **)chunkptr,(nchunks+1)*sizeof(ghost_lidx_t),GHOST_DATA_ALIGNMENT),err,ret);
 
 
 #pragma omp parallel private(i,tmpval,tmpcol,row,maxRowLenInChunk) reduction (+:gnents,gnnz,funcerrs) reduction (max:privateMaxRowLen) 
