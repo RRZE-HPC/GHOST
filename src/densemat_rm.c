@@ -28,7 +28,7 @@
 #include "ghost/densemat_iter_macros.h"
 #include "ghost/densemat_common.c.def"
 
-static ghost_error_t vec_rm_fromFunc(ghost_densemat_t *vec, void (*fp)(ghost_gidx_t, ghost_lidx_t, void *));
+static ghost_error_t vec_rm_fromFunc(ghost_densemat_t *vec, int (*fp)(ghost_gidx_t, ghost_lidx_t, void *));
 static ghost_error_t vec_rm_fromFile(ghost_densemat_t *vec, char *path, bool singleFile);
 static ghost_error_t vec_rm_toFile(ghost_densemat_t *vec, char *path, bool singleFile);
 static ghost_error_t ghost_distributeVector(ghost_densemat_t *vec, ghost_densemat_t *nodeVec);
@@ -451,7 +451,7 @@ static ghost_error_t vec_rm_fromFile(ghost_densemat_t *vec, char *path, bool sin
 
 }
 
-static ghost_error_t vec_rm_fromFunc(ghost_densemat_t *vec, void (*fp)(ghost_gidx_t, ghost_lidx_t, void *))
+static ghost_error_t vec_rm_fromFunc(ghost_densemat_t *vec, int (*fp)(ghost_gidx_t, ghost_lidx_t, void *))
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     int rank;
