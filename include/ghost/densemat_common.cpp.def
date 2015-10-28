@@ -509,7 +509,7 @@ static ghost_error_t FUNCNAME(fromVec_tmpl(ghost_densemat_t *vec, ghost_densemat
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     int needInit = 0;
     FUNCNAME(malloc(vec,&needInit));
-    if( needInit ) {
+    if( needInit && (vec->traits.location & GHOST_LOCATION_HOST) ) {
         if( vec->traits.ncolspadded != vec->traits.ncols || vec->traits.nrowspadded != vec->traits.nrows || roffs != 0 ) {
             PERFWARNING_LOG("Fast initializing of padded vector block from another vector not implemented, filling with zeros first");
             DENSEMAT_ITER_INIT(vec,memset(valptr,0,sizeof(v_t)));
