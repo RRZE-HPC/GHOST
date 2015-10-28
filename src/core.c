@@ -179,6 +179,7 @@ ghost_error_t ghost_init(int argc, char **argv)
         free(cpusetStr);
     }
 
+    int nxeonphis_total;
     int ncudadevs = 0;
     int nxeonphis = -1;
     int nnumanodes;
@@ -197,14 +198,7 @@ ghost_error_t ghost_init(int argc, char **argv)
     GHOST_CALL_RETURN(ghost_cu_ndevice(&ncudadevs));
 #endif
 
-    if (nnoderanks != nnumanodes+ncudadevs) {
-        PERFWARNING_LOG("The number of MPI processes (%d) on this node is not "
-                "optimal! Suggested number: %d (%d NUMA domain%s + %d CUDA device%s)",
-                nnoderanks,nnumanodes+ncudadevs,nnumanodes,nnumanodes==1?"":"s",ncudadevs,ncudadevs==1?"":"s");
-    }
 
-
-    int nxeonphis_total;
 #if HWLOC_API_VERSION >= 0x00010700
     hwloc_obj_t phi = NULL;
 
@@ -226,11 +220,9 @@ ghost_error_t ghost_init(int argc, char **argv)
 #endif
 
     int nactivephis = 0;
-
 #ifdef GHOST_HAVE_MIC
     nactivephis = 1;
 #endif
-    
     MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&nactivephis,1,MPI_INT,MPI_SUM,MPI_COMM_WORLD));
 
     if (nactivephis < nxeonphis_total) {
@@ -238,6 +230,13 @@ ghost_error_t ghost_init(int argc, char **argv)
                 nxeonphis_total>1?"are":"is",nxeonphis_total,nxeonphis_total>1?"s":"",nactivephis,nactivephis==1?"is":"are");
     }
 
+    if (nnoderanks != nnumanodes+ncudadevs) {
+        PERFWARNING_LOG("The number of MPI processes (%d) on this node is not "
+                "optimal! Suggested number: %d (%d NUMA domain%s + %d CUDA device%s)",
+                nnoderanks,nnumanodes+ncudadevs,nnumanodes,nnumanodes==1?"":"s",ncudadevs,ncudadevs==1?"":"s");
+    }
+
+    // get GHOST type set by the user
     ghost_type_t settype;
     GHOST_CALL_RETURN(ghost_type_get(&settype));
     
@@ -403,25 +402,18 @@ ghost_error_t ghost_init(int argc, char **argv)
                     hwloc_bitmap_copy(rank_cpuset,coverobj->cpuset);
                 } else {
                     if (i == noderank) {
-                        int pus_per_rank = npus/ncpuranks_on_node;
+                        int cores_per_rank = ncores/ncpuranks_on_node;
                         int r;
-                        int pu = -1;
-
-                        // skip PUs
-                        for (r=0; r<cpurank*pus_per_rank; r++) {
-                            pu = hwloc_bitmap_next(fullavailcpuset,pu);
-                        }
-
-                        // set PUs
-                        for (; r<(cpurank+1)*pus_per_rank; r++) {
-                            pu = hwloc_bitmap_next(fullavailcpuset,pu);
-                            hwloc_bitmap_set(rank_cpuset,pu);
+                        
+                        // assign cores
+                        for (r=cpurank*cores_per_rank; r<(cpurank+1)*cores_per_rank; r++) {
+                            hwloc_bitmap_or(rank_cpuset,rank_cpuset,hwloc_get_obj_inside_cpuset_by_type(topology,fullavailcpuset,HWLOC_OBJ_CORE,r)->cpuset);
                         }
 
                         // remainder
                         if (cpurank == ncpuranks_on_node-1) {
-                            while ((pu = hwloc_bitmap_next(fullavailcpuset,pu)) >= 0) {
-                                hwloc_bitmap_set(rank_cpuset,pu);
+                            for (; r<ncores; r++) {
+                                hwloc_bitmap_or(rank_cpuset,rank_cpuset,hwloc_get_obj_inside_cpuset_by_type(topology,fullavailcpuset,HWLOC_OBJ_CORE,r)->cpuset);
                             }
                         }
 
@@ -462,6 +454,7 @@ ghost_error_t ghost_init(int argc, char **argv)
     }
     
 
+
     if (hwconfig.ncore == GHOST_HWCONFIG_INVALID) {
         hwconfig.ncore = ncores;
     }
@@ -482,21 +475,18 @@ ghost_error_t ghost_init(int argc, char **argv)
 #endif
 
     // delete excess PUs
-    int core = -1;
+    
+    unsigned int firstcpu = hwloc_get_pu_obj_by_os_index(topology,hwloc_bitmap_first(mycpuset))->parent->logical_index;
     unsigned int cpu;
     hwloc_bitmap_foreach_begin(cpu,mycpuset);
-    hwloc_obj_t obj = hwloc_get_pu_obj_by_os_index(topology,cpu);
+        hwloc_obj_t obj = hwloc_get_pu_obj_by_os_index(topology,cpu);
 
-
-    if ((int)(obj->sibling_rank) == 0) {
-        core++;
-    }
-    if (core >= hwconfig.ncore) {
-        hwloc_bitmap_clr(mycpuset,obj->os_index);
-    }
-    if ((int)(obj->sibling_rank) >= hwconfig.nsmt) {
-        hwloc_bitmap_clr(mycpuset,obj->os_index);
-    } 
+        if (obj->parent->logical_index-firstcpu >= (unsigned)hwconfig.ncore) {
+            hwloc_bitmap_clr(mycpuset,obj->os_index);
+        }
+        if ((int)(obj->sibling_rank) >= hwconfig.nsmt) {
+            hwloc_bitmap_clr(mycpuset,obj->os_index);
+        } 
     hwloc_bitmap_foreach_end();
 
     ghost_taskq_create();
