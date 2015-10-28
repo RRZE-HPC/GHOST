@@ -19,14 +19,6 @@ typedef struct {
     int cudevice;
 } ghost_hwconfig_t;
 
-typedef enum {
-    GHOST_HYBRIDMODE_INVALID, 
-    GHOST_HYBRIDMODE_ONEPERNODE, 
-    GHOST_HYBRIDMODE_ONEPERNUMA, 
-    GHOST_HYBRIDMODE_ONEPERCORE,
-    GHOST_HYBRIDMODE_CUSTOM
-} ghost_hybridmode_t;
-
 #define GHOST_HWCONFIG_INVALID -1
 #define GHOST_HWCONFIG_INITIALIZER {.ncore = GHOST_HWCONFIG_INVALID, .nsmt = GHOST_HWCONFIG_INVALID, .cudevice = GHOST_HWCONFIG_INVALID}
 
@@ -34,8 +26,6 @@ typedef enum {
 extern "C" {
 #endif
 
-    ghost_error_t ghost_hybridmode_set(ghost_hybridmode_t hm);
-    ghost_error_t ghost_hybridmode_get(ghost_hybridmode_t *hm);
     ghost_error_t ghost_hwconfig_set(ghost_hwconfig_t);
     ghost_error_t ghost_hwconfig_get(ghost_hwconfig_t * hwconfig);
     ghost_error_t ghost_rank(int *rank, ghost_mpi_comm_t comm);

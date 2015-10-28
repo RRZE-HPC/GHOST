@@ -19,7 +19,6 @@
 
 static ghost_hwconfig_t ghost_hwconfig = GHOST_HWCONFIG_INITIALIZER;
 
-static ghost_hybridmode_t ghost_hybridmode = GHOST_HYBRIDMODE_INVALID;
 static ghost_mpi_comm_t ghost_node_comm = MPI_COMM_NULL;
 
 static int stringcmp(const void *x, const void *y)
@@ -202,25 +201,6 @@ ghost_error_t ghost_hwconfig_get(ghost_hwconfig_t * hwconfig)
     *hwconfig = ghost_hwconfig;
     
     return GHOST_SUCCESS;
-}
-
-ghost_error_t ghost_hybridmode_set(ghost_hybridmode_t hm)
-{
-    ghost_hybridmode = hm;
-
-    return GHOST_SUCCESS;
-}
-
-ghost_error_t ghost_hybridmode_get(ghost_hybridmode_t *hm)
-{
-    if (!hm) {
-        ERROR_LOG("NULL pointer");
-        return GHOST_ERR_INVALID_ARG;
-    }
-    *hm = ghost_hybridmode;
-
-    return GHOST_SUCCESS;
-
 }
 
 //-----------------------------------------------------------------------------
