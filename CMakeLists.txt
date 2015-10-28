@@ -35,7 +35,7 @@ set(CFG_SELL_CHUNKHEIGHTS "32" CACHE STRING "The SELL chunk heights for which ge
 set(CFG_SELL_CUDA_KERNELS "true,true,true,true,true,true,true;true,false,false,false,false,false,false;false,false,false,false,false,false,false" CACHE STRING "The permutations of SELL SpMV CUDA kernels to instantiate (semicolon-separated list of comma-separated lists). AXP(B)Y,SCALE,(V)SHIFT,DOT_YY,DOT_XY,DOT_XX,CHAIN_AXPBY")
 set(VERBOSITY 1 CACHE STRING "Level of verbosity information. Valid values: 0 (be totally silent), 1 (print warnings, errors and further important information), 2, 3, 4 (increasing level of verbosity)")
 set(INSTRUMENTATION "" CACHE STRING "Type of instrumentation (semicolon separated list). Valid values: TIMING, LIKWID, IACA")
-set(INSTRUMENTATION_FUNCTYPES "((functype) & GHOST_FUNCTYPE_MATH) && ((functype) & GHOST_FUNCTYPE_KERNEL)" CACHE STRING "Logical selection of function types to instrument. Check the variable functype against valid values as defined in func_util.h. Example: functype & (GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_COMMUNICATION) ")
+set(INSTRUMENTATION_FUNCTYPES "functype & GHOST_FUNCTYPE_ANY" CACHE STRING "Logical selection of function types to instrument defined in func_util.h.")
 
 find_package(PkgConfig)
 
@@ -199,6 +199,10 @@ configure_file (
     ${PROJECT_BINARY_DIR}/src/sell_spmv_sse.c
     )
 configure_file (
+    ${PROJECT_SOURCE_DIR}/src/sell_spmv_avx2.c.in
+    ${PROJECT_BINARY_DIR}/src/sell_spmv_avx2.c
+    )
+configure_file (
     ${PROJECT_SOURCE_DIR}/src/sell_spmv_avx.c.in
     ${PROJECT_BINARY_DIR}/src/sell_spmv_avx.c
     )
@@ -252,6 +256,7 @@ configure_file (
     )
 
 set (TO_PREPROCESS
+    ${PROJECT_BINARY_DIR}/src/sell_spmv_avx2.c
     ${PROJECT_BINARY_DIR}/src/sell_spmv_avx.c
     ${PROJECT_BINARY_DIR}/src/sell_spmv_sse.c
     ${PROJECT_BINARY_DIR}/src/sell_spmv_mic.c

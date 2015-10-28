@@ -11,6 +11,7 @@
 #include "ghost/timing.h"
 
 #include "ghost/sell_spmv_mic_gen.h"
+#include "ghost/sell_spmv_avx2_gen.h"
 #include "ghost/sell_spmv_avx_gen.h"
 #include "ghost/sell_spmv_sse_gen.h"
 #include "ghost/sell_spmv_plain_gen.h"
@@ -391,6 +392,7 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
     // if map is empty include generated code for map construction
     if (ghost_sellspmv_kernels.empty()) {
 #include "sell_spmv_mic.def"
+#include "sell_spmv_avx2.def"
 #include "sell_spmv_avx.def"
 #include "sell_spmv_sse.def"
 #include "sell_spmv_plain.def"
@@ -403,6 +405,8 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
     if (!(rhs->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
 #ifdef GHOST_HAVE_MIC
         impl = GHOST_IMPLEMENTATION_MIC;
+#elif defined(GHOST_HAVE_AVX2)
+        impl = GHOST_IMPLEMENTATION_AVX2;
 #elif defined(GHOST_HAVE_AVX)
         impl = GHOST_IMPLEMENTATION_AVX;
 #elif defined(GHOST_HAVE_SSE)
