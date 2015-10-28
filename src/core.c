@@ -137,10 +137,10 @@ ghost_error_t ghost_init(int argc, char **argv)
     ghost_topology_get(&topology);
 
 #ifdef GHOST_HAVE_INSTR_LIKWID
-    LIKWID_MARKER_INIT;
+    likwid_markerInit();
 
 #pragma omp parallel
-    LIKWID_MARKER_THREADINIT;
+    likwid_markerThreadInit();
 #endif
 
 
@@ -475,7 +475,6 @@ ghost_error_t ghost_init(int argc, char **argv)
 #endif
 
     // delete excess PUs
-    
     unsigned int firstcpu = hwloc_get_pu_obj_by_os_index(topology,hwloc_bitmap_first(mycpuset))->parent->logical_index;
     unsigned int cpu;
     hwloc_bitmap_foreach_begin(cpu,mycpuset);
@@ -514,7 +513,7 @@ ghost_error_t ghost_finalize()
     ghost_rand_destroy();
 
 #ifdef GHOST_HAVE_INSTR_LIKWID
-    LIKWID_MARKER_CLOSE;
+    likwid_markerClose();
 #endif
     
 #ifdef GHOST_HAVE_INSTR_TIMING
