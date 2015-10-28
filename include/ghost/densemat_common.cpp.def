@@ -94,14 +94,21 @@ static ghost_error_t FUNCNAME(dotprod_tmpl(ghost_densemat_t *vec, void *res, gho
     GHOST_CALL_GOTO(ghost_malloc_align((void **)&partsums,nthreads*ncolsPadded*sizeof(v_t),64),err,ret);
     memset(partsums,0,nthreads*ncolsPadded*sizeof(v_t));
    
-     if (DENSEMAT_SINGLECOL_STRIDE1(vec) && DENSEMAT_SINGLECOL_STRIDE1(vec2) && (vec->traits.datatype == (GHOST_DT_REAL|GHOST_DT_DOUBLE))) { 
-         double result = 0;
-         const double * v1 = (const double *)vec->val;
-         const double * v2 = (const double *)vec2->val;
+     if (DENSEMAT_SINGLECOL_STRIDE1(vec) && DENSEMAT_SINGLECOL_STRIDE1(vec2)) { 
+         v_t * v1 = (v_t *)vec->val;
+         v_t * v2 = (v_t *)vec2->val;
+         ((v_t *)res)[0] = 0;
          ghost_lidx_t row;
-#pragma omp parallel for reduction(+:result)
-         for (row=0; row<vec->traits.nrows; row++) {
-             result += v1[row] * v2[row];
+#pragma omp parallel
+         {
+            v_t result = 0.;
+#pragma omp for schedule(runtime)
+            for (row=0; row<vec->traits.nrows; row++) {
+                result += v1[row] * conjugate(&(v2[row]));
+            }
+
+#pragma omp critical
+            ((v_t *)res)[0] += result;
          }
      } else {
         if (vec == vec2) {
