@@ -9,6 +9,7 @@
 #include "ghost/tsmm_sse_gen.h"
 #include "ghost/tsmm_cu_gen.h"
 #include "ghost/timing.h"
+#include "ghost/machine.h"
 
 #include <map>
 
@@ -114,11 +115,23 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
     }
 #endif
 
+//    p.impl = GHOST_IMPLEMENTATION_PLAIN;
     p.xstor = x->traits.storage;
     p.wstor = w->traits.storage;
 
     p.xcols = x->traits.ncols;
     p.vcols = v->traits.ncols;
+    
+    // alignment of large input data
+    // the alignment of the result array does not matter because we can easily re-allocate it accordingly
+    int al = ghost_machine_alignment();
+    if (IS_ALIGNED(x->val,al) && IS_ALIGNED(v->val,al) && !((x->stride*x->elSize) % al) && !((v->stride*v->elSize) % al)) {
+        p.alignment = GHOST_ALIGNED;
+    } else {
+        p.alignment = GHOST_UNALIGNED;
+    }
+
+    /*
     
     if (p.vcols < 4 || p.xcols < 4) {
         p.impl = GHOST_IMPLEMENTATION_PLAIN;
@@ -169,7 +182,7 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
             p.alignment = GHOST_UNALIGNED;
             PERFWARNING_LOG("Switching to the unaligned kernel!");
         }
-    }
+    }*/
     INFO_LOG("Initial search for kernel %d %d %d %d %d %d %d!",p.alignment,p.impl,p.dt,p.xcols,p.vcols,p.xstor,p.wstor);
     kernel = ghost_tsmm_kernels[p];
     
