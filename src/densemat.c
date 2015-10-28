@@ -86,11 +86,15 @@ ghost_error_t ghost_densemat_create(ghost_densemat_t **vec, ghost_context_t *ctx
         ghost_type_t ghost_type;
         GHOST_CALL_RETURN(ghost_type_get(&ghost_type));
         if (ghost_type == GHOST_TYPE_CUDA) {
+            DEBUG_LOG(1,"Auto-place on device");
             (*vec)->traits.location = GHOST_LOCATION_DEVICE;
         } else {
+            DEBUG_LOG(1,"Auto-place on host");
             (*vec)->traits.location = GHOST_LOCATION_HOST;
         }
 
+    } else {
+        DEBUG_LOG(1,"Placement given: %d",(*vec)->traits.location);
     }
 
     if ((*vec)->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
