@@ -185,6 +185,40 @@ ghost_error_t ghost_machine_npu(int *nPUs, int numanode)
     return GHOST_SUCCESS;
 }
 
+ghost_error_t ghost_machine_npu_in_cpuset(int *nPUs, hwloc_const_cpuset_t set)
+{
+    hwloc_topology_t topology;
+    GHOST_CALL_RETURN(ghost_topology_get(&topology));
+    int npus = hwloc_get_nbobjs_inside_cpuset_by_type(topology,set,HWLOC_OBJ_PU);
+    if (npus < 0) {
+        ERROR_LOG("Could not obtain number of PUs");
+        return GHOST_ERR_HWLOC;
+    } else if (npus == 0) {
+        *nPUs = 1;
+    } else {
+        *nPUs = npus;
+    }
+
+    return GHOST_SUCCESS;
+}
+
+ghost_error_t ghost_machine_ncore_in_cpuset(int *nCores, hwloc_const_cpuset_t set)
+{
+    hwloc_topology_t topology;
+    GHOST_CALL_RETURN(ghost_topology_get(&topology));
+    int ncores = hwloc_get_nbobjs_inside_cpuset_by_type(topology,set,HWLOC_OBJ_CORE);
+    if (ncores < 0) {
+        ERROR_LOG("Could not obtain number of cores");
+        return GHOST_ERR_HWLOC;
+    } else if (ncores == 0) {
+        *nCores = 1;
+    } else {
+        *nCores = ncores;
+    }
+
+    return GHOST_SUCCESS;
+}
+
 ghost_error_t ghost_machine_nsmt(int *nLevels)
 {
     hwloc_topology_t topology;
@@ -198,6 +232,23 @@ ghost_error_t ghost_machine_nsmt(int *nLevels)
     hwloc_obj_t firstCore = hwloc_get_obj_by_type(topology,HWLOC_OBJ_CORE,0);
     *nLevels = (int)firstCore->arity;
     
+    return GHOST_SUCCESS;
+}
+
+ghost_error_t ghost_machine_nnuma_in_cpuset(int *nNodes, hwloc_const_cpuset_t set)
+{
+    hwloc_topology_t topology;
+    GHOST_CALL_RETURN(ghost_topology_get(&topology));
+    int nnodes = hwloc_get_nbobjs_inside_cpuset_by_type(topology,set,HWLOC_OBJ_NODE);
+    if (nnodes < 0) {
+        ERROR_LOG("Could not obtain number of NUMA nodes");
+        return GHOST_ERR_HWLOC;
+    } else if (nnodes == 0) {
+        *nNodes = 1;
+    } else {
+        *nNodes = nnodes;
+    }
+
     return GHOST_SUCCESS;
 }
 

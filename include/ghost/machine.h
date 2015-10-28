@@ -107,6 +107,9 @@ extern "C" {
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t ghost_machine_nnuma(int *nNodes);
+    ghost_error_t ghost_machine_nnuma_in_cpuset(int *nNodes, hwloc_const_cpuset_t set);
+    ghost_error_t ghost_machine_npu_in_cpuset(int *nPUs, hwloc_const_cpuset_t set);
+    ghost_error_t ghost_machine_ncore_in_cpuset(int *nCores, hwloc_const_cpuset_t set);
     ghost_error_t ghost_machine_numanode(hwloc_obj_t *node, int idx);
     /**
      * @brief Check whether machine is big endian.
