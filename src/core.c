@@ -456,7 +456,7 @@ ghost_error_t ghost_init(int argc, char **argv)
 
 
     if (hwconfig.ncore == GHOST_HWCONFIG_INVALID) {
-        hwconfig.ncore = ncores;
+        ghost_machine_ncore(&hwconfig.ncore,GHOST_NUMANODE_ANY);
     }
     if (hwconfig.nsmt == GHOST_HWCONFIG_INVALID) {
         ghost_machine_nsmt(&hwconfig.nsmt);
