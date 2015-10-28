@@ -153,7 +153,7 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
     gemm_perfargs.dt = x->traits.datatype;
     gemm_perfargs.betaiszero = ghost_iszero(beta,v->traits.datatype);
     gemm_perfargs.alphaisone = ghost_isone(alpha,v->traits.datatype);
-    ghost_timing_set_perfFunc(__ghost_functag,ghost_gemm_perf_GFs,(void *)&gemm_perfargs,sizeof(gemm_perfargs),"GF/s");
+    ghost_timing_set_perfFunc(NULL,__ghost_functag,ghost_gemm_perf_GFs,(void *)&gemm_perfargs,sizeof(gemm_perfargs),"GF/s");
 #endif
 
 

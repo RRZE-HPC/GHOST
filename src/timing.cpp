@@ -65,7 +65,7 @@ void ghost_timing_tock(const char *tag)
     ti->times.push_back(end-ti->start);
 }
 
-void ghost_timing_set_perfFunc(const char *tag, ghost_compute_performance_func_t func, void *arg, size_t sizeofarg, const char *unit)
+void ghost_timing_set_perfFunc(const char *prefix, const char *tag, ghost_compute_performance_func_t func, void *arg, size_t sizeofarg, const char *unit)
 {
     if (!tag) {
         WARNING_LOG("Empty tag! This should not have happened...");
@@ -76,8 +76,15 @@ void ghost_timing_set_perfFunc(const char *tag, ghost_compute_performance_func_t
     pf.perfFunc = func;
     pf.perfUnit = unit;
 
-    for (std::vector<ghost_timing_perfFunc_t>::iterator it = timings[tag].perfFuncs.begin();
-            it != timings[tag].perfFuncs.end(); ++it) {
+    const char *fulltag;
+    if (prefix) {
+        fulltag = (string(prefix)+"->"+string(tag)).c_str();
+    } else {
+        fulltag = tag;
+    }
+
+    for (std::vector<ghost_timing_perfFunc_t>::iterator it = timings[fulltag].perfFuncs.begin();
+            it != timings[fulltag].perfFuncs.end(); ++it) {
         if (it->perfFunc == func && !strcmp(it->perfUnit,unit)) {
             return;
         }
@@ -85,7 +92,7 @@ void ghost_timing_set_perfFunc(const char *tag, ghost_compute_performance_func_t
 
     ghost_malloc((void **)&(pf.perfFuncArg),sizeofarg);
     memcpy(pf.perfFuncArg,arg,sizeofarg);
-    timings[tag].perfFuncs.push_back(pf);
+    timings[fulltag].perfFuncs.push_back(pf);
 }
 
 

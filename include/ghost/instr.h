@@ -10,8 +10,8 @@
 
 #ifdef GHOST_HAVE_INSTR_TIMING
 
-#include "log.h"
-#include "timing.h"
+#include <ghost/log.h>
+#include <ghost/timing.h>
 
 #endif
 
@@ -28,34 +28,38 @@ extern int ghost_instr_enable;
 #ifdef GHOST_HAVE_INSTR_LIKWID
 
 #define GHOST_INSTR_START(tag) {\
-    if (GHOST_VERBOSITY > 1) {\
-        DEBUG_LOG(1,"Enter instrumented region %s",tag);\
+    if (ghost_instr_enable) {\
+        if (GHOST_VERBOSITY > 1) {\
+            DEBUG_LOG(1,"Enter instrumented region %s",tag);\
+        }\
+        char region[256] = "";\
+        snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), tag, ghost_instr_suffix_get());\
+        ghost_timing_tick(region);\
+        _Pragma("omp parallel")\
+        LIKWID_MARKER_START(region);\
     }\
-    char region[256] = "";\
-    snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), tag, ghost_instr_suffix_get());\
-    ghost_timing_tick(region);\
-    _Pragma("omp parallel")\
-    LIKWID_MARKER_START(region);\
 }\
 
 #define GHOST_INSTR_STOP(tag) {\
-    if (GHOST_VERBOSITY > 1) {\
-        DEBUG_LOG(1,"Exit instrumented region %s",tag);\
+    if (ghost_instr_enable) {\
+        if (GHOST_VERBOSITY > 1) {\
+            DEBUG_LOG(1,"Exit instrumented region %s",tag);\
+        }\
+        char region[256] = "";\
+        snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), tag, ghost_instr_suffix_get());\
+        ghost_timing_tock(region);\
+        _Pragma("omp parallel")\
+        LIKWID_MARKER_STOP(region);\
     }\
-    char region[256] = "";\
-    snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), tag, ghost_instr_suffix_get());\
-    ghost_timing_tock(region);\
-    _Pragma("omp parallel")\
-    LIKWID_MARKER_STOP(region);\
 }\
     
 #else
 
 #define GHOST_INSTR_START(tag) {\
-    if (GHOST_VERBOSITY > 1) {\
-        DEBUG_LOG(1,"Enter instrumented region %s",tag);\
-    }\
     if (ghost_instr_enable) {\
+        if (GHOST_VERBOSITY > 1) {\
+            DEBUG_LOG(1,"Enter instrumented region %s",tag);\
+        }\
         char region[256] = "";\
         snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), tag, ghost_instr_suffix_get());\
         ghost_timing_tick(region);\
@@ -63,10 +67,10 @@ extern int ghost_instr_enable;
 }\
 
 #define GHOST_INSTR_STOP(tag) {\
-    if (GHOST_VERBOSITY > 1) {\
-        DEBUG_LOG(1,"Exit instrumented region %s",tag);\
-    }\
     if (ghost_instr_enable) {\
+        if (GHOST_VERBOSITY > 1) {\
+            DEBUG_LOG(1,"Exit instrumented region %s",tag);\
+        }\
         char region[256] = "";\
         snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), tag, ghost_instr_suffix_get());\
         ghost_timing_tock(region);\
@@ -85,13 +89,15 @@ extern int ghost_instr_enable;
  * @param tag The tag identifying the region.
  */
 #define GHOST_INSTR_START(tag) {\
-    if (GHOST_VERBOSITY > 1) {\
-        DEBUG_LOG(1,"Enter instrumented region %s",tag);\
+    if (ghost_instr_enable) {\
+        if (GHOST_VERBOSITY > 1) {\
+            DEBUG_LOG(1,"Enter instrumented region %s",tag);\
+        }\
+        char region[256] = "";\
+        snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), tag, ghost_instr_suffix_get());\
+        _Pragma("omp parallel")\
+        LIKWID_MARKER_START(region);\
     }\
-    char region[256] = "";\
-    snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), tag, ghost_instr_suffix_get());\
-    _Pragma("omp parallel")\
-    LIKWID_MARKER_START(region);\
 }\
 
 /**
@@ -100,13 +106,15 @@ extern int ghost_instr_enable;
  * @param tag The tag identifying the region.
  */
 #define GHOST_INSTR_STOP(tag) {\
-    if (GHOST_VERBOSITY > 1) {\
-        DEBUG_LOG(1,"Exit instrumented region %s",tag);\
+    if (ghost_instr_enable) {\
+        if (GHOST_VERBOSITY > 1) {\
+            DEBUG_LOG(1,"Exit instrumented region %s",tag);\
+        }\
+        char region[256] = "";\
+        snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), tag, ghost_instr_suffix_get());\
+        _Pragma("omp parallel")\
+        LIKWID_MARKER_STOP(region);\
     }\
-    char region[256] = "";\
-    snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), tag, ghost_instr_suffix_get());\
-    _Pragma("omp parallel")\
-    LIKWID_MARKER_STOP(region);\
 }\
     
 #else

@@ -155,7 +155,7 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
     // alignment of large input data
     // the alignment of the result array does not matter because we can easily re-allocate it accordingly
     int al = ghost_machine_alignment();
-    if (IS_ALIGNED(x->val,al) && IS_ALIGNED(v->val,al) && !((x->stride*x->elSize) % al) && !((v->stride*x->elSize) % al)) {
+    if (IS_ALIGNED(x->val,al) && IS_ALIGNED(v->val,al) && !((x->stride*x->elSize) % al) && !((v->stride*v->elSize) % al)) {
         p.alignment = GHOST_ALIGNED;
     } else {
         p.alignment = GHOST_UNALIGNED;
@@ -237,8 +237,8 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
     tsmttsm_perfargs.dt = x->traits.datatype;
     tsmttsm_perfargs.betaiszero = ghost_iszero(beta,p.dt);
     tsmttsm_perfargs.alphaisone = ghost_isone(alpha,p.dt);
-    ghost_timing_set_perfFunc(__ghost_functag,ghost_gemm_perf_GBs,(void *)&tsmttsm_perfargs,sizeof(tsmttsm_perfargs),"GB/s");
-    ghost_timing_set_perfFunc(__ghost_functag,ghost_gemm_perf_GFs,(void *)&tsmttsm_perfargs,sizeof(tsmttsm_perfargs),"GF/s");
+    ghost_timing_set_perfFunc(NULL,__ghost_functag,ghost_gemm_perf_GBs,(void *)&tsmttsm_perfargs,sizeof(tsmttsm_perfargs),"GB/s");
+    ghost_timing_set_perfFunc(NULL,__ghost_functag,ghost_gemm_perf_GFs,(void *)&tsmttsm_perfargs,sizeof(tsmttsm_perfargs),"GF/s");
 #endif
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
