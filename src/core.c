@@ -380,6 +380,7 @@ ghost_error_t ghost_init(int argc, char **argv)
         } else if (npus < ncpuranks_on_node) {
             distr_type = HWLOC_OBJ_PU;
             PERFWARNING_LOG("Oversubscription! Some processes will share PUs!");
+            ranks_cover_obj = false;
         } else {
             PERFWARNING_LOG("Naively sharing %d PUs among %d ranks",npus,ncpuranks_on_node);
             ranks_cover_obj = false;
@@ -401,19 +402,44 @@ ghost_error_t ghost_init(int argc, char **argv)
                     coverobj = hwloc_get_obj_inside_cpuset_by_type(topology, fullavailcpuset, distr_type,cpurank);
                     hwloc_bitmap_copy(rank_cpuset,coverobj->cpuset);
                 } else {
+                    hwloc_obj_type_t dist_obj;
+                    int obj_per_rank;
+                    int nobj;
+                    if (ncpuranks_on_node <= ncores) {
+                        PERFWARNING_LOG("Distributing cores among processes");
+                        dist_obj = HWLOC_OBJ_CORE;
+                        obj_per_rank = ncores/ncpuranks_on_node;
+                        nobj = ncores;
+                    } else {
+                        dist_obj = HWLOC_OBJ_PU;
+                        nobj = npus;
+                        if (ncpuranks_on_node <= npus) {
+                            PERFWARNING_LOG("Distributing PUs among processes");
+                            obj_per_rank = npus/ncpuranks_on_node;
+                        } else {
+                            PERFWARNING_LOG("More processes than PUs!");
+                            obj_per_rank = 1;
+                        }
+                    }
+                        
                     if (i == noderank) {
-                        int cores_per_rank = ncores/ncpuranks_on_node;
-                        int r;
+                        int r,oi;
+
                         
                         // assign cores
-                        for (r=cpurank*cores_per_rank; r<(cpurank+1)*cores_per_rank; r++) {
-                            hwloc_bitmap_or(rank_cpuset,rank_cpuset,hwloc_get_obj_inside_cpuset_by_type(topology,fullavailcpuset,HWLOC_OBJ_CORE,r)->cpuset);
+                        r = MIN(cpurank*obj_per_rank,(nobj-1));
+                        for (oi=0; oi < obj_per_rank; oi++) {
+                            hwloc_bitmap_or(rank_cpuset,rank_cpuset,hwloc_get_obj_inside_cpuset_by_type(topology,fullavailcpuset,dist_obj,r)->cpuset);
+                            if (r<(nobj-1)) {
+                                r++;
+                            }
                         }
+
 
                         // remainder
                         if (cpurank == ncpuranks_on_node-1) {
-                            for (; r<ncores; r++) {
-                                hwloc_bitmap_or(rank_cpuset,rank_cpuset,hwloc_get_obj_inside_cpuset_by_type(topology,fullavailcpuset,HWLOC_OBJ_CORE,r)->cpuset);
+                            for (; r<nobj; r++) {
+                                hwloc_bitmap_or(rank_cpuset,rank_cpuset,hwloc_get_obj_inside_cpuset_by_type(topology,fullavailcpuset,dist_obj,r)->cpuset);
                             }
                         }
 
@@ -482,9 +508,17 @@ ghost_error_t ghost_init(int argc, char **argv)
 
         if (obj->parent->logical_index-firstcpu >= (unsigned)hwconfig.ncore) {
             hwloc_bitmap_clr(mycpuset,obj->os_index);
+            if (hwloc_bitmap_iszero(mycpuset)) {
+                WARNING_LOG("Ignoring hwconfig setting as it would zero the CPU set!");
+                hwloc_bitmap_set(mycpuset,obj->os_index);
+            }
         }
         if ((int)(obj->sibling_rank) >= hwconfig.nsmt) {
             hwloc_bitmap_clr(mycpuset,obj->os_index);
+            if (hwloc_bitmap_iszero(mycpuset)) {
+                WARNING_LOG("Ignoring hwconfig setting as it would zero the CPU set!");
+                hwloc_bitmap_set(mycpuset,obj->os_index);
+            }
         } 
     hwloc_bitmap_foreach_end();
 
