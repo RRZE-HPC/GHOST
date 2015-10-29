@@ -234,7 +234,7 @@ ghost_error_t ghost_spmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_de
     spmv_perfargs.globalrows = nrow;
     spmv_perfargs.dt = invec->traits.datatype;
     spmv_perfargs.flags = *flags;
-    ghost_timing_set_perfFunc(__ghost_functag,GHOST_SPMV_PERF_TAG,ghost_spmv_perf,(void *)&spmv_perfargs,sizeof(spmv_perfargs),GHOST_SPMV_PERF_UNIT);
+    ghost_timing_set_perfFunc(NULL,__ghost_functag,ghost_spmv_perf,(void *)&spmv_perfargs,sizeof(spmv_perfargs),GHOST_SPMV_PERF_UNIT);
 #endif 
     
     
