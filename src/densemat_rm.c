@@ -35,7 +35,6 @@ static ghost_error_t ghost_distributeVector(ghost_densemat_t *vec, ghost_densema
 static ghost_error_t ghost_collectVectors(ghost_densemat_t *vec, ghost_densemat_t *totalVec); 
 static ghost_error_t ghost_cloneVector(ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nr, ghost_lidx_t roffs, ghost_lidx_t nc, ghost_lidx_t coffs);
 static ghost_error_t vec_rm_compress(ghost_densemat_t *vec);
-static ghost_error_t vec_rm_equalize(ghost_densemat_t *vec, ghost_mpi_comm_t comm, int root);
 static ghost_error_t densemat_rm_halocommInit(ghost_densemat_t *vec, ghost_densemat_halo_comm_t *comm);
 static ghost_error_t densemat_rm_halocommFinalize(ghost_densemat_t *vec, ghost_densemat_halo_comm_t *comm);
 
@@ -90,7 +89,7 @@ ghost_error_t ghost_densemat_rm_setfuncs(ghost_densemat_t *vec)
     vec->viewScatteredVec = &ghost_densemat_rm_viewScatteredVec;
     vec->viewScatteredCols = &ghost_densemat_rm_viewScatteredCols;
     vec->viewCols = &ghost_densemat_rm_viewCols;
-    vec->syncValues = &vec_rm_equalize;
+    vec->syncValues = &ghost_densemat_rm_syncValues;
     vec->halocommInit = &densemat_rm_halocommInit;
     vec->halocommFinalize = &densemat_rm_halocommFinalize;
     vec->halocommStart = &ghost_densemat_halocommStart_common;
@@ -101,42 +100,6 @@ ghost_error_t ghost_densemat_rm_setfuncs(ghost_densemat_t *vec)
     vec->download = &ghost_densemat_rm_download;
 
     return ret;
-}
-
-static ghost_error_t vec_rm_equalize(ghost_densemat_t *vec, ghost_mpi_comm_t comm, int root)
-{
-#ifdef GHOST_HAVE_MPI
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
-    ghost_mpi_datatype_t vecdt;
-    ghost_mpi_datatype(&vecdt,vec->traits.datatype);
-
-    vec->download(vec);
-
-    if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
-        ghost_lidx_t row,col;
-        for (row=0; row<vec->traits.nrows; row++) {
-            for (col=0; col<vec->traits.ncols; col++) {
-                MPI_CALL_RETURN(MPI_Bcast(DENSEMAT_VALPTR(vec,row,col),1,vecdt,root,comm));
-            }
-        }
-    } else if (vec->traits.flags & GHOST_DENSEMAT_VIEW) {
-        ghost_lidx_t row;
-        for (row=0; row<vec->traits.nrows; row++) {
-            MPI_CALL_RETURN(MPI_Bcast(DENSEMAT_VALPTR(vec,row,0),vec->traits.ncols,vecdt,root,comm));
-        }
-    } else {
-        MPI_CALL_RETURN(MPI_Bcast(vec->val,vec->traits.ncolspadded*vec->traits.nrows,vecdt,root,comm));
-    }
-    
-    vec->upload(vec);
-     
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_COMMUNICATION);
-#else
-    UNUSED(vec);
-    UNUSED(comm);
-    UNUSED(root);
-#endif
-    return GHOST_SUCCESS;
 }
 
 static ghost_error_t vec_rm_toFile(ghost_densemat_t *vec, char *path, bool singleFile)

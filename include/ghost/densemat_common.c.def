@@ -455,3 +455,28 @@ static ghost_error_t FUNCNAME(upload(ghost_densemat_t * vec))
     
     return GHOST_SUCCESS;
 }
+
+static ghost_error_t FUNCNAME(syncValues(ghost_densemat_t *vec, ghost_mpi_comm_t comm, int root))
+{
+#ifdef GHOST_HAVE_MPI
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
+
+    vec->download(vec);
+
+    if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+        PERFWARNING_LOG("Element-wise sync of scattered densemat!");
+        DENSEMAT_ITER(vec,MPI_Bcast(valptr,1,vec->mpidt,root,comm));
+    } else {
+        MPI_CALL_RETURN(MPI_Bcast(vec->val,1,vec->fullmpidt,root,comm));
+    }
+
+    vec->upload(vec);
+     
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_COMMUNICATION);
+#else
+    UNUSED(vec);
+    UNUSED(comm);
+    UNUSED(root);
+#endif
+    return GHOST_SUCCESS;
+}
