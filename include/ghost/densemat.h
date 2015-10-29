@@ -358,6 +358,8 @@ struct ghost_densemat_t
      * @param res Where to store the result.
      * @param b The second densemat.
      *
+     * For complex data, the first vector gets conjugated (like the BLAS call dotc()).
+     *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      *
      * For the global operation see ghost_dot().
