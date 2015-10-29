@@ -219,11 +219,11 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
         ret = ghost_gemm(x,v,conjv?"C":"T",w,"N",alpha,beta,reduce,GHOST_GEMM_NOT_SPECIAL);
     } else {
         ret = kernel(x,v,w,alpha,beta,conjv);
+        if (reduce != GHOST_GEMM_NO_REDUCE && v->context) {
+            x->reduce(x,v->context->mpicomm,reduce);
+        }
     }
 
-    if (reduce != GHOST_GEMM_NO_REDUCE && v->context) {
-        x->reduce(x,v->context->mpicomm,reduce);
-    }
 
 #ifdef GHOST_HAVE_INSTR_TIMING
     ghost_gemm_perf_args_t tsmttsm_perfargs;
