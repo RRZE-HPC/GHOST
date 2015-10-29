@@ -115,7 +115,7 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
     }
 #endif
 
-//    p.impl = GHOST_IMPLEMENTATION_PLAIN;
+    p.impl = GHOST_IMPLEMENTATION_PLAIN;
     p.xstor = x->traits.storage;
     p.wstor = w->traits.storage;
 
