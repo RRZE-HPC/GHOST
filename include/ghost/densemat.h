@@ -266,6 +266,10 @@ struct ghost_densemat_t
      */
     ghost_mpi_datatype_t mpidt;
     /**
+     * @brief An MPI data type which holds the entire densemat.
+     */
+    ghost_mpi_datatype_t fullmpidt;
+    /**
      * @brief The values of the densemat on the CUDA device.
      */
     char * cu_val;

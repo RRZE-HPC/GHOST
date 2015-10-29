@@ -110,8 +110,11 @@ ghost_error_t ghost_densemat_create(ghost_densemat_t **vec, ghost_context_t *ctx
     }
 #ifdef GHOST_HAVE_MPI
     GHOST_CALL_RETURN(ghost_mpi_datatype(&(*vec)->mpidt,(*vec)->traits.datatype));
+    MPI_CALL_RETURN(MPI_Type_vector((*vec)->nblock,(*vec)->blocklen,(*vec)->stride,(*vec)->mpidt,&((*vec)->fullmpidt)));
+    MPI_CALL_RETURN(MPI_Type_commit(&((*vec)->fullmpidt)));
 #else
     (*vec)->mpidt = MPI_DATATYPE_NULL;
+    (*vec)->fullmpidt = MPI_DATATYPE_NULL;
 #endif
 
 //    char *str;
@@ -542,6 +545,9 @@ void ghost_densemat_destroy( ghost_densemat_t* vec )
         }
         ghost_bitmap_free(vec->rowmask); vec->rowmask = NULL;
         ghost_bitmap_free(vec->colmask); vec->colmask = NULL;
+#ifdef GHOST_HAVE_MPI
+        MPI_Type_free(&(vec->fullmpidt));
+#endif
         free(vec);
     }
 }
