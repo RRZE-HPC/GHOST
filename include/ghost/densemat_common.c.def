@@ -83,6 +83,11 @@ static ghost_error_t FUNCNAME(view(ghost_densemat_t *src, ghost_densemat_t **new
 
     (*new)->stride = src->stride;
     (*new)->src = src->src;
+#ifdef GHOST_HAVE_MPI
+    MPI_CALL_RETURN(MPI_Type_free(&((*new)->fullmpidt)));
+    MPI_CALL_RETURN(MPI_Type_vector((*new)->nblock,(*new)->blocklen,(*new)->stride,(*new)->mpidt,&((*new)->fullmpidt)));
+    MPI_CALL_RETURN(MPI_Type_commit(&((*new)->fullmpidt)));
+#endif
 
     if (src->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         ghost_lidx_t coffsarray[nc], roffsarray[nr];
@@ -131,6 +136,11 @@ static ghost_error_t FUNCNAME(viewPlain(ghost_densemat_t *vec, void *data, ghost
     vec->stride = lda;
     vec->traits.ncolsorig = vec->traits.ncols;
     vec->traits.nrowsorig = vec->traits.nrows;
+#ifdef GHOST_HAVE_MPI
+    MPI_CALL_RETURN(MPI_Type_free(&(vec->fullmpidt)));
+    MPI_CALL_RETURN(MPI_Type_vector(vec->nblock,vec->blocklen,vec->stride,vec->mpidt,&(vec->fullmpidt)));
+    MPI_CALL_RETURN(MPI_Type_commit(&(vec->fullmpidt)));
+#endif
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
     return GHOST_SUCCESS;
@@ -150,6 +160,11 @@ static ghost_error_t FUNCNAME(viewCols(ghost_densemat_t *src, ghost_densemat_t *
     FUNCNAME(malloc(*new,NULL));
     (*new)->stride = src->stride;
     (*new)->src = src->src;
+#ifdef GHOST_HAVE_MPI
+    MPI_CALL_RETURN(MPI_Type_free(&((*new)->fullmpidt)));
+    MPI_CALL_RETURN(MPI_Type_vector((*new)->nblock,(*new)->blocklen,(*new)->stride,(*new)->mpidt,&((*new)->fullmpidt)));
+    MPI_CALL_RETURN(MPI_Type_commit(&((*new)->fullmpidt)));
+#endif
 
     ghost_lidx_t coloffset;
 
@@ -193,6 +208,11 @@ static ghost_error_t FUNCNAME(viewScatteredCols(ghost_densemat_t *src, ghost_den
     FUNCNAME(malloc(*new,NULL));
     (*new)->stride = src->stride;
     (*new)->src = src->src;
+#ifdef GHOST_HAVE_MPI
+    MPI_CALL_RETURN(MPI_Type_free(&((*new)->fullmpidt)));
+    MPI_CALL_RETURN(MPI_Type_vector((*new)->nblock,(*new)->blocklen,(*new)->stride,(*new)->mpidt,&((*new)->fullmpidt)));
+    MPI_CALL_RETURN(MPI_Type_commit(&((*new)->fullmpidt)));
+#endif
 
     ghost_lidx_t coloffset;
 
@@ -235,6 +255,11 @@ static ghost_error_t FUNCNAME(viewScatteredVec(ghost_densemat_t *src, ghost_dens
     FUNCNAME(malloc(*new,NULL));
     (*new)->stride = src->stride;
     (*new)->src = src->src;
+#ifdef GHOST_HAVE_MPI
+    MPI_CALL_RETURN(MPI_Type_free(&((*new)->fullmpidt)));
+    MPI_CALL_RETURN(MPI_Type_vector((*new)->nblock,(*new)->blocklen,(*new)->stride,(*new)->mpidt,&((*new)->fullmpidt)));
+    MPI_CALL_RETURN(MPI_Type_commit(&((*new)->fullmpidt)));
+#endif
 
     ghost_bitmap_clr_range((*new)->colmask,0,(*new)->traits.ncolsorig);
     ghost_bitmap_clr_range((*new)->rowmask,0,(*new)->traits.nrowsorig);
