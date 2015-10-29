@@ -402,13 +402,8 @@ static ghost_error_t FUNCNAME(reduce(ghost_densemat_t * vec_in, ghost_mpi_comm_t
     }
 
     ghost_mpi_op_t sumOp;
-    ghost_mpi_datatype_t elDt;
-    ghost_mpi_datatype_t vecDt;
 
     GHOST_CALL_GOTO(ghost_mpi_op_densemat_sum(&sumOp,vec->traits.datatype),err,ret);
-    GHOST_CALL_GOTO(ghost_mpi_datatype(&elDt,vec->traits.datatype),err,ret);
-    MPI_CALL_GOTO(MPI_Type_vector(vec->nblock,vec->blocklen,vec->stride,elDt,&vecDt),err,ret);
-    MPI_CALL_GOTO(MPI_Type_commit(&vecDt),err,ret);
 
     GHOST_CALL_GOTO(ghost_rank(&myrank,comm),err,ret);
 
@@ -417,13 +412,13 @@ static ghost_error_t FUNCNAME(reduce(ghost_densemat_t * vec_in, ghost_mpi_comm_t
         MPI_CALL_GOTO(MPI_Barrier(comm),err,ret);
         GHOST_INSTR_STOP("barrier");
         GHOST_INSTR_START("actualreduce");
-        MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,vec->val,1,vecDt,sumOp,comm),err,ret);
+        MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,vec->val,1,vec->fullmpidt,sumOp,comm),err,ret);
         GHOST_INSTR_STOP("actualreduce");
     } else {
         if (myrank == root) {
-            MPI_CALL_GOTO(MPI_Reduce(MPI_IN_PLACE,vec->val,1,vecDt,sumOp,root,comm),err,ret);
+            MPI_CALL_GOTO(MPI_Reduce(MPI_IN_PLACE,vec->val,1,vec->fullmpidt,sumOp,root,comm),err,ret);
         } else {
-            MPI_CALL_GOTO(MPI_Reduce(vec->val,NULL,1,vecDt,sumOp,root,comm),err,ret);
+            MPI_CALL_GOTO(MPI_Reduce(vec->val,NULL,1,vec->fullmpidt,sumOp,root,comm),err,ret);
         }
     }
         
@@ -440,7 +435,6 @@ out:
     if (vec != vec_in) {
         vec->destroy(vec);
     }
-    MPI_CALL_GOTO(MPI_Type_free(&vecDt),err,ret);
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_COMMUNICATION);
     return ret;
 #else
