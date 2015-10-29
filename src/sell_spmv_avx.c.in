@@ -731,7 +731,6 @@ ghost_error_t ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
 
 #if NVECS%4
-    WARNING_LOG("!!! Augmented functions net yet implemented for remainder !!!");
     __m256i mask;
 #if NVECS%4 == 1
     mask = _mm256_set_epi64x(0,0,0,~0);
@@ -804,6 +803,11 @@ ghost_error_t ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
         #GHOST_UNROLL#__m256d dot1_@ = _mm256_setzero_pd();#NVECS/4
         #GHOST_UNROLL#__m256d dot2_@ = _mm256_setzero_pd();#NVECS/4
         #GHOST_UNROLL#__m256d dot3_@ = _mm256_setzero_pd();#NVECS/4
+#if NVECS % 4
+        __m256d dot1_NVECS/4 = _mm256_setzero_pd();
+        __m256d dot2_NVECS/4 = _mm256_setzero_pd();
+        __m256d dot3_NVECS/4 = _mm256_setzero_pd();
+#endif
 
 #pragma omp for schedule(runtime)
         for (c=0; c<mat->nrows; c++) 
@@ -819,21 +823,27 @@ ghost_error_t ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
 
                 #GHOST_UNROLL#tmp@ = _mm256_add_pd(tmp@,_mm256_mul_pd(matval,_mm256_load_pd(((double *)(invec->val))+invec->stride*(matcol)+@*4)));#NVECS/4
 #if NVECS%4
-                tmpNVECS/4 = _mm256_add_pd(tmpNVECS/4,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs+j*CHUNKHEIGHT]),_mm256_maskload_pd(((double *)(invec->val))+invec->stride*(SELL(mat)->col[offs+j*CHUNKHEIGHT])+(NVECS/4)*4,mask)));
+                tmpNVECS/4 = _mm256_add_pd(tmpNVECS/4,_mm256_mul_pd(matval,_mm256_maskload_pd(((double *)(invec->val))+invec->stride*(matcol)+(NVECS/4)*4,mask)));
 #endif
             }
             if (spmvmOptions & GHOST_SPMV_SHIFT) {
-                #GHOST_UNROLL#tmp@ = _mm256_sub_pd(tmp@,_mm256_mul_pd(_mm256_broadcast_sd(&sshift[0]),_mm256_load_pd(rval+@*4)));#NVECS/4
+                #GHOST_UNROLL#tmp@ = _mm256_sub_pd(tmp@,_mm256_mul_pd(_mm256_broadcast_sd(&sshift[0]),_mm256_load_pd(rval+@*4)));#(NVECS+3)/4
             } else if (spmvmOptions & GHOST_SPMV_VSHIFT) {
-                #GHOST_UNROLL#tmp@ = _mm256_sub_pd(tmp@,_mm256_mul_pd(_mm256_load_pd(&sshiftpadded[(@%(NVECS/4))*4]),_mm256_load_pd(rval+@*4)));#NVECS/4
+                #GHOST_UNROLL#tmp@ = _mm256_sub_pd(tmp@,_mm256_mul_pd(_mm256_load_pd(&sshiftpadded[@*4]),_mm256_load_pd(rval+@*4)));#(NVECS+3)/4
             }
             if (spmvmOptions & GHOST_SPMV_SCALE) {
-                #GHOST_UNROLL#tmp@ = _mm256_mul_pd(scale,tmp@);#NVECS/4
+                #GHOST_UNROLL#tmp@ = _mm256_mul_pd(scale,tmp@);#(NVECS+3)/4
             }
             if (spmvmOptions & GHOST_SPMV_AXPY) {
                 #GHOST_UNROLL#_mm256_store_pd(lval+@*4,_mm256_add_pd(tmp@,_mm256_load_pd(lval+@*4)));#NVECS/4
+#if NVECS%4
+                _mm256_maskstore_pd(lval+(NVECS/4)*4,mask,_mm256_add_pd(tmpNVECS/4,_mm256_load_pd(lval+(NVECS/4)*4)));
+#endif
             } else if (spmvmOptions & GHOST_SPMV_AXPBY) {
                 #GHOST_UNROLL#_mm256_store_pd(lval+@*4,_mm256_add_pd(tmp@,_mm256_mul_pd(_mm256_load_pd(lval+@*4),beta)));#NVECS/4
+#if NVECS%4
+                _mm256_maskstore_pd(lval+(NVECS/4)*4,mask,_mm256_add_pd(tmpNVECS/4,_mm256_mul_pd(_mm256_load_pd(lval+(NVECS/4)*4),beta)));
+#endif
             } else {
                 #GHOST_UNROLL#_mm256_stream_pd(lval+@*4,tmp@);#NVECS/4
 #if NVECS%4
@@ -845,13 +855,20 @@ ghost_error_t ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
                 #GHOST_UNROLL#dot1_@ = _mm256_add_pd(dot1_@,_mm256_mul_pd(_mm256_load_pd(lval+@*4),_mm256_load_pd(lval+@*4)));#NVECS/4
                 #GHOST_UNROLL#dot2_@ = _mm256_add_pd(dot2_@,_mm256_mul_pd(_mm256_load_pd(rval+@*4),_mm256_load_pd(lval+@*4)));#NVECS/4
                 #GHOST_UNROLL#dot3_@ = _mm256_add_pd(dot3_@,_mm256_mul_pd(_mm256_load_pd(rval+@*4),_mm256_load_pd(rval+@*4)));#NVECS/4
+#if NVECS%4
+                __m256d maskedrhs = _mm256_maskload_pd(rval+(NVECS/4)*4,mask);
+                __m256d maskedlhs = _mm256_maskload_pd(lval+(NVECS/4)*4,mask);
+                dot1_NVECS/4 = _mm256_add_pd(dot1_NVECS/4,_mm256_mul_pd(maskedlhs,maskedlhs));
+                dot2_NVECS/4 = _mm256_add_pd(dot2_NVECS/4,_mm256_mul_pd(maskedrhs,maskedlhs));
+                dot3_NVECS/4 = _mm256_add_pd(dot3_NVECS/4,_mm256_mul_pd(maskedrhs,maskedrhs));
+#endif
             }
         }
         if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
             __m128d part;
-            #GHOST_UNROLL#part=_mm256_extractf128_pd(dot1_@,0);_mm_storel_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+12*@+0],part);_mm_storeh_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+12*@+3+0],part);part=_mm256_extractf128_pd(dot1_@,1);_mm_storel_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+12*@+6+0],part);_mm_storeh_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+12*@+9+0],part);#NVECS/4
-            #GHOST_UNROLL#part=_mm256_extractf128_pd(dot2_@,0);_mm_storel_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+12*@+1],part);_mm_storeh_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+12*@+3+1],part);part=_mm256_extractf128_pd(dot2_@,1);_mm_storel_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+12*@+6+1],part);_mm_storeh_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+12*@+9+1],part);#NVECS/4
-            #GHOST_UNROLL#part=_mm256_extractf128_pd(dot3_@,0);_mm_storel_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+12*@+2],part);_mm_storeh_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+12*@+3+2],part);part=_mm256_extractf128_pd(dot3_@,1);_mm_storel_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+12*@+6+2],part);_mm_storeh_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+12*@+9+2],part);#NVECS/4
+            #GHOST_UNROLL#part=_mm256_extractf128_pd(dot1_@,0);_mm_storel_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+12*@+0],part);_mm_storeh_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+12*@+3+0],part);part=_mm256_extractf128_pd(dot1_@,1);_mm_storel_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+12*@+6+0],part);_mm_storeh_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+12*@+9+0],part);#(NVECS+3)/4
+            #GHOST_UNROLL#part=_mm256_extractf128_pd(dot2_@,0);_mm_storel_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+12*@+1],part);_mm_storeh_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+12*@+3+1],part);part=_mm256_extractf128_pd(dot2_@,1);_mm_storel_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+12*@+6+1],part);_mm_storeh_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+12*@+9+1],part);#(NVECS+3)/4
+            #GHOST_UNROLL#part=_mm256_extractf128_pd(dot3_@,0);_mm_storel_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+12*@+2],part);_mm_storeh_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+12*@+3+2],part);part=_mm256_extractf128_pd(dot3_@,1);_mm_storel_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+12*@+6+2],part);_mm_storeh_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+12*@+9+2],part);#(NVECS+3)/4
         }
     }
     if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
