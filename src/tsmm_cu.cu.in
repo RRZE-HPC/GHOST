@@ -59,7 +59,7 @@ template<typename T> __global__ static void ghost_tsmm_cu_rm_cm_fallback(T * con
 }
 
 #GHOST_FUNC_BEGIN#CFGK=${CFG_BLOCKVECTOR_SIZES}#CFGM=${CFG_BLOCKVECTOR_SIZES}
-ghost_error_t ghost_tsmm__u_cuda_x_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta) 
+ghost_error_t ghost_tsmm__u_cuda_x_CFGK_CFGM_1_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta) 
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL); 
     ghost_error_t ret = GHOST_SUCCESS;
@@ -95,7 +95,7 @@ ghost_error_t ghost_tsmm__u_cuda_x_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_de
 }
 #GHOST_FUNC_END
 
-ghost_error_t ghost_tsmm__u_cuda_x_x_x_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta) 
+ghost_error_t ghost_tsmm__u_cuda_x_x_x_1_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta) 
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL); 
     ghost_error_t ret = GHOST_SUCCESS;

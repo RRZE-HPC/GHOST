@@ -11,7 +11,7 @@
 #include <stdlib.h>
 
 #GHOST_FUNC_BEGIN#BLOCKSZ1=${CFG_BLOCKVECTOR_SIZES}#BLOCKSZ2=${CFG_BLOCKVECTOR_SIZES}
-ghost_error_t ghost_tsmm__a_sse_d_BLOCKSZ1_BLOCKSZ2_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
+ghost_error_t ghost_tsmm__a_sse_d_BLOCKSZ1_BLOCKSZ2_1_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
 {
 #ifdef GHOST_HAVE_SSE
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
@@ -93,7 +93,7 @@ ghost_error_t ghost_tsmm__a_sse_d_BLOCKSZ1_BLOCKSZ2_rm_cm(ghost_densemat_t *x, g
 #GHOST_FUNC_END
 
 #GHOST_FUNC_BEGIN#BLOCKSZ1=${CFG_BLOCKVECTOR_SIZES}#BLOCKSZ2=${CFG_BLOCKVECTOR_SIZES}
-ghost_error_t ghost_tsmm__u_sse_d_BLOCKSZ1_BLOCKSZ2_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
+ghost_error_t ghost_tsmm__u_sse_d_BLOCKSZ1_BLOCKSZ2_1_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
 {
 #ifdef GHOST_HAVE_SSE
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
@@ -175,7 +175,7 @@ ghost_error_t ghost_tsmm__u_sse_d_BLOCKSZ1_BLOCKSZ2_rm_cm(ghost_densemat_t *x, g
 #GHOST_FUNC_END
 
 
-ghost_error_t ghost_tsmm__a_sse_d_x_x_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
+ghost_error_t ghost_tsmm__a_sse_d_x_x_1_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
 {
 #ifdef GHOST_HAVE_SSE
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
@@ -258,7 +258,7 @@ out:
 #endif
 }
 
-ghost_error_t ghost_tsmm__u_sse_d_x_x_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
+ghost_error_t ghost_tsmm__u_sse_d_x_x_1_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
 {
 #ifdef GHOST_HAVE_SSE
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)

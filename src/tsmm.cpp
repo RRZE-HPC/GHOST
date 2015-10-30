@@ -10,6 +10,7 @@
 #include "ghost/tsmm_cu_gen.h"
 #include "ghost/timing.h"
 #include "ghost/machine.h"
+#include "ghost/constants.h"
 
 #include <map>
 
@@ -190,7 +191,7 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
         p.unroll = GHOST_MAX_ROWS_UNROLL;
     }
     
-    INFO_LOG("Inital search for kernel dt=%d wcols=%d vcols=%d xstor=%d wstor=%d align=%d unroll=%d!",p.dt,p.wcols,p.vcols,p.xstor,p.wstor,p.alignment,p.unroll);
+    INFO_LOG("Inital search for kernel dt=%d xcols=%d vcols=%d xstor=%d wstor=%d align=%d unroll=%d!",p.dt,p.xcols,p.vcols,p.xstor,p.wstor,p.alignment,p.unroll);
     
     kernel = ghost_tsmm_kernels[p];
     
@@ -204,7 +205,7 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
         PERFWARNING_LOG("Decrease unroll size");
         while (p.unroll > 1 && !kernel) {
             p.unroll /= 2;
-            kernel = kernels[p];
+            kernel = ghost_tsmm_kernels[p];
         }
     }
     

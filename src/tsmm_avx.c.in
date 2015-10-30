@@ -20,8 +20,8 @@
 #define complex_mul_asplit_bflip(are,aim,b,bflip) _mm256_addsub_pd(_mm256_mul_pd(are,b),_mm256_mul_pd(aim,bflip))
 #define complex_mul_aflip(a,aflip,b) _mm256_addsub_pd(_mm256_mul_pd(_mm256_shuffle_pd(b,b,0),a),_mm256_mul_pd(_mm256_shuffle_pd(b,b,0xF),aflip))
 
-#GHOST_FUNC_BEGIN#CFGK=${CFG_BLOCKVECTOR_SIZES}#CFGM=${CFG_BLOCKVECTOR_SIZES}
-ghost_error_t ghost_tsmm__a_avx_z_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
+#GHOST_FUNC_BEGIN#CFGK=${CFG_BLOCKVECTOR_SIZES}#CFGM=${CFG_BLOCKVECTOR_SIZES}#OUTERUNROLL=2
+ghost_error_t ghost_tsmm__a_avx_z_CFGK_CFGM_OUTERUNROLL_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
 {
 #ifdef GHOST_HAVE_AVX
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
@@ -31,8 +31,8 @@ ghost_error_t ghost_tsmm__a_avx_z_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_den
 
     INFO_LOG("In AVX TSMM with two fixed block sizes [CFGK][CFGM] %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,x->traits.ncols,n,v->traits.ncols,v->traits.ncols,x->traits.ncols);
     
-    if (n%2) {
-        n+=1;
+    if (n%OUTERUNROLL) {
+        n+=(OUTERUNROLL-n%OUTERUNROLL);
         INFO_LOG("Padding large dimension to %d\n",n);
     }
 
@@ -67,28 +67,28 @@ ghost_error_t ghost_tsmm__a_avx_z_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_den
     if (fabs(creal(dalpha)-1.) > DBL_MIN || fabs(cimag(dalpha)) > DBL_MIN || fabs(creal(dbeta)) > DBL_MIN || fabs(cimag(dbeta)) > DBL_MIN) { // general case: X = b*X + a*V*W
 #pragma omp parallel private(k,m)
         {
-            #GHOST_UNROLL#__m256d vrev@,vimv@,tmpre@,tmpim@,tmpref@,tmpimf@,res0@,res1@;#2
+            #GHOST_UNROLL#__m256d vrev@,vimv@,tmpre@,tmpim@,tmpref@,tmpimf@,res0@,res1@;#OUTERUNROLL
 #pragma omp for schedule(runtime)
-            for (i=0; i<n-1; i+=2) {
+            for (i=0; i<n-(OUTERUNROLL-1); i+=OUTERUNROLL) {
                 for (k=0; k<CFGK/4; k++) {
-                    #GHOST_UNROLL#tmpre@ = _mm256_setzero_pd();#2
-                    #GHOST_UNROLL#tmpim@ = _mm256_setzero_pd();#2
+                    #GHOST_UNROLL#tmpre@ = _mm256_setzero_pd();#OUTERUNROLL
+                    #GHOST_UNROLL#tmpim@ = _mm256_setzero_pd();#OUTERUNROLL
 #pragma unroll(CFGM)
                     for (m=0; m<CFGM; m++) {
-                        #GHOST_UNROLL#vrev@ = _mm256_broadcast_sd(&((double *)vval)[2*((i+@)*ldv+m)]);#2
-                        #GHOST_UNROLL#vimv@ = _mm256_broadcast_sd(&((double *)vval)[2*((i+@)*ldv+m)+1]);#2
-                        #GHOST_UNROLL#tmpre@ = _mm256_add_pd(tmpre@,_mm256_sub_pd(_mm256_mul_pd(vrev@,_mm256_load_pd(&wre[m*CFGK+(k*4)])),_mm256_mul_pd(vimv@,_mm256_load_pd(&wim[m*CFGK+(k*4)]))));#2
-                        #GHOST_UNROLL#tmpim@ = _mm256_add_pd(tmpim@,_mm256_add_pd(_mm256_mul_pd(vimv@,_mm256_load_pd(&wre[m*CFGK+(k*4)])),_mm256_mul_pd(vrev@,_mm256_load_pd(&wim[m*CFGK+(k*4)]))));#2
+                        #GHOST_UNROLL#vrev@ = _mm256_broadcast_sd(&((double *)vval)[2*((i+@)*ldv+m)]);#OUTERUNROLL
+                        #GHOST_UNROLL#vimv@ = _mm256_broadcast_sd(&((double *)vval)[2*((i+@)*ldv+m)+1]);#OUTERUNROLL
+                        #GHOST_UNROLL#tmpre@ = _mm256_add_pd(tmpre@,_mm256_sub_pd(_mm256_mul_pd(vrev@,_mm256_load_pd(&wre[m*CFGK+(k*4)])),_mm256_mul_pd(vimv@,_mm256_load_pd(&wim[m*CFGK+(k*4)]))));#OUTERUNROLL
+                        #GHOST_UNROLL#tmpim@ = _mm256_add_pd(tmpim@,_mm256_add_pd(_mm256_mul_pd(vimv@,_mm256_load_pd(&wre[m*CFGK+(k*4)])),_mm256_mul_pd(vrev@,_mm256_load_pd(&wim[m*CFGK+(k*4)]))));#OUTERUNROLL
                     }
 
-                    #GHOST_UNROLL#tmpref@ = _mm256_sub_pd(_mm256_mul_pd(alphare,tmpre@),_mm256_mul_pd(alphaim,tmpim@));#2
-                    #GHOST_UNROLL#tmpimf@ = _mm256_add_pd(_mm256_mul_pd(alphare,tmpim@),_mm256_mul_pd(alphaim,tmpre@));#2
+                    #GHOST_UNROLL#tmpref@ = _mm256_sub_pd(_mm256_mul_pd(alphare,tmpre@),_mm256_mul_pd(alphaim,tmpim@));#OUTERUNROLL
+                    #GHOST_UNROLL#tmpimf@ = _mm256_add_pd(_mm256_mul_pd(alphare,tmpim@),_mm256_mul_pd(alphaim,tmpre@));#OUTERUNROLL
 
-                    #GHOST_UNROLL#tmpimf@ = _mm256_shuffle_pd(tmpimf@,tmpimf@,0b0101);#2
-                    #GHOST_UNROLL#res0@ = _mm256_permute2f128_pd(_mm256_blend_pd(tmpref@,tmpimf@,0b1010),_mm256_shuffle_pd(_mm256_blend_pd(tmpref@,tmpimf@,0b0101),_mm256_blend_pd(tmpref@,tmpimf@,0b0101),0b0101),0x20);#2
-                    #GHOST_UNROLL#res1@ = _mm256_permute2f128_pd(_mm256_blend_pd(tmpref@,tmpimf@,0b1010),_mm256_shuffle_pd(_mm256_blend_pd(tmpref@,tmpimf@,0b0101),_mm256_blend_pd(tmpref@,tmpimf@,0b0101),0b0101),0x31);#2
-                    #GHOST_UNROLL#_mm256_store_pd((double *)&xval[(i+@)*ldx+(4*k)],_mm256_add_pd(complex_mul(betavec,_mm256_load_pd((double *)&xval[(i+@)*ldx+(4*k)])),res0@));#2
-                    #GHOST_UNROLL#_mm256_store_pd((double *)&xval[(i+@)*ldx+(4*k)+2],_mm256_add_pd(complex_mul(betavec,_mm256_load_pd((double *)&xval[(i+@)*ldx+(4*k)+2])),res1@));#2
+                    #GHOST_UNROLL#tmpimf@ = _mm256_shuffle_pd(tmpimf@,tmpimf@,0b0101);#OUTERUNROLL
+                    #GHOST_UNROLL#res0@ = _mm256_permute2f128_pd(_mm256_blend_pd(tmpref@,tmpimf@,0b1010),_mm256_shuffle_pd(_mm256_blend_pd(tmpref@,tmpimf@,0b0101),_mm256_blend_pd(tmpref@,tmpimf@,0b0101),0b0101),0x20);#OUTERUNROLL
+                    #GHOST_UNROLL#res1@ = _mm256_permute2f128_pd(_mm256_blend_pd(tmpref@,tmpimf@,0b1010),_mm256_shuffle_pd(_mm256_blend_pd(tmpref@,tmpimf@,0b0101),_mm256_blend_pd(tmpref@,tmpimf@,0b0101),0b0101),0x31);#OUTERUNROLL
+                    #GHOST_UNROLL#_mm256_store_pd((double *)&xval[(i+@)*ldx+(4*k)],_mm256_add_pd(complex_mul(betavec,_mm256_load_pd((double *)&xval[(i+@)*ldx+(4*k)])),res0@));#OUTERUNROLL
+                    #GHOST_UNROLL#_mm256_store_pd((double *)&xval[(i+@)*ldx+(4*k)+2],_mm256_add_pd(complex_mul(betavec,_mm256_load_pd((double *)&xval[(i+@)*ldx+(4*k)+2])),res1@));#OUTERUNROLL
                 }
 #if 0
             __m256d vrow1,vrow2,res;
@@ -128,24 +128,24 @@ ghost_error_t ghost_tsmm__a_avx_z_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_den
         INFO_LOG("Fast case: alpha=1 and beta=0");
 #pragma omp parallel private(k,m)
         {
-            #GHOST_UNROLL#__m256d vrev@,vimv@,tmpre@,tmpim@,res0@,res1@;#2
+            #GHOST_UNROLL#__m256d vrev@,vimv@,tmpre@,tmpim@,res0@,res1@;#OUTERUNROLL
 #pragma omp for schedule(runtime)
             for (i=0; i<n-1; i+=2) {
                 for (k=0; k<CFGK/4; k++) {
-                    #GHOST_UNROLL#tmpre@ = _mm256_setzero_pd();#2
-                    #GHOST_UNROLL#tmpim@ = _mm256_setzero_pd();#2
+                    #GHOST_UNROLL#tmpre@ = _mm256_setzero_pd();#OUTERUNROLL
+                    #GHOST_UNROLL#tmpim@ = _mm256_setzero_pd();#OUTERUNROLL
 #pragma unroll(CFGM)
                     for (m=0; m<CFGM; m++) {
-                        #GHOST_UNROLL#vrev@ = _mm256_broadcast_sd(&((double *)vval)[2*((i+@)*ldv+m)]);#2
-                        #GHOST_UNROLL#vimv@ = _mm256_broadcast_sd(&((double *)vval)[2*((i+@)*ldv+m)+1]);#2
-                        #GHOST_UNROLL#tmpre@ = _mm256_add_pd(tmpre@,_mm256_sub_pd(_mm256_mul_pd(vrev@,_mm256_load_pd(&wre[m*CFGK+(k*4)])),_mm256_mul_pd(vimv@,_mm256_load_pd(&wim[m*CFGK+(k*4)]))));#2
-                        #GHOST_UNROLL#tmpim@ = _mm256_add_pd(tmpim@,_mm256_add_pd(_mm256_mul_pd(vimv@,_mm256_load_pd(&wre[m*CFGK+(k*4)])),_mm256_mul_pd(vrev@,_mm256_load_pd(&wim[m*CFGK+(k*4)]))));#2
+                        #GHOST_UNROLL#vrev@ = _mm256_broadcast_sd(&((double *)vval)[2*((i+@)*ldv+m)]);#OUTERUNROLL
+                        #GHOST_UNROLL#vimv@ = _mm256_broadcast_sd(&((double *)vval)[2*((i+@)*ldv+m)+1]);#OUTERUNROLL
+                        #GHOST_UNROLL#tmpre@ = _mm256_add_pd(tmpre@,_mm256_sub_pd(_mm256_mul_pd(vrev@,_mm256_load_pd(&wre[m*CFGK+(k*4)])),_mm256_mul_pd(vimv@,_mm256_load_pd(&wim[m*CFGK+(k*4)]))));#OUTERUNROLL
+                        #GHOST_UNROLL#tmpim@ = _mm256_add_pd(tmpim@,_mm256_add_pd(_mm256_mul_pd(vimv@,_mm256_load_pd(&wre[m*CFGK+(k*4)])),_mm256_mul_pd(vrev@,_mm256_load_pd(&wim[m*CFGK+(k*4)]))));#OUTERUNROLL
                     }
-                    #GHOST_UNROLL#tmpim@ = _mm256_shuffle_pd(tmpim@,tmpim@,0b0101);#2
-                    #GHOST_UNROLL#res0@ = _mm256_permute2f128_pd(_mm256_blend_pd(tmpre@,tmpim@,0b1010),_mm256_shuffle_pd(_mm256_blend_pd(tmpre@,tmpim@,0b0101),_mm256_blend_pd(tmpre@,tmpim@,0b0101),0b0101),0x20);#2
-                    #GHOST_UNROLL#res1@ = _mm256_permute2f128_pd(_mm256_blend_pd(tmpre@,tmpim@,0b1010),_mm256_shuffle_pd(_mm256_blend_pd(tmpre@,tmpim@,0b0101),_mm256_blend_pd(tmpre@,tmpim@,0b0101),0b0101),0x31);#2
-                    #GHOST_UNROLL#_mm256_stream_pd((double *)&xval[(i+@)*ldx+(4*k)],res0@);#2
-                    #GHOST_UNROLL#_mm256_stream_pd((double *)&xval[(i+@)*ldx+(4*k)+2],res1@);#2
+                    #GHOST_UNROLL#tmpim@ = _mm256_shuffle_pd(tmpim@,tmpim@,0b0101);#OUTERUNROLL
+                    #GHOST_UNROLL#res0@ = _mm256_permute2f128_pd(_mm256_blend_pd(tmpre@,tmpim@,0b1010),_mm256_shuffle_pd(_mm256_blend_pd(tmpre@,tmpim@,0b0101),_mm256_blend_pd(tmpre@,tmpim@,0b0101),0b0101),0x20);#OUTERUNROLL
+                    #GHOST_UNROLL#res1@ = _mm256_permute2f128_pd(_mm256_blend_pd(tmpre@,tmpim@,0b1010),_mm256_shuffle_pd(_mm256_blend_pd(tmpre@,tmpim@,0b0101),_mm256_blend_pd(tmpre@,tmpim@,0b0101),0b0101),0x31);#OUTERUNROLL
+                    #GHOST_UNROLL#_mm256_stream_pd((double *)&xval[(i+@)*ldx+(4*k)],res0@);#OUTERUNROLL
+                    #GHOST_UNROLL#_mm256_stream_pd((double *)&xval[(i+@)*ldx+(4*k)+2],res1@);#OUTERUNROLL
                 }
             }
         }
@@ -514,7 +514,7 @@ ghost_error_t ghost_tsmm1__a_avx_z_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_de
 #endif
 #if 0
 #GHOST_FUNC_BEGIN#CFGK=${CFG_BLOCKVECTOR_SIZES}#CFGM=${CFG_BLOCKVECTOR_SIZES}
-ghost_error_t ghost_tsmm__a_avx_d_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
+ghost_error_t ghost_tsmm4__a_avx_d_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
 {
 #ifdef GHOST_HAVE_AVX
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
@@ -657,8 +657,8 @@ ghost_error_t ghost_tsmm__a_avx_d_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_den
 #GHOST_FUNC_END
 #endif
 
-#GHOST_FUNC_BEGIN#CFGK=${CFG_BLOCKVECTOR_SIZES}#CFGM=${CFG_BLOCKVECTOR_SIZES}
-ghost_error_t ghost_tsmm__a_avx_d_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
+#GHOST_FUNC_BEGIN#CFGK=${CFG_BLOCKVECTOR_SIZES}#CFGM=${CFG_BLOCKVECTOR_SIZES}#OUTERUNROLL=2
+ghost_error_t ghost_tsmm__a_avx_d_CFGK_CFGM_OUTERUNROLL_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
 {
 #ifdef GHOST_HAVE_AVX
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
@@ -668,8 +668,8 @@ ghost_error_t ghost_tsmm__a_avx_d_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_den
 
     INFO_LOG("In AVX TSMM with two fixed block sizes [CFGK][CFGM] %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,x->traits.ncols,n,v->traits.ncols,v->traits.ncols,x->traits.ncols);
     
-    if (n%2) {
-        n+=1;
+    if (n%OUTERUNROLL) {
+        n+=(OUTERUNROLL-n%OUTERUNROLL);
         INFO_LOG("Padding large dimension to %d\n",n);
     }
 
@@ -703,17 +703,17 @@ ghost_error_t ghost_tsmm__a_avx_d_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_den
     if ( fabs(dbeta) > DBL_MIN) { // general case: X = b*X + a*V*W
 #pragma omp parallel private(k,m)
         {
-            #GHOST_UNROLL#__m256d tmp@;#8
-            #GHOST_UNROLL#__m256d vrow@;#2
+            #GHOST_UNROLL#__m256d tmp@;#4*OUTERUNROLL
+            #GHOST_UNROLL#__m256d vrow@;#OUTERUNROLL
 #pragma omp for schedule(runtime)
             for (i=0; i<n-1; i+=2) {
                 for (k=0; k<CFGK/4; k++) {
-                    #GHOST_UNROLL#tmp@ = _mm256_setzero_pd();#8
+                    #GHOST_UNROLL#tmp@ = _mm256_setzero_pd();#4*OUTERUNROLL
 
 #pragma unroll(CFGM/4)
                     for (m=0; m<CFGM/4; m++) {
-                        #GHOST_UNROLL#vrow@ = _mm256_load_pd(&vval[(i+@)*ldv+m*4]);#2
-                        #GHOST_UNROLL#tmp@ = _mm256_add_pd(tmp@,_mm256_mul_pd(vrow~@/4~,_mm256_load_pd(&wnonpad[(k*4+(@%4))*CFGM+m*4])));#8
+                        #GHOST_UNROLL#vrow@ = _mm256_load_pd(&vval[(i+@)*ldv+m*4]);#OUTERUNROLL
+                        #GHOST_UNROLL#tmp@ = _mm256_add_pd(tmp@,_mm256_mul_pd(vrow~@/4~,_mm256_load_pd(&wnonpad[(k*4+(@%4))*CFGM+m*4])));#4*OUTERUNROLL
                     }
                     _mm256_store_pd(&xval[i*ldx+k*4],_mm256_add_pd(_mm256_mul_pd(betavec,_mm256_load_pd(&xval[i*ldx+k*4])),_mm256_hadd_pd(
                                 _mm256_hadd_pd(_mm256_permute2f128_pd(tmp0,tmp2,0x20),_mm256_permute2f128_pd(tmp0,tmp2,0x31)),
@@ -748,17 +748,17 @@ ghost_error_t ghost_tsmm__a_avx_d_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_den
                 }
             }
 #endif
-            #GHOST_UNROLL#__m256d tmp@;#8
-            #GHOST_UNROLL#__m256d vrow@;#2
+            #GHOST_UNROLL#__m256d tmp@;#4*OUTERUNROLL
+            #GHOST_UNROLL#__m256d vrow@;#OUTERUNROLL
 #pragma omp for schedule(runtime)
             for (i=0; i<n-1; i+=2) {
                 for (k=0; k<CFGK/4; k++) {
-                    #GHOST_UNROLL#tmp@ = _mm256_setzero_pd();#8
+                    #GHOST_UNROLL#tmp@ = _mm256_setzero_pd();#4*OUTERUNROLL
 
 #pragma unroll(CFGM/4)
                     for (m=0; m<CFGM/4; m++) {
-                        #GHOST_UNROLL#vrow@ = _mm256_load_pd(&vval[(i+@)*ldv+m*4]);#2
-                        #GHOST_UNROLL#tmp@ = _mm256_add_pd(tmp@,_mm256_mul_pd(vrow~@/4~,_mm256_load_pd(&wnonpad[(k*4+(@%4))*CFGM+m*4])));#8
+                        #GHOST_UNROLL#vrow@ = _mm256_load_pd(&vval[(i+@)*ldv+m*4]);#OUTERUNROLL
+                        #GHOST_UNROLL#tmp@ = _mm256_add_pd(tmp@,_mm256_mul_pd(vrow~@/4~,_mm256_load_pd(&wnonpad[(k*4+(@%4))*CFGM+m*4])));#4*OUTERUNROLL
                     }
                     _mm256_stream_pd(&xval[i*ldx+k*4],_mm256_hadd_pd(
                                 _mm256_hadd_pd(_mm256_permute2f128_pd(tmp0,tmp2,0x20),_mm256_permute2f128_pd(tmp0,tmp2,0x31)),
@@ -787,7 +787,7 @@ ghost_error_t ghost_tsmm__a_avx_d_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_den
 #GHOST_FUNC_END
 
 #GHOST_FUNC_BEGIN#CFGK=${CFG_BLOCKVECTOR_SIZES}#CFGM=${CFG_BLOCKVECTOR_SIZES}
-ghost_error_t ghost_tsmm1__a_avx_d_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
+ghost_error_t ghost_tsmm1__a_avx_d_CFGK_CFGM_1_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
 {
 #ifdef GHOST_HAVE_AVX
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
@@ -870,7 +870,7 @@ ghost_error_t ghost_tsmm1__a_avx_d_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_de
 #GHOST_FUNC_END
 
 #GHOST_FUNC_BEGIN#CFGK=${CFG_BLOCKVECTOR_SIZES}#CFGM=${CFG_BLOCKVECTOR_SIZES}
-ghost_error_t ghost_tsmm__u_avx_d_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
+ghost_error_t ghost_tsmm__u_avx_d_CFGK_CFGM_1_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
 {
 #ifdef GHOST_HAVE_AVX
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
@@ -952,7 +952,7 @@ ghost_error_t ghost_tsmm__u_avx_d_CFGK_CFGM_rm_cm(ghost_densemat_t *x, ghost_den
 }
 #GHOST_FUNC_END
 
-ghost_error_t ghost_tsmm__a_avx_d_x_x_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
+ghost_error_t ghost_tsmm__a_avx_d_x_x_1_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
 {
 #ifdef GHOST_HAVE_AVX
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
@@ -1036,7 +1036,7 @@ out:
 #endif
 }
 
-ghost_error_t ghost_tsmm__u_avx_d_x_x_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
+ghost_error_t ghost_tsmm__u_avx_d_x_x_1_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
 {
 #ifdef GHOST_HAVE_AVX
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
