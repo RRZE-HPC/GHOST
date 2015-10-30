@@ -501,41 +501,11 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
         p.impl = GHOST_IMPLEMENTATION_PLAIN;
     }
 
-    /*if (((lhs->traits.flags & GHOST_DENSEMAT_VIEW) 
-            || (rhs->traits.flags & GHOST_DENSEMAT_VIEW)) &&
-            p.impl == GHOST_IMPLEMENTATION_SSE) {
-        WARNING_LOG("Not sure whether aligned load intrinsics on potentially "
-                "unaligned addresses work with SSE.");
+    int al = ghost_machine_alignment();
+    if (IS_ALIGNED(lhs->val,al) && IS_ALIGNED(rhs->val,al) && !((lhs->stride*lhs->elSize) % al) && !((rhs->stride*rhs->elSize) % al)) {
+        p.alignment = GHOST_ALIGNED;
+    } else {
         p.alignment = GHOST_UNALIGNED;
-    }*/
-    if (p.impl == GHOST_IMPLEMENTATION_MIC) {
-        if (!(IS_ALIGNED(lhs->val,64)) || !(IS_ALIGNED(rhs->val,64)) ||
-                (lhs->stride*lhs->elSize)%64 || (rhs->stride*rhs->elSize)%64) {
-            PERFWARNING_LOG("Using unaligned version for because (one of) the vectors are not aligned to 64 bytes.");
-            p.alignment = GHOST_UNALIGNED;
-        }
-    }
-    if (p.impl == GHOST_IMPLEMENTATION_AVX) {
-        if (!(IS_ALIGNED(lhs->val,32)) || !(IS_ALIGNED(rhs->val,32)) ||
-                (lhs->stride*lhs->elSize)%32 || (rhs->stride*rhs->elSize)%32) {
-            PERFWARNING_LOG("Using unaligned version for because (one of) the vectors are not aligned to 32 bytes.");
-            p.alignment = GHOST_UNALIGNED;
-        }
-    }
-    if (p.impl == GHOST_IMPLEMENTATION_SSE) {
-        if (!(IS_ALIGNED(lhs->val,16)) || !(IS_ALIGNED(rhs->val,16)) ||
-                (lhs->stride*lhs->elSize)%16 || (rhs->stride*rhs->elSize)%16) {
-            PERFWARNING_LOG("Using unaligned version for because (one of) the vectors are not aligned to 16 bytes.");
-            p.alignment = GHOST_UNALIGNED;
-        } else if ((lhs->traits.flags & GHOST_DENSEMAT_VIEW) && (lhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR)
-                                                             && (lhs->traits.ncols*lhs->elSize)%16 ) {
-            PERFWARNING_LOG("Using unaligned version for because (one of) the vectors are not aligned to 16 bytes.");
-            p.alignment = GHOST_UNALIGNED;
-        } else if ((rhs->traits.flags & GHOST_DENSEMAT_VIEW) && (rhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR)
-                                                             && (rhs->traits.ncols*rhs->elSize)%16 ) {
-            PERFWARNING_LOG("Using unaligned version for because (one of) the vectors are not aligned to 16 bytes.");
-            p.alignment = GHOST_UNALIGNED;
-        }
     }
     /*if (lhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR && p.blocksz > 1 && p.blocksz % 4) {
         if (p.impl == GHOST_IMPLEMENTATION_AVX) {
