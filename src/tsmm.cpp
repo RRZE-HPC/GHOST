@@ -116,15 +116,16 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
     }
 #endif
 
-    p.impl = GHOST_IMPLEMENTATION_PLAIN;
     p.xstor = x->traits.storage;
     p.wstor = w->traits.storage;
 
     p.xcols = x->traits.ncols;
     p.vcols = v->traits.ncols;
+
+    int simd = ghost_machine_simd_width();
     
     // alignment of large input data
-    // the alignment of the result array does not matter because we can easily re-allocate it accordingly
+    // the alignment of the w matrix does not matter because we can easily re-allocate it accordingly
     int al = ghost_machine_alignment();
     if (IS_ALIGNED(x->val,al) && IS_ALIGNED(v->val,al) && !((x->stride*x->elSize) % al) && !((v->stride*v->elSize) % al)) {
         p.alignment = GHOST_ALIGNED;
@@ -132,61 +133,11 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
         p.alignment = GHOST_UNALIGNED;
     }
 
-    /*
-    
-    if (p.vcols < 4 || p.xcols < 4) {
-        p.impl = GHOST_IMPLEMENTATION_PLAIN;
-    } else if (p.vcols % 4 || p.xcols % 4) {
-        if (!(x->traits.flags & GHOST_DENSEMAT_VIEW) && (!(v->traits.ncolspadded % 4) && !(x->traits.ncolspadded % 4))) {
-            p.vcols = v->traits.ncolspadded;
-            p.xcols = x->traits.ncolspadded;
-        } else {
-            if (p.xcols == 2) {
-#ifdef GHOST_HAVE_SSE
-                PERFWARNING_LOG("Use SSE for ncols==2");
-                p.impl = GHOST_IMPLEMENTATION_SSE;
-#endif
-            }
-            if (p.xcols == 1) {
-                PERFWARNING_LOG("Use plain for ncols==1");
-                p.impl = GHOST_IMPLEMENTATION_PLAIN;
-            }
-            if ((p.xcols % 4 || p.vcols % 4) && (p.impl != GHOST_IMPLEMENTATION_CUDA)) {
-                PERFWARNING_LOG("Use SSE for non-multiple of four");
-                p.impl = GHOST_IMPLEMENTATION_SSE;
-            }
-            if ((p.xcols % 2 || p.vcols % 2) && (p.impl != GHOST_IMPLEMENTATION_CUDA)) {
-                PERFWARNING_LOG("Use plain for non-even column count");
-                p.impl = GHOST_IMPLEMENTATION_PLAIN;
-            }
-        }
-    }
-
-
-    if (p.impl == GHOST_IMPLEMENTATION_SSE) {
-        if (!IS_ALIGNED(x->val,16) || !IS_ALIGNED(v->val,16) || !IS_ALIGNED(w->val,16) || 
-                (x->stride*x->elSize)%16 || (v->stride*v->elSize)%16 || (w->stride*w->elSize)%16) {
-            p.alignment = GHOST_UNALIGNED;
-            PERFWARNING_LOG("Switching to the unaligned kernel!");
-        }
-    }
-    if (p.impl == GHOST_IMPLEMENTATION_AVX) {
-        if (!IS_ALIGNED(x->val,32) || !IS_ALIGNED(v->val,32) || !IS_ALIGNED(w->val,32) || 
-                (x->stride*x->elSize)%32 || (v->stride*v->elSize)%32 || (w->stride*w->elSize)%32) {
-            p.alignment = GHOST_UNALIGNED;
-            PERFWARNING_LOG("Switching to the unaligned kernel!");
-        }
-    }
-    if (p.impl == GHOST_IMPLEMENTATION_PLAIN || p.impl == GHOST_IMPLEMENTATION_MIC) {
-        if (!IS_ALIGNED(x->val,64) || !IS_ALIGNED(v->val,64) || 
-                (x->stride*x->elSize)%64 || (v->stride*v->elSize)%64) {
-            p.alignment = GHOST_UNALIGNED;
-            PERFWARNING_LOG("Switching to the unaligned kernel!");
-        }
-    }*/
-    
     if (x->traits.flags & GHOST_DENSEMAT_VIEW || v->traits.flags & GHOST_DENSEMAT_VIEW) {
         p.unroll = 1;
+        if (((p.xcols*v->elSize) % simd) || ((p.vcols*v->elSize) % simd)) {
+            p.impl = GHOST_IMPLEMENTATION_PLAIN;
+        }
     } else {
         p.unroll = GHOST_MAX_ROWS_UNROLL;
     }
