@@ -727,7 +727,7 @@ ghost_error_t ghost_sellspmv__a_avx_z_z_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
 #GHOST_FUNC_BEGIN#NVECS=${CFG_BLOCKVECTOR_SIZES}#CHUNKHEIGHT=${CFG_SELL_CHUNKHEIGHTS}
 ghost_error_t ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
 {
-#if defined(GHOST_HAVE_AVX) && NVECS>=4
+#if defined(GHOST_HAVE_AVX)
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
 
 #if NVECS%4
@@ -905,11 +905,7 @@ ghost_error_t ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
     UNUSED(invec);
     UNUSED(spmvmOptions);
     UNUSED(argp);
-#if NVECS < 4
-    ERROR_LOG("Invalid nVecs");
-#else
     ERROR_LOG("No AVX available");
-#endif
     return GHOST_ERR_UNKNOWN;
 #endif
 }
@@ -1199,7 +1195,7 @@ ghost_error_t ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat,
 #GHOST_FUNC_BEGIN#NVECS=${CFG_BLOCKVECTOR_SIZES}#CHUNKHEIGHT=${CFG_SELL_CHUNKHEIGHTS}
 ghost_error_t ghost_sellspmv__a_avx_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
 {
-#if defined(GHOST_HAVE_AVX) && NVECS >= 2
+#if defined(GHOST_HAVE_AVX)
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
 
 #if NVECS%2
@@ -1416,11 +1412,7 @@ ghost_error_t ghost_sellspmv__a_avx_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
     UNUSED(invec);
     UNUSED(spmvmOptions);
     UNUSED(argp);
-#if NVECS < 2
-    ERROR_LOG("Invalid nVecs");
-#else
     ERROR_LOG("No AVX available");
-#endif
     return GHOST_ERR_UNKNOWN;
 #endif
 }
