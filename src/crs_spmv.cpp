@@ -106,7 +106,7 @@ static ghost_error_t ghost_crs_spmv_plain_rm(ghost_sparsemat_t *mat, ghost_dense
                 }
                 if (options & GHOST_SPMV_DOT_ANY) {
                     partsums[((padding+3*lhs->traits.ncols)*tid)+3*cidx+0] += conjugate(&lhsv[lcol])*lhsv[lcol];
-                    partsums[((padding+3*lhs->traits.ncols)*tid)+3*cidx+1] += conjugate(&lhsv[lcol])*rhsrow[rcol];
+                    partsums[((padding+3*lhs->traits.ncols)*tid)+3*cidx+1] += conjugate(&rhsrow[rcol])*lhsv[lcol];
                     partsums[((padding+3*lhs->traits.ncols)*tid)+3*cidx+2] += conjugate(&rhsrow[rcol])*rhsrow[rcol];
                 }
                 if (scatteredrows) {
@@ -232,7 +232,7 @@ static ghost_error_t ghost_crs_spmv_plain_cm(ghost_sparsemat_t *mat, ghost_dense
 
                 if (options & GHOST_SPMV_DOT_ANY) {
                     partsums[((padding+3*lhs->traits.ncols)*tid)+3*v+0] += conjugate(&lhsv[i])*lhsv[i];
-                    partsums[((padding+3*lhs->traits.ncols)*tid)+3*v+1] += conjugate(&lhsv[i])*rhsv[i];
+                    partsums[((padding+3*lhs->traits.ncols)*tid)+3*v+1] += conjugate(&rhsv[i])*lhsv[i];
                     partsums[((padding+3*lhs->traits.ncols)*tid)+3*v+2] += conjugate(&rhsv[i])*rhsv[i];
                 }
                 
