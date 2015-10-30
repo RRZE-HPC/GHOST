@@ -488,6 +488,12 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
         PERFWARNING_LOG("Chose plain kernel for col-major densemats and C<2");
         p.impl = GHOST_IMPLEMENTATION_PLAIN;
     }
+    
+    if (p.impl == GHOST_IMPLEMENTATION_SSE && 
+            p.storage == GHOST_DENSEMAT_ROWMAJOR && p.blocksz % 2) {
+        PERFWARNING_LOG("Chose plain over SSE for odd blocksz");
+        p.impl = GHOST_IMPLEMENTATION_PLAIN;
+    }
 
     if ((lhs->traits.flags & GHOST_DENSEMAT_SCATTERED) || 
             (rhs->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
