@@ -155,7 +155,7 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
     char *tmpval = NULL;
     ghost_gidx_t *tmpcol = NULL;
     ghost_lidx_t nchunks = (ghost_lidx_t)(ceil((double)mat->nrows/(double)C));
-    ghost_lidx_t i,row,chunk,j,colidx;
+    ghost_lidx_t i,row,chunk,colidx;
     ghost_gidx_t gnents = 0, gnnz = 0;
     ghost_lidx_t maxRowLenInChunk = 0, maxRowLen = 0, privateMaxRowLen = 0;
     int me,nprocs;
@@ -347,7 +347,7 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
 #endif
     }
     if (src->maxrowlen != mat->maxRowLen) {
-        INFO_LOG("The maximum row length was not correct. Setting it from %"PRLIDX" to %"PRLIDX,src->maxrowlen,mat->maxRowLen); 
+        INFO_LOG("The maximum row length was not correct. Setting it from %"PRLIDX" to %"PRGIDX,src->maxrowlen,mat->maxRowLen); 
         src->maxrowlen = mat->maxRowLen;
     }
 
@@ -392,7 +392,7 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
                         actualrow = row;
                     }
                     
-                    crsval = &((char *)(((ghost_sparsemat_rowfunc_crs_arg *)src->arg)->val))[((ghost_sparsemat_rowfunc_crs_arg *)src->arg)->rpt[actualrow]*mat->elSize];
+                    crsval = &((char *)(((ghost_sparsemat_rowfunc_crs_arg *)src->arg)->val))[crsrpt[actualrow]*mat->elSize];
 
 #pragma nontemporal
                     for (colidx = 0; colidx<rl[row]; colidx++) {
@@ -411,7 +411,7 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
                             }
                         }
                         if (readcols) {
-                            crscol = &((ghost_sparsemat_rowfunc_crs_arg *)src->arg)->col[((ghost_sparsemat_rowfunc_crs_arg *)src->arg)->rpt[actualrow]];
+                            crscol = &((ghost_sparsemat_rowfunc_crs_arg *)src->arg)->col[crsrpt[actualrow]];
                             if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
                                 // local permutation: distinction between global and local entries
                                 if ((crscol[colidx] >= mat->context->lfRow[me]) && (crscol[colidx] < (mat->context->lfRow[me]+mat->nrows))) { // local entry: copy with permutation

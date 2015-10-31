@@ -286,8 +286,6 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     ghost_error_t ret = GHOST_SUCCESS;
 
-    ghost_lidx_t i;
-   
     GHOST_CALL_GOTO(ghost_sparsemat_fromfunc_common(NULL,NULL,NULL,NULL,&(CR(mat)->rpt),&(CR(mat)->val),&mat->col_orig,src,mat,1,1),err,ret);
 
     GHOST_CALL_GOTO(mat->split(mat),err,ret);

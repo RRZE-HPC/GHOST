@@ -339,6 +339,7 @@ struct ghost_sparsemat_t
     double smartRowBand;
     /**
      * @brief The maximum row length.
+     * TODO: This sould be a ghost_lidx_t, right?
      */
     ghost_gidx_t maxRowLen;
     /**

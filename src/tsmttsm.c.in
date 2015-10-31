@@ -1437,8 +1437,9 @@ ghost_error_t ghost_tsmttsm__u_plain_d_CFGK_CFGM_OUTERUNROLL_cm_cm(ghost_densema
         dbeta = 0.;
     }
 
-    ghost_lidx_t i,j,k;
+    ghost_lidx_t i;
 #if 0
+    ghost_lidx_t j,k;
     struct dCFGKxCFGM xnopad;
 
     for (k=0; k<CFGK; k++) {

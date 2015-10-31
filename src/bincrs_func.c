@@ -29,6 +29,7 @@ static inline uint64_t bswap_64(uint64_t val)
 
 int ghost_sparsemat_rowfunc_bincrs(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, void *val, void *arg)
 {
+    UNUSED(arg);
 
     static ghost_gidx_t *colInd = NULL, *rowPtr = NULL;
     static char *values = NULL;

@@ -6,6 +6,7 @@
 int ghost_sparsemat_rowfunc_mm(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, void *val, void *arg)
 {
 
+    UNUSED(arg);
     static ghost_gidx_t *colInd = NULL, *rowPtr = NULL;
     static char *values = NULL;
     static size_t dtsize = 0;
