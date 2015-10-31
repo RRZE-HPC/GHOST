@@ -526,6 +526,7 @@ ghost_error_t ghost_init(int argc, char **argv)
     ghost_pumap_create(mycpuset);
 
     ghost_rand_create();
+    hwloc_bitmap_free(cudaOccupiedCpuset);
     hwloc_bitmap_free(mycpuset); mycpuset = NULL; 
     hwloc_bitmap_free(availcpuset); availcpuset = NULL;
 
