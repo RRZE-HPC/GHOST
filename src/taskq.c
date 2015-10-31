@@ -338,9 +338,9 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q, int nthreads)
 
                     ghost_thread_pin(cores[curThread]);
 
-#ifdef GHOST_HAVE_INSTR_LIKWID
-                    likwid_markerThreadInit();
-#endif
+//#ifdef GHOST_HAVE_INSTR_LIKWID
+//                    likwid_markerThreadInit();
+//#endif
                 }
                 free(cores);
             }

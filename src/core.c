@@ -88,6 +88,17 @@ int ghost_initialized()
     return initialized; 
 }
 
+#ifdef GHOST_HAVE_INSTR_LIKWID
+static void *likwidThreadInitTask(void *arg)
+{
+    UNUSED(arg);
+#pragma omp parallel
+    likwid_markerThreadInit();
+
+    return NULL;
+}
+#endif
+
 ghost_error_t ghost_init(int argc, char **argv)
 {
 
@@ -135,13 +146,6 @@ ghost_error_t ghost_init(int argc, char **argv)
     hwloc_topology_t topology;
     ghost_topology_create();
     ghost_topology_get(&topology);
-
-#ifdef GHOST_HAVE_INSTR_LIKWID
-    likwid_markerInit();
-
-#pragma omp parallel
-    likwid_markerThreadInit();
-#endif
 
 
     hwloc_cpuset_t cpuset = hwloc_bitmap_alloc();
@@ -526,6 +530,17 @@ ghost_error_t ghost_init(int argc, char **argv)
     ghost_pumap_create(mycpuset);
 
     ghost_rand_create();
+    
+#ifdef GHOST_HAVE_INSTR_LIKWID
+    likwid_markerInit();
+
+    ghost_task_t *t;
+    ghost_task_create(&t,GHOST_TASK_FILL_ALL,0,&likwidThreadInitTask,NULL,GHOST_TASK_DEFAULT, NULL, 0);
+    ghost_task_enqueue(t);
+    ghost_task_wait(t);
+    ghost_task_destroy(t);
+#endif
+    
     hwloc_bitmap_free(cudaOccupiedCpuset);
     hwloc_bitmap_free(mycpuset); mycpuset = NULL; 
     hwloc_bitmap_free(availcpuset); availcpuset = NULL;
