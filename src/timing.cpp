@@ -79,10 +79,10 @@ void ghost_timing_set_perfFunc(const char *prefix, const char *tag, ghost_comput
     
     ghost_timing_region_accu_t *region;
     if (prefix) {
-        const char *fulltag = (string(prefix)+"->"+string(tag)).c_str();
+        string fulltag = (string(prefix)+"->"+string(tag));
         region = &timings[fulltag];
     } else {
-        region = &timings[tag];
+        region = &timings[string(tag)];
     }
 
     for (std::vector<ghost_timing_perfFunc_t>::iterator it = region->perfFuncs.begin();
