@@ -244,8 +244,8 @@ inline ghost_location_t& operator|=(ghost_location_t &a, const ghost_location_t 
  * @brief Possible alignments of data access.
  */
 typedef enum {
-    GHOST_ALIGNED,
-    GHOST_UNALIGNED
+    GHOST_UNALIGNED,
+    GHOST_ALIGNED
 } ghost_alignment_t;
 
 /**
