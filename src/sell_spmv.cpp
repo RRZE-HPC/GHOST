@@ -502,7 +502,7 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
     }
 
     int al = ghost_machine_alignment();
-    if (IS_ALIGNED(lhs->val,al) && IS_ALIGNED(rhs->val,al) && !((lhs->stride*lhs->elSize) % al) && !((rhs->stride*rhs->elSize) % al)) {
+    if (IS_ALIGNED(lhs->val,al) && IS_ALIGNED(rhs->val,al) && ((lhs->traits.ncols == 1) || (!((lhs->stride*lhs->elSize) % al) && !((rhs->stride*rhs->elSize) % al)))) {
         p.alignment = GHOST_ALIGNED;
     } else {
         p.alignment = GHOST_UNALIGNED;
