@@ -77,16 +77,16 @@ void ghost_timing_set_perfFunc(const char *prefix, const char *tag, ghost_comput
     pf.perfUnit = unit;
 
     
-    ghost_timing_region_accu_t region;
+    ghost_timing_region_accu_t *region;
     if (prefix) {
         const char *fulltag = (string(prefix)+"->"+string(tag)).c_str();
-        region = timings[fulltag];
+        region = &timings[fulltag];
     } else {
-        region = timings[tag];
+        region = &timings[tag];
     }
 
-    for (std::vector<ghost_timing_perfFunc_t>::iterator it = region.perfFuncs.begin();
-            it !=region.perfFuncs.end(); ++it) {
+    for (std::vector<ghost_timing_perfFunc_t>::iterator it = region->perfFuncs.begin();
+            it !=region->perfFuncs.end(); ++it) {
         if (it->perfFunc == func && !strcmp(it->perfUnit,unit)) {
             return;
         }
@@ -94,7 +94,7 @@ void ghost_timing_set_perfFunc(const char *prefix, const char *tag, ghost_comput
 
     ghost_malloc((void **)&(pf.perfFuncArg),sizeofarg);
     memcpy(pf.perfFuncArg,arg,sizeofarg);
-    region.perfFuncs.push_back(pf);
+    region->perfFuncs.push_back(pf);
 }
 
 
