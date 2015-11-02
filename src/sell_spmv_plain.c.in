@@ -278,7 +278,7 @@ ghost_error_t ghost_sellspmv__a_plain_z_z_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t
                         partsums[((pad+3*res->traits.ncols)*tid)+3*v+0] += 
                             lcol[row]*lcol[row];
                         partsums[((pad+3*res->traits.ncols)*tid)+3*v+1] += 
-                            lcol[row]*rcol[row];
+                            conj(rcol[row])*lcol[row];
                         partsums[((pad+3*res->traits.ncols)*tid)+3*v+2] += 
                             rcol[row]*rcol[row];
                     }
@@ -438,7 +438,7 @@ ghost_error_t ghost_sellspmv__a_plain_z_z_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *ma
                         partsums[((pad+3*res->traits.ncols)*tid)+3*v+0] += 
                             lrow[v]*lrow[v];
                         partsums[((pad+3*res->traits.ncols)*tid)+3*v+1] += 
-                            lrow[v]*rrow[v];
+                            conj(rrow[v])*lrow[v];
                         partsums[((pad+3*res->traits.ncols)*tid)+3*v+2] += 
                             rrow[v]*rrow[v];
                     }
