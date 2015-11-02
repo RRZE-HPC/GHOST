@@ -434,7 +434,7 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
         p.storage = GHOST_DENSEMAT_COLMAJOR;
     }
 
-    if (p.impl >= GHOST_IMPLEMENTATION_AVX && 
+/*    if (p.impl >= GHOST_IMPLEMENTATION_AVX && 
             p.storage == GHOST_DENSEMAT_ROWMAJOR && p.blocksz == 2 && 
             !(rhs->traits.datatype & GHOST_DT_COMPLEX)) {
         PERFWARNING_LOG("Chose SSE over AVX for blocksz=2");
@@ -451,7 +451,7 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
             p.impl = GHOST_IMPLEMENTATION_PLAIN;
         }
     }
-
+    */
     if (p.impl >= GHOST_IMPLEMENTATION_AVX && 
             p.storage == GHOST_DENSEMAT_COLMAJOR && p.chunkheight < 4 
             && !(rhs->traits.datatype & GHOST_DT_COMPLEX)) {
