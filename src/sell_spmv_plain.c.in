@@ -60,12 +60,9 @@ ghost_error_t ghost_sellspmv__a_plain_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t
                     
             memset(tmp,0,sizeof(tmp));
             for (j=0; j<SELL(mat)->chunkLen[c]; j++) { // loop inside chunk
-#if NVECS > 1
+                for (r=0; r<CHUNKHEIGHT; r++) {
 #pragma simd
-#endif
-                for (v=0; v<NVECS; v++) {
-#pragma unroll_and_jam
-                    for (r=0; r<CHUNKHEIGHT; r++) {
+                    for (v=0; v<NVECS; v++) {
                         row = c*CHUNKHEIGHT+r;
                         double matval = mval[offs+j*CHUNKHEIGHT+r];
                         ghost_lidx_t matcol = SELL(mat)->col[offs+j*CHUNKHEIGHT+r];
@@ -245,9 +242,8 @@ ghost_error_t ghost_sellspmv__a_plain_z_z_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t
                     zcol = (complex double *)z->val+z->stride*v;
                 }
 
-#pragma simd
                 for (j=0; j<SELL(mat)->chunkLen[c]; j++) { // loop inside chunk
-#pragma unroll_and_jam
+#pragma simd
                     for (r=0; r<CHUNKHEIGHT; r++) {
                         complex double matval = mval[offs+j*CHUNKHEIGHT+r];
                         ghost_lidx_t matcol = SELL(mat)->col[offs+j*CHUNKHEIGHT+r];
@@ -368,9 +364,8 @@ ghost_error_t ghost_sellspmv__a_plain_z_z_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *ma
                     
             memset(tmp,0,sizeof(tmp));
             for (j=0; j<SELL(mat)->chunkLen[c]; j++) { // loop inside chunk
-#pragma simd
                 for (v=0; v<res->traits.ncols; v++) {
-#pragma unroll_and_jam
+#pragma simd
                     for (r=0; r<CHUNKHEIGHT; r++) {
                         row = c*CHUNKHEIGHT+r;
                         complex double matval = mval[offs+j*CHUNKHEIGHT+r];
@@ -504,7 +499,7 @@ ghost_error_t ghost_sellspmv__a_plain_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t
         nthreads = ghost_omp_nthread();
 
         GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,
-                    (3*NVECS+pad)*nthreads*sizeof(complex double))); 
+                   (3*NVECS+pad)*nthreads*sizeof(complex double))); 
         for (i=0; i<(3*NVECS+pad)*nthreads; i++) {
             partsums[i] = 0.;
         }
@@ -529,10 +524,9 @@ ghost_error_t ghost_sellspmv__a_plain_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t
                     
             memset(tmp,0,sizeof(tmp));
             for (j=0; j<SELL(mat)->chunkLen[c]; j++) { // loop inside chunk
+                for (r=0; r<CHUNKHEIGHT; r++) {
 #pragma simd
-                for (v=0; v<NVECS; v++) {
-#pragma unroll_and_jam
-                    for (r=0; r<CHUNKHEIGHT; r++) {
+                    for (v=0; v<NVECS; v++) {
                         row = c*CHUNKHEIGHT+r;
                         complex double matval = mval[offs+j*CHUNKHEIGHT+r];
                         ghost_lidx_t matcol = SELL(mat)->col[offs+j*CHUNKHEIGHT+r];
@@ -604,7 +598,7 @@ ghost_error_t ghost_sellspmv__a_plain_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t
                         partsums[((pad+3*NVECS)*tid)+3*v+0] += 
                             lrow[v]*lrow[v];
                         partsums[((pad+3*NVECS)*tid)+3*v+1] += 
-                            lrow[v]*rrow[v];
+                            conj(rrow[v])*lrow[v];
                         partsums[((pad+3*NVECS)*tid)+3*v+2] += 
                             rrow[v]*rrow[v];
                     }
