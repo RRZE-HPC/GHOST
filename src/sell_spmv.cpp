@@ -129,7 +129,7 @@ static ghost_error_t ghost_sell_spmv_plain_rm(ghost_sparsemat_t *mat,
                         partsums[((pad+3*lhs->traits.ncols)*tid)+3*cidx+0] += 
                             conjugate(&lhsrow[lcol])*lhsrow[rcol];
                         partsums[((pad+3*lhs->traits.ncols)*tid)+3*cidx+1] += 
-                            conjugate(&lhsrow[lcol])*rhsrow[rcol];
+                            conjugate(&rhsrow[rcol])*lhsrow[lcol];
                         partsums[((pad+3*lhs->traits.ncols)*tid)+3*cidx+2] += 
                             conjugate(&rhsrow[rcol])*rhsrow[rcol];
                     }
@@ -284,8 +284,8 @@ static ghost_error_t ghost_sell_spmv_plain_cm(ghost_sparsemat_t *mat,
                                 conjugate(&lhsv[c*ch+i])*
                                 lhsv[c*ch+i];
                             partsums[((pad+3*lhs->traits.ncols)*tid)+3*v+1] += 
-                                conjugate(&lhsv[c*ch+i])*
-                                rhsv[c*ch+i];
+                                conjugate(&rhsv[c*ch+i])*
+                                lhsv[c*ch+i];
                             partsums[((pad+3*lhs->traits.ncols)*tid)+3*v+2] += 
                                 conjugate(&rhsv[c*ch+i])*
                                 rhsv[c*ch+i];
