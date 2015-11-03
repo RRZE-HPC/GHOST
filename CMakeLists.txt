@@ -400,6 +400,8 @@ if (USE_MPI)
     set(GHOST_HAVE_MPI 1)
     mark_as_advanced(MPI_EXTRA_LIBRARY MPI_LIBRARY LIBMPI_CXX)
     mark_as_advanced(CLEAR MPI_C_INCLUDE_PATH)
+else ()
+    set(GHOST_HAVE_MPI 0)
 endif()
 
 
