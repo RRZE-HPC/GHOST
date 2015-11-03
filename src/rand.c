@@ -81,10 +81,10 @@ ghost_error_t ghost_rand_seed(ghost_rand_seed_t which, unsigned int seed)
     }
 
     if (which & GHOST_RAND_SEED_TIME) {
+        time = (int)seed;
+    } else {
         GHOST_CALL_GOTO(ghost_timing_wcmilli(&dtime),err,ret);
         time = (int)(((int64_t)(dtime)) & 0xFFFFFFLL);
-    } else {
-        time = (int)seed;
     }
 
     if (!ghost_rand_states) {
