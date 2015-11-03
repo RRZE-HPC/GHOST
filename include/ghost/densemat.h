@@ -11,6 +11,7 @@
 #include "context.h"
 #include "perm.h"
 #include "bitmap.h"
+#include "bindensemat.h"
 
 #define GHOST_DENSEMAT_CHECK_SIMILARITY(vec1,vec2)\
     if (vec1->traits.nrows != vec2->traits.nrows) {\
@@ -78,11 +79,11 @@ typedef enum
     /**
      * @brief Row-major storage (as in C).
      */
-    GHOST_DENSEMAT_ROWMAJOR,
+    GHOST_DENSEMAT_ROWMAJOR = GHOST_BINDENSEMAT_ORDER_ROW_FIRST,
     /**
      * @brief Column-major storage (as in Fortran).
      */
-    GHOST_DENSEMAT_COLMAJOR
+    GHOST_DENSEMAT_COLMAJOR = GHOST_BINDENSEMAT_ORDER_COL_FIRST
 }
 ghost_densemat_storage_t;
 

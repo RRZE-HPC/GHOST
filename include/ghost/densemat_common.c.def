@@ -438,10 +438,10 @@ out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_COMMUNICATION);
     return ret;
 #else
-    UNUSED(vec);
+    UNUSED(vec_in);
     UNUSED(comm);
     UNUSED(root);
-    return GHOST_SUCCESS;endif
+    return GHOST_SUCCESS;
 #endif
 }
 
@@ -498,4 +498,248 @@ static ghost_error_t FUNCNAME(syncValues(ghost_densemat_t *vec, ghost_mpi_comm_t
     UNUSED(root);
 #endif
     return GHOST_SUCCESS;
+}
+
+static ghost_error_t FUNCNAME(toFile(ghost_densemat_t *vec, char *path, bool singleFile))
+{
+    if (!vec->context && singleFile) {
+        WARNING_LOG("Trying to write a combined file for a non-distributed densemat. Forcing separate files...");
+        singleFile = false;
+    }
+
+    int32_t endianess = ghost_machine_bigendian();
+    int32_t version = 1;
+    int32_t order = GHOST_BINDENSEMAT_ORDER_ROW_FIRST;
+#if defined(COLMAJOR) && defined(GHOST_HAVE_MPI)
+    if (DENSEMAT_COMPACT(vec)) {
+        order = GHOST_BINDENSEMAT_ORDER_COL_FIRST;
+    }
+#endif // otherwise writing is one in an iteration macro which causes row-major order
+
+    int32_t datatype = vec->traits.datatype;
+    int64_t ncols = (int64_t)vec->traits.ncols;
+    int64_t nrows;
+    if (singleFile) {
+        nrows = (int64_t)vec->context->gnrows;
+    } else {
+        nrows = vec->traits.nrows;
+    }
+
+#ifdef GHOST_HAVE_MPI
+
+    int rank = 0;
+    ghost_mpi_comm_t mpicomm = MPI_COMM_NULL;
+    if (singleFile) {
+        GHOST_CALL_RETURN(ghost_rank(&rank, vec->context->mpicomm));
+        mpicomm = vec->context->mpicomm;
+    } else {
+        mpicomm = MPI_COMM_SELF;
+    }
+    
+    MPI_File fileh;
+    MPI_Status status;
+    MPI_CALL_RETURN(MPI_File_open(mpicomm,path,MPI_MODE_WRONLY|MPI_MODE_CREATE,MPI_INFO_NULL,&fileh));
+
+    if (!singleFile || (rank == 0)) { // write header AND portion
+        MPI_CALL_RETURN(MPI_File_write(fileh,&endianess,1,MPI_INT,&status));
+        MPI_CALL_RETURN(MPI_File_write(fileh,&version,1,MPI_INT,&status));
+        MPI_CALL_RETURN(MPI_File_write(fileh,&order,1,MPI_INT,&status));
+        MPI_CALL_RETURN(MPI_File_write(fileh,&datatype,1,MPI_INT,&status));
+        MPI_CALL_RETURN(MPI_File_write(fileh,&nrows,1,MPI_LONG_LONG,&status));
+        MPI_CALL_RETURN(MPI_File_write(fileh,&ncols,1,MPI_LONG_LONG,&status));
+    }    
+   
+    if (singleFile) {
+        MPI_CALL_RETURN(MPI_File_seek(fileh,GHOST_BINDENSEMAT_SIZE_HEADER+vec->elSize*vec->context->lfRow[rank]*vec->traits.ncols,MPI_SEEK_SET)); 
+    }
+
+    if (DENSEMAT_COMPACT(vec)) {
+        if (vec->traits.storage == GHOST_DENSEMAT_COLMAJOR && vec->traits.ncols > 1) {
+            MPI_CALL_RETURN(MPI_File_close(&fileh));
+            PERFWARNING_LOG("Transpose densemat to row-major before writing file!");
+            ghost_densemat_t *writevec;
+            ghost_densemat_traits_t writevectraits = vec->traits;
+            writevectraits.storage = GHOST_DENSEMAT_ROWMAJOR;
+            ghost_densemat_create(&writevec,vec->context,writevectraits);
+            writevec->fromVec(writevec,vec,0,0);
+            writevec->toFile(writevec,path,singleFile);
+            writevec->destroy(writevec);
+        } else {
+            INFO_LOG("Fast write");
+            MPI_CALL_RETURN(MPI_File_write(fileh,vec->val,1,vec->fullmpidt,&status));
+            MPI_CALL_RETURN(MPI_File_close(&fileh));
+        }
+    } else {
+        PERFWARNING_LOG("Very slow element-wise file writing for scattered densemat!");
+        GHOST_SINGLETHREAD(DENSEMAT_ITER(vec,MPI_File_write(fileh,valptr,1,vec->mpidt,&status)));
+        MPI_CALL_RETURN(MPI_File_close(&fileh));
+    }
+#else
+    PERFWARNING_LOG("Densemat serialization without MPI is very slow");
+    FILE *filed;
+    size_t ret = 0;
+
+    if ((filed = fopen64(path, "w")) == NULL) {
+        ERROR_LOG("Could not open vector file %s: %s",path,strerror(errno));
+        return GHOST_ERR_IO;
+    }
+
+    ret += fwrite(&endianess,sizeof(endianess),1,filed);
+    ret += fwrite(&version,sizeof(version),1,filed);
+    ret += fwrite(&order,sizeof(order),1,filed);
+    ret += fwrite(&datatype,sizeof(datatype),1,filed);
+    ret += fwrite(&nrows,sizeof(nrows),1,filed);
+    ret += fwrite(&ncols,sizeof(ncols),1,filed);
+   
+    if (ret != 6) {
+        ERROR_LOG("fwrite failed: wrote %zu instead of 6 header entries",ret);
+        fclose(filed);
+        return GHOST_ERR_IO;
+    }
+    
+    GHOST_SINGLETHREAD(DENSEMAT_ITER(vec,fwrite(valptr, vec->elSize, 1, filed)));
+    if (fclose(filed)) {
+        ERROR_LOG("fclose failed: %s",strerror(errno));
+        return GHOST_ERR_IO;
+    }
+#endif
+
+    return GHOST_SUCCESS;
+}
+
+static ghost_error_t FUNCNAME(fromFile(ghost_densemat_t *vec, char *path, bool singleFile))
+{
+    if (!vec->context && singleFile) {
+        WARNING_LOG("Trying to read a combined file for a non-distributed densemat. Forcing separate files...");
+        singleFile = false;
+    }
+    
+    int needInit = 0;
+    FUNCNAME(malloc(vec,&needInit));
+
+    int32_t myorder;
+#ifdef ROWMAJOR
+    myorder = GHOST_BINDENSEMAT_ORDER_ROW_FIRST;
+#else
+    myorder = GHOST_BINDENSEMAT_ORDER_COL_FIRST;
+#endif
+
+    int32_t endianess;
+    int32_t version;
+    int32_t order;
+    int32_t datatype;
+    int64_t ncols;
+    int64_t nrows;
+
+#ifdef GHOST_HAVE_MPI
+
+    int rank = 0;
+    ghost_mpi_comm_t mpicomm = MPI_COMM_NULL;
+    if (singleFile) {
+        GHOST_CALL_RETURN(ghost_rank(&rank, vec->context->mpicomm));
+        mpicomm = vec->context->mpicomm;
+    } else {
+        mpicomm = MPI_COMM_SELF;
+    }
+    
+    MPI_File fileh;
+    MPI_Status status;
+    MPI_CALL_RETURN(MPI_File_open(mpicomm,path,MPI_MODE_RDONLY,MPI_INFO_NULL,&fileh));
+
+    MPI_CALL_RETURN(MPI_File_read(fileh,&endianess,1,MPI_INT,&status));
+    MPI_CALL_RETURN(MPI_File_read(fileh,&version,1,MPI_INT,&status));
+    MPI_CALL_RETURN(MPI_File_read(fileh,&order,1,MPI_INT,&status));
+    MPI_CALL_RETURN(MPI_File_read(fileh,&datatype,1,MPI_INT,&status));
+    MPI_CALL_RETURN(MPI_File_read(fileh,&nrows,1,MPI_LONG_LONG,&status));
+    MPI_CALL_RETURN(MPI_File_read(fileh,&ncols,1,MPI_LONG_LONG,&status));
+#else
+    FILE *filed;
+    size_t ret = 0;
+    if ((filed = fopen64(path, "r")) == NULL){
+        ERROR_LOG("Could not open vector file %s: %s",path,strerror(errno));
+        return GHOST_ERR_IO;
+    }
+
+    ret += fread(&endianess, sizeof(endianess), 1,filed);
+    ret += fread(&version, sizeof(version), 1,filed);
+    ret += fread(&order, sizeof(order), 1,filed);
+    ret += fread(&datatype, sizeof(datatype), 1,filed);
+    ret += fread(&nrows, sizeof(nrows), 1,filed);
+    ret += fread(&ncols, sizeof(ncols), 1,filed);
+    
+    if (ret != 6) {
+        ERROR_LOG("fread failed: read %zu instead of 6 header entries",ret);
+        vec->destroy(vec);
+        return GHOST_ERR_IO;
+    }
+#endif
+    if (endianess != GHOST_BINDENSEMAT_LITTLE_ENDIAN) {
+        ERROR_LOG("Cannot read big endian vectors");
+        vec->destroy(vec);
+        return GHOST_ERR_IO;
+    }
+
+    if (version != 1) {
+        ERROR_LOG("Cannot read vector files with format version != 1 (is %d)",version);
+        vec->destroy(vec);
+        return GHOST_ERR_IO;
+    }
+
+    if (datatype != (int)vec->traits.datatype) {
+        ERROR_LOG("The data types don't match! Cast-while-read is not yet implemented for vectors.");
+        return GHOST_ERR_IO;
+    }
+    
+    if (!singleFile && (vec->traits.nrows != nrows)) {
+        ERROR_LOG("The number of rows does not match between the file and the densemat!");
+        return GHOST_ERR_IO;
+    }
+  
+    if (singleFile && vec->context && (vec->context->gnrows != nrows)) {
+        ERROR_LOG("The number of rows does not match between the file (%"PRId64") and the densemat's context (%"PRGIDX")!",nrows,vec->context->gnrows);
+        return GHOST_ERR_IO;
+    }
+
+#ifdef GHOST_HAVE_MPI 
+    if (singleFile) {
+        MPI_CALL_RETURN(MPI_File_seek(fileh,vec->elSize*vec->context->lfRow[rank]*vec->traits.ncols,MPI_SEEK_CUR)); 
+    }
+
+    if (DENSEMAT_COMPACT(vec) && (order == myorder)) {
+        INFO_LOG("Fast read-in");
+        MPI_CALL_RETURN(MPI_File_read(fileh,vec->val,1,vec->fullmpidt,&status));
+        MPI_CALL_RETURN(MPI_File_close(&fileh));
+    } else {
+        MPI_CALL_RETURN(MPI_File_close(&fileh));
+        PERFWARNING_LOG("Slow densemat read-in for scattered densemat or unsuited storage order!");
+        ghost_densemat_t *readvec;
+        ghost_densemat_traits_t readvectraits = vec->traits;
+        readvectraits.storage = (ghost_densemat_storage_t)order;
+        ghost_densemat_create(&readvec,vec->context,readvectraits);
+        readvec->fromFile(readvec,path,singleFile);
+        vec->fromVec(vec,readvec,0,0);
+        readvec->destroy(readvec);
+    }
+
+#else
+    PERFWARNING_LOG("Densemat read-in without MPI is very slow");
+    
+    if (myorder == GHOST_BINDENSEMAT_ORDER_ROW_FIRST) {
+        GHOST_SINGLETHREAD(DENSEMAT_ITER(vec,fread(valptr, vec->elSize, 1, filed)));
+    } else {
+        ghost_densemat_t *readvec;
+        ghost_densemat_traits_t readvectraits = vec->traits;
+        readvectraits.storage = GHOST_DENSEMAT_ROWMAJOR;
+        ghost_densemat_create(&readvec,NULL,readvectraits);
+        readvec->fromFile(readvec,path,singleFile);
+        vec->fromVec(vec,readvec,0,0);
+        readvec->destroy(readvec);
+    }
+
+    
+    fclose(filed);
+#endif
+
+    return GHOST_SUCCESS;
+
 }
