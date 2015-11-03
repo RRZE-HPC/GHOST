@@ -151,8 +151,9 @@ extern "C" {
      * 
      * \f$\gamma\f$ will be evaluated if the flags contain ::GHOST_SPMV_SHIFT or ::GHOST_SPMV_VSHIFT.
      *
-     * In case ::GHOST_SPMV_DOT is set, \a dot has to point to a memory destination of the size
-     * of three vector values.
+     * In case ::GHOST_SPMV_DOT, ::GHOST_SPMV_DOT_YY, ::GHOST_SPMV_DOT_XY, or ::GHOST_SPMV_DOT_XX are set, 
+     * \a dot has to point to a memory destination with the size (3 * "number of vector columns" * "sizeof(vector entry))".
+     * Column-wise dot products \f$y^Hy, x^Hy, x^Hx\f$ will be computed and stored to this location.
      *
      * This operation maybe changed with an additional AXPBY operation on the vector z: \f$z = \delta z + \eta y\f$
      * If this should be done, ::GHOST_SPMV_CHAIN_AXPBY has to be set in the flags and the variadic arguments have to be set accordingly.
