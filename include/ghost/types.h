@@ -353,7 +353,9 @@ typedef int64_t ghost_gidx_t;
  */
 #define ghost_mpi_dt_gidx MPI_INT64_T
 #else
+#ifdef GHOST_HAVE_MPI
 #warning "Assuming that MPI_LONG_LONG_INT is 64 bits long"
+#endif
 #define ghost_mpi_dt_gidx MPI_LONG_LONG_INT
 #endif
 /**
@@ -375,7 +377,9 @@ typedef int32_t ghost_gidx_t;
  */
 #define ghost_mpi_dt_gidx MPI_INT32_T
 #else
+#ifdef GHOST_HAVE_MPI
 #warning "Assuming that MPI_INT is 32 bits long"
+#endif
 #define ghost_mpi_dt_gidx MPI_INT
 #endif
 /**
@@ -399,7 +403,9 @@ typedef int64_t ghost_lidx_t;
  */
 #define ghost_mpi_dt_lidx MPI_INT64_T
 #else
+#ifdef GHOST_HAVE_MPI
 #warning "Assuming that MPI_LONG_LONG_INT is 64 bits long"
+#endif
 #define ghost_mpi_dt_gidx MPI_LONG_LONG_INT
 #endif
 /**
@@ -428,7 +434,9 @@ typedef int32_t ghost_lidx_t;
 #ifdef MPI_INT32_T
 #define ghost_mpi_dt_lidx MPI_INT32_T
 #else
+#ifdef GHOST_HAVE_MPI
 #warning "Assuming that MPI_INT is 32 bits long"
+#endif
 #define ghost_mpi_dt_lidx MPI_INT
 #endif
 typedef int ghost_blas_idx_t;

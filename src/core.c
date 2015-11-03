@@ -216,8 +216,11 @@ ghost_error_t ghost_init(int argc, char **argv)
     } else {
         nxeonphis_total = 0;
     }
-    
+
+#ifdef GHOST_HAVE_MPI    
     MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&nxeonphis_total,1,MPI_INT,MPI_SUM,MPI_COMM_WORLD));
+#endif
+
 #else
     WARNING_LOG("Possibly wrong information about the number of Xeon Phis due to outdated HWLOC!");
     nxeonphis_total = 0;
@@ -227,7 +230,10 @@ ghost_error_t ghost_init(int argc, char **argv)
 #ifdef GHOST_HAVE_MIC
     nactivephis = 1;
 #endif
+
+#ifdef GHOST_HAVE_MPI
     MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&nactivephis,1,MPI_INT,MPI_SUM,MPI_COMM_WORLD));
+#endif
 
     if (nactivephis < nxeonphis_total) {
         PERFWARNING_LOG("There %s %d Xeon Phi%s in the set of active nodes but only %d %s used!",
@@ -285,8 +291,9 @@ ghost_error_t ghost_init(int argc, char **argv)
         localTypes[i] = GHOST_TYPE_INVALID;
     }
     localTypes[noderank] = ghost_type;
-#ifdef GHOST_HAVE_MPI
+    
     int ncudaranks_on_node = ghost_type==GHOST_TYPE_CUDA;
+#ifdef GHOST_HAVE_MPI
     ghost_mpi_comm_t ghost_node_comm;
     GHOST_CALL_RETURN(ghost_nodecomm_get(&ghost_node_comm));
     MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&ncudaranks_on_node,1,MPI_INT,MPI_SUM,ghost_node_comm));
@@ -502,6 +509,8 @@ ghost_error_t ghost_init(int argc, char **argv)
     MPI_CALL_RETURN(MPI_Comm_split(tmpcomm,hasCuda,rank,&ghost_cuda_comm));
     MPI_CALL_RETURN(MPI_Comm_split(tmpcomm,hasCuda,rank,&ghost_cuda_comm));
     MPI_CALL_RETURN(MPI_Comm_free(&tmpcomm));
+#else
+    UNUSED(hasCuda);
 #endif
 
     // delete excess PUs
