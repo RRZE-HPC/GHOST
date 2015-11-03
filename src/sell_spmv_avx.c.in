@@ -466,7 +466,7 @@ ghost_error_t ghost_sellspmv__a_avx_z_z_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat,
                     } else {
                         ghost_lidx_t rem;
                         for (rem=0; rem<mat->nrows-c*CHUNKHEIGHT; rem++) {
-                            partsums[((padding+3*invec->traits.ncols)*tid)+3*v+1] += conj(lval[c*CHUNKHEIGHT+rem])*rval[c*CHUNKHEIGHT+rem];
+                            partsums[((padding+3*invec->traits.ncols)*tid)+3*v+1] += conj(rval[c*CHUNKHEIGHT+rem])*lval[c*CHUNKHEIGHT+rem];
                         }
                     }
                 }
@@ -662,7 +662,7 @@ ghost_error_t ghost_sellspmv__a_avx_z_z_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
                     } else {
                         ghost_lidx_t rem;
                         for (rem=0; rem<mat->nrows-c*CHUNKHEIGHT; rem++) {
-                            partsums[((padding+3*NVECS)*tid)+3*v+1] += conj(lval[c*CHUNKHEIGHT+rem])*rval[c*CHUNKHEIGHT+rem];
+                            partsums[((padding+3*NVECS)*tid)+3*v+1] += conj(rval[c*CHUNKHEIGHT+rem])*lval[c*CHUNKHEIGHT+rem];
                         }
                     }
                 }

@@ -166,6 +166,11 @@ typedef struct
      */
     ghost_lidx_t nrowspadded;
     /**
+     * @brief The number of rows including padding, halo, and halo-padding elements
+     * There is another padding after the halo elements to guarantee aligned access to successive columns for col-major densemats.
+     */
+    ghost_lidx_t nrowshalopadded;
+    /**
      * @brief The number of columns.
      */
     ghost_lidx_t ncols;

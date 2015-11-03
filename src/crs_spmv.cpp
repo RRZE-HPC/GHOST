@@ -199,7 +199,7 @@ static ghost_error_t ghost_crs_spmv_plain_cm(ghost_sparsemat_t *mat, ghost_dense
             ghost_lidx_t rcol = 0, lcol = 0, zcol = 0;
             for (v=0; v<lhs->traits.ncols; v++) {
                 rhsv = (v_t *)rhs->val+rcol*rhs->stride;
-                lhsv = (v_t *)lhs->val+lcol*rhs->stride;
+                lhsv = (v_t *)lhs->val+lcol*lhs->stride;
                 if (z) {
                     zv = (v_t *)z->val+zcol*z->stride;
                 }

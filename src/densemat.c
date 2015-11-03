@@ -104,7 +104,7 @@ ghost_error_t ghost_densemat_create(ghost_densemat_t **vec, ghost_context_t *ctx
         (*vec)->blocklen = (*vec)->traits.ncols;
     } else {
         ghost_densemat_cm_setfuncs(*vec);
-        (*vec)->stride = (*vec)->traits.nrowshalo;
+        (*vec)->stride = (*vec)->traits.nrowshalopadded;
         (*vec)->nblock = (*vec)->traits.ncols;
         (*vec)->blocklen = (*vec)->traits.nrows;
     }
@@ -206,6 +206,7 @@ static ghost_error_t getNrowsFromContext(ghost_densemat_t *vec)
         // context->hput_pos[0] = nrows if only one process, so we need a dummy element 
         vec->traits.nrowshalo = vec->traits.nrowspadded+1; 
     }
+    vec->traits.nrowshalopadded = PAD(vec->traits.nrowshalo,ghost_machine_simd_width()/4);
     
     DEBUG_LOG(1,"The vector has %"PRLIDX" w/ %"PRLIDX" halo elements (padded: %"PRLIDX") rows",
             vec->traits.nrows,vec->traits.nrowshalo-vec->traits.nrows,vec->traits.nrowspadded);
