@@ -8,7 +8,6 @@
 #include "ghost/tsmm_gen.h"
 #include <math.h>
 #include <float.h>
-#include <omp.h>
 
 #GHOST_FUNC_BEGIN#CFGK=${CFG_BLOCKVECTOR_SIZES}#CFGM=${CFG_BLOCKVECTOR_SIZES}
 ghost_error_t ghost_tsmm__a_plain_d_CFGK_CFGM_1_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)

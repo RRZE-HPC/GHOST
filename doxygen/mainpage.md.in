@@ -1,16 +1,15 @@
 @CMAKE_PROJECT_NAME@ @GHOST_VERSION@ API documentation  {#mainpage}
 ======================================================
 
-<img src="ghost_logo.png" alt="GHOST logo" style="width: 150px;float: right"/>
-
 This Doxygen documentation has been created with the following GHOST settings:
 
-Feature                | Enabled                   |
----------------------- | ------------------------- |
-64-bit indices         | @GHOST_HAVE_LONGIDX@      |
-CUDA                   | @GHOST_HAVE_CUDA@         |
-Timing instrumentation | @GHOST_HAVE_INSTR_TIMING@ |
-Likwid instrumentation | @GHOST_HAVE_INSTR_LIKWID@ |
+Feature                | Enabled                     |
+---------------------- | --------------------------- |
+64-bit global indices  | @GHOST_HAVE_LONGIDX_GLOBAL@ |
+64-bit local indices   | @GHOST_HAVE_LONGIDX_LOCAL@  |
+CUDA                   | @GHOST_HAVE_CUDA@           |
+Timing instrumentation | @GHOST_HAVE_INSTR_TIMING@   |
+Likwid instrumentation | @GHOST_HAVE_INSTR_LIKWID@   |
 
 Minimal code example
 --------------------
@@ -24,7 +23,7 @@ The following code example performs a sparse matrix-vector multiplication with r
 #define N 4
 GHOST_REGISTER_DT_D(mydata)
 
-static int diag(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, void *val)
+static int diag(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, void *val, void *arg)
 {
     *rowlen = 1;
     col[0] = row;

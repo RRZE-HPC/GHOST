@@ -22,6 +22,13 @@
 template<typename T, typename T_b>
 static lapack_int call_eig_function(int matrix_order, char jobz, char uplo, lapack_int n, T *a, lapack_int lda, T_b *w)
 {
+    UNUSED(matrix_order);
+    UNUSED(jobz);
+    UNUSED(uplo);
+    UNUSED(n);
+    UNUSED(a);
+    UNUSED(lda);
+    UNSUED(w);
     ERROR_LOG("This should not be called!");
     return -999;
 }
@@ -53,6 +60,15 @@ lapack_int call_eig_function<std::complex<double>,double>(int matrix_order, char
 template<typename T, typename T_b>
 static lapack_int call_geig_function(int matrix_order, char jobz, char uplo, lapack_int n, T *a, lapack_int lda, T *b, lapack_int ldb, T_b *w)
 {
+    UNUSED(matrix_order);
+    UNUSED(jobz);
+    UNUSED(uplo);
+    UNUSED(n);
+    UNUSED(a);
+    UNUSED(lda);
+    UNUSED(b);
+    UNUSED(ldb);
+    UNSUED(w);
     ERROR_LOG("This should not be called!");
     return -999;
 }
@@ -91,9 +107,9 @@ static ghost_error_t ghost_rayleigh_ritz_tmpl (ghost_sparsemat_t * mat, void * v
     ghost_idx_t i;
     ghost_idx_t n = v_res->traits.ncols;
     ghost_datatype_t DT = v_res->traits.datatype;
-    ghost_densemat_t *x;
+    ghost_densemat_t *x = NULL;
     ghost_idx_t ldx;
-    T *eigs_T, *res_T;
+    T *eigs_T = NULL, *res_T = NULL;
     ghost_densemat_traits_t xtraits = GHOST_DENSEMAT_TRAITS_INITIALIZER;
     
     T_b * eigs = (T_b *)void_eigs;
@@ -195,9 +211,9 @@ static ghost_error_t ghost_grayleigh_ritz_tmpl (ghost_sparsemat_t * mat, void * 
     ghost_idx_t i;
     ghost_idx_t n = v_res->traits.ncols;
     ghost_datatype_t DT = v_res->traits.datatype;
-    ghost_densemat_t *x, *b;
+    ghost_densemat_t *x = NULL, *b = NULL;
     ghost_idx_t ldx, ldb;
-    T *eigs_T, *res_T;
+    T *eigs_T = NULL, *res_T = NULL;
     ghost_densemat_traits_t xtraits = GHOST_DENSEMAT_TRAITS_INITIALIZER;
     
     T_b * eigs = (T_b *)void_eigs;

@@ -73,6 +73,13 @@ ghost_error_t ghost_blockortho(ghost_densemat_t * w , ghost_densemat_t * v)
 template<typename T, typename T_b>
 static lapack_int call_eig_function(int matrix_order, char jobz, char uplo, lapack_int n, T *a, lapack_int lda, T_b *w)
 {
+    UNUSED(matrix_order);
+    UNUSED(jobz);
+    UNUSED(uplo);
+    UNUSED(n);
+    UNUSED(a);
+    UNUSED(lda);
+    UNUSED(w);
     ERROR_LOG("This should not be called!");
     return -999;
 }
@@ -109,13 +116,13 @@ static ghost_error_t ghost_svqb_tmpl (ghost_densemat_t * v_ot , ghost_densemat_t
     T one = 1.0;
     T zero = 0.0;
     ghost_lidx_t n_set_rand = 0;
-    ghost_lidx_t *set_rand;
+    ghost_lidx_t *set_rand = NULL;
     ghost_idx_t i,j;
     ghost_idx_t n = v->traits.ncols;
     ghost_datatype_t DT = v->traits.datatype;
-    ghost_densemat_t *x;
+    ghost_densemat_t *x = NULL;
     ghost_idx_t ldx;
-    T_b *eigs, *D;
+    T_b *eigs = NULL, *D = NULL;
     ghost_densemat_traits_t xtraits = GHOST_DENSEMAT_TRAITS_INITIALIZER;
     
     GHOST_CALL_GOTO(ghost_malloc((void **)&eigs, n*sizeof(T_b)),err,ret);
@@ -248,10 +255,10 @@ static ghost_error_t ghost_svd_deflation_tmpl ( ghost_lidx_t *svd_offset, ghost_
     ghost_idx_t i,j;
     ghost_idx_t n = vec->traits.ncols;
     ghost_datatype_t DT = vec->traits.datatype;
-    ghost_densemat_t *x;
+    ghost_densemat_t *x = NULL;
     ghost_idx_t ldx;
     ghost_densemat_traits_t xtraits = GHOST_DENSEMAT_TRAITS_INITIALIZER;
-    T_b * eigs;
+    T_b * eigs = NULL;
     
     GHOST_CALL_GOTO(ghost_malloc((void **)&eigs, n*sizeof(T_b)),err,ret);
     

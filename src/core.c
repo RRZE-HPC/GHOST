@@ -399,7 +399,7 @@ ghost_error_t ghost_init(int argc, char **argv)
         
         for (i=0; i<nnoderanks; i++) {
             hwloc_bitmap_zero(rank_cpuset);
-            if ((localTypes[i] == GHOST_TYPE_WORK)) {
+            if (localTypes[i] == GHOST_TYPE_WORK) {
 
                 if (ranks_cover_obj) {
                     // the obj covered by this rank

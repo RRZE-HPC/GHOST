@@ -332,7 +332,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q, int nthreads)
             
 #pragma omp parallel private(curThread)
                 {
-                    curThread = omp_get_thread_num();
+                    curThread = ghost_omp_threadnum();
                     DEBUG_LOG(1,"Thread %d (%d): Core # %d is idle, using it",curThread,
                             (int)pthread_self(),cores[curThread]);
 
