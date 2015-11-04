@@ -43,6 +43,7 @@ extern "C" {
     ghost_error_t ghost_densemat_cm_permute_selector(ghost_densemat_t *vec, ghost_permutation_direction_t dir);
     ghost_error_t ghost_densemat_cm_norm_selector(ghost_densemat_t *vec, void *res, void *p);
     ghost_error_t ghost_densemat_cm_averagehalo_selector(ghost_densemat_t *vec);
+    ghost_error_t ghost_densemat_cm_conj_selector(ghost_densemat_t *vec);
 #ifdef __cplusplus
 }
 #endif

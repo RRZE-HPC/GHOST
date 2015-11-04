@@ -238,6 +238,28 @@ static ghost_error_t FUNCNAME(vscale_tmpl(ghost_densemat_t *vec, void *scale))
     return GHOST_SUCCESS;
 }
 
+template<typename v_t> 
+static ghost_error_t FUNCNAME(conj_tmpl(ghost_densemat_t *vec))
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+        
+    DENSEMAT_ITER(vec,*(v_t *)valptr = std::conj(*(v_t *)valptr));
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+    return GHOST_SUCCESS;
+}
+
+template<> static ghost_error_t FUNCNAME(conj_tmpl<double>(ghost_densemat_t *vec))
+{
+    UNUSED(vec);
+    return GHOST_SUCCESS; 
+}
+template<> static ghost_error_t FUNCNAME(conj_tmpl<float>(ghost_densemat_t *vec))
+{
+    UNUSED(vec);
+    return GHOST_SUCCESS; 
+}
+
 // thread-safe type generic random function, returns pseudo-random numbers between -1 and 1.
 template <typename v_t>
 static inline void my_rand(unsigned int* state, v_t* result)
@@ -687,6 +709,15 @@ extern "C" ghost_error_t FUNCNAME(permute_selector(ghost_densemat_t *vec, ghost_
     ghost_error_t ret = GHOST_SUCCESS;
 
     SELECT_TMPL_1DATATYPE(vec->traits.datatype,ghost_complex,ret,FUNCNAME(permute_tmpl),vec,dir);
+
+    return ret;
+}
+
+extern "C" ghost_error_t FUNCNAME(conj_selector(ghost_densemat_t *vec)) 
+{
+    ghost_error_t ret = GHOST_SUCCESS;
+
+    SELECT_TMPL_1DATATYPE(vec->traits.datatype,std::complex,ret,FUNCNAME(conj_tmpl),vec);
 
     return ret;
 }

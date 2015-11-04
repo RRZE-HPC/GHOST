@@ -227,6 +227,7 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
         culdv = *ldv;
         culdw = *ldw;
         culdx = *ldx;
+        bool requires_conjx = false;
 
         void *xcuval;
         void *vcuval;
@@ -283,6 +284,10 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
              *
              * (X ) = (V^T) * (W^T)^T
              */
+
+            if (cutransv == CUBLAS_OP_C) {
+                requires_conjx = true;
+            }
 
             cutransw = cutransv; 
             cutransv = CUBLAS_OP_N;
@@ -346,10 +351,18 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
             if (v->traits.datatype & GHOST_DT_DOUBLE) 
             {
                 CUBLAS_CALL_GOTO(cublasZgemm(ghost_cublas_handle,cutransv,cutransw,*m,*n,*k,(cuDoubleComplex *)alpha,(cuDoubleComplex *)vcuval,culdv,(cuDoubleComplex *)wcuval,culdw,(cuDoubleComplex *)mybeta,(cuDoubleComplex *)xcuval,culdx),err,ret);
+                if (requires_conjx) {
+                    INFO_LOG("Post-conjugating the result!");
+                    x->conj(x);
+                }
             } 
             else 
             {
                 CUBLAS_CALL_GOTO(cublasCgemm(ghost_cublas_handle,cutransv,cutransw,*m,*n,*k,(cuFloatComplex *)alpha,(cuFloatComplex *)vcuval,culdv,(cuFloatComplex *)wcuval,culdw,(cuFloatComplex *)mybeta,(cuFloatComplex *)xcuval,culdx),err,ret);
+                if (requires_conjx) {
+                    INFO_LOG("Post-conjugating the result!");
+                    x->conj(x);
+                }
             }
         } 
         else 

@@ -62,6 +62,20 @@ __global__ static void cu_scale_kernel(T *vec, T a, ghost_lidx_t nrows, ghost_li
 }
 
 template<typename T>  
+__global__ static void cu_conj_kernel(T *vec, ghost_lidx_t nrows, ghost_lidx_t ncols, ghost_lidx_t ld)
+{
+    int idx = blockIdx.x*blockDim.x+threadIdx.x;
+
+    for (;idx < nrows; idx+=gridDim.x*blockDim.x) {
+        ghost_lidx_t v;
+        for (v=0; v<ncols; v++) {
+            vec[v*ld+idx] = conj(vec[v*ld+idx]);
+        }
+    }
+
+}
+
+template<typename T>  
 __global__ static void cu_vscale_kernel(T *vec, T *a, ghost_lidx_t nrows, ghost_lidx_t ncols, ghost_lidx_t ld)
 {
     int idx = blockIdx.x*blockDim.x+threadIdx.x;
@@ -360,7 +374,7 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_dotprod(ghost_densemat_t *vec, voi
             if (vec->traits.datatype & GHOST_DT_DOUBLE)
             {
                 CUBLAS_CALL_GOTO(cublasZdotc(ghost_cublas_handle,vec->traits.nrows,
-                            (const cuDoubleComplex *)v1,1,(const cuDoubleComplex *)v2,1,&((cuDoubleComplex *)res)[v]),err,ret);
+                            (const cuDoubleComplex *)v2,1,(const cuDoubleComplex *)v1,1,&((cuDoubleComplex *)res)[v]),err,ret);
             } 
             else 
             {
@@ -778,5 +792,54 @@ out:
     CURAND_CALL_RETURN(curandDestroyGenerator(gen));
     onevec->destroy(onevec);
 
+    return ret;
+}
+
+extern "C" ghost_error_t ghost_densemat_cm_cu_conj(ghost_densemat_t *vec)
+{
+    if (vec->traits.datatype & GHOST_DT_REAL) {
+        return GHOST_SUCCESS;
+    }
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
+    ghost_error_t ret = GHOST_SUCCESS;
+    
+    void *vecval;
+    ghost_densemat_t *veccompact;
+    
+    if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+        INFO_LOG("Cloning (and compressing) vec before operation");
+        GHOST_CALL_GOTO(vec->clone(vec,&veccompact,vec->traits.nrows,0,vec->traits.ncols,0),err,ret);
+    } else {
+        veccompact = vec;
+    }
+    GHOST_CALL_GOTO(ghost_densemat_cu_valptr(veccompact,&vecval),err,ret);
+    
+    if (vec->traits.datatype & GHOST_DT_DOUBLE)
+    {
+        cu_conj_kernel<cuDoubleComplex><<< (int)ceil((double)vec->traits.nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>(
+                (cuDoubleComplex *)vecval,
+                vec->traits.nrows,vec->traits.ncols,vec->stride);
+    } 
+    else 
+    {
+        cu_conj_kernel<cuFloatComplex><<< (int)ceil((double)vec->traits.nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>(
+                (cuFloatComplex *)vecval,
+                vec->traits.nrows,vec->traits.ncols,vec->stride);
+    }
+    if (veccompact != vec) {
+        INFO_LOG("Transform back");
+        GHOST_CALL_GOTO(vec->fromVec(vec,veccompact,0,0),err,ret);
+        veccompact->destroy(veccompact);
+    }
+    
+    goto out;
+
+err:
+
+out:
+    cudaDeviceSynchronize();
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
+
+    
     return ret;
 }

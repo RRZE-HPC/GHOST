@@ -337,6 +337,12 @@ struct ghost_densemat_t
      */
     ghost_error_t (*compress) (ghost_densemat_t *vec);
     /**
+     * @brief Conjugate the densemat. This function does nothing for real valued densemats.
+     *
+     * @param vec The densemat.
+     */
+    ghost_error_t (*conj) (ghost_densemat_t *vec);
+    /**
      * @brief Collects vec from all MPI ranks and combines them into globalVec.
      * The row permutation (if present) if vec's context is used.
      *

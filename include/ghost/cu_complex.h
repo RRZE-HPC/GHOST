@@ -166,6 +166,24 @@ __device__ inline double mulConjSame<cuDoubleComplex,double>(cuDoubleComplex x)
 }
 
 template<typename T>
+__device__ inline T conj(T x)
+{
+    return x;
+}
+
+template<>
+__device__ inline cuFloatComplex conj<cuFloatComplex>(cuFloatComplex x)
+{
+    return cuConjf(x);
+}
+
+template<>
+__device__ inline cuDoubleComplex conj<cuDoubleComplex>(cuDoubleComplex x)
+{
+    return cuConj(x);
+}
+
+template<typename T>
 __device__ inline T mulConj(T x, T y)
 {
     return x*y;
