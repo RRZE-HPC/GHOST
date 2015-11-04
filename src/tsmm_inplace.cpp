@@ -138,6 +138,7 @@ ghost_error_t ghost_tsmm_inplace(ghost_densemat_t *x, ghost_densemat_t *w, void 
 
     if (!kernel) {
         INFO_LOG("Could not find in-place TSMM kernel with %d %d %d %d!",p.impl,p.dt,p.ncolsin,p.ncolsout);
+        GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
 

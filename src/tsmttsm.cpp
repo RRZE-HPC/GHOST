@@ -93,7 +93,6 @@ ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce, gh
 
 ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta,int reduce,int conjv,ghost_gemm_flags_t flags)
 {
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error_t ret;
 
     const char *vtrans;
@@ -112,6 +111,7 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
             return ghost_gemm(x,v,vtrans,w,"N",alpha,beta,reduce,GHOST_GEMM_NOT_SPECIAL);
         }
     }
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
    
     map<ghost_tsmttsm_parameters_t, ghost_tsmttsm_kernel_t> kernels;
     if (flags & GHOST_GEMM_KAHAN) { 

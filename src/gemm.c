@@ -534,11 +534,9 @@ ghost_densemat_t *w_in, const char *transw, void *alpha, void *beta, int reduce,
     }
 
     if (!donespecial) {
-
-        if ((ret = ghost_gemm_valid(x,v,transv,w,transw,alpha,beta,reduce,flags,1)) != GHOST_SUCCESS) {
-            return ret;
+        if ((ret = ghost_gemm_valid(x,v,transv,w,transw,alpha,beta,reduce,flags,1)) == GHOST_SUCCESS) {
+            ret = ghost_gemm_blas(x,v,transv,w,transw,alpha,beta,reduce,flags);
         }
-        ret = ghost_gemm_blas(x,v,transv,w,transw,alpha,beta,reduce,flags);
     }
     
     if (x != x_in) {
