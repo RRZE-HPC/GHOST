@@ -44,7 +44,7 @@ ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce,gho
     nrX=x->traits.nrows;
     ncX=x->traits.ncols;
     
-    if (ncV!=nrW || nrV!=nrX || ncW!=ncX) {
+    if ((x!=v) && (x!=w) && (ncV!=nrW || nrV!=nrX || ncW!=ncX)) {
         if (printerror) {
             ERROR_LOG("GEMM with incompatible vectors: %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX" = %"PRLIDX"x%"PRLIDX,nrV,ncV,nrW,ncW,nrX,ncX);
         }
