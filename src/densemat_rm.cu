@@ -342,7 +342,7 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_dotprod(ghost_densemat_t *vec, voi
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error_t ret = GHOST_SUCCESS;
-    
+   
     if (vec->traits.datatype != vec2->traits.datatype)
     {
         ERROR_LOG("Cannot DOT vectors with different data types (%s and %s)",ghost_datatype_string(vec->traits.datatype),ghost_datatype_string(vec2->traits.datatype));
@@ -761,13 +761,13 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_fromRand(ghost_densemat_t *vec)
         {
             CURAND_CALL_GOTO(curandGenerateUniformDouble(gen,
                         (double *)valptr,
-                        compactvec->traits.nrowspadded*compactvec->traits.ncols*2),err,ret);
+                        compactvec->traits.nrows*compactvec->traits.ncolspadded*2),err,ret);
         } 
         else 
         {
             CURAND_CALL_GOTO(curandGenerateUniform(gen,
                         (float *)valptr,
-                        compactvec->traits.nrowspadded*compactvec->traits.ncols*2),err,ret);
+                        compactvec->traits.nrows*compactvec->traits.ncolspadded*2),err,ret);
         }
     }
     else
@@ -776,13 +776,13 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_fromRand(ghost_densemat_t *vec)
         {
             CURAND_CALL_GOTO(curandGenerateUniformDouble(gen,
                         (double *)valptr,
-                        compactvec->traits.nrowspadded*compactvec->traits.ncols),err,ret);
+                        compactvec->traits.nrows*compactvec->traits.ncolspadded),err,ret);
         } 
         else 
         {
             CURAND_CALL_GOTO(curandGenerateUniform(gen,
                         (float *)valptr,
-                        compactvec->traits.nrowspadded*compactvec->traits.ncols),err,ret);
+                        compactvec->traits.nrows*compactvec->traits.ncolspadded),err,ret);
         }
     }
     if (compactvec->traits.datatype & GHOST_DT_DOUBLE) {
