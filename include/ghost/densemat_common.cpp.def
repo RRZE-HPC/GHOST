@@ -249,12 +249,12 @@ static ghost_error_t FUNCNAME(conj_tmpl(ghost_densemat_t *vec))
     return GHOST_SUCCESS;
 }
 
-template<> static ghost_error_t FUNCNAME(conj_tmpl<double>(ghost_densemat_t *vec))
+template<> ghost_error_t FUNCNAME(conj_tmpl<double>(ghost_densemat_t *vec))
 {
     UNUSED(vec);
     return GHOST_SUCCESS; 
 }
-template<> static ghost_error_t FUNCNAME(conj_tmpl<float>(ghost_densemat_t *vec))
+template<> ghost_error_t FUNCNAME(conj_tmpl<float>(ghost_densemat_t *vec))
 {
     UNUSED(vec);
     return GHOST_SUCCESS; 
