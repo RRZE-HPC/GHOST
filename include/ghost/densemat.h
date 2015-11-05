@@ -65,7 +65,12 @@ typedef enum {
      * This flag gets deleted once the densemat has been permuted back 
      * (#GHOST_PERMUTATION_PERM2ORIG).
      */
-    GHOST_DENSEMAT_PERMUTED = 256
+    GHOST_DENSEMAT_PERMUTED = 256,
+    /**
+     * @brief By default, a densemat's location gets set to #GHOST_DENSEMAT_HOST|#GHOST_DENSEMAT_DEVICE automatically
+     * when the first up-/download occurs and the GHOST type is CUDA. This behavior can be disabled by setting this flag.
+     */
+    GHOST_DENSEMAT_NOT_RELOCATE = 512
 } 
 ghost_densemat_flags_t;
 

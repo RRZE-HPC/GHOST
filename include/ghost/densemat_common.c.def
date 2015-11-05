@@ -447,9 +447,26 @@ out:
 
 static ghost_error_t FUNCNAME(download(ghost_densemat_t * vec)) 
 {
-    if (vec->traits.location != (GHOST_LOCATION_HOST|GHOST_LOCATION_DEVICE)) {
-        WARNING_LOG("Can only upload if densemat is stored on both host and device!");
+#ifdef GHOST_HAVE_CUDA
+    ghost_type_t type;
+    ghost_type_get(&type);
+    if (type != GHOST_TYPE_CUDA) {
         return GHOST_SUCCESS;
+    }
+#else
+    return GHOST_SUCCESS;
+#endif
+
+    if (!(vec->traits.location & GHOST_LOCATION_HOST)) {
+        if (vec->traits.flags & GHOST_DENSEMAT_NOT_RELOCATE) {
+            WARNING_LOG("Will not download the densemat!");
+            return GHOST_SUCCESS;
+        } else {
+            INFO_LOG("Setting location to HOST+DEVICE and allocating densemat on host.");
+            vec->traits.location = (ghost_location_t)(GHOST_LOCATION_DEVICE|GHOST_LOCATION_HOST);
+            int needsInit;
+            GHOST_CALL_RETURN(FUNCNAME(malloc(vec,&needsInit)));
+        }
     }
     if (DENSEMAT_COMPACT(vec)) {
          ghost_cu_download2d(vec->val,vec->stride*vec->elSize,vec->cu_val,vec->stride*vec->elSize,vec->blocklen*vec->elSize,vec->nblock);
@@ -462,9 +479,26 @@ static ghost_error_t FUNCNAME(download(ghost_densemat_t * vec))
 
 static ghost_error_t FUNCNAME(upload(ghost_densemat_t * vec)) 
 {
-    if (vec->traits.location != (GHOST_LOCATION_HOST|GHOST_LOCATION_DEVICE)) {
-        WARNING_LOG("Can only upload if densemat is stored on both host and device!");
+#ifdef GHOST_HAVE_CUDA
+    ghost_type_t type;
+    ghost_type_get(&type);
+    if (type != GHOST_TYPE_CUDA) {
         return GHOST_SUCCESS;
+    }
+#else
+    return GHOST_SUCCESS;
+#endif
+
+    if (!(vec->traits.location & GHOST_LOCATION_DEVICE)) {
+        if (vec->traits.flags & GHOST_DENSEMAT_NOT_RELOCATE) {
+            WARNING_LOG("Will not upload the densemat!");
+            return GHOST_SUCCESS;
+        } else {
+            INFO_LOG("Setting location to HOST+DEVICE and allocating densemat on device.");
+            vec->traits.location = (ghost_location_t)(GHOST_LOCATION_DEVICE|GHOST_LOCATION_HOST);
+            int needsInit;
+            GHOST_CALL_RETURN(FUNCNAME(malloc(vec,&needsInit)));
+        }
     }
     if (DENSEMAT_COMPACT(vec)) {
          ghost_cu_upload2d(vec->cu_val,vec->stride*vec->elSize,vec->val,vec->stride*vec->elSize,vec->blocklen*vec->elSize,vec->nblock);
