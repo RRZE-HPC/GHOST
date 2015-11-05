@@ -485,14 +485,8 @@ static ghost_error_t FUNCNAME(string_tmpl(char **str, ghost_densemat_t *vec))
            << std::right
            << std::scientific;
 
-    if (vec->traits.location & GHOST_LOCATION_DEVICE) {
-#ifdef GHOST_HAVE_CUDA
-        v_t val;
-        GHOST_SINGLETHREAD(DENSEMAT_ITER(vec,ghost_cu_download(&val,cuvalptr,vec->elSize);buffer<<val<<(col==vec->traits.ncols-1?"\n":"\t")));
-#endif
-    } else {
-        GHOST_SINGLETHREAD(DENSEMAT_ITER(vec,buffer<<*(v_t *)valptr<<(col==vec->traits.ncols-1?"\n":"\t")));
-    }
+    vec->download(vec);
+    GHOST_SINGLETHREAD(DENSEMAT_ITER(vec,buffer<<*(v_t *)valptr<<(col==vec->traits.ncols-1?"\n":"\t")));
 
     GHOST_CALL_RETURN(ghost_malloc((void **)str,buffer.str().length()+1));
     strcpy(*str,buffer.str().c_str());
