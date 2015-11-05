@@ -78,23 +78,9 @@ static ghost_error_t FUNCNAME(dotprod_tmpl(ghost_densemat_t *vec, void *res, gho
 
     ghost_error_t ret = GHOST_SUCCESS;
     int nthreads, i;
-    v_t *partsums;
-    unsigned clsize;
-
-#pragma omp parallel
-    {
-#pragma omp single
-    nthreads = ghost_omp_nthread();
-    }
    
-    ghost_machine_cacheline_size(&clsize);
-    int padding = (8*(int)clsize)/sizeof(v_t);
-    int ncolsPadded = PAD(vec->traits.ncols,padding);
-        
-    GHOST_CALL_GOTO(ghost_malloc_align((void **)&partsums,nthreads*ncolsPadded*sizeof(v_t),64),err,ret);
-    memset(partsums,0,nthreads*ncolsPadded*sizeof(v_t));
-   
-     if (DENSEMAT_SINGLECOL_STRIDE1(vec) && DENSEMAT_SINGLECOL_STRIDE1(vec2) && vec->traits.nrows == vec->traits.nrowsorig && vec2->traits.nrows == vec2->traits.nrowsorig) { 
+     if (DENSEMAT_SINGLECOL_STRIDE1(vec) && DENSEMAT_SINGLECOL_STRIDE1(vec2) && vec->traits.nrows == vec->traits.nrowsorig && vec2->traits.nrows == vec2->traits.nrowsorig) {
+         GHOST_INSTR_START("fast_singlecol"); 
          v_t * v1 = (v_t *)vec->val;
          v_t * v2 = (v_t *)vec2->val;
          ((v_t *)res)[0] = 0;
@@ -110,7 +96,23 @@ static ghost_error_t FUNCNAME(dotprod_tmpl(ghost_densemat_t *vec, void *res, gho
 #pragma omp critical
             ((v_t *)res)[0] += result;
          }
+         GHOST_INSTR_STOP("fast_singlecol"); 
      } else {
+        v_t *partsums;
+        unsigned clsize;
+
+#pragma omp parallel
+        {
+#pragma omp single
+        nthreads = ghost_omp_nthread();
+        }
+       
+        ghost_machine_cacheline_size(&clsize);
+        int padding = (8*(int)clsize)/sizeof(v_t);
+        int ncolsPadded = PAD(vec->traits.ncols,padding);
+            
+        GHOST_CALL_GOTO(ghost_malloc_align((void **)&partsums,nthreads*ncolsPadded*sizeof(v_t),64),err,ret);
+        memset(partsums,0,nthreads*ncolsPadded*sizeof(v_t));
         if (vec == vec2) {
 #pragma omp parallel shared(partsums) 
             {
@@ -134,6 +136,7 @@ static ghost_error_t FUNCNAME(dotprod_tmpl(ghost_densemat_t *vec, void *res, gho
                 ((v_t *)res)[col] += partsums[i*ncolsPadded+col];
             }
         }
+        free(partsums);
     }
     
 
@@ -141,7 +144,6 @@ static ghost_error_t FUNCNAME(dotprod_tmpl(ghost_densemat_t *vec, void *res, gho
 err:
 
 out:
-    free(partsums);
     
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     return ret;
