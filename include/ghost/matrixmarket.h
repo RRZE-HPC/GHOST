@@ -36,4 +36,6 @@ typedef struct
  */
 int ghost_sparsemat_rowfunc_mm(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, void *val, void *arg);
 
+int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, void *val, void *arg);
+
 #endif

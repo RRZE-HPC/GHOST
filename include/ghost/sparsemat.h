@@ -170,7 +170,12 @@ typedef enum {
     /**
      * @brief Create a matrix permutation reflecting a distance-2-coloring.
      */
-    GHOST_SPARSEMAT_COLOR = 512
+    GHOST_SPARSEMAT_COLOR = 512,
+    /**
+     * @brief If the matrix comes from a matrix market file, transpose it on read-in.
+     * If this is implemented for other rowfuncs, the _MM may get removed in the future.
+     */
+    GHOST_SPARSEMAT_TRANSPOSE_MM = 1024
 } ghost_sparsemat_flags_t;
 
 
