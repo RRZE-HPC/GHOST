@@ -43,6 +43,20 @@ ghost_error_t ghost_dot(void *res, ghost_densemat_t *vec, ghost_densemat_t *vec2
     }
 #endif
 
+#ifdef GHOST_HAVE_INSTR_TIMING
+    ghost_dot_perf_args_t pargs;
+    pargs.ncols = vec->traits.ncols;
+    if (vec->context) {
+        pargs.globnrows = vec->context->gnrows;
+    } else {
+        pargs.globnrows = vec->traits.nrows;
+    }
+    pargs.dt = vec->traits.datatype;
+    pargs.samevec = vec==vec2;
+    
+    ghost_timing_set_perfFunc(NULL,__ghost_functag,ghost_dot_perf,(void *)&pargs,sizeof(pargs),GHOST_DOT_PERF_UNIT);
+#endif
+
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return GHOST_SUCCESS;
 
