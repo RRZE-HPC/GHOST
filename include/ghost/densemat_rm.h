@@ -42,6 +42,7 @@ extern "C" {
     ghost_error_t ghost_densemat_rm_norm_selector(ghost_densemat_t *vec, void *res, void *p);
     ghost_error_t ghost_densemat_rm_averagehalo_selector(ghost_densemat_t *vec);
     ghost_error_t ghost_densemat_rm_conj_selector(ghost_densemat_t *vec);
+    ghost_error_t ghost_densemat_rm_vaxpbypcz_selector(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale, void *b, ghost_densemat_t *vec3, void *c);
 #ifdef __cplusplus
 }
 #endif

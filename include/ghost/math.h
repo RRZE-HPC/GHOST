@@ -69,6 +69,15 @@ typedef struct {
     ghost_lidx_t ncols;
     ghost_gidx_t globnrows;
     ghost_datatype_t dt;
+}
+ghost_axpbypcz_perf_args_t;
+#define GHOST_AXPBYPCZ_PERF_UNIT "GB/s"
+#define GHOST_AXPBYPCZ_PERF_TAG "axpbypcz"
+
+typedef struct {
+    ghost_lidx_t ncols;
+    ghost_gidx_t globnrows;
+    ghost_datatype_t dt;
     bool samevec;
 }
 ghost_dot_perf_args_t;
@@ -203,6 +212,7 @@ ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce,gho
     int ghost_axpy_perf(double *perf, double time, void *arg);
     int ghost_scale_perf(double *perf, double time, void *arg);
     int ghost_dot_perf(double *perf, double time, void *arg);
+    int ghost_axpbypcz_perf(double *perf, double time, void *arg);
     int ghost_gemm_perf_GFs(double *perf, double time, void *arg);
     int ghost_gemm_perf_GBs(double *perf, double time, void *arg);
 

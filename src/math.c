@@ -678,6 +678,21 @@ int ghost_spmv_perf(double *perf, double time, void *varg)
 
 }
 
+int ghost_axpbypcz_perf(double *perf, double time, void *varg)
+{
+    ghost_axpbypcz_perf_args_t arg = *(ghost_axpbypcz_perf_args_t *)varg;
+
+    ghost_lidx_t ncol = arg.ncols;
+    ghost_lidx_t nrow = arg.globnrows;
+
+    size_t size;
+    ghost_datatype_size(&size,arg.dt);
+
+    *perf = size*4*ncol*nrow/1.e9/time;
+
+    return 0;
+}
+
 int ghost_axpy_perf(double *perf, double time, void *varg)
 {
     ghost_axpy_perf_args_t arg = *(ghost_axpy_perf_args_t *)varg;

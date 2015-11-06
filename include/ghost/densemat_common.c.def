@@ -339,6 +339,37 @@ out:
     return ret;
 }
 
+static ghost_error_t FUNCNAME(axpbypcz(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale, void *_b, ghost_densemat_t *vec3, void *_c))
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
+    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_lidx_t nc = MIN(vec->traits.ncols,vec2->traits.ncols);
+    char *s = NULL;
+    char *b = NULL;
+    char *c = NULL;
+    GHOST_CALL_GOTO(ghost_malloc((void **)&s,nc*vec->elSize),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&b,nc*vec->elSize),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&c,nc*vec->elSize),err,ret);
+
+    ghost_lidx_t i;
+    for (i=0; i<nc; i++) {
+        memcpy(&s[i*vec->elSize],scale,vec->elSize);
+        memcpy(&b[i*vec->elSize],_b,vec->elSize);
+        memcpy(&c[i*vec->elSize],_c,vec->elSize);
+    }
+
+    ret = vec->vaxpbypcz(vec,vec2,s,b,vec3,c);
+
+    goto out;
+err:
+
+out:
+    free(s);
+    free(b);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
+    return ret;
+}
+
 static ghost_error_t FUNCNAME(scale(ghost_densemat_t *vec, void *scale))
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);

@@ -48,6 +48,8 @@ ghost_error_t ghost_densemat_rm_setfuncs(ghost_densemat_t *vec)
         vec->vaxpby = &ghost_densemat_rm_cu_vaxpby;
         vec->axpy = &ghost_densemat_rm_cu_axpy;
         vec->axpby = &ghost_densemat_rm_cu_axpby;
+        vec->axpbypcz = &ghost_densemat_rm_cu_axpbypcz;
+        vec->vaxpbypcz = &ghost_densemat_rm_cu_vaxpbypcz;
         vec->scale = &ghost_densemat_rm_cu_scale;
         vec->vscale = &ghost_densemat_rm_cu_vscale;
         vec->fromScalar = &ghost_densemat_rm_cu_fromScalar;
@@ -63,6 +65,8 @@ ghost_error_t ghost_densemat_rm_setfuncs(ghost_densemat_t *vec)
         vec->vaxpby = &ghost_densemat_rm_vaxpby_selector;
         vec->axpy = &ghost_densemat_rm_axpy;
         vec->axpby = &ghost_densemat_rm_axpby;
+        vec->axpbypcz = &ghost_densemat_rm_axpbypcz;
+        vec->vaxpbypcz = &ghost_densemat_rm_vaxpbypcz_selector;
         vec->scale = &ghost_densemat_rm_scale;
         vec->vscale = &ghost_densemat_rm_vscale_selector;
         vec->fromScalar = &ghost_densemat_rm_fromScalar_selector;

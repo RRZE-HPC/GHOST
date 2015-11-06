@@ -319,6 +319,20 @@ struct ghost_densemat_t
     ghost_error_t (*axpby) (ghost_densemat_t *y, ghost_densemat_t *x, void *a, 
             void *b);
     /**
+     * @ingroup locops
+     *
+     * @brief Performs <em>y := a*x + b*y + c*z</em> with scalar a, b, and c
+     *
+     * @param y The in-/output densemat.
+     * @param x The input densemat x
+     * @param z The input densemat z
+     * @param a Points to the scale factor a.
+     * @param b Points to the scale factor b.
+     * @param c Points to the scale factor c.
+     */
+    ghost_error_t (*axpbypcz) (ghost_densemat_t *y, ghost_densemat_t *x, void *a, 
+            void *b,ghost_densemat_t *z, void *c);
+    /**
      * @brief Clones a given number of columns of a source densemat at a 
      * given column and row offset.
      *
@@ -708,6 +722,24 @@ struct ghost_densemat_t
      */
     ghost_error_t (*vaxpby) (ghost_densemat_t *, ghost_densemat_t *, void *, 
             void *);
+    /**
+     * @ingroup locops
+     *
+     * @brief Performs <em>y := a_i*x + b_i*y + c_i*z</em> with separate scalars a_i, 
+     * b_i, and c_i
+     *
+     * @param y The in-/output densemat.
+     * @param x The input densemat x
+     * @param z The input densemat z
+     * @param a The scale factors a. Length must be the same as the number of 
+     * densemat columns.
+     * @param b The scale factors b. Length must be the same as the number of 
+     * densemat columns.
+     * @param c The scale factors c. Length must be the same as the number of 
+     * densemat columns.
+     */
+    ghost_error_t (*vaxpbypcz) (ghost_densemat_t *, ghost_densemat_t *, void *, 
+            void *, ghost_densemat_t *, void *);
 };
 
 #ifdef __cplusplus

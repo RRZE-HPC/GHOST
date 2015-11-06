@@ -229,6 +229,40 @@ static ghost_error_t FUNCNAME(vaxpby_tmpl(ghost_densemat_t *vec, ghost_densemat_
     return GHOST_SUCCESS;
 }
 
+template <typename v_t> 
+static ghost_error_t FUNCNAME(vaxpbypcz_tmpl(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale, void *b_, ghost_densemat_t *vec3, void *c_))
+{
+    GHOST_DENSEMAT_CHECK_SIMILARITY(vec,vec2);
+    GHOST_DENSEMAT_CHECK_SIMILARITY(vec,vec3);
+    if (!DENSEMAT_COMPACT(vec) || !DENSEMAT_COMPACT(vec2) ||!DENSEMAT_COMPACT(vec3)) {
+        ERROR_LOG("(V)AXPBYCZ not yet implemented for scattered densemats");
+    }
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+
+    v_t *s = (v_t *)scale;
+    v_t *b = (v_t *)b_;
+    v_t *c = (v_t *)c_;
+
+    
+    DENSEMAT_ITER(vec,*(v_t *)valptr = *(v_t *)valptr * b[col] + 
+            *(v_t *)DENSEMAT_VALPTR(vec2,row,col) * s[col] + *(v_t *)DENSEMAT_VALPTR(vec3,row,col) * c[col]);
+
+#ifdef GHOST_HAVE_INSTR_TIMING
+    ghost_axpbypcz_perf_args_t pargs;
+    pargs.ncols = vec->traits.ncols;
+    if (vec->context) {
+        pargs.globnrows = vec->context->gnrows;
+    } else {
+        pargs.globnrows = vec->traits.nrows;
+    }
+    pargs.dt = vec->traits.datatype;
+
+    ghost_timing_set_perfFunc(NULL,__ghost_functag,ghost_axpbypcz_perf,(void *)&pargs,sizeof(pargs),GHOST_AXPBYPCZ_PERF_UNIT);
+#endif
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+    return GHOST_SUCCESS;
+}
+
 template<typename v_t> 
 static ghost_error_t FUNCNAME(vscale_tmpl(ghost_densemat_t *vec, void *scale))
 {
@@ -669,6 +703,15 @@ extern "C" ghost_error_t FUNCNAME(vaxpby_selector(ghost_densemat_t *vec, ghost_d
     ghost_error_t ret = GHOST_SUCCESS;
 
     SELECT_TMPL_1DATATYPE(vec->traits.datatype,ghost_complex,ret,FUNCNAME(vaxpby_tmpl),vec,vec2,scale,b);
+
+    return ret;
+}
+
+extern "C" ghost_error_t FUNCNAME(vaxpbypcz_selector(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale, void *b, ghost_densemat_t *vec3, void *c))
+{
+    ghost_error_t ret = GHOST_SUCCESS;
+
+    SELECT_TMPL_1DATATYPE(vec->traits.datatype,ghost_complex,ret,FUNCNAME(vaxpbypcz_tmpl),vec,vec2,scale,b,vec3,c);
 
     return ret;
 }
