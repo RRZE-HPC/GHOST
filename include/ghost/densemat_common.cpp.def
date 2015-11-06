@@ -85,16 +85,30 @@ static ghost_error_t FUNCNAME(dotprod_tmpl(ghost_densemat_t *vec, void *res, gho
          v_t * v2 = (v_t *)vec2->val;
          ((v_t *)res)[0] = 0;
          ghost_lidx_t row;
+         if (v1 == v2) {
 #pragma omp parallel
-         {
-            v_t result = 0.;
+             {
+                v_t result = 0.;
 #pragma omp for schedule(runtime)
-            for (row=0; row<vec->traits.nrows; row++) {
-                result += conjugate(v1+row) * v2[row];
-            }
+                for (row=0; row<vec->traits.nrows; row++) {
+                    result += conjugate(v1+row) * v1[row];
+                }
 
 #pragma omp critical
-            ((v_t *)res)[0] += result;
+                ((v_t *)res)[0] += result;
+             }
+         } else {
+#pragma omp parallel
+             {
+                v_t result = 0.;
+#pragma omp for schedule(runtime)
+                for (row=0; row<vec->traits.nrows; row++) {
+                    result += conjugate(v1+row) * v2[row];
+                }
+
+#pragma omp critical
+                ((v_t *)res)[0] += result;
+             }
          }
          GHOST_INSTR_STOP("fast_singlecol"); 
      } else {
