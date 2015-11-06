@@ -223,6 +223,18 @@ static ghost_error_t FUNCNAME(vaxpy_tmpl(ghost_densemat_t *vec, ghost_densemat_t
     
     DENSEMAT_ITER2(vec,vec2,*(v_t *)valptr1 += *(v_t *)valptr2 * s[col]);
 
+#ifdef GHOST_HAVE_INSTR_TIMING
+    ghost_axpy_perf_args_t pargs;
+    pargs.ncols = vec->traits.ncols;
+    if (vec->context) {
+        pargs.globnrows = vec->context->gnrows;
+    } else {
+        pargs.globnrows = vec->traits.nrows;
+    }
+    pargs.dt = vec->traits.datatype;
+
+    ghost_timing_set_perfFunc(NULL,__ghost_functag,ghost_axpy_perf,(void *)&pargs,sizeof(pargs),GHOST_AXPY_PERF_UNIT);
+#endif
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     return GHOST_SUCCESS;
 }
@@ -239,6 +251,18 @@ static ghost_error_t FUNCNAME(vaxpby_tmpl(ghost_densemat_t *vec, ghost_densemat_
     DENSEMAT_ITER2(vec,vec2,*(v_t *)valptr1 = *(v_t *)valptr2 * s[col] + 
             *(v_t *)valptr1 * b[col]);
     
+#ifdef GHOST_HAVE_INSTR_TIMING
+    ghost_axpby_perf_args_t pargs;
+    pargs.ncols = vec->traits.ncols;
+    if (vec->context) {
+        pargs.globnrows = vec->context->gnrows;
+    } else {
+        pargs.globnrows = vec->traits.nrows;
+    }
+    pargs.dt = vec->traits.datatype;
+
+    ghost_timing_set_perfFunc(NULL,__ghost_functag,ghost_axpby_perf,(void *)&pargs,sizeof(pargs),GHOST_AXPBY_PERF_UNIT);
+#endif
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     return GHOST_SUCCESS;
 }
@@ -283,6 +307,19 @@ static ghost_error_t FUNCNAME(vscale_tmpl(ghost_densemat_t *vec, void *scale))
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
         
     DENSEMAT_ITER(vec,*(v_t *)valptr *= ((v_t *)scale)[col]);
+
+#ifdef GHOST_HAVE_INSTR_TIMING
+    ghost_scale_perf_args_t pargs;
+    pargs.ncols = vec->traits.ncols;
+    if (vec->context) {
+        pargs.globnrows = vec->context->gnrows;
+    } else {
+        pargs.globnrows = vec->traits.nrows;
+    }
+    pargs.dt = vec->traits.datatype;
+
+    ghost_timing_set_perfFunc(NULL,__ghost_functag,ghost_scale_perf,(void *)&pargs,sizeof(pargs),GHOST_SCALE_PERF_UNIT);
+#endif
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     return GHOST_SUCCESS;
