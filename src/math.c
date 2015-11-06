@@ -691,7 +691,7 @@ int ghost_dot_perf(double *perf, double time, void *varg)
 
     *perf = size*ncol*nrow/1.e9/time;
 
-    if (arg.samevec) {
+    if (!arg.samevec) {
         *perf *= 2;
     }
 
