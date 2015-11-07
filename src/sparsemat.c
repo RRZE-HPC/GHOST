@@ -1034,7 +1034,10 @@ ghost_error_t ghost_sparsemat_from_mm(ghost_sparsemat_t *mat, char *path)
     ghost_sparsemat_rowfunc_mm_initargs args;
     ghost_gidx_t dim[2];
     ghost_sparsemat_src_rowfunc_t src = GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER;
-   
+  
+    int symmetric = 0;
+    src.arg = &symmetric;
+
     if (mat->traits->flags & GHOST_SPARSEMAT_TRANSPOSE_MM) { 
         src.func = &ghost_sparsemat_rowfunc_mm_transpose;
     } else {
@@ -1060,6 +1063,10 @@ ghost_error_t ghost_sparsemat_from_mm(ghost_sparsemat_t *mat, char *path)
         ERROR_LOG("Error in matrix creation function");
         ret = GHOST_ERR_UNKNOWN;
         goto err;
+    }
+
+    if (*(int *)src.arg) {
+        mat->traits->symmetry = GHOST_SPARSEMAT_SYMM_SYMMETRIC;
     }
 
     goto out;
