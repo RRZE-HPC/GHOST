@@ -93,8 +93,8 @@ ghost_error_t ghost_rand_seed(ghost_rand_seed_t which, unsigned int seed)
     
     if ((type == GHOST_TYPE_CUDA) && (which & GHOST_RAND_SEED_PU)) {
         WARNING_LOG("This function does not really do what you would expect for CUDA random numbers, the random seed will differ between threads!");
-        cu_seed = ghost_hash(rank,time,0);
     }
+    cu_seed = ghost_hash(rank,time,0);
 
     for (i=0; i<nrand; i++) {
 
