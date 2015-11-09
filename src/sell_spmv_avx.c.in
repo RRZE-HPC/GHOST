@@ -20,8 +20,6 @@ ghost_error_t ghost_sellspmv__a_avx_d_d_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat,
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     INFO_LOG("In CM kernel with block size %d",res->traits.ncols);
     ghost_lidx_t i;
-    double *lval = NULL, *rval = NULL;
-    double *mval = (double *)SELL(mat)->val;
     double *local_dot_product = NULL;
     double *partsums = NULL;
     
@@ -55,6 +53,8 @@ ghost_error_t ghost_sellspmv__a_avx_d_d_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat,
 
 #pragma omp parallel shared(partsums)
     {
+        double *lval = NULL, *rval = NULL;
+        double *mval = (double *)SELL(mat)->val;
         ghost_lidx_t j,c,v;
         ghost_lidx_t offs;
         __m256d val;
@@ -83,7 +83,7 @@ ghost_error_t ghost_sellspmv__a_avx_d_d_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat,
                 for (j=0; j<SELL(mat)->chunkLenPadded[c]; j++) 
                 { // loop inside chunk
 
-                    #GHOST_UNROLL#val    = _mm256_load_pd(&mval[offs]);rhstmp = _mm_loadl_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);rhstmp = _mm_loadh_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);rhs    = _mm256_insertf128_pd(rhs,rhstmp,0);rhstmp = _mm_loadl_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);rhstmp = _mm_loadh_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);rhs    = _mm256_insertf128_pd(rhs,rhstmp,1);tmp@    = _mm256_add_pd(tmp@,_mm256_mul_pd(val,rhs));#CHUNKHEIGHT/4
+                    #GHOST_UNROLL#val    = _mm256_load_pd(&mval[offs]);rhs = _mm256_set_pd(rval[SELL(mat)->col[offs+3]],rval[SELL(mat)->col[offs+2]],rval[SELL(mat)->col[offs+1]],rval[SELL(mat)->col[offs+0]]);tmp@    = _mm256_add_pd(tmp@,_mm256_mul_pd(val,rhs));offs+=4;#CHUNKHEIGHT/4
                 }
 
                 if (spmvmOptions & (GHOST_SPMV_SHIFT | GHOST_SPMV_VSHIFT)) {
