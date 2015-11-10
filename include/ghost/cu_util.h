@@ -12,6 +12,7 @@
 #include "error.h"
 #ifdef GHOST_HAVE_CUDA
 #include <cublas_v2.h>
+#include <curand.h>
 #include <cusparse_v2.h>
 #endif
 
@@ -19,10 +20,12 @@
 typedef cublasHandle_t ghost_cublas_handle_t;
 typedef cusparseHandle_t ghost_cusparse_handle_t;
 typedef struct cudaDeviceProp ghost_cu_deviceprop_t;
+typedef curandGenerator_t ghost_cu_rand_generator_t;
 #else
 typedef int ghost_cublas_handle_t;
 typedef int ghost_cusparse_handle_t;
 typedef int ghost_cu_deviceprop_t;
+typedef int ghost_cu_rand_generator_t;
 #endif
 
 /**
@@ -243,6 +246,9 @@ extern "C" {
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t ghost_cu_deviceprop(ghost_cu_deviceprop_t *prop);
+
+    ghost_error_t ghost_cu_rand_generator_get(ghost_cu_rand_generator_t *gen);
+    void ghost_cu_rand_generator_destroy();
 
 #ifdef __cplusplus
 }

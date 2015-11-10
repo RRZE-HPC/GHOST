@@ -570,6 +570,7 @@ ghost_error_t ghost_finalize()
 
 
     ghost_rand_destroy();
+    ghost_cu_rand_generator_destroy();
 
 #ifdef GHOST_HAVE_INSTR_LIKWID
     likwid_markerClose();

@@ -10,6 +10,7 @@
 #include "ghost/sparsemat.h"
 #include "ghost/locality.h"
 #include "ghost/log.h"
+#include "ghost/rand.h"
 #include <string.h>
 #include <stdlib.h>
 #include <libgen.h>
@@ -25,6 +26,7 @@
 static cublasHandle_t ghost_cublas_handle;
 static cusparseHandle_t ghost_cusparse_handle;
 static struct cudaDeviceProp ghost_cu_device_prop;
+static curandGenerator_t ghost_cu_rand_generator = NULL;
 #endif
 
 static int cu_device = -1;
@@ -442,4 +444,29 @@ ghost_error_t ghost_cu_deviceprop(ghost_cu_deviceprop_t *prop)
 #endif
 
     return GHOST_SUCCESS;
+}
+
+ghost_error_t ghost_cu_rand_generator_get(ghost_cu_rand_generator_t *gen)
+{
+#ifdef GHOST_HAVE_CUDA
+    if (ghost_cu_rand_generator == NULL) {
+        CURAND_CALL_RETURN(curandCreateGenerator(&ghost_cu_rand_generator,CURAND_RNG_PSEUDO_DEFAULT));
+        CURAND_CALL_RETURN(curandSetPseudoRandomGeneratorSeed(ghost_cu_rand_generator,ghost_rand_cu_seed_get()));
+    }
+
+    *gen = ghost_cu_rand_generator;
+#else
+    *gen = -1;
+#endif
+
+    return GHOST_SUCCESS;
+}
+
+void ghost_cu_rand_generator_destroy()
+{
+#ifdef GHOST_HAVE_CUDA
+    if (ghost_cu_rand_generator) {
+        curandDestroyGenerator(ghost_cu_rand_generator);
+    }
+#endif
 }

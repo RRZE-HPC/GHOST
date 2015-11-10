@@ -964,8 +964,7 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_fromRand(ghost_densemat_t *vec)
     int needInit = 0;
     ghost_densemat_rm_malloc(vec,&needInit);
     curandGenerator_t gen;
-    CURAND_CALL_GOTO(curandCreateGenerator(&gen,CURAND_RNG_PSEUDO_DEFAULT),err,ret);
-    CURAND_CALL_GOTO(curandSetPseudoRandomGeneratorSeed(gen,ghost_rand_cu_seed_get()),err,ret);
+    GHOST_CALL_GOTO(ghost_cu_rand_generator_get(&gen),err,ret);
 
     vec->clone(vec,&onevec,vec->traits.nrows,0,vec->traits.ncols,0);
     onevec->fromScalar(onevec,one);
@@ -1026,7 +1025,6 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_fromRand(ghost_densemat_t *vec)
 err:
 out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
-    CURAND_CALL_RETURN(curandDestroyGenerator(gen));
     onevec->destroy(onevec);
 
     return ret;
