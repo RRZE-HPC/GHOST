@@ -18,8 +18,10 @@ extern "C" {
 ghost_error_t ghost_densemat_rm_cu_dotprod(ghost_densemat_t *vec, void *res, ghost_densemat_t *vec2);
 ghost_error_t ghost_densemat_rm_cu_vaxpy(ghost_densemat_t *v1, ghost_densemat_t *v2, void *a);
 ghost_error_t ghost_densemat_rm_cu_vaxpby(ghost_densemat_t *v1, ghost_densemat_t *v2, void *a, void *b);
+ghost_error_t ghost_densemat_rm_cu_vaxpbypcz(ghost_densemat_t *v1, ghost_densemat_t *v2, void *a, void *b, ghost_densemat_t *v3, void *c);
 ghost_error_t ghost_densemat_rm_cu_axpy(ghost_densemat_t *v1, ghost_densemat_t *v2, void *a);
 ghost_error_t ghost_densemat_rm_cu_axpby(ghost_densemat_t *v1, ghost_densemat_t *v2, void *a, void *b);
+ghost_error_t ghost_densemat_rm_cu_axpbypcz(ghost_densemat_t *v1, ghost_densemat_t *v2, void *a, void *b, ghost_densemat_t *v3, void *c);
 ghost_error_t ghost_densemat_rm_cu_scale(ghost_densemat_t *v, void *a);
 ghost_error_t ghost_densemat_rm_cu_vscale(ghost_densemat_t *v, void *a);
 ghost_error_t ghost_densemat_rm_cu_fromScalar(ghost_densemat_t *vec, void *val);

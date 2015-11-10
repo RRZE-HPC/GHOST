@@ -48,6 +48,34 @@ __global__ static void cu_axpby_kernel(T *v1, T *v2, T a, T b, ghost_lidx_t nrow
 }
 
 template<typename T>  
+__global__ static void cu_axpbypcz_kernel(T *v1, T *v2, T *v3, T a, T b, T c, ghost_lidx_t nrows, ghost_lidx_t ncols, ghost_lidx_t ld1, ghost_lidx_t ld2, ghost_lidx_t ld3) 
+{
+    T o;
+    one(o);
+    int idx = blockIdx.x*blockDim.x+threadIdx.x;
+    for (;idx < nrows; idx+=gridDim.x*blockDim.x) {
+        ghost_lidx_t v;
+        for (v=0; v<ncols; v++) {
+            v1[idx*ld1+v] = axpby<T>(axpby<T>(v2[idx*ld2+v],v1[idx*ld1+v],a,b),v3[idx*ld3+v],o,c);
+        }
+    }
+}
+
+template<typename T>  
+__global__ static void cu_vaxpbypcz_kernel(T *v1, T *v2, T *v3, T *a, T *b, T *c, ghost_lidx_t nrows, ghost_lidx_t ncols, ghost_lidx_t ld1, ghost_lidx_t ld2, ghost_lidx_t ld3) 
+{
+    T o;
+    one(o);
+    int idx = blockIdx.x*blockDim.x+threadIdx.x;
+    for (;idx < nrows; idx+=gridDim.x*blockDim.x) {
+        ghost_lidx_t v;
+        for (v=0; v<ncols; v++) {
+            v1[idx*ld1+v] = axpby<T>(axpby<T>(v2[idx*ld2+v],v1[idx*ld1+v],a[v],b[v]),v3[idx*ld3+v],o,c[v]);
+        }
+    }
+}
+
+template<typename T>  
 __global__ static void cu_scale_kernel(T *vec, T a, ghost_lidx_t nrows, ghost_lidx_t ncols, ghost_lidx_t ld)
 {
     int idx = blockIdx.x*blockDim.x+threadIdx.x;
@@ -338,6 +366,115 @@ out:
     return ret;
 }
 
+extern "C" ghost_error_t ghost_densemat_rm_cu_vaxpbypcz(ghost_densemat_t *v1, ghost_densemat_t *v2, void *a, void *b, ghost_densemat_t *v3, void *c)
+{
+    if (v1->traits.datatype != v2->traits.datatype || v1->traits.datatype != v3->traits.datatype)
+    {
+        ERROR_LOG("Cannot VAXPBYPCZ vectors with different data types");
+        return GHOST_ERR_NOT_IMPLEMENTED;
+    }
+    
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
+    ghost_error_t ret = GHOST_SUCCESS;
+
+    void *d_a;
+    void *d_b;
+    void *d_c;
+    size_t sizeofdt;
+
+    ghost_datatype_size(&sizeofdt,v1->traits.datatype);
+    
+    GHOST_CALL_GOTO(ghost_cu_malloc(&d_a,v1->traits.ncols*sizeofdt),err,ret);
+    GHOST_CALL_GOTO(ghost_cu_malloc(&d_b,v1->traits.ncols*sizeofdt),err,ret);
+    GHOST_CALL_GOTO(ghost_cu_malloc(&d_c,v1->traits.ncols*sizeofdt),err,ret);
+   
+    ghost_lidx_t col; 
+    for (col=0; col<v1->traits.ncols; col++) {
+            GHOST_CALL_GOTO(ghost_cu_upload(&((char *)d_a)[col*sizeofdt],&((char *)a)[col*sizeofdt],sizeofdt),err,ret);
+            GHOST_CALL_GOTO(ghost_cu_upload(&((char *)d_b)[col*sizeofdt],&((char *)b)[col*sizeofdt],sizeofdt),err,ret);
+            GHOST_CALL_GOTO(ghost_cu_upload(&((char *)d_c)[col*sizeofdt],&((char *)c)[col*sizeofdt],sizeofdt),err,ret);
+    }
+    
+    
+    void *v1val, *v2val, *v3val;
+    ghost_densemat_t *v1compact, *v2compact, *v3compact;
+    
+    if (v1->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+        INFO_LOG("Cloning (and compressing) v1 before operation");
+        GHOST_CALL_GOTO(v1->clone(v1,&v1compact,v1->traits.nrows,0,v1->traits.ncols,0),err,ret);
+    } else {
+        v1compact = v1;
+    }
+    if (v2->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+        INFO_LOG("Cloning (and compressing) v2 before operation");
+        GHOST_CALL_GOTO(v2->clone(v2,&v2compact,v2->traits.nrows,0,v2->traits.ncols,0),err,ret);
+    } else {
+        v2compact = v2;
+    }
+    if (v3->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+        INFO_LOG("Cloning (and compressing) v3 before operation");
+        GHOST_CALL_GOTO(v3->clone(v3,&v3compact,v3->traits.nrows,0,v3->traits.ncols,0),err,ret);
+    } else {
+        v3compact = v3;
+    }
+    GHOST_CALL_GOTO(ghost_densemat_cu_valptr(v1compact,&v1val),err,ret);
+    GHOST_CALL_GOTO(ghost_densemat_cu_valptr(v2compact,&v2val),err,ret);
+    GHOST_CALL_GOTO(ghost_densemat_cu_valptr(v3compact,&v3val),err,ret);
+    
+
+    if (v1->traits.datatype & GHOST_DT_COMPLEX)
+    {
+        if (v1->traits.datatype & GHOST_DT_DOUBLE)
+        {
+            cu_vaxpbypcz_kernel<cuDoubleComplex><<< (int)ceil((double)v1->traits.nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>(
+                (cuDoubleComplex *)v1val, (cuDoubleComplex *)v2val, (cuDoubleComplex *)v3val, (cuDoubleComplex *)d_a,(cuDoubleComplex *)d_b,
+                (cuDoubleComplex *)d_c, v1->traits.nrows,v1->traits.ncols,v1->stride,v2->stride, v3->stride);
+        } 
+        else 
+        {
+            cu_vaxpbypcz_kernel<cuFloatComplex><<< (int)ceil((double)v1->traits.nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>(
+                (cuFloatComplex *)v1val, (cuFloatComplex *)v2val, (cuFloatComplex *)v3val, (cuFloatComplex *)d_a,(cuFloatComplex *)d_b,
+                (cuFloatComplex *)d_c, v1->traits.nrows,v1->traits.ncols,v1->stride,v2->stride, v3->stride);
+        }
+    }
+    else
+    {
+        if (v1->traits.datatype & GHOST_DT_DOUBLE)
+        {
+            cu_vaxpbypcz_kernel<double><<< (int)ceil((double)v1->traits.nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>(
+                (double *)v1val, (double *)v2val, (double *)v3val, (double *)d_a,(double *)d_b,
+                (double *)d_c, v1->traits.nrows,v1->traits.ncols,v1->stride,v2->stride, v3->stride);
+        } 
+        else 
+        {
+            cu_vaxpbypcz_kernel<float><<< (int)ceil((double)v1->traits.nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>(
+                (float *)v1val, (float *)v2val, (float *)v3val, (float *)d_a,(float *)d_b,
+                (float *)d_c, v1->traits.nrows,v1->traits.ncols,v1->stride,v2->stride, v3->stride);
+        }
+    }
+    if (v1compact != v1) {
+        GHOST_CALL_GOTO(v1->fromVec(v1,v1compact,0,0),err,ret);
+        v1compact->destroy(v1compact);
+    }
+    if (v2compact != v2) {
+        v2compact->destroy(v2compact);
+    }
+    if (v3compact != v3) {
+        v3compact->destroy(v3compact);
+    }
+    
+    goto out;
+err:
+out:
+    GHOST_CALL_RETURN(ghost_cu_free(d_a));
+    GHOST_CALL_RETURN(ghost_cu_free(d_b));
+    GHOST_CALL_RETURN(ghost_cu_free(d_c));
+    cudaDeviceSynchronize();
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
+
+    return ret;
+}
+
 extern "C" ghost_error_t ghost_densemat_rm_cu_dotprod(ghost_densemat_t *vec, void *res, ghost_densemat_t *vec2)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
@@ -516,6 +653,97 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_axpby(ghost_densemat_t *v1, ghost_
         v2compact->destroy(v2compact);
     }
 
+    goto out;
+err:
+out:
+    cudaDeviceSynchronize();
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
+
+    return ret;
+}
+
+extern "C" ghost_error_t ghost_densemat_rm_cu_axpbypcz(ghost_densemat_t *v1, ghost_densemat_t *v2, void *a, void *b, ghost_densemat_t *v3, void *c)
+{
+    if (v1->traits.datatype != v2->traits.datatype || v1->traits.datatype != v3->traits.datatype)
+    {
+        ERROR_LOG("Cannot VAXPBYPCZ vectors with different data types");
+        return GHOST_ERR_NOT_IMPLEMENTED;
+    }
+    
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
+    ghost_error_t ret = GHOST_SUCCESS;
+
+    size_t sizeofdt;
+
+    ghost_datatype_size(&sizeofdt,v1->traits.datatype);
+    
+    void *v1val, *v2val, *v3val;
+    ghost_densemat_t *v1compact, *v2compact, *v3compact;
+    
+    if (v1->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+        INFO_LOG("Cloning (and compressing) v1 before operation");
+        GHOST_CALL_GOTO(v1->clone(v1,&v1compact,v1->traits.nrows,0,v1->traits.ncols,0),err,ret);
+    } else {
+        v1compact = v1;
+    }
+    if (v2->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+        INFO_LOG("Cloning (and compressing) v2 before operation");
+        GHOST_CALL_GOTO(v2->clone(v2,&v2compact,v2->traits.nrows,0,v2->traits.ncols,0),err,ret);
+    } else {
+        v2compact = v2;
+    }
+    if (v3->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+        INFO_LOG("Cloning (and compressing) v3 before operation");
+        GHOST_CALL_GOTO(v3->clone(v3,&v3compact,v3->traits.nrows,0,v3->traits.ncols,0),err,ret);
+    } else {
+        v3compact = v3;
+    }
+    GHOST_CALL_GOTO(ghost_densemat_cu_valptr(v1compact,&v1val),err,ret);
+    GHOST_CALL_GOTO(ghost_densemat_cu_valptr(v2compact,&v2val),err,ret);
+    GHOST_CALL_GOTO(ghost_densemat_cu_valptr(v3compact,&v3val),err,ret);
+    
+
+    if (v1->traits.datatype & GHOST_DT_COMPLEX)
+    {
+        if (v1->traits.datatype & GHOST_DT_DOUBLE)
+        {
+            cu_axpbypcz_kernel<cuDoubleComplex><<< (int)ceil((double)v1->traits.nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>(
+                (cuDoubleComplex *)v1val, (cuDoubleComplex *)v2val, (cuDoubleComplex *)v3val, *(cuDoubleComplex *)a,*(cuDoubleComplex *)b,
+                *(cuDoubleComplex *)c, v1->traits.nrows,v1->traits.ncols,v1->stride,v2->stride, v3->stride);
+        } 
+        else 
+        {
+            cu_axpbypcz_kernel<cuFloatComplex><<< (int)ceil((double)v1->traits.nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>(
+                (cuFloatComplex *)v1val, (cuFloatComplex *)v2val, (cuFloatComplex *)v3val, *(cuFloatComplex *)a,*(cuFloatComplex *)b,
+                *(cuFloatComplex *)c, v1->traits.nrows,v1->traits.ncols,v1->stride,v2->stride, v3->stride);
+        }
+    }
+    else
+    {
+        if (v1->traits.datatype & GHOST_DT_DOUBLE)
+        {
+            cu_axpbypcz_kernel<double><<< (int)ceil((double)v1->traits.nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>(
+                (double *)v1val, (double *)v2val, (double *)v3val, *(double *)a,*(double *)b,
+                *(double *)c, v1->traits.nrows,v1->traits.ncols,v1->stride,v2->stride, v3->stride);
+        } 
+        else 
+        {
+            cu_axpbypcz_kernel<float><<< (int)ceil((double)v1->traits.nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>(
+                (float *)v1val, (float *)v2val, (float *)v3val, *(float *)a,*(float *)b,
+                *(float *)c, v1->traits.nrows,v1->traits.ncols,v1->stride,v2->stride, v3->stride);
+        }
+    }
+    if (v1compact != v1) {
+        GHOST_CALL_GOTO(v1->fromVec(v1,v1compact,0,0),err,ret);
+        v1compact->destroy(v1compact);
+    }
+    if (v2compact != v2) {
+        v2compact->destroy(v2compact);
+    }
+    if (v3compact != v3) {
+        v3compact->destroy(v3compact);
+    }
+    
     goto out;
 err:
 out:
