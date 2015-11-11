@@ -43,18 +43,18 @@ ghost_error_t ghost_densemat_cm_setfuncs(ghost_densemat_t *vec)
     if (vec->traits.location & GHOST_LOCATION_DEVICE)
     {
 #ifdef GHOST_HAVE_CUDA
-        vec->dot = &ghost_densemat_cm_cu_dotprod;
-        vec->vaxpy = &ghost_densemat_cm_cu_vaxpy;
-        vec->vaxpby = &ghost_densemat_cm_cu_vaxpby;
-        vec->axpy = &ghost_densemat_cm_cu_axpy;
-        vec->axpby = &ghost_densemat_cm_cu_axpby;
-        vec->axpbypcz = &ghost_densemat_cm_cu_axpbypcz;
-        vec->vaxpbypcz = &ghost_densemat_cm_cu_vaxpbypcz;
-        vec->scale = &ghost_densemat_cm_cu_scale;
-        vec->vscale = &ghost_densemat_cm_cu_vscale;
-        vec->fromScalar = &ghost_densemat_cm_cu_fromScalar;
-        vec->fromRand = &ghost_densemat_cm_cu_fromRand;
-        vec->conj = &ghost_densemat_cm_cu_conj;
+        vec->dot = &ghost_densemat_cu_cm_dotprod;
+        vec->vaxpy = &ghost_densemat_cu_cm_vaxpy;
+        vec->vaxpby = &ghost_densemat_cu_cm_vaxpby;
+        vec->axpy = &ghost_densemat_cu_cm_axpy;
+        vec->axpby = &ghost_densemat_cu_cm_axpby;
+        vec->axpbypcz = &ghost_densemat_cu_cm_axpbypcz;
+        vec->vaxpbypcz = &ghost_densemat_cu_cm_vaxpbypcz;
+        vec->scale = &ghost_densemat_cu_cm_scale;
+        vec->vscale = &ghost_densemat_cu_cm_vscale;
+        vec->fromScalar = &ghost_densemat_cu_cm_fromScalar;
+        vec->fromRand = &ghost_densemat_cu_cm_fromRand;
+        vec->conj = &ghost_densemat_cu_cm_conj;
 #endif
     }
     else 
@@ -382,7 +382,7 @@ static ghost_error_t densemat_cm_halocommInit(ghost_densemat_t *vec, ghost_dense
     if (vec->context->perm_local) {
 #ifdef GHOST_HAVE_CUDA
         if (vec->traits.location & GHOST_LOCATION_DEVICE) {
-            ghost_densemat_cm_cu_communicationassembly(comm->cu_work,comm->dueptr,vec,(ghost_lidx_t *)vec->context->perm_local->cu_perm);
+            ghost_densemat_cu_cm_communicationassembly(comm->cu_work,comm->dueptr,vec,(ghost_lidx_t *)vec->context->perm_local->cu_perm);
         } else
 #endif
             if (vec->traits.location & GHOST_LOCATION_HOST) {
@@ -401,7 +401,7 @@ static ghost_error_t densemat_cm_halocommInit(ghost_densemat_t *vec, ghost_dense
     } else {
 #ifdef GHOST_HAVE_CUDA
         if (vec->traits.location & GHOST_LOCATION_DEVICE) {
-            ghost_densemat_cm_cu_communicationassembly(comm->cu_work,comm->dueptr,vec,NULL);
+            ghost_densemat_cu_cm_communicationassembly(comm->cu_work,comm->dueptr,vec,NULL);
         } else
 #endif
             if (vec->traits.location & GHOST_LOCATION_HOST) {
