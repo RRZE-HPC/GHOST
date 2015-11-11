@@ -977,6 +977,7 @@ extern "C" ghost_error_t FUNCNAME(fromRand)(ghost_densemat_t *vec)
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     ghost_error_t ret = GHOST_SUCCESS;
 
+    void *raw = NULL;
     ghost_densemat_t *onevec;
     long pid = getpid();
     double time;
@@ -1004,7 +1005,6 @@ extern "C" ghost_error_t FUNCNAME(fromRand)(ghost_densemat_t *vec)
         compactvec = vec;
     }
 
-    void *raw;
     cudaMalloc(&raw,vec->traits.nrows*vec->traits.ncols*vec->elSize);
     if (vec->traits.datatype & GHOST_DT_COMPLEX) {
         if (vec->traits.datatype & GHOST_DT_DOUBLE) {
@@ -1020,7 +1020,7 @@ extern "C" ghost_error_t FUNCNAME(fromRand)(ghost_densemat_t *vec)
         }
     }
 
-    ghost_cu_memcpy2d(compactvec->val,compactvec->traits.ncolspadded*vec->elSize,raw,vec->traits.ncols*vec->elSize,compactvec->traits.ncols,compactvec->traits.nrows);
+    ghost_cu_memcpy2d(compactvec->cu_val,compactvec->traits.ncolspadded*vec->elSize,raw,vec->traits.ncols*vec->elSize,compactvec->traits.ncols*vec->elSize,compactvec->traits.nrows);
 
     if (compactvec->traits.datatype & GHOST_DT_DOUBLE) {
         compactvec->axpby(compactvec,onevec,minusahalf,one);
@@ -1036,6 +1036,7 @@ err:
 out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
     onevec->destroy(onevec);
+    cudaFree(raw);
 
     return ret;
 }
