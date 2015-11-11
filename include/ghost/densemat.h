@@ -88,7 +88,8 @@ typedef enum
     /**
      * @brief Column-major storage (as in Fortran).
      */
-    GHOST_DENSEMAT_COLMAJOR = GHOST_BINDENSEMAT_ORDER_COL_FIRST
+    GHOST_DENSEMAT_COLMAJOR = GHOST_BINDENSEMAT_ORDER_COL_FIRST,
+    GHOST_DENSEMAT_STORAGE_DEFAULT = 2
 }
 ghost_densemat_storage_t;
 

@@ -35,7 +35,7 @@ const ghost_densemat_traits_t GHOST_DENSEMAT_TRAITS_INITIALIZER = {
     .ncolsorig = 0,
     .ncolspadded = 0,
     .flags = GHOST_DENSEMAT_DEFAULT,
-    .storage = GHOST_DENSEMAT_COLMAJOR,
+    .storage = GHOST_DENSEMAT_STORAGE_DEFAULT,
     .location = GHOST_LOCATION_DEFAULT,
     .datatype = (ghost_datatype_t)(GHOST_DT_DOUBLE|GHOST_DT_REAL)
 };
@@ -97,6 +97,15 @@ ghost_error_t ghost_densemat_create(ghost_densemat_t **vec, ghost_context_t *ctx
         DEBUG_LOG(1,"Placement given: %d",(*vec)->traits.location);
     }
 
+    if ((*vec)->traits.storage == GHOST_DENSEMAT_STORAGE_DEFAULT) {
+        if ((*vec)->traits.ncols > 1) {
+            INFO_LOG("Setting densemat storage to row-major!");
+            (*vec)->traits.storage = GHOST_DENSEMAT_ROWMAJOR;
+        } else {
+            INFO_LOG("Setting densemat storage to col-major!");
+            (*vec)->traits.storage = GHOST_DENSEMAT_COLMAJOR;
+        }
+    }
     if ((*vec)->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
         ghost_densemat_rm_setfuncs(*vec);
         (*vec)->stride = (*vec)->traits.ncolspadded;
