@@ -102,7 +102,7 @@ sub unroll {
     for (my $i=0; $i<$unrollsize; $i++) {
         my $modcodeline = $codeline;
         $modcodeline =~ s/@/$i/g;
-        $modcodeline =~ s/~([\d\+\*\/%]+)~/$1/gee; # evaulate constant expresssion between "~" markers (usually used to construct variable names)
+        $modcodeline =~ s/~([()\d\+\*\/%]+)~/$1/gee; # evaulate constant expresssion between "~" markers (usually used to construct variable names)
         $_[0] = $_[0].$spaces.$modcodeline."\n";
     }
 }
