@@ -6,8 +6,12 @@
 #error "Only one of ROWMAJOR or COLMAJOR must be defined!"
 #endif
 #define PREFIX rm
+#define GHOST_DENSEMAT_SCATTERED_ROWS GHOST_DENSEMAT_SCATTERED_TR
+#define GHOST_DENSEMAT_SCATTERED_COLS GHOST_DENSEMAT_SCATTERED_LD
 #elif defined (COLMAJOR)
 #define PREFIX cm
+#define GHOST_DENSEMAT_SCATTERED_ROWS GHOST_DENSEMAT_SCATTERED_LD
+#define GHOST_DENSEMAT_SCATTERED_COLS GHOST_DENSEMAT_SCATTERED_TR
 #else
 #error "One of ROWMAJOR or COLMAJOR must be defined!"
 #endif
@@ -202,7 +206,7 @@ static ghost_error_t FUNCNAME(viewScatteredCols(ghost_densemat_t *src, ghost_den
     newTraits.ncols = nc;
     newTraits.ncolspadded = nc;
     newTraits.flags |= (ghost_densemat_flags_t)GHOST_DENSEMAT_VIEW;
-    newTraits.flags |= (ghost_densemat_flags_t)GHOST_DENSEMAT_SCATTERED;
+    newTraits.flags |= (ghost_densemat_flags_t)GHOST_DENSEMAT_SCATTERED_COLS;
 
     ghost_densemat_create(new,src->context,newTraits);
     FUNCNAME(malloc(*new,NULL));

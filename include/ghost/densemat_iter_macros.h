@@ -16,6 +16,8 @@
 #endif
 
 #define DENSEMAT_COMPACT(vec) (!(vec->traits.flags & GHOST_DENSEMAT_SCATTERED))
+#define DENSEMAT_COMPACT_ROWS(vec) (!(vec->traits.flags & GHOST_DENSEMAT_SCATTERED_ROWS)) // subsequent rows are compact
+#define DENSEMAT_SCATTERED_COLS(vec) ((vec->traits.flags & GHOST_DENSEMAT_SCATTERED_COLS)) // subsequent cols are scattered
 #define DENSEMAT_SINGLECOL_STRIDE1(vec) (vec->traits.ncols == 1 && ((vec->traits.storage == GHOST_DENSEMAT_COLMAJOR) || ((vec->traits.storage == GHOST_DENSEMAT_ROWMAJOR) && (vec->stride == 1))))
 
 /**
@@ -219,6 +221,27 @@
                 }\
             }\
         }\
+    } else if (DENSEMAT_SCATTERED_COLS(vec1) && DENSEMAT_COMPACT_ROWS(vec1) && DENSEMAT_COMPACT(vec2)) {\
+        if (ghost_omp_in_parallel()) {\
+            DENSEMAT_ITER2_BEGIN_SCATTEREDCOLS_COMPACTROWS1_OFFS(vec1,vec2,row,col,memrow1,memrow2,memcol1,memcol2,vec2roffs,vec2coffs);\
+            valptr1 = DENSEMAT_VALPTR(vec1,row,memcol1);\
+            valptr2 = DENSEMAT_VALPTR(vec2,row+vec2roffs,memcol2+vec2coffs);\
+            cuvalptr1 = DENSEMAT_CUVALPTR(vec1,row,col);\
+            cuvalptr2 = DENSEMAT_CUVALPTR(vec2,row+vec2roffs,col+vec2coffs);\
+            call;\
+            DENSEMAT_ITER_END();\
+        } else {\
+            _Pragma("omp parallel private(col,memcol1,memcol2)")\
+            {\
+                DENSEMAT_ITER2_BEGIN_SCATTEREDCOLS_COMPACTROWS1_OFFS(vec1,vec2,row,col,memrow1,memrow2,memcol1,memcol2,vec2roffs,vec2coffs);\
+                valptr1 = DENSEMAT_VALPTR(vec1,row,memcol1);\
+                valptr2 = DENSEMAT_VALPTR(vec2,row+vec2roffs,memcol2);\
+                cuvalptr1 = DENSEMAT_CUVALPTR(vec1,row,memcol1);\
+                cuvalptr2 = DENSEMAT_CUVALPTR(vec2,row+vec2roffs,memcol2);\
+                call;\
+                DENSEMAT_ITER_END();\
+            }\
+        }\
     } else {\
         if (DENSEMAT_COMPACT(vec1)) {\
             _Pragma("omp single")\
@@ -362,6 +385,15 @@
             memcol1 = col;\
             memcol2 = col;
 
+#define DENSEMAT_ITER2_BEGIN_SCATTEREDCOLS_COMPACTROWS1_OFFS(vec1,vec2,row,col,memrow1,memrow2,memcol1,memcol2,vec2roffs,vec2coffs)\
+    memcol1 = -1;\
+    for (col = 0; col<vec1->traits.ncols; col++) {\
+        memcol1 = ghost_bitmap_next(vec1->colmask,memcol1);\
+        memcol2 = col;\
+        _Pragma("omp for schedule(runtime) private(memrow1,memrow2,valptr1,valptr2,cuvalptr1,cuvalptr2)")\
+        for (row=0; row<vec1->traits.nrows; row++) {\
+            memrow1 = row;\
+            memrow2 = row;\
 
 #ifdef ROWMAJOR
 #ifdef COLMAJOR
@@ -520,7 +552,6 @@
             valptr2 = DENSEMAT_VALPTR(vec2,memrow2+vec2roffs,memcol2+vec2coffs);\
             cuvalptr1 = DENSEMAT_CUVALPTR(vec1,row,col);\
             cuvalptr2 = DENSEMAT_CUVALPTR(vec2,memrow2+vec2roffs,memcol2+vec2coffs);\
-
 
 #else
 #error "Either COLMAJOR or ROWMAJOR has to be defined for this header!"
