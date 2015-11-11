@@ -68,7 +68,7 @@ void ghost_timing_tock(const char *tag)
 void ghost_timing_set_perfFunc(const char *prefix, const char *tag, ghost_compute_performance_func_t func, void *arg, size_t sizeofarg, const char *unit)
 {
     if (!tag) {
-        WARNING_LOG("Empty tag! This should not have happened...");
+        WARNING_LOG("Empty tag! This should not have happened... Prefix is %s",prefix);
         return;
     }
 
