@@ -53,7 +53,6 @@ ghost_error_t FUNCNAME(malloc(ghost_densemat_t *vec, int* needsInit))
     }
 
     if ((vec->traits.location & GHOST_LOCATION_DEVICE) && !vec->cu_val) {
-        INFO_LOG("alloc");
         DEBUG_LOG(2,"Allocating device side of vector");
 #ifdef GHOST_HAVE_CUDA
 #ifdef GHOST_HAVE_CUDA_PINNEDMEM
@@ -496,6 +495,9 @@ static ghost_error_t FUNCNAME(download(ghost_densemat_t * vec))
         if (vec->traits.flags & GHOST_DENSEMAT_NOT_RELOCATE) {
             WARNING_LOG("Will not download the densemat!");
             return GHOST_SUCCESS;
+        } else if (vec->traits.flags & GHOST_DENSEMAT_VIEW) {
+            WARNING_LOG("Will not download a device-only view!");
+            return GHOST_SUCCESS;
         } else {
             INFO_LOG("Setting location to HOST+DEVICE and allocating densemat on host.");
             vec->traits.location = (ghost_location_t)(GHOST_LOCATION_DEVICE|GHOST_LOCATION_HOST);
@@ -527,6 +529,9 @@ static ghost_error_t FUNCNAME(upload(ghost_densemat_t * vec))
     if (!(vec->traits.location & GHOST_LOCATION_DEVICE)) {
         if (vec->traits.flags & GHOST_DENSEMAT_NOT_RELOCATE) {
             WARNING_LOG("Will not upload the densemat!");
+            return GHOST_SUCCESS;
+        } else if (vec->traits.flags & GHOST_DENSEMAT_VIEW) {
+            WARNING_LOG("Will not upload a host-only view!");
             return GHOST_SUCCESS;
         } else {
             INFO_LOG("Setting location to HOST+DEVICE and allocating densemat on device.");
