@@ -20,7 +20,7 @@
 #include "ghost/cu_complex.h"
 #include "ghost/complex.h"
 
-#define THREADSPERBLOCK 1024
+#define THREADSPERBLOCK 512
 
 template<typename T,int CFGM, int CFGK> __global__ static void ghost_tsmm_cu_rm_cm(T * const __restrict__ x, const T * const __restrict__ v, const T * const __restrict__ w, const T alpha, const T beta, ghost_lidx_t nrows, ghost_lidx_t stridex, ghost_lidx_t stridev, ghost_lidx_t stridew)
 {
