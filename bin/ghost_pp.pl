@@ -96,7 +96,7 @@ sub unroll {
     my $codeline =  (split /#/,$_[0])[2];
     my $unrollsize = (split /#/,$_[0])[3];
     chomp($unrollsize);
-    $unrollsize =~ s/([\d]+)\*([\d]+)/$1 * $2/ge; # evaulate a*b
+    $unrollsize =~ s/([()\d\+\*\/%]+)/$1/gee;
     
     $_[0] = "";
     for (my $i=0; $i<$unrollsize; $i++) {
