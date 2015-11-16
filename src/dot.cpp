@@ -6,6 +6,7 @@
 #include "ghost/dot_plain_gen.h"
 #include "ghost/machine.h"
 #include "ghost/dot.h"
+#include "ghost/timing.h"
 
 #include <map>
 
