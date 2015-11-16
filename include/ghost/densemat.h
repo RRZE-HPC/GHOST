@@ -402,7 +402,7 @@ struct ghost_densemat_t
      *
      * @see ghost_dot()
      */
-    ghost_error_t (*dot) (ghost_densemat_t *a, void *res, ghost_densemat_t *b);
+    ghost_error_t (*localdot_vanilla) (ghost_densemat_t *a, void *res, ghost_densemat_t *b);
     /**
      * @ingroup gputransfer
      * 

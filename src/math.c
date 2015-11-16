@@ -21,7 +21,7 @@ static ghost_mpi_op_t GHOST_MPI_OP_SUM_DENSEMAT_C = MPI_OP_NULL;
 static ghost_mpi_op_t GHOST_MPI_OP_SUM_DENSEMAT_Z = MPI_OP_NULL;
 
 static void ghost_spmv_selectMode(ghost_context_t * context, ghost_spmv_flags_t *flags, ghost_sparsemat_flags_t matflags);
-
+/*
 ghost_error_t ghost_dot(void *res, ghost_densemat_t *vec, ghost_densemat_t *vec2)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
@@ -60,7 +60,7 @@ ghost_error_t ghost_dot(void *res, ghost_densemat_t *vec, ghost_densemat_t *vec2
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return GHOST_SUCCESS;
 
-}
+}*/
 
 ghost_error_t ghost_normalize(ghost_densemat_t *vec)
 {

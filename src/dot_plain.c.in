@@ -1,0 +1,41 @@
+#include "ghost/config.h"
+#include "ghost/types.h"
+#include "ghost/densemat.h"
+#include "ghost/util.h"
+#include "ghost/instr.h"
+#include "ghost/omp.h"
+#include "ghost/dot_plain_gen.h"
+
+#GHOST_FUNC_BEGIN#NVECS=${CFG_BLOCKVECTOR_SIZES}
+ghost_error_t ghost_dot__u_plain_d_cm_NVECS(void *res, ghost_densemat_t *vec1, ghost_densemat_t *vec2)
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+
+    ghost_lidx_t row, col;
+    double *r = (double *)res;
+    double sum = 0;
+
+#pragma omp parallel private(col)
+    {
+        double *v1, *v2;
+
+        for (col=0; col<NVECS; col++) {
+            sum = 0;
+            v1 = (double *)vec1->val+vec1->stride*col;
+            v2 = (double *)vec2->val+vec2->stride*col;
+
+#pragma omp for schedule(runtime) reduction (+:sum)
+            for (row=0; row<vec1->traits.nrows; row++) {
+                sum += v1[row]*v2[row];
+            }
+
+#pragma omp single
+            r[col] = sum;
+        }
+    }
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+    return GHOST_SUCCESS;
+}
+#GHOST_FUNC_END
+

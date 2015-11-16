@@ -43,7 +43,7 @@ ghost_error_t ghost_densemat_cm_setfuncs(ghost_densemat_t *vec)
     if (vec->traits.location & GHOST_LOCATION_DEVICE)
     {
 #ifdef GHOST_HAVE_CUDA
-        vec->dot = &ghost_densemat_cu_cm_dotprod;
+        vec->localdot_vanilla = &ghost_densemat_cu_cm_dotprod;
         vec->vaxpy = &ghost_densemat_cu_cm_vaxpy;
         vec->vaxpby = &ghost_densemat_cu_cm_vaxpby;
         vec->axpy = &ghost_densemat_cu_cm_axpy;
@@ -60,7 +60,7 @@ ghost_error_t ghost_densemat_cm_setfuncs(ghost_densemat_t *vec)
     else 
     {
         vec->norm = &ghost_densemat_cm_norm_selector;
-        vec->dot = &ghost_densemat_cm_dotprod_selector;
+        vec->localdot_vanilla = &ghost_densemat_cm_dotprod_selector;
         vec->vaxpy = &ghost_densemat_cm_vaxpy_selector;
         vec->vaxpby = &ghost_densemat_cm_vaxpby_selector;
         vec->axpy = &ghost_densemat_cm_axpy;

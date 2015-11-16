@@ -14,6 +14,7 @@
 #include "error.h"
 #include "tsmm.h"
 #include "tsmm_inplace.h"
+#include "dot.h"
 
 #include <stdarg.h>
 
@@ -143,7 +144,7 @@ extern "C" {
      *
      * This function first computes the local dot product ghost_densemat_t::dot and then performs an allreduce on the result.
      */
-    ghost_error_t ghost_dot(void *res, ghost_densemat_t *a, ghost_densemat_t *b);
+//    ghost_error_t ghost_dot(void *res, ghost_densemat_t *a, ghost_densemat_t *b);
     /**
      * @ingroup globops
      *

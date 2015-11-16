@@ -75,7 +75,8 @@ set (SOURCES
     src/densemat_cm_averagehalo.cpp
     src/densemat_cm.cpp 
     src/densemat_rm_averagehalo.cpp
-    src/densemat_rm.cpp 
+    src/densemat_rm.cpp
+    src/dot.cpp 
     src/errorhandler.cpp
     src/sell.cpp
     src/sell_kacz.cpp
@@ -140,6 +141,7 @@ set (HEADERS
     include/ghost/densemat_cm.h
     include/ghost/densemat_iter_macros.h
     include/ghost/densemat_rm.h
+    include/ghost/dot.h
     include/ghost/error.h
     include/ghost/errorhandler.h
     include/ghost/helper.h
@@ -215,6 +217,14 @@ configure_file (
     ${PROJECT_BINARY_DIR}/src/sell_spmv_plain.c
     )
 configure_file (
+    ${PROJECT_SOURCE_DIR}/src/dot_plain.c.in
+    ${PROJECT_BINARY_DIR}/src/dot_plain.c
+    )
+configure_file (
+    ${PROJECT_SOURCE_DIR}/src/dot_avx.c.in
+    ${PROJECT_BINARY_DIR}/src/dot_avx.c
+    )
+configure_file (
     ${PROJECT_SOURCE_DIR}/src/tsmm.c.in
     ${PROJECT_BINARY_DIR}/src/tsmm.c
     )
@@ -261,6 +271,8 @@ set (TO_PREPROCESS
     ${PROJECT_BINARY_DIR}/src/sell_spmv_sse.c
     ${PROJECT_BINARY_DIR}/src/sell_spmv_mic.c
     ${PROJECT_BINARY_DIR}/src/sell_spmv_plain.c
+    ${PROJECT_BINARY_DIR}/src/dot_avx.c
+    ${PROJECT_BINARY_DIR}/src/dot_plain.c
     ${PROJECT_BINARY_DIR}/src/tsmm.c
     ${PROJECT_BINARY_DIR}/src/tsmm_avx.c
     ${PROJECT_BINARY_DIR}/src/tsmm_sse.c

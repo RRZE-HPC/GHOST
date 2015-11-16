@@ -65,6 +65,32 @@ while (<>) {
                 print "ghost_timing_set_perfFunc(__ghost_functag,\"".$funcname_noprefix."\",ghost_spmv_perf,(void *)&spmv_perfargs,sizeof(spmv_perfargs),GHOST_SPMV_PERF_UNIT);\n";
             }
             print "}\n";
+        } elsif ($funcname eq "ghost_dot") {
+            print "{\n";
+            print $funcname."_parameters_t pars;\n";
+            print "pars.alignment = ".$alignments{$funcpars[0]}.";\n";
+            print "pars.impl = ".$implementations{$funcpars[1]}.";\n";
+            print "pars.dt = ".$datatypes{$funcpars[2]}.";\n";
+            print "pars.storage = ".$storages{$funcpars[3]}.";\n";
+            print "pars.blocksz = ".$funcpars[4].";\n";
+            print $funcname."_kernels[pars] = ".$funcname_full.";\n";
+            if ($funcpars[4] ne "x" ) {
+                print "ghost_dot_perf_args_t dot_perfargs;\n";
+                print "dot_perfargs.ncols = ".$funcpars[4].";\n";
+                print "if (vec1->context) {\n";
+                print "    dot_perfargs.globnrows = vec1->context->gnrows;\n";
+                print "} else {\n";
+                print "    dot_perfargs.globnrows = vec1->traits.nrows;\n";
+                print "}\n";
+                print "dot_perfargs.dt = vec1->traits.datatype;\n";
+                print "if (vec1 == vec2) {\n";
+                print "dot_perfargs.samevec = true;\n";
+                print "} else {\n";
+                print "dot_perfargs.samevec = false;\n";
+                print "}\n";
+                print "ghost_timing_set_perfFunc(__ghost_functag,\"".$funcname_noprefix."\",ghost_dot_perf,(void *)&dot_perfargs,sizeof(dot_perfargs),\"GB/s\");\n";
+            }
+            print "}\n";
         } elsif ($funcname eq "ghost_tsmttsm" or $funcname eq "ghost_tsmttsm_kahan") {
             print "{\n";
             print $funcname."_parameters_t pars;\n";
