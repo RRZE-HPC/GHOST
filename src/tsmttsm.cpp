@@ -155,7 +155,7 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
     // alignment of large input data
     // the alignment of the result array does not matter because we can easily re-allocate it accordingly
     int al = ghost_machine_alignment();
-    if (IS_ALIGNED(x->val,al) && IS_ALIGNED(v->val,al) && !((x->stride*x->elSize) % al) && !((v->stride*v->elSize) % al)) {
+    if (IS_ALIGNED(w->val,al) && IS_ALIGNED(v->val,al) && !((w->stride*w->elSize) % al) && !((v->stride*v->elSize) % al)) {
         p.alignment = GHOST_ALIGNED;
     } else {
         p.alignment = GHOST_UNALIGNED;
