@@ -1338,6 +1338,7 @@ ghost_error_t ghost_tsmttsm__a_plain_d_CFGK_CFGM_4_cm_cm(ghost_densemat_t *x, gh
             xval[k*ldx+j] = dbeta*xval[k*ldx+j];
         }
     }
+
 #pragma omp parallel private(j,k,t)
     {
         double *x_priv;
@@ -1348,10 +1349,12 @@ ghost_error_t ghost_tsmttsm__a_plain_d_CFGK_CFGM_4_cm_cm(ghost_densemat_t *x, gh
         for (i=0; i<=n-4; i+=4) {
             for (j=0; j<CFGM; j++) {
                 for (k=0; k<CFGK; k++) {
-#pragma simd
-                  for (t=0; t<4; t++) {
-                        x_priv[j*CFGK+k] += vval[j*ldv+i+t]*wval[k*ldw+i+t];
-                  }
+                    double tmp = 0;
+#pragma simd reduction(+:tmp)
+                     for (t=0; t<4; t++) {
+                           tmp += vval[j*ldv+i+t]*wval[k*ldw+i+t];
+                     }
+                     x_priv[j*CFGK+k] = tmp;
                 }
             }
         }
