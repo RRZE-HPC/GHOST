@@ -1341,7 +1341,7 @@ ghost_error_t ghost_tsmttsm__a_plain_d_CFGK_CFGM_4_cm_cm(ghost_densemat_t *x, gh
 #pragma omp parallel private(j,k,t)
     {
         double *x_priv;
-        ghost_malloc((void **)&x_priv,CFGM*CFGK*sizeof(double));
+        ghost_malloc_align((void **)&x_priv,CFGM*CFGK*sizeof(double),32);
         memset(x_priv,0,CFGM*CFGK*sizeof(double));
         
 #pragma omp for schedule(runtime)
