@@ -180,9 +180,9 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
     }
    
     if (!kernel) {
-        PERFWARNING_LOG("Decrease unroll size");
         while (p.unroll > 1 && !kernel) {
             p.unroll /= 2;
+            PERFWARNING_LOG("Decrease unroll size to %d",p.unroll);
             kernel = kernels[p];
         }
     }
