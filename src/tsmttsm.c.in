@@ -1307,7 +1307,7 @@ ghost_error_t ghost_tsmttsm__a_plain_d_CFGK_CFGM_4_cm_cm(ghost_densemat_t *x, gh
     ghost_lidx_t n = v->traits.nrows;
     if (n%4) {
         n+=(4-n%4);
-        INFO_LOG("Padding large dimension to %d\n",n);
+        INFO_LOG("Padding large dimension to %d",n);
     }
     INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
     
