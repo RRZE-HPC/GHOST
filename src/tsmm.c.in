@@ -228,7 +228,6 @@ ghost_error_t ghost_tsmm__a_plain_d_CFGK_CFGM_OUTERUNROLL_cm_cm(ghost_densemat_t
 #pragma unroll_and_jam(MIN(16,CFGK))
                 for (s=0; s<CFGK; s++) {
 
-#pragma vector aligned
 #pragma simd
                     for (t=0; t<OUTERUNROLL; t++) {
                         tmp[t] = 0.;
