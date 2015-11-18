@@ -80,13 +80,13 @@ static ghost_error_t ghost_cu_crsspmv_tmpl(ghost_sparsemat_t *mat, ghost_densema
         PERFWARNING_LOG("Dot product computation will be not be done on-the-fly!");
         memset(localdot,0,lhs->traits.ncols*3*sizeof(dt1));
         if (options & GHOST_SPMV_DOT_YY) {
-            lhs->dot(lhs,&localdot[0],lhs);
+            lhs->localdot_vanilla(lhs,&localdot[0],lhs);
         }
         if (options & GHOST_SPMV_DOT_XY) {
-            lhs->dot(lhs,&localdot[lhs->traits.ncols],rhs);
+            lhs->localdot_vanilla(lhs,&localdot[lhs->traits.ncols],rhs);
         }
         if (options & GHOST_SPMV_DOT_XX) {
-            rhs->dot(rhs,&localdot[2*lhs->traits.ncols],rhs);
+            rhs->localdot_vanilla(rhs,&localdot[2*lhs->traits.ncols],rhs);
         }
             
     }
@@ -148,13 +148,13 @@ static ghost_error_t ghost_cu_crsspmmv_cm_tmpl(ghost_sparsemat_t *mat, ghost_den
         PERFWARNING_LOG("Dot product computation will be not be done on-the-fly!");
         memset(localdot,0,lhs->traits.ncols*3*sizeof(dt1));
         if (options & GHOST_SPMV_DOT_YY) {
-            lhs->dot(lhs,&localdot[0],lhs);
+            lhs->localdot_vanilla(lhs,&localdot[0],lhs);
         }
         if (options & GHOST_SPMV_DOT_XY) {
-            lhs->dot(lhs,&localdot[lhs->traits.ncols],rhs);
+            lhs->localdot_vanilla(lhs,&localdot[lhs->traits.ncols],rhs);
         }
         if (options & GHOST_SPMV_DOT_XX) {
-            rhs->dot(rhs,&localdot[2*lhs->traits.ncols],rhs);
+            rhs->localdot_vanilla(rhs,&localdot[2*lhs->traits.ncols],rhs);
         }
             
     }
@@ -223,13 +223,13 @@ static ghost_error_t ghost_cu_crsspmmv_rm_tmpl(ghost_sparsemat_t *mat, ghost_den
         PERFWARNING_LOG("Dot product computation will be not be done on-the-fly!");
         memset(localdot,0,lhs->traits.ncols*3*sizeof(dt1));
         if (options & GHOST_SPMV_DOT_YY) {
-            origlhs->dot(origlhs,&localdot[0],origlhs);
+            origlhs->localdot_vanilla(origlhs,&localdot[0],origlhs);
         }
         if (options & GHOST_SPMV_DOT_XY) {
-            origlhs->dot(origlhs,&localdot[rhs->traits.ncols],rhs);
+            origlhs->localdot_vanilla(origlhs,&localdot[rhs->traits.ncols],rhs);
         }
         if (options & GHOST_SPMV_DOT_XX) {
-            rhs->dot(rhs,&localdot[2*lhs->traits.ncols],rhs);
+            rhs->localdot_vanilla(rhs,&localdot[2*lhs->traits.ncols],rhs);
         }
             
     }

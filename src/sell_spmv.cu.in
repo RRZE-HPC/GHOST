@@ -992,9 +992,9 @@ static ghost_error_t ghost_cu_sell_spmv_tmpl(ghost_sparsemat_t *mat, ghost_dense
             GHOST_INSTR_START("spmv_cuda_dot")
         PERFWARNING_LOG("Not doing the local dot product on-the-fly!");
         memset(localdot,0,rhs->traits.ncols*3*sizeof(v_dt_host));
-        lhs->dot(lhs,&localdot[0],lhs);
-        lhs->dot(lhs,&localdot[rhs->traits.ncols],rhs);
-        rhs->dot(rhs,&localdot[2*rhs->traits.ncols],rhs);
+        lhs->localdot_vanilla(lhs,&localdot[0],lhs);
+        lhs->localdot_vanilla(lhs,&localdot[rhs->traits.ncols],rhs);
+        rhs->localdot_vanilla(rhs,&localdot[2*rhs->traits.ncols],rhs);
         GHOST_INSTR_STOP("spmv_cuda_dot")
 #endif
     }
