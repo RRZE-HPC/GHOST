@@ -7,6 +7,7 @@
 #include "ghost/locality.h"
 #include "ghost/instr.h"
 #include "ghost/rand.h"
+#include "ghost/cu_sell_kernel.h"
 
 #include <cuda_runtime.h>
 #include <stdio.h>
@@ -19,6 +20,7 @@
 #include "ghost/cu_complex.h"
 
 #define DENSEMAT_DT v_t
+#define THREADSPERBLOCK 256
 
 #ifdef ROWMAJOR
 #ifdef COLMAJOR
@@ -33,12 +35,69 @@
 #error "One of ROWMAJOR or COLMAJOR must be defined!"
 #endif
 
+// macros for a 2D thread block with leading dimension along the columns
+// this access pattern might seem bad for row-major densemats, but it is
+// required for fast reduction with shuffle instructions
+#define BLOCK_ROWSTRIDE blockDim.x*gridDim.x
+#define BLOCK_ROW blockIdx.x*blockDim.x+threadIdx.x
+#define BLOCK_COL threadIdx.y
+#define BLOCK_SZ(nrows,ncols,nthr) (int)(ceil(((double)nthr/(double)ncols))),ncols,1
+#define GRID_SZ(nrows,ncols,nthr) (int)ceil(((double)(nrows*ncols)/((double )nthr))),1,1
 
 #define PASTER(x,y) x ## _ ## y
 #define EVALUATOR(x,y) PASTER(x,y)
 #define FUNCNAME(fun) EVALUATOR(ghost_densemat_cu,EVALUATOR(PREFIX,fun))
 
-#define THREADSPERBLOCK 1024
+extern __shared__ char shared[];
+
+template<typename T>  
+__global__ static void FUNCNAME(dot_kernel)(T *res, T *v1, T *v2, ghost_lidx_t nrows, ghost_lidx_t ncols, ghost_lidx_t ld1, ghost_lidx_t ld2)
+{
+    T dot;
+    zero<T>(dot);
+    int row = BLOCK_ROW;
+    int col = BLOCK_COL;
+    T * shmem = (T *)shared; // Shared mem for 32 partial sums
+
+    if (row < nrows) {
+        dot = mulConj<T>(v1[IDX(row,col,ld1)],v2[IDX(row,col,ld2)]);
+    } else {
+        zero<T>(dot);
+    }
+
+
+    dot = accu<T>(dot,ghost_shfl_down(dot, 16));
+    dot = accu<T>(dot,ghost_shfl_down(dot, 8));
+    dot = accu<T>(dot,ghost_shfl_down(dot, 4));
+    dot = accu<T>(dot,ghost_shfl_down(dot, 2));
+    dot = accu<T>(dot,ghost_shfl_down(dot, 1));
+
+    if (threadIdx.x%warpSize == 0) {
+        int wid = (threadIdx.x / warpSize) + ((blockDim.x / warpSize)*threadIdx.y);
+        shmem[wid]=dot; // Write reduced value to shared memory
+    }
+
+    __syncthreads();              // Wait for all partial reductions
+
+    //read from shared memory only if that warp existed
+    if (threadIdx.x < blockDim.x / warpSize) {
+        int lane = (threadIdx.x % warpSize) + ((blockDim.x / warpSize)*threadIdx.y);
+        dot = shmem[lane];
+    } else {
+        zero<T>(dot);
+    }
+
+    if (threadIdx.x < warpSize) {
+        dot = accu<T>(dot,ghost_shfl_down(dot, 16));
+        dot = accu<T>(dot,ghost_shfl_down(dot, 8));
+        dot = accu<T>(dot,ghost_shfl_down(dot, 4));
+        dot = accu<T>(dot,ghost_shfl_down(dot, 2));
+        dot = accu<T>(dot,ghost_shfl_down(dot, 1));
+        if (threadIdx.x == 0) {
+            res[col*gridDim.x+blockIdx.x] = dot;
+        }
+    }
+}
 
 template<typename T>  
 __global__ static void FUNCNAME(vaxpby_kernel)(T *v1, T *v2, T *a, T *b, ghost_lidx_t nrows, ghost_lidx_t ncols, ghost_lidx_t ld1, ghost_lidx_t ld2)
@@ -528,48 +587,108 @@ extern "C" ghost_error_t FUNCNAME(dotprod)(ghost_densemat_t *vec, void *res, gho
     int vec1stride = veccompact->stride;
     int vec2stride = vec2compact->stride;
 #endif
-     
-    cublasHandle_t ghost_cublas_handle;
-    GHOST_CALL_GOTO(ghost_cu_cublas_handle(&ghost_cublas_handle),err,ret); 
-    ghost_lidx_t v;
-    for (v=0; v<veccompact->traits.ncols; v++)
-    {
-        char *v1 = veccompact->cu_val+v*veccompact->elSize;
-        char *v2 = vec2compact->cu_val+v*veccompact->elSize;
-        if (vec->traits.datatype & GHOST_DT_COMPLEX)
-        {
-            if (vec->traits.datatype & GHOST_DT_DOUBLE)
-            {
-                CUBLAS_CALL_GOTO(cublasZdotc(ghost_cublas_handle,vec->traits.nrows,
-                            (const cuDoubleComplex *)v1,vec1stride,(const cuDoubleComplex *)v2,vec2stride,&((cuDoubleComplex *)res)[v]),err,ret);
-            } 
-            else 
-            {
-                CUBLAS_CALL_GOTO(cublasCdotc(ghost_cublas_handle,vec->traits.nrows,
-                            (const cuFloatComplex *)v1,vec1stride,(const cuFloatComplex *)v2,vec2stride,&((cuFloatComplex *)res)[v]),err,ret);
+
+    dim3 block(BLOCK_SZ(vec->traits.nrows,vec->traits.ncols,THREADSPERBLOCK));
+    dim3 grid(GRID_SZ(vec->traits.nrows,vec->traits.ncols,THREADSPERBLOCK));
+
+    if (vec->traits.storage == GHOST_DENSEMAT_ROWMAJOR && vec->stride > 1) {
+        if (vec->traits.datatype & GHOST_DT_COMPLEX) {
+            if (vec->traits.datatype & GHOST_DT_DOUBLE) {
+                cuDoubleComplex * partres;
+                ghost_cu_malloc((void **)&partres,vec->traits.ncols*grid.x*sizeof(complex double));
+                FUNCNAME(dot_kernel)<cuDoubleComplex><<< grid,block,block.x/32*sizeof(complex double)*block.y >>>(
+                        (cuDoubleComplex *)partres,
+                        (cuDoubleComplex *)veccompact->cu_val, (cuDoubleComplex *)vec2compact->cu_val,
+                        vec->traits.nrows,vec->traits.ncols,vec->stride,vec2->stride);
+                int col;
+                for (col=0; col<vec->traits.ncols; col++) {
+                    ghost_deviceReduceSum<cuDoubleComplex><<<1,1024,32*sizeof(complex double)>>>(&partres[col*grid.x],&partres[col],grid.x);
+                }
+                ghost_cu_download(res,partres,vec->traits.ncols*sizeof(complex double));
+            } else {
+                cuFloatComplex * partres;
+                ghost_cu_malloc((void **)&partres,vec->traits.ncols*grid.x*sizeof(complex float));
+                FUNCNAME(dot_kernel)<cuFloatComplex><<< grid,block,block.x/32*sizeof(complex float)*block.y >>>(
+                        (cuFloatComplex *)partres,
+                        (cuFloatComplex *)veccompact->cu_val, (cuFloatComplex *)vec2compact->cu_val,
+                        vec->traits.nrows,vec->traits.ncols,vec->stride,vec2->stride);
+                int col;
+                for (col=0; col<vec->traits.ncols; col++) {
+                    ghost_deviceReduceSum<cuFloatComplex><<<1,1024,32*sizeof(complex float)>>>(&partres[col*grid.x],&partres[col],grid.x);
+                }
+                ghost_cu_download(res,partres,vec->traits.ncols*sizeof(complex float));
+            }
+        } else {
+            if (vec->traits.datatype & GHOST_DT_DOUBLE) {
+                double * partres;
+                ghost_cu_malloc((void **)&partres,vec->traits.ncols*grid.x*sizeof(double));
+                FUNCNAME(dot_kernel)<double><<< grid,block,block.x/32*sizeof(double)*block.y >>>(
+                        (double *)partres,
+                        (double *)veccompact->cu_val, (double *)vec2compact->cu_val,
+                        vec->traits.nrows,vec->traits.ncols,vec->stride,vec2->stride);
+                int col;
+                for (col=0; col<vec->traits.ncols; col++) {
+                    ghost_deviceReduceSum<double><<<1,1024,32*sizeof(double)>>>(&partres[col*grid.x],&partres[col],grid.x);
+                }
+                ghost_cu_download(res,partres,vec->traits.ncols*sizeof(double));
+            } else {
+                float * partres;
+                ghost_cu_malloc((void **)&partres,vec->traits.ncols*grid.x*sizeof(float));
+                FUNCNAME(dot_kernel)<float><<< grid,block,block.x/32*sizeof(float)*block.y >>>(
+                        (float *)partres,
+                        (float *)veccompact->cu_val, (float *)vec2compact->cu_val,
+                        vec->traits.nrows,vec->traits.ncols,vec->stride,vec2->stride);
+                int col;
+                for (col=0; col<vec->traits.ncols; col++) {
+                    ghost_deviceReduceSum<float><<<1,1024,32*sizeof(float)>>>(&partres[col*grid.x],&partres[col],grid.x);
+                }
+                ghost_cu_download(res,partres,vec->traits.ncols*sizeof(float));
             }
         }
-        else
+
+    } else { 
+        cublasHandle_t ghost_cublas_handle;
+        GHOST_CALL_GOTO(ghost_cu_cublas_handle(&ghost_cublas_handle),err,ret); 
+        ghost_lidx_t v;
+        for (v=0; v<veccompact->traits.ncols; v++)
         {
-            if (vec->traits.datatype & GHOST_DT_DOUBLE)
+            char *v1 = veccompact->cu_val+v*veccompact->elSize;
+            char *v2 = vec2compact->cu_val+v*veccompact->elSize;
+            if (vec->traits.datatype & GHOST_DT_COMPLEX)
             {
-                CUBLAS_CALL_GOTO(cublasDdot(ghost_cublas_handle,vec->traits.nrows,
-                            (const double *)v1,vec1stride,(const double *)v2,vec2stride,&((double *)res)[v]),err,ret);
-            } 
-            else 
+                if (vec->traits.datatype & GHOST_DT_DOUBLE)
+                {
+                    CUBLAS_CALL_GOTO(cublasZdotc(ghost_cublas_handle,vec->traits.nrows,
+                                (const cuDoubleComplex *)v1,vec1stride,(const cuDoubleComplex *)v2,vec2stride,&((cuDoubleComplex *)res)[v]),err,ret);
+                } 
+                else 
+                {
+                    CUBLAS_CALL_GOTO(cublasCdotc(ghost_cublas_handle,vec->traits.nrows,
+                                (const cuFloatComplex *)v1,vec1stride,(const cuFloatComplex *)v2,vec2stride,&((cuFloatComplex *)res)[v]),err,ret);
+                }
+            }
+            else
             {
-                CUBLAS_CALL_GOTO(cublasSdot(ghost_cublas_handle,vec->traits.nrows,
-                            (const float *)v1,vec1stride,(const float *)v2,vec2stride,&((float *)res)[v]),err,ret);
+                if (vec->traits.datatype & GHOST_DT_DOUBLE)
+                {
+                    CUBLAS_CALL_GOTO(cublasDdot(ghost_cublas_handle,vec->traits.nrows,
+                                (const double *)v1,vec1stride,(const double *)v2,vec2stride,&((double *)res)[v]),err,ret);
+                } 
+                else 
+                {
+                    CUBLAS_CALL_GOTO(cublasSdot(ghost_cublas_handle,vec->traits.nrows,
+                                (const float *)v1,vec1stride,(const float *)v2,vec2stride,&((float *)res)[v]),err,ret);
+                }
             }
         }
     }
+    
     if (veccompact != vec) {
         veccompact->destroy(veccompact);
     }
     if (vec2compact != vec2) {
         vec2compact->destroy(vec2compact);
     }
-
     goto out;
 err:
 out:
