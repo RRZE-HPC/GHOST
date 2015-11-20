@@ -68,21 +68,20 @@ ghost_error_t ghost_localdot(void *res, ghost_densemat_t *vec1, ghost_densemat_t
     p.impl = GHOST_IMPLEMENTATION_AVX;
 #elif defined(GHOST_HAVE_SSE)
     p.impl = GHOST_IMPLEMENTATION_SSE;
-#elif defined(GHOST_HAVE_CUDA)
-    ghost_type type;
+#else
+    p.impl = GHOST_IMPLEMENTATION_PLAIN;
+#endif
+#ifdef GHOST_HAVE_CUDA
+    ghost_type_t type;
     ghost_type_get(&type);
     if (type == GHOST_TYPE_CUDA) {
         p.impl = GHOST_IMPLEMENTATION_CUDA;
     }
-#else
-    p.impl = GHOST_IMPLEMENTATION_PLAIN;
 #endif
 
     if (vec1->traits.flags & GHOST_DENSEMAT_SCATTERED || vec2->traits.flags & GHOST_DENSEMAT_SCATTERED ||
             p.impl == GHOST_IMPLEMENTATION_CUDA) {
-        PERFWARNING_LOG("Fallback to vanilla dot implementation");
-        GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
-        return vec1->localdot_vanilla(vec1,res,vec2);
+        goto out;
     }
 
     p.storage = vec1->traits.storage;
@@ -109,11 +108,27 @@ ghost_error_t ghost_localdot(void *res, ghost_densemat_t *vec1, ghost_densemat_t
 
     if (kernel) {
         ret = kernel(res,vec1,vec2);
-    } else {
-        PERFWARNING_LOG("Calling fallback dot");
-        ret = vec1->localdot_vanilla(vec1,res,vec2);
     }
 
+out:
+    if (!kernel) {
+        ghost_dot_perf_args_t dot_perfargs;
+        dot_perfargs.ncols = vec1->traits.ncols;
+        if (vec1->context) {
+            dot_perfargs.globnrows = vec1->context->gnrows;
+        } else {
+            dot_perfargs.globnrows = vec1->traits.nrows;
+        }
+        dot_perfargs.dt = vec1->traits.datatype;
+        if (vec1 == vec2) {
+            dot_perfargs.samevec = true;
+        } else {
+            dot_perfargs.samevec = false;
+        }
+        ghost_timing_set_perfFunc(NULL,__ghost_functag,ghost_dot_perf,(void *)&dot_perfargs,sizeof(dot_perfargs),"GB/s");
+        PERFWARNING_LOG("Fallback to vanilla dot implementation");
+        ret = vec1->localdot_vanilla(vec1,res,vec2);
+    }
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
     return ret;
