@@ -60,6 +60,25 @@ __device__ inline void fromReal<cuFloatComplex,float>(cuFloatComplex &val, float
     val = make_cuFloatComplex(real,0.f);
 }
 
+// val += val2
+template<typename t>
+__device__ inline t accu(t val, t val2)
+{
+    return val+val2;
+}
+
+template<>
+__device__ inline cuFloatComplex accu<cuFloatComplex>(cuFloatComplex val, cuFloatComplex val2)
+{
+    return cuCaddf(val,val2);
+}
+
+template<>
+__device__ inline cuDoubleComplex accu<cuDoubleComplex>(cuDoubleComplex val, cuDoubleComplex val2)
+{
+    return cuCadd(val,val2);
+}
+
 // val += val2*val3
 template<typename T, typename T2>
 __device__ inline T axpy(T val, T val2, T2 val3)
