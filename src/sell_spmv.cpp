@@ -432,13 +432,14 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
         p.storage = GHOST_DENSEMAT_COLMAJOR;
     }
 
-/*    if (p.impl >= GHOST_IMPLEMENTATION_AVX && 
+/*    
+    if (p.impl >= GHOST_IMPLEMENTATION_AVX && 
             p.storage == GHOST_DENSEMAT_ROWMAJOR && p.blocksz == 2 && 
-            !(rhs->traits.datatype & GHOST_DT_COMPLEX)) {
+            !(rhs->traits.datatype & GHOST_DT_COMPLEX) && 
+            lhs->traits.ncolspadded == 2 && rhs->traits.ncolspadded == 2) {
         PERFWARNING_LOG("Chose SSE over AVX for blocksz=2");
         p.impl = GHOST_IMPLEMENTATION_SSE;
     }
-    
     if (p.impl >= GHOST_IMPLEMENTATION_AVX && 
             p.storage == GHOST_DENSEMAT_ROWMAJOR && p.blocksz == 1) {
         if (rhs->traits.datatype & GHOST_DT_COMPLEX) {
@@ -496,9 +497,26 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
     }
 
     int al = ghost_machine_alignment();
+#if defined(GHOST_HAVE_AVX) || defined(GHOST_HAV_AVX2)
+    if (p.impl == GHOST_IMPLEMENTATION_SSE) { // there may be a fallback to SSE
+        al /= 2;
+    }
+#endif
     if (IS_ALIGNED(lhs->val,al) && IS_ALIGNED(rhs->val,al) && ((lhs->traits.ncols == 1) || (!((lhs->stride*lhs->elSize) % al) && !((rhs->stride*rhs->elSize) % al)))) {
         p.alignment = GHOST_ALIGNED;
     } else {
+        if (!IS_ALIGNED(lhs->val,al)) {
+            PERFWARNING_LOG("Using unaligned kernel because base address of result vector is not aligned");
+        }
+        if (!IS_ALIGNED(rhs->val,al)) {
+            PERFWARNING_LOG("Using unaligned kernel because base address of input vector is not aligned");
+        }
+        if (lhs->stride*lhs->elSize % al) {
+            PERFWARNING_LOG("Using unaligned kernel because stride of result vector does not yield aligned addresses");
+        }
+        if (rhs->stride*lhs->elSize % al) {
+            PERFWARNING_LOG("Using unaligned kernel because stride of input vector does not yield aligned addresses");
+        }
         p.alignment = GHOST_UNALIGNED;
     }
     /*if (lhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR && p.blocksz > 1 && p.blocksz % 4) {
@@ -516,6 +534,12 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
 
 
     ghost_spmv_kernel_t kernel = ghost_sellspmv_kernels[p];
+    
+    if (!kernel) {
+        PERFWARNING_LOG("Try plain implementation");
+        p.impl = GHOST_IMPLEMENTATION_PLAIN;
+    }
+    kernel = ghost_sellspmv_kernels[p];
 
     if (!kernel) {
         PERFWARNING_LOG("Try kernel with arbitrary blocksz because blocksz %d is not available.",p.blocksz);
