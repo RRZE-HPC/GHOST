@@ -329,7 +329,7 @@ ghost_error_t ghost_sellspmv__a_plain_z_z_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *ma
     ghost_densemat_t *z = NULL;
     unsigned clsize;
     ghost_machine_cacheline_size(&clsize);
-    int pad = (int) clsize/sizeof(complex double);
+    int pad = (int) clsize;///sizeof(complex double);
 
     GHOST_SPMV_PARSE_ARGS(spmvmOptions,argp,scale,beta,shift,local_dot_product,z,delta,eta,complex double,
             complex double);
