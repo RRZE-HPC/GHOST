@@ -43,7 +43,7 @@ ghost_error_t ghost_dot__u_avx_d_rm_NVECS(void *res, ghost_densemat_t *vec1, gho
 
 #pragma omp for schedule(runtime)
         for (row=0; row<vec1->traits.nrows; row++) {
-            #GHOST_UNROLL#partres@ = _mm256_add_pd(partres@,_mm256_mul_pd(_mm256_load_pd(&v1[vec1->stride*row+@*4]),_mm256_loadu_pd(&v2[vec2->stride*row+@*4])));#(NVECS+3)/4
+            #GHOST_UNROLL#partres@ = _mm256_add_pd(partres@,_mm256_mul_pd(_mm256_loadu_pd(&v1[vec1->stride*row+@*4]),_mm256_loadu_pd(&v2[vec2->stride*row+@*4])));#(NVECS+3)/4
         }
 
         __m128d l,h;
