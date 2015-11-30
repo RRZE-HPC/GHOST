@@ -39,3 +39,36 @@ ghost_error_t ghost_dot__u_plain_d_cm_NVECS(void *res, ghost_densemat_t *vec1, g
 }
 #GHOST_FUNC_END
 
+#GHOST_FUNC_BEGIN#NVECS=${CFG_BLOCKVECTOR_SIZES}
+ghost_error_t ghost_dot__u_plain_z_cm_NVECS(void *res, ghost_densemat_t *vec1, ghost_densemat_t *vec2)
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+
+    ghost_lidx_t row, col;
+    complex double *r = (complex double *)res;
+
+#pragma omp parallel private(col)
+    {
+        complex double sum = 0;
+        complex double *v1, *v2;
+
+        for (col=0; col<NVECS; col++) {
+            r[col] = 0;
+            sum = 0;
+            v1 = (complex double *)vec1->val+vec1->stride*col;
+            v2 = (complex double *)vec2->val+vec2->stride*col;
+
+#pragma omp for schedule(runtime)
+            for (row=0; row<vec1->traits.nrows; row++) {
+                sum += conj(v1[row])*v2[row];
+            }
+
+#pragma omp critical
+            r[col] += sum;
+        }
+    }
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+    return GHOST_SUCCESS;
+}
+#GHOST_FUNC_END
