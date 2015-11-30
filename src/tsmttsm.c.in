@@ -1354,7 +1354,7 @@ ghost_error_t ghost_tsmttsm__a_plain_d_CFGK_CFGM_4_cm_cm(ghost_densemat_t *x, gh
                      for (t=0; t<4; t++) {
                            tmp += vval[j*ldv+i+t]*wval[k*ldw+i+t];
                      }
-                     x_priv[j*CFGK+k] = tmp;
+                     x_priv[j*CFGK+k] += tmp;
                 }
             }
         }
