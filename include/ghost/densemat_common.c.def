@@ -57,10 +57,9 @@ ghost_error_t FUNCNAME(malloc(ghost_densemat_t *vec, int* needsInit))
 #ifdef GHOST_HAVE_CUDA
 #ifdef GHOST_HAVE_CUDA_PINNEDMEM
         WARNING_LOG("CUDA pinned memory is disabled");
-        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&vec->cu_val,vec->traits.nrowshalopadded*vec->traits.ncolspadded*vec->elSize));
-#else
-        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&vec->cu_val,vec->traits.nrowshalopadded*vec->traits.ncolspadded*vec->elSize));
 #endif
+        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&vec->cu_val,vec->traits.nrowshalopadded*vec->traits.ncolspadded*vec->elSize));
+        DEBUG_LOG(1,"Malloc %zu bytes on CUDA device: %p",vec->traits.nrowshalopadded*vec->traits.ncolspadded*vec->elSize,vec->cu_val);
         if( needsInit )
           *needsInit |= 2;
 #endif
