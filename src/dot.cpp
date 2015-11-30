@@ -57,6 +57,7 @@ ghost_error_t ghost_localdot(void *res, ghost_densemat_t *vec1, ghost_densemat_t
 
     memset(res,0,vec1->traits.ncols*vec2->elSize);
 
+    int al = ghost_machine_alignment();
     ghost_dot_parameters_t p;
     p.dt = vec1->traits.datatype;
     p.alignment = GHOST_ALIGNED;
@@ -87,7 +88,6 @@ ghost_error_t ghost_localdot(void *res, ghost_densemat_t *vec1, ghost_densemat_t
     p.storage = vec1->traits.storage;
     p.blocksz = vec1->traits.ncols;
 
-    int al = ghost_machine_alignment();
     if (IS_ALIGNED(vec1->val,al) && IS_ALIGNED(vec2->val,al) && !((vec1->stride*vec1->elSize) % al) && !((vec2->stride*vec2->elSize) % al)) {
         p.alignment = GHOST_ALIGNED;
     } else {
