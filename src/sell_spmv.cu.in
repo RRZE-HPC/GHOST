@@ -55,6 +55,10 @@ static char boolstr[256];
 ${SELL_CU_SPMV_SWITCHCASCADE}\
 if (do_fallback) {\
     if (rhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {\
+        block.x*=block.y;/* ignore special thread mapping for nvecs=32 */\
+        block.y= 1;\
+        block.x/=2; /* Otherwise, too many registers per thread! */\
+        grid.x*=2;\
         ghost_cu_free(cu_localdot);\
         GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(dt2)\
                     *rhs->traits.ncols*3*grid.x));\
@@ -918,7 +922,7 @@ static ghost_error_t ghost_cu_sell_spmv_tmpl(ghost_sparsemat_t *mat, ghost_dense
     } else if (rhs->traits.ncols == 32) {
         DEBUG_LOG(1,"Experimental row-major CUDA SELL-SpMMV");
         block.x = 32;
-        block.y = SELL_CUDA_THREADSPERBLOCK/block.x;
+        block.y = 32;
         grid.x = (int)ceil(mat->nrows/((double)block.y*block.x/rhs->traits.ncols));
         grid.y = (int)(ceil(rhs->traits.ncols/(double)MAX_COLS_PER_BLOCK));
         if (flags & GHOST_SPMV_DOT_ANY) {
