@@ -436,14 +436,15 @@ struct ghost_densemat_t
      * Malloc's memory for the densemat's values if this hasn't happened before.
      *
      * @param vec The densemat.
-     * @param fp The function pointer. The function takes three arguments: The
-     *  row index, the column index and a pointer to where to store the value at 
-     *  this position.
+     * @param fp The function pointer. The function takes four arguments: The
+     *  row index, the column index, a pointer to where to store the value at 
+     *  this position and a pointer to an arbitrary argument.
+     *  @param arg The argument which should be forwarded to the callback.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t (*fromFunc) (ghost_densemat_t *vec, int (*fp)(ghost_gidx_t, 
-                ghost_lidx_t, void *));
+                ghost_lidx_t, void *, void *), void *arg);
     /**
      * @ingroup denseinit
      *

@@ -28,7 +28,7 @@
 #include "ghost/densemat_iter_macros.h"
 #include "ghost/densemat_common.c.def"
 
-static ghost_error_t vec_cm_fromFunc(ghost_densemat_t *vec, int (*fp)(ghost_gidx_t, ghost_lidx_t, void *));
+static ghost_error_t vec_cm_fromFunc(ghost_densemat_t *vec, int (*fp)(ghost_gidx_t, ghost_lidx_t, void *, void *), void *arg);
 static ghost_error_t ghost_distributeVector(ghost_densemat_t *vec, ghost_densemat_t *nodeVec);
 static ghost_error_t ghost_collectVectors(ghost_densemat_t *vec, ghost_densemat_t *totalVec); 
 static ghost_error_t ghost_cloneVector(ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nr, ghost_lidx_t roffs, ghost_lidx_t nc, ghost_lidx_t coffs);
@@ -107,7 +107,7 @@ ghost_error_t ghost_densemat_cm_setfuncs(ghost_densemat_t *vec)
 }
 
 
-static ghost_error_t vec_cm_fromFunc(ghost_densemat_t *vec, int (*fp)(ghost_gidx_t, ghost_lidx_t, void *))
+static ghost_error_t vec_cm_fromFunc(ghost_densemat_t *vec, int (*fp)(ghost_gidx_t, ghost_lidx_t, void *, void *), void *arg)
 {
     int rank;
     ghost_gidx_t offset;
@@ -124,9 +124,9 @@ static ghost_error_t vec_cm_fromFunc(ghost_densemat_t *vec, int (*fp)(ghost_gidx
 
     if (vec->traits.location & GHOST_LOCATION_HOST) { // vector is stored on host
         if( needInit ) {
-          DENSEMAT_ITER_INIT(vec,fp(offset+row,col,valptr));
+          DENSEMAT_ITER_INIT(vec,fp(offset+row,col,valptr,arg));
         } else {
-          DENSEMAT_ITER(vec,fp(offset+row,col,valptr));
+          DENSEMAT_ITER(vec,fp(offset+row,col,valptr,arg));
         }
         vec->upload(vec);
     } else {
@@ -136,7 +136,7 @@ static ghost_error_t vec_cm_fromFunc(ghost_densemat_t *vec, int (*fp)(ghost_gidx
         htraits.location = GHOST_LOCATION_HOST;
         htraits.flags &= (ghost_densemat_flags_t)~GHOST_DENSEMAT_VIEW;
         GHOST_CALL_RETURN(ghost_densemat_create(&hostVec,vec->context,htraits));
-        GHOST_CALL_RETURN(hostVec->fromFunc(hostVec,fp));
+        GHOST_CALL_RETURN(hostVec->fromFunc(hostVec,fp,arg));
         GHOST_CALL_RETURN(vec->fromVec(vec,hostVec,0,0));
         hostVec->destroy(hostVec);
     }
