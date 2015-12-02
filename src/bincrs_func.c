@@ -67,7 +67,7 @@ int ghost_sparsemat_rowfunc_bincrs(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost
         
 
         if ((ghost_datatype_t)(header.datatype) != matdt) { 
-            ERROR_LOG("Casting not yet implemented!");
+            ERROR_LOG("Value casting not implemented! Adjust your sparsemat datatype to match the file!");
             return 1;
         }
         if (header.symmetry != GHOST_BINCRS_SYMM_GENERAL) {
