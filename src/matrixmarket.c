@@ -113,13 +113,13 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gid
                 if (matdt & GHOST_DT_DOUBLE) {
                     fscanf(f, "%"PRGIDX" %"PRGIDX" %lg %lg\n", &readcol,&readrow,(double *)value,(double *)(value+dtsize/2));
                 } else {
-                    fscanf(f, "%"PRGIDX" %"PRGIDX" %g %g\n", &readcol,&readrow,(double *)value,(double *)(value+dtsize/2));
+                    fscanf(f, "%"PRGIDX" %"PRGIDX" %g %g\n", &readcol,&readrow,(float *)value,(float *)(value+dtsize/2));
                 }
             } else {
                 if (matdt & GHOST_DT_DOUBLE) {
                     fscanf(f, "%"PRGIDX" %"PRGIDX" %lg\n", &readcol,&readrow,(double *)value);
                 } else {
-                    fscanf(f, "%"PRGIDX" %"PRGIDX" %g\n", &readcol,&readrow,(double *)value);
+                    fscanf(f, "%"PRGIDX" %"PRGIDX" %g\n", &readcol,&readrow,(float *)value);
                 }
             }
             readcol--;
@@ -150,13 +150,13 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gid
                     if (matdt & GHOST_DT_DOUBLE) {
                         fscanf(f, "%"PRGIDX" %"PRGIDX" %lg %lg\n", &readcol,&readrow,(double *)value,(double *)(value+dtsize/2));
                     } else {
-                        fscanf(f, "%"PRGIDX" %"PRGIDX" %g %g\n", &readcol,&readrow,(double *)value,(double *)(value+dtsize/2));
+                        fscanf(f, "%"PRGIDX" %"PRGIDX" %g %g\n", &readcol,&readrow,(float *)value,(float *)(value+dtsize/2));
                     }
                 } else {
                     if (matdt & GHOST_DT_DOUBLE) {
                         fscanf(f, "%"PRGIDX" %"PRGIDX" %lg\n", &readcol,&readrow,(double *)value);
                     } else {
-                        fscanf(f, "%"PRGIDX" %"PRGIDX" %g\n", &readcol,&readrow,(double *)value);
+                        fscanf(f, "%"PRGIDX" %"PRGIDX" %g\n", &readcol,&readrow,(float *)value);
                     }
                 }
                 readrow--;
@@ -305,13 +305,13 @@ int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx_t row, ghost_lidx_t *rowlen,
                 if (matdt & GHOST_DT_DOUBLE) {
                     fscanf(f, "%"PRGIDX" %"PRGIDX" %lg %lg\n", &readcol,&readrow,(double *)value,(double *)(value+dtsize/2));
                 } else {
-                    fscanf(f, "%"PRGIDX" %"PRGIDX" %g %g\n", &readcol,&readrow,(double *)value,(double *)(value+dtsize/2));
+                    fscanf(f, "%"PRGIDX" %"PRGIDX" %g %g\n", &readcol,&readrow,(float *)value,(float *)(value+dtsize/2));
                 }
             } else {
                 if (matdt & GHOST_DT_DOUBLE) {
                     fscanf(f, "%"PRGIDX" %"PRGIDX" %lg\n", &readcol,&readrow,(double *)value);
                 } else {
-                    fscanf(f, "%"PRGIDX" %"PRGIDX" %g\n", &readcol,&readrow,(double *)value);
+                    fscanf(f, "%"PRGIDX" %"PRGIDX" %g\n", &readcol,&readrow,(float *)value);
                 }
             }
             readcol--;
@@ -342,13 +342,13 @@ int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx_t row, ghost_lidx_t *rowlen,
                     if (matdt & GHOST_DT_DOUBLE) {
                         fscanf(f, "%"PRGIDX" %"PRGIDX" %lg %lg\n", &readcol,&readrow,(double *)value,(double *)(value+dtsize/2));
                     } else {
-                        fscanf(f, "%"PRGIDX" %"PRGIDX" %g %g\n", &readcol,&readrow,(double *)value,(double *)(value+dtsize/2));
+                        fscanf(f, "%"PRGIDX" %"PRGIDX" %g %g\n", &readcol,&readrow,(float *)value,(float *)(value+dtsize/2));
                     }
                 } else {
                     if (matdt & GHOST_DT_DOUBLE) {
                         fscanf(f, "%"PRGIDX" %"PRGIDX" %lg\n", &readcol,&readrow,(double *)value);
                     } else {
-                        fscanf(f, "%"PRGIDX" %"PRGIDX" %g\n", &readcol,&readrow,(double *)value);
+                        fscanf(f, "%"PRGIDX" %"PRGIDX" %g\n", &readcol,&readrow,(float *)value);
                     }
                 }
                 readrow--;
