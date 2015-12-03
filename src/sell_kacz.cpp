@@ -45,16 +45,16 @@ static ghost_error_t sell_kacz(ghost_sparsemat_t *mat, ghost_densemat_t *x, ghos
 
     
     for (color=firstcolor; color!=lastcolor; color+=stride) {
-        fchunk = mat->color_ptr[color]/sellmat->chunkHeight;
-        lchunk = mat->color_ptr[color+1]/sellmat->chunkHeight;
+        fchunk = mat->color_ptr[color]/mat->traits.C;
+        lchunk = mat->color_ptr[color+1]/mat->traits.C;
 #pragma omp parallel
         { 
             m_t *rownorm;
-            ghost_malloc((void **)&rownorm,sellmat->chunkHeight*sizeof(m_t));
+            ghost_malloc((void **)&rownorm,mat->traits.C*sizeof(m_t));
 #pragma omp for private(j,row,rowinchunk)
             for (c=fchunk; c<lchunk; c++) {
-                for (rowinchunk = 0; rowinchunk < sellmat->chunkHeight; rowinchunk++) {
-                    row = rowinchunk + c*sellmat->chunkHeight;
+                for (rowinchunk = 0; rowinchunk < mat->traits.C; rowinchunk++) {
+                    row = rowinchunk + c*mat->traits.C;
                     rownorm[rowinchunk] = 0.;
 
                     ghost_lidx_t idx = sellmat->chunkStart[c]+rowinchunk;
@@ -63,15 +63,15 @@ static ghost_error_t sell_kacz(ghost_sparsemat_t *mat, ghost_densemat_t *x, ghos
                     for (j=0; j<sellmat->rowLen[row]; j++) {
                         scal += (v_t)mval[idx] * xval[sellmat->col[idx]];
                         rownorm[rowinchunk] += mval[idx]*mval[idx];
-                        idx += sellmat->chunkHeight;
+                        idx += mat->traits.C;
                     }
 
-                    idx -= sellmat->chunkHeight*sellmat->rowLen[row];
+                    idx -= mat->traits.C*sellmat->rowLen[row];
                     scal /= (v_t)rownorm[rowinchunk];
 
                     for (j=0; j<sellmat->rowLen[row]; j++) {
                         xval[sellmat->col[idx]] = xval[sellmat->col[idx]] - (*omega) * scal * (v_t)mval[idx];
-                        idx += sellmat->chunkHeight;
+                        idx += mat->traits.C;
                     }
                 }
             }
@@ -85,7 +85,7 @@ static ghost_error_t sell_kacz(ghost_sparsemat_t *mat, ghost_densemat_t *x, ghos
 
 ghost_error_t ghost_sell_kacz(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, void *omega, int forward)
 {
-    if (mat->traits->datatype != lhs->traits.datatype || lhs->traits.datatype != rhs->traits.datatype) {
+    if (mat->traits.datatype != lhs->traits.datatype || lhs->traits.datatype != rhs->traits.datatype) {
         WARNING_LOG("Mixed data types not yet implemented!");
     }
 

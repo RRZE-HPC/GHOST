@@ -68,9 +68,6 @@ set(GHOST_LOG_ONLY_FIRST_OCCURENCE ${LOG_ONLY_FIRST_OCCURENCE})
 set(GHOST_LOG_MPIRANK ${LOG_MPIRANK})
 
 set (SOURCES
-    src/crs.cpp
-    src/crs_kacz.cpp
-    src/crs_spmv.cpp
     src/datatransfers.cpp 
     src/densemat_cm_averagehalo.cpp
     src/densemat_cm.cpp 
@@ -95,7 +92,6 @@ set (SOURCES
     src/carp.c
     src/context.c
     src/core.c
-    src/crs.c 
     src/cu_util.c
     src/densemat.c
     src/densemat_cm.c 
@@ -135,7 +131,6 @@ set (HEADERS
     include/ghost/complex.h
     include/ghost/context.h
     include/ghost/core.h
-    include/ghost/crs.h
     include/ghost/cu_util.h
     include/ghost/densemat.h
     include/ghost/densemat_cm.h
@@ -175,7 +170,7 @@ set (HEADERS
 string(REPLACE "," ";" CFG_SELL_CHUNKHEIGHTS_LIST ${CFG_SELL_CHUNKHEIGHTS})
 string(REPLACE "," ";" CFG_BLOCKVECTOR_SIZES_LIST ${CFG_BLOCKVECTOR_SIZES})
 
-set(SELL_CU_SPMV_SWITCHCASCADE "bool do_fallback = false;\\\nswitch \(SELL(mat)->chunkHeight) {\\\n")
+set(SELL_CU_SPMV_SWITCHCASCADE "bool do_fallback = false;\\\nswitch \(mat->traits.C) {\\\n")
 foreach (SELL_CHUNKHEIGHT ${CFG_SELL_CHUNKHEIGHTS_LIST})
     set(SELL_CU_SPMV_SWITCHCASCADE "${SELL_CU_SPMV_SWITCHCASCADE}    case ${SELL_CHUNKHEIGHT}:\\\n")
     set(SELL_CU_SPMV_SWITCHCASCADE "${SELL_CU_SPMV_SWITCHCASCADE}        switch \(rhs->traits.ncols) {\\\n")
@@ -189,7 +184,7 @@ foreach (SELL_CHUNKHEIGHT ${CFG_SELL_CHUNKHEIGHTS_LIST})
     endforeach() 
     set(SELL_CU_SPMV_SWITCHCASCADE "${SELL_CU_SPMV_SWITCHCASCADE}            default:\\\n                PERFWARNING_LOG(\"Non-configured ncols %d!\",rhs->traits.ncols);\\\n                do_fallback = true;\\\n        }\\\n        break;\\\n")
 endforeach()
-set(SELL_CU_SPMV_SWITCHCASCADE "${SELL_CU_SPMV_SWITCHCASCADE}    default:\\\n        PERFWARNING_LOG(\"Non-configured chunk height: %d!\",SELL(mat)->chunkHeight);\\\n        do_fallback = true;\\\n}\\\n")
+set(SELL_CU_SPMV_SWITCHCASCADE "${SELL_CU_SPMV_SWITCHCASCADE}    default:\\\n        PERFWARNING_LOG(\"Non-configured chunk height: %d!\",mat->traits.C);\\\n        do_fallback = true;\\\n}\\\n")
 
 configure_file(
     ${PROJECT_SOURCE_DIR}/src/sell_spmv.cu.in
@@ -438,7 +433,7 @@ if (USE_CUDA)
         cuda_compile(SELL_KERNEL_CU_O ${PROJECT_BINARY_DIR}/src/sell_spmv.cu OPTIONS -DMPICH_IGNORE_CXX_SEEK)
         cuda_compile(DENSEMAT_CM_CU_O src/densemat_cm.cu OPTIONS -DMPICH_IGNORE_CXX_SEEK)
         cuda_compile(DENSEMAT_RM_CU_O src/densemat_rm.cu OPTIONS -DMPICH_IGNORE_CXX_SEEK)
-        cuda_compile(CRS_CU_O src/crs.cu OPTIONS -DMPICH_IGNORE_CXX_SEEK)
+        cuda_compile(CRS_CU_O src/sell-1_spmv.cu OPTIONS -DMPICH_IGNORE_CXX_SEEK)
         cuda_compile(TSMM_CU_O ${PROJECT_BINARY_DIR}/src_pp/tsmm_cu.cu OPTIONS -DMPICH_IGNORE_CXX_SEEK)
         set (SOURCES 
             ${SOURCES}

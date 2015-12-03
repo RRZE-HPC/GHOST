@@ -114,7 +114,7 @@ static ghost_error_t ghost_vspmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, 
     va_copy(argp_backup,argp);
     DEBUG_LOG(1,"Performing SpMV");
     ghost_spmvsolver_t solver = NULL;
-    ghost_spmv_selectMode(mat->context,flags,mat->traits->flags);
+    ghost_spmv_selectMode(mat->context,flags,mat->traits.flags);
     if (*flags & GHOST_SPMV_MODE_VECTOR) {
         solver = &ghost_spmv_vectormode;
     } else if (*flags & GHOST_SPMV_MODE_OVERLAP) {

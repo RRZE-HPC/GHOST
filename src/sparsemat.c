@@ -1,7 +1,6 @@
 #define _GNU_SOURCE
 #include "ghost/config.h"
 #include "ghost/types.h"
-#include "ghost/crs.h"
 #include "ghost/sell.h"
 #include "ghost/sparsemat.h"
 #include "ghost/context.h"
@@ -27,10 +26,10 @@ const ghost_sparsemat_src_rowfunc_t GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER = {
     
 
 const ghost_sparsemat_traits_t GHOST_SPARSEMAT_TRAITS_INITIALIZER = {
-    .format = GHOST_SPARSEMAT_CRS,
     .flags = GHOST_SPARSEMAT_DEFAULT,
     .symmetry = GHOST_SPARSEMAT_SYMM_GENERAL,
-    .aux = NULL,
+    .T = 1,
+    .C = 32,
     .scotchStrat = (char*)GHOST_SCOTCH_STRAT_DEFAULT,
     .sortScope = 1,
     .datatype = (ghost_datatype_t) (GHOST_DT_DOUBLE|GHOST_DT_REAL),
@@ -46,7 +45,15 @@ ghost_error_t ghost_sparsemat_create(ghost_sparsemat_t ** mat, ghost_context_t *
     GHOST_CALL_GOTO(ghost_rank(&me, context->mpicomm),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)mat,sizeof(ghost_sparsemat_t)),err,ret);
 
-    (*mat)->traits = traits;
+    (*mat)->traits = traits[0];
+    if (nTraits == 3) {
+        (*mat)->splittraits[0] = traits[1];
+        (*mat)->splittraits[1] = traits[2];
+    } else {
+        (*mat)->splittraits[0] = traits[0];
+        (*mat)->splittraits[1] = traits[0];
+    }
+
     (*mat)->context = context;
     (*mat)->localPart = NULL;
     (*mat)->remotePart = NULL;
@@ -60,7 +67,6 @@ ghost_error_t ghost_sparsemat_create(ghost_sparsemat_t ** mat, ghost_context_t *
     (*mat)->fromFile = &ghost_sparsemat_from_bincrs;
     (*mat)->fromMM = &ghost_sparsemat_from_mm;
     (*mat)->fromCRS = &ghost_sparsemat_from_crs;
-    (*mat)->auxString = NULL;
     (*mat)->formatName = NULL;
     (*mat)->rowLen = NULL;
     (*mat)->byteSize = NULL;
@@ -91,29 +97,18 @@ ghost_error_t ghost_sparsemat_create(ghost_sparsemat_t ** mat, ghost_context_t *
     (*mat)->ncolors = 0;
     (*mat)->color_ptr = NULL;
 
-    if ((*mat)->traits->sortScope == GHOST_SPARSEMAT_SORT_GLOBAL) {
-        (*mat)->traits->sortScope = (*mat)->context->gnrows;
-    } else if ((*mat)->traits->sortScope == GHOST_SPARSEMAT_SORT_LOCAL) {
-        (*mat)->traits->sortScope = (*mat)->nrows;
+    if ((*mat)->traits.sortScope == GHOST_SPARSEMAT_SORT_GLOBAL) {
+        (*mat)->traits.sortScope = (*mat)->context->gnrows;
+    } else if ((*mat)->traits.sortScope == GHOST_SPARSEMAT_SORT_LOCAL) {
+        (*mat)->traits.sortScope = (*mat)->nrows;
     }
 
 #ifdef GHOST_GATHER_SPARSEMAT_GLOBAL_STATISTICS
     GHOST_CALL_GOTO(ghost_malloc((void **)&((*mat)->nzDist),sizeof(ghost_gidx_t)*(2*context->gnrows-1)),err,ret);
 #endif
-    GHOST_CALL_GOTO(ghost_datatype_size(&(*mat)->elSize,(*mat)->traits->datatype),err,ret);
+    GHOST_CALL_GOTO(ghost_datatype_size(&(*mat)->elSize,(*mat)->traits.datatype),err,ret);
 
-    switch (traits->format) {
-        case GHOST_SPARSEMAT_CRS:
-            GHOST_CALL_GOTO(ghost_crs_init(*mat),err,ret);
-            break;
-        case GHOST_SPARSEMAT_SELL:
-            GHOST_CALL_GOTO(ghost_sell_init(*mat),err,ret);
-            break;
-        default:
-            WARNING_LOG("Invalid sparse matrix format. Falling back to CRS!");
-            traits->format = GHOST_SPARSEMAT_CRS;
-            GHOST_CALL_GOTO(ghost_crs_init(*mat),err,ret);
-    }
+    GHOST_CALL_GOTO(ghost_sell_init(*mat),err,ret);
 
     goto out;
 err:
@@ -172,29 +167,29 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
     mat->lowerBandwidth = 0;
     mat->upperBandwidth = 0;
     
-    if (mat->traits->flags & GHOST_SPARSEMAT_SCOTCHIFY) {
-        mat->traits->flags |= (ghost_sparsemat_flags_t)GHOST_SPARSEMAT_PERMUTE;
+    if (mat->traits.flags & GHOST_SPARSEMAT_SCOTCHIFY) {
+        mat->traits.flags |= (ghost_sparsemat_flags_t)GHOST_SPARSEMAT_PERMUTE;
     }
 
-    if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
-        if (mat->traits->flags & GHOST_SPARSEMAT_SCOTCHIFY) {
+    if (mat->traits.flags & GHOST_SPARSEMAT_PERMUTE) {
+        if (mat->traits.flags & GHOST_SPARSEMAT_SCOTCHIFY) {
             ghost_sparsemat_perm_scotch(mat,(void *)src,GHOST_SPARSEMAT_SRC_FUNC);
         } 
-        if (mat->traits->flags & GHOST_SPARSEMAT_COLOR) {
+        if (mat->traits.flags & GHOST_SPARSEMAT_COLOR) {
             ghost_sparsemat_perm_color(mat,(void *)src,GHOST_SPARSEMAT_SRC_FUNC);
         } 
-        if (mat->traits->sortScope > 1) {
-            ghost_sparsemat_perm_sort(mat,(void *)src,GHOST_SPARSEMAT_SRC_FUNC,mat->traits->sortScope);
+        if (mat->traits.sortScope > 1) {
+            ghost_sparsemat_perm_sort(mat,(void *)src,GHOST_SPARSEMAT_SRC_FUNC,mat->traits.sortScope);
         }
-        if (mat->traits->flags & GHOST_SPARSEMAT_NOT_SORT_COLS) {
+        if (mat->traits.flags & GHOST_SPARSEMAT_NOT_SORT_COLS) {
             PERFWARNING_LOG("Unsorted columns inside a row may yield to bad performance! However, matrix construnction will be faster.");
         }
     } else {
-        if (mat->traits->sortScope > 1) {
+        if (mat->traits.sortScope > 1) {
             WARNING_LOG("Ignoring sorting scope");
         }
-        mat->traits->flags |= (ghost_sparsemat_flags_t)GHOST_SPARSEMAT_NOT_PERMUTE_COLS;
-        mat->traits->flags |= (ghost_sparsemat_flags_t)GHOST_SPARSEMAT_NOT_SORT_COLS;
+        mat->traits.flags |= (ghost_sparsemat_flags_t)GHOST_SPARSEMAT_NOT_PERMUTE_COLS;
+        mat->traits.flags |= (ghost_sparsemat_flags_t)GHOST_SPARSEMAT_NOT_SORT_COLS;
     }
 
     ghost_lidx_t *tmpclp = NULL;
@@ -221,7 +216,7 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
             GHOST_CALL(ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize),ret);
             GHOST_CALL(ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx_t)),ret);
 
-            /*if (!(mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) && src->func == ghost_sparsemat_rowfunc_crs) {
+            /*if (!(mat->traits.flags & GHOST_SPARSEMAT_PERMUTE) && src->func == ghost_sparsemat_rowfunc_crs) {
 #pragma omp single
                 INFO_LOG("Fast matrix construction for CRS source and no permutation") 
 #pragma omp for schedule(runtime)
@@ -259,7 +254,7 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
                     (*chunkptr)[chunk] = 0; // NUMA init
                     for (i=0, row = chunk*C; (i < C) && (row < mat->nrows); i++, row++) {
 
-                    if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
+                    if (mat->traits.flags & GHOST_SPARSEMAT_PERMUTE) {
                       if (mat->context->perm_global && mat->context->perm_local) {
                         INFO_LOG("Global _and_ local permutation");
                             funcerrs += src->func(mat->context->perm_global->invPerm[mat->context->perm_local->invPerm[row]],&rowlen,tmpcol,tmpval,src->arg);
@@ -386,7 +381,7 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
 
                 for (i=0, row = chunk*C; (i<C) && (chunk*C+i < mat->nrows); i++, row++) {
                     ghost_gidx_t actualrow;
-                    if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
+                    if (mat->traits.flags & GHOST_SPARSEMAT_PERMUTE) {
                         actualrow = mat->context->perm_local->invPerm[row];
                     } else {
                         actualrow = row;
@@ -397,14 +392,14 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
 #pragma nontemporal
                     for (colidx = 0; colidx<rl[row]; colidx++) {
                         // assignment is much faster than memcpy with non-constant size, so we need those branches...
-                        if (mat->traits->datatype & GHOST_DT_REAL) {
-                            if (mat->traits->datatype & GHOST_DT_DOUBLE) {
+                        if (mat->traits.datatype & GHOST_DT_REAL) {
+                            if (mat->traits.datatype & GHOST_DT_DOUBLE) {
                                 ((double *)(*val))[(*chunkptr)[chunk]+colidx*C+i] = ((double *)(crsval))[colidx];
                             } else {
                                 ((float *)(*val))[(*chunkptr)[chunk]+colidx*C+i] = ((float *)(crsval))[colidx];
                             }
                         } else {
-                            if (mat->traits->datatype & GHOST_DT_DOUBLE) {
+                            if (mat->traits.datatype & GHOST_DT_DOUBLE) {
                                 ((complex double *)(*val))[(*chunkptr)[chunk]+colidx*C+i] = ((complex double *)(crsval))[colidx];
                             } else {
                                 ((complex float *)(*val))[(*chunkptr)[chunk]+colidx*C+i] = ((complex float *)(crsval))[colidx];
@@ -412,10 +407,10 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
                         }
                         if (readcols) {
                             crscol = &((ghost_sparsemat_rowfunc_crs_arg *)src->arg)->col[crsrpt[actualrow]];
-                            if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
+                            if (mat->traits.flags & GHOST_SPARSEMAT_PERMUTE) {
                                 // local permutation: distinction between global and local entries
                                 if ((crscol[colidx] >= mat->context->lfRow[me]) && (crscol[colidx] < (mat->context->lfRow[me]+mat->nrows))) { // local entry: copy with permutation
-                                    if (mat->traits->flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS) {
+                                    if (mat->traits.flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS) {
                                         (*col)[(*chunkptr)[chunk]+colidx*C+i] = crscol[colidx];
                                     } else {
                                         (*col)[(*chunkptr)[chunk]+colidx*C+i] = mat->context->perm_local->perm[crscol[colidx]-mat->context->lfRow[me]]+mat->context->lfRow[me];
@@ -445,7 +440,7 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
 
                 for (i=0, row = chunk*C; (i<C) && (chunk*C+i < mat->nrows); i++, row++) {
 
-                    if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
+                    if (mat->traits.flags & GHOST_SPARSEMAT_PERMUTE) {
                         if (mat->context->perm_global && mat->context->perm_local) {
                             funcret = src->func(mat->context->perm_global->invPerm[mat->context->perm_local->invPerm[row]],&rl[row],&tmpcol[src->maxrowlen*i],&tmpval[src->maxrowlen*i*mat->elSize],src->arg);
                         } else if (mat->context->perm_global) {
@@ -464,7 +459,7 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
                     
                     for (colidx = 0; colidx<clp[chunk]; colidx++) {
                         memcpy(*val+mat->elSize*((*chunkptr)[chunk]+colidx*C+i),&tmpval[mat->elSize*(i*src->maxrowlen+colidx)],mat->elSize);
-                        if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
+                        if (mat->traits.flags & GHOST_SPARSEMAT_PERMUTE) {
                             if (mat->context->perm_global) {
                                 // no distinction between global and local entries
                                 // global permutation will be done after all rows are read
@@ -472,7 +467,7 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
                             } else { 
                                 // local permutation: distinction between global and local entries
                                 if ((tmpcol[i*src->maxrowlen+colidx] >= mat->context->lfRow[me]) && (tmpcol[i*src->maxrowlen+colidx] < (mat->context->lfRow[me]+mat->nrows))) { // local entry: copy with permutation
-                                    if (mat->traits->flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS) {
+                                    if (mat->traits.flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS) {
                                         (*col)[(*chunkptr)[chunk]+colidx*C+i] = tmpcol[i*src->maxrowlen+colidx];
                                     } else {
                                         (*col)[(*chunkptr)[chunk]+colidx*C+i] = mat->context->perm_local->perm[tmpcol[i*src->maxrowlen+colidx]-mat->context->lfRow[me]]+mat->context->lfRow[me];
@@ -508,7 +503,7 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
     
     GHOST_INSTR_START("sort_and_register");
     
-    if (!(mat->traits->flags & GHOST_SPARSEMAT_NOT_SORT_COLS)) {
+    if (!(mat->traits.flags & GHOST_SPARSEMAT_NOT_SORT_COLS)) {
         for( chunk = 0; chunk < nchunks; chunk++ ) {
             for (i=0; (i<C) && (chunk*C+i < mat->nrows); i++) {
                 row = chunk*C+i;
@@ -644,7 +639,7 @@ ghost_error_t ghost_sparsemat_perm_sort(ghost_sparsemat_t *mat, void *matrixSour
     
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local,sizeof(ghost_permutation_t)),err,ret);
-    if (mat->traits->sortScope > mat->nrows) {
+    if (mat->traits.sortScope > mat->nrows) {
         WARNING_LOG("Restricting the sorting scope to the number of matrix rows");
     }
     nrows = mat->nrows;
@@ -800,16 +795,16 @@ ghost_error_t ghost_sparsemat_string(char **str, ghost_sparsemat_t *mat)
 
 
     char *matrixLocation;
-    if (mat->traits->flags & GHOST_SPARSEMAT_DEVICE)
+    if (mat->traits.flags & GHOST_SPARSEMAT_DEVICE)
         matrixLocation = "Device";
-    else if (mat->traits->flags & GHOST_SPARSEMAT_HOST)
+    else if (mat->traits.flags & GHOST_SPARSEMAT_HOST)
         matrixLocation = "Host";
     else
         matrixLocation = "Default";
 
 
     ghost_header_string(str,"%s @ rank %d",mat->name,myrank);
-    ghost_line_string(str,"Data type",NULL,"%s",ghost_datatype_string(mat->traits->datatype));
+    ghost_line_string(str,"Data type",NULL,"%s",ghost_datatype_string(mat->traits.datatype));
     ghost_line_string(str,"Matrix location",NULL,"%s",matrixLocation);
     ghost_line_string(str,"Total number of rows",NULL,"%"PRGIDX,nrows);
     ghost_line_string(str,"Total number of nonzeros",NULL,"%"PRGIDX,nnz);
@@ -826,7 +821,7 @@ ghost_error_t ghost_sparsemat_string(char **str, ghost_sparsemat_t *mat)
     ghost_line_string(str,"Full   matrix format",NULL,"%s",mat->formatName(mat));
     if (mat->localPart) {
         ghost_line_string(str,"Local  matrix format",NULL,"%s",mat->localPart->formatName(mat->localPart));
-        ghost_line_string(str,"Local  matrix symmetry",NULL,"%s",ghost_sparsemat_symmetry_string(mat->localPart->traits->symmetry));
+        ghost_line_string(str,"Local  matrix symmetry",NULL,"%s",ghost_sparsemat_symmetry_string(mat->localPart->traits.symmetry));
         ghost_line_string(str,"Local  matrix size","MB","%u",mat->localPart->byteSize(mat->localPart)/(1024*1024));
     }
     if (mat->remotePart) {
@@ -836,29 +831,31 @@ ghost_error_t ghost_sparsemat_string(char **str, ghost_sparsemat_t *mat)
 
     ghost_line_string(str,"Full   matrix size","MB","%u",mat->byteSize(mat)/(1024*1024));
     
-    ghost_line_string(str,"Permuted",NULL,"%s",mat->traits->flags&GHOST_SPARSEMAT_PERMUTE?"Yes":"No");
-    if ((mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) && mat->context->perm_global) {
-        if (mat->traits->flags & GHOST_SPARSEMAT_SCOTCHIFY) {
-            ghost_line_string(str,"Permutation strategy",NULL,"Scotch%s",mat->traits->sortScope>1?"+Sorting":"");
-            ghost_line_string(str,"Scotch ordering strategy",NULL,"%s",mat->traits->scotchStrat);
+    ghost_line_string(str,"Permuted",NULL,"%s",mat->traits.flags&GHOST_SPARSEMAT_PERMUTE?"Yes":"No");
+    if ((mat->traits.flags & GHOST_SPARSEMAT_PERMUTE) && mat->context->perm_global) {
+        if (mat->traits.flags & GHOST_SPARSEMAT_SCOTCHIFY) {
+            ghost_line_string(str,"Permutation strategy",NULL,"Scotch%s",mat->traits.sortScope>1?"+Sorting":"");
+            ghost_line_string(str,"Scotch ordering strategy",NULL,"%s",mat->traits.scotchStrat);
         } else {
             ghost_line_string(str,"Permutation strategy",NULL,"Sorting");
         }
-        if (mat->traits->sortScope > 1) {
-            ghost_line_string(str,"Sorting scope",NULL,"%d",mat->traits->sortScope);
+        if (mat->traits.sortScope > 1) {
+            ghost_line_string(str,"Sorting scope",NULL,"%d",mat->traits.sortScope);
         }
 #ifdef GHOST_HAVE_MPI
         ghost_line_string(str,"Permutation scope",NULL,"%s",mat->context->perm_global->scope==GHOST_PERMUTATION_GLOBAL?"Across processes":"Local to process");
 #endif
-        ghost_line_string(str,"Permuted column indices",NULL,"%s",mat->traits->flags&GHOST_SPARSEMAT_NOT_PERMUTE_COLS?"No":"Yes");
+        ghost_line_string(str,"Permuted column indices",NULL,"%s",mat->traits.flags&GHOST_SPARSEMAT_NOT_PERMUTE_COLS?"No":"Yes");
     }
-    ghost_line_string(str,"Ascending columns in row",NULL,"%s",mat->traits->flags&GHOST_SPARSEMAT_NOT_SORT_COLS?"Maybe":"Yes");
+    ghost_line_string(str,"Ascending columns in row",NULL,"%s",mat->traits.flags&GHOST_SPARSEMAT_NOT_SORT_COLS?"Maybe":"Yes");
     ghost_line_string(str,"Max row length (# rows)",NULL,"%d (%d)",mat->maxRowLen,mat->nMaxRows);
     ghost_line_string(str,"Row length variance",NULL,"%f",mat->variance);
     ghost_line_string(str,"Row length standard deviation",NULL,"%f",mat->deviation);
     ghost_line_string(str,"Row length coefficient of variation",NULL,"%f",mat->cv);
+    ghost_line_string(str,"Chunk height (C)",NULL,"%d",mat->traits.C);
+    ghost_line_string(str,"Chunk occupancy (beta)",NULL,"%f",(double)(mat->nEnts)/(double)(mat->nnz));
+    ghost_line_string(str,"Threads per row (T)",NULL,"%d",mat->traits.T);
 
-    mat->auxString(mat,str);
     ghost_footer_string(str);
 
     return GHOST_SUCCESS;
@@ -876,7 +873,7 @@ ghost_error_t ghost_sparsemat_tofile_header(ghost_sparsemat_t *mat, char *path)
     int32_t version = 1;
     int32_t base = 0;
     int32_t symmetry = GHOST_BINCRS_SYMM_GENERAL;
-    int32_t datatype = mat->traits->datatype;
+    int32_t datatype = mat->traits.datatype;
     int64_t nrows = (int64_t)mnrows;
     int64_t ncols = (int64_t)mncols;
     int64_t nnz = (int64_t)mnnz;
@@ -993,7 +990,7 @@ ghost_error_t ghost_sparsemat_from_bincrs(ghost_sparsemat_t *mat, char *path)
     
     src.func = &ghost_sparsemat_rowfunc_bincrs;
     args.filename = path;
-    args.dt = mat->traits->datatype;
+    args.dt = mat->traits.datatype;
     if (src.func(GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_GETDIM,NULL,dim,&args,src.arg)) {
         ERROR_LOG("Error in matrix creation function");
         ret = GHOST_ERR_UNKNOWN;
@@ -1038,13 +1035,13 @@ ghost_error_t ghost_sparsemat_from_mm(ghost_sparsemat_t *mat, char *path)
     int symmetric = 0;
     src.arg = &symmetric;
 
-    if (mat->traits->flags & GHOST_SPARSEMAT_TRANSPOSE_MM) { 
+    if (mat->traits.flags & GHOST_SPARSEMAT_TRANSPOSE_MM) { 
         src.func = &ghost_sparsemat_rowfunc_mm_transpose;
     } else {
         src.func = &ghost_sparsemat_rowfunc_mm;
     }
     args.filename = path;
-    args.dt = mat->traits->datatype;
+    args.dt = mat->traits.datatype;
     if (src.func(GHOST_SPARSEMAT_ROWFUNC_MM_ROW_GETDIM,NULL,dim,&args,src.arg)) {
         ERROR_LOG("Error in matrix creation function");
         ret = GHOST_ERR_UNKNOWN;
@@ -1066,7 +1063,7 @@ ghost_error_t ghost_sparsemat_from_mm(ghost_sparsemat_t *mat, char *path)
     }
 
     if (*(int *)src.arg) {
-        mat->traits->symmetry = GHOST_SPARSEMAT_SYMM_SYMMETRIC;
+        mat->traits.symmetry = GHOST_SPARSEMAT_SYMM_SYMMETRIC;
     }
 
     goto out;
@@ -1086,8 +1083,8 @@ ghost_error_t ghost_sparsemat_from_crs(ghost_sparsemat_t *mat, ghost_gidx_t offs
     
     ghost_error_t ret = GHOST_SUCCESS;
     ghost_sparsemat_rowfunc_crs_arg args;
-    ghost_datatype_size(&args.dtsize,mat->traits->datatype);
-    args.dtsize = mat->traits->datatype;
+    ghost_datatype_size(&args.dtsize,mat->traits.datatype);
+    args.dtsize = mat->traits.datatype;
     args.col = col;
     args.val = val;
     args.rpt = rpt;

@@ -45,7 +45,6 @@ int main(int argc, char **argv) {
 
     vector<ghost_sparsemat_traits_t> mtraits_vec;
     vector<ghost_densemat_traits_t> vtraits_vec;
-    vector<ghost_sparsemat_format_t> formats_vec;
     vector<ghost_densemat_storage_t> densemat_storages_vec;
     vector<ghost_datatype_t> datatypes_vec;
 
@@ -54,19 +53,14 @@ int main(int argc, char **argv) {
     datatypes_vec.push_back((ghost_datatype_t)(GHOST_DT_REAL|GHOST_DT_FLOAT));
     datatypes_vec.push_back((ghost_datatype_t)(GHOST_DT_COMPLEX|GHOST_DT_FLOAT));
 
-    formats_vec.push_back(GHOST_SPARSEMAT_CRS);
-    formats_vec.push_back(GHOST_SPARSEMAT_SELL);
 
     densemat_storages_vec.push_back(GHOST_DENSEMAT_ROWMAJOR);
     densemat_storages_vec.push_back(GHOST_DENSEMAT_COLMAJOR);
     
     ghost_sparsemat_traits_t mtraits = GHOST_SPARSEMAT_TRAITS_INITIALIZER;
-    for (vector<ghost_sparsemat_format_t>::iterator formats_it = formats_vec.begin(); formats_it != formats_vec.end(); ++formats_it) {
-        for (vector<ghost_datatype_t>::iterator datatypes_it = datatypes_vec.begin(); datatypes_it != datatypes_vec.end(); ++datatypes_it) {
-            mtraits.format = *formats_it;
-            mtraits.datatype = *datatypes_it;
-            mtraits_vec.push_back(mtraits);
-        }
+    for (vector<ghost_datatype_t>::iterator datatypes_it = datatypes_vec.begin(); datatypes_it != datatypes_vec.end(); ++datatypes_it) {
+        mtraits.datatype = *datatypes_it;
+        mtraits_vec.push_back(mtraits);
     }
     
     ghost_densemat_traits_t vtraits = GHOST_DENSEMAT_TRAITS_INITIALIZER;
@@ -127,7 +121,7 @@ int main(int argc, char **argv) {
             GHOST_TEST_CALL(x->fromRand(x));
             GHOST_TEST_CALL(y->fromScalar(y,&zero));
           
-            printf("Test SpMV with %s matrix (%s) and %s vectors (%s)\n",ghost_datatype_string(A->traits->datatype),A->formatName(A),ghost_datatype_string(x->traits.datatype),ghost_densemat_storage_string(x));
+            printf("Test SpMV with %s matrix (%s) and %s vectors (%s)\n",ghost_datatype_string(A->traits.datatype),A->formatName(A),ghost_datatype_string(x->traits.datatype),ghost_densemat_storage_string(x));
             GHOST_TEST_CALL(ghost_spmv(y,A,x,&spmvflags));
 
             size_t vecdtsize;

@@ -1,7 +1,6 @@
 #define _XOPEN_SOURCE 500
 #include "ghost/sell.h"
 #include "ghost/core.h"
-#include "ghost/crs.h"
 #include "ghost/util.h"
 #include "ghost/locality.h"
 #include "ghost/sparsemat.h"
@@ -20,12 +19,6 @@
 #include <omp.h>
 #endif
 
-const ghost_sell_aux_t GHOST_SELL_AUX_INITIALIZER = {
-    .C = 32, 
-    .T = 1
-};
-
-static void SELL_printInfo(ghost_sparsemat_t *mat, char **str);
 static const char * SELL_formatName(ghost_sparsemat_t *mat);
 static ghost_lidx_t SELL_rowLen (ghost_sparsemat_t *mat, ghost_lidx_t i);
 static size_t SELL_byteSize (ghost_sparsemat_t *mat);
@@ -42,15 +35,15 @@ ghost_error_t ghost_sell_init(ghost_sparsemat_t *mat)
     ghost_error_t ret = GHOST_SUCCESS;
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->data,sizeof(ghost_sell_t)),err,ret);
     DEBUG_LOG(1,"Setting functions for SELL matrix");
-    if (!(mat->traits->flags & (GHOST_SPARSEMAT_HOST | GHOST_SPARSEMAT_DEVICE)))
+    if (!(mat->traits.flags & (GHOST_SPARSEMAT_HOST | GHOST_SPARSEMAT_DEVICE)))
     { // no placement specified
         DEBUG_LOG(2,"Setting matrix placement");
         ghost_type_t ghost_type;
         GHOST_CALL_GOTO(ghost_type_get(&ghost_type),err,ret);
         if (ghost_type == GHOST_TYPE_CUDA) {
-            mat->traits->flags |= (ghost_sparsemat_flags_t)GHOST_SPARSEMAT_DEVICE;
+            mat->traits.flags |= (ghost_sparsemat_flags_t)GHOST_SPARSEMAT_DEVICE;
         } else {
-            mat->traits->flags |= (ghost_sparsemat_flags_t)GHOST_SPARSEMAT_HOST;
+            mat->traits.flags |= (ghost_sparsemat_flags_t)GHOST_SPARSEMAT_HOST;
         }
     }
     ghost_type_t ghost_type;
@@ -59,7 +52,6 @@ ghost_error_t ghost_sell_init(ghost_sparsemat_t *mat)
     mat->upload = &SELL_upload;
     mat->toFile = &SELL_toBinCRS;
     mat->fromRowFunc = &SELL_fromRowFunc;
-    mat->auxString = &SELL_printInfo;
     mat->formatName = &SELL_formatName;
     mat->rowLen     = &SELL_rowLen;
     mat->byteSize   = &SELL_byteSize;
@@ -69,7 +61,7 @@ ghost_error_t ghost_sell_init(ghost_sparsemat_t *mat)
     mat->split = &SELL_split;
     mat->permute = &SELL_permute;
 #ifdef GHOST_HAVE_CUDA
-    if ((ghost_type == GHOST_TYPE_CUDA) && (mat->traits->flags & GHOST_SPARSEMAT_DEVICE)) {
+    if ((ghost_type == GHOST_TYPE_CUDA) && (mat->traits.flags & GHOST_SPARSEMAT_DEVICE)) {
         mat->spmv   = &ghost_cu_sell_spmv_selector;
         mat->kacz = NULL;
     }
@@ -84,23 +76,14 @@ ghost_error_t ghost_sell_init(ghost_sparsemat_t *mat)
     SELL(mat)->rowLen = NULL;
     SELL(mat)->rowLenPadded = NULL;
     SELL(mat)->chunkStart = NULL;
-    SELL(mat)->beta = 0;
     SELL(mat)->cumat = NULL;
 
-
-    if (mat->traits->aux == NULL) {
-        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->traits->aux,sizeof(ghost_sell_aux_t)),err,ret);
-        *((ghost_sell_aux_t *)(mat->traits->aux)) = GHOST_SELL_AUX_INITIALIZER;
+    if (mat->traits.C == GHOST_SELL_CHUNKHEIGHT_ELLPACK) {
+        mat->traits.C = PAD(mat->nrows,GHOST_PAD_MAX);
+    } else if (mat->traits.C == GHOST_SELL_CHUNKHEIGHT_AUTO){
+        mat->traits.C = ghost_selectSellChunkHeight(mat->traits.datatype);
     }
-    SELL(mat)->T = ((ghost_sell_aux_t *)(mat->traits->aux))->T;
-    SELL(mat)->chunkHeight = ((ghost_sell_aux_t *)(mat->traits->aux))->C;
-
-    if (SELL(mat)->chunkHeight == GHOST_SELL_CHUNKHEIGHT_ELLPACK) {
-        SELL(mat)->chunkHeight = PAD(mat->nrows,GHOST_PAD_MAX);
-    } else if (SELL(mat)->chunkHeight == GHOST_SELL_CHUNKHEIGHT_AUTO){
-        SELL(mat)->chunkHeight = ghost_selectSellChunkHeight(mat->traits->datatype);
-    }
-    mat->nrowsPadded = PAD(mat->nrows,SELL(mat)->chunkHeight);
+    mat->nrowsPadded = PAD(mat->nrows,mat->traits.C);
 
     goto out;
 err:
@@ -118,12 +101,6 @@ static ghost_error_t SELL_permute(ghost_sparsemat_t *mat , ghost_lidx_t *perm, g
     ERROR_LOG("SELL->permute() not implemented");
     return GHOST_ERR_NOT_IMPLEMENTED;
 
-}
-static void SELL_printInfo(ghost_sparsemat_t *mat, char **str)
-{
-    ghost_line_string(str,"Chunk height (C)",NULL,"%d",SELL(mat)->chunkHeight);
-    ghost_line_string(str,"Chunk occupancy (beta)",NULL,"%f",SELL(mat)->beta);
-    ghost_line_string(str,"Threads per row (T)",NULL,"%d",SELL(mat)->T);
 }
 
 static const char * SELL_formatName(ghost_sparsemat_t *mat)
@@ -146,9 +123,9 @@ static ghost_lidx_t SELL_rowLen (ghost_sparsemat_t *mat, ghost_lidx_t i)
   {
   ghost_lidx_t e;
 
-  if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE)
+  if (mat->traits.flags & GHOST_SPARSEMAT_PERMUTE)
   i = mat->context->permutation->perm[i];
-  if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE_COLS)
+  if (mat->traits.flags & GHOST_SPARSEMAT_PERMUTE_COLS)
   j = mat->context->permutation->perm[j];
 
   for (e=SELL(mat)->chunkStart[i/SELL_LEN]+i%SELL_LEN; 
@@ -165,7 +142,7 @@ static size_t SELL_byteSize (ghost_sparsemat_t *mat)
     if (mat->data == NULL) {
         return 0;
     }
-    return (size_t)((mat->nrowsPadded/SELL(mat)->chunkHeight)*sizeof(ghost_lidx_t) + 
+    return (size_t)((mat->nrowsPadded/mat->traits.C)*sizeof(ghost_lidx_t) + 
             mat->nEnts*(sizeof(ghost_lidx_t)+mat->elSize));
 }
 
@@ -179,7 +156,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
     ghost_error_t ret = GHOST_SUCCESS;
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
 
-    ghost_lidx_t nChunks = mat->nrowsPadded/SELL(mat)->chunkHeight;
+    ghost_lidx_t nChunks = mat->nrowsPadded/mat->traits.C;
    
 
     if (!SELL(mat)->chunkMin) GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->chunkMin, (nChunks)*sizeof(ghost_lidx_t)),err,ret);
@@ -187,9 +164,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
     if (!SELL(mat)->chunkLenPadded) GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->chunkLenPadded, (nChunks)*sizeof(ghost_lidx_t)),err,ret);
     if (!SELL(mat)->rowLen) GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->rowLen, (mat->nrowsPadded)*sizeof(ghost_lidx_t)),err,ret);
     if (!SELL(mat)->rowLenPadded) GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->rowLenPadded, (mat->nrowsPadded)*sizeof(ghost_lidx_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_sparsemat_fromfunc_common(SELL(mat)->rowLen,SELL(mat)->rowLenPadded,SELL(mat)->chunkLen,SELL(mat)->chunkLenPadded,&(SELL(mat)->chunkStart),&(SELL(mat)->val),&(mat->col_orig),src,mat,SELL(mat)->chunkHeight,SELL(mat)->T),err,ret);
-
-    SELL(mat)->beta = mat->nnz*1.0/(double)mat->nEnts;
+    GHOST_CALL_GOTO(ghost_sparsemat_fromfunc_common(SELL(mat)->rowLen,SELL(mat)->rowLenPadded,SELL(mat)->chunkLen,SELL(mat)->chunkLenPadded,&(SELL(mat)->chunkStart),&(SELL(mat)->val),&(mat->col_orig),src,mat,mat->traits.C,mat->traits.T),err,ret);
 
     if (ret != GHOST_SUCCESS) {
         goto err;
@@ -199,7 +174,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
     GHOST_CALL_GOTO(mat->split(mat),err,ret);
 
 #ifdef GHOST_HAVE_CUDA
-    if (!(mat->traits->flags & GHOST_SPARSEMAT_HOST))
+    if (!(mat->traits.flags & GHOST_SPARSEMAT_HOST))
         mat->upload(mat);
 #endif
 
@@ -213,7 +188,6 @@ err:
     free(SELL(mat)->rowLen); SELL(mat)->rowLen = NULL;
     free(SELL(mat)->rowLenPadded); SELL(mat)->rowLenPadded = NULL;
     free(SELL(mat)->chunkStart); SELL(mat)->chunkStart = NULL;
-    SELL(mat)->beta = 0;
     mat->nEnts = 0;
     mat->nnz = 0;
 
@@ -249,7 +223,7 @@ static ghost_error_t SELL_split(ghost_sparsemat_t *mat)
 
     GHOST_INSTR_START("init_compressed_cols");
 #ifdef GHOST_HAVE_UNIFORM_IDX
-    if (!(mat->traits->flags & GHOST_SPARSEMAT_SAVE_ORIG_COLS)) {
+    if (!(mat->traits.flags & GHOST_SPARSEMAT_SAVE_ORIG_COLS)) {
         DEBUG_LOG(1,"In-place column compression!");
         SELL(mat)->col = mat->col_orig;
     } else 
@@ -259,7 +233,7 @@ static ghost_error_t SELL_split(ghost_sparsemat_t *mat)
             DEBUG_LOG(1,"Duplicate col array!");
             GHOST_CALL_GOTO(ghost_malloc_align((void **)&SELL(mat)->col,sizeof(ghost_lidx_t)*mat->nEnts,GHOST_DATA_ALIGNMENT),err,ret);
 #pragma omp parallel for private(j) schedule(runtime)
-            for (i=0; i<mat->nrowsPadded/SELL(mat)->chunkHeight; i++) {
+            for (i=0; i<mat->nrowsPadded/mat->traits.C; i++) {
                 for (j=SELL(mat)->chunkStart[i]; j<SELL(mat)->chunkStart[i+1]; j++) {
                     SELL(mat)->col[j] = 0;
                 }
@@ -271,26 +245,26 @@ static ghost_error_t SELL_split(ghost_sparsemat_t *mat)
     GHOST_CALL_GOTO(ghost_context_comm_init(mat->context,mat->col_orig,fullSELL->col),err,ret);
 
 #ifndef GHOST_HAVE_UNIFORM_IDX
-    if (!(mat->traits->flags & GHOST_SPARSEMAT_SAVE_ORIG_COLS)) {
+    if (!(mat->traits.flags & GHOST_SPARSEMAT_SAVE_ORIG_COLS)) {
         DEBUG_LOG(1,"Free orig cols");
         free(mat->col_orig);
         mat->col_orig = NULL;
     }
 #endif
-    if (!(mat->traits->flags & GHOST_SPARSEMAT_NOT_STORE_SPLIT)) { // split computation
+    if (!(mat->traits.flags & GHOST_SPARSEMAT_NOT_STORE_SPLIT)) { // split computation
         GHOST_INSTR_START("split");
 
-        ghost_sparsemat_create(&(mat->localPart),mat->context,&mat->traits[0],1);
+        ghost_sparsemat_create(&(mat->localPart),mat->context,&mat->splittraits[0],1);
         localSELL = mat->localPart->data;
-        mat->localPart->traits->symmetry = mat->traits->symmetry;
+        mat->localPart->traits.symmetry = mat->traits.symmetry;
 
-        ghost_sparsemat_create(&(mat->remotePart),mat->context,&mat->traits[0],1);
+        ghost_sparsemat_create(&(mat->remotePart),mat->context,&mat->splittraits[1],1);
         remoteSELL = mat->remotePart->data; 
 
-        localSELL->T = fullSELL->T;
-        remoteSELL->T = fullSELL->T;
+        mat->localPart->traits.T = mat->traits.T;
+        mat->remotePart->traits.T = mat->traits.T;
 
-        ghost_lidx_t nChunks = mat->nrowsPadded/fullSELL->chunkHeight;
+        ghost_lidx_t nChunks = mat->nrowsPadded/mat->traits.C;
         GHOST_CALL_GOTO(ghost_malloc((void **)&localSELL->chunkStart, (nChunks+1)*sizeof(ghost_lidx_t)),err,ret);
         GHOST_CALL_GOTO(ghost_malloc((void **)&localSELL->chunkMin, (nChunks)*sizeof(ghost_lidx_t)),err,ret);
         GHOST_CALL_GOTO(ghost_malloc((void **)&localSELL->chunkLen, (nChunks)*sizeof(ghost_lidx_t)),err,ret);
@@ -314,7 +288,7 @@ static ghost_error_t SELL_split(ghost_sparsemat_t *mat)
         }
 
 #pragma omp parallel for schedule(runtime)
-        for(chunk = 0; chunk < mat->nrowsPadded/fullSELL->chunkHeight; chunk++) {
+        for(chunk = 0; chunk < mat->nrowsPadded/mat->traits.C; chunk++) {
             localSELL->chunkLen[chunk] = 0;
             remoteSELL->chunkLen[chunk] = 0;
             localSELL->chunkLenPadded[chunk] = 0;
@@ -331,12 +305,12 @@ static ghost_error_t SELL_split(ghost_sparsemat_t *mat)
         lnEnts_l = 0;
         lnEnts_r = 0;
 
-        for(chunk = 0; chunk < mat->nrowsPadded/fullSELL->chunkHeight; chunk++) {
+        for(chunk = 0; chunk < mat->nrowsPadded/mat->traits.C; chunk++) {
 
             for (i=0; i<fullSELL->chunkLen[chunk]; i++) {
-                for (j=0; j<fullSELL->chunkHeight; j++) {
-                    row = chunk*fullSELL->chunkHeight+j;
-                    idx = fullSELL->chunkStart[chunk]+i*fullSELL->chunkHeight+j;
+                for (j=0; j<mat->traits.C; j++) {
+                    row = chunk*mat->traits.C+j;
+                    idx = fullSELL->chunkStart[chunk]+i*mat->traits.C+j;
 
                     if (i < fullSELL->rowLen[row]) {
                         if (fullSELL->col[idx] < mat->context->lnrows[me]) {
@@ -346,24 +320,24 @@ static ghost_error_t SELL_split(ghost_sparsemat_t *mat)
                             remoteSELL->rowLen[row]++;
                             mat->remotePart->nnz++;
                         }
-                        localSELL->rowLenPadded[row] = PAD(localSELL->rowLen[row],localSELL->T);
-                        remoteSELL->rowLenPadded[row] = PAD(remoteSELL->rowLen[row],remoteSELL->T);
+                        localSELL->rowLenPadded[row] = PAD(localSELL->rowLen[row],mat->localPart->traits.T);
+                        remoteSELL->rowLenPadded[row] = PAD(remoteSELL->rowLen[row],mat->remotePart->traits.T);
                     }
                 }
             }
 
-            for (j=0; j<fullSELL->chunkHeight; j++) {
-                row = chunk*fullSELL->chunkHeight+j;
+            for (j=0; j<mat->traits.C; j++) {
+                row = chunk*mat->traits.C+j;
                 localSELL->chunkLen[chunk] = MAX(localSELL->chunkLen[chunk],localSELL->rowLen[row]);
                 remoteSELL->chunkLen[chunk] = MAX(remoteSELL->chunkLen[chunk],remoteSELL->rowLen[row]);
             }
-            lnEnts_l += localSELL->chunkLen[chunk]*fullSELL->chunkHeight;
-            lnEnts_r += remoteSELL->chunkLen[chunk]*fullSELL->chunkHeight;
+            lnEnts_l += localSELL->chunkLen[chunk]*mat->traits.C;
+            lnEnts_r += remoteSELL->chunkLen[chunk]*mat->traits.C;
             localSELL->chunkStart[chunk+1] = lnEnts_l;
             remoteSELL->chunkStart[chunk+1] = lnEnts_r;
 
-            localSELL->chunkLenPadded[chunk] = PAD(localSELL->chunkLen[chunk],localSELL->T);
-            remoteSELL->chunkLenPadded[chunk] = PAD(remoteSELL->chunkLen[chunk],remoteSELL->T);
+            localSELL->chunkLenPadded[chunk] = PAD(localSELL->chunkLen[chunk],mat->localPart->traits.T);
+            remoteSELL->chunkLenPadded[chunk] = PAD(remoteSELL->chunkLen[chunk],mat->remotePart->traits.T);
 
         }
 
@@ -385,18 +359,18 @@ static ghost_error_t SELL_split(ghost_sparsemat_t *mat)
         mat->localPart->nrows = mat->nrows;
         mat->localPart->nrowsPadded = mat->nrowsPadded;
         mat->localPart->nEnts = lnEnts_l;
-        localSELL->chunkHeight = fullSELL->chunkHeight;
+        mat->localPart->traits.C = mat->traits.C;
 
         mat->remotePart->nrows = mat->nrows;
         mat->remotePart->nrowsPadded = mat->nrowsPadded;
         mat->remotePart->nEnts = lnEnts_r;
-        remoteSELL->chunkHeight = fullSELL->chunkHeight;
+        mat->remotePart->traits.C = mat->traits.C;
 
 #pragma omp parallel for schedule(runtime) private (i,j,idx)
-        for(chunk = 0; chunk < mat->localPart->nrowsPadded/localSELL->chunkHeight; chunk++) {
+        for(chunk = 0; chunk < mat->localPart->nrowsPadded/mat->localPart->traits.C; chunk++) {
             for (i=0; i<localSELL->chunkLenPadded[chunk]; i++) {
-                for (j=0; j<localSELL->chunkHeight; j++) {
-                    idx = localSELL->chunkStart[chunk]+i*localSELL->chunkHeight+j;
+                for (j=0; j<mat->localPart->traits.C; j++) {
+                    idx = localSELL->chunkStart[chunk]+i*mat->localPart->traits.C+j;
                     memset(&((char *)(localSELL->val))[idx*mat->elSize],0,mat->elSize);
                     localSELL->col[idx] = 0;
                 }
@@ -404,10 +378,10 @@ static ghost_error_t SELL_split(ghost_sparsemat_t *mat)
         }
 
 #pragma omp parallel for schedule(runtime) private (i,j,idx)
-        for(chunk = 0; chunk < mat->remotePart->nrowsPadded/remoteSELL->chunkHeight; chunk++) {
+        for(chunk = 0; chunk < mat->remotePart->nrowsPadded/mat->remotePart->traits.C; chunk++) {
             for (i=0; i<remoteSELL->chunkLenPadded[chunk]; i++) {
-                for (j=0; j<remoteSELL->chunkHeight; j++) {
-                    idx = remoteSELL->chunkStart[chunk]+i*remoteSELL->chunkHeight+j;
+                for (j=0; j<mat->remotePart->traits.C; j++) {
+                    idx = remoteSELL->chunkStart[chunk]+i*mat->remotePart->traits.C+j;
                     memset(&((char *)(remoteSELL->val))[idx*mat->elSize],0,mat->elSize);
                     remoteSELL->col[idx] = 0;
                 }
@@ -416,24 +390,24 @@ static ghost_error_t SELL_split(ghost_sparsemat_t *mat)
 
         current_l = 0;
         current_r = 0;
-        ghost_lidx_t col_l[fullSELL->chunkHeight], col_r[fullSELL->chunkHeight];
+        ghost_lidx_t col_l[mat->traits.C], col_r[mat->traits.C];
 
-        for(chunk = 0; chunk < mat->nrowsPadded/fullSELL->chunkHeight; chunk++) {
+        for(chunk = 0; chunk < mat->nrowsPadded/mat->traits.C; chunk++) {
 
-            for (j=0; j<fullSELL->chunkHeight; j++) {
+            for (j=0; j<mat->traits.C; j++) {
                 col_l[j] = 0;
                 col_r[j] = 0;
             }
 
             for (i=0; i<fullSELL->chunkLen[chunk]; i++) {
-                for (j=0; j<fullSELL->chunkHeight; j++) {
-                    row = chunk*fullSELL->chunkHeight+j;
-                    idx = fullSELL->chunkStart[chunk]+i*fullSELL->chunkHeight+j;
+                for (j=0; j<mat->traits.C; j++) {
+                    row = chunk*mat->traits.C+j;
+                    idx = fullSELL->chunkStart[chunk]+i*mat->traits.C+j;
 
                     if (i<fullSELL->rowLen[row]) {
                         if (fullSELL->col[idx] < mat->context->lnrows[me]) {
                             if (col_l[j] < localSELL->rowLen[row]) {
-                                ghost_lidx_t lidx = localSELL->chunkStart[chunk]+col_l[j]*localSELL->chunkHeight+j;
+                                ghost_lidx_t lidx = localSELL->chunkStart[chunk]+col_l[j]*mat->localPart->traits.C+j;
                                 localSELL->col[lidx] = fullSELL->col[idx];
                                 memcpy(&localSELL->val[lidx*mat->elSize],&fullSELL->val[idx*mat->elSize],mat->elSize);
                                 current_l++;
@@ -442,7 +416,7 @@ static ghost_error_t SELL_split(ghost_sparsemat_t *mat)
                         }
                         else{
                             if (col_r[j] < remoteSELL->rowLen[row]) {
-                                ghost_lidx_t ridx = remoteSELL->chunkStart[chunk]+col_r[j]*remoteSELL->chunkHeight+j;
+                                ghost_lidx_t ridx = remoteSELL->chunkStart[chunk]+col_r[j]*mat->remotePart->traits.C+j;
                                 remoteSELL->col[ridx] = fullSELL->col[idx];
                                 memcpy(&remoteSELL->val[ridx*mat->elSize],&fullSELL->val[idx*mat->elSize],mat->elSize);
                                 current_r++;
@@ -455,7 +429,7 @@ static ghost_error_t SELL_split(ghost_sparsemat_t *mat)
         }
 
 #ifdef GHOST_HAVE_CUDA
-        if (!(mat->traits->flags & GHOST_SPARSEMAT_HOST)) {
+        if (!(mat->traits.flags & GHOST_SPARSEMAT_HOST)) {
             mat->localPart->upload(mat->localPart);
             mat->remotePart->upload(mat->remotePart);
         }
@@ -485,25 +459,25 @@ static ghost_error_t SELL_toBinCRS(ghost_sparsemat_t *mat, char *matrixPath)
 static ghost_error_t SELL_upload(ghost_sparsemat_t* mat) 
 {
 #ifdef GHOST_HAVE_CUDA
-    if (!(mat->traits->flags & GHOST_SPARSEMAT_HOST)) {
+    if (!(mat->traits.flags & GHOST_SPARSEMAT_HOST)) {
         DEBUG_LOG(1,"Creating matrix on CUDA device");
         GHOST_CALL_RETURN(ghost_malloc((void **)&SELL(mat)->cumat,sizeof(ghost_cu_sell_t)));
         GHOST_CALL_RETURN(ghost_cu_malloc((void **)&SELL(mat)->cumat->rowLen,(mat->nrows)*sizeof(ghost_lidx_t)));
         GHOST_CALL_RETURN(ghost_cu_malloc((void **)&SELL(mat)->cumat->rowLenPadded,(mat->nrows)*sizeof(ghost_lidx_t)));
         GHOST_CALL_RETURN(ghost_cu_malloc((void **)&SELL(mat)->cumat->col,(mat->nEnts)*sizeof(ghost_lidx_t)));
         GHOST_CALL_RETURN(ghost_cu_malloc((void **)&SELL(mat)->cumat->val,(mat->nEnts)*mat->elSize));
-        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&SELL(mat)->cumat->chunkStart,(mat->nrowsPadded/SELL(mat)->chunkHeight+1)*sizeof(ghost_lidx_t)));
-        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&SELL(mat)->cumat->chunkLen,(mat->nrowsPadded/SELL(mat)->chunkHeight)*sizeof(ghost_lidx_t)));
+        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&SELL(mat)->cumat->chunkStart,(mat->nrowsPadded/mat->traits.C+1)*sizeof(ghost_lidx_t)));
+        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&SELL(mat)->cumat->chunkLen,(mat->nrowsPadded/mat->traits.C)*sizeof(ghost_lidx_t)));
 
         GHOST_CALL_RETURN(ghost_cu_upload(SELL(mat)->cumat->rowLen, SELL(mat)->rowLen, mat->nrows*sizeof(ghost_lidx_t)));
         GHOST_CALL_RETURN(ghost_cu_upload(SELL(mat)->cumat->rowLenPadded, SELL(mat)->rowLenPadded, mat->nrows*sizeof(ghost_lidx_t)));
         GHOST_CALL_RETURN(ghost_cu_upload(SELL(mat)->cumat->col, SELL(mat)->col, mat->nEnts*sizeof(ghost_lidx_t)));
         GHOST_CALL_RETURN(ghost_cu_upload(SELL(mat)->cumat->val, SELL(mat)->val, mat->nEnts*mat->elSize));
-        GHOST_CALL_RETURN(ghost_cu_upload(SELL(mat)->cumat->chunkStart, SELL(mat)->chunkStart, (mat->nrowsPadded/SELL(mat)->chunkHeight+1)*sizeof(ghost_lidx_t)));
-        GHOST_CALL_RETURN(ghost_cu_upload(SELL(mat)->cumat->chunkLen, SELL(mat)->chunkLen, (mat->nrowsPadded/SELL(mat)->chunkHeight)*sizeof(ghost_lidx_t)));
+        GHOST_CALL_RETURN(ghost_cu_upload(SELL(mat)->cumat->chunkStart, SELL(mat)->chunkStart, (mat->nrowsPadded/mat->traits.C+1)*sizeof(ghost_lidx_t)));
+        GHOST_CALL_RETURN(ghost_cu_upload(SELL(mat)->cumat->chunkLen, SELL(mat)->chunkLen, (mat->nrowsPadded/mat->traits.C)*sizeof(ghost_lidx_t)));
     }
 #else
-    if (mat->traits->flags & GHOST_SPARSEMAT_DEVICE) {
+    if (mat->traits.flags & GHOST_SPARSEMAT_DEVICE) {
         ERROR_LOG("Device matrix cannot be created without CUDA");
         return GHOST_ERR_CUDA;
     }
@@ -520,7 +494,7 @@ static void SELL_free(ghost_sparsemat_t *mat)
 
     if (mat->data) {
 #ifdef GHOST_HAVE_CUDA
-        if (mat->traits->flags & GHOST_SPARSEMAT_DEVICE && SELL(mat)->cumat) {
+        if (mat->traits.flags & GHOST_SPARSEMAT_DEVICE && SELL(mat)->cumat) {
             ghost_cu_free(SELL(mat)->cumat->rowLen);
             ghost_cu_free(SELL(mat)->cumat->rowLenPadded);
             ghost_cu_free(SELL(mat)->cumat->col);

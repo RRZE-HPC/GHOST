@@ -32,7 +32,7 @@ static ghost_error_t ghost_sell_spmv_plain_rm(ghost_sparsemat_t *mat,
     ghost_lidx_t i,j,c,rcol,lcol,zcol,cidx;
     ghost_lidx_t v;
     int nthreads = 1;
-    int ch = sell->chunkHeight;
+    int ch = mat->traits.C;
 
     unsigned clsize;
     ghost_machine_cacheline_size(&clsize);
@@ -199,7 +199,7 @@ static ghost_error_t ghost_sell_spmv_plain_cm(ghost_sparsemat_t *mat,
     ghost_lidx_t i,j,c;
     ghost_lidx_t v;
     int nthreads = 1;
-    int ch = sell->chunkHeight;
+    int ch = mat->traits.C;
 
     unsigned clsize;
     ghost_machine_cacheline_size(&clsize);
@@ -421,9 +421,9 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
     p.alignment = GHOST_ALIGNED;
     p.impl = impl;
     p.vdt = rhs->traits.datatype;
-    p.mdt = mat->traits->datatype;
+    p.mdt = mat->traits.datatype;
     p.storage = rhs->traits.storage;
-    p.chunkheight = SELL(mat)->chunkHeight;
+    p.chunkheight = mat->traits.C;
     p.blocksz = rhs->traits.ncols;
     
     if (p.storage == GHOST_DENSEMAT_ROWMAJOR && p.blocksz == 1 && 
@@ -562,12 +562,12 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
         PERFWARNING_LOG("Execute fallback SELL SpMV kernel which is potentially"
                 " slow!");
         if (lhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
-            SELECT_TMPL_2DATATYPES(mat->traits->datatype,
+            SELECT_TMPL_2DATATYPES(mat->traits.datatype,
                     rhs->traits.datatype,ghost_complex,ret,
                     ghost_sell_spmv_plain_cm_selector,mat,lhs,rhs,options,argp);
 
         } else {
-            SELECT_TMPL_2DATATYPES(mat->traits->datatype,
+            SELECT_TMPL_2DATATYPES(mat->traits.datatype,
                     rhs->traits.datatype,ghost_complex,ret,
                     ghost_sell_spmv_plain_rm_selector,mat,lhs,rhs,options,argp);
         }

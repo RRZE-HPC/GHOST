@@ -76,16 +76,6 @@ typedef struct
      */
     ghost_lidx_t *chunkStart;
     /**
-     * @brief Chunk occupancy.
-     *
-     * This gets computed at matrix construction.
-     */
-    double beta;
-    /**
-     * @brief Number of threads per row.
-     */
-    int T;
-    /**
      * @brief Minimal row length in a chunk.
      */
     ghost_lidx_t *chunkMin;
@@ -107,10 +97,6 @@ typedef struct
      * @brief Needed if T>1.
      */
     ghost_lidx_t *rowLenPadded; 
-    /**
-     * @brief The chunk height C.
-     */
-    ghost_lidx_t chunkHeight;
     /**
      * @brief The CUDA matrix.
      */
@@ -234,6 +220,8 @@ extern "C" {
     ghost_error_t ghost_cu_sell_spmv_selector(ghost_sparsemat_t *mat, 
             ghost_densemat_t *lhs, ghost_densemat_t *rhs, 
             ghost_spmv_flags_t flags, va_list argp);
+
+    ghost_error_t ghost_cu_sell1_spmv_selector(ghost_sparsemat_t *mat, ghost_densemat_t * lhs_in, ghost_densemat_t * rhs_in, ghost_spmv_flags_t options, va_list argp);
 
     /**
      * @brief Perform a Kaczmarz sweep with the SELL matrix. 

@@ -184,10 +184,6 @@ typedef enum {
  */
 struct ghost_sparsemat_traits_t {
     /**
-     * @brief The matrix format.
-     */
-    ghost_sparsemat_format_t format;
-    /**
      * @brief Flags to the matrix.
      */
     ghost_sparsemat_flags_t flags;
@@ -196,14 +192,17 @@ struct ghost_sparsemat_traits_t {
      */
     ghost_sparsemat_symmetry_t symmetry;
     /**
-     * @brief Auxiliary matrix traits (to be interpreted by the concrete format 
-     * implementation).
+     * @brief The chunk height.
      */
-    void * aux;
+    int C;
+    /**
+     * @brief Number of threads per row.
+     */
+    int T;
     /**
      * @brief The re-ordering strategy to be passed to SCOTCH.
      */
-    char * scotchStrat;
+    const char * scotchStrat;
     /**
      * @brief The sorting scope if sorting should be applied.
      */
@@ -245,7 +244,11 @@ struct ghost_sparsemat_t
     /**
      * @brief The matrix' traits.
      */
-    ghost_sparsemat_traits_t *traits;
+    ghost_sparsemat_traits_t traits;
+    /**
+     * @brief The local and remote part's traits.
+     */
+    ghost_sparsemat_traits_t splittraits[2];
     /**
      * @brief The local part of the matrix (if distributed).
      */
@@ -399,19 +402,6 @@ struct ghost_sparsemat_t
      * Returns if the matrix is NULL.
      */
     void       (*destroy) (ghost_sparsemat_t *mat);
-    /**
-     * @ingroup stringification
-     *
-     * @brief Prints specific information on the matrix.
-     *
-     * @param mat The matrix.
-     * @param str Where to store the string.
-     *
-     * This function is called in ghost_printMatrixInfo() to print 
-     * format-specific information alongside with
-     * general matrix information.
-     */
-    void       (*auxString) (ghost_sparsemat_t *mat, char **str);
     /**
      * @ingroup stringification
      *
