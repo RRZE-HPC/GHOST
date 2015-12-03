@@ -9,6 +9,9 @@
 #include <iomanip>
 #include <complex>
 #include <stdio.h>
+#ifdef GHOST_HAVE_OPENMP
+#include <omp.h>
+#endif
 
 #include "ghost/complex.h"
 #include "ghost/rand.h"
@@ -531,6 +534,14 @@ static ghost_error_t FUNCNAME(fromRand_tmpl(ghost_densemat_t *vec))
 
     int needInit = 0;
     FUNCNAME(malloc(vec,&needInit));
+#ifdef GHOST_HAVE_OPENMP
+    omp_sched_t omp_sched;
+    int omp_sched_mod;
+    omp_get_schedule(&omp_sched,&omp_sched_mod);
+    if (ghost_rand_customseed() && (omp_sched != omp_sched_static)) {
+        WARNING_LOG("A custon random seed has been set but the OpenMP scheduling is not STATIC. This may lead to unexpected results!");
+    }
+#endif
 
 #pragma omp parallel
     {

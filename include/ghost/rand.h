@@ -64,7 +64,12 @@ extern "C" {
      * @return The CUDA random seed.
      */
     int ghost_rand_cu_seed_get();
-
+    /**
+     * @brief Check whether a custom seed has been set.
+     *
+     * @return True if a custom seed has been set, false otherwise.
+     */
+    bool ghost_rand_customseed();
 #ifdef __cplusplus
 }
 #endif

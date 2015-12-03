@@ -12,6 +12,7 @@
 static unsigned int* ghost_rand_states=NULL;
 static int nrand = 0;
 static unsigned int cu_seed = 0;
+static bool customseed = false;
 
 ghost_error_t ghost_rand_create()
 {
@@ -71,6 +72,12 @@ ghost_error_t ghost_rand_seed(ghost_rand_seed_t which, unsigned int seed)
     int i, rank, time;
     ghost_type_t type;
 
+    if (which & (GHOST_RAND_SEED_ALL)) {
+        customseed = true;
+    } else {
+        customseed = false;
+    }
+
     GHOST_CALL_GOTO(ghost_type_get(&type),err,ret);
     GHOST_CALL_GOTO(ghost_machine_npu(&nrand, GHOST_NUMANODE_ANY),err,ret);
     
@@ -121,6 +128,11 @@ out:
 
     return ret;
 
+}
+
+bool ghost_rand_customseed()
+{
+    return customseed;
 }
 
 void ghost_rand_destroy()
