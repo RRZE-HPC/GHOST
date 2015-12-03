@@ -73,7 +73,7 @@ __global__ static void FUNCNAME(dot_kernel)(T *res, T *v1, T *v2, ghost_lidx_t n
     dot = accu<T>(dot,ghost_shfl_down(dot, 1));
 
     if (threadIdx.x%warpSize == 0) {
-        int wid = (threadIdx.x / warpSize) + ((blockDim.x / warpSize)*threadIdx.y);
+        int wid = (threadIdx.x / warpSize) + (32*threadIdx.y);
         shmem[wid]=dot; // Write reduced value to shared memory
     }
 
@@ -81,7 +81,7 @@ __global__ static void FUNCNAME(dot_kernel)(T *res, T *v1, T *v2, ghost_lidx_t n
 
     //read from shared memory only if that warp existed
     if (threadIdx.x < blockDim.x / warpSize) {
-        int lane = (threadIdx.x % warpSize) + ((blockDim.x / warpSize)*threadIdx.y);
+        int lane = (threadIdx.x % warpSize) + (32*threadIdx.y);
         dot = shmem[lane];
     } else {
         zero<T>(dot);
@@ -596,7 +596,7 @@ extern "C" ghost_error_t FUNCNAME(dotprod)(ghost_densemat_t *vec, void *res, gho
             if (vec->traits.datatype & GHOST_DT_DOUBLE) {
                 cuDoubleComplex * partres;
                 ghost_cu_malloc((void **)&partres,vec->traits.ncols*grid.x*sizeof(complex double));
-                FUNCNAME(dot_kernel)<cuDoubleComplex><<< grid,block,block.x/32*sizeof(complex double)*block.y >>>(
+                FUNCNAME(dot_kernel)<cuDoubleComplex><<< grid,block,32*sizeof(complex double)*block.y >>>(
                         (cuDoubleComplex *)partres,
                         (cuDoubleComplex *)veccompact->cu_val, (cuDoubleComplex *)vec2compact->cu_val,
                         vec->traits.nrows,vec->traits.ncols,vec->stride,vec2->stride);
@@ -608,7 +608,7 @@ extern "C" ghost_error_t FUNCNAME(dotprod)(ghost_densemat_t *vec, void *res, gho
             } else {
                 cuFloatComplex * partres;
                 ghost_cu_malloc((void **)&partres,vec->traits.ncols*grid.x*sizeof(complex float));
-                FUNCNAME(dot_kernel)<cuFloatComplex><<< grid,block,block.x/32*sizeof(complex float)*block.y >>>(
+                FUNCNAME(dot_kernel)<cuFloatComplex><<< grid,block,32*sizeof(complex float)*block.y >>>(
                         (cuFloatComplex *)partres,
                         (cuFloatComplex *)veccompact->cu_val, (cuFloatComplex *)vec2compact->cu_val,
                         vec->traits.nrows,vec->traits.ncols,vec->stride,vec2->stride);
@@ -622,7 +622,7 @@ extern "C" ghost_error_t FUNCNAME(dotprod)(ghost_densemat_t *vec, void *res, gho
             if (vec->traits.datatype & GHOST_DT_DOUBLE) {
                 double * partres;
                 ghost_cu_malloc((void **)&partres,vec->traits.ncols*grid.x*sizeof(double));
-                FUNCNAME(dot_kernel)<double><<< grid,block,block.x/32*sizeof(double)*block.y >>>(
+                FUNCNAME(dot_kernel)<double><<< grid,block,32*sizeof(double)*block.y >>>(
                         (double *)partres,
                         (double *)veccompact->cu_val, (double *)vec2compact->cu_val,
                         vec->traits.nrows,vec->traits.ncols,vec->stride,vec2->stride);
@@ -634,7 +634,7 @@ extern "C" ghost_error_t FUNCNAME(dotprod)(ghost_densemat_t *vec, void *res, gho
             } else {
                 float * partres;
                 ghost_cu_malloc((void **)&partres,vec->traits.ncols*grid.x*sizeof(float));
-                FUNCNAME(dot_kernel)<float><<< grid,block,block.x/32*sizeof(float)*block.y >>>(
+                FUNCNAME(dot_kernel)<float><<< grid,block,32*sizeof(float)*block.y >>>(
                         (float *)partres,
                         (float *)veccompact->cu_val, (float *)vec2compact->cu_val,
                         vec->traits.nrows,vec->traits.ncols,vec->stride,vec2->stride);
