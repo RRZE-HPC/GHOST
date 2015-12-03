@@ -40,7 +40,7 @@
 // required for fast reduction with shuffle instructions
 #define BLOCK_ROWSTRIDE blockDim.x*gridDim.x
 #define BLOCK_ROW blockIdx.x*blockDim.x+threadIdx.x
-#define BLOCK_COL threadIdx.y
+#define BLOCK_COL blockIdx.y*blockDim.y+threadIdx.y
 
 #define PASTER(x,y) x ## _ ## y
 #define EVALUATOR(x,y) PASTER(x,y)
@@ -55,44 +55,47 @@ __global__ static void FUNCNAME(dot_kernel)(T *res, T *v1, T *v2, ghost_lidx_t n
     zero<T>(dot);
     int row = BLOCK_ROW;
     int col = BLOCK_COL;
-    T * shmem = (T *)shared; // Shared mem for 32 partial sums
 
-    if (row < nrows) {
-        dot = mulConj<T>(v1[IDX(row,col,ld1)],v2[IDX(row,col,ld2)]);
-    } else {
-        zero<T>(dot);
-    }
+    if (col < ncols) {
+        T * shmem = (T *)shared; // Shared mem for 32 partial sums
+
+        if (row < nrows) {
+            dot = mulConj<T>(v1[IDX(row,col,ld1)],v2[IDX(row,col,ld2)]);
+        } else {
+            zero<T>(dot);
+        }
 
 
-    dot = accu<T>(dot,ghost_shfl_down(dot, 16));
-    dot = accu<T>(dot,ghost_shfl_down(dot, 8));
-    dot = accu<T>(dot,ghost_shfl_down(dot, 4));
-    dot = accu<T>(dot,ghost_shfl_down(dot, 2));
-    dot = accu<T>(dot,ghost_shfl_down(dot, 1));
-
-    if (threadIdx.x%warpSize == 0) {
-        int wid = (threadIdx.x / warpSize) + ((blockDim.x / warpSize)*threadIdx.y);
-        shmem[wid]=dot; // Write reduced value to shared memory
-    }
-
-    __syncthreads();              // Wait for all partial reductions
-
-    //read from shared memory only if that warp existed
-    if (threadIdx.x < blockDim.x / warpSize) {
-        int lane = (threadIdx.x % warpSize) + ((blockDim.x / warpSize)*threadIdx.y);
-        dot = shmem[lane];
-    } else {
-        zero<T>(dot);
-    }
-
-    if (threadIdx.x < warpSize) {
         dot = accu<T>(dot,ghost_shfl_down(dot, 16));
         dot = accu<T>(dot,ghost_shfl_down(dot, 8));
         dot = accu<T>(dot,ghost_shfl_down(dot, 4));
         dot = accu<T>(dot,ghost_shfl_down(dot, 2));
         dot = accu<T>(dot,ghost_shfl_down(dot, 1));
-        if (threadIdx.x == 0) {
-            res[col*gridDim.x+blockIdx.x] = dot;
+
+        if (threadIdx.x%warpSize == 0) {
+            int wid = (threadIdx.x / warpSize) + ((blockDim.x / warpSize)*threadIdx.y);
+            shmem[wid]=dot; // Write reduced value to shared memory
+        }
+
+        __syncthreads();              // Wait for all partial reductions
+
+        //read from shared memory only if that warp existed
+        if (threadIdx.x < blockDim.x / warpSize) {
+            int lane = (threadIdx.x % warpSize) + ((blockDim.x / warpSize)*threadIdx.y);
+            dot = shmem[lane];
+        } else {
+            zero<T>(dot);
+        }
+
+        if (threadIdx.x < warpSize) {
+            dot = accu<T>(dot,ghost_shfl_down(dot, 16));
+            dot = accu<T>(dot,ghost_shfl_down(dot, 8));
+            dot = accu<T>(dot,ghost_shfl_down(dot, 4));
+            dot = accu<T>(dot,ghost_shfl_down(dot, 2));
+            dot = accu<T>(dot,ghost_shfl_down(dot, 1));
+            if (threadIdx.x == 0) {
+                res[col*gridDim.x+blockIdx.x] = dot;
+            }
         }
     }
 }
@@ -586,11 +589,15 @@ extern "C" ghost_error_t FUNCNAME(dotprod)(ghost_densemat_t *vec, void *res, gho
     int vec2stride = vec2compact->stride;
 #endif
 
-    dim3 block(PAD((int)(ceil(((double)THREADSPERBLOCK/(double)vec->traits.ncols))),32),vec->traits.ncols,1);
-    while (block.x*block.y > 1024) {
+    dim3 block(PAD(CEILDIV(THREADSPERBLOCK,vec->traits.ncols),32),vec->traits.ncols,1);
+    while ((block.x*block.y) > THREADSPERBLOCK && (block.x > 32)) {
         block.x -= 32;
     }
-    dim3 grid((int)(ceil((double)vec->traits.nrows/block.x)),1,1);
+    while ((block.x*block.y) > THREADSPERBLOCK) {
+        block.y--;
+    }
+
+    dim3 grid(CEILDIV(vec->traits.nrows,block.x),CEILDIV(vec->traits.ncols,block.y),1);
     
     if (vec->traits.storage == GHOST_DENSEMAT_ROWMAJOR && vec->stride > 1) {
         if (vec->traits.datatype & GHOST_DT_COMPLEX) {
@@ -606,6 +613,7 @@ extern "C" ghost_error_t FUNCNAME(dotprod)(ghost_densemat_t *vec, void *res, gho
                     ghost_deviceReduceSum<cuDoubleComplex><<<1,1024,32*sizeof(complex double)>>>(&partres[col*grid.x],&partres[col],grid.x);
                 }
                 ghost_cu_download(res,partres,vec->traits.ncols*sizeof(complex double));
+                ghost_cu_free(partres);
             } else {
                 cuFloatComplex * partres;
                 ghost_cu_malloc((void **)&partres,vec->traits.ncols*grid.x*sizeof(complex float));
@@ -618,9 +626,11 @@ extern "C" ghost_error_t FUNCNAME(dotprod)(ghost_densemat_t *vec, void *res, gho
                     ghost_deviceReduceSum<cuFloatComplex><<<1,1024,32*sizeof(complex float)>>>(&partres[col*grid.x],&partres[col],grid.x);
                 }
                 ghost_cu_download(res,partres,vec->traits.ncols*sizeof(complex float));
+                ghost_cu_free(partres);
             }
         } else {
             if (vec->traits.datatype & GHOST_DT_DOUBLE) {
+                INFO_LOG("%d %d",vec->traits.ncols,grid.x);
                 double * partres;
                 ghost_cu_malloc((void **)&partres,vec->traits.ncols*grid.x*sizeof(double));
                 FUNCNAME(dot_kernel)<double><<< grid,block,block.x/32*sizeof(double)*block.y >>>(
@@ -632,6 +642,7 @@ extern "C" ghost_error_t FUNCNAME(dotprod)(ghost_densemat_t *vec, void *res, gho
                     ghost_deviceReduceSum<double><<<1,1024,32*sizeof(double)>>>(&partres[col*grid.x],&partres[col],grid.x);
                 }
                 ghost_cu_download(res,partres,vec->traits.ncols*sizeof(double));
+                ghost_cu_free(partres);
             } else {
                 float * partres;
                 ghost_cu_malloc((void **)&partres,vec->traits.ncols*grid.x*sizeof(float));
@@ -644,6 +655,7 @@ extern "C" ghost_error_t FUNCNAME(dotprod)(ghost_densemat_t *vec, void *res, gho
                     ghost_deviceReduceSum<float><<<1,1024,32*sizeof(float)>>>(&partres[col*grid.x],&partres[col],grid.x);
                 }
                 ghost_cu_download(res,partres,vec->traits.ncols*sizeof(float));
+                ghost_cu_free(partres);
             }
         }
 
