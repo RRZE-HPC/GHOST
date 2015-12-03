@@ -42,6 +42,8 @@
  */
 #define PAD(n,p) (((n)<1 || (p)<1)?(n):(((n) % (p)) ? ((n) + (p) - (n) % (p)) : (n)))
 
+#define CEILDIV(a,b) ((int)(ceil(((double)(a))/((double)(b)))))
+
 #define GHOST_PAD_MAX 1024
 
 #define IS_ALIGNED(PTR,BYTES) (((uintptr_t)(const void *)(PTR)) % (BYTES) == 0)
