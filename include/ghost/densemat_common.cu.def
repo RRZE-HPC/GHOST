@@ -630,7 +630,6 @@ extern "C" ghost_error_t FUNCNAME(dotprod)(ghost_densemat_t *vec, void *res, gho
             }
         } else {
             if (vec->traits.datatype & GHOST_DT_DOUBLE) {
-                INFO_LOG("%d %d",vec->traits.ncols,grid.x);
                 double * partres;
                 ghost_cu_malloc((void **)&partres,vec->traits.ncols*grid.x*sizeof(double));
                 FUNCNAME(dot_kernel)<double><<< grid,block,block.x/32*sizeof(double)*block.y >>>(
