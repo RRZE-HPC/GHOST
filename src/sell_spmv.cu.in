@@ -255,9 +255,6 @@ __global__ void SELL_kernel_cm_fallback_tmpl(v_t * const __restrict__ lhs, const
         if (C == blockDim.x) {
             cs = chunkstart[blockIdx.x];
             tid = threadIdx.x;
-        } else if (C < blockDim.x) {
-            cs = chunkstart[i/C];
-            tid = threadIdx.x%C;
         } else {
             cs = chunkstart[i/C];
             tid = i%C;
