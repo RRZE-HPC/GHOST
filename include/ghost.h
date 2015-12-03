@@ -16,6 +16,7 @@
 #include "ghost/math.h"
 #include "ghost/timing.h"
 #include "ghost/locality.h"
+#include "ghost/rand.h"
 
 #include <hwloc.h>
 
