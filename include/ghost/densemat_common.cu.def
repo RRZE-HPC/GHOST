@@ -41,8 +41,6 @@
 #define BLOCK_ROWSTRIDE blockDim.x*gridDim.x
 #define BLOCK_ROW blockIdx.x*blockDim.x+threadIdx.x
 #define BLOCK_COL threadIdx.y
-#define BLOCK_SZ(nrows,ncols,nthr) (int)(ceil(((double)nthr/(double)ncols))),ncols,1
-#define GRID_SZ(nrows,ncols,nthr) (int)ceil(((double)(nrows*ncols)/((double )nthr))),1,1
 
 #define PASTER(x,y) x ## _ ## y
 #define EVALUATOR(x,y) PASTER(x,y)
@@ -588,9 +586,12 @@ extern "C" ghost_error_t FUNCNAME(dotprod)(ghost_densemat_t *vec, void *res, gho
     int vec2stride = vec2compact->stride;
 #endif
 
-    dim3 block(BLOCK_SZ(vec->traits.nrows,vec->traits.ncols,THREADSPERBLOCK));
-    dim3 grid(GRID_SZ(vec->traits.nrows,vec->traits.ncols,THREADSPERBLOCK));
-
+    dim3 block(PAD((int)(ceil(((double)THREADSPERBLOCK/(double)vec->traits.ncols))),32),vec->traits.ncols,1);
+    while (block.x*block.y > 1024) {
+        block.x -= 32;
+    }
+    dim3 grid((int)(ceil((double)vec->traits.nrows/block.x)),1,1);
+    
     if (vec->traits.storage == GHOST_DENSEMAT_ROWMAJOR && vec->stride > 1) {
         if (vec->traits.datatype & GHOST_DT_COMPLEX) {
             if (vec->traits.datatype & GHOST_DT_DOUBLE) {
