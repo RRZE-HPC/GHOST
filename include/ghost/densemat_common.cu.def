@@ -652,8 +652,8 @@ extern "C" ghost_error_t FUNCNAME(dotprod)(ghost_densemat_t *vec, void *res, gho
         ghost_lidx_t v;
         for (v=0; v<veccompact->traits.ncols; v++)
         {
-            char *v1 = veccompact->cu_val+v*veccompact->elSize;
-            char *v2 = vec2compact->cu_val+v*veccompact->elSize;
+            char *v1 = veccompact->cu_val+v*veccompact->stride*veccompact->elSize;
+            char *v2 = vec2compact->cu_val+v*vec2compact->stride*veccompact->elSize;
             if (vec->traits.datatype & GHOST_DT_COMPLEX)
             {
                 if (vec->traits.datatype & GHOST_DT_DOUBLE)
