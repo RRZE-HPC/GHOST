@@ -568,13 +568,13 @@ extern "C" ghost_error_t FUNCNAME(dotprod)(ghost_densemat_t *vec, void *res, gho
     ghost_densemat_t *veccompact;
     ghost_densemat_t *vec2compact;
 
-    if (vec->traits.flags & GHOST_DENSEMAT_VIEW) {
+    if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         INFO_LOG("Cloning (and compressing) vec1 before dotproduct");
         vec->clone(vec,&veccompact,vec->traits.nrows,0,vec->traits.ncols,0);
     } else {
         veccompact = vec;
     }
-    if (vec2->traits.flags & GHOST_DENSEMAT_VIEW) {
+    if (vec2->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         INFO_LOG("Cloning (and compressing) vec2 before dotproduct");
         vec2->clone(vec2,&vec2compact,vec2->traits.nrows,0,vec2->traits.ncols,0);
     } else {
