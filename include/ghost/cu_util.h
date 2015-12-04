@@ -249,6 +249,7 @@ extern "C" {
 
     ghost_error_t ghost_cu_rand_generator_get(ghost_cu_rand_generator_t *gen);
     void ghost_cu_rand_generator_destroy();
+    ghost_error_t ghost_cu_finalize();
 
 #ifdef __cplusplus
 }

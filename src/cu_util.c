@@ -476,3 +476,11 @@ void ghost_cu_rand_generator_destroy()
     }
 #endif
 }
+
+ghost_error_t ghost_cu_finalize()
+{
+    CUBLAS_CALL_RETURN(cublasDestroy(ghost_cublas_handle));
+    CUSPARSE_CALL_RETURN(cusparseDestroy(ghost_cusparse_handle));
+
+    return GHOST_SUCCESS;
+}
