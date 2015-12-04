@@ -4,6 +4,7 @@
 #include "ghost/util.h"
 #include "ghost/tsmm_inplace.h"
 #include "ghost/tsmm_inplace_gen.h"
+#include "ghost/tsmm_inplace_cu_gen.h"
 #include "ghost/tsmm_inplace.h"
 #include "ghost/math.h"
 #include "ghost/timing.h"
@@ -21,13 +22,13 @@ static map<ghost_tsmm_inplace_parameters_t, ghost_tsmm_inplace_kernel_t> ghost_t
 ghost_error_t ghost_tsmm_inplace_valid(ghost_densemat_t *x, ghost_densemat_t *v, const char * transv, 
 ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce, int printerror)
 {
-    if (x->traits.location != GHOST_LOCATION_HOST || v->traits.location != GHOST_LOCATION_HOST) {
+/*    if (x->traits.location != GHOST_LOCATION_HOST || v->traits.location != GHOST_LOCATION_HOST) {
         if (printerror) {
             ERROR_LOG("TSMM-inplace only implemented for host densemats!");
         }
         return GHOST_ERR_INVALID_ARG;
     }
-
+*/
     if (x->traits.datatype != w->traits.datatype) {
         if (printerror) {
             ERROR_LOG("Different data types!");
@@ -101,16 +102,25 @@ ghost_error_t ghost_tsmm_inplace(ghost_densemat_t *x, ghost_densemat_t *w, void 
     
     if (ghost_tsmm_inplace_kernels.empty()) {
 #include "tsmm_inplace.def"
+#ifdef GHOST_HAVE_CUDA
+#include "tsmm_inplace_cu.def"
+#endif
     }
     
     ghost_tsmm_inplace_parameters_t p;
     ghost_tsmm_inplace_kernel_t kernel = NULL;
 
     p.impl = GHOST_IMPLEMENTATION_PLAIN;
-
     p.dt = x->traits.datatype;
     p.ncolsin = w->traits.nrows;
     p.ncolsout = w->traits.ncols;
+#ifdef GHOST_HAVE_CUDA
+    if (x->traits.location & GHOST_LOCATION_DEVICE) {
+        p.impl = GHOST_IMPLEMENTATION_CUDA;
+        p.dt = GHOST_DT_ANY;
+    }
+#endif
+
    
     INFO_LOG("in %d out %d",p.ncolsin,p.ncolsout); 
     kernel = ghost_tsmm_inplace_kernels[p];

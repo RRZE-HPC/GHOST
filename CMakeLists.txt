@@ -236,6 +236,10 @@ configure_file (
     ${PROJECT_BINARY_DIR}/src/tsmm_cu.cu
     )
 configure_file (
+    ${PROJECT_SOURCE_DIR}/src/tsmm_inplace_cu.cu.in
+    ${PROJECT_BINARY_DIR}/src/tsmm_inplace_cu.cu
+    )
+configure_file (
     ${PROJECT_SOURCE_DIR}/src/tsmm_inplace.c.in
     ${PROJECT_BINARY_DIR}/src/tsmm_inplace.c
     )
@@ -272,6 +276,7 @@ set (TO_PREPROCESS
     ${PROJECT_BINARY_DIR}/src/tsmm_avx.c
     ${PROJECT_BINARY_DIR}/src/tsmm_sse.c
     ${PROJECT_BINARY_DIR}/src/tsmm_cu.cu
+    ${PROJECT_BINARY_DIR}/src/tsmm_inplace_cu.cu
     ${PROJECT_BINARY_DIR}/src/tsmm_inplace.c
     ${PROJECT_BINARY_DIR}/src/tsmttsm.c
     ${PROJECT_BINARY_DIR}/src/tsmttsm_avx2.c
@@ -435,6 +440,7 @@ if (USE_CUDA)
         cuda_compile(DENSEMAT_RM_CU_O src/densemat_rm.cu OPTIONS -DMPICH_IGNORE_CXX_SEEK)
         cuda_compile(CRS_CU_O src/sell-1_spmv.cu OPTIONS -DMPICH_IGNORE_CXX_SEEK)
         cuda_compile(TSMM_CU_O ${PROJECT_BINARY_DIR}/src_pp/tsmm_cu.cu OPTIONS -DMPICH_IGNORE_CXX_SEEK)
+        cuda_compile(TSMM_INPLACE_CU_O ${PROJECT_BINARY_DIR}/src_pp/tsmm_inplace_cu.cu OPTIONS -DMPICH_IGNORE_CXX_SEEK)
         set (SOURCES 
             ${SOURCES}
             ${SELL_KERNEL_CU_O}
@@ -442,6 +448,7 @@ if (USE_CUDA)
             ${DENSEMAT_RM_CU_O}
             ${CRS_CU_O}
             ${TSMM_CU_O}
+            ${TSMM_INPLACE_CU_O}
             )
         include_directories(SYSTEM ${CUDA_INCLUDE_DIRS})
         set (HEADERS ${HEADERS}

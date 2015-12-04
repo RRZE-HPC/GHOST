@@ -175,7 +175,11 @@ while (<>) {
             print "{\n";
             print $funcname."_parameters_t pars;\n";
             print "pars.impl = ".$implementations{$funcpars[0]}.";\n";
-            print "pars.dt = ".$datatypes{$funcpars[1]}.";\n";
+            if ($funcpars[1] eq "x") {
+                print "pars.dt = GHOST_DT_ANY;\n";
+            } else {
+                print "pars.dt = ".$datatypes{$funcpars[1]}.";\n";
+            }
             if ($funcpars[2] eq "x") {
                 print "pars.ncolsin = -1;\n";
             } else {
