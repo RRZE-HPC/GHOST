@@ -435,10 +435,14 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
     if ((reduce != GHOST_GEMM_NO_REDUCE) && (v->context)) {
         x->reduce(x,v->context->mpicomm,reduce);
     }
-
-    //char *str;
-    //x->string(x,&str);
-    //printf("$$$$$\n%s\n$$$$$",str);
+    if (w != w_in) {
+        INFO_LOG("Destroy clone of w");
+        w->destroy(w);
+    }
+    if (v != v_in) {
+        INFO_LOG("Destroy clone of v");
+        v->destroy(v);
+    }
     
     goto out;
 err:
