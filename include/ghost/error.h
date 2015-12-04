@@ -13,9 +13,9 @@
  * @brief Error return type.
  */
 typedef enum {
-   /**
-    * @brief No error occured.
-    */
+    /**
+     * @brief No error occured.
+     */
     GHOST_SUCCESS,
     GHOST_ERR_INVALID_ARG,
     GHOST_ERR_MPI,
@@ -188,7 +188,22 @@ typedef enum {
 #define CUBLAS_CALL(call,__err) {\
     cublasStatus_t err = call;\
     if (err != CUBLAS_STATUS_SUCCESS) {\
-        ERROR_LOG("CUBLAS Error: %d",(int)err);\
+        switch (err) {\
+            case CUBLAS_STATUS_NOT_INITIALIZED:\
+                ERROR_LOG("CUBLAS error: CUBLAS_STATUS_NOT_INITIALIZED");\
+            case CUBLAS_STATUS_ALLOC_FAILED:\
+                ERROR_LOG("CUBLAS error: CUBLAS_STATUS_ALLOC_FAILED");\
+            case CUBLAS_STATUS_INVALID_VALUE:\
+                ERROR_LOG("CUBLAS error: CUBLAS_STATUS_INVALID_VALUE");\
+            case CUBLAS_STATUS_ARCH_MISMATCH:\
+                ERROR_LOG("CUBLAS error: CUBLAS_STATUS_ARCH_MISMATCH");\
+            case CUBLAS_STATUS_MAPPING_ERROR:\
+                ERROR_LOG("CUBLAS error: CUBLAS_STATUS_MAPPING_ERROR");\
+            case CUBLAS_STATUS_EXECUTION_FAILED:\
+                ERROR_LOG("CUBLAS error: CUBLAS_STATUS_EXECUTION_FAILED");\
+            case CUBLAS_STATUS_INTERNAL_ERROR:\
+                ERROR_LOG("CUBLAS error: CUBLAS_STATUS_INTERNAL_ERROR");\
+        }\
         ghost_errorhandler_t h = ghost_errorhandler_get(GHOST_ERR_CUBLAS);\
         if (h) {\
             h((void *)&err);\
@@ -334,22 +349,22 @@ typedef enum {
 }\
 
 #ifdef __cplusplus
-extern "C" {
+    extern "C" {
 #endif
 
-    /**
-     * @ingroup stringification
-     *
-     * @brief Get a string of the GHOST error. 
-     *
-     * @param e The error.
-     *
-     * @return The string.
-     */
-    char * ghost_error_string(ghost_error_t e);
+        /**
+         * @ingroup stringification
+         *
+         * @brief Get a string of the GHOST error. 
+         *
+         * @param e The error.
+         *
+         * @return The string.
+         */
+        char * ghost_error_string(ghost_error_t e);
 
 #ifdef __cplusplus
-}
+    }
 #endif
 
 #endif
