@@ -479,12 +479,14 @@ void ghost_cu_rand_generator_destroy()
 
 ghost_error_t ghost_cu_finalize()
 {
+#ifdef GHOST_HAVE_CUDA
     if (ghost_cublas_handle) {
         CUBLAS_CALL_RETURN(cublasDestroy(ghost_cublas_handle));
     }
     if (ghost_cusparse_handle) {
         CUSPARSE_CALL_RETURN(cusparseDestroy(ghost_cusparse_handle));
     }
+#endif
 
     return GHOST_SUCCESS;
 }
