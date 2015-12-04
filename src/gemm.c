@@ -229,12 +229,9 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
         culdx = *ldx;
         bool requires_conj_vw = false;
 
-        void *xcuval;
-        void *vcuval;
-        void *wcuval;
-        GHOST_CALL_GOTO(ghost_densemat_cu_valptr(x,&xcuval),err,ret);
-        GHOST_CALL_GOTO(ghost_densemat_cu_valptr(v,&vcuval),err,ret);
-        GHOST_CALL_GOTO(ghost_densemat_cu_valptr(w,&wcuval),err,ret);
+        void *xcuval = x->cu_val;
+        void *vcuval = v->cu_val;
+        void *wcuval = w->cu_val;
 
 
         /*if (v->traits.storage == GHOST_DENSEMAT_ROWMAJOR && w->traits.storage == GHOST_DENSEMAT_ROWMAJOR && (cutransv == CUBLAS_OP_T || cutransv == CUBLAS_OP_C) && cutransw == CUBLAS_OP_N) {
