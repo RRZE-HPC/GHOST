@@ -23,8 +23,8 @@
 #define ghost_cu_MAX_DEVICE_NAME_LEN 500
 
 #ifdef GHOST_HAVE_CUDA
-static cublasHandle_t ghost_cublas_handle;
-static cusparseHandle_t ghost_cusparse_handle;
+static cublasHandle_t ghost_cublas_handle = NULL;
+static cusparseHandle_t ghost_cusparse_handle = NULL;
 static struct cudaDeviceProp ghost_cu_device_prop;
 static curandGenerator_t ghost_cu_rand_generator = NULL;
 #endif
@@ -479,8 +479,12 @@ void ghost_cu_rand_generator_destroy()
 
 ghost_error_t ghost_cu_finalize()
 {
-    CUBLAS_CALL_RETURN(cublasDestroy(ghost_cublas_handle));
-    CUSPARSE_CALL_RETURN(cusparseDestroy(ghost_cusparse_handle));
+    if (ghost_cublas_handle) {
+        CUBLAS_CALL_RETURN(cublasDestroy(ghost_cublas_handle));
+    }
+    if (ghost_cusparse_handle) {
+        CUSPARSE_CALL_RETURN(cusparseDestroy(ghost_cusparse_handle));
+    }
 
     return GHOST_SUCCESS;
 }
