@@ -669,8 +669,12 @@ static ghost_error_t FUNCNAME(fromVec_tmpl(ghost_densemat_t *vec, ghost_densemat
             }
         }
     } else {
-        INFO_LOG("On-the-fly memtranpose");
-        if (vec->traits.location != vec2->traits.location) {
+#if defined(COLMAJOR)
+        INFO_LOG("On-the-fly memtranpose RM -> CM");
+#else
+        INFO_LOG("On-the-fly memtranpose CM -> RM");
+#endif
+        if (!(vec->traits.location & vec2->traits.location)) {
            ERROR_LOG("Inter-device memtranspose not yet implemented!");
            return GHOST_ERR_NOT_IMPLEMENTED;
         }
