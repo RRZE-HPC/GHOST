@@ -316,33 +316,27 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q, int nthreads)
 
 
         DEBUG_LOG(1,"Pinning task's threads");
-        {
-            int curCore = hwloc_bitmap_first(myfree);
-            // pin me
-            ghost_thread_pin(curCore);
-            if( curTask->nThreads > 0 ) {
-                int *cores = NULL;
-                ghost_malloc((void **)&cores,sizeof(int)*curTask->nThreads);
-                for(curThread=0; curThread<curTask->nThreads; curThread++) {
-                    cores[curThread] = curCore;
-                    hwloc_bitmap_set(mybusy,curCore);
-                    curCore = hwloc_bitmap_next(myfree,curCore);
-                }
-                // pin
-            
+        int curCore = hwloc_bitmap_first(myfree);
+        // pin me
+        ghost_thread_pin(curCore);
+        
+        if( curTask->nThreads > 0 ) {
+            int cores[curTask->nThreads];
+            ghost_malloc((void **)&cores,sizeof(int)*curTask->nThreads);
+            for(curThread=0; curThread<curTask->nThreads; curThread++) {
+                cores[curThread] = curCore;
+                hwloc_bitmap_set(mybusy,curCore);
+                curCore = hwloc_bitmap_next(myfree,curCore);
+            }
+        
 #pragma omp parallel private(curThread)
-                {
-                    curThread = ghost_omp_threadnum();
-                    DEBUG_LOG(1,"Thread %d (%d): Core # %d is idle, using it",curThread,
-                            (int)pthread_self(),cores[curThread]);
+            {
+                curThread = ghost_omp_threadnum();
+                DEBUG_LOG(1,"Thread %d (%d): Core # %d is idle, using it",curThread,
+                        (int)pthread_self(),cores[curThread]);
 
-                    ghost_thread_pin(cores[curThread]);
+                ghost_thread_pin(cores[curThread]);
 
-//#ifdef GHOST_HAVE_INSTR_LIKWID
-//                    likwid_markerThreadInit();
-//#endif
-                }
-                free(cores);
             }
         }
 
