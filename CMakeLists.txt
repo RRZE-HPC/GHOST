@@ -86,6 +86,7 @@ set (SOURCES
     src/tsmm.cpp
     src/tsmm_inplace.cpp
     src/tsmttsm.cpp
+    src/bench.c
     src/bincrs_func.c
     src/bitmap.c
     src/blas_util.c
@@ -123,6 +124,7 @@ set (SOURCES
     )
 
 set (HEADERS
+    include/ghost/bench.h
     include/ghost/bincrs.h
     include/ghost/bindensemat.h
     include/ghost/bitmap.h
@@ -131,6 +133,7 @@ set (HEADERS
     include/ghost/complex.h
     include/ghost/context.h
     include/ghost/core.h
+    include/ghost/cu_bench.h
     include/ghost/cu_util.h
     include/ghost/densemat.h
     include/ghost/densemat_cm.h
@@ -441,6 +444,7 @@ if (USE_CUDA)
         cuda_compile(CRS_CU_O src/sell-1_spmv.cu OPTIONS -DMPICH_IGNORE_CXX_SEEK)
         cuda_compile(TSMM_CU_O ${PROJECT_BINARY_DIR}/src_pp/tsmm_cu.cu OPTIONS -DMPICH_IGNORE_CXX_SEEK)
         cuda_compile(TSMM_INPLACE_CU_O ${PROJECT_BINARY_DIR}/src_pp/tsmm_inplace_cu.cu OPTIONS -DMPICH_IGNORE_CXX_SEEK)
+        cuda_compile(BENCH_CU_O src/cu_bench.cu OPTIONS -DMPICH_IGNORE_CXX_SEEK)
         set (SOURCES 
             ${SOURCES}
             ${SELL_KERNEL_CU_O}
@@ -449,6 +453,7 @@ if (USE_CUDA)
             ${CRS_CU_O}
             ${TSMM_CU_O}
             ${TSMM_INPLACE_CU_O}
+            ${BENCH_CU_O}
             )
         include_directories(SYSTEM ${CUDA_INCLUDE_DIRS})
         set (HEADERS ${HEADERS}

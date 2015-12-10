@@ -1,24 +1,42 @@
-#include "ghost/ghost_util.h"
-#include "ghost/ghost_bench.h"
+#include "ghost/util.h"
+#include "ghost/cu_util.h"
+#include "ghost/bench.h"
+#include "ghost/cu_bench.h"
 
-
-#define STREAM_BYTES 1e9
-#define N (int)(STREAM_BYTES/sizeof(double))
+#define N (ghost_lidx_t)1e8 
 
 static void dummy(double *a) {
-    if (a[N>>1] < 0) {
+    if (a[(ghost_lidx_t)N>>1] < 0) {
         WARNING_LOG("dummy");
     }
 }
 
-ghost_error_t ghost_bench_stream(int test, double *bw)
+static void copy_kernel(double * __restrict__ a, const double * __restrict__ b)
 {
+    ghost_lidx_t i;
+#pragma omp parallel for
+    for (i=0; i<N; i++) {
+        a[i] = b[i];
+    }
+
+}
+
+ghost_error_t ghost_bench_stream(ghost_bench_stream_test_t test, double *bw)
+{
+    ghost_type_t mytype;
+    ghost_type_get(&mytype);
+    
+    if (mytype == GHOST_TYPE_CUDA) {
+        return ghost_cu_bench_stream(test,bw);
+    }
 
     ghost_error_t ret = GHOST_SUCCESS;
-    UNUSED(test);
+    if (test != GHOST_BENCH_STREAM_COPY) {
+        WARNING_LOG("Currently only STREAM copy implemented!");
+    }
 
     int i;
-    double start;
+    double start,stop;
 
     double *a = NULL;
     double *b = NULL;
@@ -31,12 +49,11 @@ ghost_error_t ghost_bench_stream(int test, double *bw)
         b[i] = i;
     }
     
-    start = ghost_timing_wc();
-#pragma omp parallel for
-    for (i=0; i<N; i++) {
-        a[i] = b[i];
-    }
-    *bw = 2*STREAM_BYTES/(ghost_timing_wc()-start);
+    ghost_timing_wc(&start);
+    copy_kernel(a,b);
+    ghost_timing_wc(&stop);
+
+    *bw = 2*N/1.e9*sizeof(double)/(stop-start);
 
     dummy(a);
 
@@ -49,7 +66,6 @@ out:
 
     return ret;
 }
-
 
 ghost_error_t ghost_bench_pingpong(double *bw)
 {

@@ -165,7 +165,7 @@ extern "C" {
      * @param[in] matrixSource The sparse matrix source.     
      * @param[in] srcType The type of the sparse matrix source.     
      * @param[in] comm The MPI communicator in which the context is present.
-     * @param[in] weight This influences the work distribution amon ranks. 
+     * @param[in] weight This influences the work distribution amon ranks. If set to 0., it is automatically determined. 
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      * 
