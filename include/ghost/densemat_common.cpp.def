@@ -596,30 +596,6 @@ static ghost_error_t FUNCNAME(string_tmpl(char **str, ghost_densemat_t *vec))
     return GHOST_SUCCESS;
 }
 
-#ifdef GHOST_HAVE_CUDA
-inline cublasStatus_t cublasGgeam(cublasHandle_t handle, cublasOperation_t transa, cublasOperation_t transb,
-        int m, int n, const float *alpha, const float *A, int lda, const float *beta, const float *B, int ldb, float *C, int ldc) 
-{
-    return cublasSgeam(handle,transa,transb,m,n,alpha,A,lda,beta,B,ldb,C,ldc);
-}
-inline cublasStatus_t cublasGgeam(cublasHandle_t handle, cublasOperation_t transa, cublasOperation_t transb,
-        int m, int n, const ghost_complex<float> *alpha, const ghost_complex<float> *A, int lda, const ghost_complex<float> *beta, const ghost_complex<float> *B, int ldb, ghost_complex<float> *C, int ldc) 
-{
-    return cublasCgeam(handle,transa,transb,m,n,(const cuComplex *)alpha,(const cuComplex *)A,lda,(const cuComplex *)beta,(const cuComplex *)B,ldb,(cuComplex *)C,ldc);
-}
-inline cublasStatus_t cublasGgeam(cublasHandle_t handle, cublasOperation_t transa, cublasOperation_t transb,
-        int m, int n, const double *alpha, const double *A, int lda, const double *beta, const double *B, int ldb, double *C, int ldc) 
-{
-    return cublasDgeam(handle,transa,transb,m,n,alpha,A,lda,beta,B,ldb,C,ldc);
-}
-inline cublasStatus_t cublasGgeam(cublasHandle_t handle, cublasOperation_t transa, cublasOperation_t transb,
-        int m, int n, const ghost_complex<double> *alpha, const ghost_complex<double> *A, int lda, const ghost_complex<double> *beta, const ghost_complex<double> *B, int ldb, ghost_complex<double> *C, int ldc) 
-{
-    return cublasZgeam(handle,transa,transb,m,n,(const cuDoubleComplex *)alpha,(const cuDoubleComplex *)A,lda,(const cuDoubleComplex *)beta,(const cuDoubleComplex *)B,ldb,(cuDoubleComplex *)C,ldc);
-}
-
-#endif
-
 template <typename v_t> 
 static ghost_error_t FUNCNAME(fromVec_tmpl(ghost_densemat_t *vec, ghost_densemat_t *vec2, ghost_lidx_t roffs, ghost_lidx_t coffs))
 {
@@ -686,7 +662,6 @@ static ghost_error_t FUNCNAME(fromVec_tmpl(ghost_densemat_t *vec, ghost_densemat
         if (vec->traits.location & GHOST_LOCATION_DEVICE && 
                 vec2->traits.location & GHOST_LOCATION_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
-            v_t alpha = 1., beta = 0.;
             ghost_lidx_t m,n;
 #if defined(COLMAJOR)
             m = vec->traits.nrows;
@@ -697,9 +672,7 @@ static ghost_error_t FUNCNAME(fromVec_tmpl(ghost_densemat_t *vec, ghost_densemat
 #else
 #error "Neither ROWMAJOR nor COLMAJOR defined!"
 #endif
-            cublasHandle_t ghost_cublas_handle;
-            GHOST_CALL_RETURN(ghost_cu_cublas_handle(&ghost_cublas_handle));
-            CUBLAS_CALL_RETURN(cublasGgeam(ghost_cublas_handle,CUBLAS_OP_T,CUBLAS_OP_T,m,n,&alpha,(const v_t *)vec2->cu_val,vec2->stride,&beta,(v_t *)vec2->cu_val,vec2->stride,(v_t *)vec->cu_val,vec->stride));
+            GHOST_CALL_RETURN(ghost_cu_memtranspose(m,n,vec->cu_val,vec->stride,vec2->cu_val,vec2->stride,vec->traits.datatype));
 #endif
         } else {
             DENSEMAT_ITER2_COMPACT_OFFS_TRANSPOSED(vec,vec2,roffs,coffs,*(v_t *)valptr1 = *(v_t *)valptr2);
