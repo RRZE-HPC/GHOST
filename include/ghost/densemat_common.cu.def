@@ -209,23 +209,28 @@ __global__ static void FUNCNAME(fromscalar_kernel)(T *vec, T a, ghost_lidx_t nro
 
 
 template<typename T>  
-__global__ static void FUNCNAME(communicationassembly_kernel)(T *vec, T *work, ghost_lidx_t offs, ghost_lidx_t *duelist, ghost_lidx_t ncols, ghost_lidx_t ndues, ghost_lidx_t ld, ghost_lidx_t *perm)
+__global__ static void FUNCNAME(communicationassembly_kernel)(T *vec, T *work, ghost_lidx_t offs, ghost_lidx_t *duelist, ghost_lidx_t ncols, ghost_lidx_t ndues, ghost_lidx_t ld, ghost_lidx_t nduestotal, ghost_lidx_t *perm)
 {
     int due = blockIdx.x*blockDim.x+threadIdx.x;
     int col = threadIdx.y;
+#ifdef ROWMAJOR
+    int ldwork = ncols;
+#else
+    int ldwork = nduestotal;
+#endif
 
     if (perm) {
         for (;due < ndues; due+=gridDim.x*blockDim.x) {
-            work[(offs+due)*ncols+col] = vec[IDX(perm[duelist[due]],col,ld)];
+            work[IDX(offs+due,col,ldwork)] = vec[IDX(perm[duelist[due]],col,ld)];
         }
     } else {
         for (;due < ndues; due+=gridDim.x*blockDim.x) {
-            work[(offs+due)*ncols+col] = vec[IDX(duelist[due],col,ld)];
+            work[IDX(offs+due,col,ldwork)] = vec[IDX(duelist[due],col,ld)];
         }
     }
 }
 
-extern "C" ghost_error_t FUNCNAME(communicationassembly)(void * work, ghost_lidx_t *dueptr, ghost_densemat_t *vec, ghost_lidx_t *perm)
+extern "C" ghost_error_t FUNCNAME(communicationassembly)(void * work, ghost_lidx_t *dueptr, ghost_lidx_t totaldues, ghost_densemat_t *vec, ghost_lidx_t *perm)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
   
@@ -254,13 +259,13 @@ extern "C" ghost_error_t FUNCNAME(communicationassembly)(void * work, ghost_lidx
             if (vec->traits.datatype & GHOST_DT_DOUBLE)
             {
                 if (ctx->dues[proc]) {
-                    FUNCNAME(communicationassembly_kernel)<cuDoubleComplex><<< grid,block >>>((cuDoubleComplex *)vec->cu_val, ((cuDoubleComplex *)work),dueptr[proc],ctx->cu_duelist[proc],vec->traits.ncols,ctx->dues[proc],vec->stride,perm);
+                    FUNCNAME(communicationassembly_kernel)<cuDoubleComplex><<< grid,block >>>((cuDoubleComplex *)vec->cu_val, ((cuDoubleComplex *)work),dueptr[proc],ctx->cu_duelist[proc],vec->traits.ncols,ctx->dues[proc],vec->stride,totaldues,perm);
                 }
             } 
             else 
             {
                 if (ctx->dues[proc]) {
-                    FUNCNAME(communicationassembly_kernel)<cuFloatComplex><<< grid,block >>>((cuFloatComplex *)vec->cu_val, ((cuFloatComplex *)work),dueptr[proc],ctx->cu_duelist[proc],vec->traits.ncols,ctx->dues[proc],vec->stride,perm);
+                    FUNCNAME(communicationassembly_kernel)<cuFloatComplex><<< grid,block >>>((cuFloatComplex *)vec->cu_val, ((cuFloatComplex *)work),dueptr[proc],ctx->cu_duelist[proc],vec->traits.ncols,ctx->dues[proc],vec->stride,totaldues,perm);
                 }
             }
         }
@@ -269,13 +274,13 @@ extern "C" ghost_error_t FUNCNAME(communicationassembly)(void * work, ghost_lidx
             if (vec->traits.datatype & GHOST_DT_DOUBLE)
             {
                 if (ctx->dues[proc]) {
-                    FUNCNAME(communicationassembly_kernel)<double><<< grid,block >>>((double *)vec->cu_val, ((double *)work),dueptr[proc],ctx->cu_duelist[proc],vec->traits.ncols,ctx->dues[proc],vec->stride,perm);
+                    FUNCNAME(communicationassembly_kernel)<double><<< grid,block >>>((double *)vec->cu_val, ((double *)work),dueptr[proc],ctx->cu_duelist[proc],vec->traits.ncols,ctx->dues[proc],vec->stride,totaldues,perm);
                 }
             } 
             else 
             {
                 if (ctx->dues[proc]) {
-                    FUNCNAME(communicationassembly_kernel)<float><<< grid,block >>>((float *)vec->cu_val, ((float *)work),dueptr[proc],ctx->cu_duelist[proc],vec->traits.ncols,ctx->dues[proc],vec->stride,perm);
+                    FUNCNAME(communicationassembly_kernel)<float><<< grid,block >>>((float *)vec->cu_val, ((float *)work),dueptr[proc],ctx->cu_duelist[proc],vec->traits.ncols,ctx->dues[proc],vec->stride,totaldues,perm);
                 }
             }
         }

@@ -10,7 +10,9 @@
 #include "ghost/log.h"
 #include "ghost/omp.h"
 #include "ghost/machine.h"
-
+#include "ghost/bench.h"
+#include <float.h>
+#include <math.h>
 
 ghost_error_t ghost_context_create(ghost_context_t **context, ghost_gidx_t gnrows, ghost_gidx_t gncols, ghost_context_flags_t context_flags, void *matrixSource, ghost_sparsemat_src_t srcType, ghost_mpi_comm_t comm, double weight) 
 {
@@ -18,7 +20,11 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_gidx_t gnrow
         ERROR_LOG("Negative weight");
         return GHOST_ERR_INVALID_ARG;
     }
-           
+    if (fabs(weight) < DBL_MIN) {
+        ghost_bench_stream(GHOST_BENCH_STREAM_COPY,&weight);
+        INFO_LOG("Automatically setting weight to %f according to STREAM copy bandwidth!",weight);
+    }
+          
     int nranks, me, i;
     ghost_error_t ret = GHOST_SUCCESS;
     

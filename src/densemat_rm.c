@@ -367,7 +367,7 @@ static ghost_error_t densemat_rm_halocommInit(ghost_densemat_t *vec, ghost_dense
     if (vec->context->perm_local) {
 #ifdef GHOST_HAVE_CUDA
         if (vec->traits.location & GHOST_LOCATION_DEVICE) {
-            ghost_densemat_cu_rm_communicationassembly(comm->cu_work,comm->dueptr,vec,(ghost_lidx_t *)vec->context->perm_local->cu_perm);
+            ghost_densemat_cu_rm_communicationassembly(comm->cu_work,comm->dueptr,comm->acc_dues,vec,(ghost_lidx_t *)vec->context->perm_local->cu_perm);
         } else 
 #endif
             if (vec->traits.location & GHOST_LOCATION_HOST) {
@@ -382,7 +382,7 @@ static ghost_error_t densemat_rm_halocommInit(ghost_densemat_t *vec, ghost_dense
     } else {
 #ifdef GHOST_HAVE_CUDA
         if (vec->traits.location & GHOST_LOCATION_DEVICE) {
-            ghost_densemat_cu_rm_communicationassembly(comm->cu_work,comm->dueptr,vec,NULL);
+            ghost_densemat_cu_rm_communicationassembly(comm->cu_work,comm->dueptr,comm->acc_dues,vec,NULL);
         } else 
 #endif
             if (vec->traits.location & GHOST_LOCATION_HOST) {
@@ -436,10 +436,6 @@ static ghost_error_t densemat_rm_halocommFinalize(ghost_densemat_t *vec, ghost_d
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, vec->context->mpicomm),err,ret);
 
     GHOST_CALL_GOTO(ghost_densemat_halocommFinalize_common(comm),err,ret);
-    if ((nprocs > 1) && (vec->stride != vec->traits.ncols) && (vec->traits.location == GHOST_LOCATION_DEVICE)) {
-        ERROR_LOG("Assemble row-major view not yet implemented for device densemats!");
-        return GHOST_ERR_NOT_IMPLEMENTED;
-    }
     if ((vec->stride != vec->traits.ncols) && (vec->traits.location == GHOST_LOCATION_HOST)) {
         GHOST_INSTR_START("Assemble row-major view");
         for (from_PE=0; from_PE<nprocs; from_PE++){
@@ -456,7 +452,7 @@ static ghost_error_t densemat_rm_halocommFinalize(ghost_densemat_t *vec, ghost_d
 #ifdef GHOST_HAVE_TRACK_DATATRANSFERS
         ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_OUT,GHOST_DATATRANSFER_RANK_GPU,vec->context->halo_elements*vec->traits.ncols*vec->elSize);
 #endif
-        ghost_cu_upload(DENSEMAT_CUVALPTR(vec,vec->traits.nrows,0),comm->tmprecv_mem,vec->traits.ncols*comm->acc_wishes*vec->elSize);
+        ghost_cu_upload2d(DENSEMAT_CUVALPTR(vec,vec->traits.nrowspadded,0),vec->stride*vec->elSize,comm->tmprecv_mem,vec->traits.ncols*vec->elSize,vec->traits.ncols*vec->elSize,comm->acc_wishes);
         INFO_LOG("upload halo");
     }
     GHOST_INSTR_STOP("upload");

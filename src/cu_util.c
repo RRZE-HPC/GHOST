@@ -29,6 +29,7 @@ static struct cudaDeviceProp ghost_cu_device_prop;
 static curandGenerator_t ghost_cu_rand_generator = NULL;
 #endif
 
+
 static int cu_device = -1;
 
 ghost_error_t ghost_cu_init(int dev)
@@ -490,3 +491,36 @@ ghost_error_t ghost_cu_finalize()
 
     return GHOST_SUCCESS;
 }
+
+ghost_error_t ghost_cu_memtranspose(int m, int n, void *to, int ldto, const void *from, int ldfrom, ghost_datatype_t dt) 
+{
+#ifdef GHOST_HAVE_CUDA
+    if (dt & GHOST_DT_COMPLEX) {
+        if (dt & GHOST_DT_DOUBLE) {
+            const cuDoubleComplex alpha = make_cuDoubleComplex(1.,0.), beta = make_cuDoubleComplex(0.,0.);
+            CUBLAS_CALL_RETURN(cublasZgeam(ghost_cublas_handle,CUBLAS_OP_T,CUBLAS_OP_T,m,n,&alpha,(const cuDoubleComplex *)from,ldfrom,&beta,(const cuDoubleComplex *)from,ldfrom,(cuDoubleComplex *)to,ldto));
+        } else {
+            const cuFloatComplex alpha = make_cuFloatComplex(1.,0.), beta = make_cuFloatComplex(0.,0.);
+            CUBLAS_CALL_RETURN(cublasCgeam(ghost_cublas_handle,CUBLAS_OP_T,CUBLAS_OP_T,m,n,&alpha,(const cuFloatComplex *)from,ldfrom,&beta,(const cuFloatComplex *)from,ldfrom,(cuFloatComplex *)to,ldto));
+        }
+    } else {
+        if (dt & GHOST_DT_DOUBLE) {
+            const double alpha = 1., beta = 0.;
+            CUBLAS_CALL_RETURN(cublasDgeam(ghost_cublas_handle,CUBLAS_OP_T,CUBLAS_OP_T,m,n,&alpha,(const double *)from,ldfrom,&beta,(const double *)from,ldfrom,(double *)to,ldto));
+        } else {
+            const float alpha = 1., beta = 0.;
+            CUBLAS_CALL_RETURN(cublasSgeam(ghost_cublas_handle,CUBLAS_OP_T,CUBLAS_OP_T,m,n,&alpha,(const float *)from,ldfrom,&beta,(const float *)from,ldfrom,(float *)to,ldto));
+        }
+    }
+#else
+    UNUSED(m);
+    UNUSED(n);
+    UNUSED(to);
+    UNUSED(ldto);
+    UNUSED(from);
+    UNUSED(ldfrom);
+    UNUSED(dt);
+#endif
+    return GHOST_SUCCESS;
+}
+
