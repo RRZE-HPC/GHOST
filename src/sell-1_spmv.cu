@@ -214,6 +214,8 @@ ghost_error_t ghost_cu_sell1_spmv_selector(ghost_sparsemat_t *mat, ghost_densema
         rhstraits.flags &= (ghost_densemat_flags_t)(~GHOST_DENSEMAT_VIEW);
         GHOST_CALL_GOTO(ghost_densemat_create(&rhs,rhs_in->context,rhstraits),err,ret);
         GHOST_CALL_GOTO(rhs->fromVec(rhs,rhs_in,0,0),err,ret);
+        ghost_lidx_t nhalo = rhs->traits.nrowshalo - rhs->traits.nrowspadded;
+        GHOST_CALL_GOTO(ghost_cu_memtranspose(nhalo,rhs->traits.ncols,&rhs->cu_val[rhs->traits.nrowspadded*rhs->elSize],rhs->stride,&rhs_in->cu_val[rhs_in->traits.nrowspadded*rhs_in->stride*rhs_in->elSize],rhs_in->stride,rhs->traits.datatype),err,ret);
     } else {
         rhs = rhs_in;
     }
