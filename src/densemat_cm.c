@@ -364,25 +364,17 @@ static ghost_error_t densemat_cm_halocommInit(ghost_densemat_t *vec, ghost_dense
     
     GHOST_CALL_GOTO(ghost_malloc((void **)&comm->tmprecv,nprocs*sizeof(char *)),err,ret);
 
-    if ((vec->traits.ncols > 1) || (vec->traits.location & GHOST_LOCATION_DEVICE)) {
-        GHOST_CALL_GOTO(ghost_malloc((void **)&comm->tmprecv_mem,vec->traits.ncols*vec->elSize*comm->acc_wishes),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&comm->tmprecv_mem,vec->traits.ncols*vec->elSize*comm->acc_wishes),err,ret);
 
-        for (from_PE=0; from_PE<nprocs; from_PE++){
-            comm->tmprecv[from_PE] = &comm->tmprecv_mem[comm->wishptr[from_PE]*vec->traits.ncols*vec->elSize];
-        }
-    } else {
-
-        for (from_PE=0; from_PE<nprocs; from_PE++){
-            comm->tmprecv[from_PE] = &vec->val[vec->context->hput_pos[from_PE]*vec->elSize];
-        }
-        comm->tmprecv_mem = NULL;
+    for (from_PE=0; from_PE<nprocs; from_PE++){
+        comm->tmprecv[from_PE] = &comm->tmprecv_mem[comm->wishptr[from_PE]*vec->traits.ncols*vec->elSize];
     }
         
     
     if (vec->context->perm_local) {
 #ifdef GHOST_HAVE_CUDA
         if (vec->traits.location & GHOST_LOCATION_DEVICE) {
-            ghost_densemat_cu_cm_communicationassembly(comm->cu_work,comm->dueptr,vec,(ghost_lidx_t *)vec->context->perm_local->cu_perm);
+            ghost_densemat_cu_cm_communicationassembly(comm->cu_work,comm->dueptr,comm->acc_dues,vec,(ghost_lidx_t *)vec->context->perm_local->cu_perm);
         } else
 #endif
             if (vec->traits.location & GHOST_LOCATION_HOST) {
@@ -392,7 +384,7 @@ static ghost_error_t densemat_cm_halocommInit(ghost_densemat_t *vec, ghost_dense
 #pragma omp for 
                     for (i=0; i<vec->context->dues[to_PE]; i++){
                         for (c=0; c<vec->traits.ncols; c++) {
-                            memcpy(comm->work + (comm->dueptr[to_PE]+i)*vec->elSize*vec->traits.ncols + c*vec->elSize,
+                            memcpy(comm->work + (c*comm->acc_dues+comm->dueptr[to_PE]+i)*vec->elSize,
                                     DENSEMAT_VALPTR(vec,vec->context->perm_local->perm[vec->context->duelist[to_PE][i]],c),vec->elSize);
                         }
                     }
@@ -401,7 +393,7 @@ static ghost_error_t densemat_cm_halocommInit(ghost_densemat_t *vec, ghost_dense
     } else {
 #ifdef GHOST_HAVE_CUDA
         if (vec->traits.location & GHOST_LOCATION_DEVICE) {
-            ghost_densemat_cu_cm_communicationassembly(comm->cu_work,comm->dueptr,vec,NULL);
+            ghost_densemat_cu_cm_communicationassembly(comm->cu_work,comm->dueptr,comm->acc_dues,vec,NULL);
         } else
 #endif
             if (vec->traits.location & GHOST_LOCATION_HOST) {
@@ -411,7 +403,8 @@ static ghost_error_t densemat_cm_halocommInit(ghost_densemat_t *vec, ghost_dense
 #pragma omp for 
                     for (i=0; i<vec->context->dues[to_PE]; i++){
                         for (c=0; c<vec->traits.ncols; c++) {
-                            memcpy(comm->work + (comm->dueptr[to_PE]+i)*vec->elSize*vec->traits.ncols + c*vec->elSize,DENSEMAT_VALPTR(vec,vec->context->duelist[to_PE][i],c),vec->elSize);
+                            memcpy(comm->work + (c*comm->acc_dues+comm->dueptr[to_PE]+i)*vec->elSize,
+                                    DENSEMAT_VALPTR(vec,vec->context->duelist[to_PE][i],c),vec->elSize);
                         }
                     }
                 }
@@ -457,30 +450,25 @@ static ghost_error_t densemat_cm_halocommFinalize(ghost_densemat_t *vec, ghost_d
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, vec->context->mpicomm),err,ret);
 
     ghost_densemat_halocommFinalize_common(comm);
-    if ((nprocs > 1) && (vec->traits.ncols > 1) && (vec->traits.location == GHOST_LOCATION_DEVICE)) {
-        ERROR_LOG("Re-order from col-major not yet implemented for device densemats!");
-        return GHOST_ERR_NOT_IMPLEMENTED;
-    }
-    if ((vec->traits.ncols > 1) && (vec->traits.location & GHOST_LOCATION_HOST)) {
-        GHOST_INSTR_START("re-order from col-major");
+    if (vec->traits.location & GHOST_LOCATION_HOST) {
+        GHOST_INSTR_START("Assemble row-major view");
         for (from_PE=0; from_PE<nprocs; from_PE++){
-#pragma omp parallel for private(c)
-            for (i=0; i<vec->context->wishes[from_PE]; i++){
-                for (c=0; c<vec->traits.ncols; c++) {
-                    memcpy(DENSEMAT_VALPTR(vec,vec->context->hput_pos[from_PE]+i,c),&comm->tmprecv[from_PE][(i*vec->traits.ncols+c)*vec->elSize],vec->elSize);
-                }
+            for (i=0; i<vec->traits.ncols; i++){
+                memcpy(DENSEMAT_VALPTR(vec,vec->context->hput_pos[from_PE],i),&comm->tmprecv[from_PE][(i*comm->acc_wishes)*vec->elSize],vec->elSize*vec->context->wishes[from_PE]);
             }
         }
-        GHOST_INSTR_STOP("re-order from col-major");
-    }   
+        GHOST_INSTR_STOP("Assemble row-major view");
+    }
 
 #ifdef GHOST_HAVE_CUDA 
-    GHOST_INSTR_START("upload");
+    GHOST_INSTR_START("upload")
     if (vec->traits.location & GHOST_LOCATION_DEVICE) {
 #ifdef GHOST_HAVE_TRACK_DATATRANSFERS
         ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_OUT,GHOST_DATATRANSFER_RANK_GPU,vec->context->halo_elements*vec->traits.ncols*vec->elSize);
 #endif
-        ghost_cu_upload(DENSEMAT_CUVALPTR(vec,vec->traits.nrows,0),comm->tmprecv_mem,vec->traits.ncols*comm->acc_wishes*vec->elSize);
+        for (from_PE=0; from_PE<nprocs; from_PE++){
+            ghost_cu_upload2d(DENSEMAT_CUVALPTR(vec,vec->context->hput_pos[from_PE],0),vec->stride*vec->elSize,comm->tmprecv[from_PE],comm->acc_wishes*vec->elSize,vec->context->wishes[from_PE]*vec->elSize,vec->traits.ncols);
+        }
     }
     GHOST_INSTR_STOP("upload");
 #endif
