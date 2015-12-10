@@ -1,6 +1,7 @@
 #include "ghost/util.h"
 #include "ghost/machine.h"
 #include "ghost/bench.h"
+#include "ghost/task.h"
 #include "ghost/cu_bench.h"
 
 #include <immintrin.h>
@@ -50,6 +51,12 @@ ghost_error_t ghost_bench_stream(ghost_bench_stream_test_t test, double *bw)
 #ifdef GHOST_HAVE_CUDA
         return ghost_cu_bench_stream(test,bw);
 #endif
+    }
+        
+    ghost_task_t *cur = NULL;
+    ghost_task_cur(&cur);
+    if (!cur) {
+        WARNING_LOG("STREAM benchmark called outside a GHOST task. The reported bandwidth will probably not be meaningful!");
     }
 
     ghost_error_t ret = GHOST_SUCCESS;
