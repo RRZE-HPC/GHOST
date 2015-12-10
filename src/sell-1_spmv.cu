@@ -206,7 +206,7 @@ ghost_error_t ghost_cu_sell1_spmv_selector(ghost_sparsemat_t *mat, ghost_densema
             PERFWARNING_LOG("Cloning and compressing rhs before operation because it is scattered");
         }
         if ((rhs_in->traits.ncols == 1) && (rhs_in->traits.storage == GHOST_DENSEMAT_ROWMAJOR)) {
-            PERFWARNING_LOG("Cloning and transposing lhs before operation because it is row-major");
+            PERFWARNING_LOG("Cloning and transposing rhs before operation because it is row-major");
         }
         ghost_densemat_traits_t rhstraits = rhs_in->traits;
         rhstraits.location = GHOST_LOCATION_DEVICE;
