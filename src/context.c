@@ -11,7 +11,8 @@
 #include "ghost/omp.h"
 #include "ghost/machine.h"
 #include "ghost/bench.h"
-
+#include <float.h>
+#include <math.h>
 
 ghost_error_t ghost_context_create(ghost_context_t **context, ghost_gidx_t gnrows, ghost_gidx_t gncols, ghost_context_flags_t context_flags, void *matrixSource, ghost_sparsemat_src_t srcType, ghost_mpi_comm_t comm, double weight) 
 {
