@@ -1,9 +1,11 @@
 #include "ghost/util.h"
-#include "ghost/cu_util.h"
+#include "ghost/machine.h"
 #include "ghost/bench.h"
 #include "ghost/cu_bench.h"
 
-#define N (ghost_lidx_t)1e8 
+#include <immintrin.h>
+
+#define N PAD((ghost_lidx_t)1e8,16)
 
 static void dummy(double *a) {
     if (a[(ghost_lidx_t)N>>1] < 0) {
@@ -14,10 +16,28 @@ static void dummy(double *a) {
 static void copy_kernel(double * __restrict__ a, const double * __restrict__ b)
 {
     ghost_lidx_t i;
+
+#ifdef GHOST_HAVE_AVX
+    __m256d bv;
+#pragma omp parallel for private(bv)
+    for (i=0; i<N; i+=4) {
+        bv = _mm256_load_pd(&b[i]);
+        _mm256_stream_pd(&a[i],bv);
+    }
+#elif defined(GHOST_HAVE_SSE)
+    __m128d bv;
+#pragma omp parallel for private(bv)
+    for (i=0; i<N; i+=2) {
+        bv = _mm_load_pd(&b[i]);
+        _mm_stream_pd(&a[i],bv);
+    }
+#else
+    PERFWARNING_LOG("Cannot guarantee streaming stores for copy benchmark!");
 #pragma omp parallel for
     for (i=0; i<N; i++) {
         a[i] = b[i];
     }
+#endif
 
 }
 
@@ -42,8 +62,8 @@ ghost_error_t ghost_bench_stream(ghost_bench_stream_test_t test, double *bw)
 
     double *a = NULL;
     double *b = NULL;
-    GHOST_CALL_GOTO(ghost_malloc((void **)&a,N*sizeof(double)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&b,N*sizeof(double)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc_align((void **)&a,N*sizeof(double),ghost_machine_alignment()),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc_align((void **)&b,N*sizeof(double),ghost_machine_alignment()),err,ret);
 
 #pragma omp parallel for
     for (i=0; i<N; i++) {
