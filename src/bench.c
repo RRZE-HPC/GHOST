@@ -27,7 +27,9 @@ ghost_error_t ghost_bench_stream(ghost_bench_stream_test_t test, double *bw)
     ghost_type_get(&mytype);
     
     if (mytype == GHOST_TYPE_CUDA) {
+#if GHOST_HAVE_CUDA
         return ghost_cu_bench_stream(test,bw);
+#endif
     }
 
     ghost_error_t ret = GHOST_SUCCESS;
