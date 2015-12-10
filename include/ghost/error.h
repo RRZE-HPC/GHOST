@@ -191,18 +191,25 @@ typedef enum {
         switch (err) {\
             case CUBLAS_STATUS_NOT_INITIALIZED:\
                 ERROR_LOG("CUBLAS error: CUBLAS_STATUS_NOT_INITIALIZED");\
+                break;\
             case CUBLAS_STATUS_ALLOC_FAILED:\
                 ERROR_LOG("CUBLAS error: CUBLAS_STATUS_ALLOC_FAILED");\
+                break;\
             case CUBLAS_STATUS_INVALID_VALUE:\
                 ERROR_LOG("CUBLAS error: CUBLAS_STATUS_INVALID_VALUE");\
+                break;\
             case CUBLAS_STATUS_ARCH_MISMATCH:\
                 ERROR_LOG("CUBLAS error: CUBLAS_STATUS_ARCH_MISMATCH");\
+                break;\
             case CUBLAS_STATUS_MAPPING_ERROR:\
                 ERROR_LOG("CUBLAS error: CUBLAS_STATUS_MAPPING_ERROR");\
+                break;\
             case CUBLAS_STATUS_EXECUTION_FAILED:\
                 ERROR_LOG("CUBLAS error: CUBLAS_STATUS_EXECUTION_FAILED");\
+                break;\
             case CUBLAS_STATUS_INTERNAL_ERROR:\
                 ERROR_LOG("CUBLAS error: CUBLAS_STATUS_INTERNAL_ERROR");\
+                break;\
         }\
         ghost_errorhandler_t h = ghost_errorhandler_get(GHOST_ERR_CUBLAS);\
         if (h) {\
