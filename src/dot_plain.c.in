@@ -1,3 +1,4 @@
+/*!GHOST_AUTOGEN BLOCKDIM1 */
 #include "ghost/config.h"
 #include "ghost/types.h"
 #include "ghost/densemat.h"
@@ -6,7 +7,8 @@
 #include "ghost/omp.h"
 #include "ghost/dot_plain_gen.h"
 
-#GHOST_FUNC_BEGIN#NVECS=${CFG_BLOCKVECTOR_SIZES}
+#GHOST_SUBST NVECS ${BLOCKDIM1}
+
 ghost_error_t ghost_dot__u_plain_d_cm_NVECS(void *res, ghost_densemat_t *vec1, ghost_densemat_t *vec2)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
@@ -37,9 +39,7 @@ ghost_error_t ghost_dot__u_plain_d_cm_NVECS(void *res, ghost_densemat_t *vec1, g
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     return GHOST_SUCCESS;
 }
-#GHOST_FUNC_END
 
-#GHOST_FUNC_BEGIN#NVECS=${CFG_BLOCKVECTOR_SIZES}
 ghost_error_t ghost_dot__u_plain_z_cm_NVECS(void *res, ghost_densemat_t *vec1, ghost_densemat_t *vec2)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
@@ -71,4 +71,3 @@ ghost_error_t ghost_dot__u_plain_z_cm_NVECS(void *res, ghost_densemat_t *vec1, g
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     return GHOST_SUCCESS;
 }
-#GHOST_FUNC_END

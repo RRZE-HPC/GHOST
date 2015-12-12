@@ -1,3 +1,4 @@
+/*!GHOST_AUTOGEN BLOCKDIM1 */
 #include "ghost/config.h"
 #include "ghost/types.h"
 #include "ghost/densemat.h"
@@ -7,27 +8,14 @@
 #include "ghost/dot_avx_gen.h"
 #include <immintrin.h>
 
-#GHOST_FUNC_BEGIN#NVECS=${CFG_BLOCKVECTOR_SIZES}
+#GHOST_SUBST NVECS ${BLOCKDIM1}
+
 ghost_error_t ghost_dot__u_avx_d_rm_NVECS(void *res, ghost_densemat_t *vec1, ghost_densemat_t *vec2)
 {
 #if defined(GHOST_HAVE_AVX)
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
-#if NVECS%4
-    __m256i mask;
-#if NVECS%4 == 1
-    mask = _mm256_set_epi64x(0,0,0,~0);
-#endif
-#if NVECS%4 == 2
-    mask = _mm256_set_epi64x(0,0,~0,~0);
-#endif
-#if NVECS%4 == 3
-    mask = _mm256_set_epi64x(0,~0,~0,~0);
-#endif
-#endif
 
-    int t;
     ghost_lidx_t row;
-    #GHOST_UNROLL#__m256d combres@ = _mm256_setzero_pd();#(NVECS+3)/4
 
     #GHOST_UNROLL#double colsum@ = 0;#((NVECS+3)/4)*4
     double *r = (double *)res;
@@ -36,7 +24,6 @@ ghost_error_t ghost_dot__u_avx_d_rm_NVECS(void *res, ghost_densemat_t *vec1, gho
 #GHOST_UNROLL#colsum~1+@~,\#NVECS-1
         colsum0)
     {
-        int tid = ghost_omp_threadnum(); 
         #GHOST_UNROLL#__m256d partres@ = _mm256_setzero_pd();#(NVECS+3)/4
         double *v1 = (double *)vec1->val;
         double *v2 = (double *)vec2->val;
@@ -62,5 +49,3 @@ ghost_error_t ghost_dot__u_avx_d_rm_NVECS(void *res, ghost_densemat_t *vec1, gho
     return GHOST_ERR_UNKNOWN;
 #endif
 }
-#GHOST_FUNC_END
-

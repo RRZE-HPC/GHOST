@@ -1,0 +1,73 @@
+/*!GHOST_AUTOGEN BLOCKDIM1;BLOCKDIM2 */
+#include "ghost/config.h"
+#include "ghost/types.h"
+#include "ghost/math.h"
+#include "ghost/instr.h"
+#include "ghost/util.h"
+#include "ghost/tsmm_inplace_plain_gen.h"
+
+#GHOST_SUBST NCOLSIN ${BLOCKDIM1}
+#GHOST_SUBST NCOLSOUT ${BLOCKDIM2}
+
+ghost_error_t ghost_tsmm_inplace__plain_d_NCOLSIN_NCOLSOUT(ghost_densemat_t *x, ghost_densemat_t *w, void *alpha, void *beta)
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
+    ghost_error_t ret = GHOST_SUCCESS;
+
+    ghost_lidx_t m = x->traits.ncols;
+    ghost_lidx_t n = x->traits.nrows;
+
+    double dalpha = *(double *)alpha;
+    double dbeta = *(double *)beta;
+    
+    INFO_LOG("In in-place TSMM with fixed block sizes [NCOLSIN][NCOLSOUT] (%"PRLIDX"x%"PRLIDX") <- %f * (%"PRLIDX"x%"PRLIDX") * (%"PRLIDX"x%"PRLIDX")",n,NCOLSOUT,dalpha,n,m,w->traits.nrows,NCOLSOUT);
+
+    const double * const restrict wval = (const double *) w->val;
+    double * const restrict xval = (double *) x->val;
+
+    const ghost_lidx_t ldw = w->stride;
+    const ghost_lidx_t ldx = x->stride;
+
+    ghost_lidx_t i,j,s;
+
+    /* construct dense wval... we can safely copy it as it is small! */
+    double * restrict wtmp = NULL;
+    ghost_lidx_t ncolsin_padded = PAD(NCOLSIN,4);
+    ghost_malloc_align((void**)&wtmp,ncolsin_padded*NCOLSOUT*sizeof(double),32);
+    memset(wtmp,0,ncolsin_padded*NCOLSOUT*sizeof(double));
+    for(s=0; s<NCOLSOUT; s++)
+    {
+      for(j=0; j<NCOLSIN; j++)
+      {
+        wtmp[s*ncolsin_padded+j] = dalpha*wval[s*ldw+j];
+        if(s==j)
+          wtmp[s*ncolsin_padded+j] += dbeta;
+      }
+    }
+
+
+#pragma omp parallel for private(j,s) schedule(runtime)
+    for (i=0; i<n; i++) {
+        double tmp[NCOLSOUT];
+#pragma unroll_and_jam(MIN(16,NCOLSOUT))
+        for (s=0; s<NCOLSOUT; s++) {
+            tmp[s] = 0.;
+#if NCOLSIN > 1
+#pragma vector aligned
+#pragma vector always
+#pragma ivdep
+#pragma simd
+#endif
+#pragma unroll_and_jam(MIN(16,NCOLSIN))
+            for (j=0; j<NCOLSIN; j++) {
+                tmp[s] += xval[i*ldx+j]*wtmp[s*ncolsin_padded+j];
+            }
+        }
+        memcpy(&xval[i*ldx],tmp,NCOLSOUT*sizeof(double));
+    }
+    
+    free(wtmp);
+    
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
+    return ret;
+}

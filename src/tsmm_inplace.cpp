@@ -3,7 +3,10 @@
 #include "ghost/densemat.h"
 #include "ghost/util.h"
 #include "ghost/tsmm_inplace.h"
-#include "ghost/tsmm_inplace_gen.h"
+#include "ghost/tsmm_inplace_cu.h"
+#include "ghost/tsmm_inplace_plain_gen.h"
+#include "ghost/tsmm_inplace_var1_plain_gen.h"
+#include "ghost/tsmm_inplace_var2_plain_gen.h"
 #include "ghost/tsmm_inplace_cu_gen.h"
 #include "ghost/tsmm_inplace.h"
 #include "ghost/math.h"
@@ -101,7 +104,9 @@ ghost_error_t ghost_tsmm_inplace(ghost_densemat_t *x, ghost_densemat_t *w, void 
     }
     
     if (ghost_tsmm_inplace_kernels.empty()) {
-#include "tsmm_inplace.def"
+#include "tsmm_inplace_plain.def"
+#include "tsmm_inplace_var1_plain.def"
+#include "tsmm_inplace_var2_plain.def"
 #ifdef GHOST_HAVE_CUDA
 #include "tsmm_inplace_cu.def"
 #endif

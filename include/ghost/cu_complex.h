@@ -6,6 +6,8 @@
 #ifndef GHOST_CU_COMPLEX_H
 #define GHOST_CU_COMPLEX_H
 
+#include <cuComplex.h>
+
 template<typename T>
 __device__  __host__ inline void zero(T &val)
 {

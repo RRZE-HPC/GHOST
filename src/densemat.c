@@ -94,7 +94,7 @@ ghost_error_t ghost_densemat_create(ghost_densemat_t **vec, ghost_context_t *ctx
         }
 
     } else {
-        DEBUG_LOG(1,"Placement given: %d",(*vec)->traits.location);
+        DEBUG_LOG(1,"Placement given: %s",ghost_location_string((*vec)->traits.location));
     }
 
     if ((*vec)->traits.storage == GHOST_DENSEMAT_STORAGE_DEFAULT) {

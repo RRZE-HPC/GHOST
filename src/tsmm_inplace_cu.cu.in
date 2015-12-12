@@ -1,3 +1,4 @@
+/*!GHOST_AUTOGEN BLOCKDIM1;BLOCKDIM2 */
 #include "ghost/config.h"
 #include "ghost/types.h"
 #include "ghost/util.h"
@@ -8,6 +9,7 @@
 #include "ghost/instr.h"
 #include "ghost/rand.h"
 #include "ghost/tsmm_inplace_cu_gen.h"
+#include "ghost/tsmm_inplace_cu_kernel.h"
 
 #include <cuda_runtime.h>
 #include <stdio.h>
@@ -20,50 +22,11 @@
 #include "ghost/cu_complex.h"
 #include "ghost/complex.h"
 
+#GHOST_SUBST NCOLSIN ${BLOCKDIM1}
+#GHOST_SUBST NCOLSOUT ${BLOCKDIM2}
+
 #define THREADSPERBLOCK 512
 
-template<typename T,int NCOLSOUT, int NCOLSIN> __global__ static void ghost_tsmm_inplace_cu_rm_cm(T * x, const T * const __restrict__ w, const T alpha, const T beta, ghost_lidx_t nrows, ghost_lidx_t stridex, ghost_lidx_t stridew)
-{
-    int row = blockIdx.x*blockDim.x+threadIdx.x;
-    int k;
-    int m;
-    T tmp[NCOLSOUT];
-
-    for (;row < nrows; row+=gridDim.x*blockDim.x) {
-        for (k=0; k<NCOLSOUT; k++) {
-            tmp[k] = scale<T>(x[row*stridex+k],beta);
-            for (m=0; m<NCOLSIN; m++) {
-                tmp[k] = axpy<T,T>(tmp[k],alpha,scale<T>(x[row*stridex+m],w[k*stridew+m]));
-            }
-        }
-        for (k=0; k<NCOLSOUT; k++) {
-            x[row*stridex+k] = tmp[k];
-        }
-    }
-}
-
-template<typename T> __global__ static void ghost_tsmm_inplace_cu_rm_cm_fallback(T * x, const T * const __restrict__ w, const T alpha, const T beta, ghost_lidx_t nrows, ghost_lidx_t stridex, ghost_lidx_t stridew, int NCOLSOUT, int NCOLSIN, T * tmp)
-{
-    int row = blockIdx.x*blockDim.x+threadIdx.x;
-    int k;
-    int m;
-    int ldtmp = NCOLSOUT;
-    
-    for (;row < nrows; row+=gridDim.x*blockDim.x) {
-        for (k=0; k<NCOLSOUT; k++) {
-            tmp[row*ldtmp+k] = scale<T>(x[row*stridex+k],beta);
-            for (m=0; m<NCOLSIN; m++) {
-                tmp[row*ldtmp+k] = axpy<T,T>(tmp[row*ldtmp+k],alpha,scale<T>(__ldg(&x[row*stridex+m]),__ldg(&w[k*stridew+m])));
-            }
-        }
-        for (k=0; k<NCOLSOUT; k++) {
-            x[row*stridex+k] = tmp[row*ldtmp+k];
-        }
-    }
-    delete tmp;
-}
-
-#GHOST_FUNC_BEGIN#NCOLSIN=${CFG_BLOCKVECTOR_SIZES}#NCOLSOUT=${CFG_BLOCKVECTOR_SIZES}
 ghost_error_t ghost_tsmm_inplace__cuda_x_NCOLSIN_NCOLSOUT(ghost_densemat_t *x, ghost_densemat_t *w, void *alpha, void *beta) 
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL); 
@@ -93,46 +56,6 @@ ghost_error_t ghost_tsmm_inplace__cuda_x_NCOLSIN_NCOLSOUT(ghost_densemat_t *x, g
                    (float *)x->cu_val,(const float *)w->cu_val,*(float *)alpha,*(float *)beta,x->traits.nrows,x->stride,w->stride);
         }
     }
-
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL); 
-    CUDA_CALL_RETURN(cudaGetLastError());
-    return ret;
-}
-#GHOST_FUNC_END
-
-ghost_error_t ghost_tsmm_inplace__cuda_x_x_x(ghost_densemat_t *x, ghost_densemat_t *w, void *alpha, void *beta) 
-{
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL); 
-    ghost_error_t ret = GHOST_SUCCESS;
-    dim3 block, grid;
-    grid.x = (int)ceil((double)x->traits.nrows/THREADSPERBLOCK);
-    grid.y = 1;
-    grid.z = 1;
-    block.x = THREADSPERBLOCK;
-    block.y = 1;
-    block.z = 1;
-
-    void *tmp = NULL;
-    ghost_cu_malloc((void **)&tmp,x->traits.ncols*x->traits.nrows*x->elSize);
-
-    if (x->traits.datatype & GHOST_DT_COMPLEX) {
-        if (x->traits.datatype & GHOST_DT_DOUBLE) {
-            ghost_tsmm_inplace_cu_rm_cm_fallback<cuDoubleComplex><<< grid,block >>>(
-                    (cuDoubleComplex *)x->cu_val,(const cuDoubleComplex *)w->cu_val,*(cuDoubleComplex *)alpha,*(cuDoubleComplex *)beta,x->traits.nrows,x->stride,w->stride,x->traits.ncols,w->traits.nrows,(cuDoubleComplex *)tmp);
-        } else {
-            ghost_tsmm_inplace_cu_rm_cm_fallback<cuFloatComplex><<< grid,block >>>(
-                    (cuFloatComplex *)x->cu_val,(const cuFloatComplex *)w->cu_val,*(cuFloatComplex *)alpha,*(cuFloatComplex *)beta,x->traits.nrows,x->stride,w->stride,x->traits.ncols,w->traits.nrows,(cuFloatComplex *)tmp);
-        }
-    } else {
-        if (x->traits.datatype & GHOST_DT_DOUBLE) {
-            ghost_tsmm_inplace_cu_rm_cm_fallback<double><<< grid,block >>>(
-                   (double *)x->cu_val,(const double *)w->cu_val,*(double *)alpha,*(double *)beta,x->traits.nrows,x->stride,w->stride,x->traits.ncols,w->traits.nrows,(double *)tmp);
-        } else {
-            ghost_tsmm_inplace_cu_rm_cm_fallback<float><<< grid,block >>>(
-                   (float *)x->cu_val,(const float *)w->cu_val,*(float *)alpha,*(float *)beta,x->traits.nrows,x->stride,w->stride,x->traits.ncols,w->traits.nrows,(float *)tmp);
-        }
-    }
-    ghost_cu_free(tmp);
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL); 
     CUDA_CALL_RETURN(cudaGetLastError());

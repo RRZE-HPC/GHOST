@@ -16,6 +16,11 @@
 #include "ghost/sell_spmv_sse_gen.h"
 #include "ghost/sell_spmv_plain_gen.h"
 
+#include "ghost/sell_spmv_varblock_mic_gen.h"
+#include "ghost/sell_spmv_varblock_avx_gen.h"
+#include "ghost/sell_spmv_varblock_sse_gen.h"
+#include "ghost/sell_spmv_varblock_plain_gen.h"
+
 #include <map>
 
 using namespace std;
@@ -396,6 +401,10 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
 #include "sell_spmv_avx.def"
 #include "sell_spmv_sse.def"
 #include "sell_spmv_plain.def"
+#include "sell_spmv_varblock_mic.def"
+#include "sell_spmv_varblock_avx.def"
+#include "sell_spmv_varblock_sse.def"
+#include "sell_spmv_varblock_plain.def"
     }
 
     ghost_error_t ret = GHOST_SUCCESS;

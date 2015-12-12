@@ -30,8 +30,8 @@ option(TRACK_DATATRANSFERS "Track MPI and CUDA data transfers" 0)
 option(GATHER_SPARSEMAT_GLOBAL_STATISTICS "Gather some global statistics on sparse matrices (should be disabled for large-scale runs)" 0)
 option(GATHER_SPARSEMAT_STATISTICS "Gather statistics about sparse matrices (slows down matrix construction)" 0)
 set(LOG_MPIRANK "-1" CACHE STRING "The MPI rank for which the log messages will be printed. -1 for full verbosity.")
-set(CFG_BLOCKVECTOR_SIZES "1" CACHE STRING "The block vector sizes for which generated kernels are being created (comma-separated list)")
-set(CFG_SELL_CHUNKHEIGHTS "32" CACHE STRING "The SELL chunk heights for which generated kernels are being created (comma-separated list)")
+set(CFG_BLOCKVECTOR_SIZES "1,2,4,8" CACHE STRING "The block vector sizes for which generated kernels are being created (comma-separated list)")
+set(CFG_SELL_CHUNKHEIGHTS "1,32" CACHE STRING "The SELL chunk heights for which generated kernels are being created (comma-separated list)")
 set(CFG_SELL_CUDA_KERNELS "true,true,true,true,true,true,true;true,false,false,false,false,false,false;false,false,false,false,false,false,false" CACHE STRING "The permutations of SELL SpMV CUDA kernels to instantiate (semicolon-separated list of comma-separated lists). AXP(B)Y,SCALE,(V)SHIFT,DOT_YY,DOT_XY,DOT_XX,CHAIN_AXPBY")
 set(VERBOSITY 1 CACHE STRING "Level of verbosity information. Valid values: 0 (be totally silent), 1 (print warnings, errors and further important information), 2, 3, 4 (increasing level of verbosity)")
 set(INSTRUMENTATION "" CACHE STRING "Type of instrumentation (semicolon separated list). Valid values: TIMING, LIKWID, IACA")
@@ -189,139 +189,121 @@ foreach (SELL_CHUNKHEIGHT ${CFG_SELL_CHUNKHEIGHTS_LIST})
 endforeach()
 set(SELL_CU_SPMV_SWITCHCASCADE "${SELL_CU_SPMV_SWITCHCASCADE}    default:\\\n        PERFWARNING_LOG(\"Non-configured chunk height: %d!\",mat->traits.C);\\\n        do_fallback = true;\\\n}\\\n")
 
-configure_file(
-    ${PROJECT_SOURCE_DIR}/src/sell_spmv.cu.in
-    ${PROJECT_BINARY_DIR}/src/sell_spmv.cu
-    )
-
-configure_file (
-    ${PROJECT_SOURCE_DIR}/src/sell_spmv_sse.c.in
-    ${PROJECT_BINARY_DIR}/src/sell_spmv_sse.c
-    )
-configure_file (
-    ${PROJECT_SOURCE_DIR}/src/sell_spmv_avx2.c.in
-    ${PROJECT_BINARY_DIR}/src/sell_spmv_avx2.c
-    )
-configure_file (
-    ${PROJECT_SOURCE_DIR}/src/sell_spmv_avx.c.in
-    ${PROJECT_BINARY_DIR}/src/sell_spmv_avx.c
-    )
-configure_file (
-    ${PROJECT_SOURCE_DIR}/src/sell_spmv_mic.c.in
-    ${PROJECT_BINARY_DIR}/src/sell_spmv_mic.c
-    )
-configure_file (
-    ${PROJECT_SOURCE_DIR}/src/sell_spmv_plain.c.in
-    ${PROJECT_BINARY_DIR}/src/sell_spmv_plain.c
-    )
-configure_file (
-    ${PROJECT_SOURCE_DIR}/src/dot_plain.c.in
-    ${PROJECT_BINARY_DIR}/src/dot_plain.c
-    )
-configure_file (
-    ${PROJECT_SOURCE_DIR}/src/dot_avx.c.in
-    ${PROJECT_BINARY_DIR}/src/dot_avx.c
-    )
-configure_file (
-    ${PROJECT_SOURCE_DIR}/src/tsmm.c.in
-    ${PROJECT_BINARY_DIR}/src/tsmm.c
-    )
-configure_file (
-    ${PROJECT_SOURCE_DIR}/src/tsmm_avx.c.in
-    ${PROJECT_BINARY_DIR}/src/tsmm_avx.c
-    )
-configure_file (
-    ${PROJECT_SOURCE_DIR}/src/tsmm_sse.c.in
-    ${PROJECT_BINARY_DIR}/src/tsmm_sse.c
-    )
-configure_file (
-    ${PROJECT_SOURCE_DIR}/src/tsmm_cu.cu.in
-    ${PROJECT_BINARY_DIR}/src/tsmm_cu.cu
-    )
-configure_file (
-    ${PROJECT_SOURCE_DIR}/src/tsmm_inplace_cu.cu.in
-    ${PROJECT_BINARY_DIR}/src/tsmm_inplace_cu.cu
-    )
-configure_file (
-    ${PROJECT_SOURCE_DIR}/src/tsmm_inplace.c.in
-    ${PROJECT_BINARY_DIR}/src/tsmm_inplace.c
-    )
-configure_file (
-    ${PROJECT_SOURCE_DIR}/src/tsmttsm.c.in
-    ${PROJECT_BINARY_DIR}/src/tsmttsm.c
-    )
-configure_file (
-    ${PROJECT_SOURCE_DIR}/src/tsmttsm_avx2.c.in
-    ${PROJECT_BINARY_DIR}/src/tsmttsm_avx2.c
-    )
-configure_file (
-    ${PROJECT_SOURCE_DIR}/src/tsmttsm_avx.c.in
-    ${PROJECT_BINARY_DIR}/src/tsmttsm_avx.c
-    )
-configure_file (
-    ${PROJECT_SOURCE_DIR}/src/tsmttsm_sse.c.in
-    ${PROJECT_BINARY_DIR}/src/tsmttsm_sse.c
-    )
-configure_file (
-    ${PROJECT_SOURCE_DIR}/src/tsmttsm_kahan.c.in
-    ${PROJECT_BINARY_DIR}/src/tsmttsm_kahan.c
-    )
-
-set (TO_PREPROCESS
-    ${PROJECT_BINARY_DIR}/src/sell_spmv_avx2.c
-    ${PROJECT_BINARY_DIR}/src/sell_spmv_avx.c
-    ${PROJECT_BINARY_DIR}/src/sell_spmv_sse.c
-    ${PROJECT_BINARY_DIR}/src/sell_spmv_mic.c
-    ${PROJECT_BINARY_DIR}/src/sell_spmv_plain.c
-    ${PROJECT_BINARY_DIR}/src/dot_avx.c
-    ${PROJECT_BINARY_DIR}/src/dot_plain.c
-    ${PROJECT_BINARY_DIR}/src/tsmm.c
-    ${PROJECT_BINARY_DIR}/src/tsmm_avx.c
-    ${PROJECT_BINARY_DIR}/src/tsmm_sse.c
-    ${PROJECT_BINARY_DIR}/src/tsmm_cu.cu
-    ${PROJECT_BINARY_DIR}/src/tsmm_inplace_cu.cu
-    ${PROJECT_BINARY_DIR}/src/tsmm_inplace.c
-    ${PROJECT_BINARY_DIR}/src/tsmttsm.c
-    ${PROJECT_BINARY_DIR}/src/tsmttsm_avx2.c
-    ${PROJECT_BINARY_DIR}/src/tsmttsm_avx.c
-    ${PROJECT_BINARY_DIR}/src/tsmttsm_sse.c
-    ${PROJECT_BINARY_DIR}/src/tsmttsm_kahan.c
-    )
-
-set (PP_SCRIPT ${PROJECT_SOURCE_DIR}/bin/ghost_pp.pl)
+set (PP_SCRIPT ${PROJECT_SOURCE_DIR}/bin/ghost_unroll.pl)
 set (PP_HEADER_SCRIPT ${PROJECT_SOURCE_DIR}/bin/ghost_extractfunc.pl)
 set (PP_KERNELMAP_SCRIPT ${PROJECT_SOURCE_DIR}/bin/ghost_mapfunc.pl)
-set (PP_SRC_DIR ${PROJECT_BINARY_DIR}/src_pp/)
-set (PP_INC_DIR ${PROJECT_BINARY_DIR}/ghost/)
+set (UNROLLED_SRC_DIR ${PROJECT_BINARY_DIR}/src_unrolled/)
+set (GENERATED_INC_DIR ${PROJECT_BINARY_DIR}/ghost/)
 
-foreach (TO_PP_FILE ${TO_PREPROCESS})
-    get_filename_component(TO_PP_FILENAME ${TO_PP_FILE} NAME)
-    get_filename_component(TO_PP_FILENAME_WE ${TO_PP_FILE} NAME_WE)
-    set(PP_FILE ${PP_SRC_DIR}/${TO_PP_FILENAME})
-    set(PP_HEADER ${PP_INC_DIR}/${TO_PP_FILENAME_WE}_gen.h)
-    set(PP_KERNELMAP ${PP_INC_DIR}/${TO_PP_FILENAME_WE}.def)
+file(GLOB TEMPLATE_SRCFILES "${CMAKE_SOURCE_DIR}/src/*.in")
+foreach(TEMPLATE_SRCFILE ${TEMPLATE_SRCFILES})
+    set(GENERATED_FILES "")
+    set(UNROLLED_FILES "")
+    get_filename_component(AUTOGEN_FUNCTION ${TEMPLATE_SRCFILE} NAME_WE)
+    get_filename_component(TEMPLATE_SRCFILE_FULLEXT ${TEMPLATE_SRCFILE} EXT)
+    string(REPLACE ".in" "" TEMPLATE_SRCFILE_EXT ${TEMPLATE_SRCFILE_FULLEXT})
+
+    file(READ ${TEMPLATE_SRCFILE} TEMPLATE_HEADER OFFSET 0 LIMIT 17)
+    string(STRIP ${TEMPLATE_HEADER} TEMPLATE_HEADER_STRIPPED)
+    if (NOT "${TEMPLATE_HEADER_STRIPPED}" STREQUAL "/*!GHOST_AUTOGEN")
+        message(FATAL_ERROR "AUTOGEN header missing or wrong in file ${TEMPLATE_SRCFILE}. Is ${TEMPLATE_HEADER}, should be /*!GHOST_AUTOGEN")
+    endif()
+
+    file(READ ${TEMPLATE_SRCFILE} TEMPLATE_DEPS_RAW OFFSET 17 LIMIT 31)
+    string(FIND "${TEMPLATE_DEPS_RAW}" " " ENDPOS)
+    string(SUBSTRING "${TEMPLATE_DEPS_RAW}" 0 ${ENDPOS} TEMPLATE_DEPS)
+    set(TEMPLATE_DEPS_LIST ${TEMPLATE_DEPS})
+    
+    cmake_policy(SET CMP0054 NEW)
+  
+    if (NOT "${TEMPLATE_DEPS_LIST}" STREQUAL "")
+        list(SORT TEMPLATE_DEPS_LIST)
+    endif()
+    
+    if("${TEMPLATE_DEPS_LIST}" STREQUAL "BLOCKDIM1")
+        foreach(BLOCKDIM1 ${CFG_BLOCKVECTOR_SIZES_LIST})
+            configure_file (
+                ${TEMPLATE_SRCFILE}
+                ${PROJECT_BINARY_DIR}/src_generated/${AUTOGEN_FUNCTION}__${BLOCKDIM1}${TEMPLATE_SRCFILE_EXT}
+                )
+            list(APPEND GENERATED_FILES ${PROJECT_BINARY_DIR}/src_generated/${AUTOGEN_FUNCTION}__${BLOCKDIM1}${TEMPLATE_SRCFILE_EXT})
+        endforeach()
+    elseif("${TEMPLATE_DEPS_LIST}" STREQUAL "CHUNKHEIGHT")
+        foreach(CHUNKHEIGHT ${CFG_SELL_CHUNKHEIGHTS_LIST})
+            configure_file (
+                ${TEMPLATE_SRCFILE}
+                ${PROJECT_BINARY_DIR}/src_generated/${AUTOGEN_FUNCTION}__${BLOCKDIM1}_${CHUNKHEIGHT}${TEMPLATE_SRCFILE_EXT}
+                )
+            list(APPEND GENERATED_FILES ${PROJECT_BINARY_DIR}/src_generated/${AUTOGEN_FUNCTION}__${BLOCKDIM1}_${CHUNKHEIGHT}${TEMPLATE_SRCFILE_EXT})
+        endforeach()
+    elseif("${TEMPLATE_DEPS_LIST}" STREQUAL "BLOCKDIM1;CHUNKHEIGHT")
+        foreach(BLOCKDIM1 ${CFG_BLOCKVECTOR_SIZES_LIST})
+            foreach(CHUNKHEIGHT ${CFG_SELL_CHUNKHEIGHTS_LIST})
+                configure_file (
+                    ${TEMPLATE_SRCFILE}
+                    ${PROJECT_BINARY_DIR}/src_generated/${AUTOGEN_FUNCTION}__${BLOCKDIM1}_${CHUNKHEIGHT}${TEMPLATE_SRCFILE_EXT}
+                    )
+                list(APPEND GENERATED_FILES ${PROJECT_BINARY_DIR}/src_generated/${AUTOGEN_FUNCTION}__${BLOCKDIM1}_${CHUNKHEIGHT}${TEMPLATE_SRCFILE_EXT})
+            endforeach()
+        endforeach()
+    elseif("${TEMPLATE_DEPS_LIST}" STREQUAL "BLOCKDIM1;BLOCKDIM2")
+        foreach(BLOCKDIM1 ${CFG_BLOCKVECTOR_SIZES_LIST})
+            foreach(BLOCKDIM2 ${CFG_BLOCKVECTOR_SIZES_LIST})
+                configure_file (
+                    ${TEMPLATE_SRCFILE}
+                    ${PROJECT_BINARY_DIR}/src_generated/${AUTOGEN_FUNCTION}__${BLOCKDIM1}_${BLOCKDIM2}${TEMPLATE_SRCFILE_EXT}
+                    )
+                list(APPEND GENERATED_FILES ${PROJECT_BINARY_DIR}/src_generated/${AUTOGEN_FUNCTION}__${BLOCKDIM1}_${BLOCKDIM2}${TEMPLATE_SRCFILE_EXT})
+            endforeach()
+        endforeach()
+    elseif("${TEMPLATE_DEPS_LIST}" STREQUAL "")
+        configure_file (
+            ${TEMPLATE_SRCFILE}
+            ${PROJECT_BINARY_DIR}/src_generated/${AUTOGEN_FUNCTION}${TEMPLATE_SRCFILE_EXT}
+            )
+        list(APPEND GENERATED_FILES ${PROJECT_BINARY_DIR}/src_generated/${AUTOGEN_FUNCTION}${TEMPLATE_SRCFILE_EXT})
+    else ()
+        message(FATAL_ERROR "Unsupported AUTOGEN dependency list: ${TEMPLATE_DEPS_LIST}")
+    endif()
+
+    foreach (TO_UNROLL_FILE ${GENERATED_FILES})
+        get_filename_component(TO_UNROLL_FILENAME ${TO_UNROLL_FILE} NAME)
+        get_filename_component(TO_UNROLL_FILENAME_WE ${TO_UNROLL_FILE} NAME_WE)
+        set(UNROLLED_FILE ${UNROLLED_SRC_DIR}/${TO_UNROLL_FILENAME})
+        add_custom_command(
+            OUTPUT ${UNROLLED_FILE}
+            DEPENDS ${TO_UNROLL_FILE} ${UNROLL_SCRIPT} 
+            COMMAND mkdir -p ${UNROLLED_SRC_DIR} && perl ${PP_SCRIPT} ${TO_UNROLL_FILE} > ${UNROLLED_FILE}
+            )
+        list(APPEND UNROLLED_FILES ${UNROLLED_FILE})
+    endforeach()
+
+    set(GENERATED_HEADER ${GENERATED_INC_DIR}/${AUTOGEN_FUNCTION}_gen.h)
+    set(GENERATED_KERNELMAP ${GENERATED_INC_DIR}/${AUTOGEN_FUNCTION}.def)
     add_custom_command(
-        OUTPUT ${PP_FILE}
-        DEPENDS ${TO_PP_FILE} ${PP_SCRIPT} 
-        COMMAND mkdir -p ${PP_SRC_DIR} && perl ${PP_SCRIPT} ${TO_PP_FILE} > ${PP_FILE}
+        OUTPUT ${GENERATED_HEADER}
+        DEPENDS ${UNROLLED_FILES} ${PP_HEADER_SCRIPT} 
+        COMMAND mkdir -p ${GENERATED_INC_DIR} && perl ${PP_HEADER_SCRIPT} ${UNROLLED_FILES} > ${GENERATED_HEADER}
         )
     add_custom_command(
-        OUTPUT ${PP_HEADER}
-        DEPENDS ${PP_FILE} ${PP_HEADER_SCRIPT} 
-        COMMAND mkdir -p ${PP_INC_DIR} && perl ${PP_HEADER_SCRIPT} ${PP_FILE} > ${PP_HEADER}
+        OUTPUT ${GENERATED_KERNELMAP}
+        DEPENDS ${GENERATED_HEADER} ${PP_KERNELMAP_SCRIPT} 
+        COMMAND mkdir -p ${GENERATED_INC_DIR} && perl ${PP_KERNELMAP_SCRIPT} ${GENERATED_HEADER} > ${GENERATED_KERNELMAP}
         )
-    add_custom_command(
-        OUTPUT ${PP_KERNELMAP}
-        DEPENDS ${PP_HEADER} ${PP_KERNELMAP_SCRIPT} 
-        COMMAND mkdir -p ${PP_INC_DIR} && perl ${PP_KERNELMAP_SCRIPT} ${PP_HEADER} > ${PP_KERNELMAP}
-        )
-    list(APPEND PP_FILES ${PP_FILE} ${PP_HEADER} ${PP_KERNELMAP})
-    list(APPEND HEADERS ${PP_HEADER})
+    list(APPEND HEADERS ${GENERATED_HEADER})
+    if (${TEMPLATE_SRCFILE_EXT} STREQUAL ".cu")
+        list(APPEND CU_GENERATED_SOURCES ${UNROLLED_FILES})
+    else()
+        list(APPEND SOURCES ${UNROLLED_FILES})
+    endif()
+    list(APPEND GLOB_UNROLLED_FILES ${UNROLLED_FILES})
+    list(APPEND GLOB_GENERATED_FILES ${GENERATED_FILES})
+    list(APPEND GLOB_GENERATED_HEADERS ${GENERATED_HEADER})
+    list(APPEND GLOB_GENERATED_KERNELMAPS ${GENERATED_KERNELMAP})
+    set(GLOB_UNROLLED_FILES ${GLOB_UNROLLED_FILES} ${UNROLLED_FILES})
 endforeach()
 
-set (SOURCES ${SOURCES} ${PP_FILES})
-
-add_custom_target(preprocess DEPENDS ${PP_FILES})
+add_custom_target(autogen DEPENDS ${GLOB_UNROLLED_FILES} ${GLOB_GENERATED_FILES} ${GLOB_GENERATED_HEADERS} ${GLOB_GENERATED_KERNELMAPS})
 
 #set_source_files_properties(${PP_SRC_DIR}/tsmttsm_kahan.c PROPERTIES COMPILE_FLAGS "-fp-model strict")
 
@@ -438,23 +420,14 @@ if (USE_CUDA)
         if (CMAKE_BUILD_TYPE STREQUAL "Debug")
             list(APPEND CUDA_NVCC_FLAGS -G -g)
         endif()
-        cuda_compile(SELL_KERNEL_CU_O ${PROJECT_BINARY_DIR}/src/sell_spmv.cu OPTIONS -DMPICH_IGNORE_CXX_SEEK)
-        cuda_compile(DENSEMAT_CM_CU_O src/densemat_cm.cu OPTIONS -DMPICH_IGNORE_CXX_SEEK)
-        cuda_compile(DENSEMAT_RM_CU_O src/densemat_rm.cu OPTIONS -DMPICH_IGNORE_CXX_SEEK)
-        cuda_compile(CRS_CU_O src/sell-1_spmv.cu OPTIONS -DMPICH_IGNORE_CXX_SEEK)
-        cuda_compile(TSMM_CU_O ${PROJECT_BINARY_DIR}/src_pp/tsmm_cu.cu OPTIONS -DMPICH_IGNORE_CXX_SEEK)
-        cuda_compile(TSMM_INPLACE_CU_O ${PROJECT_BINARY_DIR}/src_pp/tsmm_inplace_cu.cu OPTIONS -DMPICH_IGNORE_CXX_SEEK)
-        cuda_compile(BENCH_CU_O src/cu_bench.cu OPTIONS -DMPICH_IGNORE_CXX_SEEK)
+        file(GLOB CU_SOURCES "${PROJECT_SOURCE_DIR}/src/*.cu")
+        cuda_compile(CU_OBJS ${CU_SOURCES})
+        cuda_compile(CU_GENERATED_OBJS ${CU_GENERATED_SOURCES})
+        
         set (SOURCES 
             ${SOURCES}
-            ${SELL_KERNEL_CU_O}
-            ${DENSEMAT_CM_CU_O}
-            ${DENSEMAT_RM_CU_O}
-            ${CRS_CU_O}
-            ${TSMM_CU_O}
-            ${TSMM_INPLACE_CU_O}
-            ${BENCH_CU_O}
-            )
+            ${CU_GENERATED_OBJS}
+            ${CU_OBJS})
         include_directories(SYSTEM ${CUDA_INCLUDE_DIRS})
         set (HEADERS ${HEADERS}
             include/ghost/cu_densemat_cm.h
@@ -474,7 +447,7 @@ if (USE_CUDA)
 endif()
 
 add_library(ghost ${SOURCES})
-add_dependencies(ghost preprocess)
+add_dependencies(ghost autogen)
 
 
 if (USE_CUDA)

@@ -1,4 +1,4 @@
-/*!GHOST_AUTOGEN BLOCKDIM1;BLOCKDIM2 */
+/*!GHOST_AUTOGEN  */
 #include "ghost/config.h"
 #include "ghost/types.h"
 #include "ghost/math.h"
@@ -11,10 +11,7 @@
 #include <float.h>
 #include <stdlib.h>
 
-#GHOST_SUBST CFGK ${BLOCKDIM1}
-#GHOST_SUBST CFGM ${BLOCKDIM2}
-
-ghost_error_t ghost_tsmm__a_sse_d_CFGK_CFGM_1_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
+ghost_error_t ghost_tsmm__a_sse_d_x_x_1_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
 {
 #ifdef GHOST_HAVE_SSE
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
@@ -24,7 +21,7 @@ ghost_error_t ghost_tsmm__a_sse_d_CFGK_CFGM_1_rm_cm(ghost_densemat_t *x, ghost_d
     ghost_lidx_t m = v->traits.ncols;
     ghost_lidx_t n = v->traits.nrows;
 
-    INFO_LOG("In SSE TSMM with two fixed block sizes [CFGK][CFGM] %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
+    INFO_LOG("In SSE TSMM with arbitrary block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
     const double * const restrict vval = (const double *) v->val;
     const double * const restrict wval = (const double *) w->val;
@@ -44,21 +41,21 @@ ghost_error_t ghost_tsmm__a_sse_d_CFGK_CFGM_1_rm_cm(ghost_densemat_t *x, ghost_d
 
     double * restrict wtran = NULL;
     ghost_lidx_t ncols_wtran = PAD(w->traits.ncols,2);
-    ghost_malloc_align((void **)&wtran,sizeof(double)*w->traits.nrows*ncols_wtran,32);
+    GHOST_CALL_GOTO(ghost_malloc_align((void **)&wtran,sizeof(double)*w->traits.nrows*ncols_wtran,32),err,ret);
     memset(wtran,0,sizeof(double)*w->traits.nrows*ncols_wtran);
     for (s=0; s<w->traits.ncols; s++) {
         for (j=0; j<w->traits.nrows; j++) {
             wtran[j*ncols_wtran+s] = wval[s*ldw+j];
         }
-    }
+    } 
 
     __m128d tmp;
     if (fabs(dalpha-1.) > DBL_MIN || fabs(dbeta) > DBL_MIN) { // general case: X = b*X + a*V*W
 #pragma omp parallel for private(j,s,tmp) schedule(runtime)
         for (i=0; i<n; i++) {
-            for (s=0; s+2<=CFGK; s+=2) {
+            for (s=0; s+2<=w->traits.ncolspadded; s+=2) {
                 tmp = _mm_mul_pd(betavec,_mm_load_pd(&xval[i*ldx+s]));
-                for (j=0; j<CFGM; j++) {
+                for (j=0; j<m; j++) {
                     tmp = _mm_add_pd(tmp,_mm_mul_pd(alphavec,_mm_mul_pd(
                                     _mm_set1_pd(vval[i*ldv+j]),_mm_load_pd(&wtran[j*ncols_wtran+s]))));
                 }
@@ -66,12 +63,11 @@ ghost_error_t ghost_tsmm__a_sse_d_CFGK_CFGM_1_rm_cm(ghost_densemat_t *x, ghost_d
             }
         }
     } else { // common case: X = V*W
-        INFO_LOG("Fast case: alpha=1 and beta=0");
 #pragma omp parallel for private(j,s,tmp) schedule(runtime)
         for (i=0; i<n; i++) {
-            for (s=0; s+2<=CFGK; s+=2) {
+            for (s=0; s+2<=w->traits.ncolspadded; s+=2) {
                 tmp = _mm_setzero_pd();
-                for (j=0; j<CFGM; j++) {
+                for (j=0; j<m; j++) {
                     tmp = _mm_add_pd(tmp,_mm_mul_pd(
                                     _mm_set1_pd(vval[i*ldv+j]),_mm_load_pd(&wtran[j*ncols_wtran+s])));
                 }
@@ -79,7 +75,11 @@ ghost_error_t ghost_tsmm__a_sse_d_CFGK_CFGM_1_rm_cm(ghost_densemat_t *x, ghost_d
             }
         }
     }
+    
+    goto out;
+err:
 
+out:
     free(wtran);
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
@@ -94,7 +94,7 @@ ghost_error_t ghost_tsmm__a_sse_d_CFGK_CFGM_1_rm_cm(ghost_densemat_t *x, ghost_d
 #endif
 }
 
-ghost_error_t ghost_tsmm__u_sse_d_CFGK_CFGM_1_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
+ghost_error_t ghost_tsmm__u_sse_d_x_x_1_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
 {
 #ifdef GHOST_HAVE_SSE
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
@@ -104,7 +104,7 @@ ghost_error_t ghost_tsmm__u_sse_d_CFGK_CFGM_1_rm_cm(ghost_densemat_t *x, ghost_d
     ghost_lidx_t m = v->traits.ncols;
     ghost_lidx_t n = v->traits.nrows;
 
-    INFO_LOG("In SSE TSMM with two fixed block sizes [CFGK][CFGM] %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
+    INFO_LOG("In SSE TSMM with arbitrary block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
     const double * const restrict vval = (const double *) v->val;
     const double * const restrict wval = (const double *) w->val;
@@ -124,21 +124,21 @@ ghost_error_t ghost_tsmm__u_sse_d_CFGK_CFGM_1_rm_cm(ghost_densemat_t *x, ghost_d
 
     double * restrict wtran = NULL;
     ghost_lidx_t ncols_wtran = PAD(w->traits.ncols,2);
-    ghost_malloc_align((void **)&wtran,sizeof(double)*w->traits.nrows*ncols_wtran,32);
+    GHOST_CALL_GOTO(ghost_malloc_align((void **)&wtran,sizeof(double)*w->traits.nrows*ncols_wtran,32),err,ret);
     memset(wtran,0,sizeof(double)*w->traits.nrows*ncols_wtran);
     for (s=0; s<w->traits.ncols; s++) {
         for (j=0; j<w->traits.nrows; j++) {
             wtran[j*ncols_wtran+s] = wval[s*ldw+j];
         }
-    }
+    } 
 
     __m128d tmp;
     if (fabs(dalpha-1.) > DBL_MIN || fabs(dbeta) > DBL_MIN) { // general case: X = b*X + a*V*W
 #pragma omp parallel for private(j,s,tmp) schedule(runtime)
         for (i=0; i<n; i++) {
-            for (s=0; s+2<=CFGK; s+=2) {
+            for (s=0; s+2<=w->traits.ncolspadded; s+=2) {
                 tmp = _mm_mul_pd(betavec,_mm_loadu_pd(&xval[i*ldx+s]));
-                for (j=0; j<CFGM; j++) {
+                for (j=0; j<m; j++) {
                     tmp = _mm_add_pd(tmp,_mm_mul_pd(alphavec,_mm_mul_pd(
                                     _mm_set1_pd(vval[i*ldv+j]),_mm_loadu_pd(&wtran[j*ncols_wtran+s]))));
                 }
@@ -146,12 +146,11 @@ ghost_error_t ghost_tsmm__u_sse_d_CFGK_CFGM_1_rm_cm(ghost_densemat_t *x, ghost_d
             }
         }
     } else { // common case: X = V*W
-        INFO_LOG("Fast case: alpha=1 and beta=0");
 #pragma omp parallel for private(j,s,tmp) schedule(runtime)
         for (i=0; i<n; i++) {
-            for (s=0; s+2<=CFGK; s+=2) {
+            for (s=0; s+2<=w->traits.ncolspadded; s+=2) {
                 tmp = _mm_setzero_pd();
-                for (j=0; j<CFGM; j++) {
+                for (j=0; j<m; j++) {
                     tmp = _mm_add_pd(tmp,_mm_mul_pd(
                                     _mm_set1_pd(vval[i*ldv+j]),_mm_loadu_pd(&wtran[j*ncols_wtran+s])));
                 }
@@ -159,7 +158,11 @@ ghost_error_t ghost_tsmm__u_sse_d_CFGK_CFGM_1_rm_cm(ghost_densemat_t *x, ghost_d
             }
         }
     }
+    
+    goto out;
+err:
 
+out:
     free(wtran);
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
@@ -173,4 +176,3 @@ ghost_error_t ghost_tsmm__u_sse_d_CFGK_CFGM_1_rm_cm(ghost_densemat_t *x, ghost_d
     return GHOST_ERR_UNKNOWN;
 #endif
 }
-

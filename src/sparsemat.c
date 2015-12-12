@@ -389,7 +389,7 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
                     
                     crsval = &((char *)(((ghost_sparsemat_rowfunc_crs_arg *)src->arg)->val))[crsrpt[actualrow]*mat->elSize];
 
-#pragma nontemporal
+#pragma vector nontemporal
                     for (colidx = 0; colidx<rl[row]; colidx++) {
                         // assignment is much faster than memcpy with non-constant size, so we need those branches...
                         if (mat->traits.datatype & GHOST_DT_REAL) {

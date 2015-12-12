@@ -4,11 +4,15 @@
 #include "ghost/util.h"
 #include "ghost/math.h"
 #include "ghost/tsmttsm.h"
-#include "ghost/tsmttsm_gen.h"
+#include "ghost/tsmttsm_var2_plain_gen.h"
+#include "ghost/tsmttsm_var2_avx_gen.h"
+#include "ghost/tsmttsm_plain_gen.h"
+#include "ghost/tsmttsm_var1_plain_gen.h"
 #include "ghost/tsmttsm_avx2_gen.h"
 #include "ghost/tsmttsm_avx_gen.h"
 #include "ghost/tsmttsm_sse_gen.h"
-#include "ghost/tsmttsm_kahan_gen.h"
+#include "ghost/tsmttsm_kahan_var2_plain_gen.h"
+#include "ghost/tsmttsm_kahan_plain_gen.h"
 #include "ghost/timing.h"
 #include "ghost/machine.h"
 #include "ghost/constants.h"
@@ -116,14 +120,19 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
     map<ghost_tsmttsm_parameters_t, ghost_tsmttsm_kernel_t> kernels;
     if (flags & GHOST_GEMM_KAHAN) { 
         if (ghost_tsmttsm_kahan_kernels.empty()) {
-#include "tsmttsm_kahan.def"
+#include "tsmttsm_kahan_plain.def"
+#include "tsmttsm_kahan_var2_plain.def"
         }
         kernels = ghost_tsmttsm_kahan_kernels;
     } else {
         if (ghost_tsmttsm_kernels.empty()) {
-#include "tsmttsm.def"
+#include "tsmttsm_plain.def"
+#include "tsmttsm_var2_plain.def"
+#include "tsmttsm_var1_plain.def"
+#include "tsmttsm_var2_avx.def"
 #include "tsmttsm_avx2.def"
 #include "tsmttsm_avx.def"
+#include "tsmttsm_var2_avx.def"
 #include "tsmttsm_sse.def"
         }
         kernels = ghost_tsmttsm_kernels;
@@ -172,24 +181,17 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
     
     INFO_LOG("Inital search for kernel dt=%d wcols=%d vcols=%d xstor=%d wstor=%d align=%d unroll=%d!",p.dt,p.wcols,p.vcols,p.xstor,p.wstor,p.alignment,p.unroll);
     kernel = kernels[p];
-    
-    if (!kernel) {
-        PERFWARNING_LOG("Try plain implementation");
-        p.impl = GHOST_IMPLEMENTATION_PLAIN;
-        kernel = kernels[p];
-    }
    
-    if (!kernel) {
-        while (p.unroll > 1 && !kernel) {
-            p.unroll /= 2;
-            PERFWARNING_LOG("Decrease unroll size to %d",p.unroll);
-            kernel = kernels[p];
-        }
-    }
-    
+/*    
     if (!kernel) {
         PERFWARNING_LOG("Try unaligned kernel");
         p.alignment = GHOST_UNALIGNED;
+        kernel = kernels[p];
+    }*/
+    
+    while (p.unroll > 1 && !kernel) {
+        p.unroll /= 2;
+        PERFWARNING_LOG("Decrease unroll size to %d",p.unroll);
         kernel = kernels[p];
     }
     
@@ -206,15 +208,21 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
         p.vcols = -1;
         kernel = kernels[p];
     }
-
+    
     if (!kernel) {
         PERFWARNING_LOG("Try kernel with arbitrary block sizes");
         p.wcols = -1;
         p.vcols = -1;
         kernel = kernels[p];
     }
+    INFO_LOG("Inital search for kernel dt=%d wcols=%d vcols=%d xstor=%d wstor=%d align=%d unroll=%d!",p.dt,p.wcols,p.vcols,p.xstor,p.wstor,p.alignment,p.unroll);
     
-    
+    if (!kernel) {
+        PERFWARNING_LOG("Try plain implementation");
+        p.impl = GHOST_IMPLEMENTATION_PLAIN;
+        kernel = kernels[p];
+    }
+   
     if (!kernel) {
         INFO_LOG("Could not find TSMTTSM kernel with %d %d %d %d %d. Fallback to GEMM",p.dt,p.wcols,p.vcols,p.xstor,p.wstor);
         ret = ghost_gemm(x,v,conjv?"C":"T",w,"N",alpha,beta,reduce,GHOST_GEMM_NOT_SPECIAL);

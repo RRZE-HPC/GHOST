@@ -1,3 +1,4 @@
+/*!GHOST_AUTOGEN BLOCKDIM1;BLOCKDIM2 */
 #include "ghost/config.h"
 #include "ghost/types.h"
 #include "ghost/math.h"
@@ -7,8 +8,9 @@
 #include "ghost/tsmttsm_sse_gen.h"
 #include <immintrin.h>
 
+#GHOST_SUBST CFGK ${BLOCKDIM1}
+#GHOST_SUBST CFGM ${BLOCKDIM2}
 
-#GHOST_FUNC_BEGIN#CFGK=${CFG_BLOCKVECTOR_SIZES}#CFGM=${CFG_BLOCKVECTOR_SIZES}
 ghost_error_t ghost_tsmttsm__a_sse_d_CFGK_CFGM_1_cm_rm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conmv)
 {
     UNUSED(conmv);
@@ -171,4 +173,3 @@ out:
     return GHOST_ERR_UNKNOWN;
 #endif
 }
-#GHOST_FUNC_END

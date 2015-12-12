@@ -445,7 +445,6 @@ static ghost_error_t densemat_cm_halocommFinalize(ghost_densemat_t *vec, ghost_d
     
     int nprocs;
     int i, from_PE;
-    ghost_gidx_t c;
     
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, vec->context->mpicomm),err,ret);
 

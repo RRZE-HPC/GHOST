@@ -4,7 +4,12 @@
 #include "ghost/util.h"
 #include "ghost/math.h"
 #include "ghost/tsmm.h"
-#include "ghost/tsmm_gen.h"
+#include "ghost/tsmm_var2_plain_gen.h"
+#include "ghost/tsmm_var2_sse_gen.h"
+#include "ghost/tsmm_var2_cu_gen.h"
+#include "ghost/tsmm_plain_gen.h"
+#include "ghost/tsmm_var1_plain_gen.h"
+#include "ghost/tsmm_var2_avx_gen.h"
 #include "ghost/tsmm_avx_gen.h"
 #include "ghost/tsmm_sse_gen.h"
 #include "ghost/tsmm_cu_gen.h"
@@ -86,11 +91,15 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
     }
     
     if (ghost_tsmm_kernels.empty()) {
-#include "tsmm.def"
+#include "tsmm_var2_plain.def"
 #include "tsmm_avx.def"
+#include "tsmm_var2_avx.def"
+#include "tsmm_var1_plain.def"
 #include "tsmm_sse.def"
+#include "tsmm_var2_sse.def"
 #ifdef GHOST_HAVE_CUDA
 #include "tsmm_cu.def"
+#include "tsmm_var2_cu.def"
 #endif
     }
 
