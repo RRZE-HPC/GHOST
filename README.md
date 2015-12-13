@@ -22,11 +22,15 @@ Computing ([SPPEXA](http://www.sppexa.de/)) of the German Research Foundation (D
 
 Have a look at the [GHOST-Apps](https://bitbucket.org/essex/ghost-apps) and the [PHYSICS](https://bitbucket.org/essex/physics) project for some example applications using GHOST.
 
+Also check out [PHIST](https://bitbucket.org/essex/phist), the sparse iterative solver toolkit
+from the ESSEX project which supports GHOST as a kernel library.
+
 ---
 # Dependencies and optional packages #
 ---
 
 1. A C/C++ compiler
+1. Perl (for automatic code generation)
 1. [CMake](http://www.cmake.org) >= 2.8
 1. [hwloc](http://www.open-mpi.org/projects/hwloc) >= 1.7 (older versions *may* work as well) ([Install notes](https://bitbucket.org/essex/ghost/wiki/Dependencies))
 1. A BLAS library (e.g., [Intel MKL](http://software.intel.com/en-us/intel-mkl) (preferred) or [GSL](http://www.gnu.org/software/gsl/))
