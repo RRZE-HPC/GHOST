@@ -213,8 +213,10 @@ foreach(TEMPLATE_SRCFILE ${TEMPLATE_SRCFILES})
     string(FIND "${TEMPLATE_DEPS_RAW}" " " ENDPOS)
     string(SUBSTRING "${TEMPLATE_DEPS_RAW}" 0 ${ENDPOS} TEMPLATE_DEPS)
     set(TEMPLATE_DEPS_LIST ${TEMPLATE_DEPS})
-    
-    cmake_policy(SET CMP0054 NEW)
+   
+    if (${CMAKE_VERSION} GREATER 3.0) 
+        cmake_policy(SET CMP0054 NEW)
+    endif()
   
     if (NOT "${TEMPLATE_DEPS_LIST}" STREQUAL "")
         list(SORT TEMPLATE_DEPS_LIST)
