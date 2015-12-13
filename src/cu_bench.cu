@@ -1,4 +1,5 @@
 #include "ghost/util.h"
+#include "ghost/timing.h"
 #include "ghost/cu_util.h"
 #include "ghost/bench.h"
 
