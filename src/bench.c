@@ -2,6 +2,7 @@
 #include "ghost/machine.h"
 #include "ghost/bench.h"
 #include "ghost/task.h"
+#include "ghost/timing.h"
 #include "ghost/cu_bench.h"
 
 #include <immintrin.h>
