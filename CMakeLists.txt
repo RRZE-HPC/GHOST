@@ -214,15 +214,11 @@ foreach(TEMPLATE_SRCFILE ${TEMPLATE_SRCFILES})
     string(SUBSTRING "${TEMPLATE_DEPS_RAW}" 0 ${ENDPOS} TEMPLATE_DEPS)
     set(TEMPLATE_DEPS_LIST ${TEMPLATE_DEPS})
    
-    if (${CMAKE_VERSION} GREATER 3.0) 
-        cmake_policy(SET CMP0054 NEW)
-    endif()
-  
     if (NOT "${TEMPLATE_DEPS_LIST}" STREQUAL "")
         list(SORT TEMPLATE_DEPS_LIST)
     endif()
-    
-    if("${TEMPLATE_DEPS_LIST}" STREQUAL "BLOCKDIM1")
+   
+    if(TEMPLATE_DEPS_LIST MATCHES "^BLOCKDIM1$")
         foreach(BLOCKDIM1 ${CFG_BLOCKVECTOR_SIZES_LIST})
             configure_file (
                 ${TEMPLATE_SRCFILE}
@@ -230,15 +226,15 @@ foreach(TEMPLATE_SRCFILE ${TEMPLATE_SRCFILES})
                 )
             list(APPEND GENERATED_FILES ${PROJECT_BINARY_DIR}/src_generated/${AUTOGEN_FUNCTION}__${BLOCKDIM1}${TEMPLATE_SRCFILE_EXT})
         endforeach()
-    elseif("${TEMPLATE_DEPS_LIST}" STREQUAL "CHUNKHEIGHT")
+    elseif(TEMPLATE_DEPS_LIST MATCHES "^CHUNKHEIGHT$")
         foreach(CHUNKHEIGHT ${CFG_SELL_CHUNKHEIGHTS_LIST})
-            configure_file (
+configure_file (
                 ${TEMPLATE_SRCFILE}
-                ${PROJECT_BINARY_DIR}/src_generated/${AUTOGEN_FUNCTION}__${BLOCKDIM1}_${CHUNKHEIGHT}${TEMPLATE_SRCFILE_EXT}
+                ${PROJECT_BINARY_DIR}/src_generated/${AUTOGEN_FUNCTION}__${CHUNKHEIGHT}${TEMPLATE_SRCFILE_EXT}
                 )
-            list(APPEND GENERATED_FILES ${PROJECT_BINARY_DIR}/src_generated/${AUTOGEN_FUNCTION}__${BLOCKDIM1}_${CHUNKHEIGHT}${TEMPLATE_SRCFILE_EXT})
+            list(APPEND GENERATED_FILES ${PROJECT_BINARY_DIR}/src_generated/${AUTOGEN_FUNCTION}__${CHUNKHEIGHT}${TEMPLATE_SRCFILE_EXT})
         endforeach()
-    elseif("${TEMPLATE_DEPS_LIST}" STREQUAL "BLOCKDIM1;CHUNKHEIGHT")
+    elseif(TEMPLATE_DEPS_LIST MATCHES "^BLOCKDIM1;CHUNKHEIGHT$")
         foreach(BLOCKDIM1 ${CFG_BLOCKVECTOR_SIZES_LIST})
             foreach(CHUNKHEIGHT ${CFG_SELL_CHUNKHEIGHTS_LIST})
                 configure_file (
@@ -248,7 +244,7 @@ foreach(TEMPLATE_SRCFILE ${TEMPLATE_SRCFILES})
                 list(APPEND GENERATED_FILES ${PROJECT_BINARY_DIR}/src_generated/${AUTOGEN_FUNCTION}__${BLOCKDIM1}_${CHUNKHEIGHT}${TEMPLATE_SRCFILE_EXT})
             endforeach()
         endforeach()
-    elseif("${TEMPLATE_DEPS_LIST}" STREQUAL "BLOCKDIM1;BLOCKDIM2")
+    elseif(TEMPLATE_DEPS_LIST MATCHES "^BLOCKDIM1;BLOCKDIM2$")
         foreach(BLOCKDIM1 ${CFG_BLOCKVECTOR_SIZES_LIST})
             foreach(BLOCKDIM2 ${CFG_BLOCKVECTOR_SIZES_LIST})
                 configure_file (
@@ -258,7 +254,7 @@ foreach(TEMPLATE_SRCFILE ${TEMPLATE_SRCFILES})
                 list(APPEND GENERATED_FILES ${PROJECT_BINARY_DIR}/src_generated/${AUTOGEN_FUNCTION}__${BLOCKDIM1}_${BLOCKDIM2}${TEMPLATE_SRCFILE_EXT})
             endforeach()
         endforeach()
-    elseif("${TEMPLATE_DEPS_LIST}" STREQUAL "")
+    elseif(TEMPLATE_DEPS_LIST MATCHES "")
         configure_file (
             ${TEMPLATE_SRCFILE}
             ${PROJECT_BINARY_DIR}/src_generated/${AUTOGEN_FUNCTION}${TEMPLATE_SRCFILE_EXT}
