@@ -20,6 +20,8 @@
 #include "ghost/instr.h"
 #include "ghost/machine.h"
 #include "ghost/pumap.h"
+#include "ghost/svqb.h"
+#include "ghost/rayleigh_ritz.h"
 
 #include <hwloc.h>
 
