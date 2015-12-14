@@ -20,7 +20,6 @@ ghost_error_t ghost_sellspmvUNROLLEDDOESNOTWORK__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(
 {
 #if defined(GHOST_HAVE_AVX) && CHUNKHEIGHT>=4
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
-    INFO_LOG("In CM kernel with fixed block size %d",res->traits.ncols);
     ghost_lidx_t i;
     double *local_dot_product = NULL;
     double *partsums = NULL;
@@ -103,7 +102,6 @@ ghost_error_t ghost_sellspmvUNROLLEDDOESNOTWORK__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(
                 if (spmvmOptions & GHOST_SPMV_AXPY) {
                     #GHOST_UNROLL#_mm256_store_pd(&lval[c*CHUNKHEIGHT+(4*@)],_mm256_add_pd(tmp@,_mm256_load_pd(&lval[c*CHUNKHEIGHT+(4*@)])));#CHUNKHEIGHT/4
                 } else if (spmvmOptions & GHOST_SPMV_AXPBY) {
-                    ERROR_LOG("axpby");
                     #GHOST_UNROLL#_mm256_store_pd(&lval[c*CHUNKHEIGHT+(4*@)],_mm256_add_pd(tmp@,_mm256_mul_pd(beta,_mm256_load_pd(&lval[c*CHUNKHEIGHT+(4*@)]))));#CHUNKHEIGHT/4
                 } else {
                     #GHOST_UNROLL#_mm256_stream_pd(&lval[~(@/(CHUNKHEIGHT/4))~*res->stride+c*CHUNKHEIGHT+(4*((@)%(CHUNKHEIGHT/4)))],tmp@);#CHUNKHEIGHT/4*NVECS
@@ -190,7 +188,6 @@ ghost_error_t ghost_sellspmv__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
 {
 #if defined(GHOST_HAVE_AVX) && CHUNKHEIGHT>=4
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
-    INFO_LOG("In CM kernel with fixed block size %d",res->traits.ncols);
     ghost_lidx_t i;
     double *lval = NULL, *rval = NULL;
     double *mval = (double *)SELL(mat)->val;

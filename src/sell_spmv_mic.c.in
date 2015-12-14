@@ -17,7 +17,6 @@ ghost_error_t ghost_sellspmv__a_mic_d_d_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
     UNUSED(argp);
 #if defined(GHOST_HAVE_MIC) && CHUNKHEIGHT>=16
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
-    INFO_LOG("in MIC kernel with chunkheight %d",CHUNKHEIGHT);
     ghost_lidx_t c,j,v,i;
     ghost_lidx_t offs;
     double *mval = (double *)SELL(mat)->val;
@@ -149,7 +148,6 @@ ghost_error_t ghost_sellspmv__a_mic_d_d_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
 ghost_error_t ghost_sellspmv__a_mic_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
 {
 #if defined(GHOST_HAVE_MIC) && NVECS>=8
-    INFO_LOG("in row-mjaor MIC kernel w nvecs %d chunkheight %d",NVECS,CHUNKHEIGHT);
     double *mval = (double *)SELL(mat)->val;
     double *local_dot_product = NULL;
     double *partsums = NULL;
@@ -231,6 +229,10 @@ ghost_error_t ghost_sellspmv__a_mic_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
                 }
             }
         }
+    }
+    if (spmvmOptions & GHOST_SPMV_CHAIN_AXPBY) {
+        PERFWARNING_LOG("AXPBY will not be done on-the-fly!");
+        z->axpby(z,res,&seta,&sdelta);
     }
     if (spmvmOptions & GHOST_SPMV_DOT) {
         ghost_lidx_t col;

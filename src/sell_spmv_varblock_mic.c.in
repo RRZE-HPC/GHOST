@@ -16,7 +16,6 @@ ghost_error_t ghost_sellspmv__a_mic_d_d_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat,
     UNUSED(argp);
 #if defined(GHOST_HAVE_MIC) && CHUNKHEIGHT>=16
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
-    INFO_LOG("in MIC kernel with chunkheight %d",CHUNKHEIGHT);
     ghost_lidx_t c,j,v,i;
     ghost_lidx_t offs;
     double *mval = (double *)SELL(mat)->val;
@@ -149,7 +148,6 @@ ghost_error_t ghost_sellspmv__a_mic_d_d_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat,
 ghost_error_t ghost_sellspmv__a_mic_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
 {
 #if defined(GHOST_HAVE_MIC) && CHUNKHEIGHT>=8
-    INFO_LOG("rm MIC kernel with ch %d",CHUNKHEIGHT);
     ghost_lidx_t j,c,col;
     ghost_lidx_t offs;
     double *mval = (double *)SELL(mat)->val;

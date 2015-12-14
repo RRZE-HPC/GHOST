@@ -16,7 +16,6 @@ ghost_error_t ghost_sellspmv__u_plain_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
 
-    INFO_LOG("In RM kernel with block size NVECS and chunk height CHUNKHEIGHT");
     double *mval = (double *)SELL(mat)->val;
     double *local_dot_product = NULL;
     double *partsums = NULL;
@@ -192,7 +191,6 @@ ghost_error_t ghost_sellspmv__a_plain_d_d_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
 
-    INFO_LOG("In CM kernel with block size NVECS and chunk height CHUNKHEIGHT");
     double *mval = (double *)SELL(mat)->val;
     double *local_dot_product = NULL;
     double *partsums = NULL;
@@ -315,7 +313,6 @@ ghost_error_t ghost_sellspmv__a_plain_z_z_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
 
-    INFO_LOG("In CM kernel with block size NVECS and chunk height CHUNKHEIGHT");
     complex double *mval = (complex double *)SELL(mat)->val;
     complex double *local_dot_product = NULL;
     complex double *partsums = NULL;
@@ -439,7 +436,6 @@ ghost_error_t ghost_sellspmv__a_plain_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
 
-    INFO_LOG("In RM kernel with fixed block size NVECS and fix chunk height CHUNKHEIGHT");
     complex double *mval = (complex double *)SELL(mat)->val;
     complex double *local_dot_product = NULL;
     complex double *partsums = NULL;

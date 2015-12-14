@@ -24,7 +24,6 @@ ghost_error_t ghost_sellspmv__a_avx2_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t 
 #if NVECS%2
     __m256i mask = _mm256_set_epi64x(0,0,~0,~0);
 #endif
-    INFO_LOG("In RM kernel fixed block size and chunk height");
     const double * const restrict mval = (double *)SELL(mat)->val;
     complex double *local_dot_product = NULL;
     complex double *partsums = NULL;
@@ -47,7 +46,6 @@ ghost_error_t ghost_sellspmv__a_avx2_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t 
     complex double *sshiftpadded = NULL;
     int sshiftcopied = 0;
     if ((spmvmOptions & GHOST_SPMV_VSHIFT)) {
-        INFO_LOG("Copy to padded VSHIFT");
         GHOST_CALL_RETURN(ghost_malloc_align((void **)&sshiftpadded,PAD(invec->traits.ncols,2)*sizeof(complex double),256));
         memset(sshiftpadded,0,PAD(invec->traits.ncols,2)*sizeof(complex double));
         memcpy(sshiftpadded,sshift,invec->traits.ncols*sizeof(complex double));

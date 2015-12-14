@@ -19,7 +19,6 @@ ghost_error_t ghost_sellspmv__a_avx_d_d_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat,
 {
 #if defined(GHOST_HAVE_AVX) && CHUNKHEIGHT>=4
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
-    INFO_LOG("In CM kernel with block size %d",res->traits.ncols);
     ghost_lidx_t i;
     double *local_dot_product = NULL;
     double *partsums = NULL;
@@ -362,7 +361,6 @@ ghost_error_t ghost_sellspmv__a_avx_z_z_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat,
 ghost_error_t ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
 {
 #if defined(GHOST_HAVE_AVX)
-    INFO_LOG("In RM kernel fixed arbitrary block size and fixed chunk height");
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     const double * const restrict mval = (double *)SELL(mat)->val;
     double *local_dot_product = NULL;
@@ -390,7 +388,6 @@ ghost_error_t ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat,
     double *sshiftpadded = NULL;
     int sshiftcopied = 0;
     if ((spmvmOptions & GHOST_SPMV_VSHIFT)) {
-        INFO_LOG("Copy to padded VSHIFT");
         GHOST_CALL_RETURN(ghost_malloc_align((void **)&sshiftpadded,PAD(invec->traits.ncols,4)*sizeof(double),256));
         memset(sshiftpadded,0,PAD(invec->traits.ncols,4)*sizeof(double));
         memcpy(sshiftpadded,sshift,invec->traits.ncols*sizeof(double));
@@ -640,7 +637,6 @@ ghost_error_t ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat,
 ghost_error_t ghost_sellspmv__a_avx_z_z_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
 {
 #if defined(GHOST_HAVE_AVX)
-    INFO_LOG("In RM kernel fixed arbitrary block size and fixed chunk height");
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     const double * const restrict mval = (double *)SELL(mat)->val;
     complex double *local_dot_product = NULL;
@@ -668,7 +664,6 @@ ghost_error_t ghost_sellspmv__a_avx_z_z_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat,
     complex double *sshiftpadded = NULL;
     int sshiftcopied = 0;
     if ((spmvmOptions & GHOST_SPMV_VSHIFT)) {
-        INFO_LOG("Copy to padded VSHIFT");
         GHOST_CALL_RETURN(ghost_malloc_align((void **)&sshiftpadded,PAD(invec->traits.ncols,4)*sizeof(complex double),256));
         memset(sshiftpadded,0,PAD(invec->traits.ncols,4)*sizeof(complex double));
         memcpy(sshiftpadded,sshift,invec->traits.ncols*sizeof(complex double));

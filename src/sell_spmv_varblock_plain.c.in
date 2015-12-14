@@ -15,7 +15,6 @@ ghost_error_t ghost_sellspmv__a_plain_z_z_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *ma
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
 
-    INFO_LOG("In RM kernel with variable block size %d and fix chunk height CHUNKHEIGHT",res->traits.ncols);
     complex double *mval = (complex double *)SELL(mat)->val;
     complex double *local_dot_product = NULL;
     complex double *partsums = NULL;
