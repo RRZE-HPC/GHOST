@@ -17,6 +17,9 @@
 #include "ghost/timing.h"
 #include "ghost/locality.h"
 #include "ghost/rand.h"
+#include "ghost/instr.h"
+#include "ghost/machine.h"
+#include "ghost/pumap.h"
 
 #include <hwloc.h>
 
