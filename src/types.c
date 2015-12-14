@@ -182,3 +182,23 @@ char * ghost_location_string(ghost_location_t location)
         return "Invalid";
     }
 }
+    
+char * ghost_implementation_string(ghost_implementation_t implementation)
+{
+    switch(implementation) {
+        case GHOST_IMPLEMENTATION_PLAIN:
+            return "vanilla";
+        case GHOST_IMPLEMENTATION_SSE:
+            return "SSE";
+        case GHOST_IMPLEMENTATION_AVX:
+            return "AVX";
+        case GHOST_IMPLEMENTATION_AVX2:
+            return "AVX2";
+        case GHOST_IMPLEMENTATION_MIC:
+            return "MIC";
+        case GHOST_IMPLEMENTATION_CUDA:
+            return "CUDA";
+        default:
+            return "unknown";
+    }
+}
