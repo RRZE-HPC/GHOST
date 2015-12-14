@@ -322,7 +322,6 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q, int nthreads)
         
         if( curTask->nThreads > 0 ) {
             int cores[curTask->nThreads];
-            ghost_malloc((void **)&cores,sizeof(int)*curTask->nThreads);
             for(curThread=0; curThread<curTask->nThreads; curThread++) {
                 cores[curThread] = curCore;
                 hwloc_bitmap_set(mybusy,curCore);
