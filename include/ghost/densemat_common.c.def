@@ -486,10 +486,6 @@ static ghost_error_t FUNCNAME(download(ghost_densemat_t * vec))
     if (type != GHOST_TYPE_CUDA) {
         return GHOST_SUCCESS;
     }
-#else
-    return GHOST_SUCCESS;
-#endif
-
     if (!(vec->traits.location & GHOST_LOCATION_HOST)) {
         if (vec->traits.flags & GHOST_DENSEMAT_NOT_RELOCATE) {
             WARNING_LOG("Will not download the densemat!");
@@ -509,7 +505,10 @@ static ghost_error_t FUNCNAME(download(ghost_densemat_t * vec))
     } else {
         GHOST_SINGLETHREAD(DENSEMAT_ITER(vec,ghost_cu_download(valptr,cuvalptr,vec->elSize)));
     }
-    
+#else
+    UNUSED(vec);
+#endif
+
     return GHOST_SUCCESS;
 }
 
@@ -521,10 +520,6 @@ static ghost_error_t FUNCNAME(upload(ghost_densemat_t * vec))
     if (type != GHOST_TYPE_CUDA) {
         return GHOST_SUCCESS;
     }
-#else
-    return GHOST_SUCCESS;
-#endif
-
     if (!(vec->traits.location & GHOST_LOCATION_DEVICE)) {
         if (vec->traits.flags & GHOST_DENSEMAT_NOT_RELOCATE) {
             WARNING_LOG("Will not upload the densemat!");
@@ -544,6 +539,9 @@ static ghost_error_t FUNCNAME(upload(ghost_densemat_t * vec))
     } else {
         GHOST_SINGLETHREAD(DENSEMAT_ITER(vec,ghost_cu_upload(cuvalptr,valptr,vec->elSize)));
     }
+#else
+    UNUSED(vec);
+#endif
     
     return GHOST_SUCCESS;
 }

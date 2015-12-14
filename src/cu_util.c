@@ -69,16 +69,14 @@ ghost_error_t ghost_cu_malloc(void **mem, size_t bytesize)
     ghost_error_t ret = GHOST_SUCCESS;
 #ifdef GHOST_HAVE_CUDA
     CUDA_CALL_GOTO(cudaMalloc(mem,bytesize),err,ret);
-#else
-    UNUSED(mem);
-    UNUSED(bytesize);
-#endif
-
     goto out;
 err:
     ERROR_LOG("CUDA malloc with %zu bytes failed!",bytesize);
 out:
-
+#else
+    UNUSED(mem);
+    UNUSED(bytesize);
+#endif
     return ret;
 }
 
