@@ -141,6 +141,9 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
 
     
     ghost_tsmttsm_parameters_t p;
+    ghost_implementation_t opt_impl;
+    ghost_alignment_t opt_align;
+    int opt_unroll;
     ghost_tsmttsm_kernel_t kernel = NULL;
     
     // fix properties    
@@ -150,87 +153,78 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
 
     // initial implementation
 #ifdef GHOST_HAVE_MIC
-    p.impl = GHOST_IMPLEMENTATION_MIC;
+    opt_impl = GHOST_IMPLEMENTATION_MIC;
 #elif defined(GHOST_HAVE_AVX2)
-    p.impl = GHOST_IMPLEMENTATION_AVX2;
+    opt_impl = GHOST_IMPLEMENTATION_AVX2;
 #elif defined(GHOST_HAVE_AVX)
-    p.impl = GHOST_IMPLEMENTATION_AVX;
+    opt_impl = GHOST_IMPLEMENTATION_AVX;
 #elif defined(GHOST_HAVE_SSE)
-    p.impl = GHOST_IMPLEMENTATION_SSE;
+    opt_impl = GHOST_IMPLEMENTATION_SSE;
 #else
-    p.impl = GHOST_IMPLEMENTATION_PLAIN;
+    opt_impl = GHOST_IMPLEMENTATION_PLAIN;
 #endif
+    
     
     // alignment of large input data
     // the alignment of the result array does not matter because we can easily re-allocate it accordingly
     int al = ghost_machine_alignment();
     if (IS_ALIGNED(w->val,al) && IS_ALIGNED(v->val,al) && !((w->stride*w->elSize) % al) && !((v->stride*v->elSize) % al)) {
-        p.alignment = GHOST_ALIGNED;
+        opt_align = GHOST_ALIGNED;
     } else {
-        p.alignment = GHOST_UNALIGNED;
+        opt_align = GHOST_UNALIGNED;
+    }
+    
+    ghost_lidx_t try_wcols[2] = {w->traits.ncols,-1};
+    ghost_lidx_t try_vcols[2] = {v->traits.ncols,-1};
+
+    if (x->traits.flags & GHOST_DENSEMAT_VIEW || v->traits.flags & GHOST_DENSEMAT_VIEW) {
+        opt_unroll = 1;
+    } else {
+        opt_unroll = GHOST_MAX_ROWS_UNROLL;
+    }
+    
+    int n_wcols = sizeof(try_wcols)/sizeof(ghost_lidx_t); 
+    int n_vcols = sizeof(try_vcols)/sizeof(ghost_lidx_t); 
+    int pos_wcols, pos_vcols;
+    bool optimal = true; // if we find a kernel with highest specialization grade (regardless unrolling), this remains true and no performance warning gets printed
+
+    for (pos_wcols = 0; pos_wcols < n_wcols; pos_wcols++) {  
+        for (pos_vcols = 0; pos_vcols < n_vcols; pos_vcols++) {  
+            for (p.impl = opt_impl; (int)p.impl >= GHOST_IMPLEMENTATION_PLAIN; p.impl  = (ghost_implementation_t)((int)p.impl-1)) {
+                for (p.alignment = opt_align; (int)p.alignment >= GHOST_UNALIGNED; p.alignment = (ghost_alignment_t)((int)p.alignment-1)) {
+                    for (p.unroll = opt_unroll; p.unroll > 0; p.unroll /= 2) {
+                        p.wcols = try_wcols[pos_wcols];
+                        p.vcols = try_vcols[pos_vcols];
+                        DEBUG_LOG(1,"Try wcols=%s, vcols=%s, impl=%s, %s, unroll=%d",
+                                p.wcols==-1?"arbitrary":to_string(p.wcols).c_str(),p.vcols==-1?"arbitrary":to_string(p.vcols).c_str(),
+                                ghost_implementation_string(p.impl),p.alignment==GHOST_UNALIGNED?"unaligned":"aligned",p.unroll);
+                        kernel = kernels[p];
+                        if (kernel) {
+                            goto end_of_loop;
+                        }
+                    }
+                    optimal = false;
+                }
+            }
+        }
     }
 
-    p.vcols = v->traits.ncols;
-    p.wcols = w->traits.ncols;
-    
-    if (x->traits.flags & GHOST_DENSEMAT_VIEW || v->traits.flags & GHOST_DENSEMAT_VIEW) {
-        p.unroll = 1;
-    } else {
-        p.unroll = GHOST_MAX_ROWS_UNROLL;
-    }
-    
-    INFO_LOG("Inital search for kernel dt=%d wcols=%d vcols=%d xstor=%d wstor=%d align=%d unroll=%d!",p.dt,p.wcols,p.vcols,p.xstor,p.wstor,p.alignment,p.unroll);
-    kernel = kernels[p];
-   
-/*    
-    if (!kernel) {
-        PERFWARNING_LOG("Try unaligned kernel");
-        p.alignment = GHOST_UNALIGNED;
-        kernel = kernels[p];
-    }*/
-    
-    while (p.unroll > 1 && !kernel) {
-        p.unroll /= 2;
-        PERFWARNING_LOG("Decrease unroll size to %d",p.unroll);
-        kernel = kernels[p];
-    }
-    
-    if (!kernel) {
-        PERFWARNING_LOG("Try kernel with arbitrary wcols");
-        p.wcols = -1;
-        p.vcols = v->traits.ncols;
-        kernel = kernels[p];
-    }
-    
-    if (!kernel) {
-        PERFWARNING_LOG("Try kernel with arbitrary vcols");
-        p.wcols = w->traits.ncols;
-        p.vcols = -1;
-        kernel = kernels[p];
-    }
-    
-    if (!kernel) {
-        PERFWARNING_LOG("Try kernel with arbitrary block sizes");
-        p.wcols = -1;
-        p.vcols = -1;
-        kernel = kernels[p];
-    }
-    INFO_LOG("Inital search for kernel dt=%d wcols=%d vcols=%d xstor=%d wstor=%d align=%d unroll=%d!",p.dt,p.wcols,p.vcols,p.xstor,p.wstor,p.alignment,p.unroll);
-    
-    if (!kernel) {
-        PERFWARNING_LOG("Try plain implementation");
-        p.impl = GHOST_IMPLEMENTATION_PLAIN;
-        kernel = kernels[p];
-    }
-   
-    if (!kernel) {
-        INFO_LOG("Could not find TSMTTSM kernel with %d %d %d %d %d. Fallback to GEMM",p.dt,p.wcols,p.vcols,p.xstor,p.wstor);
-        ret = ghost_gemm(x,v,conjv?"C":"T",w,"N",alpha,beta,reduce,GHOST_GEMM_NOT_SPECIAL);
-    } else {
+end_of_loop:
+
+    if (kernel) {
+        if (optimal) {
+            INFO_LOG("Found kernel with highest specialization grade: dt=%d wcols=%d vcols=%d xstor=%d wstor=%d align=%d unroll=%d impl=%s",p.dt,p.wcols,p.vcols,p.xstor,p.wstor,p.alignment,p.unroll,ghost_implementation_string(p.impl));
+        } else {
+            PERFWARNING_LOG("Using potentially non-optimal kernel: dt=%d wcols=%d vcols=%d xstor=%d wstor=%d align=%d unroll=%d impl=%s",p.dt,p.wcols,p.vcols,p.xstor,p.wstor,p.alignment,p.unroll,ghost_implementation_string(p.impl));
+        }
+
         ret = kernel(x,v,w,alpha,beta,conjv);
         if (reduce != GHOST_GEMM_NO_REDUCE && v->context) {
             x->reduce(x,v->context->mpicomm,reduce);
         }
+    } else {
+        PERFWARNING_LOG("Could not find TSMTTSM kernel. Fallback to GEMM");
+        ret = ghost_gemm(x,v,conjv?"C":"T",w,"N",alpha,beta,reduce,GHOST_GEMM_NOT_SPECIAL);
     }
 
 
