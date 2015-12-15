@@ -5,6 +5,7 @@ my %datatypes = (
         's' => '(ghost_datatype_t)(GHOST_DT_FLOAT|GHOST_DT_REAL)',
         'z' => '(ghost_datatype_t)(GHOST_DT_DOUBLE|GHOST_DT_COMPLEX)',
         'c' => '(ghost_datatype_t)(GHOST_DT_FLOAT|GHOST_DT_COMPLEX)',
+        'x' => 'GHOST_DT_ANY',
         );
 my %storages = (
         'cm' => '(ghost_densemat_storage_t)(GHOST_DENSEMAT_COLMAJOR)',
@@ -134,11 +135,7 @@ while (<>) {
             print $funcname."_parameters_t pars;\n";
             print "pars.alignment = ".$alignments{$funcpars[0]}.";\n";
             print "pars.impl = ".$implementations{$funcpars[1]}.";\n";
-            if ($funcpars[2] eq "x") {
-                print "pars.dt = GHOST_DT_ANY;\n";
-            } else {
-                print "pars.dt = ".$datatypes{$funcpars[2]}.";\n";
-            }
+            print "pars.dt = ".$datatypes{$funcpars[2]}.";\n";
             if ($funcpars[3] eq "x") {
                 print "pars.xcols = -1;\n";
             } else {
@@ -175,11 +172,7 @@ while (<>) {
             print "{\n";
             print $funcname."_parameters_t pars;\n";
             print "pars.impl = ".$implementations{$funcpars[0]}.";\n";
-            if ($funcpars[1] eq "x") {
-                print "pars.dt = GHOST_DT_ANY;\n";
-            } else {
-                print "pars.dt = ".$datatypes{$funcpars[1]}.";\n";
-            }
+            print "pars.dt = ".$datatypes{$funcpars[1]}.";\n";
             if ($funcpars[2] eq "x") {
                 print "pars.ncolsin = -1;\n";
             } else {

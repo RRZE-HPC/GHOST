@@ -147,7 +147,6 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
     ghost_tsmttsm_kernel_t kernel = NULL;
     
     // fix properties    
-    p.dt = x->traits.datatype;
     p.xstor = x->traits.storage;
     p.wstor = w->traits.storage;
 
@@ -176,6 +175,7 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
     
     ghost_lidx_t try_wcols[2] = {w->traits.ncols,-1};
     ghost_lidx_t try_vcols[2] = {v->traits.ncols,-1};
+    ghost_datatype_t try_dt[2] = {v->traits.datatype,GHOST_DT_ANY};
 
     if (x->traits.flags & GHOST_DENSEMAT_VIEW || v->traits.flags & GHOST_DENSEMAT_VIEW) {
         opt_unroll = 1;
@@ -185,7 +185,8 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
     
     int n_wcols = sizeof(try_wcols)/sizeof(ghost_lidx_t); 
     int n_vcols = sizeof(try_vcols)/sizeof(ghost_lidx_t); 
-    int pos_wcols, pos_vcols;
+    int n_dt = sizeof(try_dt)/sizeof(ghost_datatype_t); 
+    int pos_wcols, pos_vcols, pos_dt;
     bool optimal = true; // if we find a kernel with highest specialization grade (regardless unrolling), this remains true and no performance warning gets printed
 
     for (pos_wcols = 0; pos_wcols < n_wcols; pos_wcols++) {  
@@ -193,14 +194,17 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
             for (p.impl = opt_impl; (int)p.impl >= GHOST_IMPLEMENTATION_PLAIN; p.impl  = (ghost_implementation_t)((int)p.impl-1)) {
                 for (p.alignment = opt_align; (int)p.alignment >= GHOST_UNALIGNED; p.alignment = (ghost_alignment_t)((int)p.alignment-1)) {
                     for (p.unroll = opt_unroll; p.unroll > 0; p.unroll /= 2) {
-                        p.wcols = try_wcols[pos_wcols];
-                        p.vcols = try_vcols[pos_vcols];
-                        DEBUG_LOG(1,"Try wcols=%s, vcols=%s, impl=%s, %s, unroll=%d",
-                                p.wcols==-1?"arbitrary":to_string(p.wcols).c_str(),p.vcols==-1?"arbitrary":to_string(p.vcols).c_str(),
-                                ghost_implementation_string(p.impl),p.alignment==GHOST_UNALIGNED?"unaligned":"aligned",p.unroll);
-                        kernel = kernels[p];
-                        if (kernel) {
-                            goto end_of_loop;
+                        for (pos_dt = 0; pos_dt < n_dt; pos_dt++) {
+                            p.wcols = try_wcols[pos_wcols];
+                            p.vcols = try_vcols[pos_vcols];
+                            p.dt = try_dt[pos_dt];
+                            INFO_LOG("Try wcols=%s, vcols=%s, impl=%s, %s, unroll=%d, dt=%s",
+                                    p.wcols==-1?"arbitrary":to_string(p.wcols).c_str(),p.vcols==-1?"arbitrary":to_string(p.vcols).c_str(),
+                                    ghost_implementation_string(p.impl),p.alignment==GHOST_UNALIGNED?"unaligned":"aligned",p.unroll,ghost_datatype_string(p.dt));
+                            kernel = kernels[p];
+                            if (kernel) {
+                                goto end_of_loop;
+                            }
                         }
                     }
                     optimal = false;

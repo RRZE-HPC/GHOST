@@ -82,6 +82,10 @@ ghost_error_t ghost_datatype_size(size_t *size, ghost_datatype_t datatype)
 
 bool ghost_datatype_valid(ghost_datatype_t datatype)
 {
+    if (datatype == GHOST_DT_ANY) {
+        return 1;
+    }
+
     if ((datatype & GHOST_DT_FLOAT) &&
             (datatype & GHOST_DT_DOUBLE))
         return 0;
@@ -105,6 +109,10 @@ char * ghost_datatype_string(ghost_datatype_t datatype)
 {
     if (!ghost_datatype_valid(datatype)) {
         return "Invalid";
+    }
+
+    if (datatype == GHOST_DT_ANY) {
+        return "any";
     }
 
     if (datatype & GHOST_DT_FLOAT) {
