@@ -409,110 +409,38 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
 
     ghost_error_t ret = GHOST_SUCCESS;
 
-    ghost_implementation_t impl = GHOST_IMPLEMENTATION_PLAIN;
-
-    if (!(rhs->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
-#ifdef GHOST_HAVE_MIC
-        impl = GHOST_IMPLEMENTATION_MIC;
-#elif defined(GHOST_HAVE_AVX2)
-        impl = GHOST_IMPLEMENTATION_AVX2;
-#elif defined(GHOST_HAVE_AVX)
-        impl = GHOST_IMPLEMENTATION_AVX;
-#elif defined(GHOST_HAVE_SSE)
-        impl = GHOST_IMPLEMENTATION_SSE;
-#else
-        impl = GHOST_IMPLEMENTATION_PLAIN;
-#endif
-    }
-        //impl = GHOST_IMPLEMENTATION_PLAIN;
-
+    ghost_spmv_kernel_t kernel = NULL;
     ghost_sellspmv_parameters_t p;
-    p.alignment = GHOST_ALIGNED;
-    p.impl = impl;
+    ghost_implementation_t opt_impl;
+    ghost_alignment_t opt_align;
+    
+    
     p.vdt = rhs->traits.datatype;
     p.mdt = mat->traits.datatype;
     p.storage = rhs->traits.storage;
-    p.chunkheight = mat->traits.C;
-    p.blocksz = rhs->traits.ncols;
-    
     if (p.storage == GHOST_DENSEMAT_ROWMAJOR && p.blocksz == 1 && 
             rhs->stride == 1 && lhs->stride == 1) {
         INFO_LOG("Chose col-major kernel for row-major densemat with 1 column");
         p.storage = GHOST_DENSEMAT_COLMAJOR;
     }
 
-/*    
-    if (p.impl >= GHOST_IMPLEMENTATION_AVX && 
-            p.storage == GHOST_DENSEMAT_ROWMAJOR && p.blocksz == 2 && 
-            !(rhs->traits.datatype & GHOST_DT_COMPLEX) && 
-            lhs->traits.ncolspadded == 2 && rhs->traits.ncolspadded == 2) {
-        PERFWARNING_LOG("Chose SSE over AVX for blocksz=2");
-        p.impl = GHOST_IMPLEMENTATION_SSE;
-    }
-    if (p.impl >= GHOST_IMPLEMENTATION_AVX && 
-            p.storage == GHOST_DENSEMAT_ROWMAJOR && p.blocksz == 1) {
-        if (rhs->traits.datatype & GHOST_DT_COMPLEX) {
-            PERFWARNING_LOG("Chose SSE over AVX for blocksz=1 and complex densemat");
-            p.impl = GHOST_IMPLEMENTATION_SSE;
-        } else {
-            PERFWARNING_LOG("Chose plain over AVX for blocksz=1");
-            p.impl = GHOST_IMPLEMENTATION_PLAIN;
-        }
-    }
-    */
-    if (p.impl >= GHOST_IMPLEMENTATION_AVX && 
-            p.storage == GHOST_DENSEMAT_COLMAJOR && p.chunkheight < 4 
-            && !(rhs->traits.datatype & GHOST_DT_COMPLEX)) {
-        if (p.chunkheight < 2) {
-            PERFWARNING_LOG("Chose plain kernel for col-major densemats and C<2");
-            p.impl = GHOST_IMPLEMENTATION_PLAIN;
-        } else {
-            PERFWARNING_LOG("Chose SSE for col-major densemats and C<4");
-            p.impl = GHOST_IMPLEMENTATION_SSE;
-        }
-    }
-    
-    if (p.impl >= GHOST_IMPLEMENTATION_AVX && 
-            p.storage == GHOST_DENSEMAT_COLMAJOR && p.chunkheight < 2 
-            && rhs->traits.datatype & GHOST_DT_COMPLEX) {
-        PERFWARNING_LOG("Chose SSE for col-major densemats, complex vector and C<2");
-        p.impl = GHOST_IMPLEMENTATION_SSE;
-    }
-    
-    if (p.impl == GHOST_IMPLEMENTATION_SSE && 
-            p.storage == GHOST_DENSEMAT_ROWMAJOR && p.blocksz == 1 && 
-            !(rhs->traits.datatype & GHOST_DT_COMPLEX)) {
-        PERFWARNING_LOG("Chose plain over SSE for blocksz=1");
-        p.impl = GHOST_IMPLEMENTATION_PLAIN;
-    }
-    
-    if (p.impl == GHOST_IMPLEMENTATION_SSE && 
-            p.storage == GHOST_DENSEMAT_COLMAJOR && p.chunkheight < 2 
-            && !(rhs->traits.datatype & GHOST_DT_COMPLEX)) {
-        PERFWARNING_LOG("Chose plain kernel for col-major densemats and C<2");
-        p.impl = GHOST_IMPLEMENTATION_PLAIN;
-    }
-    
-    if (p.impl == GHOST_IMPLEMENTATION_SSE && 
-            p.storage == GHOST_DENSEMAT_ROWMAJOR && p.blocksz % 2) {
-        PERFWARNING_LOG("Chose plain over SSE for odd blocksz");
-        p.impl = GHOST_IMPLEMENTATION_PLAIN;
-    }
-
     if ((lhs->traits.flags & GHOST_DENSEMAT_SCATTERED) || 
             (rhs->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
         PERFWARNING_LOG("Use plain implementation for scattered views");
-        p.impl = GHOST_IMPLEMENTATION_PLAIN;
+        opt_impl = GHOST_IMPLEMENTATION_PLAIN;
+    } else {
+        opt_impl = ghost_get_best_implementation_for_bytesize(rhs->traits.ncols>1?rhs->traits.ncols*rhs->elSize:mat->traits.C*mat->elSize);
+    }
+    
+    if (opt_impl == GHOST_IMPLEMENTATION_SSE && 
+            p.storage == GHOST_DENSEMAT_ROWMAJOR && p.blocksz % 2) {
+        PERFWARNING_LOG("Remainder loops not yet implemented for SSE, fallback to plain");
+        opt_impl = GHOST_IMPLEMENTATION_PLAIN;
     }
 
     int al = ghost_machine_alignment();
-#if defined(GHOST_HAVE_AVX) || defined(GHOST_HAV_AVX2)
-    if (p.impl == GHOST_IMPLEMENTATION_SSE) { // there may be a fallback to SSE
-        al /= 2;
-    }
-#endif
     if (IS_ALIGNED(lhs->val,al) && IS_ALIGNED(rhs->val,al) && ((lhs->traits.ncols == 1) || (!((lhs->stride*lhs->elSize) % al) && !((rhs->stride*rhs->elSize) % al)))) {
-        p.alignment = GHOST_ALIGNED;
+        opt_align = GHOST_ALIGNED;
     } else {
         if (!IS_ALIGNED(lhs->val,al)) {
             PERFWARNING_LOG("Using unaligned kernel because base address of result vector is not aligned");
@@ -526,50 +454,51 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
         if (rhs->stride*lhs->elSize % al) {
             PERFWARNING_LOG("Using unaligned kernel because stride of input vector does not yield aligned addresses");
         }
-        p.alignment = GHOST_UNALIGNED;
+        opt_align = GHOST_UNALIGNED;
     }
-    /*if (lhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR && p.blocksz > 1 && p.blocksz % 4) {
-        if (p.impl == GHOST_IMPLEMENTATION_AVX) {
-            PERFWARNING_LOG("Use SSE implementation non-multiples of four!");
-            p.impl = GHOST_IMPLEMENTATION_SSE;
-        }
-        if (p.blocksz % 2 && p.impl >= GHOST_IMPLEMENTATION_SSE) {
-            PERFWARNING_LOG("Use plain implementation non-multiples of two!");
-            p.impl = GHOST_IMPLEMENTATION_PLAIN;
-        }
-    }*/
 
-    INFO_LOG("Initial search for SELL SpMV kernel with alignment=%d impl=%d C=%d blocksz=%d vdt=%d mdt=%d",p.alignment,p.impl,p.chunkheight,p.blocksz,p.vdt,p.mdt);
-
-
-    ghost_spmv_kernel_t kernel = ghost_sellspmv_kernels[p];
     
-    if (!kernel) {
-        PERFWARNING_LOG("Try plain implementation");
-        p.impl = GHOST_IMPLEMENTATION_PLAIN;
-    }
-    kernel = ghost_sellspmv_kernels[p];
+    int try_chunkheight[2] = {mat->traits.C,-1}; 
+    int try_blocksz[2] = {rhs->traits.ncols,-1}; 
 
-    if (!kernel) {
-        PERFWARNING_LOG("Try kernel with arbitrary blocksz because blocksz %d is not available.",p.blocksz);
-        /*if (p.storage == GHOST_DENSEMAT_ROWMAJOR) {
-            PERFWARNING_LOG("The vectorized version is broken so I will fall back to the plain implementation!");
-            p.impl = GHOST_IMPLEMENTATION_PLAIN;
-        }*/
-        p.blocksz = -1;
+    int n_chunkheight = sizeof(try_chunkheight)/sizeof(int);
+    int n_blocksz = sizeof(try_blocksz)/sizeof(int);
+    int pos_chunkheight, pos_blocksz;
+
+    bool optimal = true;
+
+    for (pos_chunkheight = 0; pos_chunkheight < n_chunkheight; pos_chunkheight++) {  
+        for (pos_blocksz = 0; pos_blocksz < n_blocksz; pos_blocksz++) {  
+            for (p.impl = opt_impl; (int)p.impl >= GHOST_IMPLEMENTATION_PLAIN; p.impl  = (ghost_implementation_t)((int)p.impl-1)) {
+                for (p.alignment = opt_align; (int)p.alignment >= GHOST_UNALIGNED; p.alignment = (ghost_alignment_t)((int)p.alignment-1)) {
+                    p.chunkheight = try_chunkheight[pos_chunkheight];
+                    p.blocksz = try_blocksz[pos_blocksz];
+                    DEBUG_LOG(1,"Try chunkheight=%s, blocksz=%s, impl=%s, %s",
+                            p.chunkheight==-1?"arbitrary":to_string(p.chunkheight).c_str(),
+                            p.blocksz==-1?"arbitrary":to_string(p.blocksz).c_str(),
+                            ghost_implementation_string(p.impl),p.alignment==GHOST_UNALIGNED?"unaligned":"aligned");
+                    kernel = ghost_sellspmv_kernels[p];
+                    if (kernel) {
+                        goto end_of_loop;
+                    }
+                    optimal = false;
+                }
+            }
+        }
     }
-    kernel = ghost_sellspmv_kernels[p];
-/*
-    char *str;
-    lhs->string(lhs,&str);
-    printf("%s\n",str);
-    rhs->string(rhs,&str);
-    printf("%s\n",str);*/
+
+end_of_loop:
+
+
     if (kernel) {
+        if (optimal) {
+            INFO_LOG("Found kernel with highest specialization grade: C=%d blocksz=%d align=%d impl=%s",p.chunkheight,p.blocksz,p.alignment,ghost_implementation_string(p.impl));
+        } else {
+            PERFWARNING_LOG("Using potentially non-optimal kernel: C=%d blocksz=%d align=%d impl=%s",p.chunkheight,p.blocksz,p.alignment,ghost_implementation_string(p.impl));
+        }
         ret = kernel(mat,lhs,rhs,options,argp);
     } else { // execute plain kernel as fallback
-        PERFWARNING_LOG("Execute fallback SELL SpMV kernel which is potentially"
-                " slow!");
+        PERFWARNING_LOG("Execute fallback SELL SpMV kernel which is potentially slow!");
         if (lhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
             SELECT_TMPL_2DATATYPES(mat->traits.datatype,
                     rhs->traits.datatype,ghost_complex,ret,
