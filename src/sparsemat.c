@@ -1022,9 +1022,6 @@ out:
 
 ghost_error_t ghost_sparsemat_from_mm(ghost_sparsemat_t *mat, char *path)
 {
-    PERFWARNING_LOG("The current implementation of Matrix Market read-in is "
-            "unefficient!");
-    
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     
     ghost_error_t ret = GHOST_SUCCESS;
