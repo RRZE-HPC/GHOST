@@ -435,3 +435,36 @@ ghost_error_t ghost_machine_string(char **str)
     return GHOST_SUCCESS;
 
 }
+
+ghost_implementation_t ghost_get_best_implementation_for_bytesize(int bytes)
+{
+
+    ghost_implementation_t machine_impl;
+#ifdef GHOST_HAVE_MIC
+    machine_impl = GHOST_IMPLEMENTATION_MIC;
+#elif defined(GHOST_HAVE_AVX2)
+    machine_impl = GHOST_IMPLEMENTATION_AVX2;
+#elif defined(GHOST_HAVE_AVX)
+    machine_impl = GHOST_IMPLEMENTATION_AVX;
+#elif defined(GHOST_HAVE_SSE)
+    machine_impl = GHOST_IMPLEMENTATION_SSE;
+#else
+    machine_impl = GHOST_IMPLEMENTATION_PLAIN;
+#endif
+
+    if (!(bytes % 64)) { // 64 bytes: any implementation works
+        return machine_impl;
+    } else { 
+        if (machine_impl == GHOST_IMPLEMENTATION_MIC) { // MIC cannot execute AVX or SSE: fallback to plain
+            return GHOST_IMPLEMENTATION_PLAIN;
+        }
+    }
+    if (!(bytes % 32)) {
+        return machine_impl; // MIC never takes this branch: any remaining implementation works
+    }
+    if (!(bytes % 16)) {
+        // fallback to SSE in case of AVX or AVX2
+        return (ghost_implementation_t)MIN((int)machine_impl,(int)GHOST_IMPLEMENTATION_SSE);
+    }
+    return GHOST_IMPLEMENTATION_PLAIN;
+}

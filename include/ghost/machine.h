@@ -9,7 +9,8 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <hwloc.h>
-#include "ghost/error.h"
+#include "error.h"
+#include "types.h"
 
 #define GHOST_NUMANODE_ANY -1
 
@@ -141,6 +142,7 @@ extern "C" {
      * @return The SIMD width in bytes.
      */
     int ghost_machine_simd_width();
+    ghost_implementation_t ghost_get_best_implementation_for_bytesize(int bytes);
 #ifdef __cplusplus
 }
 #endif
