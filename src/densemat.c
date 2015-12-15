@@ -99,10 +99,10 @@ ghost_error_t ghost_densemat_create(ghost_densemat_t **vec, ghost_context_t *ctx
 
     if ((*vec)->traits.storage == GHOST_DENSEMAT_STORAGE_DEFAULT) {
         if ((*vec)->traits.ncols > 1) {
-            INFO_LOG("Setting densemat storage to row-major!");
+            DEBUG_LOG(1,"Setting densemat storage to row-major!");
             (*vec)->traits.storage = GHOST_DENSEMAT_ROWMAJOR;
         } else {
-            INFO_LOG("Setting densemat storage to col-major!");
+            DEBUG_LOG(1,"Setting densemat storage to col-major!");
             (*vec)->traits.storage = GHOST_DENSEMAT_COLMAJOR;
         }
     }
@@ -161,18 +161,15 @@ static ghost_error_t getNrowsFromContext(ghost_densemat_t *vec)
 #elif defined(GHOST_HAVE_AVX) || defined(GHOST_HAVE_AVX2)
             padding = 32; // 32 byte padding
             if (vec->traits.ncols == 2) {
-                PERFWARNING_LOG("Force SSE over AVX padding for densemat with 2 cols!");
                 padding = 16; // SSE in this case: only 16 byte alignment required
             }
             if (vec->traits.ncols == 1) {
-                PERFWARNING_LOG("Force plain over SSE padding for densemat with 1 col!");
-                padding = 8; // SSE in this case: only 16 byte alignment required
+                padding = vec->elSize; // (pseudo-) row-major: no padding
             }
 #elif defined (GHOST_HAVE_SSE)
             padding = 16; // 16 byte padding
             if (vec->traits.ncols == 1) {
-                PERFWARNING_LOG("Force plain over SSE padding for densemat with 1 col!");
-                padding = 8; // SSE in this case: only 16 byte alignment required
+                padding = vec->elSize; // (pseudo-) row-major: no padding
             }
 #endif
         }

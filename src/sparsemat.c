@@ -342,7 +342,7 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
 #endif
     }
     if (src->maxrowlen != mat->maxRowLen) {
-        INFO_LOG("The maximum row length was not correct. Setting it from %"PRLIDX" to %"PRGIDX,src->maxrowlen,mat->maxRowLen); 
+        DEBUG_LOG(1,"The maximum row length was not correct. Setting it from %"PRLIDX" to %"PRGIDX,src->maxrowlen,mat->maxRowLen); 
         src->maxrowlen = mat->maxRowLen;
     }
 

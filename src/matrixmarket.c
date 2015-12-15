@@ -83,7 +83,6 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gid
 
         if (mm_is_symmetric(matcode)) {
             PERFWARNING_LOG("Will create a general matrix out of a symmetric matrix!");
-            INFO_LOG("Setting sparsemat symmetry to 'symmetric'");
             *(int *)arg = 1;
             actualnz = nz*2;
             symm = 1;
@@ -275,7 +274,6 @@ int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx_t row, ghost_lidx_t *rowlen,
 
         if (mm_is_symmetric(matcode)) {
             PERFWARNING_LOG("Will create a general matrix out of a symmetric matrix!");
-            INFO_LOG("Setting sparsemat symmetry to 'symmetric'");
             *(int *)arg = 1;
             actualnz = nz*2;
             symm = 1;
