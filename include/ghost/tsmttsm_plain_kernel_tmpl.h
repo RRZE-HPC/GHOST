@@ -26,9 +26,7 @@ static ghost_error_t ghost_tsmttsm__a_plain_cm_rm_tmpl(ghost_densemat_t *x, ghos
         mybeta = 0.;
     }
     
-#if CFGK>1
 #pragma simd
-#endif
     for (k=0; k<CFGK; k++) {
         for (j=0; j<CFGM; j++) {
             xval[k*ldx+j] = mybeta*xval[k*ldx+j];
@@ -43,11 +41,9 @@ static ghost_error_t ghost_tsmttsm__a_plain_cm_rm_tmpl(ghost_densemat_t *x, ghos
         if (conjv) {
 #pragma omp for schedule(runtime)
             for (i=0; i<n; i++) {
-#if CFGK>1
 #pragma simd
 #pragma vector aligned
 #pragma ivdep
-#endif
                 for (k=0; k<CFGK; k++) {
 #pragma unroll_and_jam
                   for (j=0; j<CFGM; j++) {
@@ -59,11 +55,9 @@ static ghost_error_t ghost_tsmttsm__a_plain_cm_rm_tmpl(ghost_densemat_t *x, ghos
         } else {
 #pragma omp for schedule(runtime)
             for (i=0; i<n; i++) {
-#if CFGK>1
 #pragma simd
 #pragma vector aligned
 #pragma ivdep
-#endif
                 for (k=0; k<CFGK; k++) {
 #pragma unroll_and_jam
                   for (j=0; j<CFGM; j++) {
@@ -75,11 +69,9 @@ static ghost_error_t ghost_tsmttsm__a_plain_cm_rm_tmpl(ghost_densemat_t *x, ghos
         }
 
 #pragma omp critical
-#if CFGK>1
 #pragma simd
 #pragma vector aligned
 #pragma ivdep
-#endif
         for (k=0; k<CFGK; k++) {
 #pragma unroll_and_jam
             for (j=0; j<CFGM; j++) {
