@@ -11,7 +11,7 @@
 
 #GHOST_SUBST CFGK ${BLOCKDIM1}
 #GHOST_SUBST CFGM ${BLOCKDIM2}
-#GHOST_SUBST OUTERUNROLL 2
+#GHOST_SUBST OUTERUNROLL 1
 
 ghost_error_t ghost_tsmttsm__a_plain_x_CFGK_CFGM_OUTERUNROLL_cm_rm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conjv)
 {
