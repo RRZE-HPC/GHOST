@@ -15,8 +15,9 @@ static void dummy(double *a) {
     }
 }
 
-static void copy_kernel(double * __restrict__ a, const double * __restrict__ b)
+static void ghost_copy_kernel(double * __restrict__ a, const double * __restrict__ b)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_KERNEL|GHOST_FUNCTYPE_BENCH);
     ghost_lidx_t i;
 
 #ifdef GHOST_HAVE_AVX
@@ -41,10 +42,12 @@ static void copy_kernel(double * __restrict__ a, const double * __restrict__ b)
     }
 #endif
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_KERNEL|GHOST_FUNCTYPE_BENCH);
 }
 
 ghost_error_t ghost_bench_stream(ghost_bench_stream_test_t test, double *bw)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_BENCH);
     ghost_type_t mytype;
     ghost_type_get(&mytype);
     
@@ -80,7 +83,7 @@ ghost_error_t ghost_bench_stream(ghost_bench_stream_test_t test, double *bw)
     }
     
     ghost_timing_wc(&start);
-    copy_kernel(a,b);
+    ghost_copy_kernel(a,b);
     ghost_timing_wc(&stop);
 
     *bw = 2*N/1.e9*sizeof(double)/(stop-start);
@@ -94,21 +97,28 @@ out:
     free(a); a = NULL;
     free(b); b = NULL;
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_BENCH);
     return ret;
 }
 
 ghost_error_t ghost_bench_pingpong(double *bw)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_BENCH);
 
     UNUSED(bw);
+    
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_BENCH);
 
     return GHOST_SUCCESS;
 }
 
 ghost_error_t ghost_bench_peakperformance(double *gf)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_BENCH);
 
     UNUSED(gf);
+    
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_BENCH);
 
     return GHOST_SUCCESS;
 }

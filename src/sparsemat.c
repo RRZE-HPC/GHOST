@@ -627,7 +627,7 @@ ghost_error_t ghost_sparsemat_perm_sort(ghost_sparsemat_t *mat, void *matrixSour
         WARNING_LOG("Will not re-create existing permutations!");
         return ret;
     }
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_PREPROCESS);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_SETUP);
     
     int me;    
     ghost_gidx_t i,c,nrows,rowOffset;
@@ -739,7 +739,7 @@ out:
     free(rpt);
     free(rowSort);
 
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_PREPROCESS);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_SETUP);
     return ret;
 
 

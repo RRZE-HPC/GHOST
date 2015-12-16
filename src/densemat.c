@@ -61,7 +61,7 @@ static ghost_error_t getNrowsFromContext(ghost_densemat_t *vec);
 
 ghost_error_t ghost_densemat_create(ghost_densemat_t **vec, ghost_context_t *ctx, ghost_densemat_traits_t traits)
 {
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_SETUP);
     ghost_error_t ret = GHOST_SUCCESS;
     GHOST_CALL_GOTO(ghost_malloc((void **)vec,sizeof(ghost_densemat_t)),err,ret);
     (*vec)->context = ctx;
@@ -134,7 +134,7 @@ err:
     free(*vec); *vec = NULL;
 
 out:
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_SETUP);
     return ret;
 }
 
@@ -221,6 +221,7 @@ static ghost_error_t getNrowsFromContext(ghost_densemat_t *vec)
 
 ghost_error_t ghost_densemat_valptr(ghost_densemat_t *vec, void **ptr)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     WARNING_LOG("Deprecated! Use vec->val directly instead!");
     
     if (!ptr) {
@@ -230,11 +231,13 @@ ghost_error_t ghost_densemat_valptr(ghost_densemat_t *vec, void **ptr)
 
     *ptr = vec->val;
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return GHOST_SUCCESS;
 }
 
 ghost_error_t ghost_densemat_cu_valptr(ghost_densemat_t *vec, void **ptr)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     WARNING_LOG("Deprecated! Use vec->cu_val directly instead!");
 
     if (!ptr) {
@@ -244,11 +247,13 @@ ghost_error_t ghost_densemat_cu_valptr(ghost_densemat_t *vec, void **ptr)
 
     *ptr = vec->cu_val;
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return GHOST_SUCCESS;
 }
 
 ghost_error_t ghost_densemat_mask2charfield(ghost_bitmap_t mask, ghost_lidx_t len, char *charfield)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     unsigned int i;
     memset(charfield,0,len);
     for (i=0; i<(unsigned int)len; i++) {
@@ -257,6 +262,7 @@ ghost_error_t ghost_densemat_mask2charfield(ghost_bitmap_t mask, ghost_lidx_t le
         }
     }
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return GHOST_SUCCESS;
 }
 
@@ -274,6 +280,7 @@ bool array_strictly_ascending (ghost_lidx_t *coffs, ghost_lidx_t nc)
 
 ghost_error_t ghost_densemat_uniformstorage(bool *uniform, ghost_densemat_t *vec)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
 #ifndef GHOST_HAVE_MPI
     UNUSED(vec);
     *uniform = true;
@@ -285,19 +292,25 @@ ghost_error_t ghost_densemat_uniformstorage(bool *uniform, ghost_densemat_t *vec
     MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&allstorages,1,MPI_INT,MPI_SUM,vec->context->mpicomm));
     *uniform = ((int)vec->traits.storage * nprocs == allstorages);
 #endif
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return GHOST_SUCCESS;;
 }
 
 char * ghost_densemat_storage_string(ghost_densemat_t *densemat)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+    char *ret;
     switch(densemat->traits.storage) {
         case GHOST_DENSEMAT_ROWMAJOR:
-            return "Row-major";
+            ret = "Row-major";
         case GHOST_DENSEMAT_COLMAJOR:
-            return "Col-major";
+            ret = "Col-major";
         default:
-            return "Invalid";
+            ret = "Invalid";
     }
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
+    return ret;
 }
    
 static void charfield2string(char *str, char *cf, int len) {
@@ -314,6 +327,7 @@ static void charfield2string(char *str, char *cf, int len) {
 
 ghost_error_t ghost_densemat_info_string(char **str, ghost_densemat_t *densemat)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     int myrank;
     int mynoderank;
     ghost_mpi_comm_t nodecomm;
@@ -353,6 +367,7 @@ ghost_error_t ghost_densemat_info_string(char **str, ghost_densemat_t *densemat)
     ghost_line_string(str,"Storage order",NULL,"%s",ghost_densemat_storage_string(densemat));
     ghost_footer_string(str);
     
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return GHOST_SUCCESS;
 
 }
@@ -539,6 +554,7 @@ out:
 
 void ghost_densemat_destroy( ghost_densemat_t* vec ) 
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TEARDOWN);
     if (vec) {
         if (!(vec->traits.flags & GHOST_DENSEMAT_VIEW)) {
             if (vec->traits.location == GHOST_LOCATION_DEVICE) {
@@ -557,6 +573,7 @@ void ghost_densemat_destroy( ghost_densemat_t* vec )
 #endif
         free(vec);
     }
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TEARDOWN);
 }
 
 ghost_lidx_t ghost_densemat_row_padding()

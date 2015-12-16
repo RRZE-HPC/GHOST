@@ -48,43 +48,55 @@ static ghost_mpi_comm_t ghost_cuda_comm = MPI_COMM_NULL;
 
 char * ghost_type_string(ghost_type_t t)
 {
-
+    char *ret;
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     switch (t) {
         case GHOST_TYPE_CUDA: 
-            return "CUDA";
+            ret = "CUDA";
             break;
         case GHOST_TYPE_WORK:
-            return "WORK";
+            ret = "WORK";
             break;
         case GHOST_TYPE_INVALID:
-            return "INVALID";
+            ret = "INVALID";
             break;
         default:
-            return "Unknown";
+            ret = "Unknown";
     }
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
+    return ret;
 }
 
 ghost_error_t ghost_type_set(ghost_type_t t)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+    
     ghost_type = t;
-
+    
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return GHOST_SUCCESS;
 }
 
 ghost_error_t ghost_type_get(ghost_type_t *t)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+ 
     if (!t) {
         ERROR_LOG("NULL pointer");
         return GHOST_ERR_INVALID_ARG;
     }
 
     *t = ghost_type;
-
+    
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return GHOST_SUCCESS;
 }
 
 int ghost_initialized()
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return initialized; 
 }
 
@@ -141,7 +153,7 @@ ghost_error_t ghost_init(int argc, char **argv)
 
 #endif // ifdef GHOST_HAVE_MPI
     
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_PREPROCESS);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_SETUP);
     
     hwloc_topology_t topology;
     ghost_topology_create();
@@ -554,12 +566,13 @@ ghost_error_t ghost_init(int argc, char **argv)
     hwloc_bitmap_free(mycpuset); mycpuset = NULL; 
     hwloc_bitmap_free(availcpuset); availcpuset = NULL;
 
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_PREPROCESS);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_SETUP);
     return GHOST_SUCCESS;
 }
 
 ghost_error_t ghost_finalize()
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TEARDOWN);
     static int finalized = 0;
 
     if (finalized) {
@@ -570,7 +583,6 @@ ghost_error_t ghost_finalize()
 
 
     ghost_rand_destroy();
-    ghost_cu_rand_generator_destroy();
     ghost_cu_finalize();
 
 #ifdef GHOST_HAVE_INSTR_LIKWID
@@ -601,11 +613,13 @@ ghost_error_t ghost_finalize()
     }
 #endif
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TEARDOWN);
     return GHOST_SUCCESS;
 }
 
 ghost_error_t ghost_string(char **str) 
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     GHOST_CALL_RETURN(ghost_malloc((void **)str,1));
     memset(*str,'\0',1);
 
@@ -670,6 +684,7 @@ ghost_error_t ghost_string(char **str)
 #endif
     ghost_footer_string(str);
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return GHOST_SUCCESS;
 
 }
@@ -694,6 +709,8 @@ ghost_error_t ghost_barrier()
     
 ghost_error_t ghost_cuda_comm_get(ghost_mpi_comm_t *comm)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     *comm = ghost_cuda_comm;
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return GHOST_SUCCESS;
 }

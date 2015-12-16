@@ -29,6 +29,7 @@ static inline uint64_t bswap_64(uint64_t val)
 
 int ghost_sparsemat_rowfunc_bincrs(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, void *val, void *arg)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION|GHOST_FUNCTYPE_IO);
     UNUSED(arg);
 
     static ghost_gidx_t *colInd = NULL, *rowPtr = NULL;
@@ -125,6 +126,7 @@ int ghost_sparsemat_rowfunc_bincrs(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost
     }
 
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION|GHOST_FUNCTYPE_IO);
     return 0;
 
 
@@ -132,6 +134,7 @@ int ghost_sparsemat_rowfunc_bincrs(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost
 
 ghost_error_t ghost_bincrs_header_read(ghost_bincrs_header_t *header, char *matrixPath)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_IO);
     FILE* file;
     long filesize;
     int swapReq = 0;
@@ -194,6 +197,7 @@ ghost_error_t ghost_bincrs_header_read(ghost_bincrs_header_t *header, char *matr
 
     fclose(file);
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_IO);
     return GHOST_SUCCESS;
 }
 

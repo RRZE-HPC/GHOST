@@ -4,6 +4,7 @@
 
 ghost_error_t ghost_carp(ghost_sparsemat_t *mat, ghost_densemat_t *x, ghost_densemat_t *b, void *omega)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_SOLVER);
 
     // 1. communicate local x entries to remote halo
     // 2. perform kacz on full matrix
@@ -19,6 +20,7 @@ ghost_error_t ghost_carp(ghost_sparsemat_t *mat, ghost_densemat_t *x, ghost_dens
     GHOST_CALL_RETURN(x->averageHalo(x));
     GHOST_CALL_RETURN(mat->kacz(mat,x,b,omega,0));
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_SOLVER);
     return GHOST_SUCCESS;
 
 }

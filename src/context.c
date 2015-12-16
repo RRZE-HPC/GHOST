@@ -16,6 +16,7 @@
 
 ghost_error_t ghost_context_create(ghost_context_t **context, ghost_gidx_t gnrows, ghost_gidx_t gncols, ghost_context_flags_t context_flags, void *matrixSource, ghost_sparsemat_src_t srcType, ghost_mpi_comm_t comm, double weight) 
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_SETUP);
     if (weight < 0) {
         ERROR_LOG("Negative weight");
         return GHOST_ERR_INVALID_ARG;
@@ -388,11 +389,14 @@ out:
     free(tmpval); tmpval = NULL;
     free(tmpcol); tmpcol = NULL;
     free(target_rows); target_rows = NULL;
+    
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_SETUP);
     return ret;
 }
 
 ghost_error_t ghost_context_string(char **str, ghost_context_t *context)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     GHOST_CALL_RETURN(ghost_malloc((void **)str,1));
     memset(*str,'\0',1);
     int nranks;
@@ -403,13 +407,14 @@ ghost_error_t ghost_context_string(char **str, ghost_context_t *context)
     ghost_line_string(str,"Number of rows",NULL,"%"PRGIDX,context->gnrows);
     ghost_line_string(str,"Work distribution scheme",NULL,"%s",ghost_context_workdist_string(context->flags));
     ghost_footer_string(str);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return GHOST_SUCCESS;
 
 }
 
 void ghost_context_destroy(ghost_context_t *context)
 {
-    DEBUG_LOG(1,"Freeing context");
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TEARDOWN);
     
     if (context) {
         if (context->wishlist) {
@@ -442,7 +447,7 @@ void ghost_context_destroy(ghost_context_t *context)
     }
 
     free(context);
-    DEBUG_LOG(1,"Context freed successfully");
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TEARDOWN);
 }
 
 ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_orig, ghost_lidx_t *col)
@@ -451,7 +456,7 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
         INFO_LOG("The context already has communication information. This will not be done again! Destroy the context in case the matrix has changed!");
         return GHOST_SUCCESS;
     }
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION|GHOST_FUNCTYPE_SETUP);
 
     ghost_error_t ret = GHOST_SUCCESS;
     ghost_gidx_t j;
@@ -888,17 +893,22 @@ out:
     free(globcol); globcol = NULL;
     free(myrevcol); myrevcol = NULL;
     
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION|GHOST_FUNCTYPE_SETUP);
     return ret;
 }
 
 char * ghost_context_workdist_string(ghost_context_flags_t flags)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+    char *ret;
     if (flags & GHOST_CONTEXT_DIST_NZ) {
-        return "Equal no. of nonzeros";
+        ret = "Equal no. of nonzeros";
     } else if(flags & GHOST_CONTEXT_DIST_ROWS) {
-        return "Equal no. of rows";
+        ret = "Equal no. of rows";
     } else {
-        return "Invalid";
+        ret = "Invalid";
     }
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
+
+    return ret;
 }

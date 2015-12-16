@@ -38,6 +38,7 @@ static ghost_error_t densemat_cm_halocommFinalize(ghost_densemat_t *vec, ghost_d
 
 ghost_error_t ghost_densemat_cm_setfuncs(ghost_densemat_t *vec)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_SETUP);
     ghost_error_t ret = GHOST_SUCCESS;
 
     if (vec->traits.location & GHOST_LOCATION_DEVICE)
@@ -103,6 +104,7 @@ ghost_error_t ghost_densemat_cm_setfuncs(ghost_densemat_t *vec)
     vec->upload = &ghost_densemat_cm_upload;
     vec->download = &ghost_densemat_cm_download;
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_SETUP);
     return ret;
 }
 

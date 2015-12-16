@@ -1,9 +1,11 @@
 #include "ghost/bitmap.h"
+#include "ghost/func_util.h"
 
 
 
 ghost_error_t ghost_bitmap_copy_indices(ghost_bitmap_t dst, ghost_lidx_t *offset, ghost_bitmap_t src, ghost_lidx_t *idx, ghost_lidx_t nidx)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     ghost_lidx_t origbit = -1;
     ghost_lidx_t previdx = -1;
     ghost_lidx_t i, j;
@@ -24,6 +26,7 @@ ghost_error_t ghost_bitmap_copy_indices(ghost_bitmap_t dst, ghost_lidx_t *offset
         *offset = off;
     }
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return GHOST_SUCCESS;
 } 
     

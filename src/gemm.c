@@ -563,6 +563,7 @@ out:
 
 int ghost_gemm_perf_GFs(double *perf, double time, void *varg)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     ghost_gemm_perf_args_t arg = *(ghost_gemm_perf_args_t *)varg;
     int maddflops = 2;
     int mulflops = 1;
@@ -584,11 +585,13 @@ int ghost_gemm_perf_GFs(double *perf, double time, void *varg)
 
     *perf = totalflops/1.e9/time;
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return 0;
 }
 
 int ghost_gemm_perf_GBs(double *perf, double time, void *varg)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     size_t size;
     ghost_gemm_perf_args_t arg = *(ghost_gemm_perf_args_t *)varg;
     
@@ -600,6 +603,6 @@ int ghost_gemm_perf_GBs(double *perf, double time, void *varg)
         *perf = size*(2*arg.m*arg.n+arg.m*arg.k+arg.n*arg.k)/1.e9/time;
     }
 
-
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return 0;
 }

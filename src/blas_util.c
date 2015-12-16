@@ -25,8 +25,12 @@ void cblas_xerbla (int p, const char *rout, const char *form, ...)
 
 int ghost_blas_err_pop()
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+    
     int ret = ghost_blas_err;
     ghost_blas_err = 0;
+    
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return ret;
 }
 

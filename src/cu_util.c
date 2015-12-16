@@ -27,14 +27,13 @@ static cublasHandle_t ghost_cublas_handle = NULL;
 static cusparseHandle_t ghost_cusparse_handle = NULL;
 static struct cudaDeviceProp ghost_cu_device_prop;
 static curandGenerator_t ghost_cu_rand_generator = NULL;
-#endif
-
-
 static int cu_device = -1;
+#endif
 
 ghost_error_t ghost_cu_init(int dev)
 {
 #ifdef GHOST_HAVE_CUDA
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_SETUP);
     int nDevs = 0;
     CUDA_CALL_RETURN(cudaGetDeviceCount(&nDevs));
 
@@ -56,6 +55,7 @@ ghost_error_t ghost_cu_init(int dev)
 #ifdef GHOST_HAVE_CUDA_PINNEDMEM
     CUDA_CALL_RETURN(cudaSetDeviceFlags(cudaDeviceMapHost));
 #endif
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_SETUP);
 #else
     UNUSED(dev);
 #endif
@@ -68,11 +68,13 @@ ghost_error_t ghost_cu_malloc(void **mem, size_t bytesize)
 {
     ghost_error_t ret = GHOST_SUCCESS;
 #ifdef GHOST_HAVE_CUDA
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     CUDA_CALL_GOTO(cudaMalloc(mem,bytesize),err,ret);
     goto out;
 err:
     ERROR_LOG("CUDA malloc with %zu bytes failed!",bytesize);
 out:
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
 #else
     UNUSED(mem);
     UNUSED(bytesize);
@@ -83,9 +85,11 @@ out:
 ghost_error_t ghost_cu_memcpy(void *dest, void *src, size_t bytesize)
 {
 #ifdef GHOST_HAVE_CUDA
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     if (bytesize > 0) {
         CUDA_CALL_RETURN(cudaMemcpy(dest,src,bytesize,cudaMemcpyDeviceToDevice));
     }
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
 #else
     UNUSED(dest);
     UNUSED(src);
@@ -99,9 +103,11 @@ ghost_error_t ghost_cu_memcpy(void *dest, void *src, size_t bytesize)
 ghost_error_t ghost_cu_memcpy2d(void *dest, size_t dpitch, const void *src, size_t spitch, size_t width, size_t height)
 {
 #ifdef GHOST_HAVE_CUDA
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     if (width > 0 && height > 0) {
         CUDA_CALL_RETURN(cudaMemcpy2D(dest,dpitch,src,spitch,width,height,cudaMemcpyDeviceToDevice));
     }
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
 #else
     UNUSED(dest);
     UNUSED(dpitch);
@@ -116,7 +122,9 @@ ghost_error_t ghost_cu_memcpy2d(void *dest, size_t dpitch, const void *src, size
 ghost_error_t ghost_cu_memset(void *s, int c, size_t n)
 {
 #ifdef GHOST_HAVE_CUDA
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     CUDA_CALL_RETURN(cudaMemset(s,c,n));
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
 #else
     UNUSED(s);
     UNUSED(c);
@@ -130,9 +138,11 @@ ghost_error_t ghost_cu_upload(void * devmem, void *hostmem,
         size_t bytesize)
 {
 #ifdef GHOST_HAVE_CUDA
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_COMMUNICATION);
     if (bytesize > 0) {
         CUDA_CALL_RETURN(cudaMemcpy(devmem,hostmem,bytesize,cudaMemcpyHostToDevice));
     }
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_COMMUNICATION);
 #else
     UNUSED(devmem);
     UNUSED(hostmem);
@@ -144,9 +154,11 @@ ghost_error_t ghost_cu_upload(void * devmem, void *hostmem,
 ghost_error_t ghost_cu_upload2d(void *dest, size_t dpitch, const void *src, size_t spitch, size_t width, size_t height)
 {
 #ifdef GHOST_HAVE_CUDA
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_COMMUNICATION);
     if (width > 0 && height > 0) {
         CUDA_CALL_RETURN(cudaMemcpy2D(dest,dpitch,src,spitch,width,height,cudaMemcpyHostToDevice));
     }
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_COMMUNICATION);
 #else
     UNUSED(dest);
     UNUSED(dpitch);
@@ -161,9 +173,11 @@ ghost_error_t ghost_cu_upload2d(void *dest, size_t dpitch, const void *src, size
 ghost_error_t ghost_cu_download2d(void *dest, size_t dpitch, const void *src, size_t spitch, size_t width, size_t height)
 {
 #ifdef GHOST_HAVE_CUDA
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_COMMUNICATION);
     if (width > 0 && height > 0) {
         CUDA_CALL_RETURN(cudaMemcpy2D(dest,dpitch,src,spitch,width,height,cudaMemcpyDeviceToHost));
     }
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_COMMUNICATION);
 #else
     UNUSED(dest);
     UNUSED(dpitch);
@@ -179,9 +193,11 @@ ghost_error_t ghost_cu_download(void *hostmem, void *devmem,
         size_t bytesize)
 {
 #ifdef GHOST_HAVE_CUDA
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_COMMUNICATION);
     if (bytesize > 0) {
         CUDA_CALL_RETURN(cudaMemcpy(hostmem,devmem,bytesize,cudaMemcpyDeviceToHost));
     }
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_COMMUNICATION);
 #else
     UNUSED(devmem);
     UNUSED(hostmem);
@@ -193,7 +209,9 @@ ghost_error_t ghost_cu_download(void *hostmem, void *devmem,
 ghost_error_t ghost_cu_free(void * mem)
 {
 #ifdef GHOST_HAVE_CUDA
+    GHOST_FUNC_ENTER(GHOST_FUNC_UTIL);
     CUDA_CALL_RETURN(cudaFree(mem));
+    GHOST_FUNC_EXIT(GHOST_FUNC_UTIL);
 #else
     UNUSED(mem);
 #endif
@@ -204,7 +222,9 @@ ghost_error_t ghost_cu_free(void * mem)
 ghost_error_t ghost_cu_barrier()
 {
 #ifdef GHOST_HAVE_CUDA
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_COMMUNICATION);
     CUDA_CALL_RETURN(cudaDeviceSynchronize());
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_COMMUNICATION);
 #endif
 
     return GHOST_SUCCESS;
@@ -218,7 +238,9 @@ static int stringcmp(const void *x, const void *y)
 ghost_error_t ghost_cu_ndevice(int *devcount)
 {
 #ifdef GHOST_HAVE_CUDA
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     CUDA_CALL_RETURN(cudaGetDeviceCount(devcount));
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
 #else
     *devcount = 0;
 #endif
@@ -231,6 +253,7 @@ ghost_error_t ghost_cu_gpu_info_create(ghost_gpu_info_t **devInfo)
 {
     ghost_error_t ret = GHOST_SUCCESS;
 #ifdef GHOST_HAVE_CUDA
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_COMMUNICATION);
     ghost_mpi_comm_t ghost_cuda_comm;
     GHOST_CALL_GOTO(ghost_cuda_comm_get(&ghost_cuda_comm),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)devInfo,sizeof(ghost_gpu_info_t)),err,ret);
@@ -335,6 +358,7 @@ err:
     free(names); names = NULL;
 
 out:
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_COMMUNICATION);
 #else
     UNUSED(stringcmp);
     *devInfo = NULL;
@@ -346,11 +370,13 @@ ghost_error_t ghost_cu_malloc_mapped(void **mem, const size_t size)
 {
 #ifdef GHOST_HAVE_CUDA
 
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     if (size/(1024.*1024.*1024.) > 1.) {
         DEBUG_LOG(1,"Allocating big array of size %f GB",size/(1024.*1024.*1024.));
     }
 
     CUDA_CALL_RETURN(cudaHostAlloc(mem,size,cudaHostAllocMapped));
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
 #else
     UNUSED(mem);
     UNUSED(size);
@@ -363,11 +389,13 @@ ghost_error_t ghost_cu_malloc_pinned(void **mem, const size_t size)
 {
 #ifdef GHOST_HAVE_CUDA
 
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     if (size/(1024.*1024.*1024.) > 1.) {
         DEBUG_LOG(1,"Allocating big array of size %f GB",size/(1024.*1024.*1024.));
     }
 
     CUDA_CALL_RETURN(cudaHostAlloc(mem,size,cudaHostAllocDefault));
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
 #else
     UNUSED(mem);
     UNUSED(size);
@@ -379,12 +407,16 @@ ghost_error_t ghost_cu_malloc_pinned(void **mem, const size_t size)
 ghost_error_t ghost_cu_device(int *device)
 {
 #ifdef GHOST_HAVE_CUDA
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     if (cu_device < 0) {
         ERROR_LOG("CUDA not initialized!");
         return GHOST_ERR_CUDA;
     }
-#endif
     *device = cu_device;
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
+#else
+    UNUSED(device);
+#endif
 
     return GHOST_SUCCESS;
 }
@@ -392,13 +424,15 @@ ghost_error_t ghost_cu_device(int *device)
 ghost_error_t ghost_cu_cublas_handle(ghost_cublas_handle_t *handle)
 {
 #ifdef GHOST_HAVE_CUDA
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     if (!ghost_cublas_handle) {
         ERROR_LOG("CUBLAS not initialized!");
         return GHOST_ERR_CUBLAS;
     }
     *handle = ghost_cublas_handle;
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
 #else
-    *handle = -1;
+    UNUSED(handle);
 #endif
 
     return GHOST_SUCCESS;
@@ -407,13 +441,15 @@ ghost_error_t ghost_cu_cublas_handle(ghost_cublas_handle_t *handle)
 ghost_error_t ghost_cu_cusparse_handle(ghost_cusparse_handle_t *handle)
 {
 #ifdef GHOST_HAVE_CUDA
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     if (!ghost_cusparse_handle) {
         ERROR_LOG("CUSPARSE not initialized!");
         return GHOST_ERR_CUSPARSE;
     }
     *handle = ghost_cusparse_handle;
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
 #else
-    *handle = -1;
+    UNUSED(handle);
 #endif
 
     return GHOST_SUCCESS;
@@ -422,9 +458,11 @@ ghost_error_t ghost_cu_cusparse_handle(ghost_cusparse_handle_t *handle)
 ghost_error_t ghost_cu_version(int *ver)
 {
 #ifdef GHOST_HAVE_CUDA
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     CUDA_CALL_RETURN(cudaRuntimeGetVersion(ver));
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
 #else
-    *ver = -1;
+    UNUSED(ver);
 #endif
     
     return GHOST_SUCCESS;
@@ -433,7 +471,9 @@ ghost_error_t ghost_cu_version(int *ver)
 ghost_error_t ghost_cu_free_host(void * mem)
 {
 #ifdef GHOST_HAVE_CUDA
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     CUDA_CALL_RETURN(cudaFreeHost(mem));
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
 #else
     UNUSED(mem);
 #endif
@@ -442,49 +482,49 @@ ghost_error_t ghost_cu_free_host(void * mem)
 
 ghost_error_t ghost_cu_deviceprop(ghost_cu_deviceprop_t *prop)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
 #ifdef GHOST_HAVE_CUDA
     *prop = ghost_cu_device_prop;
 #else
     *prop = -1;
 #endif
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return GHOST_SUCCESS;
 }
 
 ghost_error_t ghost_cu_rand_generator_get(ghost_cu_rand_generator_t *gen)
 {
 #ifdef GHOST_HAVE_CUDA
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     if (ghost_cu_rand_generator == NULL) {
         CURAND_CALL_RETURN(curandCreateGenerator(&ghost_cu_rand_generator,CURAND_RNG_PSEUDO_DEFAULT));
         CURAND_CALL_RETURN(curandSetPseudoRandomGeneratorSeed(ghost_cu_rand_generator,ghost_rand_cu_seed_get()));
     }
 
     *gen = ghost_cu_rand_generator;
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
 #else
-    *gen = -1;
+    UNUSED(gen);
 #endif
 
     return GHOST_SUCCESS;
 }
 
-void ghost_cu_rand_generator_destroy()
-{
-#ifdef GHOST_HAVE_CUDA
-    if (ghost_cu_rand_generator) {
-        curandDestroyGenerator(ghost_cu_rand_generator);
-    }
-#endif
-}
-
 ghost_error_t ghost_cu_finalize()
 {
 #ifdef GHOST_HAVE_CUDA
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TEARDOWN);
     if (ghost_cublas_handle) {
         CUBLAS_CALL_RETURN(cublasDestroy(ghost_cublas_handle));
     }
     if (ghost_cusparse_handle) {
         CUSPARSE_CALL_RETURN(cusparseDestroy(ghost_cusparse_handle));
     }
+    if (ghost_cu_rand_generator) {
+        curandDestroyGenerator(ghost_cu_rand_generator);
+    }
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TEARDOWN);
 #endif
 
     return GHOST_SUCCESS;
@@ -493,6 +533,7 @@ ghost_error_t ghost_cu_finalize()
 ghost_error_t ghost_cu_memtranspose(int m, int n, void *to, int ldto, const void *from, int ldfrom, ghost_datatype_t dt) 
 {
 #ifdef GHOST_HAVE_CUDA
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     if (dt & GHOST_DT_COMPLEX) {
         if (dt & GHOST_DT_DOUBLE) {
             const cuDoubleComplex alpha = make_cuDoubleComplex(1.,0.), beta = make_cuDoubleComplex(0.,0.);
@@ -510,6 +551,7 @@ ghost_error_t ghost_cu_memtranspose(int m, int n, void *to, int ldto, const void
             CUBLAS_CALL_RETURN(cublasSgeam(ghost_cublas_handle,CUBLAS_OP_T,CUBLAS_OP_T,m,n,&alpha,(const float *)from,ldfrom,&beta,(const float *)from,ldfrom,(float *)to,ldto));
         }
     }
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
 #else
     UNUSED(m);
     UNUSED(n);
