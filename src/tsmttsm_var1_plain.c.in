@@ -5,6 +5,7 @@
 #include "ghost/instr.h"
 #include "ghost/locality.h"
 #include "ghost/util.h"
+#include "ghost/machine.h"
 #include "ghost/tsmttsm_var1_plain_gen.h"
 
 #GHOST_SUBST BLOCKSZ ${BLOCKDIM1}
@@ -525,7 +526,7 @@ ghost_error_t ghost_tsmttsm__a_plain_z_BLOCKSZ_x_1_cm_rm(ghost_densemat_t *x, gh
 #pragma omp parallel private(j,k)
     {
         complex double *x_priv;
-        ghost_malloc((void **)&x_priv,m*BLOCKSZ*sizeof(complex double));
+        ghost_malloc_align((void **)&x_priv,m*BLOCKSZ*sizeof(complex double),ghost_machine_alignment());
         memset(x_priv,0,m*BLOCKSZ*sizeof(complex double));
 
         if (conjv) {
