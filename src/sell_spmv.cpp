@@ -433,7 +433,7 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
     }
     
     if (opt_impl == GHOST_IMPLEMENTATION_SSE && 
-            p.storage == GHOST_DENSEMAT_ROWMAJOR && p.blocksz % 2) {
+            p.storage == GHOST_DENSEMAT_ROWMAJOR && rhs->traits.ncols % 2) {
         PERFWARNING_LOG("Remainder loops not yet implemented for SSE, fallback to plain");
         opt_impl = GHOST_IMPLEMENTATION_PLAIN;
     }
