@@ -534,7 +534,6 @@ ghost_error_t ghost_tsmttsm__a_plain_z_BLOCKSZ_x_1_cm_rm(ghost_densemat_t *x, gh
             for (i=0; i<n; i++) {
 #pragma vector aligned
 #pragma ivdep
-#pragma simd
                 for (k=0; k<BLOCKSZ; k++) {
 #pragma unroll_and_jam
                   for (j=0; j<m; j++) {
@@ -548,7 +547,6 @@ ghost_error_t ghost_tsmttsm__a_plain_z_BLOCKSZ_x_1_cm_rm(ghost_densemat_t *x, gh
             for (i=0; i<n; i++) {
 #pragma vector aligned
 #pragma ivdep
-#pragma simd
                 for (k=0; k<BLOCKSZ; k++) {
 #pragma unroll_and_jam
                   for (j=0; j<m; j++) {
@@ -563,7 +561,6 @@ ghost_error_t ghost_tsmttsm__a_plain_z_BLOCKSZ_x_1_cm_rm(ghost_densemat_t *x, gh
         {
 #pragma vector aligned
 #pragma ivdep
-#pragma simd
             for (k=0; k<BLOCKSZ; k++) {
 #pragma unroll_and_jam
                 for (j=0; j<m; j++) {
