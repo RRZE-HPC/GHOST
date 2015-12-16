@@ -209,9 +209,9 @@ ghost_error_t ghost_cu_download(void *hostmem, void *devmem,
 ghost_error_t ghost_cu_free(void * mem)
 {
 #ifdef GHOST_HAVE_CUDA
-    GHOST_FUNC_ENTER(GHOST_FUNC_UTIL);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     CUDA_CALL_RETURN(cudaFree(mem));
-    GHOST_FUNC_EXIT(GHOST_FUNC_UTIL);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
 #else
     UNUSED(mem);
 #endif
