@@ -199,7 +199,7 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
                             p.vcols = try_vcols[pos_vcols];
                             p.dt = try_dt[pos_dt];
                             INFO_LOG("Try wcols=%s, vcols=%s, impl=%s, %s, unroll=%d, dt=%s",
-                                    p.wcols==-1?"arbitrary":to_string(p.wcols).c_str(),p.vcols==-1?"arbitrary":to_string(p.vcols).c_str(),
+                                    p.wcols==-1?"arbitrary":to_string((long long)p.wcols).c_str(),p.vcols==-1?"arbitrary":to_string((long long)p.vcols).c_str(),
                                     ghost_implementation_string(p.impl),p.alignment==GHOST_UNALIGNED?"unaligned":"aligned",p.unroll,ghost_datatype_string(p.dt));
                             kernel = kernels[p];
                             if (kernel) {

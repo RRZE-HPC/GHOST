@@ -474,8 +474,8 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
                     p.chunkheight = try_chunkheight[pos_chunkheight];
                     p.blocksz = try_blocksz[pos_blocksz];
                     DEBUG_LOG(1,"Try chunkheight=%s, blocksz=%s, impl=%s, %s",
-                            p.chunkheight==-1?"arbitrary":to_string(p.chunkheight).c_str(),
-                            p.blocksz==-1?"arbitrary":to_string(p.blocksz).c_str(),
+                            p.chunkheight==-1?"arbitrary":std::to_string((long long)p.chunkheight).c_str(),
+                            p.blocksz==-1?"arbitrary":std::to_string((long long)p.blocksz).c_str(),
                             ghost_implementation_string(p.impl),p.alignment==GHOST_UNALIGNED?"unaligned":"aligned");
                     kernel = ghost_sellspmv_kernels[p];
                     if (kernel) {
