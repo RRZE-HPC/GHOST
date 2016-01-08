@@ -57,7 +57,7 @@ typedef enum
     char * __prefix = NULL;\
     char * __ghost_functag = NULL;\
     bool __ghost_instr_enable_backup = ghost_instr_enable;\
-    if (${INSTRUMENTATION_FUNCTYPES}) {\
+    if ((${INSTRUMENTATION_FUNCTYPES}) && ${GHOST_HAVE_INSTR}) {\
         ghost_malloc((void**)&__prefix,1024*sizeof(char));\
         ghost_malloc((void**)&__ghost_functag,1024*sizeof(char));\
         __funcnameoffset = strncmp(__FUNCTION__,"ghost_",6)?0:6;\
@@ -86,7 +86,7 @@ typedef enum
     } 
 
 #define GHOST_FUNC_EXIT(functype)\
-    if (${INSTRUMENTATION_FUNCTYPES}) {\
+    if ((${INSTRUMENTATION_FUNCTYPES}) && ${GHOST_HAVE_INSTR}) {\
         /*ghost_barrier();*/\
         ghost_instr_prefix_set(__prefixbackup);\
         GHOST_INSTR_STOP(__FUNCTION__+__funcnameoffset);\
