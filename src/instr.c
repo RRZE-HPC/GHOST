@@ -19,16 +19,11 @@ char *ghost_instr_prefix_get()
 
 void ghost_instr_suffix_set(const char *suffix)
 {
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     ghost_instr_suffix = (char *)suffix;
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
 
 }
 
 char *ghost_instr_suffix_get()
 {
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return ghost_instr_suffix;
-
 }
