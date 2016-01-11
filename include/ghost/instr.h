@@ -7,12 +7,13 @@
 #define GHOST_INSTR_H
 
 #include "config.h"
+#include <ghost/log.h>
+#include <ghost/error.h>
+#include <pthread.h>
 
 #ifdef GHOST_HAVE_INSTR_TIMING
 
-#include <ghost/log.h>
 #include <ghost/timing.h>
-#include <pthread.h>
 
 #endif
 
