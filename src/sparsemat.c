@@ -24,7 +24,6 @@ const ghost_sparsemat_src_rowfunc_t GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER = {
     .arg = NULL
 };
     
-
 const ghost_sparsemat_traits_t GHOST_SPARSEMAT_TRAITS_INITIALIZER = {
     .flags = GHOST_SPARSEMAT_DEFAULT,
     .symmetry = GHOST_SPARSEMAT_SYMM_GENERAL,
@@ -38,6 +37,7 @@ const ghost_sparsemat_traits_t GHOST_SPARSEMAT_TRAITS_INITIALIZER = {
 
 ghost_error_t ghost_sparsemat_create(ghost_sparsemat_t ** mat, ghost_context_t *context, ghost_sparsemat_traits_t *traits, int nTraits)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_SETUP);
     UNUSED(nTraits);
     ghost_error_t ret = GHOST_SUCCESS;
 
@@ -68,13 +68,10 @@ ghost_error_t ghost_sparsemat_create(ghost_sparsemat_t ** mat, ghost_context_t *
     (*mat)->fromMM = &ghost_sparsemat_from_mm;
     (*mat)->fromCRS = &ghost_sparsemat_from_crs;
     (*mat)->formatName = NULL;
-    (*mat)->rowLen = NULL;
     (*mat)->byteSize = NULL;
-    (*mat)->permute = NULL;
     (*mat)->destroy = NULL;
     (*mat)->string = NULL;
     (*mat)->upload = NULL;
-    (*mat)->permute = NULL;
     (*mat)->spmv = NULL;
     (*mat)->destroy = NULL;
     (*mat)->split = NULL;
@@ -116,11 +113,13 @@ err:
     free(*mat); *mat = NULL;
 
 out:
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_SETUP);
     return ret;    
 }
 
 ghost_error_t ghost_sparsemat_sortrow(ghost_gidx_t *col, char *val, size_t valSize, ghost_lidx_t rowlen, ghost_lidx_t stride)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     ghost_lidx_t n;
     ghost_lidx_t c;
     ghost_lidx_t swpcol;
@@ -139,6 +138,7 @@ ghost_error_t ghost_sparsemat_sortrow(ghost_gidx_t *col, char *val, size_t valSi
         }
     }
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
     return GHOST_SUCCESS;
 }
 
@@ -560,6 +560,7 @@ static int ghost_cmp_entsperrow(const void* a, const void* b, void *arg)
 ghost_error_t ghost_sparsemat_perm_global_cols(ghost_gidx_t *col, ghost_lidx_t ncols, ghost_context_t *context) 
 {
 #ifdef GHOST_HAVE_MPI
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION|GHOST_FUNCTYPE_COMMUNICATION);
     int me, nprocs,i;
     ghost_rank(&me,context->mpicomm);
     ghost_nrank(&nprocs,context->mpicomm);
@@ -611,6 +612,7 @@ ghost_error_t ghost_sparsemat_perm_global_cols(ghost_gidx_t *col, ghost_lidx_t n
 
         free(colsfromi);
     }
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION|GHOST_FUNCTYPE_COMMUNICATION);
 #else
     ERROR_LOG("This function should not have been called without MPI!");
     UNUSED(col);
@@ -782,6 +784,7 @@ ghost_error_t ghost_sparsemat_nnz(ghost_gidx_t *nnz, ghost_sparsemat_t *mat)
 
 ghost_error_t ghost_sparsemat_string(char **str, ghost_sparsemat_t *mat)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     GHOST_CALL_RETURN(ghost_malloc((void **)str,1));
     memset(*str,'\0',1);
 
@@ -858,12 +861,15 @@ ghost_error_t ghost_sparsemat_string(char **str, ghost_sparsemat_t *mat)
 
     ghost_footer_string(str);
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return GHOST_SUCCESS;
 
 }
 
 ghost_error_t ghost_sparsemat_tofile_header(ghost_sparsemat_t *mat, char *path)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_IO);
+
     ghost_gidx_t mnrows,mncols,mnnz;
     GHOST_CALL_RETURN(ghost_sparsemat_nrows(&mnrows,mat));
     mncols = mnrows;
@@ -928,12 +934,15 @@ ghost_error_t ghost_sparsemat_tofile_header(ghost_sparsemat_t *mat, char *path)
     }
     fclose(filed);
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_IO);
     return GHOST_SUCCESS;
-
 }
 
 bool ghost_sparsemat_symmetry_valid(ghost_sparsemat_symmetry_t symmetry)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
+
     if ((symmetry & (ghost_sparsemat_symmetry_t)GHOST_SPARSEMAT_SYMM_GENERAL) &&
             (symmetry & ~(ghost_sparsemat_symmetry_t)GHOST_SPARSEMAT_SYMM_GENERAL))
         return 0;
@@ -945,8 +954,11 @@ bool ghost_sparsemat_symmetry_valid(ghost_sparsemat_symmetry_t symmetry)
     return 1;
 }
 
-char * ghost_sparsemat_symmetry_string(ghost_sparsemat_symmetry_t symmetry)
+const char * ghost_sparsemat_symmetry_string(ghost_sparsemat_symmetry_t symmetry)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
+    
     if (symmetry & GHOST_SPARSEMAT_SYMM_GENERAL)
         return "General";
 
@@ -972,8 +984,12 @@ void ghost_sparsemat_destroy_common(ghost_sparsemat_t *mat)
         return;
     }
 
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TEARDOWN);
+    
     free(mat->data); mat->data = NULL;
     free(mat->col_orig); mat->col_orig = NULL;
+    
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TEARDOWN);
 }
 
 ghost_error_t ghost_sparsemat_from_bincrs(ghost_sparsemat_t *mat, char *path)
@@ -981,7 +997,7 @@ ghost_error_t ghost_sparsemat_from_bincrs(ghost_sparsemat_t *mat, char *path)
     PERFWARNING_LOG("The current implementation of binCRS read-in is "
             "unefficient in terms of memory consumption!");
     
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION|GHOST_FUNCTYPE_IO);
     
     ghost_error_t ret = GHOST_SUCCESS;
     ghost_sparsemat_rowfunc_bincrs_initargs args;
@@ -1015,14 +1031,14 @@ ghost_error_t ghost_sparsemat_from_bincrs(ghost_sparsemat_t *mat, char *path)
 err:
 
 out:
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION|GHOST_FUNCTYPE_IO);
     return ret;
 
 }
 
 ghost_error_t ghost_sparsemat_from_mm(ghost_sparsemat_t *mat, char *path)
 {
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION|GHOST_FUNCTYPE_IO);
     
     ghost_error_t ret = GHOST_SUCCESS;
     ghost_sparsemat_rowfunc_mm_initargs args;
@@ -1067,7 +1083,7 @@ ghost_error_t ghost_sparsemat_from_mm(ghost_sparsemat_t *mat, char *path)
 err:
 
 out:
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION|GHOST_FUNCTYPE_IO);
     return ret;
 
 }

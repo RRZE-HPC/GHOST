@@ -10,7 +10,7 @@
     template <typename T, typename T_b>
 static ghost_error_t ghost_blockortho_tmpl (ghost_densemat_t * w , ghost_densemat_t * v)
 {
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_SOLVER);
     ghost_error_t ret = GHOST_SUCCESS;
     T one = 1.0;
     T zero = 0.0;
@@ -41,13 +41,16 @@ err:
 
 out: 
     x->destroy(x);
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_SOLVER);
 
     return ret;
 }
 
 ghost_error_t ghost_blockortho(ghost_densemat_t * w , ghost_densemat_t * v)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
+    
     if (v->traits.datatype & GHOST_DT_COMPLEX) {
         if (v->traits.datatype & GHOST_DT_DOUBLE) {
             return ghost_blockortho_tmpl<std::complex<double>, double>(w, v);
@@ -111,7 +114,7 @@ lapack_int call_eig_function<std::complex<double>,double>(int matrix_order, char
     template <typename T, typename T_b>
 static ghost_error_t ghost_svqb_tmpl (ghost_densemat_t * v_ot , ghost_densemat_t * v)
 {
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_SOLVER);
     ghost_error_t ret = GHOST_SUCCESS;
     T one = 1.0;
     T zero = 0.0;
@@ -221,13 +224,16 @@ out:
     free(eigs);
     free(D);
     free(set_rand);
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_SOLVER);
 
     return ret;
 }
 
 ghost_error_t ghost_svqb(ghost_densemat_t * v_ot , ghost_densemat_t * v)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
+    
     if (v->traits.datatype & GHOST_DT_COMPLEX) {
         if (v->traits.datatype & GHOST_DT_DOUBLE) {
             return ghost_svqb_tmpl<std::complex<double>, double>(v_ot, v);
@@ -248,7 +254,7 @@ ghost_error_t ghost_svqb(ghost_densemat_t * v_ot , ghost_densemat_t * v)
     template <typename T, typename T_b>
 static ghost_error_t ghost_svd_deflation_tmpl ( ghost_lidx_t *svd_offset, ghost_densemat_t * ot_vec, ghost_densemat_t * vec, float limit)
 {
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_SOLVER);
     ghost_error_t ret = GHOST_SUCCESS;
     T one = 1.0;
     T zero = 0.0;
@@ -327,13 +333,16 @@ err:
 out: 
     x->destroy(x);
     free(eigs);
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_SOLVER);
     
     return ret;
 }
 
 ghost_error_t ghost_svd_deflation( ghost_lidx_t *svd_offset, ghost_densemat_t * ot_vec, ghost_densemat_t * vec, float limit)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH); 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH); 
+    
     if (vec->traits.datatype & GHOST_DT_COMPLEX) {
         if (vec->traits.datatype & GHOST_DT_DOUBLE) {
             return ghost_svd_deflation_tmpl<std::complex<double>, double>( svd_offset, ot_vec,  vec, limit);
@@ -352,19 +361,27 @@ ghost_error_t ghost_svd_deflation( ghost_lidx_t *svd_offset, ghost_densemat_t * 
 #else
 ghost_error_t ghost_svqb(ghost_densemat_t * v_ot , ghost_densemat_t * v)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH); 
+    
     UNUSED(v_ot);
     UNUSED(v);
     ERROR_LOG("LAPACKE not found!");
+    
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH); 
     return GHOST_ERR_NOT_IMPLEMENTED;
 }
 
 ghost_error_t ghost_svd_deflation( ghost_lidx_t *svd_offset, ghost_densemat_t * ot_vec, ghost_densemat_t * vec, float limit)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH); 
+    
     UNUSED(svd_offset);
     UNUSED(ot_vec);
     UNUSED(vec);
     UNUSED(limit);   
     ERROR_LOG("LAPACKE not found!");
+    
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH); 
     return GHOST_ERR_NOT_IMPLEMENTED;
 }
 #endif

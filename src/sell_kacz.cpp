@@ -8,6 +8,8 @@
 template<typename m_t, typename v_t, bool forward>
 static ghost_error_t sell_kacz(ghost_sparsemat_t *mat, ghost_densemat_t *x, ghost_densemat_t *b, v_t *omega)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+    
     if (!mat->color_ptr || mat->ncolors == 0) {
         WARNING_LOG("Matrix has not been colored!");
     }
@@ -80,11 +82,15 @@ static ghost_error_t sell_kacz(ghost_sparsemat_t *mat, ghost_densemat_t *x, ghos
         }
     }
     
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     return GHOST_SUCCESS;
 }
 
 ghost_error_t ghost_sell_kacz(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, void *omega, int forward)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
+    
     if (mat->traits.datatype != lhs->traits.datatype || lhs->traits.datatype != rhs->traits.datatype) {
         WARNING_LOG("Mixed data types not yet implemented!");
     }

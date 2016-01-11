@@ -173,6 +173,8 @@ static ghost_error_t ghost_cu_sell1spmv_augfunc_tmpl(ghost_densemat_t * lhs, gho
 
 ghost_error_t ghost_cu_sell1_spmv_selector(ghost_sparsemat_t *mat, ghost_densemat_t * lhs_in, ghost_densemat_t * rhs_in, ghost_spmv_flags_t options, va_list argp)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
+    
     ghost_error_t ret = GHOST_SUCCESS;
     ghost_densemat_t *lhs, *rhs;
     va_list argpbackup;
@@ -296,5 +298,6 @@ err:
     ERROR_LOG("Error in SELL-1 SpMV!");
 out:
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
     return ret;
 }

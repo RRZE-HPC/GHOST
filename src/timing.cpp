@@ -51,22 +51,31 @@ static map<string,ghost_timing_region_accu_t> timings;
 
 void ghost_timing_tick(const char *tag) 
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+
     double start = 0.;
     ghost_timing_wc(&start);
-  
     timings[tag].start = start;
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
 }
 
 void ghost_timing_tock(const char *tag) 
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+    
     double end;
     ghost_timing_wc(&end);
     ghost_timing_region_accu_t *ti = &timings[string(tag)];
     ti->times.push_back(end-ti->start);
+    
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
 }
 
 void ghost_timing_set_perfFunc(const char *prefix, const char *tag, ghost_compute_performance_func_t func, void *arg, size_t sizeofarg, const char *unit)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+  
     if (!tag) {
         WARNING_LOG("Empty tag! This should not have happened... Prefix is %s",prefix);
         return;
@@ -77,16 +86,16 @@ void ghost_timing_set_perfFunc(const char *prefix, const char *tag, ghost_comput
     pf.perfUnit = unit;
 
     
-    ghost_timing_region_accu_t *region;
+    ghost_timing_region_accu_t *regionaccu;
     if (prefix) {
         string fulltag = (string(prefix)+"->"+string(tag));
-        region = &timings[fulltag];
+        regionaccu = &timings[fulltag];
     } else {
-        region = &timings[string(tag)];
+        regionaccu = &timings[string(tag)];
     }
 
-    for (std::vector<ghost_timing_perfFunc_t>::iterator it = region->perfFuncs.begin();
-            it !=region->perfFuncs.end(); ++it) {
+    for (std::vector<ghost_timing_perfFunc_t>::iterator it = regionaccu->perfFuncs.begin();
+            it !=regionaccu->perfFuncs.end(); ++it) {
         if (it->perfFunc == func && !strcmp(it->perfUnit,unit)) {
             return;
         }
@@ -94,12 +103,16 @@ void ghost_timing_set_perfFunc(const char *prefix, const char *tag, ghost_comput
 
     ghost_malloc((void **)&(pf.perfFuncArg),sizeofarg);
     memcpy(pf.perfFuncArg,arg,sizeofarg);
-    region->perfFuncs.push_back(pf);
+    regionaccu->perfFuncs.push_back(pf);
+    
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
 }
 
 
 ghost_error_t ghost_timing_region_create(ghost_timing_region_t ** ri, const char *tag)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+
     ghost_timing_region_accu_t ti = timings[string(tag)];
     if (!ti.times.size()) {
         *ri = NULL;
@@ -133,20 +146,27 @@ err:
     free(*ri); (*ri) = NULL;
 out:
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return ret;
 }
 
 void ghost_timing_region_destroy(ghost_timing_region_t * ri)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+    
     if (ri) {
         free(ri->times); ri->times = NULL;
     }
     free(ri);
+    
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
 }
 
 
 ghost_error_t ghost_timing_summarystring(char **str)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+    
     stringstream buffer;
     map<string,ghost_timing_region_accu_t>::iterator iter;
     vector<ghost_timing_perfFunc_t>::iterator pf_iter;
@@ -275,5 +295,6 @@ ghost_error_t ghost_timing_summarystring(char **str)
     GHOST_CALL_RETURN(ghost_malloc((void **)str,buffer.str().length()+1));
     strcpy(*str,buffer.str().c_str());
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return GHOST_SUCCESS;
 }

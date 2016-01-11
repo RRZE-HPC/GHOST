@@ -21,6 +21,8 @@ static vector<ghost_gidx_t>upperPerc90Dists;
 
 ghost_error_t ghost_sparsemat_registerrow(ghost_sparsemat_t *mat, ghost_gidx_t row, ghost_gidx_t *cols, ghost_lidx_t rowlen, ghost_lidx_t stride)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL); 
+    
     ghost_lidx_t c;
     ghost_gidx_t col;
     ghost_gidx_t firstcol = mat->ncols-1, lastcol = 0;
@@ -82,11 +84,14 @@ ghost_error_t ghost_sparsemat_registerrow(ghost_sparsemat_t *mat, ghost_gidx_t r
     }
     mat->avgAvgRowBand += 1;
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL); 
     return GHOST_SUCCESS;
 }
 
 ghost_error_t ghost_sparsemat_registerrow_finalize(ghost_sparsemat_t *mat)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL); 
+
     ghost_gidx_t gnrows;
     double avgRowlen = mat->nnz*1.0/(double)mat->nrows;
 
@@ -125,6 +130,7 @@ ghost_error_t ghost_sparsemat_registerrow_finalize(ghost_sparsemat_t *mat)
 
     mat->nMaxRows = rowlengths[mat][mat->maxRowLen];
     
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL); 
     return GHOST_SUCCESS;
 }
 

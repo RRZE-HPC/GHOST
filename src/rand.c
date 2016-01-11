@@ -16,6 +16,7 @@ static bool customseed = false;
 
 ghost_error_t ghost_rand_create()
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_SETUP);
     ghost_error_t ret = GHOST_SUCCESS;
     int i;
     int rank;
@@ -51,6 +52,7 @@ err:
 
 out:
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_SETUP);
     return ret;
 }
 
@@ -60,13 +62,19 @@ ghost_error_t ghost_rand_get(unsigned int **s)
         ERROR_LOG("NULL pointer");
         return GHOST_ERR_INVALID_ARG;
     }
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+    
     *s = &ghost_rand_states[ghost_omp_threadnum()];
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
 
     return GHOST_SUCCESS;
 }
 
 ghost_error_t ghost_rand_seed(ghost_rand_seed_t which, unsigned int seed)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+    
     ghost_error_t ret = GHOST_SUCCESS;
     double dtime;
     int i, rank, time;
@@ -126,24 +134,34 @@ err:
 
 out:
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
+    
     return ret;
 
 }
 
 bool ghost_rand_customseed()
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
+    
     return customseed;
 }
 
 void ghost_rand_destroy()
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_TEARDOWN);
 
     free(ghost_rand_states);
     ghost_rand_states=NULL;
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_TEARDOWN);
 }
 
 int ghost_rand_cu_seed_get()
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
+    
     return cu_seed;
 }
