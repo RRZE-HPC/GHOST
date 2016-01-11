@@ -105,7 +105,11 @@ static void *likwidThreadInitTask(void *arg)
 {
     UNUSED(arg);
 #pragma omp parallel
-    likwid_markerThreadInit();
+    {
+        likwid_markerThreadInit();
+        ghost_instr_prefix_set("");
+        ghost_instr_suffix_set("");
+    }
 
     return NULL;
 }
@@ -142,6 +146,9 @@ ghost_error_t ghost_init(int argc, char **argv)
     }
     
 
+    ghost_instr_create();
+    ghost_instr_prefix_set("");
+    ghost_instr_suffix_set("");
     ghost_nodecomm_setup(MPI_COMM_WORLD);
     ghost_mpi_datatypes_create();
     ghost_mpi_operations_create();
@@ -561,7 +568,8 @@ ghost_error_t ghost_init(int argc, char **argv)
     ghost_task_wait(t);
     ghost_task_destroy(t);
 #endif
-    
+   
+
     hwloc_bitmap_free(cudaOccupiedCpuset);
     hwloc_bitmap_free(mycpuset); mycpuset = NULL; 
     hwloc_bitmap_free(availcpuset); availcpuset = NULL;
@@ -613,6 +621,7 @@ ghost_error_t ghost_finalize()
     }
 #endif
 
+    ghost_instr_destroy();
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TEARDOWN);
     return GHOST_SUCCESS;
 }

@@ -48,28 +48,27 @@ typedef struct
 ghost_timing_region_accu_t;
 
 static map<string,ghost_timing_region_accu_t> timings;
+static pthread_mutex_t timingsMutex = PTHREAD_MUTEX_INITIALIZER;
 
 void ghost_timing_tick(const char *tag) 
 {
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+    pthread_mutex_lock(&timingsMutex);
 
     double start = 0.;
     ghost_timing_wc(&start);
     timings[tag].start = start;
-
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
+    
+    pthread_mutex_unlock(&timingsMutex);
 }
 
 void ghost_timing_tock(const char *tag) 
 {
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
-    
+    pthread_mutex_lock(&timingsMutex);
     double end;
     ghost_timing_wc(&end);
     ghost_timing_region_accu_t *ti = &timings[string(tag)];
     ti->times.push_back(end-ti->start);
-    
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
+    pthread_mutex_unlock(&timingsMutex);
 }
 
 void ghost_timing_set_perfFunc(const char *prefix, const char *tag, ghost_compute_performance_func_t func, void *arg, size_t sizeofarg, const char *unit)
@@ -111,8 +110,6 @@ void ghost_timing_set_perfFunc(const char *prefix, const char *tag, ghost_comput
 
 ghost_error_t ghost_timing_region_create(ghost_timing_region_t ** ri, const char *tag)
 {
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
-
     ghost_timing_region_accu_t ti = timings[string(tag)];
     if (!ti.times.size()) {
         *ri = NULL;
@@ -146,7 +143,6 @@ err:
     free(*ri); (*ri) = NULL;
 out:
 
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return ret;
 }
 

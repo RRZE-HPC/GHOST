@@ -407,6 +407,9 @@ static void * thread_main(void *arg)
     }
 #endif
     ghost_task_t *myTask = NULL;
+    
+    ghost_instr_prefix_set("");
+    ghost_instr_suffix_set("");
 
     pthread_key_t key;
     ghost_thpool_key(&key);
