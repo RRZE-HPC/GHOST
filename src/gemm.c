@@ -281,7 +281,7 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
              * (X ) = (V^T) * (W^T)^T
              */
 
-            if (!strncasecmp(transv_in,"C",1)) {
+            if (!strncasecmp(transv_in,"C",1) && v->traits.datatype & GHOST_DT_COMPLEX) {
                 INFO_LOG("Conjugating input densemats. They have been cloned before, so this is safe.");
                 v->conj(v);
                 w->conj(w);
@@ -470,7 +470,7 @@ ghost_densemat_t *w_in, const char *transw, void *alpha, void *beta, int reduce,
 #ifdef GHOST_HAVE_CUDA
     if (((v->traits.location & w->traits.location) & x->traits.location) & GHOST_LOCATION_DEVICE) {
         if (v_in->traits.storage == GHOST_DENSEMAT_ROWMAJOR && w_in->traits.storage == GHOST_DENSEMAT_ROWMAJOR &&
-                !strncasecmp(transv,"C",1) && !strncasecmp(transw,"N",1)) {
+                !strncasecmp(transv,"C",1) && !strncasecmp(transw,"N",1) && v->traits.datatype & GHOST_DT_COMPLEX) {
             WARNING_LOG("Cloning both input vectors because they need to be conjugated!");
             ghost_densemat_t *vc;
             v_in->clone(v_in,&vc,v->traits.nrows,0,v->traits.ncols,0);
