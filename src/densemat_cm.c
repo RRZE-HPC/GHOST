@@ -130,7 +130,11 @@ static ghost_error_t vec_cm_fromFunc(ghost_densemat_t *vec, int (*fp)(ghost_gidx
         } else {
           DENSEMAT_ITER(vec,fp(offset+row,col,valptr,arg));
         }
-        vec->upload(vec);
+        
+        // host+device case: uploading will be done in fromVec()
+        if (vec->traits.location & GHOST_LOCATION_DEVICE) {
+            vec->upload(vec);
+        }
     } else {
         INFO_LOG("Need to create dummy HOST densemat!");
         ghost_densemat_t *hostVec;
