@@ -6,11 +6,13 @@
 #include "ghost/tsmttsm.h"
 #include "ghost/tsmttsm_var2_plain_gen.h"
 #include "ghost/tsmttsm_var2_avx_gen.h"
+#include "ghost/tsmttsm_var2_cu_gen.h"
 #include "ghost/tsmttsm_plain_gen.h"
 #include "ghost/tsmttsm_var1_plain_gen.h"
 #include "ghost/tsmttsm_avx2_gen.h"
 #include "ghost/tsmttsm_avx_gen.h"
 #include "ghost/tsmttsm_sse_gen.h"
+#include "ghost/tsmttsm_cu_gen.h"
 #include "ghost/tsmttsm_kahan_var2_plain_gen.h"
 #include "ghost/tsmttsm_kahan_plain_gen.h"
 #include "ghost/timing.h"
@@ -53,13 +55,13 @@ ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce, gh
             ERROR_LOG("x must be stored col-major!");
         }
         return GHOST_ERR_INVALID_ARG;
-    }*/
+    }
     if (x->traits.location != GHOST_LOCATION_HOST || v->traits.location != GHOST_LOCATION_HOST || w->traits.location != GHOST_LOCATION_HOST) {
         if (printerror) {
             ERROR_LOG("TSMTTSM only implemented for host densemats!");
         }
         return GHOST_ERR_INVALID_ARG;
-    }
+    }*/
 
     if (v->traits.datatype != w->traits.datatype || v->traits.datatype != x->traits.datatype) {
         if (printerror) {
@@ -134,6 +136,10 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
 #include "tsmttsm_avx.def"
 #include "tsmttsm_var2_avx.def"
 #include "tsmttsm_sse.def"
+#ifdef GHOST_HAVE_CUDA
+#include "tsmttsm_cu.def"
+#include "tsmttsm_var2_cu.def"
+#endif
         }
         kernels = ghost_tsmttsm_kernels;
     }
@@ -172,6 +178,13 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
     } else {
         opt_align = GHOST_UNALIGNED;
     }
+
+#ifdef GHOST_HAVE_CUDA
+    if (x->traits.location & GHOST_LOCATION_DEVICE) {
+        opt_impl = GHOST_IMPLEMENTATION_CUDA;
+        opt_align = GHOST_UNALIGNED;
+    }
+#endif
     
     ghost_lidx_t try_wcols[2] = {w->traits.ncols,-1};
     ghost_lidx_t try_vcols[2] = {v->traits.ncols,-1};
@@ -191,14 +204,15 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
 
     for (pos_wcols = 0; pos_wcols < n_wcols; pos_wcols++) {  
         for (pos_vcols = 0; pos_vcols < n_vcols; pos_vcols++) {  
-            for (p.impl = opt_impl; (int)p.impl >= GHOST_IMPLEMENTATION_PLAIN; p.impl  = (ghost_implementation_t)((int)p.impl-1)) {
+            for (p.impl = opt_impl; (int)p.impl == GHOST_IMPLEMENTATION_CUDA || (int)p.impl >= GHOST_IMPLEMENTATION_PLAIN; p.impl  = (ghost_implementation_t)((int)p.impl-1)) {
                 for (p.alignment = opt_align; (int)p.alignment >= GHOST_UNALIGNED; p.alignment = (ghost_alignment_t)((int)p.alignment-1)) {
                     for (p.unroll = opt_unroll; p.unroll > 0; p.unroll /= 2) {
                         for (pos_dt = 0; pos_dt < n_dt; pos_dt++) {
                             p.wcols = try_wcols[pos_wcols];
                             p.vcols = try_vcols[pos_vcols];
                             p.dt = try_dt[pos_dt];
-                            INFO_LOG("Try wcols=%s, vcols=%s, impl=%s, %s, unroll=%d, dt=%s",
+                            INFO_LOG("Try xstor=%s, wstor=%s, wcols=%s, vcols=%s, impl=%s, %s, unroll=%d, dt=%s",
+                                    ghost_densemat_storage_string(x),ghost_densemat_storage_string(w),
                                     p.wcols==-1?"arbitrary":to_string(p.wcols).c_str(),p.vcols==-1?"arbitrary":to_string(p.vcols).c_str(),
                                     ghost_implementation_string(p.impl),p.alignment==GHOST_UNALIGNED?"unaligned":"aligned",p.unroll,ghost_datatype_string(p.dt));
                             kernel = kernels[p];

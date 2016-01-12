@@ -303,8 +303,10 @@ char * ghost_densemat_storage_string(ghost_densemat_t *densemat)
     switch(densemat->traits.storage) {
         case GHOST_DENSEMAT_ROWMAJOR:
             ret = "Row-major";
+            break;
         case GHOST_DENSEMAT_COLMAJOR:
             ret = "Col-major";
+            break;
         default:
             ret = "Invalid";
     }
