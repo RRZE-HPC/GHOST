@@ -14,6 +14,7 @@
 #include "ghost/bindensemat.h"
 #include "ghost/sell.h"
 #include "ghost/constants.h"
+#include "ghost/datatransfers.h"
 
 #include <stdio.h>
 #include <string.h>
