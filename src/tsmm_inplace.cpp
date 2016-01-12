@@ -109,6 +109,7 @@ ghost_error_t ghost_tsmm_inplace(ghost_densemat_t *x, ghost_densemat_t *w, void 
 #include "tsmm_inplace_var2_plain.def"
 #ifdef GHOST_HAVE_CUDA
 #include "tsmm_inplace_cu.def"
+#include "tsmm_inplace_var2_cu.def"
 #endif
     }
     
@@ -127,7 +128,6 @@ ghost_error_t ghost_tsmm_inplace(ghost_densemat_t *x, ghost_densemat_t *w, void 
 #endif
 
    
-    INFO_LOG("in %d out %d",p.ncolsin,p.ncolsout); 
     kernel = ghost_tsmm_inplace_kernels[p];
     
     if (!kernel) {
