@@ -554,11 +554,11 @@ ghost_error_t ghost_sellspmv__a_plain_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t
 #pragma simd
                     for (v=0; v<NVECS; v++) {
                         partsums[((pad+3*NVECS)*tid)+3*v+0] += 
-                            lrow[v]*lrow[v];
+                            conj(lrow[v])*lrow[v];
                         partsums[((pad+3*NVECS)*tid)+3*v+1] += 
                             conj(rrow[v])*lrow[v];
                         partsums[((pad+3*NVECS)*tid)+3*v+2] += 
-                            rrow[v]*rrow[v];
+                            conj(rrow[v])*rrow[v];
                     }
                 }
             }
