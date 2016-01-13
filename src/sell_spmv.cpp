@@ -21,7 +21,7 @@
 #include "ghost/sell_spmv_varblock_sse_gen.h"
 #include "ghost/sell_spmv_varblock_plain_gen.h"
 
-#include <map>
+#include <unordered_map>
 
 using namespace std;
     
@@ -351,17 +351,31 @@ static ghost_error_t ghost_sell_spmv_plain_cm_selector(ghost_sparsemat_t *mat,
     }
 }
 
-static bool operator<(const ghost_sellspmv_parameters_t &a, 
-        const ghost_sellspmv_parameters_t &b) 
-{ 
-    return ghost_hash(ghost_hash(a.mdt,a.blocksz,a.storage),
-            ghost_hash(a.vdt,a.impl,a.chunkheight),a.alignment) <
-        ghost_hash(ghost_hash(b.mdt,b.blocksz,b.storage),
-                ghost_hash(b.vdt,b.impl,b.chunkheight),b.alignment); 
+
+// Hash function for unordered_map
+namespace std
+{
+    template<> struct hash<ghost_sellspmv_parameters_t>
+    {
+        typedef ghost_sellspmv_parameters_t argument_type;
+        typedef std::size_t result_type;
+        result_type operator()(argument_type const& a) const
+        {
+            return ghost_hash(ghost_hash(a.mdt,a.blocksz,a.storage),
+                    ghost_hash(a.vdt,a.impl,a.chunkheight),a.alignment);
+        }
+    };
 }
 
-static map<ghost_sellspmv_parameters_t, ghost_spmv_kernel_t> 
-ghost_sellspmv_kernels = map<ghost_sellspmv_parameters_t,ghost_spmv_kernel_t>();
+bool operator==(const ghost_sellspmv_parameters_t& a, const ghost_sellspmv_parameters_t& b)
+{
+    return a.mdt == b.mdt && a.blocksz == b.blocksz && a.storage == b.storage && 
+           a.vdt == b.vdt && a.impl == b.impl && a.chunkheight == b.chunkheight &&
+           a.alignment && b.alignment;
+}
+
+static unordered_map<ghost_sellspmv_parameters_t, ghost_spmv_kernel_t> 
+ghost_sellspmv_kernels = unordered_map<ghost_sellspmv_parameters_t,ghost_spmv_kernel_t>();
 
 extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat, 
         ghost_densemat_t *lhs, ghost_densemat_t *rhs, 

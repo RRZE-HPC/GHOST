@@ -221,6 +221,8 @@ ghost_error_t ghost_malloc_align(void **mem, const size_t size, const size_t ali
     return GHOST_SUCCESS;
 }
 
+/*
+// make this inline for not wasting too much time hashing for kernel-map indexes
 int ghost_hash(int a, int b, int c)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
@@ -238,4 +240,5 @@ int ghost_hash(int a, int b, int c)
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return c;
 }
+*/
 

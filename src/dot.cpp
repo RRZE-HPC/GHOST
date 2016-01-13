@@ -8,16 +8,31 @@
 #include "ghost/dot.h"
 #include "ghost/timing.h"
 
-#include <map>
+#include <unordered_map>
 
 using namespace std;
 
-static bool operator<(const ghost_dot_parameters_t &a, const ghost_dot_parameters_t &b) 
-{ 
-    return (ghost_hash(a.dt,a.blocksz,ghost_hash(a.impl,a.storage,0)) < ghost_hash(b.dt,b.blocksz,ghost_hash(b.impl,b.storage,0)));
+// Hash function for unordered_map
+namespace std
+{
+    template<> struct hash<ghost_dot_parameters_t>
+    {
+        typedef ghost_dot_parameters_t argument_type;
+        typedef std::size_t result_type;
+        result_type operator()(argument_type const& a) const
+        {
+            return ghost_hash(a.dt,a.blocksz,ghost_hash(a.impl,a.storage,0));
+        }
+    };
 }
 
-static map<ghost_dot_parameters_t, ghost_dot_kernel_t> ghost_dot_kernels;
+
+bool operator==(const ghost_dot_parameters_t& a, const ghost_dot_parameters_t& b)
+{
+    return a.dt == b.dt && a.blocksz == b.blocksz && a.impl == b.impl && a.storage == b.storage;
+}
+
+static unordered_map<ghost_dot_parameters_t, ghost_dot_kernel_t> ghost_dot_kernels;
 
 ghost_error_t ghost_dot(void *res, ghost_densemat_t *vec1, ghost_densemat_t *vec2)
 {

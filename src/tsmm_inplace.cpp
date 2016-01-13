@@ -11,16 +11,31 @@
 #include "ghost/tsmm_inplace.h"
 #include "ghost/math.h"
 #include "ghost/timing.h"
-#include <map>
+
+#include <unordered_map>
 
 using namespace std;
 
-static bool operator<(const ghost_tsmm_inplace_parameters_t &a, const ghost_tsmm_inplace_parameters_t &b) 
-{ 
-    return ghost_hash(a.dt,a.ncolsin,ghost_hash(a.ncolsout,a.impl,0)) < ghost_hash(b.dt,b.ncolsin,ghost_hash(b.ncolsout,b.impl,0)); 
+// Hash function for unordered_map
+namespace std
+{
+    template<> struct hash<ghost_tsmm_inplace_parameters_t>
+    {
+        typedef ghost_tsmm_inplace_parameters_t argument_type;
+        typedef std::size_t result_type;
+        result_type operator()(argument_type const& a) const
+        {
+            return ghost_hash(a.dt,a.ncolsin,ghost_hash(a.ncolsout,a.impl,0));
+        }
+    };
 }
 
-static map<ghost_tsmm_inplace_parameters_t, ghost_tsmm_inplace_kernel_t> ghost_tsmm_inplace_kernels;
+bool operator==(const ghost_tsmm_inplace_parameters_t& a, const ghost_tsmm_inplace_parameters_t& b)
+{
+    return a.dt == b.dt && a.ncolsin == b.ncolsin && a.ncolsout == b.ncolsout && a.impl == b.impl;
+}
+
+static unordered_map<ghost_tsmm_inplace_parameters_t, ghost_tsmm_inplace_kernel_t> ghost_tsmm_inplace_kernels;
 
 ghost_error_t ghost_tsmm_inplace_valid(ghost_densemat_t *x, ghost_densemat_t *v, const char * transv, 
 ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce, int printerror)
