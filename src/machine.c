@@ -472,17 +472,25 @@ ghost_implementation_t ghost_get_best_implementation_for_bytesize(int bytes)
 
     if (!(bytes % 64)) { // 64 bytes: any implementation works
         best_impl = machine_impl;
+        GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
+        return best_impl;
     } else { 
         if (machine_impl == GHOST_IMPLEMENTATION_MIC) { // MIC cannot execute AVX or SSE: fallback to plain
             best_impl = GHOST_IMPLEMENTATION_PLAIN;
+            GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
+            return best_impl;
         }
     }
     if (!(bytes % 32)) {
         best_impl = machine_impl; // MIC never takes this branch: any remaining implementation works
+        GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
+        return best_impl;
     }
     if (!(bytes % 16)) {
         // fallback to SSE in case of AVX or AVX2
         best_impl = (ghost_implementation_t)MIN((int)machine_impl,(int)GHOST_IMPLEMENTATION_SSE);
+        GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
+        return best_impl;
     }
     best_impl =  GHOST_IMPLEMENTATION_PLAIN;
 
