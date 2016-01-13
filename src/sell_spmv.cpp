@@ -429,7 +429,11 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
         PERFWARNING_LOG("Use plain implementation for scattered views");
         opt_impl = GHOST_IMPLEMENTATION_PLAIN;
     } else {
-        opt_impl = ghost_get_best_implementation_for_bytesize(rhs->traits.ncols>1?rhs->traits.ncols*rhs->elSize:mat->traits.C*mat->elSize);
+        if (rhs->traits.ncols > 1 && rhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
+            opt_impl = ghost_get_best_implementation_for_bytesize(rhs->traits.ncols*rhs->elSize);
+        } else {
+            opt_impl = ghost_get_best_implementation_for_bytesize(mat->traits.C*mat->elSize);
+        }
     }
     
     if (opt_impl == GHOST_IMPLEMENTATION_SSE && 
