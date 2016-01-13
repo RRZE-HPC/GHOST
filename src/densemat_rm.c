@@ -350,7 +350,7 @@ static ghost_error_t densemat_rm_halocommInit(ghost_densemat_t *vec, ghost_dense
 #ifdef GHOST_HAVE_MPI
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
     ghost_error_t ret = GHOST_SUCCESS;
-    int i, to_PE, from_PE;
+    int i, to_PE, from_PE, partner;
     int nprocs;
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, vec->context->mpicomm),err,ret);
     GHOST_CALL_GOTO(ghost_densemat_halocommInit_common(vec,comm),err,ret);
@@ -369,7 +369,8 @@ static ghost_error_t densemat_rm_halocommInit(ghost_densemat_t *vec, ghost_dense
         }
         comm->tmprecv_mem = NULL;
     }
-        
+       
+    GHOST_INSTR_START("assemble_buf"); 
     if (vec->context->perm_local) {
 #ifdef GHOST_HAVE_CUDA
         if (vec->traits.location & GHOST_LOCATION_DEVICE) {
@@ -377,9 +378,9 @@ static ghost_error_t densemat_rm_halocommInit(ghost_densemat_t *vec, ghost_dense
         } else 
 #endif
             if (vec->traits.location & GHOST_LOCATION_HOST) {
-#pragma omp parallel private(to_PE,i)
-                for (to_PE=0 ; to_PE<nprocs ; to_PE++){
-#pragma omp for 
+                for (partner = 0; partner<vec->context->nduepartners; partner++) {
+                    to_PE = vec->context->duepartners[partner];
+#pragma omp parallel for 
                     for (i=0; i<vec->context->dues[to_PE]; i++){
                         memcpy(comm->work + (comm->dueptr[to_PE]+i)*vec->elSize*vec->traits.ncols,DENSEMAT_VALPTR(vec,vec->context->perm_local->perm[vec->context->duelist[to_PE][i]],0),vec->elSize*vec->traits.ncols);
                     }
@@ -392,25 +393,25 @@ static ghost_error_t densemat_rm_halocommInit(ghost_densemat_t *vec, ghost_dense
         } else 
 #endif
             if (vec->traits.location & GHOST_LOCATION_HOST) {
-#pragma omp parallel private(to_PE,i)
-                for (to_PE=0 ; to_PE<nprocs ; to_PE++){
-#pragma omp for 
+                for (partner = 0; partner<vec->context->nduepartners; partner++) {
+                    to_PE = vec->context->duepartners[partner];
+#pragma omp parallel for 
                     for (i=0; i<vec->context->dues[to_PE]; i++){
                         memcpy(comm->work + (comm->dueptr[to_PE]+i)*vec->elSize*vec->traits.ncols,DENSEMAT_VALPTR(vec,vec->context->duelist[to_PE][i],0),vec->elSize*vec->traits.ncols);
                     }
                 }
             }
     }
+    GHOST_INSTR_STOP("assemble_buf"); 
 #ifdef GHOST_HAVE_CUDA
     if (vec->traits.location & GHOST_LOCATION_DEVICE) {
-        GHOST_INSTR_START("downloadcomm->work");
+        GHOST_INSTR_START("download_buf");
 #ifdef GHOST_HAVE_TRACK_DATATRANSFERS
         ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_IN,GHOST_DATATRANSFER_RANK_GPU,vec->traits.ncols*comm->acc_dues*vec->elSize);
 
 #endif
-        INFO_LOG("download work");
         ghost_cu_download(comm->work,comm->cu_work,vec->traits.ncols*comm->acc_dues*vec->elSize);
-        GHOST_INSTR_STOP("downloadcomm->work");
+        GHOST_INSTR_STOP("download_buf");
     }
 #endif
     

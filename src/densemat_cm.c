@@ -361,7 +361,7 @@ static ghost_error_t densemat_cm_halocommInit(ghost_densemat_t *vec, ghost_dense
 #ifdef GHOST_HAVE_MPI
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
     ghost_error_t ret = GHOST_SUCCESS;
-    int i, to_PE, from_PE;
+    int i, to_PE, from_PE, partner;
     int nprocs, me;
 
     GHOST_CALL_GOTO(ghost_rank(&me, vec->context->mpicomm),err,ret);
@@ -385,9 +385,9 @@ static ghost_error_t densemat_cm_halocommInit(ghost_densemat_t *vec, ghost_dense
 #endif
             if (vec->traits.location & GHOST_LOCATION_HOST) {
                 ghost_gidx_t c;
-#pragma omp parallel private(to_PE,i,c)
-                for (to_PE=0 ; to_PE<nprocs ; to_PE++){
-#pragma omp for 
+                for (partner = 0; partner<vec->context->nduepartners; partner++) {
+                    to_PE = vec->context->duepartners[partner];
+#pragma omp parallel for private(c) 
                     for (i=0; i<vec->context->dues[to_PE]; i++){
                         for (c=0; c<vec->traits.ncols; c++) {
                             memcpy(comm->work + (c*comm->acc_dues+comm->dueptr[to_PE]+i)*vec->elSize,
@@ -404,9 +404,9 @@ static ghost_error_t densemat_cm_halocommInit(ghost_densemat_t *vec, ghost_dense
 #endif
             if (vec->traits.location & GHOST_LOCATION_HOST) {
                 ghost_gidx_t c;
-#pragma omp parallel private(to_PE,i,c)
-                for (to_PE=0 ; to_PE<nprocs ; to_PE++){
-#pragma omp for 
+                for (partner = 0; partner<vec->context->nduepartners; partner++) {
+                    to_PE = vec->context->duepartners[partner];
+#pragma omp parallel for private(c) 
                     for (i=0; i<vec->context->dues[to_PE]; i++){
                         for (c=0; c<vec->traits.ncols; c++) {
                             memcpy(comm->work + (c*comm->acc_dues+comm->dueptr[to_PE]+i)*vec->elSize,
