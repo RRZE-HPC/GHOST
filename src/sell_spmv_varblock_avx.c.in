@@ -186,7 +186,6 @@ ghost_error_t ghost_sellspmv__a_avx_z_z_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat,
 #if defined(GHOST_HAVE_AVX) && CHUNKHEIGHT>=2
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     ghost_lidx_t i;
-    complex double *lval = NULL, *rval = NULL;
     complex double *mval = (complex double *)SELL(mat)->val;
     complex double *local_dot_product = NULL;
     complex double *partsums = NULL;
@@ -225,6 +224,7 @@ ghost_error_t ghost_sellspmv__a_avx_z_z_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat,
 
 #pragma omp parallel shared(partsums)
     {
+        complex double *lval = NULL, *rval = NULL;
         ghost_lidx_t j,c,v;
         ghost_lidx_t offs;
         __m256d val;
