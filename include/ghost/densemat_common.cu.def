@@ -209,7 +209,7 @@ __global__ static void FUNCNAME(fromscalar_kernel)(T *vec, T a, ghost_lidx_t nro
 
 
 template<typename T>  
-__global__ static void FUNCNAME(communicationassembly_kernel)(T *vec, T *work, ghost_lidx_t offs, ghost_lidx_t *duelist, ghost_lidx_t ncols, ghost_lidx_t ndues, ghost_lidx_t ld, ghost_lidx_t nduestotal, ghost_lidx_t *perm)
+__global__ static void FUNCNAME(communicationassembly_kernel)(T *vec, T *work, ghost_lidx_t offs, ghost_lidx_t *duelist, ghost_lidx_t ncols, ghost_lidx_t ndues, ghost_lidx_t ld, ghost_lidx_t nduestotal, ghost_gidx_t *perm)
 {
     int due = blockIdx.x*blockDim.x+threadIdx.x;
     int col = threadIdx.y;
@@ -230,7 +230,7 @@ __global__ static void FUNCNAME(communicationassembly_kernel)(T *vec, T *work, g
     }
 }
 
-extern "C" ghost_error_t FUNCNAME(communicationassembly)(void * work, ghost_lidx_t *dueptr, ghost_lidx_t totaldues, ghost_densemat_t *vec, ghost_lidx_t *perm)
+extern "C" ghost_error_t FUNCNAME(communicationassembly)(void * work, ghost_lidx_t *dueptr, ghost_lidx_t totaldues, ghost_densemat_t *vec, ghost_gidx_t *perm)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
   

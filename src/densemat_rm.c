@@ -374,7 +374,7 @@ static ghost_error_t densemat_rm_halocommInit(ghost_densemat_t *vec, ghost_dense
     if (vec->context->perm_local) {
 #ifdef GHOST_HAVE_CUDA
         if (vec->traits.location & GHOST_LOCATION_DEVICE) {
-            ghost_densemat_cu_rm_communicationassembly(comm->cu_work,comm->dueptr,comm->acc_dues,vec,(ghost_lidx_t *)vec->context->perm_local->cu_perm);
+            ghost_densemat_cu_rm_communicationassembly(comm->cu_work,comm->dueptr,comm->acc_dues,vec,vec->context->perm_local->cu_perm);
         } else 
 #endif
             if (vec->traits.location & GHOST_LOCATION_HOST) {
