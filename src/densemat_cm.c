@@ -459,7 +459,7 @@ static ghost_error_t densemat_cm_halocommFinalize(ghost_densemat_t *vec, ghost_d
         GHOST_INSTR_START("Assemble row-major view");
         for (from_PE=0; from_PE<nprocs; from_PE++){
             for (i=0; i<vec->traits.ncols; i++){
-                memcpy(DENSEMAT_VALPTR(vec,vec->context->hput_pos[from_PE],i),&comm->tmprecv[from_PE][(i*comm->acc_wishes)*vec->elSize],vec->elSize*vec->context->wishes[from_PE]);
+                memcpy(DENSEMAT_VALPTR(vec,vec->context->hput_pos[from_PE],i),&comm->tmprecv[from_PE][(i*vec->context->wishes[from_PE])*vec->elSize],vec->elSize*vec->context->wishes[from_PE]);
             }
         }
         GHOST_INSTR_STOP("Assemble row-major view");
@@ -472,7 +472,7 @@ static ghost_error_t densemat_cm_halocommFinalize(ghost_densemat_t *vec, ghost_d
         ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_OUT,GHOST_DATATRANSFER_RANK_GPU,vec->context->halo_elements*vec->traits.ncols*vec->elSize);
 #endif
         for (from_PE=0; from_PE<nprocs; from_PE++){
-            ghost_cu_upload2d(DENSEMAT_CUVALPTR(vec,vec->context->hput_pos[from_PE],0),vec->stride*vec->elSize,comm->tmprecv[from_PE],comm->acc_wishes*vec->elSize,vec->context->wishes[from_PE]*vec->elSize,vec->traits.ncols);
+            ghost_cu_upload2d(DENSEMAT_CUVALPTR(vec,vec->context->hput_pos[from_PE],0),vec->stride*vec->elSize,comm->tmprecv[from_PE],vec->context->wishes[from_PE]*vec->elSize,vec->context->wishes[from_PE]*vec->elSize,vec->traits.ncols);
         }
     }
     GHOST_INSTR_STOP("upload");
