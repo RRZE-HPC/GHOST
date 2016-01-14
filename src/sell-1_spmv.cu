@@ -129,10 +129,12 @@ static ghost_error_t ghost_cu_sell1spmmv_rm_tmpl(ghost_sparsemat_t *mat, ghost_d
 static ghost_error_t ghost_cu_sell1spmv_augfunc_tmpl(ghost_densemat_t * lhs, ghost_densemat_t * rhs, ghost_spmv_flags_t options, va_list argp)
 {
     dt2 *localdot = NULL;
-    dt1 *shift = NULL, __attribute__((unused)) scale, __attribute__((unused)) beta, sdelta, seta;
+    dt1 *shift = NULL, scale, __attribute__((unused)) beta, sdelta, seta;
     ghost_densemat_t *z = NULL;
 
+    one<dt1>(scale); //required because we need scale for SHIFT (i.e., even if we don't SCALE)
     GHOST_SPMV_PARSE_ARGS(options,argp,scale,beta,shift,localdot,z,sdelta,seta,dt2,dt1);
+
     if (options & (GHOST_SPMV_SHIFT|GHOST_SPMV_VSHIFT)) {
         PERFWARNING_LOG("Shift will not be applied on-the-fly!");
         dt2 minusshift[rhs->traits.ncols];
