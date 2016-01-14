@@ -19,6 +19,7 @@
 #include "ghost/cu_sell_kernel.h"
 
 #define MAX_COLS_PER_BLOCK 32
+#define MAX_COLS_PER_BLOCK_COLMAJOR 16
 #define SELL_CUDA_THREADSPERBLOCK 512
 
 /*
@@ -251,7 +252,7 @@ __global__ void SELL_kernel_cm_fallback_tmpl(v_t * const __restrict__ lhs, const
     int i = threadIdx.x+blockIdx.x*blockDim.x;
     int col = blockDim.y*blockIdx.y+threadIdx.y;
 
-    if (i<nrows) {
+    if (i<nrows && col<ncols) {
         int cs, tid;
         if (C == blockDim.x) {
             cs = chunkstart[blockIdx.x];
@@ -691,7 +692,7 @@ __global__ void SELL_kernel_CU_tmpl(
     int i = threadIdx.x+blockIdx.x*blockDim.x;
     int col = blockDim.y*blockIdx.y+threadIdx.y;
 
-    if (i<nrows) {
+    if (i<nrows && col<ncols) {
         int cs, tid;
         if (C == blockDim.x) {
             cs = chunkstart[blockIdx.x];
@@ -904,10 +905,14 @@ static ghost_error_t ghost_cu_sell_spmv_tmpl(ghost_sparsemat_t *mat, ghost_dense
        
     GHOST_INSTR_START("spmv_cuda")
     if (rhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
-        block.x = SELL_CUDA_THREADSPERBLOCK/MIN(MAX_COLS_PER_BLOCK,rhs->traits.ncols);
-        block.y = MIN(MAX_COLS_PER_BLOCK,rhs->traits.ncols);
-        grid.x = (int)ceil(mat->nrowsPadded/(double)block.x);
-        grid.y = (int)(ceil(rhs->traits.ncols/(double)MAX_COLS_PER_BLOCK));
+        block.x = PAD(CEILDIV(SELL_CUDA_THREADSPERBLOCK,MIN(MAX_COLS_PER_BLOCK_COLMAJOR,rhs->traits.ncols)),32);
+        block.y = MIN(MAX_COLS_PER_BLOCK_COLMAJOR,rhs->traits.ncols);
+        while(block.x*block.y > SELL_CUDA_THREADSPERBLOCK && block.x > 32) {
+            block.x -= 32;
+        }
+
+        grid.x = CEILDIV(mat->nrowsPadded,block.x);
+        grid.y = CEILDIV(rhs->traits.ncols,MAX_COLS_PER_BLOCK_COLMAJOR);
         if (flags & GHOST_SPMV_DOT_ANY) {
             GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
         }
