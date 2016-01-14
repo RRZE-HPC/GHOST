@@ -41,7 +41,6 @@ template<typename T> __global__ static void ghost_tsmm_inplace_cu_rm_cm_fallback
             x[row*stridex+k] = tmp[row*ldtmp+k];
         }
     }
-    delete tmp;
 }
 
 ghost_error_t ghost_tsmm_inplace__cuda_x_x_x(ghost_densemat_t *x, ghost_densemat_t *w, void *alpha, void *beta) 
