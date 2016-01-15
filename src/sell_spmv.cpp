@@ -367,7 +367,7 @@ namespace std
     };
 }
 
-bool operator==(const ghost_sellspmv_parameters_t& a, const ghost_sellspmv_parameters_t& b)
+static bool operator==(const ghost_sellspmv_parameters_t& a, const ghost_sellspmv_parameters_t& b)
 {
     return a.mdt == b.mdt && a.blocksz == b.blocksz && a.storage == b.storage && 
            a.vdt == b.vdt && a.impl == b.impl && a.chunkheight == b.chunkheight &&
