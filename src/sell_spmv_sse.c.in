@@ -46,9 +46,9 @@ ghost_error_t ghost_sellspmv__a_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
             nthreads = ghost_omp_nthread();
         }
 
-        GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,(3*invec->traits.ncols+padding)*nthreads*sizeof(double))); 
+        GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,(3*PAD(invec->traits.ncols,2)+padding)*nthreads*sizeof(double))); 
         ghost_lidx_t col;
-        for (col=0; col<(3*invec->traits.ncols+padding)*nthreads; col++) {
+        for (col=0; col<(3*PAD(invec->traits.ncols,2)+padding)*nthreads; col++) {
             partsums[col] = 0.;
         }
     }
@@ -98,9 +98,9 @@ ghost_error_t ghost_sellspmv__a_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
             }
         }
         if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
-                #GHOST_UNROLL#_mm_storel_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+6*@+0],dot1_@);_mm_storeh_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+6*@+1+0],dot1_@);#NVECS/2
-                #GHOST_UNROLL#_mm_storel_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+6*@+1],dot2_@);_mm_storeh_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+6*@+1+1],dot2_@);#NVECS/2
-                #GHOST_UNROLL#_mm_storel_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+6*@+2],dot3_@);_mm_storeh_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+6*@+1+2],dot3_@);#NVECS/2
+                #GHOST_UNROLL#_mm_storel_pd(&partsums[((padding+3*PAD(invec->traits.ncols,2))*tid)+6*@+0],dot1_@);_mm_storeh_pd(&partsums[((padding+3*PAD(invec->traits.ncols,2))*tid)+6*@+1+0],dot1_@);#NVECS/2
+                #GHOST_UNROLL#_mm_storel_pd(&partsums[((padding+3*PAD(invec->traits.ncols,2))*tid)+6*@+1],dot2_@);_mm_storeh_pd(&partsums[((padding+3*PAD(invec->traits.ncols,2))*tid)+6*@+1+1],dot2_@);#NVECS/2
+                #GHOST_UNROLL#_mm_storel_pd(&partsums[((padding+3*PAD(invec->traits.ncols,2))*tid)+6*@+2],dot3_@);_mm_storeh_pd(&partsums[((padding+3*PAD(invec->traits.ncols,2))*tid)+6*@+1+2],dot3_@);#NVECS/2
         }
             
     }
@@ -115,9 +115,9 @@ ghost_error_t ghost_sellspmv__a_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
             local_dot_product[col  +   invec->traits.ncols] = 0.;
             local_dot_product[col  + 2*invec->traits.ncols] = 0.;
             for (i=0; i<nthreads; i++) {
-                local_dot_product[col                         ] += partsums[(padding+3*invec->traits.ncols)*i + 3*col + 0];
-                local_dot_product[col  +   invec->traits.ncols] += partsums[(padding+3*invec->traits.ncols)*i + 3*col + 1];
-                local_dot_product[col  + 2*invec->traits.ncols] += partsums[(padding+3*invec->traits.ncols)*i + 3*col + 2];
+                local_dot_product[col                         ] += partsums[(padding+3*PAD(invec->traits.ncols,2))*i + 3*col + 0];
+                local_dot_product[col  +   invec->traits.ncols] += partsums[(padding+3*PAD(invec->traits.ncols,2))*i + 3*col + 1];
+                local_dot_product[col  + 2*invec->traits.ncols] += partsums[(padding+3*PAD(invec->traits.ncols,2))*i + 3*col + 2];
             }
         }
         free(partsums);
@@ -174,9 +174,9 @@ ghost_error_t ghost_sellspmv__u_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
             nthreads = ghost_omp_nthread();
         }
 
-        GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,(3*invec->traits.ncols+padding)*nthreads*sizeof(double))); 
+        GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,(3*PAD(invec->traits.ncols,2)+padding)*nthreads*sizeof(double))); 
         ghost_lidx_t col;
-        for (col=0; col<(3*invec->traits.ncols+padding)*nthreads; col++) {
+        for (col=0; col<(3*PAD(invec->traits.ncols,2)+padding)*nthreads; col++) {
             partsums[col] = 0.;
         }
     }
@@ -226,9 +226,9 @@ ghost_error_t ghost_sellspmv__u_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
             }
         }
         if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
-                #GHOST_UNROLL#_mm_storel_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+(6*@)+0],dot1_@);_mm_storeh_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+(6*@)+1+0],dot1_@);#NVECS/2
-                #GHOST_UNROLL#_mm_storel_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+(6*@)+1],dot2_@);_mm_storeh_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+(6*@)+1+1],dot2_@);#NVECS/2
-                #GHOST_UNROLL#_mm_storel_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+(6*@)+2],dot3_@);_mm_storeh_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+(6*@)+1+2],dot3_@);#NVECS/2
+                #GHOST_UNROLL#_mm_storel_pd(&partsums[((padding+3*PAD(invec->traits.ncols,2))*tid)+(6*@)+0],dot1_@);_mm_storeh_pd(&partsums[((padding+3*PAD(invec->traits.ncols,2))*tid)+(6*@)+1+0],dot1_@);#NVECS/2
+                #GHOST_UNROLL#_mm_storel_pd(&partsums[((padding+3*PAD(invec->traits.ncols,2))*tid)+(6*@)+1],dot2_@);_mm_storeh_pd(&partsums[((padding+3*PAD(invec->traits.ncols,2))*tid)+(6*@)+1+1],dot2_@);#NVECS/2
+                #GHOST_UNROLL#_mm_storel_pd(&partsums[((padding+3*PAD(invec->traits.ncols,2))*tid)+(6*@)+2],dot3_@);_mm_storeh_pd(&partsums[((padding+3*PAD(invec->traits.ncols,2))*tid)+(6*@)+1+2],dot3_@);#NVECS/2
         }
             
     }
@@ -243,9 +243,9 @@ ghost_error_t ghost_sellspmv__u_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
             local_dot_product[col  +   invec->traits.ncols] = 0.;
             local_dot_product[col  + 2*invec->traits.ncols] = 0.;
             for (i=0; i<nthreads; i++) {
-                local_dot_product[col                         ] += partsums[(padding+3*invec->traits.ncols)*i + 3*col + 0];
-                local_dot_product[col  +   invec->traits.ncols] += partsums[(padding+3*invec->traits.ncols)*i + 3*col + 1];
-                local_dot_product[col  + 2*invec->traits.ncols] += partsums[(padding+3*invec->traits.ncols)*i + 3*col + 2];
+                local_dot_product[col                         ] += partsums[(padding+3*PAD(invec->traits.ncols,2))*i + 3*col + 0];
+                local_dot_product[col  +   invec->traits.ncols] += partsums[(padding+3*PAD(invec->traits.ncols,2))*i + 3*col + 1];
+                local_dot_product[col  + 2*invec->traits.ncols] += partsums[(padding+3*PAD(invec->traits.ncols,2))*i + 3*col + 2];
             }
         }
         free(partsums);
