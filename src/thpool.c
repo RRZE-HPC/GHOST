@@ -18,6 +18,8 @@ static ghost_thpool_t *ghost_thpool = NULL;
 
 ghost_error_t ghost_thpool_create(int nThreads, void *(func)(void *))
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING|GHOST_FUNCTYPE_SETUP); 
+    
     int t;
     int oldthreads = 0; 
 
@@ -49,26 +51,30 @@ ghost_error_t ghost_thpool_create(int nThreads, void *(func)(void *))
         sem_wait(ghost_thpool->sem);
     }
         
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING|GHOST_FUNCTYPE_SETUP); 
     return GHOST_SUCCESS;
 }
 
 ghost_error_t ghost_thpool_thread_add(void *(func)(void *), intptr_t arg)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING); 
+    
     ghost_thpool->nThreads++;
 
     ghost_thpool->threads = realloc(ghost_thpool->threads,ghost_thpool->nThreads*sizeof(pthread_t));
     pthread_create(&(ghost_thpool->threads[ghost_thpool->nThreads-1]), NULL, func, (void *)arg);
     sem_wait(ghost_thpool->sem);
     
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING); 
     return GHOST_SUCCESS;
-
-
 }
 
 ghost_error_t ghost_thpool_destroy()
 {
     if (ghost_thpool == NULL)
         return GHOST_SUCCESS;
+
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING|GHOST_FUNCTYPE_TEARDOWN); 
 
     DEBUG_LOG(1,"Join all threads");
     int t; 
@@ -89,7 +95,7 @@ ghost_error_t ghost_thpool_destroy()
 //    hwloc_bitmap_free(ghost_thpool->busy); ghost_thpool->busy = NULL;
     free(ghost_thpool); ghost_thpool = NULL;
         
-
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING|GHOST_FUNCTYPE_TEARDOWN); 
     return GHOST_SUCCESS;
 }
 
@@ -104,8 +110,11 @@ ghost_error_t ghost_thpool_get(ghost_thpool_t **thpool)
         return GHOST_ERR_UNKNOWN;
     }
 
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING); 
+    
     *thpool = ghost_thpool;
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING); 
     return GHOST_SUCCESS;
 }
 
@@ -115,8 +124,10 @@ ghost_error_t ghost_thpool_key(pthread_key_t *key)
         ERROR_LOG("NULL pointer");
         return GHOST_ERR_INVALID_ARG;
     }
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING); 
 
     *key = ghost_thread_key;
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING); 
     return GHOST_SUCCESS;
 }

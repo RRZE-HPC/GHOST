@@ -5,6 +5,7 @@
 
 int ghost_sparsemat_rowfunc_mm(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, void *val, void *arg)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     static ghost_gidx_t *colInd = NULL, *rowPtr = NULL;
     static char *values = NULL;
     static size_t dtsize = 0;
@@ -189,6 +190,7 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gid
     }
 
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
     return 0;
 
 
@@ -196,6 +198,7 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gid
 
 int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, void *val, void *arg)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     static ghost_gidx_t *colInd = NULL, *rowPtr = NULL;
     static char *values = NULL;
     static size_t dtsize = 0;
@@ -380,6 +383,7 @@ int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx_t row, ghost_lidx_t *rowlen,
     }
 
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
     return 0;
 
 

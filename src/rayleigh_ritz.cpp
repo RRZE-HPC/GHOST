@@ -100,7 +100,8 @@ lapack_int call_geig_function<std::complex<double>,double>(int matrix_order, cha
     template <typename T, typename T_b>
 static ghost_error_t ghost_rayleigh_ritz_tmpl (ghost_sparsemat_t * mat, void * void_eigs, void * void_res,  ghost_densemat_t * v_eigs , ghost_densemat_t * v_res, int obtion, ghost_spmv_flags_t spMVM_Options)
 {
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_SOLVER);
+    
     ghost_error_t ret = GHOST_SUCCESS;
     T one = 1.0;
     T zero = 0.0;
@@ -178,7 +179,8 @@ out:
     x->destroy(x);
     free(eigs_T);
     free(res_T);
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
+    
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_SOLVER);
 
     return ret;
 }
@@ -186,6 +188,9 @@ out:
 
 ghost_error_t ghost_rayleigh_ritz(ghost_sparsemat_t * mat, void * eigs, void * res,  ghost_densemat_t * v_eigs , ghost_densemat_t * v_res, int obtion, ghost_spmv_flags_t spMVM_Options)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
+    
     if (v_res->traits.datatype & GHOST_DT_COMPLEX) {
         if (v_res->traits.datatype & GHOST_DT_DOUBLE) {
             return ghost_rayleigh_ritz_tmpl<std::complex<double>, double>( mat, eigs, res,  v_eigs , v_res, obtion, spMVM_Options);
@@ -204,7 +209,7 @@ ghost_error_t ghost_rayleigh_ritz(ghost_sparsemat_t * mat, void * eigs, void * r
     template <typename T, typename T_b>
 static ghost_error_t ghost_grayleigh_ritz_tmpl (ghost_sparsemat_t * mat, void * void_eigs, void * void_res,  ghost_densemat_t * v_eigs , ghost_densemat_t * v_res, int obtion, ghost_spmv_flags_t spMVM_Options)
 {
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_SOLVER);
     ghost_error_t ret = GHOST_SUCCESS;
     T one = 1.0;
     T zero = 0.0;
@@ -295,7 +300,7 @@ out:
     b->destroy(b);
     free(eigs_T);
     free(res_T);
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_SOLVER);
 
     return ret;
 }
@@ -303,6 +308,9 @@ out:
 
 ghost_error_t ghost_grayleigh_ritz(ghost_sparsemat_t * mat, void * eigs, void * res,  ghost_densemat_t * v_eigs , ghost_densemat_t * v_res, int obtion, ghost_spmv_flags_t spMVM_Options)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
+
     if (v_res->traits.datatype & GHOST_DT_COMPLEX) {
         if (v_res->traits.datatype & GHOST_DT_DOUBLE) {
             return ghost_grayleigh_ritz_tmpl<std::complex<double>, double>( mat, eigs, res,  v_eigs , v_res, obtion, spMVM_Options);
@@ -321,6 +329,8 @@ ghost_error_t ghost_grayleigh_ritz(ghost_sparsemat_t * mat, void * eigs, void * 
 #else
 ghost_error_t ghost_rayleigh_ritz(ghost_sparsemat_t * mat, void * eigs, void * res,  ghost_densemat_t * v_eigs , ghost_densemat_t * v_res, int obtion, ghost_spmv_flags_t spMVM_Options)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
+    
     UNUSED(mat);
     UNUSED(eigs);
     UNUSED(res);
@@ -329,11 +339,15 @@ ghost_error_t ghost_rayleigh_ritz(ghost_sparsemat_t * mat, void * eigs, void * r
     UNUSED(obtion);
     UNUSED(spMVM_Options);
     ERROR_LOG("LAPACKE not found!");
+    
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
     return GHOST_ERR_NOT_IMPLEMENTED;
 }
 
 ghost_error_t ghost_grayleigh_ritz(ghost_sparsemat_t * mat, void * eigs, void * res,  ghost_densemat_t * v_eigs , ghost_densemat_t * v_res, int obtion, ghost_spmv_flags_t spMVM_Options)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
+
     UNUSED(mat);
     UNUSED(eigs);
     UNUSED(res);
@@ -342,6 +356,8 @@ ghost_error_t ghost_grayleigh_ritz(ghost_sparsemat_t * mat, void * eigs, void * 
     UNUSED(obtion);
     UNUSED(spMVM_Options);
     ERROR_LOG("LAPACKE not found!");
+    
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
     return GHOST_ERR_NOT_IMPLEMENTED;
 }
 #endif

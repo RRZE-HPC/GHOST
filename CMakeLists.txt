@@ -135,6 +135,7 @@ set (HEADERS
     include/ghost/core.h
     include/ghost/cu_bench.h
     include/ghost/cu_util.h
+    include/ghost/datatransfers.h
     include/ghost/densemat.h
     include/ghost/densemat_cm.h
     include/ghost/densemat_iter_macros.h
@@ -344,6 +345,11 @@ set(HWLOC_LIBRARIES ${LIBHWLOC})
 mark_as_advanced(LIBHWLOC)
 mark_as_advanced(CLEAR HWLOC_INCLUDE_DIR)
 
+if (INSTRUMENTATION)
+  set(GHOST_HAVE_INSTR 1)
+else()
+  set(GHOST_HAVE_INSTR 0)
+endif()
 foreach(instr ${INSTRUMENTATION})
     if (${instr} STREQUAL "TIMING")
         set(GHOST_HAVE_INSTR_TIMING 1)

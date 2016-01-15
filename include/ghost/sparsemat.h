@@ -371,17 +371,6 @@ struct ghost_sparsemat_t
      * with distance i from diagonal
      */
     ghost_gidx_t *nzDist;
-
-    /**
-     * @brief Permute the matrix rows and column indices (if set in 
-     * mat->traits->flags) with the given permutation.
-     *
-     * @param mat The matrix.
-     * @param perm The permutation vector.
-     * @param invPerm The inverse permutation vector.
-     */
-    ghost_error_t (*permute) (ghost_sparsemat_t *mat, ghost_lidx_t *perm, 
-            ghost_lidx_t *invPerm);
     /**
      * @brief Calculate y = gamma * (A - I*alpha) * x + beta * y.
      *
@@ -416,15 +405,6 @@ struct ghost_sparsemat_t
      * @return The stringified matrix.
      */
     ghost_error_t (*string) (ghost_sparsemat_t *mat, char **str, int dense);
-    /**
-     * @brief Get the length of the given row.
-     *
-     * @param mat The matrix.
-     * @param row The row.
-     *
-     * @return The length of the row or zero if the row index is out of bounds. 
-     */
-    ghost_lidx_t  (*rowLen) (ghost_sparsemat_t *mat, ghost_lidx_t row);
     /**
      * @ingroup stringification
      *
@@ -575,7 +555,7 @@ extern "C" {
      *
      * @return A string holding the symmetry information.
      */
-    char * ghost_sparsemat_symmetry_string(ghost_sparsemat_symmetry_t symmetry);
+    const char * ghost_sparsemat_symmetry_string(ghost_sparsemat_symmetry_t symmetry);
     /**
      * @brief Check if the symmetry information of a sparse matrix is valid.
      *

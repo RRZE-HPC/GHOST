@@ -17,20 +17,34 @@
 #include "ghost/machine.h"
 #include "ghost/constants.h"
 
-#include <map>
+#include <unordered_map>
 
 typedef ghost_tsmttsm_parameters_t ghost_tsmttsm_kahan_parameters_t;
 typedef ghost_tsmttsm_parameters_t ghost_tsmttsm_kahan_parameters_t;
 
 using namespace std;
 
-static bool operator<(const ghost_tsmttsm_parameters_t &a, const ghost_tsmttsm_parameters_t &b) 
-{ 
-    return ghost_hash(a.dt,a.wcols,ghost_hash(a.vcols,a.impl,ghost_hash(a.xstor,a.wstor,ghost_hash(a.alignment,a.unroll,0)))) < ghost_hash(b.dt,b.wcols,ghost_hash(b.vcols,b.impl,ghost_hash(b.xstor,b.wstor,ghost_hash(b.alignment,b.unroll,0)))); 
+// Hash function for unordered_map
+namespace std
+{
+    template<> struct hash<ghost_tsmttsm_parameters_t>
+    {
+        typedef ghost_tsmttsm_parameters_t argument_type;
+        typedef std::size_t result_type;
+        result_type operator()(argument_type const& a) const
+        {
+            return ghost_hash(a.dt,a.wcols,ghost_hash(a.vcols,a.impl,ghost_hash(a.xstor,a.wstor,ghost_hash(a.alignment,a.unroll,0))));
+        }
+    };
 }
 
-static map<ghost_tsmttsm_parameters_t, ghost_tsmttsm_kernel_t> ghost_tsmttsm_kernels;
-static map<ghost_tsmttsm_parameters_t, ghost_tsmttsm_kernel_t> ghost_tsmttsm_kahan_kernels;
+bool operator==(const ghost_tsmttsm_parameters_t& a, const ghost_tsmttsm_parameters_t& b)
+{
+    return a.dt == b.dt && a.wcols == b.wcols && a.vcols == b.vcols && a.impl == b.impl && a.xstor == b.xstor && a.wstor == b.wstor && a.alignment == b.alignment && a.unroll == b.unroll;
+}
+
+static unordered_map<ghost_tsmttsm_parameters_t, ghost_tsmttsm_kernel_t> ghost_tsmttsm_kernels;
+static unordered_map<ghost_tsmttsm_parameters_t, ghost_tsmttsm_kernel_t> ghost_tsmttsm_kahan_kernels;
 
 
 ghost_error_t ghost_tsmttsm_valid(ghost_densemat_t *x, ghost_densemat_t *v, const char * transv, 
@@ -117,7 +131,7 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
     }
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
    
-    map<ghost_tsmttsm_parameters_t, ghost_tsmttsm_kernel_t> kernels;
+    unordered_map<ghost_tsmttsm_parameters_t, ghost_tsmttsm_kernel_t> kernels;
     if (flags & GHOST_GEMM_KAHAN) { 
         if (ghost_tsmttsm_kahan_kernels.empty()) {
 #include "tsmttsm_kahan_plain.def"

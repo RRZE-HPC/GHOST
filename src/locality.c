@@ -200,9 +200,12 @@ ghost_error_t ghost_nrank(int *nRanks, ghost_mpi_comm_t comm)
 
 ghost_error_t ghost_hwconfig_set(ghost_hwconfig_t a)
 {
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+    // function macros disabled because the instrumentation keys get created in ghost_init()
+    // and hwconfig_set() is called before that
+
+    //GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     ghost_hwconfig = a;
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
+    //GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return GHOST_SUCCESS; 
 }
 

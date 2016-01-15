@@ -85,6 +85,7 @@ static pthread_key_t mutex_key;
 
 ghost_error_t ghost_taskq_create()
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING|GHOST_FUNCTYPE_SETUP);
     int t,s;
     int npu;
 
@@ -130,6 +131,8 @@ ghost_error_t ghost_taskq_create()
 
     pthread_mutex_unlock(&(taskq->mutex));
     pthread_mutex_unlock(&globalMutex);
+    
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING|GHOST_FUNCTYPE_SETUP);
     return GHOST_SUCCESS;
 }
 
@@ -143,6 +146,8 @@ ghost_error_t ghost_taskq_create()
  */
 static int taskq_deleteTask(ghost_taskq_t *q, ghost_task_t *t)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING);
+    
     if (t == q->head) {
         DEBUG_LOG(1,"Removing head from queue %p",(void *)q);
         q->head = t->next;
@@ -163,6 +168,7 @@ static int taskq_deleteTask(ghost_taskq_t *q, ghost_task_t *t)
         t->next->prev = t->prev;
 
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING);
     return GHOST_SUCCESS;
 }
 
@@ -182,6 +188,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q, int nthreads)
         WARNING_LOG("Tried to find a job but the queue is NULL");
         return NULL;
     }
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING);
     ghost_task_t *curTask = q->head;
 
     DEBUG_LOG(1,"Try to find a suitable task");
@@ -223,6 +230,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q, int nthreads)
                 ghost_thread_unpin();
             }
             pthread_mutex_unlock(curTask->mutex);
+            GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING);
             return curTask;
         }
 
@@ -353,14 +361,16 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q, int nthreads)
         hwloc_bitmap_free(myfree);
         DEBUG_LOG(1,"Pinning successful, returning");
 
-            pthread_mutex_unlock(curTask->mutex);
+        pthread_mutex_unlock(curTask->mutex);
+
+        GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING);
         return curTask;
     }
 
     DEBUG_LOG(1,"Could not find and delete a task, returning NULL");
+    
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING);
     return NULL;
-
-
 }
 
 ghost_error_t ghost_taskq_startroutine(void *(**func)(void *))
@@ -369,8 +379,12 @@ ghost_error_t ghost_taskq_startroutine(void *(**func)(void *))
         ERROR_LOG("NULL pointer");
         return GHOST_ERR_INVALID_ARG;
     }
+    
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING);
+    
     *func =  &thread_main;
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING);
     return GHOST_SUCCESS;
 }
 
@@ -393,6 +407,9 @@ static void * thread_main(void *arg)
     }
 #endif
     ghost_task_t *myTask = NULL;
+    
+    ghost_instr_prefix_set("");
+    ghost_instr_suffix_set("");
 
     pthread_key_t key;
     ghost_thpool_key(&key);
@@ -507,6 +524,7 @@ static void * thread_main(void *arg)
  */
 ghost_error_t ghost_taskq_add(ghost_task_t *t)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING);
 
     if (taskq==NULL) {
         WARNING_LOG("Tried to add a task to a queue which is NULL");
@@ -560,6 +578,7 @@ ghost_error_t ghost_taskq_add(ghost_task_t *t)
     pthread_mutex_unlock(&anyTaskFinishedMutex);
     pthread_mutex_unlock(&taskq->mutex);
     
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING);
     return GHOST_SUCCESS;
 }
 
@@ -573,6 +592,7 @@ ghost_error_t ghost_taskq_destroy()
     if (taskq == NULL) {
         return GHOST_SUCCESS;
     }
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING|GHOST_FUNCTYPE_TEARDOWN);
 
     pthread_mutex_lock(&globalMutex);
     killed = 1;
@@ -599,6 +619,7 @@ ghost_error_t ghost_taskq_destroy()
     DEBUG_LOG(1,"Free task queues");    
     free(taskq); taskq = NULL;
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING|GHOST_FUNCTYPE_TEARDOWN);
     return GHOST_SUCCESS;    
 }
 
@@ -612,6 +633,7 @@ ghost_error_t ghost_taskq_waitall()
     if (!taskq) {
         return GHOST_SUCCESS;
     }
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING);
 
     int canremain = 0;
 
@@ -630,6 +652,7 @@ ghost_error_t ghost_taskq_waitall()
     }
     pthread_mutex_unlock(&anyTaskFinishedMutex);
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING);
     return GHOST_SUCCESS;
 }
 
@@ -645,6 +668,7 @@ ghost_error_t ghost_taskq_waitall()
  */
 ghost_error_t ghost_taskq_waitsome(ghost_task_t ** tasks, int nt, int *index)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING);
     int t;
     int ret = 0;
 
@@ -661,8 +685,10 @@ ghost_error_t ghost_taskq_waitsome(ghost_task_t ** tasks, int nt, int *index)
         }
         pthread_mutex_unlock(tasks[t]->stateMutex);
     }
-    if (ret)
+    if (ret) {
+        GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING);
         return GHOST_SUCCESS;
+    }
 
     pthread_mutex_lock(&anyTaskFinishedMutex);
     pthread_cond_wait(&anyTaskFinishedCond,&anyTaskFinishedMutex);
@@ -680,5 +706,6 @@ ghost_error_t ghost_taskq_waitsome(ghost_task_t ** tasks, int nt, int *index)
         pthread_mutex_unlock(tasks[t]->stateMutex);
     }
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING);
     return GHOST_SUCCESS;
 }

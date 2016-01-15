@@ -39,7 +39,14 @@ ghost_error_t FUNCNAME(malloc(ghost_densemat_t *vec, int* needsInit))
 
     if ((vec->traits.location & GHOST_LOCATION_HOST) && !vec->val) {
         DEBUG_LOG(2,"Allocating host side of densemat with %"PRLIDX"x%"PRLIDX" padded elements",vec->traits.nrowshalopadded,vec->traits.ncolspadded);
-        if (vec->traits.location & GHOST_LOCATION_DEVICE) {
+        ghost_type_t mytype;
+        ghost_type_get(&mytype);
+
+        // check for type rather than HOST+DEVICE placement
+        // it may happen that a HOST-only densemat gets re-located once uploaded
+        // to avoid that the HOST-memory is non-pinned in this case, we better
+        // use pinned memory always
+        if (mytype == GHOST_TYPE_CUDA) {
             GHOST_CALL_RETURN(ghost_malloc_pinned((void **)&vec->val,
                         (size_t)vec->traits.ncolspadded*vec->traits.nrowshalopadded*
                         vec->elSize));

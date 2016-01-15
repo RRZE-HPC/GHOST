@@ -108,9 +108,11 @@ out:
 
 ghost_error_t ghost_densemat_cm_averagehalo_selector(ghost_densemat_t *vec)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
     ghost_error_t ret = GHOST_SUCCESS;
 
     SELECT_TMPL_1DATATYPE(vec->traits.datatype,std::complex,ret,ghost_densemat_cm_averagehalo_tmpl,vec);
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_COMMUNICATION);
     return ret;
 }

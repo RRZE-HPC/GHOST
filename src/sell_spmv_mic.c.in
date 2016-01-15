@@ -148,6 +148,7 @@ ghost_error_t ghost_sellspmv__a_mic_d_d_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
 ghost_error_t ghost_sellspmv__a_mic_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
 {
 #if defined(GHOST_HAVE_MIC) && NVECS>=8
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     double *mval = (double *)SELL(mat)->val;
     double *local_dot_product = NULL;
     double *partsums = NULL;
@@ -249,6 +250,7 @@ ghost_error_t ghost_sellspmv__a_mic_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
         free(partsums);
     }
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
 #else
     UNUSED(mat);
     UNUSED(res);

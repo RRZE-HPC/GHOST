@@ -7,10 +7,12 @@
 #define GHOST_INSTR_H
 
 #include "config.h"
+#include <ghost/log.h>
+#include <ghost/error.h>
+#include <pthread.h>
 
 #ifdef GHOST_HAVE_INSTR_TIMING
 
-#include <ghost/log.h>
 #include <ghost/timing.h>
 
 #endif
@@ -21,14 +23,14 @@
 
 #endif
 
-extern int ghost_instr_enable;
+extern pthread_key_t ghost_instr_enable_key;
 
 #ifdef GHOST_HAVE_INSTR_TIMING
 
 #ifdef GHOST_HAVE_INSTR_LIKWID
 
 #define GHOST_INSTR_START(tag) {\
-    if (ghost_instr_enable) {\
+    if (pthread_getspecific(ghost_instr_enable_key)) {\
         if (GHOST_VERBOSITY > 1) {\
             DEBUG_LOG(1,"Enter instrumented region %s",tag);\
         }\
@@ -41,7 +43,7 @@ extern int ghost_instr_enable;
 }\
 
 #define GHOST_INSTR_STOP(tag) {\
-    if (ghost_instr_enable) {\
+    if (pthread_getspecific(ghost_instr_enable_key)) {\
         if (GHOST_VERBOSITY > 1) {\
             DEBUG_LOG(1,"Exit instrumented region %s",tag);\
         }\
@@ -56,7 +58,7 @@ extern int ghost_instr_enable;
 #else
 
 #define GHOST_INSTR_START(tag) {\
-    if (ghost_instr_enable) {\
+    if (pthread_getspecific(ghost_instr_enable_key)) {\
         if (GHOST_VERBOSITY > 1) {\
             DEBUG_LOG(1,"Enter instrumented region %s",tag);\
         }\
@@ -67,7 +69,7 @@ extern int ghost_instr_enable;
 }\
 
 #define GHOST_INSTR_STOP(tag) {\
-    if (ghost_instr_enable) {\
+    if (pthread_getspecific(ghost_instr_enable_key)) {\
         if (GHOST_VERBOSITY > 1) {\
             DEBUG_LOG(1,"Exit instrumented region %s",tag);\
         }\
@@ -89,7 +91,7 @@ extern int ghost_instr_enable;
  * @param tag The tag identifying the region.
  */
 #define GHOST_INSTR_START(tag) {\
-    if (ghost_instr_enable) {\
+    if (pthread_getspecific(ghost_instr_enable_key)) {\
         if (GHOST_VERBOSITY > 1) {\
             DEBUG_LOG(1,"Enter instrumented region %s",tag);\
         }\
@@ -106,7 +108,7 @@ extern int ghost_instr_enable;
  * @param tag The tag identifying the region.
  */
 #define GHOST_INSTR_STOP(tag) {\
-    if (ghost_instr_enable) {\
+    if (pthread_getspecific(ghost_instr_enable_key)) {\
         if (GHOST_VERBOSITY > 1) {\
             DEBUG_LOG(1,"Exit instrumented region %s",tag);\
         }\
@@ -164,6 +166,8 @@ extern "C" {
     void ghost_instr_suffix_set(const char *suffix);
 
     char *ghost_instr_suffix_get();
+    ghost_error_t ghost_instr_create();
+    ghost_error_t ghost_instr_destroy();
 
 #ifdef __cplusplus
 }

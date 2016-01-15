@@ -41,7 +41,6 @@ template<typename T> __global__ static void ghost_tsmm_inplace_cu_rm_cm_fallback
             x[row*stridex+k] = tmp[row*ldtmp+k];
         }
     }
-    delete tmp;
 }
 
 ghost_error_t ghost_tsmm_inplace__cuda_x_x_x(ghost_densemat_t *x, ghost_densemat_t *w, void *alpha, void *beta) 
@@ -57,7 +56,7 @@ ghost_error_t ghost_tsmm_inplace__cuda_x_x_x(ghost_densemat_t *x, ghost_densemat
     block.z = 1;
 
     void *tmp = NULL;
-    ghost_cu_malloc((void **)&tmp,x->traits.ncols*x->traits.nrows*x->elSize);
+    GHOST_CALL_RETURN(ghost_cu_malloc((void **)&tmp,x->traits.ncols*x->traits.nrows*x->elSize));
 
     if (x->traits.datatype & GHOST_DT_COMPLEX) {
         if (x->traits.datatype & GHOST_DT_DOUBLE) {

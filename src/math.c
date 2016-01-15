@@ -482,6 +482,7 @@ static void ghost_spmv_selectMode(ghost_context_t * context, ghost_spmv_flags_t 
 
 ghost_error_t ghost_mpi_op_sum(ghost_mpi_op_t * op, ghost_datatype_t datatype)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     if (!op) {
         ERROR_LOG("NULL pointer");
         return GHOST_ERR_INVALID_ARG;
@@ -505,12 +506,14 @@ ghost_error_t ghost_mpi_op_sum(ghost_mpi_op_t * op, ghost_datatype_t datatype)
     *op = MPI_OP_NULL;
 #endif
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return GHOST_SUCCESS;
 
 }
 
 ghost_error_t ghost_mpi_op_densemat_sum(ghost_mpi_op_t * op, ghost_datatype_t datatype)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     if (!op) {
         ERROR_LOG("NULL pointer");
         return GHOST_ERR_INVALID_ARG;
@@ -534,12 +537,14 @@ ghost_error_t ghost_mpi_op_densemat_sum(ghost_mpi_op_t * op, ghost_datatype_t da
     *op = MPI_OP_NULL;
 #endif
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return GHOST_SUCCESS;
 }
 
 
 ghost_error_t ghost_mpi_operations_create()
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_SETUP);
 #ifdef GHOST_HAVE_MPI
     MPI_CALL_RETURN(MPI_Op_create((MPI_User_function *)&ghost_mpi_add_c,1,&GHOST_MPI_OP_SUM_C));
     MPI_CALL_RETURN(MPI_Op_create((MPI_User_function *)&ghost_mpi_add_z,1,&GHOST_MPI_OP_SUM_Z));
@@ -556,11 +561,13 @@ ghost_error_t ghost_mpi_operations_create()
     UNUSED(GHOST_MPI_OP_SUM_DENSEMAT_Z);
 #endif
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_SETUP);
     return GHOST_SUCCESS;
 }
 
 ghost_error_t ghost_mpi_operations_destroy()
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TEARDOWN);
 #ifdef GHOST_HAVE_MPI
     MPI_CALL_RETURN(MPI_Op_free(&GHOST_MPI_OP_SUM_C));
     MPI_CALL_RETURN(MPI_Op_free(&GHOST_MPI_OP_SUM_Z));
@@ -570,11 +577,13 @@ ghost_error_t ghost_mpi_operations_destroy()
     MPI_CALL_RETURN(MPI_Op_free(&GHOST_MPI_OP_SUM_DENSEMAT_Z));
 #endif
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TEARDOWN);
     return GHOST_SUCCESS;
 }
 
 ghost_error_t ghost_spmv_nflops(int *nFlops, ghost_datatype_t m_t, ghost_datatype_t v_t)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     if (!ghost_datatype_valid(m_t)) {
         ERROR_LOG("Invalid matrix data type: %d",(int)m_t);
         return GHOST_ERR_INVALID_ARG;
@@ -600,29 +609,35 @@ ghost_error_t ghost_spmv_nflops(int *nFlops, ghost_datatype_t m_t, ghost_datatyp
         }
     }
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return GHOST_SUCCESS;
 }
 
 char * ghost_spmv_mode_string(ghost_spmv_flags_t flags) 
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+    char *ret;
     if (flags & GHOST_SPMV_MODE_NOMPI) {
-        return "Non-MPI";
+        ret = "Non-MPI";
     }
     if (flags & GHOST_SPMV_MODE_VECTOR) {
-        return "Vector mode";
+        ret = "Vector mode";
     }
     if (flags & GHOST_SPMV_MODE_OVERLAP) {
-        return "Naïve overlap mode";
+        ret = "Naïve overlap mode";
     }
     if (flags & GHOST_SPMV_MODE_TASK) {
-        return "Task mode";
+        ret = "Task mode";
     }
-    return "Invalid";
-
+    ret = "Invalid";
+    
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
+    return ret;
 }
 
 int ghost_spmv_perf(double *perf, double time, void *varg)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_BENCH);
     ghost_spmv_perf_args_t arg = *(ghost_spmv_perf_args_t *)varg;
 
     ghost_lidx_t ncol = arg.vecncols;
@@ -674,12 +689,14 @@ int ghost_spmv_perf(double *perf, double time, void *varg)
 
     *perf = flops/1.e9/time;
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_BENCH);
     return 0;
 
 }
 
 int ghost_axpbypcz_perf(double *perf, double time, void *varg)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_BENCH);
     ghost_axpbypcz_perf_args_t arg = *(ghost_axpbypcz_perf_args_t *)varg;
 
     ghost_lidx_t ncol = arg.ncols;
@@ -690,11 +707,13 @@ int ghost_axpbypcz_perf(double *perf, double time, void *varg)
 
     *perf = size*4*ncol*nrow/1.e9/time;
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_BENCH);
     return 0;
 }
 
 int ghost_axpby_perf(double *perf, double time, void *varg)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_BENCH);
     ghost_axpby_perf_args_t arg = *(ghost_axpby_perf_args_t *)varg;
 
     ghost_lidx_t ncol = arg.ncols;
@@ -705,11 +724,13 @@ int ghost_axpby_perf(double *perf, double time, void *varg)
 
     *perf = size*3*ncol*nrow/1.e9/time;
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_BENCH);
     return 0;
 }
 
 int ghost_axpy_perf(double *perf, double time, void *varg)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_BENCH);
     ghost_axpy_perf_args_t arg = *(ghost_axpy_perf_args_t *)varg;
 
     ghost_lidx_t ncol = arg.ncols;
@@ -720,11 +741,13 @@ int ghost_axpy_perf(double *perf, double time, void *varg)
 
     *perf = size*3*ncol*nrow/1.e9/time;
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_BENCH);
     return 0;
 }
 
 int ghost_dot_perf(double *perf, double time, void *varg)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_BENCH);
     ghost_dot_perf_args_t arg = *(ghost_dot_perf_args_t *)varg;
 
     ghost_lidx_t ncol = arg.ncols;
@@ -739,11 +762,13 @@ int ghost_dot_perf(double *perf, double time, void *varg)
         *perf *= 2;
     }
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_BENCH);
     return 0;
 }
 
 int ghost_scale_perf(double *perf, double time, void *varg)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_BENCH);
     ghost_scale_perf_args_t arg = *(ghost_scale_perf_args_t *)varg;
     
     ghost_lidx_t ncol = arg.ncols;
@@ -754,48 +779,60 @@ int ghost_scale_perf(double *perf, double time, void *varg)
 
     *perf = size*2*ncol*nrow/1.e9/time;
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_BENCH);
     return 0;
 }
 
 bool ghost_iszero(void *vnumber, ghost_datatype_t dt) 
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+    bool ret = false;
+
     if (dt & GHOST_DT_COMPLEX) {
         if (dt & GHOST_DT_FLOAT) {
             complex float number = *(complex float *)vnumber;
-            return fabsf(crealf(number)) < FLT_MIN && fabsf(cimagf(number)) < FLT_MIN;
+            ret = fabsf(crealf(number)) < FLT_MIN && fabsf(cimagf(number)) < FLT_MIN;
         } else {
             complex double number = *(complex double *)vnumber;
-            return fabs(creal(number)) < DBL_MIN && fabs(cimag(number)) < DBL_MIN;
+            ret = fabs(creal(number)) < DBL_MIN && fabs(cimag(number)) < DBL_MIN;
         }
     } else {
         if (dt & GHOST_DT_FLOAT) {
             float number = *(float *)vnumber;
-            return number < FLT_MIN;
+            ret = number < FLT_MIN;
         } else {
             double number = *(double *)vnumber;
-            return number < DBL_MIN;
+            ret = number < DBL_MIN;
         }
     }
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
+    return ret;
 }
 
 bool ghost_isone(void *vnumber, ghost_datatype_t dt) 
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+    bool ret = false;
+    
     if (dt & GHOST_DT_COMPLEX) {
         if (dt & GHOST_DT_FLOAT) {
             complex float number = *(complex float *)vnumber;
-            return fabsf(crealf(number)-1.f) < FLT_MIN && fabsf(cimagf(number)) < FLT_MIN;
+            ret = fabsf(crealf(number)-1.f) < FLT_MIN && fabsf(cimagf(number)) < FLT_MIN;
         } else {
             complex double number = *(complex double *)vnumber;
-            return fabs(creal(number)-1.) < DBL_MIN && fabs(cimag(number)) < DBL_MIN;
+            ret = fabs(creal(number)-1.) < DBL_MIN && fabs(cimag(number)) < DBL_MIN;
         }
     } else {
         if (dt & GHOST_DT_FLOAT) {
             float number = *(float *)vnumber;
-            return (number-1.f) < FLT_MIN;
+            ret = (number-1.f) < FLT_MIN;
         } else {
             double number = *(double *)vnumber;
-            return (number-1.) < DBL_MIN;
+            ret = (number-1.) < DBL_MIN;
         }
     }
+    
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
+    return ret;
 }

@@ -130,7 +130,11 @@ static ghost_error_t vec_cm_fromFunc(ghost_densemat_t *vec, int (*fp)(ghost_gidx
         } else {
           DENSEMAT_ITER(vec,fp(offset+row,col,valptr,arg));
         }
-        vec->upload(vec);
+        
+        // host+device case: uploading will be done in fromVec()
+        if (vec->traits.location & GHOST_LOCATION_DEVICE) {
+            vec->upload(vec);
+        }
     } else {
         INFO_LOG("Need to create dummy HOST densemat!");
         ghost_densemat_t *hostVec;
@@ -357,7 +361,7 @@ static ghost_error_t densemat_cm_halocommInit(ghost_densemat_t *vec, ghost_dense
 #ifdef GHOST_HAVE_MPI
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
     ghost_error_t ret = GHOST_SUCCESS;
-    int i, to_PE, from_PE;
+    int i, to_PE, from_PE, partner;
     int nprocs, me;
 
     GHOST_CALL_GOTO(ghost_rank(&me, vec->context->mpicomm),err,ret);
@@ -376,14 +380,14 @@ static ghost_error_t densemat_cm_halocommInit(ghost_densemat_t *vec, ghost_dense
     if (vec->context->perm_local) {
 #ifdef GHOST_HAVE_CUDA
         if (vec->traits.location & GHOST_LOCATION_DEVICE) {
-            ghost_densemat_cu_cm_communicationassembly(comm->cu_work,comm->dueptr,comm->acc_dues,vec,(ghost_lidx_t *)vec->context->perm_local->cu_perm);
+            ghost_densemat_cu_cm_communicationassembly(comm->cu_work,comm->dueptr,comm->acc_dues,vec,vec->context->perm_local->cu_perm);
         } else
 #endif
             if (vec->traits.location & GHOST_LOCATION_HOST) {
                 ghost_gidx_t c;
-#pragma omp parallel private(to_PE,i,c)
-                for (to_PE=0 ; to_PE<nprocs ; to_PE++){
-#pragma omp for 
+                for (partner = 0; partner<vec->context->nduepartners; partner++) {
+                    to_PE = vec->context->duepartners[partner];
+#pragma omp parallel for private(c) 
                     for (i=0; i<vec->context->dues[to_PE]; i++){
                         for (c=0; c<vec->traits.ncols; c++) {
                             memcpy(comm->work + (c*comm->acc_dues+comm->dueptr[to_PE]+i)*vec->elSize,
@@ -400,9 +404,9 @@ static ghost_error_t densemat_cm_halocommInit(ghost_densemat_t *vec, ghost_dense
 #endif
             if (vec->traits.location & GHOST_LOCATION_HOST) {
                 ghost_gidx_t c;
-#pragma omp parallel private(to_PE,i,c)
-                for (to_PE=0 ; to_PE<nprocs ; to_PE++){
-#pragma omp for 
+                for (partner = 0; partner<vec->context->nduepartners; partner++) {
+                    to_PE = vec->context->duepartners[partner];
+#pragma omp parallel for private(c) 
                     for (i=0; i<vec->context->dues[to_PE]; i++){
                         for (c=0; c<vec->traits.ncols; c++) {
                             memcpy(comm->work + (c*comm->acc_dues+comm->dueptr[to_PE]+i)*vec->elSize,
@@ -455,7 +459,7 @@ static ghost_error_t densemat_cm_halocommFinalize(ghost_densemat_t *vec, ghost_d
         GHOST_INSTR_START("Assemble row-major view");
         for (from_PE=0; from_PE<nprocs; from_PE++){
             for (i=0; i<vec->traits.ncols; i++){
-                memcpy(DENSEMAT_VALPTR(vec,vec->context->hput_pos[from_PE],i),&comm->tmprecv[from_PE][(i*comm->acc_wishes)*vec->elSize],vec->elSize*vec->context->wishes[from_PE]);
+                memcpy(DENSEMAT_VALPTR(vec,vec->context->hput_pos[from_PE],i),&comm->tmprecv[from_PE][(i*vec->context->wishes[from_PE])*vec->elSize],vec->elSize*vec->context->wishes[from_PE]);
             }
         }
         GHOST_INSTR_STOP("Assemble row-major view");
@@ -468,7 +472,7 @@ static ghost_error_t densemat_cm_halocommFinalize(ghost_densemat_t *vec, ghost_d
         ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_OUT,GHOST_DATATRANSFER_RANK_GPU,vec->context->halo_elements*vec->traits.ncols*vec->elSize);
 #endif
         for (from_PE=0; from_PE<nprocs; from_PE++){
-            ghost_cu_upload2d(DENSEMAT_CUVALPTR(vec,vec->context->hput_pos[from_PE],0),vec->stride*vec->elSize,comm->tmprecv[from_PE],comm->acc_wishes*vec->elSize,vec->context->wishes[from_PE]*vec->elSize,vec->traits.ncols);
+            ghost_cu_upload2d(DENSEMAT_CUVALPTR(vec,vec->context->hput_pos[from_PE],0),vec->stride*vec->elSize,comm->tmprecv[from_PE],vec->context->wishes[from_PE]*vec->elSize,vec->context->wishes[from_PE]*vec->elSize,vec->traits.ncols);
         }
     }
     GHOST_INSTR_STOP("upload");

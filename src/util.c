@@ -26,6 +26,8 @@
 
 ghost_error_t ghost_header_string(char **str, const char *fmt, ...)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+
     size_t headerLen = (PRINTWIDTH+1)*HEADERHEIGHT+1;
     *str = realloc(*str,strlen(*str)+headerLen);
     if (!(*str)) {
@@ -89,11 +91,15 @@ ghost_error_t ghost_header_string(char **str, const char *fmt, ...)
     offset += PRINTWIDTH;
     sprintf(*str+offset,"\n");
 #endif
+    
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return GHOST_SUCCESS;
 }
 
 ghost_error_t ghost_footer_string(char **str) 
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+    
     size_t len = strlen(*str);
     size_t footerLen = (PRINTWIDTH+1)*FOOTERHEIGHT+1;
     *str = realloc(*str,strlen(*str)+footerLen);
@@ -113,11 +119,13 @@ ghost_error_t ghost_footer_string(char **str)
 #endif
     sprintf(*str+len+PRINTWIDTH,"\n");
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return GHOST_SUCCESS;
 }
 
 ghost_error_t ghost_line_string(char **str, const char *label, const char *unit, const char *fmt, ...)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     int nLines, l;
     size_t len = strlen(*str);
 
@@ -156,12 +164,14 @@ ghost_error_t ghost_line_string(char **str, const char *label, const char *unit,
 #ifdef PRETTYPRINT
     sprintf(*str+len,"│");
 #endif
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return GHOST_SUCCESS;
 }
 
 
 ghost_error_t ghost_malloc(void **mem, const size_t size)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     if (!mem) {
         ERROR_LOG("NULL pointer");
         return GHOST_ERR_INVALID_ARG;
@@ -178,11 +188,14 @@ ghost_error_t ghost_malloc(void **mem, const size_t size)
         return GHOST_ERR_UNKNOWN;
     }
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return GHOST_SUCCESS;
 }
 
 ghost_error_t ghost_malloc_pinned(void **mem, const size_t size)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
 #ifdef GHOST_HAVE_CUDA
     return ghost_cu_malloc_pinned(mem,size);
 #else
@@ -192,6 +205,8 @@ ghost_error_t ghost_malloc_pinned(void **mem, const size_t size)
 
 ghost_error_t ghost_malloc_align(void **mem, const size_t size, const size_t align)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+
     int ierr;
     if (size/(1024.*1024.*1024.) > 1.) {
         DEBUG_LOG(1,"Allocating big array of size %f GB",size/(1024.*1024.*1024.));
@@ -202,17 +217,16 @@ ghost_error_t ghost_malloc_align(void **mem, const size_t size, const size_t ali
         return GHOST_ERR_UNKNOWN;
     }
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return GHOST_SUCCESS;
 }
 
-
-
-
-
-
-
+/*
+// make this inline for not wasting too much time hashing for kernel-map indexes
 int ghost_hash(int a, int b, int c)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+    
     a -= b; a -= c; a ^= (c>>13);
     b -= c; b -= a; b ^= (a<<8);
     c -= a; c -= b; c ^= (b>>13);
@@ -223,6 +237,8 @@ int ghost_hash(int a, int b, int c)
     b -= c; b -= a; b ^= (a<<10);
     c -= a; c -= b; c ^= (b>>15);
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return c;
 }
+*/
 

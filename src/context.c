@@ -46,7 +46,12 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_gidx_t gnrow
     (*context)->wishlist = NULL;
     (*context)->dues = NULL;
     (*context)->wishes = NULL;
-    
+    (*context)->duepartners = NULL;
+    (*context)->nduepartners = 0;
+    (*context)->wishpartners = NULL;
+    (*context)->nwishpartners = 0;
+   
+
     GHOST_CALL_GOTO(ghost_nrank(&nranks, (*context)->mpicomm),err,ret);
     GHOST_CALL_GOTO(ghost_rank(&me, (*context)->mpicomm),err,ret);
 
@@ -438,6 +443,8 @@ void ghost_context_destroy(ghost_context_t *context)
         free(context->lnrows); context->lnrows = NULL;
         free(context->lnEnts); context->lnEnts = NULL;
         free(context->lfEnt); context->lfEnt = NULL;
+        free(context->duepartners); context->duepartners = NULL;
+        free(context->wishpartners); context->wishpartners = NULL;
         if( context->perm_local )
         {
           free(context->perm_local->perm); context->perm_local->perm = NULL;
@@ -671,6 +678,7 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
                 }
             }
             ctx->wishes[i] = thisentry;
+            ctx->nwishpartners++;
         } else {
             ctx->wishes[i] = 0; 
         }
@@ -691,10 +699,19 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
     GHOST_INSTR_START("dues");
     for (i=0; i<nprocs; i++) {
         ctx->dues[i] = tmp_transfers[i*nprocs+me];
+        if (ctx->dues[i]) {
+            ctx->nduepartners++;
+        }
     }
 
     ctx->dues[me] = 0; 
     GHOST_INSTR_STOP("dues");
+    
+    // now, we now have many due/wish partners we have and can allocate the according arrays
+    // it will be filled in a later loop over nprocs 
+    GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->duepartners,sizeof(int)*ctx->nduepartners),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->wishpartners,sizeof(int)*ctx->nwishpartners),err,ret);
+    
     
     /* 
      * ctx->dues = <{0,2,1},{2,0,0},{1,1,0}>
@@ -812,8 +829,17 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
     acc_dues = 0;
     acc_wishes = 0;
 
+    int duepartneridx = 0, wishpartneridx = 0;
 
     for (i=0; i<nprocs; i++){
+        if (ctx->dues[i]) {
+            ctx->duepartners[duepartneridx] = i;
+            duepartneridx++;
+        }
+        if (ctx->wishes[i]) {
+            ctx->wishpartners[wishpartneridx] = i;
+            wishpartneridx++;
+        }
 
         ctx->duelist[i]    = &(duel_mem[acc_dues]);
 #ifdef GHOST_HAVE_CUDA
@@ -873,6 +899,8 @@ err:
     free(ctx->hput_pos); ctx->hput_pos = NULL;
     free(ctx->wishes); ctx->wishes = NULL;
     free(ctx->dues); ctx->dues = NULL;
+    free(ctx->duepartners); ctx->duepartners = NULL;
+    free(ctx->wishpartners); ctx->wishpartners = NULL;
 
 out:
     for (i=0; i<nprocs; i++) {

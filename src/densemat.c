@@ -14,6 +14,7 @@
 #include "ghost/bindensemat.h"
 #include "ghost/sell.h"
 #include "ghost/constants.h"
+#include "ghost/datatransfers.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -557,13 +558,17 @@ void ghost_densemat_destroy( ghost_densemat_t* vec )
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TEARDOWN);
     if (vec) {
         if (!(vec->traits.flags & GHOST_DENSEMAT_VIEW)) {
-            if (vec->traits.location == GHOST_LOCATION_DEVICE) {
+            if (vec->traits.location & GHOST_LOCATION_DEVICE) {
                 ghost_cu_free(vec->cu_val); vec->cu_val = NULL;
-            } else if (vec->traits.location == GHOST_LOCATION_HOST) {
-                free(vec->val); vec->val = NULL;
-            } else {
-                ghost_cu_free(vec->cu_val); vec->cu_val = NULL;
-                ghost_cu_free_host(vec->val); vec->val = NULL;
+            } 
+            if (vec->traits.location & GHOST_LOCATION_HOST) {
+                ghost_type_t mytype;
+                ghost_type_get(&mytype);
+                if (mytype == GHOST_TYPE_CUDA) {
+                    ghost_cu_free_host(vec->val); vec->val = NULL;
+                } else {
+                    free(vec->val); vec->val = NULL;
+                }
             }
         }
         ghost_bitmap_free(vec->rowmask); vec->rowmask = NULL;

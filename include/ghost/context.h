@@ -125,6 +125,10 @@ struct ghost_context_t
      * @brief First index to get RHS elements coming from each rank
      */
     ghost_lidx_t* hput_pos; // TODO rename
+    int *duepartners;
+    int nduepartners;
+    int *wishpartners;
+    int nwishpartners;
 };
 
 

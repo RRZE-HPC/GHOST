@@ -235,7 +235,7 @@ extern "C" {
      *
      * @return The state string
      */
-    char *ghost_task_state_string(ghost_task_state_t state);
+    const char *ghost_task_state_string(ghost_task_state_t state);
     /**
      * @ingroup stringification
      *

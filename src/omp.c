@@ -8,15 +8,19 @@
 
 void ghost_omp_nthread_set(int nthreads)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
 #ifdef GHOST_HAVE_OPENMP
     omp_set_num_threads(nthreads);
 #else
     UNUSED(nthreads);
 #endif
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
 }
 
 int ghost_omp_nthread()
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
 #ifdef GHOST_HAVE_OPENMP
     return omp_get_num_threads();
 #else 
@@ -26,6 +30,8 @@ int ghost_omp_nthread()
 
 int ghost_omp_threadnum()
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
 #ifdef GHOST_HAVE_OPENMP
     return omp_get_thread_num();
 #else
@@ -35,6 +41,8 @@ int ghost_omp_threadnum()
 
 int ghost_omp_get_nested()
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
 #ifdef GHOST_HAVE_OPENMP
     return omp_get_nested();
 #else
@@ -44,6 +52,8 @@ int ghost_omp_get_nested()
 
 int ghost_omp_in_parallel()
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
 #ifdef GHOST_HAVE_OPENMP
     return omp_in_parallel();
 #else
@@ -54,9 +64,11 @@ int ghost_omp_in_parallel()
 
 void ghost_omp_set_nested(int nested)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
 #ifdef GHOST_HAVE_OPENMP
     omp_set_nested(nested);
 #else
     UNUSED(nested);
 #endif
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
 }
