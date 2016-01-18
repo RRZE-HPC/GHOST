@@ -432,8 +432,7 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
     p.vdt = rhs->traits.datatype;
     p.mdt = mat->traits.datatype;
     p.storage = rhs->traits.storage;
-    if (p.storage == GHOST_DENSEMAT_ROWMAJOR && p.blocksz == 1 && 
-            rhs->stride == 1 && lhs->stride == 1) {
+    if (p.storage == GHOST_DENSEMAT_ROWMAJOR && rhs->stride == 1 && lhs->stride == 1) {
         INFO_LOG("Chose col-major kernel for row-major densemat with 1 column");
         p.storage = GHOST_DENSEMAT_COLMAJOR;
     }
@@ -457,7 +456,7 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
     }
 
     int al = ghost_machine_alignment();
-    if (IS_ALIGNED(lhs->val,al) && IS_ALIGNED(rhs->val,al) && ((lhs->traits.ncols == 1) || (!((lhs->stride*lhs->elSize) % al) && !((rhs->stride*rhs->elSize) % al)))) {
+    if (IS_ALIGNED(lhs->val,al) && IS_ALIGNED(rhs->val,al) && ((lhs->traits.ncols == 1 && lhs->stride == 1) || (!((lhs->stride*lhs->elSize) % al) && !((rhs->stride*rhs->elSize) % al)))) {
         opt_align = GHOST_ALIGNED;
     } else {
         if (!IS_ALIGNED(lhs->val,al)) {
