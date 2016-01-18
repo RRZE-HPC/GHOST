@@ -226,9 +226,9 @@ ghost_error_t ghost_sellspmv__u_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
             }
         }
         if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
-                #GHOST_UNROLL#_mm_storel_pd(&partsums[((padding+3*PAD(invec->traits.ncols,2))*tid)+(6*@)+0],dot1_@);_mm_storeh_pd(&partsums[((padding+3*PAD(invec->traits.ncols,2))*tid)+(6*@)+1+0],dot1_@);#NVECS/2
-                #GHOST_UNROLL#_mm_storel_pd(&partsums[((padding+3*PAD(invec->traits.ncols,2))*tid)+(6*@)+1],dot2_@);_mm_storeh_pd(&partsums[((padding+3*PAD(invec->traits.ncols,2))*tid)+(6*@)+1+1],dot2_@);#NVECS/2
-                #GHOST_UNROLL#_mm_storel_pd(&partsums[((padding+3*PAD(invec->traits.ncols,2))*tid)+(6*@)+2],dot3_@);_mm_storeh_pd(&partsums[((padding+3*PAD(invec->traits.ncols,2))*tid)+(6*@)+1+2],dot3_@);#NVECS/2
+                #GHOST_UNROLL#_mm_storel_pd(&partsums[((padding+3*PAD(invec->traits.ncols,2))*tid)+6*@+0],dot1_@);_mm_storeh_pd(&partsums[((padding+3*PAD(invec->traits.ncols,2))*tid)+6*@+3+0],dot1_@);#NVECS/2
+                #GHOST_UNROLL#_mm_storel_pd(&partsums[((padding+3*PAD(invec->traits.ncols,2))*tid)+6*@+1],dot2_@);_mm_storeh_pd(&partsums[((padding+3*PAD(invec->traits.ncols,2))*tid)+6*@+3+1],dot2_@);#NVECS/2
+                #GHOST_UNROLL#_mm_storel_pd(&partsums[((padding+3*PAD(invec->traits.ncols,2))*tid)+6*@+2],dot3_@);_mm_storeh_pd(&partsums[((padding+3*PAD(invec->traits.ncols,2))*tid)+6*@+3+2],dot3_@);#NVECS/2
         }
             
     }
@@ -267,3 +267,4 @@ ghost_error_t ghost_sellspmv__u_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
     return GHOST_ERR_NOT_IMPLEMENTED;
 #endif
 }
+
