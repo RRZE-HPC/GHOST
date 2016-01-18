@@ -164,7 +164,7 @@ ghost_error_t ghost_sellspmv__a_sse_d_d_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat,
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_sellspmv__a_sse_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
+ghost_error_t ghost_sellspmvDEFUNC__a_sse_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
 {
 #ifdef GHOST_HAVE_SSE
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
@@ -201,8 +201,8 @@ ghost_error_t ghost_sellspmv__a_sse_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat,
             nthreads = ghost_omp_nthread();
         }
 
-        GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,(3*invec->traits.ncols+padding)*nthreads*sizeof(double))); 
-        for (col=0; col<(3*invec->traits.ncols+padding)*nthreads; col++) {
+        GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,(3*PAD(invec->traits.ncols,2)+padding)*nthreads*sizeof(double))); 
+        for (col=0; col<(3*PAD(invec->traits.ncols,2)+padding)*nthreads; col++) {
             partsums[col] = 0.;
         }
     }
@@ -253,9 +253,9 @@ ghost_error_t ghost_sellspmv__a_sse_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat,
                     }
                     if (spmvmOptions & GHOST_SPMV_DOT) {
                         for (col = donecols; col<donecols+2; col++) {
-                                #GHOST_UNROLL#partsums[((padding+3*invec->traits.ncols)*tid)+3*col+0] += lval[col+@*res->stride]*lval[col+@*res->stride];#CHUNKHEIGHT
-                                #GHOST_UNROLL#partsums[((padding+3*invec->traits.ncols)*tid)+3*col+1] += lval[col+@*res->stride]*rval[col+@*invec->stride];#CHUNKHEIGHT
-                                #GHOST_UNROLL#partsums[((padding+3*invec->traits.ncols)*tid)+3*col+2] += rval[col+@*invec->stride]*rval[col+@*invec->stride];#CHUNKHEIGHT
+                                #GHOST_UNROLL#partsums[((padding+3*PAD(invec->traits.ncols,2))*tid)+3*col+0] += lval[col+@*res->stride]*lval[col+@*res->stride];#CHUNKHEIGHT
+                                #GHOST_UNROLL#partsums[((padding+3*PAD(invec->traits.ncols,2))*tid)+3*col+1] += lval[col+@*res->stride]*rval[col+@*invec->stride];#CHUNKHEIGHT
+                                #GHOST_UNROLL#partsums[((padding+3*PAD(invec->traits.ncols,2))*tid)+3*col+2] += rval[col+@*invec->stride]*rval[col+@*invec->stride];#CHUNKHEIGHT
                         }
                     }
                 } else {
@@ -280,9 +280,9 @@ ghost_error_t ghost_sellspmv__a_sse_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat,
             local_dot_product[col  +   invec->traits.ncols] = 0.;
             local_dot_product[col  + 2*invec->traits.ncols] = 0.;
             for (i=0; i<nthreads; i++) {
-                local_dot_product[col                         ] += partsums[(padding+3*invec->traits.ncols)*i + 3*col + 0];
-                local_dot_product[col  +   invec->traits.ncols] += partsums[(padding+3*invec->traits.ncols)*i + 3*col + 1];
-                local_dot_product[col  + 2*invec->traits.ncols] += partsums[(padding+3*invec->traits.ncols)*i + 3*col + 2];
+                local_dot_product[col                         ] += partsums[(padding+3*PAD(invec->traits.ncols,2))*i + 3*col + 0];
+                local_dot_product[col  +   invec->traits.ncols] += partsums[(padding+3*PAD(invec->traits.ncols,2))*i + 3*col + 1];
+                local_dot_product[col  + 2*invec->traits.ncols] += partsums[(padding+3*PAD(invec->traits.ncols,2))*i + 3*col + 2];
             }
         }
         free(partsums);
