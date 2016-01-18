@@ -269,7 +269,9 @@ __global__ void SELL_kernel_cm_fallback_tmpl(v_t * const __restrict__ lhs, const
         }
 
         dot1 = ghost_blockReduceSum(dot1);
+        __syncthreads();
         dot2 = ghost_blockReduceSum(dot2);
+        __syncthreads();
         dot3 = ghost_blockReduceSum(dot3);
 
         if (threadIdx.x==0) {
@@ -776,7 +778,9 @@ __global__ void SELL_kernel_CU_tmpl(
         }
 
         dot1 = ghost_blockReduceSum(dot1);
+        __syncthreads();
         dot2 = ghost_blockReduceSum(dot2);
+        __syncthreads();
         dot3 = ghost_blockReduceSum(dot3);
 
         if (threadIdx.x==0) {
