@@ -996,7 +996,7 @@ static ghost_error_t ghost_cu_sell_spmv_tmpl(ghost_sparsemat_t *mat, ghost_dense
         if (prop.sharedMemPerBlock < reqSmem) {
             WARNING_LOG("Not enough shared memory available! CUDA kernel will not execute!");
         }*/
-        ERROR_LOG("grid %dx%d block %dx%d shmem %zu",grid.x,grid.y,block.x,block.y,reqSmem);
+        DEBUG_LOG(1,"grid %dx%d block %dx%d shmem %zu",grid.x,grid.y,block.x,block.y,reqSmem);
         SELL_CU_SPMV_SELECTOR(SELL_kernel_CU_rm_new_tmpl,m_dt,v_dt_device,v_dt_base,grid,block,reqSmem)
 #if 0
         DEBUG_LOG(1,"Experimental row-major CUDA SELL-SpMMV with ncols != 32");
