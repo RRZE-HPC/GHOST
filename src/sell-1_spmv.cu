@@ -158,7 +158,7 @@ static ghost_error_t ghost_cu_sell1spmv_augfunc_tmpl(ghost_densemat_t * lhs, gho
             lhs->localdot_vanilla(lhs,&localdot[0],lhs);
         }
         if (options & GHOST_SPMV_DOT_XY) {
-            lhs->localdot_vanilla(lhs,&localdot[rhs->traits.ncols],rhs);
+            rhs->localdot_vanilla(rhs,&localdot[lhs->traits.ncols],lhs);
         }
         if (options & GHOST_SPMV_DOT_XX) {
             rhs->localdot_vanilla(rhs,&localdot[2*lhs->traits.ncols],rhs);
