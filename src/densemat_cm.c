@@ -390,7 +390,7 @@ static ghost_error_t densemat_cm_halocommInit(ghost_densemat_t *vec, ghost_dense
 #pragma omp parallel for private(c) 
                     for (i=0; i<vec->context->dues[to_PE]; i++){
                         for (c=0; c<vec->traits.ncols; c++) {
-                            memcpy(comm->work + (c*vec->context->dues[to_PE]+comm->dueptr[to_PE]+i)*vec->elSize,
+                            memcpy(comm->work + (c*vec->context->dues[to_PE]+comm->dueptr[to_PE]*vec->traits.ncols+i)*vec->elSize,
                                     DENSEMAT_VALPTR(vec,vec->context->perm_local->perm[vec->context->duelist[to_PE][i]],c),vec->elSize);
                         }
                     }
@@ -409,7 +409,7 @@ static ghost_error_t densemat_cm_halocommInit(ghost_densemat_t *vec, ghost_dense
 #pragma omp parallel for private(c) 
                     for (i=0; i<vec->context->dues[to_PE]; i++){
                         for (c=0; c<vec->traits.ncols; c++) {
-                            memcpy(comm->work + (c*vec->context->dues[to_PE]+comm->dueptr[to_PE]+i)*vec->elSize,
+                            memcpy(comm->work + (c*vec->context->dues[to_PE]+comm->dueptr[to_PE]*vec->traits.ncols+i)*vec->elSize,
                                     DENSEMAT_VALPTR(vec,vec->context->duelist[to_PE][i],c),vec->elSize);
                         }
                     }
