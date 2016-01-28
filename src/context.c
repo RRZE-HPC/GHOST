@@ -471,7 +471,6 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
     ghost_lidx_t max_loc_elements, thisentry;
     ghost_lidx_t *present_values = NULL;
     ghost_lidx_t acc_dues = 0;
-    ghost_lidx_t *tmp_transfers = NULL;
     ghost_lidx_t acc_wishes;
 
     ghost_lidx_t *item_from = NULL;
@@ -563,7 +562,6 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
      * comm_remotePE   = <{0,0,0,0,0,0,0},{0,0,0,0,0,0},{0,0,0,0,0}> PE where element is on
      * comm_remoteEl   = <{0,0,0,0,0,0,0},{0,0,0,0,0,0},{0,0,0,0,0}> local colidx of element
      * present_values  = <{0,0,0,0,0,0,0},{0,0,0,0,0,0,0},{0,0,0,0,0,0,0}> 
-     * tmp_transfers   = <{0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0}>
      */
 
       
@@ -572,7 +570,6 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
     GHOST_CALL_GOTO(ghost_malloc((void **)&comm_remotePE, size_lcol),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&comm_remoteEl, size_lcol),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&present_values, size_pval),err,ret); 
-    GHOST_CALL_GOTO(ghost_malloc((void **)&tmp_transfers,  size_a2ai),err,ret); 
 
     for (i=0; i<nprocs; i++) wishlist_counts[i] = 0;
 
@@ -662,8 +659,14 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
      * item_from = <{3,3,1},{3,2,1},{1,0,4}> equal to wishlist_counts
      */
 
+    MPI_Barrier(MPI_COMM_WORLD);
 
-    GHOST_INSTR_START("wishes");
+    GHOST_INSTR_START("wishes_and_dues");
+    MPI_Win due_win,nduepartners_win;
+    MPI_CALL_GOTO(MPI_Win_create(ctx->dues,nprocs*sizeof(ghost_lidx_t),sizeof(ghost_lidx_t),MPI_INFO_NULL,ctx->mpicomm,&due_win),err,ret);
+    MPI_CALL_GOTO(MPI_Win_create(&ctx->nduepartners,sizeof(int),sizeof(int),MPI_INFO_NULL,ctx->mpicomm,&nduepartners_win),err,ret);
+
+    int one = 1;
     for (i=0; i<nprocs; i++) {
         for (j=0; j<max_loc_elements; j++) 
             present_values[j] = -1;
@@ -679,43 +682,35 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
             }
             ctx->wishes[i] = thisentry;
             ctx->nwishpartners++;
+
+            MPI_CALL_GOTO(MPI_Win_lock(MPI_LOCK_SHARED,i,0,due_win),err,ret);            
+            MPI_CALL_GOTO(MPI_Put(&ctx->wishes[i],1,ghost_mpi_dt_lidx,i,me,1,ghost_mpi_dt_lidx,due_win),err,ret);
+            MPI_CALL_GOTO(MPI_Win_unlock(i,due_win),err,ret);            
+            
+            MPI_CALL_GOTO(MPI_Win_lock(MPI_LOCK_SHARED,i,0,nduepartners_win),err,ret);            
+            MPI_CALL_GOTO(MPI_Accumulate(&one,1,MPI_INT,i,0,1,MPI_INT,MPI_SUM,nduepartners_win),err,ret);
+            MPI_CALL_GOTO(MPI_Win_unlock(i,nduepartners_win),err,ret);            
         } else {
             ctx->wishes[i] = 0; 
         }
 
     }
 
+    MPI_Win_free(&due_win);
+    MPI_Win_free(&nduepartners_win);
     /* 
      * cwishlist = <{{#,#,#},{1,0,#},{0}},{{0,1,#},{#,#},{1}},{{0},NULL,{#,#,#,#}}> compressed wish list
      * ctx->wishes = <{0,2,1},{2,0,1},{1,0,0}>
+     * ctx->dues = <{0,2,1},{2,0,0},{1,1,0}>
      */
 
-#ifdef GHOST_HAVE_MPI
-    MPI_CALL_GOTO(MPI_Allgather(ctx->wishes, nprocs, ghost_mpi_dt_lidx, tmp_transfers, 
-                nprocs, ghost_mpi_dt_lidx, ctx->mpicomm),err,ret);
-#endif
-    GHOST_INSTR_STOP("wishes");
-    
-    GHOST_INSTR_START("dues");
-    for (i=0; i<nprocs; i++) {
-        ctx->dues[i] = tmp_transfers[i*nprocs+me];
-        if (ctx->dues[i]) {
-            ctx->nduepartners++;
-        }
-    }
+    GHOST_INSTR_STOP("wishes_and_dues");
 
-    ctx->dues[me] = 0; 
-    GHOST_INSTR_STOP("dues");
-    
+
     // now, we now have many due/wish partners we have and can allocate the according arrays
     // it will be filled in a later loop over nprocs 
     GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->duepartners,sizeof(int)*ctx->nduepartners),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->wishpartners,sizeof(int)*ctx->nwishpartners),err,ret);
-    
-    
-    /* 
-     * ctx->dues = <{0,2,1},{2,0,0},{1,1,0}>
-     */
 
     acc_transfer_dues = 0;
     acc_transfer_wishes = 0;
@@ -809,6 +804,7 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
      * col[i] = <{0,1,2,4,1,3,2},{2,3,4,3,0,1},{0,1,2,0,1}>
      */
 
+    GHOST_INSTR_START("final")
 
     size_wish = (size_t)( acc_transfer_wishes * sizeof(ghost_lidx_t) );
     size_dues = (size_t)( acc_transfer_dues   * sizeof(ghost_lidx_t) );
@@ -865,6 +861,8 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
             ctx->wishlist[i][j] = cwishlist[i][j]; 
 
     int msgcount = 0;
+
+    // TODO only loop duepartners
     for(i=0; i<nprocs; i++) 
     { // receive _my_ dues from _other_ processes' wishes
         MPI_CALL_GOTO(MPI_Irecv(ctx->duelist[i],ctx->dues[i],ghost_mpi_dt_lidx,i,i,ctx->mpicomm,&req[msgcount]),err,ret);
@@ -887,6 +885,7 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
 #endif
 
 
+    GHOST_INSTR_STOP("final")
     goto out;
 
 err:
@@ -911,7 +910,6 @@ out:
         free(cwishlist[i]); cwishlist[i] = NULL;
     }
     free(cwishlist); cwishlist = NULL;
-    free(tmp_transfers); tmp_transfers = NULL;
     free(wishlist_counts); wishlist_counts = NULL;
     free(item_from); item_from = NULL;
     free(comm_remotePE); comm_remotePE = NULL;
