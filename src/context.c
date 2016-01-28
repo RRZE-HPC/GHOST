@@ -668,10 +668,12 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
 
     int one = 1;
     for (i=0; i<nprocs; i++) {
-        for (j=0; j<max_loc_elements; j++) 
-            present_values[j] = -1;
 
         if ( (i!=me) && (wishlist_counts[i]>0) ){
+#pragma omp parallel for
+            for (j=0; j<max_loc_elements; j++) {
+                present_values[j] = -1;
+            }
             thisentry = 0;
             for (j=0; j<wishlist_counts[i]; j++){
                 if (present_values[wishlist[i][j]]<0){
