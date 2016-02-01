@@ -166,8 +166,8 @@ extern "C" {
     void ghost_instr_suffix_set(const char *suffix);
 
     char *ghost_instr_suffix_get();
-    ghost_error_t ghost_instr_create();
-    ghost_error_t ghost_instr_destroy();
+    ghost_error ghost_instr_create();
+    ghost_error ghost_instr_destroy();
 
 #ifdef __cplusplus
 }

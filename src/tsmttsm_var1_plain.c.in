@@ -10,12 +10,12 @@
 
 #GHOST_SUBST BLOCKSZ ${BLOCKDIM1}
 
-ghost_error_t ghost_tsmttsm__a_plain_d_x_BLOCKSZ_1_cm_rm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conjv)
+ghost_error ghost_tsmttsm__a_plain_d_x_BLOCKSZ_1_cm_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
 {
     UNUSED(conjv);
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
-    ghost_error_t ret = GHOST_SUCCESS;
-    ghost_lidx_t K = w->traits.ncols;
+    ghost_error ret = GHOST_SUCCESS;
+    ghost_lidx K = w->traits.ncols;
 
 #ifdef GHOST_TSMTTSM_KAHAN
     WARNING_LOG("Kahan summation not implemented for this kernel. Falling back to normal summation!");
@@ -27,7 +27,7 @@ ghost_error_t ghost_tsmttsm__a_plain_d_x_BLOCKSZ_1_cm_rm(ghost_densemat_t *x, gh
         GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
     }
 
-    ghost_lidx_t n = v->traits.nrows;
+    ghost_lidx n = v->traits.nrows;
     
     INFO_LOG("In TSMTTSM with fixed m BLOCKSZ and arbitrary k %d: %dx%d <- %dx%d * %dx%d",K,BLOCKSZ,K,BLOCKSZ,n,n,K);
     
@@ -35,9 +35,9 @@ ghost_error_t ghost_tsmttsm__a_plain_d_x_BLOCKSZ_1_cm_rm(ghost_densemat_t *x, gh
     const double * const restrict wval = (const double *) w->val;
     double * const restrict xval = (double *) x->val;
 
-    const ghost_lidx_t ldv = v->stride;
-    const ghost_lidx_t ldw = w->stride;
-    const ghost_lidx_t ldx = x->stride;
+    const ghost_lidx ldv = v->stride;
+    const ghost_lidx ldw = w->stride;
+    const ghost_lidx ldx = x->stride;
     
     const double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
@@ -47,9 +47,9 @@ ghost_error_t ghost_tsmttsm__a_plain_d_x_BLOCKSZ_1_cm_rm(ghost_densemat_t *x, gh
         dbeta = 0.;
     }
 
-    ghost_lidx_t i,j;
+    ghost_lidx i,j;
     
-    ghost_lidx_t k;
+    ghost_lidx k;
     for (j=0; j<BLOCKSZ; j++) {
         for (k=0; k<K; k++) {
             xval[k*ldx+j] = dbeta*xval[k*ldx+j];
@@ -96,12 +96,12 @@ out:
     return ret;
 }
 
-ghost_error_t ghost_tsmttsm__a_plain_d_x_BLOCKSZ_1_rm_rm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conjv)
+ghost_error ghost_tsmttsm__a_plain_d_x_BLOCKSZ_1_rm_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
 {
     UNUSED(conjv);
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
-    ghost_error_t ret = GHOST_SUCCESS;
-    ghost_lidx_t K = w->traits.ncols;
+    ghost_error ret = GHOST_SUCCESS;
+    ghost_lidx K = w->traits.ncols;
 
 #ifdef GHOST_TSMTTSM_KAHAN
     WARNING_LOG("Kahan summation not implemented for this kernel. Falling back to normal summation!");
@@ -113,7 +113,7 @@ ghost_error_t ghost_tsmttsm__a_plain_d_x_BLOCKSZ_1_rm_rm(ghost_densemat_t *x, gh
         GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
     }
 
-    ghost_lidx_t n = v->traits.nrows;
+    ghost_lidx n = v->traits.nrows;
     
     INFO_LOG("In TSMTTSM with fixed m BLOCKSZ and arbitrary k %d: %dx%d <- %dx%d * %dx%d",K,BLOCKSZ,K,BLOCKSZ,n,n,K);
     
@@ -121,9 +121,9 @@ ghost_error_t ghost_tsmttsm__a_plain_d_x_BLOCKSZ_1_rm_rm(ghost_densemat_t *x, gh
     const double * const restrict wval = (const double *) w->val;
     double * const restrict xval = (double *) x->val;
 
-    const ghost_lidx_t ldv = v->stride;
-    const ghost_lidx_t ldw = w->stride;
-    const ghost_lidx_t ldx = x->stride;
+    const ghost_lidx ldv = v->stride;
+    const ghost_lidx ldw = w->stride;
+    const ghost_lidx ldx = x->stride;
     
     const double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
@@ -133,9 +133,9 @@ ghost_error_t ghost_tsmttsm__a_plain_d_x_BLOCKSZ_1_rm_rm(ghost_densemat_t *x, gh
         dbeta = 0.;
     }
 
-    ghost_lidx_t i,j;
+    ghost_lidx i,j;
     
-    ghost_lidx_t k;
+    ghost_lidx k;
     for (j=0; j<BLOCKSZ; j++) {
         for (k=0; k<K; k++) {
             xval[k*ldx+j] = dbeta*xval[k*ldx+j];
@@ -182,11 +182,11 @@ out:
     return ret;
 }
 
-ghost_error_t ghost_tsmttsm__a_plain_d_BLOCKSZ_x_1_cm_rm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conjv)
+ghost_error ghost_tsmttsm__a_plain_d_BLOCKSZ_x_1_cm_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
 {
     UNUSED(conjv);
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
 
 #ifdef GHOST_TSMTTSM_KAHAN
     WARNING_LOG("Kahan summation not implemented for this kernel. Falling back to normal summation!");
@@ -198,13 +198,13 @@ ghost_error_t ghost_tsmttsm__a_plain_d_BLOCKSZ_x_1_cm_rm(ghost_densemat_t *x, gh
         GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
     }
 
-    ghost_lidx_t n = v->traits.nrows;
-    ghost_lidx_t m = v->traits.ncols;
+    ghost_lidx n = v->traits.nrows;
+    ghost_lidx m = v->traits.ncols;
     
     INFO_LOG("In TSMTTSM with fixed k BLOCKSZ and arbitrary m %d: %dx%d <- %dx%d * %dx%d",m,m,BLOCKSZ,m,n,n,BLOCKSZ);
     
     double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    ghost_lidx ldv, ldw, ldx;
 
     ldv = v->stride;
     ldw = w->stride;
@@ -222,9 +222,9 @@ ghost_error_t ghost_tsmttsm__a_plain_d_BLOCKSZ_x_1_cm_rm(ghost_densemat_t *x, gh
         dbeta = 0.;
     }
 
-    ghost_lidx_t i,j;
+    ghost_lidx i,j;
     
-    ghost_lidx_t k;
+    ghost_lidx k;
     for (j=0; j<m; j++) {
         for (k=0; k<BLOCKSZ; k++) {
             xval[k*ldx+j] = dbeta*xval[k*ldx+j];
@@ -269,11 +269,11 @@ out:
     return ret;
 }
 
-ghost_error_t ghost_tsmttsm__a_plain_d_BLOCKSZ_x_1_rm_rm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conjv)
+ghost_error ghost_tsmttsm__a_plain_d_BLOCKSZ_x_1_rm_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
 {
     UNUSED(conjv);
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
 
 #ifdef GHOST_TSMTTSM_KAHAN
     WARNING_LOG("Kahan summation not implemented for this kernel. Falling back to normal summation!");
@@ -285,13 +285,13 @@ ghost_error_t ghost_tsmttsm__a_plain_d_BLOCKSZ_x_1_rm_rm(ghost_densemat_t *x, gh
         GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
     }
 
-    ghost_lidx_t n = v->traits.nrows;
-    ghost_lidx_t m = v->traits.ncols;
+    ghost_lidx n = v->traits.nrows;
+    ghost_lidx m = v->traits.ncols;
     
     INFO_LOG("In TSMTTSM with fixed k BLOCKSZ and arbitrary m %d: %dx%d <- %dx%d * %dx%d",m,m,BLOCKSZ,m,n,n,BLOCKSZ);
     
     double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    ghost_lidx ldv, ldw, ldx;
 
     ldv = v->stride;
     ldw = w->stride;
@@ -309,9 +309,9 @@ ghost_error_t ghost_tsmttsm__a_plain_d_BLOCKSZ_x_1_rm_rm(ghost_densemat_t *x, gh
         dbeta = 0.;
     }
 
-    ghost_lidx_t i,j;
+    ghost_lidx i,j;
     
-    ghost_lidx_t k;
+    ghost_lidx k;
     for (j=0; j<m; j++) {
         for (k=0; k<BLOCKSZ; k++) {
             xval[k*ldx+j] = dbeta*xval[k*ldx+j];
@@ -358,12 +358,12 @@ out:
     return ret;
 }
 
-ghost_error_t ghost_tsmttsm__a_plain_z_x_BLOCKSZ_1_cm_rm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conjv)
+ghost_error ghost_tsmttsm__a_plain_z_x_BLOCKSZ_1_cm_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
 {
     UNUSED(conjv);
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
-    ghost_error_t ret = GHOST_SUCCESS;
-    ghost_lidx_t K = w->traits.ncols;
+    ghost_error ret = GHOST_SUCCESS;
+    ghost_lidx K = w->traits.ncols;
 
 #ifdef GHOST_TSMTTSM_KAHAN
     WARNING_LOG("Kahan summation not implemented for this kernel. Falling back to normal summation!");
@@ -375,12 +375,12 @@ ghost_error_t ghost_tsmttsm__a_plain_z_x_BLOCKSZ_1_cm_rm(ghost_densemat_t *x, gh
         GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
     }
 
-    ghost_lidx_t n = v->traits.nrows;
+    ghost_lidx n = v->traits.nrows;
     
     INFO_LOG("In TSMTTSM with fixed m BLOCKSZ and arbitrary k %d: %dx%d <- %dx%d * %dx%d",K,BLOCKSZ,K,BLOCKSZ,n,n,K);
     
     complex double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    ghost_lidx ldv, ldw, ldx;
 
     ldv = v->stride;
     ldw = w->stride;
@@ -393,19 +393,19 @@ ghost_error_t ghost_tsmttsm__a_plain_z_x_BLOCKSZ_1_cm_rm(ghost_densemat_t *x, gh
     complex double dalpha = *(complex double *)alpha;
     complex double dbeta = *(complex double *)beta;
     
-    ghost_mpi_op_t mpiop_zadd;
-    ghost_mpi_datatype_t mpidt_z;
-    ghost_mpi_op_sum(&mpiop_zadd,(ghost_datatype_t)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
-    ghost_mpi_datatype(&mpidt_z,(ghost_datatype_t)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
+    ghost_mpi_op mpiop_zadd;
+    ghost_mpi_datatype mpidt_z;
+    ghost_mpi_op_sum(&mpiop_zadd,(ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
+    ghost_mpi_datatype_get(&mpidt_z,(ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
     
     // make sure that the initial x only gets added up once
     if (myrank) {
         dbeta = 0.;
     }
 
-    ghost_lidx_t i,j;
+    ghost_lidx i,j;
     
-    ghost_lidx_t k;
+    ghost_lidx k;
     for (j=0; j<BLOCKSZ; j++) {
         for (k=0; k<K; k++) {
             xval[k*ldx+j] = dbeta*xval[k*ldx+j];
@@ -468,11 +468,11 @@ out:
     return ret;
 }
 
-ghost_error_t ghost_tsmttsm__a_plain_z_BLOCKSZ_x_1_cm_rm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conjv)
+ghost_error ghost_tsmttsm__a_plain_z_BLOCKSZ_x_1_cm_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
 {
     UNUSED(conjv);
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
 
 #ifdef GHOST_TSMTTSM_KAHAN
     WARNING_LOG("Kahan summation not implemented for this kernel. Falling back to normal summation!");
@@ -484,13 +484,13 @@ ghost_error_t ghost_tsmttsm__a_plain_z_BLOCKSZ_x_1_cm_rm(ghost_densemat_t *x, gh
         GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
     }
 
-    ghost_lidx_t n = v->traits.nrows;
-    ghost_lidx_t m = v->traits.ncols;
+    ghost_lidx n = v->traits.nrows;
+    ghost_lidx m = v->traits.ncols;
     
     INFO_LOG("In TSMTTSM with fixed k BLOCKSZ and arbitrary m %d: %dx%d <- %dx%d * %dx%d",m,m,BLOCKSZ,m,n,n,BLOCKSZ);
     
     complex double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    ghost_lidx ldv, ldw, ldx;
 
     ldv = v->stride;
     ldw = w->stride;
@@ -503,19 +503,19 @@ ghost_error_t ghost_tsmttsm__a_plain_z_BLOCKSZ_x_1_cm_rm(ghost_densemat_t *x, gh
     complex double dalpha = *(complex double *)alpha;
     complex double dbeta = *(complex double *)beta;
     
-    ghost_mpi_op_t mpiop_zadd;
-    ghost_mpi_datatype_t mpidt_z;
-    ghost_mpi_op_sum(&mpiop_zadd,(ghost_datatype_t)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
-    ghost_mpi_datatype(&mpidt_z,(ghost_datatype_t)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
+    ghost_mpi_op mpiop_zadd;
+    ghost_mpi_datatype mpidt_z;
+    ghost_mpi_op_sum(&mpiop_zadd,(ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
+    ghost_mpi_datatype_get(&mpidt_z,(ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
     
     // make sure that the initial x only gets added up once
     if (myrank) {
         dbeta = 0.;
     }
 
-    ghost_lidx_t i,j;
+    ghost_lidx i,j;
     
-    ghost_lidx_t k;
+    ghost_lidx k;
     for (j=0; j<m; j++) {
         for (k=0; k<BLOCKSZ; k++) {
             xval[k*ldx+j] = dbeta*xval[k*ldx+j];
@@ -577,11 +577,11 @@ out:
     return ret;
 }
 
-ghost_error_t ghost_tsmttsm__a_plain_z_BLOCKSZ_x_1_rm_rm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conjv)
+ghost_error ghost_tsmttsm__a_plain_z_BLOCKSZ_x_1_rm_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
 {
     UNUSED(conjv);
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
 
 #ifdef GHOST_TSMTTSM_KAHAN
     WARNING_LOG("Kahan summation not implemented for this kernel. Falling back to normal summation!");
@@ -593,13 +593,13 @@ ghost_error_t ghost_tsmttsm__a_plain_z_BLOCKSZ_x_1_rm_rm(ghost_densemat_t *x, gh
         GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
     }
 
-    ghost_lidx_t n = v->traits.nrows;
-    ghost_lidx_t m = v->traits.ncols;
+    ghost_lidx n = v->traits.nrows;
+    ghost_lidx m = v->traits.ncols;
     
     INFO_LOG("In TSMTTSM with fixed k BLOCKSZ and arbitrary m %d: %dx%d <- %dx%d * %dx%d",m,m,BLOCKSZ,m,n,n,BLOCKSZ);
     
     complex double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    ghost_lidx ldv, ldw, ldx;
 
     ldv = v->stride;
     ldw = w->stride;
@@ -612,19 +612,19 @@ ghost_error_t ghost_tsmttsm__a_plain_z_BLOCKSZ_x_1_rm_rm(ghost_densemat_t *x, gh
     complex double dalpha = *(complex double *)alpha;
     complex double dbeta = *(complex double *)beta;
     
-    ghost_mpi_op_t mpiop_zadd;
-    ghost_mpi_datatype_t mpidt_z;
-    ghost_mpi_op_sum(&mpiop_zadd,(ghost_datatype_t)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
-    ghost_mpi_datatype(&mpidt_z,(ghost_datatype_t)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
+    ghost_mpi_op mpiop_zadd;
+    ghost_mpi_datatype mpidt_z;
+    ghost_mpi_op_sum(&mpiop_zadd,(ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
+    ghost_mpi_datatype_get(&mpidt_z,(ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
     
     // make sure that the initial x only gets added up once
     if (myrank) {
         dbeta = 0.;
     }
 
-    ghost_lidx_t i,j;
+    ghost_lidx i,j;
     
-    ghost_lidx_t k;
+    ghost_lidx k;
     for (j=0; j<m; j++) {
         for (k=0; k<BLOCKSZ; k++) {
             xval[j*ldx+k] = dbeta*xval[j*ldx+k];

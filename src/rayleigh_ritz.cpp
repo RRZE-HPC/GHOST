@@ -98,20 +98,20 @@ lapack_int call_geig_function<std::complex<double>,double>(int matrix_order, cha
 }
 
     template <typename T, typename T_b>
-static ghost_error_t ghost_rayleigh_ritz_tmpl (ghost_sparsemat_t * mat, void * void_eigs, void * void_res,  ghost_densemat_t * v_eigs , ghost_densemat_t * v_res, int obtion, ghost_spmv_flags_t spMVM_Options)
+static ghost_error ghost_rayleigh_ritz_tmpl (ghost_sparsemat * mat, void * void_eigs, void * void_res,  ghost_densemat * v_eigs , ghost_densemat * v_res, int obtion, ghost_spmv_flags spMVM_Options)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_SOLVER);
     
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
     T one = 1.0;
     T zero = 0.0;
-    ghost_idx_t i;
-    ghost_idx_t n = v_res->traits.ncols;
-    ghost_datatype_t DT = v_res->traits.datatype;
-    ghost_densemat_t *x = NULL;
-    ghost_idx_t ldx;
+    ghost_lidx i;
+    ghost_lidx n = v_res->traits.ncols;
+    ghost_datatype DT = v_res->traits.datatype;
+    ghost_densemat *x = NULL;
+    ghost_lidx ldx;
     T *eigs_T = NULL, *res_T = NULL;
-    ghost_densemat_traits_t xtraits = GHOST_DENSEMAT_TRAITS_INITIALIZER;
+    ghost_densemat_traits xtraits = GHOST_DENSEMAT_TRAITS_INITIALIZER;
     
     T_b * eigs = (T_b *)void_eigs;
     T_b * res  = (T_b *)void_res;
@@ -152,9 +152,9 @@ static ghost_error_t ghost_rayleigh_ritz_tmpl (ghost_sparsemat_t * mat, void * v
     }
 
 #ifdef GHOST_HAVE_MPI
-        ghost_mpi_datatype_t dt, dt_b;
-        ghost_mpi_datatype(&dt,DT);
-        ghost_mpi_datatype(&dt_b,(ghost_datatype_t)(GHOST_DT_REAL | (DT&(GHOST_DT_FLOAT|GHOST_DT_DOUBLE))));
+        ghost_mpi_datatype dt, dt_b;
+        ghost_mpi_datatype_get(&dt,DT);
+        ghost_mpi_datatype_get(&dt_b,(ghost_datatype)(GHOST_DT_REAL | (DT&(GHOST_DT_FLOAT|GHOST_DT_DOUBLE))));
         MPI_Bcast( xval, ldx*n, dt  , 0, MPI_COMM_WORLD);
         MPI_Bcast( eigs,     n, dt_b, 0, MPI_COMM_WORLD);
 #endif
@@ -186,7 +186,7 @@ out:
 }
 
 
-ghost_error_t ghost_rayleigh_ritz(ghost_sparsemat_t * mat, void * eigs, void * res,  ghost_densemat_t * v_eigs , ghost_densemat_t * v_res, int obtion, ghost_spmv_flags_t spMVM_Options)
+ghost_error ghost_rayleigh_ritz(ghost_sparsemat * mat, void * eigs, void * res,  ghost_densemat * v_eigs , ghost_densemat * v_res, int obtion, ghost_spmv_flags spMVM_Options)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
@@ -207,19 +207,19 @@ ghost_error_t ghost_rayleigh_ritz(ghost_sparsemat_t * mat, void * eigs, void * r
 }
 
     template <typename T, typename T_b>
-static ghost_error_t ghost_grayleigh_ritz_tmpl (ghost_sparsemat_t * mat, void * void_eigs, void * void_res,  ghost_densemat_t * v_eigs , ghost_densemat_t * v_res, int obtion, ghost_spmv_flags_t spMVM_Options)
+static ghost_error ghost_grayleigh_ritz_tmpl (ghost_sparsemat * mat, void * void_eigs, void * void_res,  ghost_densemat * v_eigs , ghost_densemat * v_res, int obtion, ghost_spmv_flags spMVM_Options)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_SOLVER);
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
     T one = 1.0;
     T zero = 0.0;
-    ghost_idx_t i;
-    ghost_idx_t n = v_res->traits.ncols;
-    ghost_datatype_t DT = v_res->traits.datatype;
-    ghost_densemat_t *x = NULL, *b = NULL;
-    ghost_idx_t ldx, ldb;
+    ghost_lidx i;
+    ghost_lidx n = v_res->traits.ncols;
+    ghost_datatype DT = v_res->traits.datatype;
+    ghost_densemat *x = NULL, *b = NULL;
+    ghost_lidx ldx, ldb;
     T *eigs_T = NULL, *res_T = NULL;
-    ghost_densemat_traits_t xtraits = GHOST_DENSEMAT_TRAITS_INITIALIZER;
+    ghost_densemat_traits xtraits = GHOST_DENSEMAT_TRAITS_INITIALIZER;
     
     T_b * eigs = (T_b *)void_eigs;
     T_b * res  = (T_b *)void_res;
@@ -272,9 +272,9 @@ static ghost_error_t ghost_grayleigh_ritz_tmpl (ghost_sparsemat_t * mat, void * 
     }
     
 #ifdef GHOST_HAVE_MPI
-        ghost_mpi_datatype_t dt, dt_b;
-        ghost_mpi_datatype(&dt,DT);
-        ghost_mpi_datatype(&dt_b,(ghost_datatype_t)(GHOST_DT_REAL | (DT&(GHOST_DT_FLOAT|GHOST_DT_DOUBLE))));
+        ghost_mpi_datatype dt, dt_b;
+        ghost_mpi_datatype_get(&dt,DT);
+        ghost_mpi_datatype_get(&dt_b,(ghost_datatype)(GHOST_DT_REAL | (DT&(GHOST_DT_FLOAT|GHOST_DT_DOUBLE))));
         MPI_Bcast( xval, ldx*n, dt  , 0, MPI_COMM_WORLD);
         MPI_Bcast( eigs,     n, dt_b, 0, MPI_COMM_WORLD);
 #endif
@@ -306,7 +306,7 @@ out:
 }
 
 
-ghost_error_t ghost_grayleigh_ritz(ghost_sparsemat_t * mat, void * eigs, void * res,  ghost_densemat_t * v_eigs , ghost_densemat_t * v_res, int obtion, ghost_spmv_flags_t spMVM_Options)
+ghost_error ghost_grayleigh_ritz(ghost_sparsemat * mat, void * eigs, void * res,  ghost_densemat * v_eigs , ghost_densemat * v_res, int obtion, ghost_spmv_flags spMVM_Options)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
@@ -327,7 +327,7 @@ ghost_error_t ghost_grayleigh_ritz(ghost_sparsemat_t * mat, void * eigs, void * 
 }
 
 #else
-ghost_error_t ghost_rayleigh_ritz(ghost_sparsemat_t * mat, void * eigs, void * res,  ghost_densemat_t * v_eigs , ghost_densemat_t * v_res, int obtion, ghost_spmv_flags_t spMVM_Options)
+ghost_error ghost_rayleigh_ritz(ghost_sparsemat * mat, void * eigs, void * res,  ghost_densemat * v_eigs , ghost_densemat * v_res, int obtion, ghost_spmv_flags spMVM_Options)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     
@@ -344,7 +344,7 @@ ghost_error_t ghost_rayleigh_ritz(ghost_sparsemat_t * mat, void * eigs, void * r
     return GHOST_ERR_NOT_IMPLEMENTED;
 }
 
-ghost_error_t ghost_grayleigh_ritz(ghost_sparsemat_t * mat, void * eigs, void * res,  ghost_densemat_t * v_eigs , ghost_densemat_t * v_res, int obtion, ghost_spmv_flags_t spMVM_Options)
+ghost_error ghost_grayleigh_ritz(ghost_sparsemat * mat, void * eigs, void * res,  ghost_densemat * v_eigs , ghost_densemat * v_res, int obtion, ghost_spmv_flags spMVM_Options)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
 

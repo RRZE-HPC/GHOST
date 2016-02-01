@@ -12,7 +12,7 @@
 #GHOST_SUBST NVECS ${BLOCKDIM1}
 #GHOST_SUBST CHUNKHEIGHT ${CHUNKHEIGHT}
 
-ghost_error_t ghost_sellspmv__u_plain_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
+ghost_error ghost_sellspmv__u_plain_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat, ghost_densemat* res, ghost_densemat* invec, ghost_spmv_flags spmvmOptions,va_list argp)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
 
@@ -20,11 +20,11 @@ ghost_error_t ghost_sellspmv__u_plain_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t
     double *local_dot_product = NULL;
     double *partsums = NULL;
     int nthreads = 1, i;
-    ghost_lidx_t v;
+    ghost_lidx v;
    
     double *shift = NULL, scale = 1., beta = 1.; 
     double delta = 0., eta = 0.;
-    ghost_densemat_t *z = NULL;
+    ghost_densemat *z = NULL;
     unsigned clsize;
     ghost_machine_cacheline_size(&clsize);
     int pad = (int) clsize/sizeof(double);
@@ -45,8 +45,8 @@ ghost_error_t ghost_sellspmv__u_plain_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t
    
 #pragma omp parallel shared (partsums) private(v)
     {
-        ghost_lidx_t j,c,r,row;
-        ghost_lidx_t offs;
+        ghost_lidx j,c,r,row;
+        ghost_lidx offs;
         double tmp[CHUNKHEIGHT][NVECS];
         double *rhsval = (double *)invec->val;
         double *zval = NULL;
@@ -65,7 +65,7 @@ ghost_error_t ghost_sellspmv__u_plain_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t
                 for (r=0; r<CHUNKHEIGHT; r++) {
                     double matval = mval[offs+j*CHUNKHEIGHT+r];
                     row = c*CHUNKHEIGHT+r;
-                    ghost_lidx_t matcol = SELL(mat)->col[offs+j*CHUNKHEIGHT+r];
+                    ghost_lidx matcol = SELL(mat)->col[offs+j*CHUNKHEIGHT+r];
 #pragma simd
                     for (v=0; v<NVECS; v++) {
                         tmp[r][v] += matval*rhsval[invec->stride*matcol+v];
@@ -187,7 +187,7 @@ ghost_error_t ghost_sellspmv__u_plain_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_sellspmv__a_plain_d_d_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
+ghost_error ghost_sellspmv__a_plain_d_d_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat, ghost_densemat* res, ghost_densemat* invec, ghost_spmv_flags spmvmOptions,va_list argp)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
 
@@ -195,11 +195,11 @@ ghost_error_t ghost_sellspmv__a_plain_d_d_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t
     double *local_dot_product = NULL;
     double *partsums = NULL;
     int nthreads = 1, i;
-    ghost_lidx_t v;
+    ghost_lidx v;
    
     double *shift = NULL, scale = 1., beta = 1.; 
     double delta = 0., eta = 0.;
-    ghost_densemat_t *z = NULL;
+    ghost_densemat *z = NULL;
     unsigned clsize;
     ghost_machine_cacheline_size(&clsize);
     int pad = (int) clsize/sizeof(double);
@@ -220,8 +220,8 @@ ghost_error_t ghost_sellspmv__a_plain_d_d_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t
    
 #pragma omp parallel shared (partsums) private(v)
     {
-        ghost_lidx_t j,c,r,row;
-        ghost_lidx_t offs;
+        ghost_lidx j,c,r,row;
+        ghost_lidx offs;
         double tmp[CHUNKHEIGHT];
         double *rhsval = (double *)invec->val;
         int tid = ghost_omp_threadnum();
@@ -244,7 +244,7 @@ ghost_error_t ghost_sellspmv__a_plain_d_d_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t
 #pragma simd
                     for (r=0; r<CHUNKHEIGHT; r++) {
                         double matval = mval[offs+j*CHUNKHEIGHT+r];
-                        ghost_lidx_t matcol = SELL(mat)->col[offs+j*CHUNKHEIGHT+r];
+                        ghost_lidx matcol = SELL(mat)->col[offs+j*CHUNKHEIGHT+r];
                         tmp[r] += matval*rcol[matcol];
                     }
                 }
@@ -309,7 +309,7 @@ ghost_error_t ghost_sellspmv__a_plain_d_d_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_sellspmv__a_plain_z_z_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
+ghost_error ghost_sellspmv__a_plain_z_z_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat, ghost_densemat* res, ghost_densemat* invec, ghost_spmv_flags spmvmOptions,va_list argp)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
 
@@ -317,11 +317,11 @@ ghost_error_t ghost_sellspmv__a_plain_z_z_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t
     complex double *local_dot_product = NULL;
     complex double *partsums = NULL;
     int nthreads = 1, i;
-    ghost_lidx_t v;
+    ghost_lidx v;
    
     complex double *shift = NULL, scale = 1., beta = 1.; 
     complex double delta = 0., eta = 0.;
-    ghost_densemat_t *z = NULL;
+    ghost_densemat *z = NULL;
     unsigned clsize;
     ghost_machine_cacheline_size(&clsize);
     int pad = (int) clsize;///sizeof(complex double);
@@ -342,8 +342,8 @@ ghost_error_t ghost_sellspmv__a_plain_z_z_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t
    
 #pragma omp parallel shared (partsums) private(v)
     {
-        ghost_lidx_t j,c,r,row;
-        ghost_lidx_t offs;
+        ghost_lidx j,c,r,row;
+        ghost_lidx offs;
         complex double tmp[CHUNKHEIGHT];
         complex double *rhsval = (complex double *)invec->val;
         int tid = ghost_omp_threadnum();
@@ -366,7 +366,7 @@ ghost_error_t ghost_sellspmv__a_plain_z_z_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t
 #pragma simd
                     for (r=0; r<CHUNKHEIGHT; r++) {
                         complex double matval = mval[offs+j*CHUNKHEIGHT+r];
-                        ghost_lidx_t matcol = SELL(mat)->col[offs+j*CHUNKHEIGHT+r];
+                        ghost_lidx matcol = SELL(mat)->col[offs+j*CHUNKHEIGHT+r];
                         tmp[r] += matval*rcol[matcol];
                     }
                 }
@@ -432,7 +432,7 @@ ghost_error_t ghost_sellspmv__a_plain_z_z_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_sellspmv__a_plain_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
+ghost_error ghost_sellspmv__a_plain_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat, ghost_densemat* res, ghost_densemat* invec, ghost_spmv_flags spmvmOptions,va_list argp)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
 
@@ -440,11 +440,11 @@ ghost_error_t ghost_sellspmv__a_plain_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t
     complex double *local_dot_product = NULL;
     complex double *partsums = NULL;
     int nthreads = 1, i;
-    ghost_lidx_t v;
+    ghost_lidx v;
    
     complex double *shift = NULL, scale = 1., beta = 1.; 
     complex double delta = 0., eta = 0.;
-    ghost_densemat_t *z = NULL;
+    ghost_densemat *z = NULL;
     unsigned clsize;
     ghost_machine_cacheline_size(&clsize);
     int pad = (int) clsize/sizeof(complex double);
@@ -465,8 +465,8 @@ ghost_error_t ghost_sellspmv__a_plain_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t
    
 #pragma omp parallel shared (partsums) private(v)
     {
-        ghost_lidx_t j,c,r,row;
-        ghost_lidx_t offs;
+        ghost_lidx j,c,r,row;
+        ghost_lidx offs;
         complex double tmp[CHUNKHEIGHT][NVECS];
         complex double *rhsval = (complex double *)invec->val;
         complex double *zval = NULL;
@@ -487,7 +487,7 @@ ghost_error_t ghost_sellspmv__a_plain_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t
                     for (v=0; v<NVECS; v++) {
                         row = c*CHUNKHEIGHT+r;
                         complex double matval = mval[offs+j*CHUNKHEIGHT+r];
-                        ghost_lidx_t matcol = SELL(mat)->col[offs+j*CHUNKHEIGHT+r];
+                        ghost_lidx matcol = SELL(mat)->col[offs+j*CHUNKHEIGHT+r];
                         tmp[r][v] += matval*rhsval[invec->stride*matcol+v];
                     }
                 }

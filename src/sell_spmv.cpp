@@ -26,16 +26,16 @@
 using namespace std;
     
     template<typename m_t, typename v_t, bool scatteredvecs> 
-static ghost_error_t ghost_sell_spmv_plain_rm(ghost_sparsemat_t *mat, 
-        ghost_densemat_t *lhs, ghost_densemat_t *rhs, 
-        ghost_spmv_flags_t options, va_list argp)
+static ghost_error ghost_sell_spmv_plain_rm(ghost_sparsemat *mat, 
+        ghost_densemat *lhs, ghost_densemat *rhs, 
+        ghost_spmv_flags options, va_list argp)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     PERFWARNING_LOG("In plain row-major SEL SpMV with scatteredvecs=%d, blocksz=%d",scatteredvecs,rhs->traits.ncols);
-    ghost_sell_t *sell = (ghost_sell_t *)(mat->data);
+    ghost_sell *sell = (ghost_sell *)(mat->data);
     v_t *local_dot_product = NULL, *partsums = NULL;
-    ghost_lidx_t i,j,c,rcol,lcol,zcol,cidx;
-    ghost_lidx_t v;
+    ghost_lidx i,j,c,rcol,lcol,zcol,cidx;
+    ghost_lidx v;
     int nthreads = 1;
     int ch = mat->traits.C;
 
@@ -46,7 +46,7 @@ static ghost_error_t ghost_sell_spmv_plain_rm(ghost_sparsemat_t *mat,
     v_t scale = 1., beta = 1.;
     v_t *shift = NULL;
     v_t delta = 0., eta = 0.;
-    ghost_densemat_t *z = NULL;
+    ghost_densemat *z = NULL;
     GHOST_SPMV_PARSE_ARGS(options,argp,scale,beta,shift,local_dot_product,z,delta,eta,v_t,
             v_t);
 
@@ -182,9 +182,9 @@ static ghost_error_t ghost_sell_spmv_plain_rm(ghost_sparsemat_t *mat,
 }
     
     template<typename m_t, typename v_t> 
-static ghost_error_t ghost_sell_spmv_plain_rm_selector(ghost_sparsemat_t *mat, 
-        ghost_densemat_t *lhs, ghost_densemat_t *rhs, 
-        ghost_spmv_flags_t options, va_list argp)
+static ghost_error ghost_sell_spmv_plain_rm_selector(ghost_sparsemat *mat, 
+        ghost_densemat *lhs, ghost_densemat *rhs, 
+        ghost_spmv_flags options, va_list argp)
 {
     if ((lhs->traits.flags & GHOST_DENSEMAT_SCATTERED) || (rhs->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
         return ghost_sell_spmv_plain_rm<m_t,v_t,true>(mat,lhs,rhs,options,argp);
@@ -194,15 +194,15 @@ static ghost_error_t ghost_sell_spmv_plain_rm_selector(ghost_sparsemat_t *mat,
 }
 
     template<typename m_t, typename v_t, bool scatteredvecs> 
-static ghost_error_t ghost_sell_spmv_plain_cm(ghost_sparsemat_t *mat, 
-        ghost_densemat_t *lhs, ghost_densemat_t *rhs, 
-        ghost_spmv_flags_t options, va_list argp)
+static ghost_error ghost_sell_spmv_plain_cm(ghost_sparsemat *mat, 
+        ghost_densemat *lhs, ghost_densemat *rhs, 
+        ghost_spmv_flags options, va_list argp)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
-    ghost_sell_t *sell = (ghost_sell_t *)(mat->data);
+    ghost_sell *sell = (ghost_sell *)(mat->data);
     v_t *local_dot_product = NULL, *partsums = NULL;
-    ghost_lidx_t i,j,c;
-    ghost_lidx_t v;
+    ghost_lidx i,j,c;
+    ghost_lidx v;
     int nthreads = 1;
     int ch = mat->traits.C;
 
@@ -213,7 +213,7 @@ static ghost_error_t ghost_sell_spmv_plain_cm(ghost_sparsemat_t *mat,
     v_t scale = 1., beta = 1.;
     v_t *shift = NULL;
     v_t delta = 0., eta = 0.;
-    ghost_densemat_t *z = NULL;
+    ghost_densemat *z = NULL;
     GHOST_SPMV_PARSE_ARGS(options,argp,scale,beta,shift,local_dot_product,z,delta,eta,v_t,
             v_t);
 
@@ -240,7 +240,7 @@ static ghost_error_t ghost_sell_spmv_plain_cm(ghost_sparsemat_t *mat,
 #pragma omp for schedule(runtime) 
         for (c=0; c<mat->nrowsPadded/ch; c++) { // loop over chunks
                     
-            ghost_lidx_t rcol = 0, lcol = 0, zcol = 0;
+            ghost_lidx rcol = 0, lcol = 0, zcol = 0;
 
             for (v=0; v<lhs->traits.ncols; v++)
             {
@@ -340,9 +340,9 @@ static ghost_error_t ghost_sell_spmv_plain_cm(ghost_sparsemat_t *mat,
 }
     
     template<typename m_t, typename v_t> 
-static ghost_error_t ghost_sell_spmv_plain_cm_selector(ghost_sparsemat_t *mat, 
-        ghost_densemat_t *lhs, ghost_densemat_t *rhs, 
-        ghost_spmv_flags_t options, va_list argp)
+static ghost_error ghost_sell_spmv_plain_cm_selector(ghost_sparsemat *mat, 
+        ghost_densemat *lhs, ghost_densemat *rhs, 
+        ghost_spmv_flags options, va_list argp)
 {
     if ((lhs->traits.flags & GHOST_DENSEMAT_SCATTERED) || (rhs->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
         return ghost_sell_spmv_plain_cm<m_t,v_t,true>(mat,lhs,rhs,options,argp);
@@ -355,9 +355,9 @@ static ghost_error_t ghost_sell_spmv_plain_cm_selector(ghost_sparsemat_t *mat,
 // Hash function for unordered_map
 namespace std
 {
-    template<> struct hash<ghost_sellspmv_parameters_t>
+    template<> struct hash<ghost_sellspmv_parameters>
     {
-        typedef ghost_sellspmv_parameters_t argument_type;
+        typedef ghost_sellspmv_parameters argument_type;
         typedef std::size_t result_type;
         result_type operator()(argument_type const& a) const
         {
@@ -367,19 +367,19 @@ namespace std
     };
 }
 
-static bool operator==(const ghost_sellspmv_parameters_t& a, const ghost_sellspmv_parameters_t& b)
+static bool operator==(const ghost_sellspmv_parameters& a, const ghost_sellspmv_parameters& b)
 {
     return a.mdt == b.mdt && a.blocksz == b.blocksz && a.storage == b.storage && 
            a.vdt == b.vdt && a.impl == b.impl && a.chunkheight == b.chunkheight &&
            a.alignment && b.alignment;
 }
 
-static unordered_map<ghost_sellspmv_parameters_t, ghost_spmv_kernel_t> 
-ghost_sellspmv_kernels = unordered_map<ghost_sellspmv_parameters_t,ghost_spmv_kernel_t>();
+static unordered_map<ghost_sellspmv_parameters, ghost_spmv_kernel> 
+ghost_sellspmv_kernels = unordered_map<ghost_sellspmv_parameters,ghost_spmv_kernel>();
 
-extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat, 
-        ghost_densemat_t *lhs, ghost_densemat_t *rhs, 
-        ghost_spmv_flags_t options, va_list argp)
+extern "C" ghost_error ghost_sell_spmv_selector(ghost_sparsemat *mat, 
+        ghost_densemat *lhs, ghost_densemat *rhs, 
+        ghost_spmv_flags options, va_list argp)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     if (rhs->traits.storage != lhs->traits.storage) {
@@ -421,12 +421,12 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
 #include "sell_spmv_varblock_plain.def"
     }
 
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
 
-    ghost_spmv_kernel_t kernel = NULL;
-    ghost_sellspmv_parameters_t p;
-    ghost_implementation_t opt_impl;
-    ghost_alignment_t opt_align;
+    ghost_spmv_kernel kernel = NULL;
+    ghost_sellspmv_parameters p;
+    ghost_implementation opt_impl;
+    ghost_alignment opt_align;
     
     
     p.vdt = rhs->traits.datatype;
@@ -480,13 +480,13 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
 
     for (pos_chunkheight = 0; pos_chunkheight < n_chunkheight; pos_chunkheight++) {  
         for (pos_blocksz = 0; pos_blocksz < n_blocksz; pos_blocksz++) {  
-            for (p.impl = opt_impl; (int)p.impl >= GHOST_IMPLEMENTATION_PLAIN; p.impl  = (ghost_implementation_t)((int)p.impl-1)) {
+            for (p.impl = opt_impl; (int)p.impl >= GHOST_IMPLEMENTATION_PLAIN; p.impl  = (ghost_implementation)((int)p.impl-1)) {
                 if (p.impl == GHOST_IMPLEMENTATION_SSE && p.storage == GHOST_DENSEMAT_ROWMAJOR && try_blocksz[pos_blocksz] % 2) {
                     PERFWARNING_LOG("Remainder loops not yet implemented for SSE, fallback to plain");
-                    p.impl  = (ghost_implementation_t)((int)p.impl-1);
+                    p.impl  = (ghost_implementation)((int)p.impl-1);
                 }
 
-                for (p.alignment = opt_align; (int)p.alignment >= GHOST_UNALIGNED; p.alignment = (ghost_alignment_t)((int)p.alignment-1)) {
+                for (p.alignment = opt_align; (int)p.alignment >= GHOST_UNALIGNED; p.alignment = (ghost_alignment)((int)p.alignment-1)) {
                     p.chunkheight = try_chunkheight[pos_chunkheight];
                     p.blocksz = try_blocksz[pos_blocksz];
                     DEBUG_LOG(1,"Try chunkheight=%s, blocksz=%s, impl=%s, %s",

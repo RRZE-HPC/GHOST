@@ -23,7 +23,7 @@
 
 #define THREADSPERBLOCK 512
 
-template<typename T> __global__ static void ghost_tsmm_inplace_cu_rm_cm_fallback(T * x, const T * const __restrict__ w, const T alpha, const T beta, ghost_lidx_t nrows, ghost_lidx_t stridex, ghost_lidx_t stridew, int NCOLSOUT, int NCOLSIN, T * tmp)
+template<typename T> __global__ static void ghost_tsmm_inplace_cu_rm_cm_fallback(T * x, const T * const __restrict__ w, const T alpha, const T beta, ghost_lidx nrows, ghost_lidx stridex, ghost_lidx stridew, int NCOLSOUT, int NCOLSIN, T * tmp)
 {
     int row = blockIdx.x*blockDim.x+threadIdx.x;
     int k;
@@ -43,10 +43,10 @@ template<typename T> __global__ static void ghost_tsmm_inplace_cu_rm_cm_fallback
     }
 }
 
-ghost_error_t ghost_tsmm_inplace__cuda_x_x_x(ghost_densemat_t *x, ghost_densemat_t *w, void *alpha, void *beta) 
+ghost_error ghost_tsmm_inplace__cuda_x_x_x(ghost_densemat *x, ghost_densemat *w, void *alpha, void *beta) 
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL); 
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
     dim3 block, grid;
     grid.x = CEILDIV(x->traits.nrows,THREADSPERBLOCK);
     grid.y = 1;

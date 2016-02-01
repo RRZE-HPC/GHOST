@@ -22,41 +22,25 @@ typedef struct
     /**
      * @brief The column indices.
      */
-    ghost_lidx_t * col;
+    ghost_lidx * col;
     /**
      * @brief The length of each row.
      */
-    ghost_lidx_t * rowLen;
+    ghost_lidx * rowLen;
     /**
      * @brief Needed if T>1.
      */
-    ghost_lidx_t * rowLenPadded;
+    ghost_lidx * rowLenPadded;
     /**
      * @brief Pointer to start of each chunk.
      */
-    ghost_lidx_t * chunkStart;
+    ghost_lidx * chunkStart;
     /**
      * @brief The length of each chunk.
      */
-    ghost_lidx_t * chunkLen;
+    ghost_lidx * chunkLen;
 }
-ghost_cu_sell_t;
-
-/**
- * @brief Auxiliary information to the SELL format.
- */
-typedef struct
-{
-    /**
-     * @brief The chunk height.
-     */
-    int C;
-    /**
-     * @brief Number of threads per row.
-     */
-    int T;
-} 
-ghost_sell_aux_t;
+ghost_cu_sell;
 
 /**
  * @brief Struct defining a SELL-C-sigma matrix.
@@ -70,40 +54,39 @@ typedef struct
     /**
      * @brief The column indices.
      */
-    ghost_lidx_t *col;
+    ghost_lidx *col;
     /**
      * @brief Pointer to start of each chunk.
      */
-    ghost_lidx_t *chunkStart;
+    ghost_lidx *chunkStart;
     /**
      * @brief Minimal row length in a chunk.
      */
-    ghost_lidx_t *chunkMin;
+    ghost_lidx *chunkMin;
     /**
      * @brief The length of each chunk.
      */
-    ghost_lidx_t *chunkLen;
+    ghost_lidx *chunkLen;
     /**
      * @brief Needed if T>1.
      */
-    ghost_lidx_t *chunkLenPadded;
+    ghost_lidx *chunkLenPadded;
     /**
      * @brief Length of each row.
      *
      * Especially useful in SELL-1 kernels.
      */
-    ghost_lidx_t *rowLen;
+    ghost_lidx *rowLen;
     /**
      * @brief Needed if T>1.
      */
-    ghost_lidx_t *rowLenPadded; 
+    ghost_lidx *rowLenPadded; 
     /**
      * @brief The CUDA matrix.
      */
-    ghost_cu_sell_t *cumat;
+    ghost_cu_sell *cumat;
 }
-ghost_sell_t;
-
+ghost_sell;
 
 /**
  * @brief The parameters to identify a SELL SpMV kernel.
@@ -116,19 +99,19 @@ typedef struct
     /**
      * @brief The data access alignment.
      */
-    ghost_alignment_t alignment;
+    ghost_alignment alignment;
     /**
      * @brief The implementation.
      */
-    ghost_implementation_t impl;
+    ghost_implementation impl;
     /**
      * @brief The matrix data type.
      */
-    ghost_datatype_t mdt;
+    ghost_datatype mdt;
     /**
      * @brief The densemat data type.
      */
-    ghost_datatype_t vdt;
+    ghost_datatype vdt;
     /**
      * @brief The densemat width.
      */
@@ -140,10 +123,10 @@ typedef struct
     /**
      * @brief The densemat storage order.
      */
-    ghost_densemat_storage_t storage;
+    ghost_densemat_storage storage;
 
 }
-ghost_sellspmv_parameters_t;
+ghost_sellspmv_parameters;
 
 /**
  * @brief Get the SELL data of a general sparsemat.
@@ -152,7 +135,7 @@ ghost_sellspmv_parameters_t;
  *
  * @return Pointer to the SELL data.
  */
-#define SELL(mat) ((ghost_sell_t *)(mat->data))
+#define SELL(mat) ((ghost_sell *)(mat->data))
 
 /**
  * @brief Create only a single chunk, i.e., use the ELLPACK storage format.
@@ -174,7 +157,7 @@ ghost_sellspmv_parameters_t;
  *
  * @return ::GHOST_SUCCESS on success or an error indicator.
  */
-ghost_error_t ghost_sell_init(ghost_sparsemat_t *mat);
+ghost_error ghost_sell_init(ghost_sparsemat *mat);
 
 #ifdef __cplusplus
 extern "C" {
@@ -190,9 +173,9 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat, 
-            ghost_densemat_t *lhs, ghost_densemat_t *rhs, 
-            ghost_spmv_flags_t options, va_list argp);
+    ghost_error ghost_sell_spmv_selector(ghost_sparsemat *mat, 
+            ghost_densemat *lhs, ghost_densemat *rhs, 
+            ghost_spmv_flags options, va_list argp);
     
     /**
      * @brief Select and call the right SELL stringification function.
@@ -203,7 +186,7 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_sell_stringify_selector(ghost_sparsemat_t *mat, 
+    ghost_error ghost_sell_stringify_selector(ghost_sparsemat *mat, 
             char **str, int dense);
     
     /**
@@ -217,11 +200,11 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_cu_sell_spmv_selector(ghost_sparsemat_t *mat, 
-            ghost_densemat_t *lhs, ghost_densemat_t *rhs, 
-            ghost_spmv_flags_t flags, va_list argp);
+    ghost_error ghost_cu_sell_spmv_selector(ghost_sparsemat *mat, 
+            ghost_densemat *lhs, ghost_densemat *rhs, 
+            ghost_spmv_flags flags, va_list argp);
 
-    ghost_error_t ghost_cu_sell1_spmv_selector(ghost_sparsemat_t *mat, ghost_densemat_t * lhs_in, ghost_densemat_t * rhs_in, ghost_spmv_flags_t options, va_list argp);
+    ghost_error ghost_cu_sell1_spmv_selector(ghost_sparsemat *mat, ghost_densemat * lhs_in, ghost_densemat * rhs_in, ghost_spmv_flags options, va_list argp);
 
     /**
      * @brief Perform a Kaczmarz sweep with the SELL matrix. 
@@ -234,8 +217,8 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_sell_kacz(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, 
-            ghost_densemat_t *rhs, void *omega, int forward);
+    ghost_error ghost_sell_kacz(ghost_sparsemat *mat, ghost_densemat *lhs, 
+            ghost_densemat *rhs, void *omega, int forward);
 
     /**
      * @brief Get the largest SELL chunk height of auto-generated kernels.
@@ -247,10 +230,5 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
-
-/**
- * @brief Initializer for SELL aux information.
- */
-extern const ghost_sell_aux_t GHOST_SELL_AUX_INITIALIZER;
 
 #endif

@@ -16,7 +16,7 @@
 #define complex_mul(a,b) _mm256_fmaddsub_pd(_mm256_shuffle_pd(b,b,0),a,_mm256_mul_pd(_mm256_shuffle_pd(b,b,0xF),_mm256_shuffle_pd(a,a,5)))
 #define complex_mul_conj1(b,a) _mm256_addsub_pd(_mm256_mul_pd(_mm256_shuffle_pd(b,b,0),a),_mm256_mul_pd(_mm256_mul_pd(_mm256_shuffle_pd(b,b,0xF),_mm256_set1_pd(-1.)),_mm256_shuffle_pd(a,a,5)))
 
-ghost_error_t ghost_sellspmv__a_avx2_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
+ghost_error ghost_sellspmv__a_avx2_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat, ghost_densemat* res, ghost_densemat* invec, ghost_spmv_flags spmvmOptions,va_list argp)
 {
 #if defined(GHOST_HAVE_AVX2)
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
@@ -38,7 +38,7 @@ ghost_error_t ghost_sellspmv__a_avx2_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t 
     complex double sscale = 1., sbeta = 1.;
     complex double *sshift = NULL;
     complex double sdelta = 0., seta = 0.;
-    ghost_densemat_t *z = NULL;
+    ghost_densemat *z = NULL;
     __m256d scale, beta, shift, delta, eta;
 
     GHOST_SPMV_PARSE_ARGS(spmvmOptions,argp,sscale,sbeta,sshift,local_dot_product,z,sdelta,seta,complex double,complex double);
@@ -83,7 +83,7 @@ ghost_error_t ghost_sellspmv__a_avx2_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t 
         }
 
         GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,(3*PAD(invec->traits.ncols,2)+padding)*nthreads*sizeof(complex double))); 
-        ghost_lidx_t col;
+        ghost_lidx col;
         for (col=0; col<(3*PAD(invec->traits.ncols,2)+padding)*nthreads; col++) {
             partsums[col] = 0.;
         }
@@ -91,8 +91,8 @@ ghost_error_t ghost_sellspmv__a_avx2_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t 
 
 #pragma omp parallel shared (partsums)
     {
-        ghost_lidx_t j,c;
-        ghost_lidx_t offs;
+        ghost_lidx j,c;
+        ghost_lidx offs;
         __m256d rhs;
         __m256d matval;
         int tid = ghost_omp_threadnum();
@@ -207,7 +207,7 @@ ghost_error_t ghost_sellspmv__a_avx2_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t 
             WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
             return GHOST_SUCCESS;
         }
-        ghost_lidx_t col;
+        ghost_lidx col;
         for (col=0; col<invec->traits.ncols; col++) {
             local_dot_product[col                       ] = 0.; 
             local_dot_product[col  +   invec->traits.ncols] = 0.;
@@ -238,11 +238,11 @@ ghost_error_t ghost_sellspmv__a_avx2_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t 
 #endif
 }
 
-ghost_error_t ghost_sellspmv__a_avx2_z_z_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
+ghost_error ghost_sellspmv__a_avx2_z_z_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat, ghost_densemat* res, ghost_densemat* invec, ghost_spmv_flags spmvmOptions,va_list argp)
 {
 #if defined(GHOST_HAVE_AVX2) && CHUNKHEIGHT>=2
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
-    ghost_lidx_t i;
+    ghost_lidx i;
     complex double *mval = (complex double *)SELL(mat)->val;
     complex double *local_dot_product = NULL;
     complex double *partsums = NULL;
@@ -251,7 +251,7 @@ ghost_error_t ghost_sellspmv__a_avx2_z_z_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t 
     complex double *sshift = NULL;
     __m256d scale, beta,delta,eta;
     complex double sdelta = 0., seta = 0.;
-    ghost_densemat_t *z = NULL;
+    ghost_densemat *z = NULL;
 
     GHOST_SPMV_PARSE_ARGS(spmvmOptions,argp,sscale,sbeta,sshift,local_dot_product,z,sdelta,seta,complex double,complex double);
     scale = _mm256_setzero_pd();
@@ -290,8 +290,8 @@ ghost_error_t ghost_sellspmv__a_avx2_z_z_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t 
 #pragma omp parallel shared(partsums)
     {
         complex double *lval = NULL, *rval = NULL;
-        ghost_lidx_t j,c,v;
-        ghost_lidx_t offs;
+        ghost_lidx j,c,v;
+        ghost_lidx offs;
         __m256d val;
         __m256d rhs;
         __m256d shift;
@@ -356,7 +356,7 @@ ghost_error_t ghost_sellspmv__a_avx2_z_z_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t 
                     if ((c+1)*CHUNKHEIGHT <= mat->nrows) {
                         #GHOST_UNROLL#dot1[v] = _mm256_add_pd(dot1[v],complex_mul_conj1(_mm256_load_pd((double *)&lval[c*CHUNKHEIGHT+(2*@)]),_mm256_load_pd((double *)&lval[c*CHUNKHEIGHT+(2*@)])));#CHUNKHEIGHT/2
                     } else {
-                        ghost_lidx_t rem;
+                        ghost_lidx rem;
                         for (rem=0; rem<mat->nrows-c*CHUNKHEIGHT; rem++) {
                             partsums[((padding+3*NVECS)*tid)+3*v+0] += conj(lval[c*CHUNKHEIGHT+rem])*lval[c*CHUNKHEIGHT+rem];
                         }
@@ -366,7 +366,7 @@ ghost_error_t ghost_sellspmv__a_avx2_z_z_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t 
                     if ((c+1)*CHUNKHEIGHT <= mat->nrows) {
                         #GHOST_UNROLL#dot2[v] = _mm256_add_pd(dot2[v],complex_mul_conj1(_mm256_load_pd((double *)&rval[c*CHUNKHEIGHT+(2*@)]),_mm256_load_pd((double *)&lval[c*CHUNKHEIGHT+(2*@)])));#CHUNKHEIGHT/2
                     } else {
-                        ghost_lidx_t rem;
+                        ghost_lidx rem;
                         for (rem=0; rem<mat->nrows-c*CHUNKHEIGHT; rem++) {
                             partsums[((padding+3*NVECS)*tid)+3*v+1] += conj(rval[c*CHUNKHEIGHT+rem])*lval[c*CHUNKHEIGHT+rem];
                         }
@@ -376,7 +376,7 @@ ghost_error_t ghost_sellspmv__a_avx2_z_z_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t 
                     if ((c+1)*CHUNKHEIGHT <= mat->nrows) {
                         #GHOST_UNROLL#dot3[v] = _mm256_add_pd(dot3[v],complex_mul_conj1(_mm256_load_pd((double *)&rval[c*CHUNKHEIGHT+(2*@)]),_mm256_load_pd((double *)&rval[c*CHUNKHEIGHT+(2*@)])));#CHUNKHEIGHT/2
                     } else {
-                        ghost_lidx_t rem;
+                        ghost_lidx rem;
                         for (rem=0; rem<mat->nrows-c*CHUNKHEIGHT; rem++) {
                             partsums[((padding+3*NVECS)*tid)+3*v+2] += conj(rval[c*CHUNKHEIGHT+rem])*rval[c*CHUNKHEIGHT+rem];
                         }
@@ -398,7 +398,7 @@ ghost_error_t ghost_sellspmv__a_avx2_z_z_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t 
             WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
             return GHOST_SUCCESS;
         }
-        ghost_lidx_t v;
+        ghost_lidx v;
         for (v=0; v<NVECS; v++) {
             local_dot_product[v                       ] = 0.; 
             local_dot_product[v  +   NVECS] = 0.;

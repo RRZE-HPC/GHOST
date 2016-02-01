@@ -10,7 +10,7 @@
 #include "ghost/types.h"
 #include "ghost/cu_complex.h"
 
-template<typename T,int NCOLSOUT, int NCOLSIN> __global__ void ghost_tsmm_inplace_cu_rm_cm(T * x, const T * const __restrict__ w, const T alpha, const T beta, ghost_lidx_t nrows, ghost_lidx_t stridex, ghost_lidx_t stridew)
+template<typename T,int NCOLSOUT, int NCOLSIN> __global__ void ghost_tsmm_inplace_cu_rm_cm(T * x, const T * const __restrict__ w, const T alpha, const T beta, ghost_lidx nrows, ghost_lidx stridex, ghost_lidx stridew)
 {
     int row = blockIdx.x*blockDim.x+threadIdx.x;
     int k;

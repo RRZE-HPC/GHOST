@@ -16,7 +16,7 @@ typedef struct
     /**
      * @brief The data type of the densemats.
      */
-    ghost_datatype_t dt;
+    ghost_datatype dt;
     /**
      * @brief The vector block size.
      */
@@ -24,19 +24,19 @@ typedef struct
     /**
      * @brief The second configure block size M.
      */
-    ghost_implementation_t impl;
-    ghost_alignment_t alignment;
-    ghost_densemat_storage_t storage;
-} ghost_dot_parameters_t;
+    ghost_implementation impl;
+    ghost_alignment alignment;
+    ghost_densemat_storage storage;
+} ghost_dot_parameters;
 
-typedef ghost_error_t (*ghost_dot_kernel_t)(void *, ghost_densemat_t *, ghost_densemat_t *);
+typedef ghost_error (*ghost_dot_kernel)(void *, ghost_densemat *, ghost_densemat *);
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-    ghost_error_t ghost_localdot(void *res, ghost_densemat_t *vec1, ghost_densemat_t *vec2);
-    ghost_error_t ghost_dot(void *res, ghost_densemat_t *vec1, ghost_densemat_t *vec2);
+    ghost_error ghost_localdot(void *res, ghost_densemat *vec1, ghost_densemat *vec2);
+    ghost_error ghost_dot(void *res, ghost_densemat *vec1, ghost_densemat *vec2);
 
 
 #ifdef __cplusplus

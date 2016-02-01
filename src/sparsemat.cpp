@@ -15,21 +15,21 @@
 #include "ghost/sparsemat.h"
 
 using namespace std;
-static map<ghost_sparsemat_t *,map<ghost_lidx_t, ghost_gidx_t> > rowlengths;
-static vector<ghost_gidx_t>lowerPerc90Dists;
-static vector<ghost_gidx_t>upperPerc90Dists;
+static map<ghost_sparsemat *,map<ghost_lidx, ghost_gidx> > rowlengths;
+static vector<ghost_gidx>lowerPerc90Dists;
+static vector<ghost_gidx>upperPerc90Dists;
 
-ghost_error_t ghost_sparsemat_registerrow(ghost_sparsemat_t *mat, ghost_gidx_t row, ghost_gidx_t *cols, ghost_lidx_t rowlen, ghost_lidx_t stride)
+ghost_error ghost_sparsemat_registerrow(ghost_sparsemat *mat, ghost_gidx row, ghost_gidx *cols, ghost_lidx rowlen, ghost_lidx stride)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL); 
     
-    ghost_lidx_t c;
-    ghost_gidx_t col;
-    ghost_gidx_t firstcol = mat->ncols-1, lastcol = 0;
-    vector<ghost_gidx_t>lowerDists;
-    vector<ghost_gidx_t>upperDists;
-    ghost_gidx_t lowerDistsAcc = 0, upperDistsAcc = 0;
-    ghost_gidx_t lowerEnts = 0, upperEnts = 0;
+    ghost_lidx c;
+    ghost_gidx col;
+    ghost_gidx firstcol = mat->ncols-1, lastcol = 0;
+    vector<ghost_gidx>lowerDists;
+    vector<ghost_gidx>upperDists;
+    ghost_gidx lowerDistsAcc = 0, upperDistsAcc = 0;
+    ghost_gidx lowerEnts = 0, upperEnts = 0;
 
 
     for (c=0; c<rowlen; c++) {
@@ -88,11 +88,11 @@ ghost_error_t ghost_sparsemat_registerrow(ghost_sparsemat_t *mat, ghost_gidx_t r
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_sparsemat_registerrow_finalize(ghost_sparsemat_t *mat)
+ghost_error ghost_sparsemat_registerrow_finalize(ghost_sparsemat *mat)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL); 
 
-    ghost_gidx_t gnrows;
+    ghost_gidx gnrows;
     double avgRowlen = mat->nnz*1.0/(double)mat->nrows;
 
 #ifdef GHOST_HAVE_MPI
@@ -121,7 +121,7 @@ ghost_error_t ghost_sparsemat_registerrow_finalize(ghost_sparsemat_t *mat)
     
     mat->variance = 0.;
     mat->deviation = 0.;
-    for (map<ghost_lidx_t,ghost_gidx_t>::const_iterator it = rowlengths[mat].begin(); it != rowlengths[mat].end(); it++) {
+    for (map<ghost_lidx,ghost_gidx>::const_iterator it = rowlengths[mat].begin(); it != rowlengths[mat].end(); it++) {
         mat->variance += (it->first-avgRowlen)*(it->first-avgRowlen)*it->second;
     }
     mat->variance /= mat->nrows;

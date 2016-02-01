@@ -31,7 +31,7 @@ typedef enum {
     GHOST_SPMV_REMOTE = 16384,
     GHOST_SPMV_VSHIFT = 32768,
     GHOST_SPMV_CHAIN_AXPBY = 65536
-} ghost_spmv_flags_t;
+} ghost_spmv_flags;
 
 
 #define GHOST_SPMV_DOT_ANY (GHOST_SPMV_DOT_YY|GHOST_SPMV_DOT_XY|\
@@ -95,8 +95,8 @@ typedef enum {
         dot = arg;\
     }\
     if (flags & GHOST_SPMV_CHAIN_AXPBY) {\
-        ghost_densemat_t *zarg;\
-        zarg = va_arg(argp,ghost_densemat_t *);\
+        ghost_densemat *zarg;\
+        zarg = va_arg(argp,ghost_densemat *);\
         if (!zarg) {\
             ERROR_LOG("z argument is NULL!");\
             return GHOST_ERR_INVALID_ARG;\
@@ -116,13 +116,13 @@ typedef enum {
         eta = *(dt_out *)arg;\
     }\
     if (flags & GHOST_SPMV_REMOTE) {\
-        flags = (ghost_spmv_flags_t)(flags & ~GHOST_SPMV_AXPBY);\
-        flags = (ghost_spmv_flags_t)(flags & ~GHOST_SPMV_SHIFT);\
-        flags = (ghost_spmv_flags_t)(flags & ~GHOST_SPMV_VSHIFT);\
-        flags = (ghost_spmv_flags_t)(flags | GHOST_SPMV_AXPY);\
+        flags = (ghost_spmv_flags)(flags & ~GHOST_SPMV_AXPBY);\
+        flags = (ghost_spmv_flags)(flags & ~GHOST_SPMV_SHIFT);\
+        flags = (ghost_spmv_flags)(flags & ~GHOST_SPMV_VSHIFT);\
+        flags = (ghost_spmv_flags)(flags | GHOST_SPMV_AXPY);\
     } else if (flags & GHOST_SPMV_LOCAL) {\
-        flags = (ghost_spmv_flags_t)(flags & ~GHOST_SPMV_DOT_ANY);\
-        flags = (ghost_spmv_flags_t)(flags & ~GHOST_SPMV_CHAIN_AXPBY);\
+        flags = (ghost_spmv_flags)(flags & ~GHOST_SPMV_DOT_ANY);\
+        flags = (ghost_spmv_flags)(flags & ~GHOST_SPMV_CHAIN_AXPBY);\
     }\
 }\
 
@@ -143,24 +143,24 @@ typedef enum {
 
 #ifdef __cplusplus
 /**
- * @brief Bitwise OR operator for ghost_spmv_flags_t.
+ * @brief Bitwise OR operator for ghost_spmv_flags.
  *
  * @param a First input.
  * @param b Second input.
  *
  * @return Bitwise OR of the inputs cast to int.
  */
-inline ghost_spmv_flags_t operator|(const ghost_spmv_flags_t &a, 
-        const ghost_spmv_flags_t &b)
+inline ghost_spmv_flags operator|(const ghost_spmv_flags &a, 
+        const ghost_spmv_flags &b)
 {
-    return static_cast<ghost_spmv_flags_t>(
+    return static_cast<ghost_spmv_flags>(
             static_cast<int>(a) | static_cast<int>(b));
 }
 
-inline ghost_spmv_flags_t operator&(const ghost_spmv_flags_t &a, 
-        const ghost_spmv_flags_t &b)
+inline ghost_spmv_flags operator&(const ghost_spmv_flags &a, 
+        const ghost_spmv_flags &b)
 {
-    return static_cast<ghost_spmv_flags_t>(
+    return static_cast<ghost_spmv_flags>(
             static_cast<int>(a) & static_cast<int>(b));
 }
 

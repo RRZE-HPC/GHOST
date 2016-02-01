@@ -3,7 +3,7 @@
 
 #define N 4
 
-static int diag(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, void *val, void *arg)
+static int diag(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *col, void *val, void *arg)
 {
     *rowlen = 1;
     col[0] = row;
@@ -14,15 +14,15 @@ static int diag(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, void 
 
 
 int main(int argc, char **argv) {
-    ghost_context_t *ctx;
-    ghost_sparsemat_t *A;
-    ghost_densemat_t *y, *x;
+    ghost_context *ctx;
+    ghost_sparsemat *A;
+    ghost_densemat *y, *x;
     double zero = 0.;
     
-    ghost_sparsemat_traits_t mtraits = GHOST_SPARSEMAT_TRAITS_INITIALIZER;
-    ghost_densemat_traits_t vtraits = GHOST_DENSEMAT_TRAITS_INITIALIZER;
-    ghost_spmv_flags_t spmvflags = GHOST_SPMV_DEFAULT;
-    ghost_sparsemat_src_rowfunc_t matsrc = GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER;
+    ghost_sparsemat_traits mtraits = GHOST_SPARSEMAT_TRAITS_INITIALIZER;
+    ghost_densemat_traits vtraits = GHOST_DENSEMAT_TRAITS_INITIALIZER;
+    ghost_spmv_flags spmvflags = GHOST_SPMV_DEFAULT;
+    ghost_sparsemat_src_rowfunc matsrc = GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER;
     
     GHOST_TEST_CALL(ghost_init(argc,argv));
     GHOST_TEST_CALL(ghost_context_create(&ctx,N,N,GHOST_CONTEXT_DEFAULT,diag,GHOST_SPARSEMAT_SRC_FUNC,MPI_COMM_WORLD,1.));
@@ -40,7 +40,7 @@ int main(int argc, char **argv) {
 
     double yent = 0., xent = 0., yent_ref = 0.;
 
-    ghost_lidx_t i;
+    ghost_lidx i;
 
     for (i=0; i<y->traits.nrows; i++) {
         GHOST_TEST_CALL(y->entry(y,&yent,i,0));

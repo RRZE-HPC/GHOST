@@ -16,7 +16,7 @@
 #include <libgen.h>
 #include <math.h>
 
-const ghost_sparsemat_src_rowfunc_t GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER = {
+const ghost_sparsemat_src_rowfunc GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER = {
     .func = NULL,
     .maxrowlen = 0,
     .base = 0,
@@ -24,26 +24,26 @@ const ghost_sparsemat_src_rowfunc_t GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER = {
     .arg = NULL
 };
     
-const ghost_sparsemat_traits_t GHOST_SPARSEMAT_TRAITS_INITIALIZER = {
+const ghost_sparsemat_traits GHOST_SPARSEMAT_TRAITS_INITIALIZER = {
     .flags = GHOST_SPARSEMAT_DEFAULT,
     .symmetry = GHOST_SPARSEMAT_SYMM_GENERAL,
     .T = 1,
     .C = 32,
     .scotchStrat = (char*)GHOST_SCOTCH_STRAT_DEFAULT,
     .sortScope = 1,
-    .datatype = (ghost_datatype_t) (GHOST_DT_DOUBLE|GHOST_DT_REAL),
+    .datatype = (ghost_datatype) (GHOST_DT_DOUBLE|GHOST_DT_REAL),
     .opt_blockvec_width = 0
 };
 
-ghost_error_t ghost_sparsemat_create(ghost_sparsemat_t ** mat, ghost_context_t *context, ghost_sparsemat_traits_t *traits, int nTraits)
+ghost_error ghost_sparsemat_create(ghost_sparsemat ** mat, ghost_context *context, ghost_sparsemat_traits *traits, int nTraits)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_SETUP);
     UNUSED(nTraits);
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
 
     int me;
     GHOST_CALL_GOTO(ghost_rank(&me, context->mpicomm),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)mat,sizeof(ghost_sparsemat_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)mat,sizeof(ghost_sparsemat)),err,ret);
 
     (*mat)->traits = traits[0];
     if (nTraits == 3) {
@@ -101,7 +101,7 @@ ghost_error_t ghost_sparsemat_create(ghost_sparsemat_t ** mat, ghost_context_t *
     }
 
 #ifdef GHOST_GATHER_SPARSEMAT_GLOBAL_STATISTICS
-    GHOST_CALL_GOTO(ghost_malloc((void **)&((*mat)->nzDist),sizeof(ghost_gidx_t)*(2*context->gnrows-1)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&((*mat)->nzDist),sizeof(ghost_gidx)*(2*context->gnrows-1)),err,ret);
 #endif
     GHOST_CALL_GOTO(ghost_datatype_size(&(*mat)->elSize,(*mat)->traits.datatype),err,ret);
 
@@ -117,12 +117,12 @@ out:
     return ret;    
 }
 
-ghost_error_t ghost_sparsemat_sortrow(ghost_gidx_t *col, char *val, size_t valSize, ghost_lidx_t rowlen, ghost_lidx_t stride)
+ghost_error ghost_sparsemat_sortrow(ghost_gidx *col, char *val, size_t valSize, ghost_lidx rowlen, ghost_lidx stride)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
-    ghost_lidx_t n;
-    ghost_lidx_t c;
-    ghost_lidx_t swpcol;
+    ghost_lidx n;
+    ghost_lidx c;
+    ghost_lidx swpcol;
     char swpval[valSize];
     for (n=rowlen; n>1; n--) {
         for (c=0; c<n-1; c++) {
@@ -142,17 +142,17 @@ ghost_error_t ghost_sparsemat_sortrow(ghost_gidx_t *col, char *val, size_t valSi
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rlp, ghost_lidx_t *cl, ghost_lidx_t *clp, ghost_lidx_t **chunkptr, char **val, ghost_gidx_t **col, ghost_sparsemat_src_rowfunc_t *src, ghost_sparsemat_t *mat, ghost_lidx_t C, ghost_lidx_t P)
+ghost_error ghost_sparsemat_fromfunc_common(ghost_lidx *rl, ghost_lidx *rlp, ghost_lidx *cl, ghost_lidx *clp, ghost_lidx **chunkptr, char **val, ghost_gidx **col, ghost_sparsemat_src_rowfunc *src, ghost_sparsemat *mat, ghost_lidx C, ghost_lidx P)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
     int funcerrs = 0;
     char *tmpval = NULL;
-    ghost_gidx_t *tmpcol = NULL;
-    ghost_lidx_t nchunks = (ghost_lidx_t)(ceil((double)mat->nrows/(double)C));
-    ghost_lidx_t i,row,chunk,colidx;
-    ghost_gidx_t gnents = 0, gnnz = 0;
-    ghost_lidx_t maxRowLenInChunk = 0, maxRowLen = 0, privateMaxRowLen = 0;
+    ghost_gidx *tmpcol = NULL;
+    ghost_lidx nchunks = (ghost_lidx)(ceil((double)mat->nrows/(double)C));
+    ghost_lidx i,row,chunk,colidx;
+    ghost_gidx gnents = 0, gnnz = 0;
+    ghost_lidx maxRowLenInChunk = 0, maxRowLen = 0, privateMaxRowLen = 0;
     int me,nprocs;
     
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, mat->context->mpicomm),err,ret);
@@ -162,7 +162,7 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
     mat->nrows = mat->context->lnrows[me];
 
 #ifdef GHOST_GATHER_SPARSEMAT_GLOBAL_STATISTICS
-    memset(mat->nzDist,0,sizeof(ghost_gidx_t)*(2*mat->context->gnrows-1));
+    memset(mat->nzDist,0,sizeof(ghost_gidx)*(2*mat->context->gnrows-1));
 #endif
     mat->lowerBandwidth = 0;
     mat->upperBandwidth = 0;
@@ -192,29 +192,29 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
         mat->traits.flags |= (ghost_sparsemat_flags_t)GHOST_SPARSEMAT_NOT_SORT_COLS;
     }
 
-    ghost_lidx_t *tmpclp = NULL;
+    ghost_lidx *tmpclp = NULL;
     if (!clp) {
-        ghost_malloc((void **)&tmpclp,nchunks*sizeof(ghost_lidx_t));
+        ghost_malloc((void **)&tmpclp,nchunks*sizeof(ghost_lidx));
         clp = tmpclp;
     }
-    ghost_lidx_t *tmprl = NULL;
+    ghost_lidx *tmprl = NULL;
     if (!rl) {
-        ghost_malloc((void **)&tmprl,nchunks*sizeof(ghost_lidx_t));
+        ghost_malloc((void **)&tmprl,nchunks*sizeof(ghost_lidx));
         rl = tmprl;
     }
 
 
     if (!(*chunkptr)) {
         GHOST_INSTR_START("rowlens");
-        GHOST_CALL_GOTO(ghost_malloc_align((void **)chunkptr,(nchunks+1)*sizeof(ghost_lidx_t),GHOST_DATA_ALIGNMENT),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc_align((void **)chunkptr,(nchunks+1)*sizeof(ghost_lidx),GHOST_DATA_ALIGNMENT),err,ret);
 
 
 #pragma omp parallel private(i,tmpval,tmpcol,row,maxRowLenInChunk) reduction (+:gnents,gnnz,funcerrs) reduction (max:privateMaxRowLen) 
         {
-            ghost_lidx_t rowlen;
+            ghost_lidx rowlen;
             maxRowLenInChunk = 0; 
             GHOST_CALL(ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize),ret);
-            GHOST_CALL(ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx_t)),ret);
+            GHOST_CALL(ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx)),ret);
 
             /*if (!(mat->traits.flags & GHOST_SPARSEMAT_PERMUTE) && src->func == ghost_sparsemat_rowfunc_crs) {
 #pragma omp single
@@ -305,17 +305,17 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
             ret = GHOST_ERR_UNKNOWN;
             goto err;
         }
-        if (gnents > (ghost_gidx_t)GHOST_LIDX_MAX) {
+        if (gnents > (ghost_gidx)GHOST_LIDX_MAX) {
             ERROR_LOG("The local number of entries is too large: %"PRGIDX,gnents);
             return GHOST_ERR_DATATYPE;
         }
-        if (gnnz > (ghost_gidx_t)GHOST_LIDX_MAX) {
+        if (gnnz > (ghost_gidx)GHOST_LIDX_MAX) {
             ERROR_LOG("The local number of entries is too large: %"PRGIDX,gnents);
             return GHOST_ERR_DATATYPE;
         }
 
-        mat->nnz = (ghost_lidx_t)gnnz;
-        mat->nEnts = (ghost_lidx_t)gnents;
+        mat->nnz = (ghost_lidx)gnnz;
+        mat->nEnts = (ghost_lidx)gnents;
 
         GHOST_INSTR_START("chunkptr_init");
         for(chunk = 0; chunk < nchunks; chunk++ ) {
@@ -325,13 +325,13 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
         
 
 #ifdef GHOST_HAVE_MPI
-        ghost_gidx_t fent = 0;
+        ghost_gidx fent = 0;
         for (i=0; i<nprocs; i++) {
             if (i>0 && me==i) {
                 MPI_CALL_GOTO(MPI_Recv(&fent,1,ghost_mpi_dt_gidx,me-1,me-1,mat->context->mpicomm,MPI_STATUS_IGNORE),err,ret);
             }
             if (me==i && i<nprocs-1) {
-                ghost_gidx_t send = fent+mat->nEnts;
+                ghost_gidx send = fent+mat->nEnts;
                 MPI_CALL_GOTO(MPI_Send(&send,1,ghost_mpi_dt_gidx,me+1,me,mat->context->mpicomm),err,ret);
             }
         }
@@ -353,7 +353,7 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
     }
     
     if (!(*col)) {
-        GHOST_CALL_GOTO(ghost_malloc_align((void **)col,sizeof(ghost_gidx_t)*(size_t)mat->nEnts,GHOST_DATA_ALIGNMENT),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc_align((void **)col,sizeof(ghost_gidx)*(size_t)mat->nEnts,GHOST_DATA_ALIGNMENT),err,ret);
         readcols = 1;
     }
         
@@ -366,12 +366,12 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
     {
         int funcret = 0;
         GHOST_CALL(ghost_malloc((void **)&tmpval,C*src->maxrowlen*mat->elSize),ret);
-        GHOST_CALL(ghost_malloc((void **)&tmpcol,C*src->maxrowlen*sizeof(ghost_gidx_t)),ret);
+        GHOST_CALL(ghost_malloc((void **)&tmpcol,C*src->maxrowlen*sizeof(ghost_gidx)),ret);
         
         if (src->func == ghost_sparsemat_rowfunc_crs) {
-            ghost_gidx_t *crscol;
+            ghost_gidx *crscol;
             char *crsval = (char *)(((ghost_sparsemat_rowfunc_crs_arg *)src->arg)->val);
-            ghost_lidx_t *crsrpt = ((ghost_sparsemat_rowfunc_crs_arg *)src->arg)->rpt;
+            ghost_lidx *crsrpt = ((ghost_sparsemat_rowfunc_crs_arg *)src->arg)->rpt;
 #pragma omp single
             INFO_LOG("Fast matrix construction for CRS source and no permutation");
 
@@ -380,7 +380,7 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_lidx_t *rl, ghost_lidx_t *rl
                 //memset(tmpval,0,mat->elSize*src->maxrowlen*C);
 
                 for (i=0, row = chunk*C; (i<C) && (chunk*C+i < mat->nrows); i++, row++) {
-                    ghost_gidx_t actualrow;
+                    ghost_gidx actualrow;
                     if (mat->traits.flags & GHOST_SPARSEMAT_PERMUTE) {
                         actualrow = mat->context->perm_local->invPerm[row];
                     } else {
@@ -554,10 +554,10 @@ out:
 static int ghost_cmp_entsperrow(const void* a, const void* b, void *arg) 
 {
     UNUSED(arg);
-    return  ((ghost_sorting_helper_t*)b)->nEntsInRow - ((ghost_sorting_helper_t*)a)->nEntsInRow;
+    return  ((ghost_sorting_helper*)b)->nEntsInRow - ((ghost_sorting_helper*)a)->nEntsInRow;
 }
 
-ghost_error_t ghost_sparsemat_perm_global_cols(ghost_gidx_t *col, ghost_lidx_t ncols, ghost_context_t *context) 
+ghost_error ghost_sparsemat_perm_global_cols(ghost_gidx *col, ghost_lidx ncols, ghost_context *context) 
 {
 #ifdef GHOST_HAVE_MPI
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION|GHOST_FUNCTYPE_COMMUNICATION);
@@ -566,21 +566,21 @@ ghost_error_t ghost_sparsemat_perm_global_cols(ghost_gidx_t *col, ghost_lidx_t n
     ghost_nrank(&nprocs,context->mpicomm);
 
     for (i=0; i<nprocs; i++) {
-        ghost_lidx_t nels = 0;
+        ghost_lidx nels = 0;
         if (i==me) {
             nels = ncols;
         }
         MPI_Bcast(&nels,1,ghost_mpi_dt_gidx,i,context->mpicomm);
 
-        ghost_gidx_t *colsfromi;
-        ghost_malloc((void **)&colsfromi,nels*sizeof(ghost_gidx_t));
+        ghost_gidx *colsfromi;
+        ghost_malloc((void **)&colsfromi,nels*sizeof(ghost_gidx));
     
         if (i==me) {
-            memcpy(colsfromi,col,nels*sizeof(ghost_gidx_t));
+            memcpy(colsfromi,col,nels*sizeof(ghost_gidx));
         }
         MPI_Bcast(colsfromi,nels,ghost_mpi_dt_gidx,i,context->mpicomm);
 
-        ghost_lidx_t el;
+        ghost_lidx el;
         for (el=0; el<nels; el++) {
             if ((colsfromi[el] >= context->lfRow[me]) && (colsfromi[el] < (context->lfRow[me]+context->lnrows[me]))) {
                 colsfromi[el] = context->perm_global->perm[colsfromi[el]-context->lfRow[me]];
@@ -606,7 +606,7 @@ ghost_error_t ghost_sparsemat_perm_global_cols(ghost_gidx_t *col, ghost_lidx_t n
 
                 }
             } else {
-                memcpy(col,colsfromi,nels*sizeof(ghost_gidx_t));
+                memcpy(col,colsfromi,nels*sizeof(ghost_gidx));
             }
         }
 
@@ -622,9 +622,9 @@ ghost_error_t ghost_sparsemat_perm_global_cols(ghost_gidx_t *col, ghost_lidx_t n
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_sparsemat_perm_sort(ghost_sparsemat_t *mat, void *matrixSource, ghost_sparsemat_src_t srcType, ghost_gidx_t scope)
+ghost_error ghost_sparsemat_perm_sort(ghost_sparsemat *mat, void *matrixSource, ghost_sparsemat_src srcType, ghost_gidx scope)
 {
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
     if (mat->context->perm_local) {
         WARNING_LOG("Will not re-create existing permutations!");
         return ret;
@@ -632,46 +632,46 @@ ghost_error_t ghost_sparsemat_perm_sort(ghost_sparsemat_t *mat, void *matrixSour
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_SETUP);
     
     int me;    
-    ghost_gidx_t i,c,nrows,rowOffset;
-    ghost_sorting_helper_t *rowSort = NULL;
-    ghost_gidx_t *rpt = NULL;
+    ghost_gidx i,c,nrows,rowOffset;
+    ghost_sorting_helper *rowSort = NULL;
+    ghost_gidx *rpt = NULL;
 
     GHOST_CALL_GOTO(ghost_rank(&me, mat->context->mpicomm),err,ret);
 
     
 
-    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local,sizeof(ghost_permutation_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local,sizeof(ghost_permutation)),err,ret);
     if (mat->traits.sortScope > mat->nrows) {
         WARNING_LOG("Restricting the sorting scope to the number of matrix rows");
     }
     nrows = mat->nrows;
     rowOffset = mat->context->lfRow[me];
     mat->context->perm_local->scope = GHOST_PERMUTATION_LOCAL;
-    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->perm,sizeof(ghost_gidx_t)*nrows),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->invPerm,sizeof(ghost_gidx_t)*nrows),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->perm,sizeof(ghost_gidx)*nrows),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->invPerm,sizeof(ghost_gidx)*nrows),err,ret);
 #ifdef GHOST_HAVE_CUDA
-    GHOST_CALL_GOTO(ghost_cu_malloc((void **)&mat->context->perm_local->cu_perm,sizeof(ghost_gidx_t)*nrows),err,ret);
+    GHOST_CALL_GOTO(ghost_cu_malloc((void **)&mat->context->perm_local->cu_perm,sizeof(ghost_gidx)*nrows),err,ret);
 #endif
 
     mat->context->perm_local->len = nrows;
 
-    memset(mat->context->perm_local->perm,0,sizeof(ghost_gidx_t)*nrows);
-    memset(mat->context->perm_local->invPerm,0,sizeof(ghost_gidx_t)*nrows);
+    memset(mat->context->perm_local->perm,0,sizeof(ghost_gidx)*nrows);
+    memset(mat->context->perm_local->invPerm,0,sizeof(ghost_gidx)*nrows);
     
-    GHOST_CALL_GOTO(ghost_malloc((void **)&rowSort,nrows * sizeof(ghost_sorting_helper_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,(nrows+1) * sizeof(ghost_gidx_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&rowSort,nrows * sizeof(ghost_sorting_helper)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,(nrows+1) * sizeof(ghost_gidx)),err,ret);
 
     if (srcType == GHOST_SPARSEMAT_SRC_FUNC || srcType == GHOST_SPARSEMAT_SRC_FILE) {
-        ghost_sparsemat_src_rowfunc_t *src = (ghost_sparsemat_src_rowfunc_t *)matrixSource;
+        ghost_sparsemat_src_rowfunc *src = (ghost_sparsemat_src_rowfunc *)matrixSource;
         char *tmpval = NULL;
-        ghost_gidx_t *tmpcol = NULL;
+        ghost_gidx *tmpcol = NULL;
         rpt[0] = 0;
         int funcerrs = 0;
 
 #pragma omp parallel private(i,tmpval,tmpcol)
         { 
             GHOST_CALL(ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize),ret);
-            GHOST_CALL(ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx_t)),ret);
+            GHOST_CALL(ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx)),ret);
             if (mat->context->perm_global) {
 #pragma omp for schedule(runtime) reduction (+:funcerrs)
                 for (i=0; i<nrows; i++) {
@@ -709,9 +709,9 @@ ghost_error_t ghost_sparsemat_perm_sort(ghost_sparsemat_t *mat, void *matrixSour
 
 #pragma omp parallel for
     for (c=0; c<nrows/scope; c++) {
-        qsort_r(rowSort+c*scope, scope, sizeof(ghost_sorting_helper_t), ghost_cmp_entsperrow, NULL);
+        qsort_r(rowSort+c*scope, scope, sizeof(ghost_sorting_helper), ghost_cmp_entsperrow, NULL);
     }
-    qsort_r(rowSort+(nrows/scope)*scope, nrows%scope, sizeof(ghost_sorting_helper_t), ghost_cmp_entsperrow, NULL);
+    qsort_r(rowSort+(nrows/scope)*scope, nrows%scope, sizeof(ghost_sorting_helper), ghost_cmp_entsperrow, NULL);
 
 #pragma omp parallel for    
     for(i=0; i < nrows; ++i) {
@@ -720,7 +720,7 @@ ghost_error_t ghost_sparsemat_perm_sort(ghost_sparsemat_t *mat, void *matrixSour
     }
 
 #ifdef GHOST_HAVE_CUDA
-    ghost_cu_upload(mat->context->perm_local->cu_perm,mat->context->perm_local->perm,mat->context->perm_local->len*sizeof(ghost_gidx_t));
+    ghost_cu_upload(mat->context->perm_local->cu_perm,mat->context->perm_local->perm,mat->context->perm_local->len*sizeof(ghost_gidx));
 #endif
     
     goto out;
@@ -747,7 +747,7 @@ out:
 
 }
 
-ghost_error_t ghost_sparsemat_nrows(ghost_gidx_t *nrows, ghost_sparsemat_t *mat)
+ghost_error ghost_sparsemat_nrows(ghost_gidx *nrows, ghost_sparsemat *mat)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     if (!nrows) {
@@ -761,14 +761,14 @@ ghost_error_t ghost_sparsemat_nrows(ghost_gidx_t *nrows, ghost_sparsemat_t *mat)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_sparsemat_nnz(ghost_gidx_t *nnz, ghost_sparsemat_t *mat)
+ghost_error ghost_sparsemat_nnz(ghost_gidx *nnz, ghost_sparsemat *mat)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     if (!nnz) {
         ERROR_LOG("NULL pointer");
         return GHOST_ERR_INVALID_ARG;
     }
-  /*  ghost_gidx_t lnnz = mat->nnz;
+  /*  ghost_gidx lnnz = mat->nnz;
 
 #ifdef GHOST_HAVE_MPI
     MPI_CALL_RETURN(MPI_Allreduce(&lnnz,nnz,1,ghost_mpi_dt_gidx,MPI_SUM,mat->context->mpicomm));
@@ -782,15 +782,15 @@ ghost_error_t ghost_sparsemat_nnz(ghost_gidx_t *nnz, ghost_sparsemat_t *mat)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_sparsemat_string(char **str, ghost_sparsemat_t *mat)
+ghost_error ghost_sparsemat_string(char **str, ghost_sparsemat *mat)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     GHOST_CALL_RETURN(ghost_malloc((void **)str,1));
     memset(*str,'\0',1);
 
     int myrank;
-    ghost_gidx_t nrows = 0;
-    ghost_gidx_t nnz = 0;
+    ghost_gidx nrows = 0;
+    ghost_gidx nnz = 0;
 
     GHOST_CALL_RETURN(ghost_sparsemat_nrows(&nrows,mat));
     GHOST_CALL_RETURN(ghost_sparsemat_nnz(&nnz,mat));
@@ -866,11 +866,11 @@ ghost_error_t ghost_sparsemat_string(char **str, ghost_sparsemat_t *mat)
 
 }
 
-ghost_error_t ghost_sparsemat_tofile_header(ghost_sparsemat_t *mat, char *path)
+ghost_error ghost_sparsematofile_header(ghost_sparsemat *mat, char *path)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_IO);
 
-    ghost_gidx_t mnrows,mncols,mnnz;
+    ghost_gidx mnrows,mncols,mnnz;
     GHOST_CALL_RETURN(ghost_sparsemat_nrows(&mnrows,mat));
     mncols = mnrows;
     GHOST_CALL_RETURN(ghost_sparsemat_nnz(&mnnz,mat));
@@ -938,23 +938,23 @@ ghost_error_t ghost_sparsemat_tofile_header(ghost_sparsemat_t *mat, char *path)
     return GHOST_SUCCESS;
 }
 
-bool ghost_sparsemat_symmetry_valid(ghost_sparsemat_symmetry_t symmetry)
+bool ghost_sparsemat_symmetry_valid(ghost_sparsemat_symmetry symmetry)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
 
-    if ((symmetry & (ghost_sparsemat_symmetry_t)GHOST_SPARSEMAT_SYMM_GENERAL) &&
-            (symmetry & ~(ghost_sparsemat_symmetry_t)GHOST_SPARSEMAT_SYMM_GENERAL))
+    if ((symmetry & (ghost_sparsemat_symmetry)GHOST_SPARSEMAT_SYMM_GENERAL) &&
+            (symmetry & ~(ghost_sparsemat_symmetry)GHOST_SPARSEMAT_SYMM_GENERAL))
         return 0;
 
-    if ((symmetry & (ghost_sparsemat_symmetry_t)GHOST_SPARSEMAT_SYMM_SYMMETRIC) &&
-            (symmetry & ~(ghost_sparsemat_symmetry_t)GHOST_SPARSEMAT_SYMM_SYMMETRIC))
+    if ((symmetry & (ghost_sparsemat_symmetry)GHOST_SPARSEMAT_SYMM_SYMMETRIC) &&
+            (symmetry & ~(ghost_sparsemat_symmetry)GHOST_SPARSEMAT_SYMM_SYMMETRIC))
         return 0;
 
     return 1;
 }
 
-const char * ghost_sparsemat_symmetry_string(ghost_sparsemat_symmetry_t symmetry)
+const char * ghost_sparsemat_symmetry_string(ghost_sparsemat_symmetry symmetry)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
@@ -978,7 +978,7 @@ const char * ghost_sparsemat_symmetry_string(ghost_sparsemat_symmetry_t symmetry
     return "Invalid";
 }
 
-void ghost_sparsemat_destroy_common(ghost_sparsemat_t *mat)
+void ghost_sparsemat_destroy_common(ghost_sparsemat *mat)
 {
     if (!mat) {
         return;
@@ -992,17 +992,17 @@ void ghost_sparsemat_destroy_common(ghost_sparsemat_t *mat)
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TEARDOWN);
 }
 
-ghost_error_t ghost_sparsemat_from_bincrs(ghost_sparsemat_t *mat, char *path)
+ghost_error ghost_sparsemat_from_bincrs(ghost_sparsemat *mat, char *path)
 {
     PERFWARNING_LOG("The current implementation of binCRS read-in is "
             "unefficient in terms of memory consumption!");
     
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION|GHOST_FUNCTYPE_IO);
     
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
     ghost_sparsemat_rowfunc_bincrs_initargs args;
-    ghost_gidx_t dim[2];
-    ghost_sparsemat_src_rowfunc_t src = GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER;
+    ghost_gidx dim[2];
+    ghost_sparsemat_src_rowfunc src = GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER;
     
     src.func = &ghost_sparsemat_rowfunc_bincrs;
     args.filename = path;
@@ -1036,14 +1036,14 @@ out:
 
 }
 
-ghost_error_t ghost_sparsemat_from_mm(ghost_sparsemat_t *mat, char *path)
+ghost_error ghost_sparsemat_from_mm(ghost_sparsemat *mat, char *path)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION|GHOST_FUNCTYPE_IO);
     
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
     ghost_sparsemat_rowfunc_mm_initargs args;
-    ghost_gidx_t dim[2];
-    ghost_sparsemat_src_rowfunc_t src = GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER;
+    ghost_gidx dim[2];
+    ghost_sparsemat_src_rowfunc src = GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER;
   
     int symmetric = 0;
     src.arg = &symmetric;
@@ -1088,13 +1088,13 @@ out:
 
 }
 
-extern inline int ghost_sparsemat_rowfunc_crs(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, void *val, void *arg);
+extern inline int ghost_sparsemat_rowfunc_crs(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *col, void *val, void *arg);
 
-ghost_error_t ghost_sparsemat_from_crs(ghost_sparsemat_t *mat, ghost_gidx_t offs, ghost_gidx_t n, ghost_gidx_t *col, void *val, ghost_lidx_t *rpt)
+ghost_error ghost_sparsemat_from_crs(ghost_sparsemat *mat, ghost_gidx offs, ghost_gidx n, ghost_gidx *col, void *val, ghost_lidx *rpt)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
     ghost_sparsemat_rowfunc_crs_arg args;
     ghost_datatype_size(&args.dtsize,mat->traits.datatype);
     args.dtsize = mat->traits.datatype;
@@ -1103,7 +1103,7 @@ ghost_error_t ghost_sparsemat_from_crs(ghost_sparsemat_t *mat, ghost_gidx_t offs
     args.rpt = rpt;
     args.offs = offs;
 
-    ghost_sparsemat_src_rowfunc_t src = GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER;
+    ghost_sparsemat_src_rowfunc src = GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER;
     
     src.func = &ghost_sparsemat_rowfunc_crs;
     src.arg = &args;

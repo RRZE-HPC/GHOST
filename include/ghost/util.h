@@ -69,9 +69,9 @@ _Pragma("omp single") {\
 extern "C" {
 #endif
 
-    ghost_error_t ghost_header_string(char **str, const char *fmt, ...);
-    ghost_error_t ghost_footer_string(char **str); 
-    ghost_error_t ghost_line_string(char **str, const char *label, const char *unit, const char *format, ...);
+    ghost_error ghost_header_string(char **str, const char *fmt, ...);
+    ghost_error ghost_footer_string(char **str); 
+    ghost_error ghost_line_string(char **str, const char *label, const char *unit, const char *format, ...);
 
 
     /**
@@ -82,7 +82,7 @@ extern "C" {
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_malloc(void **mem, const size_t size);
+    ghost_error ghost_malloc(void **mem, const size_t size);
     /**
      * @brief Allocate aligned memory.
      *
@@ -92,7 +92,7 @@ extern "C" {
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_malloc_align(void **mem, const size_t size, const size_t align);
+    ghost_error ghost_malloc_align(void **mem, const size_t size, const size_t align);
 
     /**
      * @brief Allocate pinned memory to enable fast CPU-GPU transfers.
@@ -104,7 +104,7 @@ extern "C" {
      *
      * If CUDA is not enabled, a normal malloc is done.
      */
-    ghost_error_t ghost_malloc_pinned(void **mem, const size_t size);
+    ghost_error ghost_malloc_pinned(void **mem, const size_t size);
 
     /**
      * @brief Computes a hash from three integral input values.

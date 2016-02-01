@@ -5,10 +5,10 @@
 
 
 #define THREADSPERBLOCK 256
-#define N (ghost_lidx_t)1e8 
+#define N (ghost_lidx)1e8 
 
 static void dummy(double *a) {
-    if (a[(ghost_lidx_t)N>>1] < 0) {
+    if (a[(ghost_lidx)N>>1] < 0) {
         WARNING_LOG("dummy");
     }
 }
@@ -16,17 +16,17 @@ static void dummy(double *a) {
 #ifdef GHOST_HAVE_CUDA
 __global__ static void cu_copy_kernel(double * __restrict__ a, const double * __restrict__ b)
 {
-    ghost_lidx_t row = blockIdx.x*blockDim.x+threadIdx.x;
+    ghost_lidx row = blockIdx.x*blockDim.x+threadIdx.x;
     for (; row<N; row+=gridDim.x*blockDim.x) {
         a[row] = b[row];
     }
 } 
 #endif
 
-extern "C" ghost_error_t ghost_cu_bench_stream(ghost_bench_stream_test_t test, double *bw)
+extern "C" ghost_error ghost_cu_bench_stream(ghost_bench_stream_test_t test, double *bw)
 {
 
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
     if (test != GHOST_BENCH_STREAM_COPY) {
         WARNING_LOG("Currently only STREAM copy implemented!");
     }
@@ -45,7 +45,7 @@ extern "C" ghost_error_t ghost_cu_bench_stream(ghost_bench_stream_test_t test, d
         b[i] = i;
     }
     
-    ghost_type_t mytype;
+    ghost_type mytype;
     ghost_type_get(&mytype);
 
     

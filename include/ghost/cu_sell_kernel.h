@@ -215,10 +215,10 @@ struct CustomSum
 };
 
 template<typename v_t>
-__global__ void ghost_deviceReduceSum(v_t *in, v_t *out, ghost_lidx_t N)
+__global__ void ghost_deviceReduceSum(v_t *in, v_t *out, ghost_lidx N)
 {
 
-    ghost_lidx_t i;
+    ghost_lidx i;
     v_t sum;
     zero<v_t>(sum);
 

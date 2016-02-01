@@ -17,8 +17,8 @@
 extern "C" {
 #endif
 
-ghost_error_t  ghost_rayleigh_ritz(ghost_sparsemat_t * mat, void * eigs, void * res,  ghost_densemat_t * v_eigs , ghost_densemat_t * v_res, int obtion, ghost_spmv_flags_t spMVM_Options);
-ghost_error_t ghost_grayleigh_ritz(ghost_sparsemat_t * mat, void * eigs, void * res,  ghost_densemat_t * v_eigs , ghost_densemat_t * v_res, int obtion, ghost_spmv_flags_t spMVM_Options);
+ghost_error  ghost_rayleigh_ritz(ghost_sparsemat * mat, void * eigs, void * res,  ghost_densemat * v_eigs , ghost_densemat * v_res, int obtion, ghost_spmv_flags spMVM_Options);
+ghost_error ghost_grayleigh_ritz(ghost_sparsemat * mat, void * eigs, void * res,  ghost_densemat * v_eigs , ghost_densemat * v_res, int obtion, ghost_spmv_flags spMVM_Options);
 
 
 #ifdef __cplusplus

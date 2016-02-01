@@ -19,9 +19,9 @@ using namespace std;
 // Hash function for unordered_map
 namespace std
 {
-    template<> struct hash<ghost_tsmm_inplace_parameters_t>
+    template<> struct hash<ghost_tsmm_inplace_parameters>
     {
-        typedef ghost_tsmm_inplace_parameters_t argument_type;
+        typedef ghost_tsmm_inplace_parameters argument_type;
         typedef std::size_t result_type;
         result_type operator()(argument_type const& a) const
         {
@@ -30,15 +30,15 @@ namespace std
     };
 }
 
-bool operator==(const ghost_tsmm_inplace_parameters_t& a, const ghost_tsmm_inplace_parameters_t& b)
+bool operator==(const ghost_tsmm_inplace_parameters& a, const ghost_tsmm_inplace_parameters& b)
 {
     return a.dt == b.dt && a.ncolsin == b.ncolsin && a.ncolsout == b.ncolsout && a.impl == b.impl;
 }
 
-static unordered_map<ghost_tsmm_inplace_parameters_t, ghost_tsmm_inplace_kernel_t> ghost_tsmm_inplace_kernels;
+static unordered_map<ghost_tsmm_inplace_parameters, ghost_tsmm_inplace_kernel> ghost_tsmm_inplace_kernels;
 
-ghost_error_t ghost_tsmm_inplace_valid(ghost_densemat_t *x, ghost_densemat_t *v, const char * transv, 
-ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce, int printerror)
+ghost_error ghost_tsmm_inplace_valid(ghost_densemat *x, ghost_densemat *v, const char * transv, 
+ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce, int printerror)
 {
 /*    if (x->traits.location != GHOST_LOCATION_HOST || v->traits.location != GHOST_LOCATION_HOST) {
         if (printerror) {
@@ -103,9 +103,9 @@ ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce, in
 
 }
 
-ghost_error_t ghost_tsmm_inplace(ghost_densemat_t *x, ghost_densemat_t *w, void *alpha, void *beta)
+ghost_error ghost_tsmm_inplace(ghost_densemat *x, ghost_densemat *w, void *alpha, void *beta)
 {
-    ghost_error_t ret;
+    ghost_error ret;
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
 
     if ((ret = ghost_tsmm_inplace_valid(x,x,"N",w,"N",alpha,beta,GHOST_GEMM_NO_REDUCE,1)) != GHOST_SUCCESS) {
@@ -128,8 +128,8 @@ ghost_error_t ghost_tsmm_inplace(ghost_densemat_t *x, ghost_densemat_t *w, void 
 #endif
     }
     
-    ghost_tsmm_inplace_parameters_t p;
-    ghost_tsmm_inplace_kernel_t kernel = NULL;
+    ghost_tsmm_inplace_parameters p;
+    ghost_tsmm_inplace_kernel kernel = NULL;
 
     p.impl = GHOST_IMPLEMENTATION_PLAIN;
     p.dt = x->traits.datatype;

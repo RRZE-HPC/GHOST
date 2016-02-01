@@ -11,15 +11,15 @@
 #include <float.h>
 #include <stdlib.h>
 
-ghost_error_t ghost_tsmm__a_sse_d_x_x_1_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
+ghost_error ghost_tsmm__a_sse_d_x_x_1_rm_cm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
 {
 #ifdef GHOST_HAVE_SSE
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
 
-    ghost_lidx_t k = w->traits.ncols;
-    ghost_lidx_t m = v->traits.ncols;
-    ghost_lidx_t n = v->traits.nrows;
+    ghost_lidx k = w->traits.ncols;
+    ghost_lidx m = v->traits.ncols;
+    ghost_lidx n = v->traits.nrows;
 
     INFO_LOG("In SSE TSMM with arbitrary block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
@@ -27,9 +27,9 @@ ghost_error_t ghost_tsmm__a_sse_d_x_x_1_rm_cm(ghost_densemat_t *x, ghost_densema
     const double * const restrict wval = (const double *) w->val;
     double * const restrict xval = (double *) x->val;
 
-    const ghost_lidx_t ldv = v->stride;
-    const ghost_lidx_t ldw = w->stride;
-    const ghost_lidx_t ldx = x->stride;
+    const ghost_lidx ldv = v->stride;
+    const ghost_lidx ldw = w->stride;
+    const ghost_lidx ldx = x->stride;
 
     double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
@@ -37,10 +37,10 @@ ghost_error_t ghost_tsmm__a_sse_d_x_x_1_rm_cm(ghost_densemat_t *x, ghost_densema
    
     betavec = _mm_set1_pd(dbeta);
     alphavec = _mm_set1_pd(dalpha);
-    ghost_lidx_t i,j,s;
+    ghost_lidx i,j,s;
 
     double * restrict wtran = NULL;
-    ghost_lidx_t ncols_wtran = PAD(w->traits.ncols,2);
+    ghost_lidx ncols_wtran = PAD(w->traits.ncols,2);
     GHOST_CALL_GOTO(ghost_malloc_align((void **)&wtran,sizeof(double)*w->traits.nrows*ncols_wtran,32),err,ret);
     memset(wtran,0,sizeof(double)*w->traits.nrows*ncols_wtran);
     for (s=0; s<w->traits.ncols; s++) {
@@ -94,15 +94,15 @@ out:
 #endif
 }
 
-ghost_error_t ghost_tsmm__u_sse_d_x_x_1_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
+ghost_error ghost_tsmm__u_sse_d_x_x_1_rm_cm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
 {
 #ifdef GHOST_HAVE_SSE
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
 
-    ghost_lidx_t k = w->traits.ncols;
-    ghost_lidx_t m = v->traits.ncols;
-    ghost_lidx_t n = v->traits.nrows;
+    ghost_lidx k = w->traits.ncols;
+    ghost_lidx m = v->traits.ncols;
+    ghost_lidx n = v->traits.nrows;
 
     INFO_LOG("In SSE TSMM with arbitrary block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
@@ -110,9 +110,9 @@ ghost_error_t ghost_tsmm__u_sse_d_x_x_1_rm_cm(ghost_densemat_t *x, ghost_densema
     const double * const restrict wval = (const double *) w->val;
     double * const restrict xval = (double *) x->val;
 
-    const ghost_lidx_t ldv = v->stride;
-    const ghost_lidx_t ldw = w->stride;
-    const ghost_lidx_t ldx = x->stride;
+    const ghost_lidx ldv = v->stride;
+    const ghost_lidx ldw = w->stride;
+    const ghost_lidx ldx = x->stride;
 
     double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
@@ -120,10 +120,10 @@ ghost_error_t ghost_tsmm__u_sse_d_x_x_1_rm_cm(ghost_densemat_t *x, ghost_densema
    
     betavec = _mm_set1_pd(dbeta);
     alphavec = _mm_set1_pd(dalpha);
-    ghost_lidx_t i,j,s;
+    ghost_lidx i,j,s;
 
     double * restrict wtran = NULL;
-    ghost_lidx_t ncols_wtran = PAD(w->traits.ncols,2);
+    ghost_lidx ncols_wtran = PAD(w->traits.ncols,2);
     GHOST_CALL_GOTO(ghost_malloc_align((void **)&wtran,sizeof(double)*w->traits.nrows*ncols_wtran,32),err,ret);
     memset(wtran,0,sizeof(double)*w->traits.nrows*ncols_wtran);
     for (s=0; s<w->traits.ncols; s++) {

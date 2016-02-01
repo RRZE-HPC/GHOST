@@ -27,7 +27,7 @@ int main(int argc, char** argv) {\
     arg.argc = argc;\
     arg.argv = argv;\
     ghost_init(argc,argv);\
-    ghost_task_t *t;\
+    ghost_task *t;\
     ghost_task_create(&t,GHOST_TASK_FILL_ALL, 0, &ghost_main_task, &arg, GHOST_TASK_DEFAULT, NULL, 0);\
     ghost_task_enqueue(t);\
     ghost_task_wait(t);\

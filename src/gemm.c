@@ -13,8 +13,8 @@
 #include <cublas_v2.h>
 #endif
 
-ghost_error_t ghost_gemm_valid(ghost_densemat_t *x, ghost_densemat_t *v, const char * transv, 
-ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce,ghost_gemm_flags_t flags, int printerror) 
+ghost_error ghost_gemm_valid(ghost_densemat *x, ghost_densemat *v, const char * transv, 
+ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce,ghost_gemm_flags_t flags, int printerror) 
 {
     if (v->traits.datatype != w->traits.datatype) {
         if (printerror) {
@@ -28,7 +28,7 @@ ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce,gho
     }
     
 
-    ghost_lidx_t nrV,ncV,nrW,ncW,nrX,ncX;
+    ghost_lidx nrV,ncV,nrW,ncW,nrX,ncX;
 
     if (strncasecmp(transv,"N",1)) {
         nrV=v->traits.ncols; ncV=v->traits.nrows;
@@ -60,21 +60,21 @@ ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce,gho
 }
 
 
-static ghost_error_t ghost_gemm_blas(ghost_densemat_t *x_in, ghost_densemat_t *v_in, const char * transv_in, 
-ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int reduce,ghost_gemm_flags_t flags) 
+static ghost_error ghost_gemm_blas(ghost_densemat *x_in, ghost_densemat *v_in, const char * transv_in, 
+ghost_densemat *w_in, const char *transw_in, void *alpha, void *beta, int reduce,ghost_gemm_flags_t flags) 
 {
     UNUSED(flags);
 
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
     char transv[1], transw[1];
     
     transv[0]=transv_in[0];
     transw[0]=transw_in[0];
     
-    ghost_densemat_t *x = x_in;
-    ghost_densemat_t *v = v_in;
-    ghost_densemat_t *w = w_in;
+    ghost_densemat *x = x_in;
+    ghost_densemat *v = v_in;
+    ghost_densemat *w = w_in;
     
     
     /*if ((v->traits.storage != w->traits.storage) || (x->traits.storage != w->traits.storage)){
@@ -84,14 +84,14 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
 
     if (v == x && !(flags & GHOST_GEMM_NOT_CLONE_ALIASED)) {
         WARNING_LOG("x equals v! v will be cloned.");
-        ghost_densemat_t *vc;
+        ghost_densemat *vc;
         v->clone(v,&vc,v->traits.nrows,0,v->traits.ncols,0);
         v = vc;
     }
 
     if (w == x && !(flags & GHOST_GEMM_NOT_CLONE_ALIASED)) {
         WARNING_LOG("x equals w! w will be cloned.");
-        ghost_densemat_t *wc;
+        ghost_densemat *wc;
         w->clone(w,&wc,w->traits.nrows,0,w->traits.ncols,0);
         w = wc;
     }
@@ -112,7 +112,7 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
         reduce = 0;
     }
 
-    ghost_lidx_t nrV,ncV,ncW,nrVglob,ncVglob,ncWglob;
+    ghost_lidx nrV,ncV,ncW,nrVglob,ncVglob,ncWglob;
 
     if (strncasecmp(transv_in,"N",1)) {
         nrV = v->traits.ncols; 
@@ -163,14 +163,14 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
 
     complex double zero = 0.+I*0.;
 
-    ghost_blas_idx_t *m, *n, *k;
-    m = (ghost_blas_idx_t *)&nrV;
-    k = (ghost_blas_idx_t *)&ncV;
-    n = (ghost_blas_idx_t *)&ncW;
+    ghost_blas_idx *m, *n, *k;
+    m = (ghost_blas_idx *)&nrV;
+    k = (ghost_blas_idx *)&ncV;
+    n = (ghost_blas_idx *)&ncW;
 
-    ghost_blas_idx_t *ldv = &v->stride;
-    ghost_blas_idx_t *ldw = &w->stride;
-    ghost_blas_idx_t *ldx = &x->stride;
+    ghost_blas_idx *ldv = &v->stride;
+    ghost_blas_idx *ldw = &w->stride;
+    ghost_blas_idx *ldx = &x->stride;
 
     void *vdata = v->val;
     void *wdata = w->val;
@@ -218,7 +218,7 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
     if (((v->traits.location & w->traits.location) & x->traits.location) & GHOST_LOCATION_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
         cublasHandle_t ghost_cublas_handle;
-        ghost_blas_idx_t culdv,culdw,culdx;
+        ghost_blas_idx culdv,culdw,culdx;
         
         GHOST_CALL_GOTO(ghost_cu_cublas_handle(&ghost_cublas_handle),err,ret); 
         cublasOperation_t cutransv = !strncasecmp(transv,"T",1)?CUBLAS_OP_T:!strncasecmp(transv,"C",1)?CUBLAS_OP_C:CUBLAS_OP_N;
@@ -259,7 +259,7 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
             m = n;
             n = tmp;
             
-            ghost_blas_idx_t ldtmp = culdv;
+            ghost_blas_idx ldtmp = culdv;
             culdv = culdw;
             culdw = ldtmp;
 
@@ -308,7 +308,7 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
                 m = n;
                 n = tmp;
                 
-                ghost_blas_idx_t ldtmp = culdv;
+                ghost_blas_idx ldtmp = culdv;
                 culdv = culdw;
                 culdw = ldtmp;
             }
@@ -442,8 +442,8 @@ out:
 
 }
 
-ghost_error_t ghost_gemm(ghost_densemat_t *x_in, ghost_densemat_t *v_in, const char * transv, 
-ghost_densemat_t *w_in, const char *transw, void *alpha, void *beta, int reduce,ghost_gemm_flags_t flags) 
+ghost_error ghost_gemm(ghost_densemat *x_in, ghost_densemat *v_in, const char * transv, 
+ghost_densemat *w_in, const char *transw, void *alpha, void *beta, int reduce,ghost_gemm_flags_t flags) 
 {
 #ifdef GHOST_HAVE_LONGIDX_LOCAL
 #ifndef GHOST_HAVE_MKL
@@ -451,12 +451,12 @@ ghost_densemat_t *w_in, const char *transw, void *alpha, void *beta, int reduce,
 #endif
 #endif
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
     int donespecial = 0;
       
-    ghost_densemat_t *x = NULL;
-    ghost_densemat_t *v = v_in;
-    ghost_densemat_t *w = w_in;
+    ghost_densemat *x = NULL;
+    ghost_densemat *v = v_in;
+    ghost_densemat *w = w_in;
     
     // scattered vectors are copied together, if this occurs the user should rethink his or 
     // her data layout.
@@ -472,10 +472,10 @@ ghost_densemat_t *w_in, const char *transw, void *alpha, void *beta, int reduce,
         if (v_in->traits.storage == GHOST_DENSEMAT_ROWMAJOR && w_in->traits.storage == GHOST_DENSEMAT_ROWMAJOR &&
                 !strncasecmp(transv,"C",1) && !strncasecmp(transw,"N",1) && v->traits.datatype & GHOST_DT_COMPLEX) {
             WARNING_LOG("Cloning both input vectors because they need to be conjugated!");
-            ghost_densemat_t *vc;
+            ghost_densemat *vc;
             v_in->clone(v_in,&vc,v->traits.nrows,0,v->traits.ncols,0);
             v = vc;
-            ghost_densemat_t *wc;
+            ghost_densemat *wc;
             w_in->clone(w_in,&wc,w->traits.nrows,0,w->traits.ncols,0);
             w = wc;
         }
@@ -485,7 +485,7 @@ ghost_densemat_t *w_in, const char *transw, void *alpha, void *beta, int reduce,
     {
         WARNING_LOG("The vector v is scattered. It will be cloned to a compressed "
                 "vector before computation but not be changed itself.");
-        ghost_densemat_t *vc;
+        ghost_densemat *vc;
         v->clone(v,&vc,v->traits.nrows,0,v->traits.ncols,0);
         v = vc;
     }
@@ -493,7 +493,7 @@ ghost_densemat_t *w_in, const char *transw, void *alpha, void *beta, int reduce,
     {
         WARNING_LOG("The vector w is scattered. It will be cloned to a compressed "
                 "vector before computation but not be changed itself.");
-        ghost_densemat_t *wc;
+        ghost_densemat *wc;
         w->clone(w,&wc,w->traits.nrows,0,w->traits.ncols,0);
         w = wc;
     }

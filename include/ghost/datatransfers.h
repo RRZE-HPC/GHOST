@@ -53,7 +53,7 @@ extern "C" {
      *
      * @return 
      */
-    ghost_error_t ghost_datatransfer_register(const char *tag, ghost_datatransfer_direction_t dir, int rank, size_t volume);
+    ghost_error ghost_datatransfer_register(const char *tag, ghost_datatransfer_direction_t dir, int rank, size_t volume);
     /**
      * @brief Create a string summarizing all data transfers.
      *
@@ -61,7 +61,7 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_datatransfer_summarystring(char **str);
+    ghost_error ghost_datatransfer_summarystring(char **str);
 
 #ifdef __cplusplus
 }

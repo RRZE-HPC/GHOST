@@ -41,7 +41,7 @@ typedef enum
      */
     GHOST_FUNCTYPE_TASKING = 512,
     GHOST_FUNCTYPE_SOLVER = 1024
-} ghost_functype_t;
+} ghost_functype;
 
 #define GHOST_FUNCTYPE_ANY (\
         GHOST_FUNCTYPE_MATH|\
@@ -76,7 +76,7 @@ typedef enum
         pthread_setspecific(ghost_instr_enable_key,NULL);\
     }\
     if ((functype) == (GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)) {\
-        ghost_task_t *cur = NULL;\
+        ghost_task *cur = NULL;\
         ghost_task_cur(&cur);\
         if (!cur) {\
             PERFWARNING_LOG("A kernel function has been called outside a task!");\

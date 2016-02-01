@@ -12,7 +12,7 @@
 #GHOST_SUBST NVECS ${BLOCKDIM1}
 #GHOST_SUBST CHUNKHEIGHT ${CHUNKHEIGHT}
 
-ghost_error_t ghost_sellspmv__a_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
+ghost_error ghost_sellspmv__a_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat, ghost_densemat* res, ghost_densemat* invec, ghost_spmv_flags spmvmOptions,va_list argp)
 {
 #if defined(GHOST_HAVE_SSE) && NVECS>=2
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
@@ -32,7 +32,7 @@ ghost_error_t ghost_sellspmv__a_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
     double *sshift = NULL;
     __m128d scale, beta;
     double sdelta = 0., seta = 0.;
-    ghost_densemat_t *z = NULL;
+    ghost_densemat *z = NULL;
 
     GHOST_SPMV_PARSE_ARGS(spmvmOptions,argp,sscale,sbeta,sshift,local_dot_product,z,sdelta,seta,double,double);
     scale = _mm_load1_pd(&sscale);
@@ -47,7 +47,7 @@ ghost_error_t ghost_sellspmv__a_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
         }
 
         GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,(3*PAD(invec->traits.ncols,2)+padding)*nthreads*sizeof(double))); 
-        ghost_lidx_t col;
+        ghost_lidx col;
         for (col=0; col<(3*PAD(invec->traits.ncols,2)+padding)*nthreads; col++) {
             partsums[col] = 0.;
         }
@@ -55,8 +55,8 @@ ghost_error_t ghost_sellspmv__a_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
 
 #pragma omp parallel shared (partsums)
     {
-        ghost_lidx_t j,c;
-        ghost_lidx_t offs;
+        ghost_lidx j,c;
+        ghost_lidx offs;
         __m128d rhs;
         int tid = ghost_omp_threadnum();
         #GHOST_UNROLL#__m128d tmp@;#NVECS/2
@@ -109,7 +109,7 @@ ghost_error_t ghost_sellspmv__a_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
             WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
             return GHOST_SUCCESS;
         }
-        ghost_lidx_t col;
+        ghost_lidx col;
         for (col=0; col<invec->traits.ncols; col++) {
             local_dot_product[col                       ] = 0.; 
             local_dot_product[col  +   invec->traits.ncols] = 0.;
@@ -140,7 +140,7 @@ ghost_error_t ghost_sellspmv__a_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
 #endif
 }
 
-ghost_error_t ghost_sellspmv__u_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
+ghost_error ghost_sellspmv__u_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat, ghost_densemat* res, ghost_densemat* invec, ghost_spmv_flags spmvmOptions,va_list argp)
 {
 #if defined(GHOST_HAVE_SSE) && NVECS>=2
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
@@ -160,7 +160,7 @@ ghost_error_t ghost_sellspmv__u_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
     double *sshift = NULL;
     __m128d scale, beta;
     double sdelta = 0., seta = 0.;
-    ghost_densemat_t *z = NULL;
+    ghost_densemat *z = NULL;
 
     GHOST_SPMV_PARSE_ARGS(spmvmOptions,argp,sscale,sbeta,sshift,local_dot_product,z,sdelta,seta,double,double);
     scale = _mm_load1_pd(&sscale);
@@ -175,7 +175,7 @@ ghost_error_t ghost_sellspmv__u_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
         }
 
         GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,(3*PAD(invec->traits.ncols,2)+padding)*nthreads*sizeof(double))); 
-        ghost_lidx_t col;
+        ghost_lidx col;
         for (col=0; col<(3*PAD(invec->traits.ncols,2)+padding)*nthreads; col++) {
             partsums[col] = 0.;
         }
@@ -183,8 +183,8 @@ ghost_error_t ghost_sellspmv__u_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
 
 #pragma omp parallel shared (partsums)
     {
-        ghost_lidx_t j,c;
-        ghost_lidx_t offs;
+        ghost_lidx j,c;
+        ghost_lidx offs;
         __m128d rhs;
         int tid = ghost_omp_threadnum();
         #GHOST_UNROLL#__m128d tmp@;#NVECS/2
@@ -237,7 +237,7 @@ ghost_error_t ghost_sellspmv__u_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
             WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
             return GHOST_SUCCESS;
         }
-        ghost_lidx_t col;
+        ghost_lidx col;
         for (col=0; col<invec->traits.ncols; col++) {
             local_dot_product[col                       ] = 0.; 
             local_dot_product[col  +   invec->traits.ncols] = 0.;

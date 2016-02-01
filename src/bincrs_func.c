@@ -27,12 +27,12 @@ static inline uint64_t bswap_64(uint64_t val)
 #define SWAPREQ(header) (header.endianess == GHOST_BINCRS_LITTLE_ENDIAN)?ghost_machine_bigendian()?1:0:ghost_machine_bigendian()?0:1
 
 
-int ghost_sparsemat_rowfunc_bincrs(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, void *val, void *arg)
+int ghost_sparsemat_rowfunc_bincrs(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *col, void *val, void *arg)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION|GHOST_FUNCTYPE_IO);
     UNUSED(arg);
 
-    static ghost_gidx_t *colInd = NULL, *rowPtr = NULL;
+    static ghost_gidx *colInd = NULL, *rowPtr = NULL;
     static char *values = NULL;
     static size_t dtsize = 0;
 
@@ -52,13 +52,13 @@ int ghost_sparsemat_rowfunc_bincrs(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost
         ghost_sparsemat_rowfunc_bincrs_initargs args = 
             *(ghost_sparsemat_rowfunc_bincrs_initargs *)val;
         char *filename = args.filename;
-        ghost_datatype_t matdt = args.dt;
+        ghost_datatype matdt = args.dt;
         ghost_datatype_size(&dtsize,matdt);
         ghost_bincrs_header_t header;
         ghost_bincrs_header_read(&header,filename);
 
         FILE *f;
-        ghost_gidx_t i;
+        ghost_gidx i;
         size_t ret;
 
         if ((f = fopen64(filename,"r")) == NULL) {
@@ -67,7 +67,7 @@ int ghost_sparsemat_rowfunc_bincrs(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost
         }
         
 
-        if ((ghost_datatype_t)(header.datatype) != matdt) { 
+        if ((ghost_datatype)(header.datatype) != matdt) { 
             ERROR_LOG("Value casting not implemented! Adjust your sparsemat datatype to match the file!");
             return 1;
         }
@@ -76,8 +76,8 @@ int ghost_sparsemat_rowfunc_bincrs(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost
             return 1;
         }
 
-        ghost_malloc((void **)&colInd,header.nnz * sizeof(ghost_gidx_t));
-        ghost_malloc((void **)&rowPtr,(header.nrows + 1) * sizeof(ghost_gidx_t));
+        ghost_malloc((void **)&colInd,header.nnz * sizeof(ghost_gidx));
+        ghost_malloc((void **)&rowPtr,(header.nrows + 1) * sizeof(ghost_gidx));
         ghost_malloc((void **)&values,header.nnz * dtsize);
 
 #pragma omp parallel for
@@ -121,7 +121,7 @@ int ghost_sparsemat_rowfunc_bincrs(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost
         free(values);
     } else {
         *rowlen = rowPtr[row+1]-rowPtr[row];
-        memcpy(col,&colInd[rowPtr[row]],(*rowlen)*sizeof(ghost_gidx_t));
+        memcpy(col,&colInd[rowPtr[row]],(*rowlen)*sizeof(ghost_gidx));
         memcpy(val,&values[rowPtr[row]*dtsize],(*rowlen)*dtsize);
     }
 
@@ -132,7 +132,7 @@ int ghost_sparsemat_rowfunc_bincrs(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost
 
 }
 
-ghost_error_t ghost_bincrs_header_read(ghost_bincrs_header_t *header, char *matrixPath)
+ghost_error ghost_bincrs_header_read(ghost_bincrs_header_t *header, char *matrixPath)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_IO);
     FILE* file;
@@ -183,7 +183,7 @@ ghost_error_t ghost_bincrs_header_read(ghost_bincrs_header_t *header, char *matr
     if (swapReq)  header->nnz  = bswap_64(header->nnz);
 
     size_t valSize;
-    GHOST_CALL_RETURN(ghost_datatype_size(&valSize,(ghost_datatype_t)header->datatype));
+    GHOST_CALL_RETURN(ghost_datatype_size(&valSize,(ghost_datatype)header->datatype));
 
     long rightFilesize = GHOST_BINCRS_SIZE_HEADER +
         (long)(header->nrows+1) * GHOST_BINCRS_SIZE_RPT_EL +

@@ -36,7 +36,7 @@ typedef cusparseStatus_t (*cusparse_sell1_spmmv_rm_kernel_t) (cusparseHandle_t h
         void           *y, int ldy);
 
     template<typename dt1, typename dt2>
-static ghost_error_t ghost_cu_sell1spmv_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t * lhs, ghost_densemat_t * rhs, ghost_spmv_flags_t options, va_list argp, cusparse_sell1_spmv_kernel_t sell1kernel)
+static ghost_error ghost_cu_sell1spmv_tmpl(ghost_sparsemat *mat, ghost_densemat * lhs, ghost_densemat * rhs, ghost_spmv_flags options, va_list argp, cusparse_sell1_spmv_kernel_t sell1kernel)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     cusparseHandle_t cusparse_handle;
@@ -47,7 +47,7 @@ static ghost_error_t ghost_cu_sell1spmv_tmpl(ghost_sparsemat_t *mat, ghost_dense
 
     dt2 * __attribute__((unused)) localdot = NULL;
     dt1 * __attribute__((unused)) shift = NULL, scale, beta, __attribute__((unused)) sdelta, __attribute__((unused)) seta;
-    ghost_densemat_t * __attribute__((unused)) z = NULL;
+    ghost_densemat * __attribute__((unused)) z = NULL;
 
     one<dt1>(scale);
 
@@ -66,7 +66,7 @@ static ghost_error_t ghost_cu_sell1spmv_tmpl(ghost_sparsemat_t *mat, ghost_dense
 }
     
     template<typename dt1, typename dt2>
-static ghost_error_t ghost_cu_sell1spmmv_cm_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t * lhs, ghost_densemat_t * rhs, ghost_spmv_flags_t options, va_list argp, cusparse_sell1_spmmv_cm_kernel_t sell1kernel)
+static ghost_error ghost_cu_sell1spmmv_cm_tmpl(ghost_sparsemat *mat, ghost_densemat * lhs, ghost_densemat * rhs, ghost_spmv_flags options, va_list argp, cusparse_sell1_spmmv_cm_kernel_t sell1kernel)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     cusparseHandle_t cusparse_handle;
@@ -77,7 +77,7 @@ static ghost_error_t ghost_cu_sell1spmmv_cm_tmpl(ghost_sparsemat_t *mat, ghost_d
 
     dt2 * __attribute__((unused)) localdot = NULL;
     dt1 * __attribute__((unused)) shift = NULL, scale, beta, __attribute__((unused)) sdelta, __attribute__((unused)) seta;
-    ghost_densemat_t * __attribute__((unused)) z = NULL;
+    ghost_densemat * __attribute__((unused)) z = NULL;
 
     one<dt1>(scale);
 
@@ -95,7 +95,7 @@ static ghost_error_t ghost_cu_sell1spmmv_cm_tmpl(ghost_sparsemat_t *mat, ghost_d
 }
 
     template<typename dt1, typename dt2>
-static ghost_error_t ghost_cu_sell1spmmv_rm_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t * lhs, ghost_densemat_t * rhs, ghost_spmv_flags_t options, va_list argp, cusparse_sell1_spmmv_rm_kernel_t sell1kernel)
+static ghost_error ghost_cu_sell1spmmv_rm_tmpl(ghost_sparsemat *mat, ghost_densemat * lhs, ghost_densemat * rhs, ghost_spmv_flags options, va_list argp, cusparse_sell1_spmmv_rm_kernel_t sell1kernel)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     cusparseHandle_t cusparse_handle;
@@ -106,7 +106,7 @@ static ghost_error_t ghost_cu_sell1spmmv_rm_tmpl(ghost_sparsemat_t *mat, ghost_d
 
     dt2 * __attribute__((unused)) localdot = NULL;
     dt1 * __attribute__((unused)) shift = NULL, scale, beta, __attribute__((unused)) sdelta, __attribute__((unused)) seta;
-    ghost_densemat_t * __attribute__((unused)) z = NULL;
+    ghost_densemat * __attribute__((unused)) z = NULL;
 
     one<dt1>(scale);
 
@@ -126,11 +126,11 @@ static ghost_error_t ghost_cu_sell1spmmv_rm_tmpl(ghost_sparsemat_t *mat, ghost_d
 }
     
     template<typename dt1, typename dt2>
-static ghost_error_t ghost_cu_sell1spmv_augfunc_tmpl(ghost_densemat_t * lhs, ghost_densemat_t * rhs, ghost_spmv_flags_t options, va_list argp)
+static ghost_error ghost_cu_sell1spmv_augfunc_tmpl(ghost_densemat * lhs, ghost_densemat * rhs, ghost_spmv_flags options, va_list argp)
 {
     dt2 *localdot = NULL;
     dt1 *shift = NULL, scale, __attribute__((unused)) beta, sdelta, seta;
-    ghost_densemat_t *z = NULL;
+    ghost_densemat *z = NULL;
 
     one<dt1>(scale); //required because we need scale for SHIFT (i.e., even if we don't SCALE)
     GHOST_SPMV_PARSE_ARGS(options,argp,scale,beta,shift,localdot,z,sdelta,seta,dt2,dt1);
@@ -138,7 +138,7 @@ static ghost_error_t ghost_cu_sell1spmv_augfunc_tmpl(ghost_densemat_t * lhs, gho
     if (options & (GHOST_SPMV_SHIFT|GHOST_SPMV_VSHIFT)) {
         PERFWARNING_LOG("Shift will not be applied on-the-fly!");
         dt2 minusshift[rhs->traits.ncols];
-        ghost_lidx_t col;
+        ghost_lidx col;
         if (options & GHOST_SPMV_SHIFT) {
             for (col=0; col<rhs->traits.ncols; col++) {
                 minusshift[col] = -1.*(*(dt2 *)&scale)*(*(dt2 *)shift);
@@ -173,12 +173,12 @@ static ghost_error_t ghost_cu_sell1spmv_augfunc_tmpl(ghost_densemat_t * lhs, gho
     return GHOST_SUCCESS; 
 }
 
-ghost_error_t ghost_cu_sell1_spmv_selector(ghost_sparsemat_t *mat, ghost_densemat_t * lhs_in, ghost_densemat_t * rhs_in, ghost_spmv_flags_t options, va_list argp)
+ghost_error ghost_cu_sell1_spmv_selector(ghost_sparsemat *mat, ghost_densemat * lhs_in, ghost_densemat * rhs_in, ghost_spmv_flags options, va_list argp)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     
-    ghost_error_t ret = GHOST_SUCCESS;
-    ghost_densemat_t *lhs, *rhs;
+    ghost_error ret = GHOST_SUCCESS;
+    ghost_densemat *lhs, *rhs;
     va_list argpbackup;
     va_copy(argpbackup,argp);
     
@@ -195,10 +195,10 @@ ghost_error_t ghost_cu_sell1_spmv_selector(ghost_sparsemat_t *mat, ghost_densema
         if (lhs_in->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
             PERFWARNING_LOG("Cloning and transposing lhs before operation because it is row-major");
         }
-        ghost_densemat_traits_t lhstraits = lhs_in->traits;
+        ghost_densemat_traits lhstraits = lhs_in->traits;
         lhstraits.location = GHOST_LOCATION_DEVICE;
         lhstraits.storage = GHOST_DENSEMAT_COLMAJOR;
-        lhstraits.flags &= (ghost_densemat_flags_t)(~GHOST_DENSEMAT_VIEW);
+        lhstraits.flags &= (ghost_densemat_flags)(~GHOST_DENSEMAT_VIEW);
         GHOST_CALL_GOTO(ghost_densemat_create(&lhs,lhs_in->context,lhstraits),err,ret);
         GHOST_CALL_GOTO(lhs->fromVec(lhs,lhs_in,0,0),err,ret);
     } else {
@@ -212,13 +212,13 @@ ghost_error_t ghost_cu_sell1_spmv_selector(ghost_sparsemat_t *mat, ghost_densema
         if ((rhs_in->traits.ncols == 1) && (rhs_in->traits.storage == GHOST_DENSEMAT_ROWMAJOR)) {
             PERFWARNING_LOG("Cloning and transposing rhs before operation because it is row-major");
         }
-        ghost_densemat_traits_t rhstraits = rhs_in->traits;
+        ghost_densemat_traits rhstraits = rhs_in->traits;
         rhstraits.location = GHOST_LOCATION_DEVICE;
         rhstraits.storage = GHOST_DENSEMAT_COLMAJOR;
-        rhstraits.flags &= (ghost_densemat_flags_t)(~GHOST_DENSEMAT_VIEW);
+        rhstraits.flags &= (ghost_densemat_flags)(~GHOST_DENSEMAT_VIEW);
         GHOST_CALL_GOTO(ghost_densemat_create(&rhs,rhs_in->context,rhstraits),err,ret);
         GHOST_CALL_GOTO(rhs->fromVec(rhs,rhs_in,0,0),err,ret);
-        ghost_lidx_t nhalo = rhs->traits.nrowshalo - rhs->traits.nrowspadded;
+        ghost_lidx nhalo = rhs->traits.nrowshalo - rhs->traits.nrowspadded;
         GHOST_CALL_GOTO(ghost_cu_memtranspose(nhalo,rhs->traits.ncols,&rhs->cu_val[rhs->traits.nrowspadded*rhs->elSize],rhs->stride,&rhs_in->cu_val[rhs_in->traits.nrowspadded*rhs_in->stride*rhs_in->elSize],rhs_in->stride,rhs->traits.datatype),err,ret);
     } else {
         rhs = rhs_in;

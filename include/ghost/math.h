@@ -34,10 +34,10 @@ typedef struct {
      * A is mxk
      * B is kxn
      */ 
-    ghost_gidx_t m,n,k;
+    ghost_gidx m,n,k;
     bool alphaisone;
     bool betaiszero;
-    ghost_datatype_t dt;
+    ghost_datatype dt;
 }
 ghost_gemm_perf_args_t;
 
@@ -47,47 +47,47 @@ ghost_gemm_perf_args_t;
 #define GHOST_GEMM_NO_REDUCE -2
 
 typedef struct {
-    ghost_lidx_t vecncols;
-    ghost_lidx_t globalrows;
-    ghost_gidx_t globalnnz;
-    ghost_datatype_t dt;
-    ghost_spmv_flags_t flags;
+    ghost_lidx vecncols;
+    ghost_lidx globalrows;
+    ghost_gidx globalnnz;
+    ghost_datatype dt;
+    ghost_spmv_flags flags;
 }
 ghost_spmv_perf_args_t;
 #define GHOST_SPMV_PERF_UNIT "GF/s"
 #define GHOST_SPMV_PERF_TAG "spmv"
 
 typedef struct {
-    ghost_lidx_t ncols;
-    ghost_gidx_t globnrows;
-    ghost_datatype_t dt;
+    ghost_lidx ncols;
+    ghost_gidx globnrows;
+    ghost_datatype dt;
 }
 ghost_axpy_perf_args_t;
 #define GHOST_AXPY_PERF_UNIT "GB/s"
 #define GHOST_AXPY_PERF_TAG "axpy"
 
 typedef struct {
-    ghost_lidx_t ncols;
-    ghost_gidx_t globnrows;
-    ghost_datatype_t dt;
+    ghost_lidx ncols;
+    ghost_gidx globnrows;
+    ghost_datatype dt;
 }
 ghost_axpby_perf_args_t;
 #define GHOST_AXPBY_PERF_UNIT "GB/s"
 #define GHOST_AXPBY_PERF_TAG "axpby"
 
 typedef struct {
-    ghost_lidx_t ncols;
-    ghost_gidx_t globnrows;
-    ghost_datatype_t dt;
+    ghost_lidx ncols;
+    ghost_gidx globnrows;
+    ghost_datatype dt;
 }
 ghost_axpbypcz_perf_args_t;
 #define GHOST_AXPBYPCZ_PERF_UNIT "GB/s"
 #define GHOST_AXPBYPCZ_PERF_TAG "axpbypcz"
 
 typedef struct {
-    ghost_lidx_t ncols;
-    ghost_gidx_t globnrows;
-    ghost_datatype_t dt;
+    ghost_lidx ncols;
+    ghost_gidx globnrows;
+    ghost_datatype dt;
     bool samevec;
 }
 ghost_dot_perf_args_t;
@@ -95,15 +95,15 @@ ghost_dot_perf_args_t;
 #define GHOST_DOT_PERF_TAG "dot"
 
 typedef struct {
-    ghost_lidx_t ncols;
-    ghost_gidx_t globnrows;
-    ghost_datatype_t dt;
+    ghost_lidx ncols;
+    ghost_gidx globnrows;
+    ghost_datatype dt;
 }
 ghost_scale_perf_args_t;
 #define GHOST_SCALE_PERF_UNIT "GB/s"
 #define GHOST_SCALE_PERF_TAG "scale"
 
-typedef ghost_error_t (*ghost_spmvsolver_t)(ghost_densemat_t*, ghost_sparsemat_t *, ghost_densemat_t*, ghost_spmv_flags_t, va_list argp);
+typedef ghost_error (*ghost_spmvsolver_t)(ghost_densemat*, ghost_sparsemat *, ghost_densemat*, ghost_spmv_flags, va_list argp);
 
 #ifdef __cplusplus
 #include "complex.h"
@@ -130,7 +130,7 @@ extern "C" {
      *
      * This function normalizes every column of the matrix to have Euclidian norm 1.
      */
-    ghost_error_t ghost_normalize(ghost_densemat_t *mat);
+    ghost_error ghost_normalize(ghost_densemat *mat);
     /**
      * @ingroup globops
      *
@@ -142,9 +142,9 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      *
-     * This function first computes the local dot product ghost_densemat_t::dot and then performs an allreduce on the result.
+     * This function first computes the local dot product ghost_densemat::dot and then performs an allreduce on the result.
      */
-//    ghost_error_t ghost_dot(void *res, ghost_densemat_t *a, ghost_densemat_t *b);
+//    ghost_error ghost_dot(void *res, ghost_densemat *a, ghost_densemat *b);
     /**
      * @ingroup globops
      *
@@ -180,9 +180,9 @@ extern "C" {
      * \warning If there is something wrong with the variadic arguments, i.e., if (following from the flags) more arguments are expected than present, random errors may occur. In order to avoid this, passing NULL as the last argument is a good practice.
      *
      */
-    ghost_error_t ghost_spmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_densemat_t *invec, ghost_spmv_flags_t *flags, ...);
-ghost_error_t ghost_gemm_valid(ghost_densemat_t *x, ghost_densemat_t *v, const char * transv, 
-ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce,ghost_gemm_flags_t flags, int printerror); 
+    ghost_error ghost_spmv(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat *invec, ghost_spmv_flags *flags, ...);
+ghost_error ghost_gemm_valid(ghost_densemat *x, ghost_densemat *v, const char * transv, 
+ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce,ghost_gemm_flags_t flags, int printerror); 
     /**
      * @ingroup globops
      *
@@ -200,13 +200,13 @@ ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce,gho
      *
      * @return 
      */
-    ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v, const char *transv, ghost_densemat_t *w, const char * transw, void *alpha, void *beta, int reduce,ghost_gemm_flags_t flags); 
-    ghost_error_t ghost_mpi_operations_create();
-    ghost_error_t ghost_mpi_operations_destroy();
-    ghost_error_t ghost_mpi_op_densemat_sum(ghost_mpi_op_t * op, ghost_datatype_t datatype);
-    ghost_error_t ghost_mpi_op_sum(ghost_mpi_op_t * op, ghost_datatype_t datatype);
+    ghost_error ghost_gemm(ghost_densemat *x, ghost_densemat *v, const char *transv, ghost_densemat *w, const char * transw, void *alpha, void *beta, int reduce,ghost_gemm_flags_t flags); 
+    ghost_error ghost_mpi_operations_create();
+    ghost_error ghost_mpi_operations_destroy();
+    ghost_error ghost_mpi_op_densemat_sum(ghost_mpi_op * op, ghost_datatype datatype);
+    ghost_error ghost_mpi_op_sum(ghost_mpi_op * op, ghost_datatype datatype);
     
-    ghost_error_t ghost_spmv_nflops(int *nFlops, ghost_datatype_t m_t, ghost_datatype_t v_t);
+    ghost_error ghost_spmv_nflops(int *nFlops, ghost_datatype m_t, ghost_datatype v_t);
     /**
      * @ingroup stringification
      *
@@ -216,7 +216,7 @@ ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce,gho
      *
      * @return The string.
      */
-    char * ghost_spmv_mode_string(ghost_spmv_flags_t flags);
+    char * ghost_spmv_mode_string(ghost_spmv_flags flags);
 
     int ghost_spmv_perf(double *perf, double time, void *arg);
     int ghost_axpy_perf(double *perf, double time, void *arg);
@@ -227,8 +227,8 @@ ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce,gho
     int ghost_gemm_perf_GFs(double *perf, double time, void *arg);
     int ghost_gemm_perf_GBs(double *perf, double time, void *arg);
 
-    bool ghost_iszero(void *number, ghost_datatype_t dt);
-    bool ghost_isone(void *vnumber, ghost_datatype_t dt);
+    bool ghost_iszero(void *number, ghost_datatype dt);
+    bool ghost_isone(void *vnumber, ghost_datatype dt);
 
 #ifdef __cplusplus
 } //extern "C"

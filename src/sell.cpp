@@ -12,14 +12,14 @@
 using namespace std;
 
 template <typename m_t> 
-static ghost_error_t SELL_stringify_tmpl(ghost_sparsemat_t *mat, char **str, int dense)
+static ghost_error SELL_stringify_tmpl(ghost_sparsemat *mat, char **str, int dense)
 {
     if (!dense) {
         WARNING_LOG("Sparse printing currently not available.");
         dense = 1;
     }
 
-    ghost_lidx_t chunk,i,j,row=0,col;
+    ghost_lidx chunk,i,j,row=0,col;
     m_t *val = (m_t *)SELL(mat)->val;
 
     stringstream buffer;
@@ -29,7 +29,7 @@ static ghost_error_t SELL_stringify_tmpl(ghost_sparsemat_t *mat, char **str, int
 
     for (chunk = 0; chunk < mat->nrowsPadded/mat->traits.C; chunk++) {
         for (i=0; i<mat->traits.C && row<mat->nrows; i++, row++) {
-            ghost_lidx_t rowOffs = SELL(mat)->chunkStart[chunk]+i;
+            ghost_lidx rowOffs = SELL(mat)->chunkStart[chunk]+i;
             if (dense) {
                 for (col=0, j=0; col<mat->ncols; col++) {
                     if (j< SELL(mat)->rowLen[row]) {
@@ -64,9 +64,9 @@ static ghost_error_t SELL_stringify_tmpl(ghost_sparsemat_t *mat, char **str, int
 
     return GHOST_SUCCESS;
 }
-extern "C" ghost_error_t ghost_sell_stringify_selector(ghost_sparsemat_t *mat, char **str, int dense)
+extern "C" ghost_error ghost_sell_stringify_selector(ghost_sparsemat *mat, char **str, int dense)
 {
-    ghost_error_t ret;
+    ghost_error ret;
 
     SELECT_TMPL_1DATATYPE(mat->traits.datatype,ghost_complex,ret,SELL_stringify_tmpl,mat,str,dense);
 

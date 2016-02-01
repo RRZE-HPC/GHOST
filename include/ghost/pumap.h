@@ -13,7 +13,7 @@
 /**
  * @brief The PU (processing units) map containing all available processing units inside a given CPU set.
  */
-typedef struct ghost_pumap_t {
+typedef struct ghost_pumap {
     /**
      * @brief Ordered list of processing units (PU).
      *
@@ -36,7 +36,7 @@ typedef struct ghost_pumap_t {
      * @brief The number of NUMA domains covered by the CPU map.
      */
     int nDomains;
-} ghost_pumap_t;
+} ghost_pumap;
 
 #ifdef __cplusplus
 extern "C" {
@@ -49,7 +49,7 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_pumap_create(hwloc_cpuset_t cpuset);
+    ghost_error ghost_pumap_create(hwloc_cpuset_t cpuset);
     /**
      * @brief Destroy the PU map.
      */
@@ -61,7 +61,7 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_pumap_get(ghost_pumap_t **map);
+    ghost_error ghost_pumap_get(ghost_pumap **map);
     /**
      * @brief Set the given CPU set in the PU map to idle.  
      *
@@ -71,7 +71,7 @@ extern "C" {
      *
      * If the CPU set is not included in the PU map's CPU set an error is returned.
      */
-    ghost_error_t ghost_pumap_setidle(hwloc_bitmap_t cpuset);
+    ghost_error ghost_pumap_setidle(hwloc_bitmap_t cpuset);
     /**
      * @brief Set the given index in the PU map to idle.  
      *
@@ -81,7 +81,7 @@ extern "C" {
      *
      * If the index is not included in the PU map's CPU set an error is returned.
      */
-    ghost_error_t ghost_pumap_setidle_idx(int idx);
+    ghost_error ghost_pumap_setidle_idx(int idx);
     /**
      * @brief Set the given CPU set in the PU map to busy.  
      *
@@ -91,7 +91,7 @@ extern "C" {
      *
      * If the CPU set is not included in the PU map's CPU set an error is returned.
      */
-    ghost_error_t ghost_pumap_setbusy(hwloc_bitmap_t cpuset);
+    ghost_error ghost_pumap_setbusy(hwloc_bitmap_t cpuset);
     /**
      * @brief Get the number of idle processing units in total or in a given NUMA node.
      *
@@ -100,7 +100,7 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_pumap_nidle(int *nPUs, int numaNode);
+    ghost_error ghost_pumap_nidle(int *nPUs, int numaNode);
 
     /**
      * @brief Get the number of processing units in total or in a given NUMA node.
@@ -110,7 +110,7 @@ extern "C" {
      *
      * @return ::::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_pumap_npu(int *nPUs, int numaNode);
+    ghost_error ghost_pumap_npu(int *nPUs, int numaNode);
 
     /**
      * @ingroup stringification
@@ -121,7 +121,7 @@ extern "C" {
      *
      * @return ::::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_pumap_string(char **str);
+    ghost_error ghost_pumap_string(char **str);
 
     extern pthread_mutex_t ghost_pumap_mutex;
 

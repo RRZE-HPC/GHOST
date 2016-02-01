@@ -28,16 +28,16 @@
 
 #ifdef GHOST_HAVE_MPI
 typedef struct {
-    ghost_densemat_t *rhs;
-    ghost_densemat_halo_comm_t *comm;
+    ghost_densemat *rhs;
+    ghost_densemat_halo_comm *comm;
 } commArgs;
 
 static void *communicate(void *vargs)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
     commArgs *args = (commArgs *)vargs;
-    ghost_error_t *ret = NULL;
-    GHOST_CALL_GOTO(ghost_malloc((void **)&ret,sizeof(ghost_error_t)),err,*ret);
+    ghost_error *ret = NULL;
+    GHOST_CALL_GOTO(ghost_malloc((void **)&ret,sizeof(ghost_error)),err,*ret);
     *ret = GHOST_SUCCESS;
     GHOST_CALL_GOTO(args->rhs->halocommStart(args->rhs,args->comm),err,*ret);
     GHOST_CALL_GOTO(args->rhs->halocommFinalize(args->rhs,args->comm),err,*ret);
@@ -51,10 +51,10 @@ out:
 }
 
 typedef struct {
-    ghost_sparsemat_t *mat;
-    ghost_densemat_t *res;
-    ghost_densemat_t *invec;
-    ghost_spmv_flags_t spmvOptions;
+    ghost_sparsemat *mat;
+    ghost_densemat *res;
+    ghost_densemat *invec;
+    ghost_spmv_flags spmvOptions;
     va_list argp;
 } compArgs;
 
@@ -63,8 +63,8 @@ static void *computeLocal(void *vargs)
 //#pragma omp parallel
 //    INFO_LOG("comp local t %d running @ core %d",ghost_ompGetThreadNum(),ghost_getCore());
     //GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
-    ghost_error_t *ret = NULL;
-    GHOST_CALL_GOTO(ghost_malloc((void **)&ret,sizeof(ghost_error_t)),err,*ret);
+    ghost_error *ret = NULL;
+    GHOST_CALL_GOTO(ghost_malloc((void **)&ret,sizeof(ghost_error)),err,*ret);
     *ret = GHOST_SUCCESS;
 
     compArgs *args = (compArgs *)vargs;
@@ -78,7 +78,7 @@ out:
 }
 #endif
 
-ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat, ghost_densemat_t* invec, ghost_spmv_flags_t spmvOptions, va_list argp)
+ghost_error ghost_spmv_taskmode(ghost_densemat* res, ghost_sparsemat* mat, ghost_densemat* invec, ghost_spmv_flags spmvOptions, va_list argp)
 {
 #ifndef GHOST_HAVE_MPI
     UNUSED(res);
@@ -91,10 +91,10 @@ ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat,
 #else
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     GHOST_INSTR_START("prepare");
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
 
-    ghost_spmv_flags_t localopts = spmvOptions;
-    ghost_spmv_flags_t remoteopts = spmvOptions;
+    ghost_spmv_flags localopts = spmvOptions;
+    ghost_spmv_flags remoteopts = spmvOptions;
 
 /*    int remoteExists;
     ghost_nrank(&remoteExists,mat->context->mpicomm);
@@ -103,18 +103,18 @@ ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat,
     MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&remoteExists,1,MPI_INT,MPI_MAX,mat->context->mpicomm));
    
     if (remoteExists) {
-        localopts |= (ghost_spmv_flags_t)GHOST_SPMV_LOCAL;
-        remoteopts |= (ghost_spmv_flags_t)GHOST_SPMV_REMOTE;
+        localopts |= (ghost_spmv_flags)GHOST_SPMV_LOCAL;
+        remoteopts |= (ghost_spmv_flags)GHOST_SPMV_REMOTE;
     }
 
-    ghost_densemat_halo_comm_t comm = GHOST_DENSEMAT_HALO_COMM_INITIALIZER;
+    ghost_densemat_halo_comm comm = GHOST_DENSEMAT_HALO_COMM_INITIALIZER;
     commArgs cargs;
     compArgs cplargs;
-    ghost_task_t *commTask;
-    ghost_task_t *compTask;
+    ghost_task *commTask;
+    ghost_task *compTask;
 
-    ghost_task_flags_t taskflags = GHOST_TASK_DEFAULT;
-    ghost_task_t *parent = NULL;
+    ghost_task_flags taskflags = GHOST_TASK_DEFAULT;
+    ghost_task *parent = NULL;
     GHOST_CALL_RETURN(ghost_task_cur(&parent));
     if (parent) {
         DEBUG_LOG(1,"using the parent's cores for the task mode spmv solver");
@@ -153,12 +153,12 @@ ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat,
     }
     ghost_task_enqueue(compTask);
     ghost_task_wait(compTask);
-    if ((ret = *((ghost_error_t *)(compTask->ret))) != GHOST_SUCCESS) {
+    if ((ret = *((ghost_error *)(compTask->ret))) != GHOST_SUCCESS) {
         goto err;
     }
     if (remoteExists) {
         ghost_task_wait(commTask);
-        if ((ret = *((ghost_error_t *)(commTask->ret))) != GHOST_SUCCESS) {
+        if ((ret = *((ghost_error *)(commTask->ret))) != GHOST_SUCCESS) {
             goto err;
         }
     }

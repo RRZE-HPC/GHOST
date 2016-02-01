@@ -23,7 +23,7 @@
 
 #define THREADSPERBLOCK 512
 
-template<typename T> __global__ static void ghost_tsmm_cu_rm_cm_fallback(T * const __restrict__ x, const T * const __restrict__ v, const T * const __restrict__ w, const T alpha, const T beta, ghost_lidx_t nrows, ghost_lidx_t stridex, ghost_lidx_t stridev, ghost_lidx_t stridew, const int M, const int K)
+template<typename T> __global__ static void ghost_tsmm_cu_rm_cm_fallback(T * const __restrict__ x, const T * const __restrict__ v, const T * const __restrict__ w, const T alpha, const T beta, ghost_lidx nrows, ghost_lidx stridex, ghost_lidx stridev, ghost_lidx stridew, const int M, const int K)
 {
     int row = blockIdx.x*blockDim.x+threadIdx.x;
     int k;
@@ -41,10 +41,10 @@ template<typename T> __global__ static void ghost_tsmm_cu_rm_cm_fallback(T * con
     }
 }
 
-ghost_error_t ghost_tsmm__u_cuda_x_x_x_1_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta) 
+ghost_error ghost_tsmm__u_cuda_x_x_x_1_rm_cm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta) 
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL); 
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
     dim3 block, grid;
     grid.x = (int)ceil((double)x->traits.nrows/THREADSPERBLOCK);
     grid.y = 1;

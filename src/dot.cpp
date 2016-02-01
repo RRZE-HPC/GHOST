@@ -15,9 +15,9 @@ using namespace std;
 // Hash function for unordered_map
 namespace std
 {
-    template<> struct hash<ghost_dot_parameters_t>
+    template<> struct hash<ghost_dot_parameters>
     {
-        typedef ghost_dot_parameters_t argument_type;
+        typedef ghost_dot_parameters argument_type;
         typedef std::size_t result_type;
         result_type operator()(argument_type const& a) const
         {
@@ -27,24 +27,24 @@ namespace std
 }
 
 
-bool operator==(const ghost_dot_parameters_t& a, const ghost_dot_parameters_t& b)
+bool operator==(const ghost_dot_parameters& a, const ghost_dot_parameters& b)
 {
     return a.dt == b.dt && a.blocksz == b.blocksz && a.impl == b.impl && a.storage == b.storage;
 }
 
-static unordered_map<ghost_dot_parameters_t, ghost_dot_kernel_t> ghost_dot_kernels;
+static unordered_map<ghost_dot_parameters, ghost_dot_kernel> ghost_dot_kernels;
 
-ghost_error_t ghost_dot(void *res, ghost_densemat_t *vec1, ghost_densemat_t *vec2)
+ghost_error ghost_dot(void *res, ghost_densemat *vec1, ghost_densemat *vec2)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_COMMUNICATION);
     GHOST_CALL_RETURN(ghost_localdot(res,vec1,vec2));
 #ifdef GHOST_HAVE_MPI
     if (vec1->context) {
         GHOST_INSTR_START("reduce")
-        ghost_mpi_op_t sumOp;
-        ghost_mpi_datatype_t mpiDt;
+        ghost_mpi_op sumOp;
+        ghost_mpi_datatype mpiDt;
         ghost_mpi_op_sum(&sumOp,vec1->traits.datatype);
-        ghost_mpi_datatype(&mpiDt,vec1->traits.datatype);
+        ghost_mpi_datatype_get(&mpiDt,vec1->traits.datatype);
         int v;
         if (vec1->context) {
             for (v=0; v<MIN(vec1->traits.ncols,vec2->traits.ncols); v++) {
@@ -59,11 +59,11 @@ ghost_error_t ghost_dot(void *res, ghost_densemat_t *vec1, ghost_densemat_t *vec
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_localdot(void *res, ghost_densemat_t *vec1, ghost_densemat_t *vec2)
+ghost_error ghost_localdot(void *res, ghost_densemat *vec1, ghost_densemat *vec2)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
 
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
 
     if (ghost_dot_kernels.empty()) {
 #include "dot_avx.def"
@@ -73,11 +73,11 @@ ghost_error_t ghost_localdot(void *res, ghost_densemat_t *vec1, ghost_densemat_t
     memset(res,0,vec1->traits.ncols*vec2->elSize);
 
     int al = ghost_machine_alignment();
-    ghost_dot_parameters_t p;
+    ghost_dot_parameters p;
     p.dt = vec1->traits.datatype;
     p.alignment = GHOST_ALIGNED;
     
-    ghost_dot_kernel_t kernel = NULL;
+    ghost_dot_kernel kernel = NULL;
 #ifdef GHOST_HAVE_MIC
     p.impl = GHOST_IMPLEMENTATION_MIC;
 #elif defined(GHOST_HAVE_AVX)
@@ -88,7 +88,7 @@ ghost_error_t ghost_localdot(void *res, ghost_densemat_t *vec1, ghost_densemat_t
     p.impl = GHOST_IMPLEMENTATION_PLAIN;
 #endif
 #ifdef GHOST_HAVE_CUDA
-    ghost_type_t type;
+    ghost_type type;
     ghost_type_get(&type);
     if (type == GHOST_TYPE_CUDA) {
         p.impl = GHOST_IMPLEMENTATION_CUDA;

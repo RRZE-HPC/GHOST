@@ -27,10 +27,10 @@
 
 #define THREADSPERBLOCK 512
 
-ghost_error_t ghost_tsmm_inplace__cuda_x_NCOLSIN_NCOLSOUT(ghost_densemat_t *x, ghost_densemat_t *w, void *alpha, void *beta) 
+ghost_error ghost_tsmm_inplace__cuda_x_NCOLSIN_NCOLSOUT(ghost_densemat *x, ghost_densemat *w, void *alpha, void *beta) 
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL); 
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
     dim3 block, grid;
     grid.x = (int)ceil((double)x->traits.nrows/THREADSPERBLOCK);
     grid.y = 1;

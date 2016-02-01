@@ -12,7 +12,7 @@
 extern "C" {
 #endif
 
-    ghost_error_t ghost_cu_bench_stream(ghost_bench_stream_test_t, double *bw);
+    ghost_error ghost_cu_bench_stream(ghost_bench_stream_test_t, double *bw);
 
 #ifdef __cplusplus
 }

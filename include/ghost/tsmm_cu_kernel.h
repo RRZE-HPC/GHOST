@@ -11,7 +11,7 @@
 #include "ghost/cu_complex.h"
 
 template<typename T,int M, int K> 
-static __global__ void ghost_tsmm_cu_rm_cm(T * const __restrict__ x, const T * const __restrict__ v, const T * const __restrict__ w, const T alpha, const T beta, ghost_lidx_t nrows, ghost_lidx_t stridex, ghost_lidx_t stridev, ghost_lidx_t stridew)
+static __global__ void ghost_tsmm_cu_rm_cm(T * const __restrict__ x, const T * const __restrict__ v, const T * const __restrict__ w, const T alpha, const T beta, ghost_lidx nrows, ghost_lidx stridex, ghost_lidx stridev, ghost_lidx stridew)
 {
     int row = blockIdx.x*blockDim.x+threadIdx.x;
     int k;

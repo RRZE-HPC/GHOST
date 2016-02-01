@@ -32,22 +32,22 @@ typedef enum {
     GHOST_ERR_COLPACK,
     GHOST_ERR_LAPACK,
     GHOST_ERR_BLAS
-} ghost_error_t;
+} ghost_error;
 
 #include "errorhandler.h"
 
 /**
  * @brief This macro should be used for calling a GHOST function inside
- * a function which itself returns a ghost_error_t.
+ * a function which itself returns a ghost_error.
  * It calls the function and in case of an error logs the error message
- * and returns the according ghost_error_t which was return by the called function.
+ * and returns the according ghost_error which was return by the called function.
  *
  * @param call The complete function call.
  *
- * @return A ghost_error_t in case the function return an error.
+ * @return A ghost_error in case the function return an error.
  */
 #define GHOST_CALL_RETURN(call) {\
-    ghost_error_t macroerr = GHOST_SUCCESS;\
+    ghost_error macroerr = GHOST_SUCCESS;\
     GHOST_CALL(call,macroerr);\
     if (macroerr != GHOST_SUCCESS) {\
         return macroerr;\
@@ -56,13 +56,13 @@ typedef enum {
 
 /**
  * @brief This macro should be used for calling a GHOST function inside
- * a function which itself returns a ghost_error_t but needs to do some clean up before returning..
+ * a function which itself returns a ghost_error but needs to do some clean up before returning..
  * It calls the function. In case of an error it logs the error message, sets the parameter __err
- * to the occured ghost_error_t and jumps (goto) to the defined parameter label.
+ * to the occured ghost_error and jumps (goto) to the defined parameter label.
  *
  * @param call The function call.
  * @param label The jump label where clean up is performed.
- * @param __err A defined ghost_error_t variable which will be set to the error returned by the calling function.
+ * @param __err A defined ghost_error variable which will be set to the error returned by the calling function.
  */
 #define GHOST_CALL_GOTO(call,label,__err) {\
     GHOST_CALL(call,__err);\
@@ -77,17 +77,17 @@ typedef enum {
  * This macro is probably not very useful by itself, cf. #GHOST_CALL_GOTO and #GHOST_CALL_RETURN instead.
  *
  * @param call The function call.
- * @param __err A defined ghost_error_t variable which will be set to the error returned by the calling function.
+ * @param __err A defined ghost_error variable which will be set to the error returned by the calling function.
  */
 #define GHOST_CALL(call,__err) {\
     __err = call;\
     if (__err != GHOST_SUCCESS) {\
-        LOG(GHOST_ERROR,ANSI_COLOR_RED,"%s",ghost_error_string((ghost_error_t)__err));\
+        LOG(GHOST_ERROR,ANSI_COLOR_RED,"%s",ghost_error_string((ghost_error)__err));\
     }\
 }\
 
 #define MPI_CALL_RETURN(call) {\
-    ghost_error_t macroerr = GHOST_SUCCESS;\
+    ghost_error macroerr = GHOST_SUCCESS;\
     MPI_CALL(call,macroerr);\
     if (macroerr != GHOST_SUCCESS) {\
         return macroerr;\
@@ -108,7 +108,7 @@ typedef enum {
         int strlen;\
         MPI_Error_string(mpicallmacroerr,errstr,&strlen);\
         ERROR_LOG("MPI Error: %s",errstr);\
-        ghost_errorhandler_t h = ghost_errorhandler_get(GHOST_ERR_MPI);\
+        ghost_errorhandler h = ghost_errorhandler_get(GHOST_ERR_MPI);\
         if (h) {\
             h((void *)&mpicallmacroerr);\
         }\
@@ -117,7 +117,7 @@ typedef enum {
 }\
 
 #define HWLOC_CALL_RETURN(call) {\
-    ghost_error_t macroerr = GHOST_SUCCESS;\
+    ghost_error macroerr = GHOST_SUCCESS;\
     HWLOC_CALL(call,macroerr);\
     if (macroerr != GHOST_SUCCESS) {\
         return macroerr;\
@@ -135,7 +135,7 @@ typedef enum {
     int __hwlocerr = call;\
     if (__hwlocerr) {\
         ERROR_LOG("HWLOC Error: %d",__hwlocerr);\
-        ghost_errorhandler_t h = ghost_errorhandler_get(GHOST_ERR_HWLOC);\
+        ghost_errorhandler h = ghost_errorhandler_get(GHOST_ERR_HWLOC);\
         if (h) {\
             h((void *)&__hwlocerr);\
         }\
@@ -144,7 +144,7 @@ typedef enum {
 }\
 
 #define CUDA_CALL_RETURN(call) {\
-    ghost_error_t macroerr = GHOST_SUCCESS;\
+    ghost_error macroerr = GHOST_SUCCESS;\
     CUDA_CALL(call,macroerr);\
     if (macroerr != GHOST_SUCCESS) {\
         return macroerr;\
@@ -162,7 +162,7 @@ typedef enum {
     cudaError_t __cuerr = call;\
     if (__cuerr != cudaSuccess) {\
         ERROR_LOG("CUDA Error: %s (%d)",cudaGetErrorString(__cuerr),(int)__cuerr);\
-        ghost_errorhandler_t h = ghost_errorhandler_get(GHOST_ERR_CUDA);\
+        ghost_errorhandler h = ghost_errorhandler_get(GHOST_ERR_CUDA);\
         if (h) {\
             h((void *)&__cuerr);\
         }\
@@ -171,7 +171,7 @@ typedef enum {
 }\
 
 #define CUBLAS_CALL_RETURN(call) {\
-    ghost_error_t macroerr = GHOST_SUCCESS;\
+    ghost_error macroerr = GHOST_SUCCESS;\
     CUBLAS_CALL(call,macroerr);\
     if (macroerr != GHOST_SUCCESS) {\
         return macroerr;\
@@ -210,8 +210,17 @@ typedef enum {
             case CUBLAS_STATUS_INTERNAL_ERROR:\
                 ERROR_LOG("CUBLAS error: CUBLAS_STATUS_INTERNAL_ERROR");\
                 break;\
+            case CUBLAS_STATUS_NOT_SUPPORTED:\
+                ERROR_LOG("CUBLAS error: CUBLAS_STATUS_NOT_SUPPORTED");\
+                break;\
+            case CUBLAS_STATUS_LICENSE_ERROR:\
+                ERROR_LOG("CUBLAS error: CUBLAS_STATUS_LICENSE_ERROR");\
+                break;\
+            default:\
+                ERROR_LOG("CUBLAS error: Unknown CUBLAS error");\
+                break;\
         }\
-        ghost_errorhandler_t h = ghost_errorhandler_get(GHOST_ERR_CUBLAS);\
+        ghost_errorhandler h = ghost_errorhandler_get(GHOST_ERR_CUBLAS);\
         if (h) {\
             h((void *)&err);\
         }\
@@ -220,7 +229,7 @@ typedef enum {
 }\
 
 #define CURAND_CALL_RETURN(call) {\
-    ghost_error_t macroerr = GHOST_SUCCESS;\
+    ghost_error macroerr = GHOST_SUCCESS;\
     CURAND_CALL(call,macroerr);\
     if (macroerr != GHOST_SUCCESS) {\
         return macroerr;\
@@ -238,7 +247,7 @@ typedef enum {
     curandStatus_t err = call;\
     if (err != CURAND_STATUS_SUCCESS) {\
         ERROR_LOG("CURAND Error: %d",(int)err);\
-        ghost_errorhandler_t h = ghost_errorhandler_get(GHOST_ERR_CURAND);\
+        ghost_errorhandler h = ghost_errorhandler_get(GHOST_ERR_CURAND);\
         if (h) {\
             h((void *)&err);\
         }\
@@ -247,7 +256,7 @@ typedef enum {
 }\
 
 #define CUSPARSE_CALL_RETURN(call) {\
-    ghost_error_t macroerr = GHOST_SUCCESS;\
+    ghost_error macroerr = GHOST_SUCCESS;\
     CUSPARSE_CALL(call,macroerr);\
     if (macroerr != GHOST_SUCCESS) {\
         return macroerr;\
@@ -265,7 +274,7 @@ typedef enum {
     cusparseStatus_t err = call;\
     if (err != CUSPARSE_STATUS_SUCCESS) {\
         ERROR_LOG("CUSPARSE Error: %d",(int)err);\
-        ghost_errorhandler_t h = ghost_errorhandler_get(GHOST_ERR_CUSPARSE);\
+        ghost_errorhandler h = ghost_errorhandler_get(GHOST_ERR_CUSPARSE);\
         if (h) {\
             h((void *)&err);\
         }\
@@ -274,7 +283,7 @@ typedef enum {
 }\
 
 #define SCOTCH_CALL_RETURN(call) {\
-    ghost_error_t macroerr = GHOST_SUCCESS;\
+    ghost_error macroerr = GHOST_SUCCESS;\
     SCOTCH_CALL(call,macroerr);\
     if (macroerr != GHOST_SUCCESS) {\
         return macroerr;\
@@ -292,7 +301,7 @@ typedef enum {
     int err = call;\
     if (err) {\
         ERROR_LOG("SCOTCH Error: %d",err);\
-        ghost_errorhandler_t h = ghost_errorhandler_get(GHOST_ERR_SCOTCH);\
+        ghost_errorhandler h = ghost_errorhandler_get(GHOST_ERR_SCOTCH);\
         if (h) {\
             h((void *)&err);\
         }\
@@ -301,7 +310,7 @@ typedef enum {
 }\
 
 #define COLPACK_CALL_RETURN(call) {\
-    ghost_error_t macroerr = GHOST_SUCCESS;\
+    ghost_error macroerr = GHOST_SUCCESS;\
     COLPACK_CALL(call,macroerr);\
     if (macroerr != GHOST_SUCCESS) {\
         return macroerr;\
@@ -319,7 +328,7 @@ typedef enum {
     int err = call;\
     if (err != _TRUE) {\
         ERROR_LOG("ColPack Error: %d",err);\
-        ghost_errorhandler_t h = ghost_errorhandler_get(GHOST_ERR_COLPACK);\
+        ghost_errorhandler h = ghost_errorhandler_get(GHOST_ERR_COLPACK);\
         if (h) {\
             h((void *)&err);\
         }\
@@ -328,7 +337,7 @@ typedef enum {
 }\
 
 #define BLAS_CALL_RETURN(call) {\
-    ghost_error_t macroerr = GHOST_SUCCESS;\
+    ghost_error macroerr = GHOST_SUCCESS;\
     BLAS_CALL(call,macroerr);\
     if (macroerr != GHOST_SUCCESS) {\
         return macroerr;\
@@ -347,7 +356,7 @@ typedef enum {
     int err = ghost_blas_err_pop();\
     if (err) {\
         ERROR_LOG("BLAS Error: %d",err);\
-        ghost_errorhandler_t h = ghost_errorhandler_get(GHOST_ERR_BLAS);\
+        ghost_errorhandler h = ghost_errorhandler_get(GHOST_ERR_BLAS);\
         if (h) {\
             h((void *)&err);\
         }\
@@ -368,7 +377,7 @@ typedef enum {
          *
          * @return The string.
          */
-        char * ghost_error_string(ghost_error_t e);
+        char * ghost_error_string(ghost_error e);
 
 #ifdef __cplusplus
     }

@@ -6,7 +6,7 @@
 #include <complex>
 
 template<typename m_t, typename v_t, bool forward>
-static ghost_error_t sell_kacz(ghost_sparsemat_t *mat, ghost_densemat_t *x, ghost_densemat_t *b, v_t *omega)
+static ghost_error sell_kacz(ghost_sparsemat *mat, ghost_densemat *x, ghost_densemat *b, v_t *omega)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     
@@ -18,13 +18,13 @@ static ghost_error_t sell_kacz(ghost_sparsemat_t *mat, ghost_densemat_t *x, ghos
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
    
-    ghost_lidx_t c;
-    ghost_lidx_t row;
-    ghost_lidx_t rowinchunk;
-    ghost_lidx_t j;
-    ghost_lidx_t color;
-    ghost_sell_t *sellmat = SELL(mat);
-    ghost_lidx_t fchunk, lchunk;
+    ghost_lidx c;
+    ghost_lidx row;
+    ghost_lidx rowinchunk;
+    ghost_lidx j;
+    ghost_lidx color;
+    ghost_sell *sellmat = SELL(mat);
+    ghost_lidx fchunk, lchunk;
     v_t *bval = (v_t *)(b->val);
     v_t *xval = (v_t *)(x->val);
     m_t *mval = (m_t *)sellmat->val;
@@ -33,7 +33,7 @@ static ghost_error_t sell_kacz(ghost_sparsemat_t *mat, ghost_densemat_t *x, ghos
     int rank;
     ghost_rank(&rank,mat->context->mpicomm);
 
-    ghost_lidx_t firstcolor, lastcolor, stride;
+    ghost_lidx firstcolor, lastcolor, stride;
     
     if (forward) {
         firstcolor = 0;
@@ -59,7 +59,7 @@ static ghost_error_t sell_kacz(ghost_sparsemat_t *mat, ghost_densemat_t *x, ghos
                     row = rowinchunk + c*mat->traits.C;
                     rownorm[rowinchunk] = 0.;
 
-                    ghost_lidx_t idx = sellmat->chunkStart[c]+rowinchunk;
+                    ghost_lidx idx = sellmat->chunkStart[c]+rowinchunk;
                     v_t scal = -bval[row];
 
                     for (j=0; j<sellmat->rowLen[row]; j++) {
@@ -86,7 +86,7 @@ static ghost_error_t sell_kacz(ghost_sparsemat_t *mat, ghost_densemat_t *x, ghos
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_sell_kacz(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, void *omega, int forward)
+ghost_error ghost_sell_kacz(ghost_sparsemat *mat, ghost_densemat *lhs, ghost_densemat *rhs, void *omega, int forward)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);

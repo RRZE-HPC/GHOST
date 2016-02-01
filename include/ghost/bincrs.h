@@ -50,7 +50,7 @@
 typedef struct 
 {
     char *filename;
-    ghost_datatype_t dt;
+    ghost_datatype dt;
 } ghost_sparsemat_rowfunc_bincrs_initargs;
 
 /**
@@ -107,11 +107,11 @@ extern "C" {
  *
  * If called with row #GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_INIT, the parameter
  * \p val has to be a ghost_sparsemat_rowfunc_bincrs_initargs * with the according
- * information filled in. The parameter \p col has to be a ghost_gidx_t[2] in 
+ * information filled in. The parameter \p col has to be a ghost_gidx[2] in 
  * which the number of rows and columns will be stored.
  */
-int ghost_sparsemat_rowfunc_bincrs(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, void *val, void *arg);
-    ghost_error_t ghost_bincrs_header_read(ghost_bincrs_header_t *header, char *path);
+int ghost_sparsemat_rowfunc_bincrs(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *col, void *val, void *arg);
+    ghost_error ghost_bincrs_header_read(ghost_bincrs_header_t *header, char *path);
 
 #ifdef __cplusplus
 }

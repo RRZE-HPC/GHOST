@@ -1,15 +1,15 @@
 #!/usr/bin/env perl
 
 my %datatypes = (
-        'd' => '(ghost_datatype_t)(GHOST_DT_DOUBLE|GHOST_DT_REAL)',
-        's' => '(ghost_datatype_t)(GHOST_DT_FLOAT|GHOST_DT_REAL)',
-        'z' => '(ghost_datatype_t)(GHOST_DT_DOUBLE|GHOST_DT_COMPLEX)',
-        'c' => '(ghost_datatype_t)(GHOST_DT_FLOAT|GHOST_DT_COMPLEX)',
+        'd' => '(ghost_datatype)(GHOST_DT_DOUBLE|GHOST_DT_REAL)',
+        's' => '(ghost_datatype)(GHOST_DT_FLOAT|GHOST_DT_REAL)',
+        'z' => '(ghost_datatype)(GHOST_DT_DOUBLE|GHOST_DT_COMPLEX)',
+        'c' => '(ghost_datatype)(GHOST_DT_FLOAT|GHOST_DT_COMPLEX)',
         'x' => 'GHOST_DT_ANY',
         );
 my %storages = (
-        'cm' => '(ghost_densemat_storage_t)(GHOST_DENSEMAT_COLMAJOR)',
-        'rm' => '(ghost_densemat_storage_t)(GHOST_DENSEMAT_ROWMAJOR)',
+        'cm' => '(ghost_densemat_storage)(GHOST_DENSEMAT_COLMAJOR)',
+        'rm' => '(ghost_densemat_storage)(GHOST_DENSEMAT_ROWMAJOR)',
         );
 
 my %implementations = (
@@ -27,7 +27,7 @@ my %alignments = (
         );
 
 while (<>) {
-    if ($_ =~ /(ghost_error_t .+\(.+\))/) {
+    if ($_ =~ /(ghost_error .+\(.+\))/) {
         my @header =  split /[ \(]/,$_;
         my $funcname_full = $header[1];
         my @funcname_parts = split /__/,$funcname_full;
@@ -39,7 +39,7 @@ while (<>) {
         
         if ($funcname eq "ghost_sellspmv") {
             print "{\n";
-            print $funcname."_parameters_t pars;\n";
+            print $funcname."_parameters pars;\n";
             print "pars.alignment = ".$alignments{$funcpars[0]}.";\n";
             print "pars.impl = ".$implementations{$funcpars[1]}.";\n";
             print "pars.mdt = ".$datatypes{$funcpars[2]}.";\n";
@@ -53,8 +53,8 @@ while (<>) {
             }
             print $funcname."_kernels[pars] = ".$funcname_full.";\n"; 
             if ($funcpars[6] ne "x") {
-                print "ghost_gidx_t nnz;\n";
-                print "ghost_gidx_t nrow;\n";
+                print "ghost_gidx nnz;\n";
+                print "ghost_gidx nrow;\n";
                 print "ghost_sparsemat_nnz(&nnz,mat);\n";
                 print "ghost_sparsemat_nrows(&nrow,mat);\n";
                 print "ghost_spmv_perf_args_t spmv_perfargs;\n";
@@ -68,7 +68,7 @@ while (<>) {
             print "}\n";
         } elsif ($funcname eq "ghost_dot") {
             print "{\n";
-            print $funcname."_parameters_t pars;\n";
+            print $funcname."_parameters pars;\n";
             print "pars.alignment = ".$alignments{$funcpars[0]}.";\n";
             print "pars.impl = ".$implementations{$funcpars[1]}.";\n";
             print "pars.dt = ".$datatypes{$funcpars[2]}.";\n";
@@ -94,7 +94,7 @@ while (<>) {
             print "}\n";
         } elsif ($funcname eq "ghost_tsmttsm" or $funcname eq "ghost_tsmttsm_kahan") {
             print "{\n";
-            print $funcname."_parameters_t pars;\n";
+            print $funcname."_parameters pars;\n";
             print "pars.alignment = ".$alignments{$funcpars[0]}.";\n";
             print "pars.impl = ".$implementations{$funcpars[1]}.";\n";
             print "pars.dt = ".$datatypes{$funcpars[2]}.";\n";
@@ -132,7 +132,7 @@ while (<>) {
             print "}\n";
         } elsif ($funcname eq "ghost_tsmm") {
             print "{\n";
-            print $funcname."_parameters_t pars;\n";
+            print $funcname."_parameters pars;\n";
             print "pars.alignment = ".$alignments{$funcpars[0]}.";\n";
             print "pars.impl = ".$implementations{$funcpars[1]}.";\n";
             print "pars.dt = ".$datatypes{$funcpars[2]}.";\n";
@@ -170,7 +170,7 @@ while (<>) {
             print "}\n";
         } elsif ($funcname eq "ghost_tsmm_inplace") {
             print "{\n";
-            print $funcname."_parameters_t pars;\n";
+            print $funcname."_parameters pars;\n";
             print "pars.impl = ".$implementations{$funcpars[0]}.";\n";
             print "pars.dt = ".$datatypes{$funcpars[1]}.";\n";
             if ($funcpars[2] eq "x") {

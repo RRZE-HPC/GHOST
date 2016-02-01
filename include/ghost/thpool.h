@@ -16,7 +16,7 @@
 /**
  * @brief The thread pool consisting of all shepherd threads that will ever handle a GHOST task.
  */
-typedef struct ghost_thpool_t {
+typedef struct ghost_thpool {
     /**
      * @brief The pthread to thread.
      *
@@ -34,7 +34,7 @@ typedef struct ghost_thpool_t {
      * Only when all threads are initialized and have reached their start routine, ghost_thpool_create() will return.
      */
     sem_t *sem;
-} ghost_thpool_t;
+} ghost_thpool;
 
 #ifdef __cplusplus
 extern "C" {
@@ -53,7 +53,7 @@ extern "C" {
      * This assures that N tasks can run at the same time if each one occupies on processing unit.
      * If this function is called a second, third etc. time, the size of the thread pool will be resized to the given nThreads. 
      */
-    ghost_error_t ghost_thpool_create(int nThreads, void *(*func)(void *));
+    ghost_error ghost_thpool_create(int nThreads, void *(*func)(void *));
     /**
      * @brief Destroy the thread pool.
      *
@@ -61,7 +61,7 @@ extern "C" {
      *
      * Before free'ing the resources, all pthreads in the thread pool are being joined (this is also where an error could occur).
      */
-    ghost_error_t ghost_thpool_destroy();
+    ghost_error ghost_thpool_destroy();
     /**
      * @brief Get the thread pool
      *
@@ -69,11 +69,11 @@ extern "C" {
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_thpool_get(ghost_thpool_t **thpool);
+    ghost_error ghost_thpool_get(ghost_thpool **thpool);
 
-    ghost_error_t ghost_thpool_key(pthread_key_t *key);
+    ghost_error ghost_thpool_key(pthread_key_t *key);
 
-    ghost_error_t ghost_thpool_thread_add(void *(func)(void *), intptr_t arg);
+    ghost_error ghost_thpoolhread_add(void *(func)(void *), intptr_t arg);
     
 
 #ifdef __cplusplus

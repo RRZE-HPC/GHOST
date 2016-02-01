@@ -7,10 +7,10 @@
 
 #include <immintrin.h>
 
-#define N PAD((ghost_lidx_t)1e8,16)
+#define N PAD((ghost_lidx)1e8,16)
 
 static void dummy(double *a) {
-    if (a[(ghost_lidx_t)N>>1] < 0) {
+    if (a[(ghost_lidx)N>>1] < 0) {
         WARNING_LOG("dummy");
     }
 }
@@ -18,7 +18,7 @@ static void dummy(double *a) {
 static void ghost_copy_kernel(double * __restrict__ a, const double * __restrict__ b)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_KERNEL|GHOST_FUNCTYPE_BENCH);
-    ghost_lidx_t i;
+    ghost_lidx i;
 
 #ifdef GHOST_HAVE_AVX
     __m256d bv;
@@ -45,10 +45,10 @@ static void ghost_copy_kernel(double * __restrict__ a, const double * __restrict
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_KERNEL|GHOST_FUNCTYPE_BENCH);
 }
 
-ghost_error_t ghost_bench_stream(ghost_bench_stream_test_t test, double *bw)
+ghost_error ghost_bench_stream(ghost_bench_stream_test_t test, double *bw)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_BENCH);
-    ghost_type_t mytype;
+    ghost_type mytype;
     ghost_type_get(&mytype);
     
     if (mytype == GHOST_TYPE_CUDA) {
@@ -57,13 +57,13 @@ ghost_error_t ghost_bench_stream(ghost_bench_stream_test_t test, double *bw)
 #endif
     }
         
-    ghost_task_t *cur = NULL;
+    ghost_task *cur = NULL;
     ghost_task_cur(&cur);
     if (!cur) {
         WARNING_LOG("STREAM benchmark called outside a GHOST task. The reported bandwidth will probably not be meaningful!");
     }
 
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
     if (test != GHOST_BENCH_STREAM_COPY) {
         WARNING_LOG("Currently only STREAM copy implemented!");
     }
@@ -101,7 +101,7 @@ out:
     return ret;
 }
 
-ghost_error_t ghost_bench_pingpong(double *bw)
+ghost_error ghost_bench_pingpong(double *bw)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_BENCH);
 
@@ -112,7 +112,7 @@ ghost_error_t ghost_bench_pingpong(double *bw)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_bench_peakperformance(double *gf)
+ghost_error ghost_bench_peakperformance(double *gf)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_BENCH);
 

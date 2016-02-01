@@ -26,7 +26,7 @@ typedef enum
     GHOST_PERMUTATION_ORIG2PERM,
     GHOST_PERMUTATION_PERM2ORIG
 }
-ghost_permutation_direction_t;
+ghost_permutation_direction;
     
 typedef struct
 {
@@ -35,19 +35,19 @@ typedef struct
      *
      * NULL if no permutation applied to the matrix.
      */
-    ghost_gidx_t *perm;
+    ghost_gidx *perm;
     /**
      * @brief Gets an index in the permuted system and returns the original index.
      *
      * NULL if no permutation applied to the matrix.
      */
-    ghost_gidx_t *invPerm;
+    ghost_gidx *invPerm;
 
-    ghost_gidx_t *cu_perm;
+    ghost_gidx *cu_perm;
 
     ghost_permutation_scope_t scope;
-    ghost_gidx_t len;
+    ghost_gidx len;
 }
-ghost_permutation_t;
+ghost_permutation;
 
 #endif

@@ -26,11 +26,11 @@
 static cublasHandle_t ghost_cublas_handle = NULL;
 static cusparseHandle_t ghost_cusparse_handle = NULL;
 static struct cudaDeviceProp ghost_cu_device_prop;
-static curandGenerator_t ghost_cu_rand_generator = NULL;
+static ghost_cu_rand_generator cu_rand_generator = NULL;
 static int cu_device = -1;
 #endif
 
-ghost_error_t ghost_cu_init(int dev)
+ghost_error ghost_cu_init(int dev)
 {
 #ifdef GHOST_HAVE_CUDA
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_SETUP);
@@ -64,9 +64,9 @@ ghost_error_t ghost_cu_init(int dev)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_cu_malloc(void **mem, size_t bytesize)
+ghost_error ghost_cu_malloc(void **mem, size_t bytesize)
 {
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
 #ifdef GHOST_HAVE_CUDA
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     CUDA_CALL_GOTO(cudaMalloc(mem,bytesize),err,ret);
@@ -82,7 +82,7 @@ out:
     return ret;
 }
 
-ghost_error_t ghost_cu_memcpy(void *dest, void *src, size_t bytesize)
+ghost_error ghost_cu_memcpy(void *dest, void *src, size_t bytesize)
 {
 #ifdef GHOST_HAVE_CUDA
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
@@ -100,7 +100,7 @@ ghost_error_t ghost_cu_memcpy(void *dest, void *src, size_t bytesize)
 
 } 
 
-ghost_error_t ghost_cu_memcpy2d(void *dest, size_t dpitch, const void *src, size_t spitch, size_t width, size_t height)
+ghost_error ghost_cu_memcpy2d(void *dest, size_t dpitch, const void *src, size_t spitch, size_t width, size_t height)
 {
 #ifdef GHOST_HAVE_CUDA
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
@@ -119,7 +119,7 @@ ghost_error_t ghost_cu_memcpy2d(void *dest, size_t dpitch, const void *src, size
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_cu_memset(void *s, int c, size_t n)
+ghost_error ghost_cu_memset(void *s, int c, size_t n)
 {
 #ifdef GHOST_HAVE_CUDA
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
@@ -134,7 +134,7 @@ ghost_error_t ghost_cu_memset(void *s, int c, size_t n)
     return GHOST_SUCCESS;
 } 
 
-ghost_error_t ghost_cu_upload(void * devmem, void *hostmem,
+ghost_error ghost_cu_upload(void * devmem, void *hostmem,
         size_t bytesize)
 {
 #ifdef GHOST_HAVE_CUDA
@@ -151,7 +151,7 @@ ghost_error_t ghost_cu_upload(void * devmem, void *hostmem,
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_cu_upload2d(void *dest, size_t dpitch, const void *src, size_t spitch, size_t width, size_t height)
+ghost_error ghost_cu_upload2d(void *dest, size_t dpitch, const void *src, size_t spitch, size_t width, size_t height)
 {
 #ifdef GHOST_HAVE_CUDA
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_COMMUNICATION);
@@ -170,7 +170,7 @@ ghost_error_t ghost_cu_upload2d(void *dest, size_t dpitch, const void *src, size
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_cu_download2d(void *dest, size_t dpitch, const void *src, size_t spitch, size_t width, size_t height)
+ghost_error ghost_cu_download2d(void *dest, size_t dpitch, const void *src, size_t spitch, size_t width, size_t height)
 {
 #ifdef GHOST_HAVE_CUDA
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_COMMUNICATION);
@@ -189,7 +189,7 @@ ghost_error_t ghost_cu_download2d(void *dest, size_t dpitch, const void *src, si
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_cu_download(void *hostmem, void *devmem,
+ghost_error ghost_cu_download(void *hostmem, void *devmem,
         size_t bytesize)
 {
 #ifdef GHOST_HAVE_CUDA
@@ -206,7 +206,7 @@ ghost_error_t ghost_cu_download(void *hostmem, void *devmem,
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_cu_free(void * mem)
+ghost_error ghost_cu_free(void * mem)
 {
 #ifdef GHOST_HAVE_CUDA
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
@@ -219,7 +219,7 @@ ghost_error_t ghost_cu_free(void * mem)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_cu_barrier()
+ghost_error ghost_cu_barrier()
 {
 #ifdef GHOST_HAVE_CUDA
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_COMMUNICATION);
@@ -235,7 +235,7 @@ static int stringcmp(const void *x, const void *y)
     return (strcmp((char *)x, (char *)y));
 }
 
-ghost_error_t ghost_cu_ndevice(int *devcount)
+ghost_error ghost_cu_ndevice(int *devcount)
 {
 #ifdef GHOST_HAVE_CUDA
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
@@ -249,20 +249,20 @@ ghost_error_t ghost_cu_ndevice(int *devcount)
 }
 
 
-ghost_error_t ghost_cu_gpu_info_create(ghost_gpu_info_t **devInfo)
+ghost_error ghost_cu_gpu_info_create(ghost_gpu_info **devInfo)
 {
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
 #ifdef GHOST_HAVE_CUDA
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_COMMUNICATION);
-    ghost_mpi_comm_t ghost_cuda_comm;
+    ghost_mpi_comm ghost_cuda_comm;
     GHOST_CALL_GOTO(ghost_cuda_comm_get(&ghost_cuda_comm),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)devInfo,sizeof(ghost_gpu_info_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)devInfo,sizeof(ghost_gpu_info)),err,ret);
     (*devInfo)->ndistinctdevice = 1;
     (*devInfo)->names = NULL;
     (*devInfo)->ndevice = NULL;
 
     int me,size,i;
-    ghost_type_t ghost_type;
+    ghost_type ghost_type;
     char name[ghost_cu_MAX_DEVICE_NAME_LEN];
     char *names = NULL;
     int *displs = NULL;
@@ -366,7 +366,7 @@ out:
     return ret;
 }
 
-ghost_error_t ghost_cu_malloc_mapped(void **mem, const size_t size)
+ghost_error ghost_cu_malloc_mapped(void **mem, const size_t size)
 {
 #ifdef GHOST_HAVE_CUDA
 
@@ -385,7 +385,7 @@ ghost_error_t ghost_cu_malloc_mapped(void **mem, const size_t size)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_cu_malloc_pinned(void **mem, const size_t size)
+ghost_error ghost_cu_malloc_pinned(void **mem, const size_t size)
 {
 #ifdef GHOST_HAVE_CUDA
 
@@ -404,7 +404,7 @@ ghost_error_t ghost_cu_malloc_pinned(void **mem, const size_t size)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_cu_device(int *device)
+ghost_error ghost_cu_device(int *device)
 {
 #ifdef GHOST_HAVE_CUDA
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
@@ -421,7 +421,7 @@ ghost_error_t ghost_cu_device(int *device)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_cu_cublas_handle(ghost_cublas_handle_t *handle)
+ghost_error ghost_cu_cublas_handle(ghost_cublas_handle_t *handle)
 {
 #ifdef GHOST_HAVE_CUDA
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
@@ -438,7 +438,7 @@ ghost_error_t ghost_cu_cublas_handle(ghost_cublas_handle_t *handle)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_cu_cusparse_handle(ghost_cusparse_handle_t *handle)
+ghost_error ghost_cu_cusparse_handle(ghost_cusparse_handle_t *handle)
 {
 #ifdef GHOST_HAVE_CUDA
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
@@ -455,7 +455,7 @@ ghost_error_t ghost_cu_cusparse_handle(ghost_cusparse_handle_t *handle)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_cu_version(int *ver)
+ghost_error ghost_cu_version(int *ver)
 {
 #ifdef GHOST_HAVE_CUDA
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
@@ -468,7 +468,7 @@ ghost_error_t ghost_cu_version(int *ver)
     return GHOST_SUCCESS;
 }
     
-ghost_error_t ghost_cu_free_host(void * mem)
+ghost_error ghost_cu_free_host(void * mem)
 {
 #ifdef GHOST_HAVE_CUDA
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
@@ -480,7 +480,7 @@ ghost_error_t ghost_cu_free_host(void * mem)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_cu_deviceprop(ghost_cu_deviceprop_t *prop)
+ghost_error ghost_cu_deviceprop_get(ghost_cu_deviceprop *prop)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
 #ifdef GHOST_HAVE_CUDA
@@ -493,16 +493,16 @@ ghost_error_t ghost_cu_deviceprop(ghost_cu_deviceprop_t *prop)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_cu_rand_generator_get(ghost_cu_rand_generator_t *gen)
+ghost_error ghost_cu_rand_generator_get(ghost_cu_rand_generator *gen)
 {
 #ifdef GHOST_HAVE_CUDA
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
-    if (ghost_cu_rand_generator == NULL) {
-        CURAND_CALL_RETURN(curandCreateGenerator(&ghost_cu_rand_generator,CURAND_RNG_PSEUDO_DEFAULT));
-        CURAND_CALL_RETURN(curandSetPseudoRandomGeneratorSeed(ghost_cu_rand_generator,ghost_rand_cu_seed_get()));
+    if (cu_rand_generator == NULL) {
+        CURAND_CALL_RETURN(curandCreateGenerator(&cu_rand_generator,CURAND_RNG_PSEUDO_DEFAULT));
+        CURAND_CALL_RETURN(curandSetPseudoRandomGeneratorSeed(cu_rand_generator,ghost_rand_cu_seed_get()));
     }
 
-    *gen = ghost_cu_rand_generator;
+    *gen = cu_rand_generator;
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
 #else
     UNUSED(gen);
@@ -511,7 +511,7 @@ ghost_error_t ghost_cu_rand_generator_get(ghost_cu_rand_generator_t *gen)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_cu_finalize()
+ghost_error ghost_cu_finalize()
 {
 #ifdef GHOST_HAVE_CUDA
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TEARDOWN);
@@ -521,8 +521,8 @@ ghost_error_t ghost_cu_finalize()
     if (ghost_cusparse_handle) {
         CUSPARSE_CALL_RETURN(cusparseDestroy(ghost_cusparse_handle));
     }
-    if (ghost_cu_rand_generator) {
-        curandDestroyGenerator(ghost_cu_rand_generator);
+    if (cu_rand_generator) {
+        curandDestroyGenerator(cu_rand_generator);
     }
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TEARDOWN);
 #endif
@@ -530,7 +530,7 @@ ghost_error_t ghost_cu_finalize()
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_cu_memtranspose(int m, int n, void *to, int ldto, const void *from, int ldfrom, ghost_datatype_t dt) 
+ghost_error ghost_cu_memtranspose(int m, int n, void *to, int ldto, const void *from, int ldfrom, ghost_datatype dt) 
 {
 #ifdef GHOST_HAVE_CUDA
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);

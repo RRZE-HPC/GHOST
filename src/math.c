@@ -13,26 +13,26 @@
 
 #define GHOST_MAX_SPMMV_WIDTH INT_MAX
 
-static ghost_mpi_op_t GHOST_MPI_OP_SUM_C = MPI_OP_NULL;
-static ghost_mpi_op_t GHOST_MPI_OP_SUM_Z = MPI_OP_NULL;
-static ghost_mpi_op_t GHOST_MPI_OP_SUM_DENSEMAT_S = MPI_OP_NULL;
-static ghost_mpi_op_t GHOST_MPI_OP_SUM_DENSEMAT_D = MPI_OP_NULL;
-static ghost_mpi_op_t GHOST_MPI_OP_SUM_DENSEMAT_C = MPI_OP_NULL;
-static ghost_mpi_op_t GHOST_MPI_OP_SUM_DENSEMAT_Z = MPI_OP_NULL;
+static ghost_mpi_op GHOST_MPI_OP_SUM_C = MPI_OP_NULL;
+static ghost_mpi_op GHOST_MPI_OP_SUM_Z = MPI_OP_NULL;
+static ghost_mpi_op GHOST_MPI_OP_SUM_DENSEMAT_S = MPI_OP_NULL;
+static ghost_mpi_op GHOST_MPI_OP_SUM_DENSEMAT_D = MPI_OP_NULL;
+static ghost_mpi_op GHOST_MPI_OP_SUM_DENSEMAT_C = MPI_OP_NULL;
+static ghost_mpi_op GHOST_MPI_OP_SUM_DENSEMAT_Z = MPI_OP_NULL;
 
-static void ghost_spmv_selectMode(ghost_context_t * context, ghost_spmv_flags_t *flags, ghost_sparsemat_flags_t matflags);
+static void ghost_spmv_selectMode(ghost_context * context, ghost_spmv_flags *flags, ghost_sparsemat_flags_t matflags);
 /*
-ghost_error_t ghost_dot(void *res, ghost_densemat_t *vec, ghost_densemat_t *vec2)
+ghost_error ghost_dot(void *res, ghost_densemat *vec, ghost_densemat *vec2)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     GHOST_CALL_RETURN(vec->dot(vec,res,vec2));
 #ifdef GHOST_HAVE_MPI
     if (vec->context) {
         GHOST_INSTR_START("reduce")
-        ghost_mpi_op_t sumOp;
-        ghost_mpi_datatype_t mpiDt;
+        ghost_mpi_op sumOp;
+        ghost_mpi_datatype mpiDt;
         ghost_mpi_op_sum(&sumOp,vec->traits.datatype);
-        ghost_mpi_datatype(&mpiDt,vec->traits.datatype);
+        ghost_mpi_datatype_get(&mpiDt,vec->traits.datatype);
         int v;
         if (vec->context) {
             for (v=0; v<MIN(vec->traits.ncols,vec2->traits.ncols); v++) {
@@ -62,10 +62,10 @@ ghost_error_t ghost_dot(void *res, ghost_densemat_t *vec, ghost_densemat_t *vec2
 
 }*/
 
-ghost_error_t ghost_normalize(ghost_densemat_t *vec)
+ghost_error ghost_normalize(ghost_densemat *vec)
 {
-    ghost_lidx_t ncols = vec->traits.ncols;
-    ghost_lidx_t c;
+    ghost_lidx ncols = vec->traits.ncols;
+    ghost_lidx c;
 
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     if (vec->traits.datatype & GHOST_DT_FLOAT) {
@@ -106,10 +106,10 @@ ghost_error_t ghost_normalize(ghost_densemat_t *vec)
     return GHOST_SUCCESS;
 }
 
-static ghost_error_t ghost_vspmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_densemat_t *invec, ghost_spmv_flags_t *flags, va_list argp)
+static ghost_error ghost_vspmv(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat *invec, ghost_spmv_flags *flags, va_list argp)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
-    ghost_lidx_t ncolsbackup = res->traits.ncols, remcols = res->traits.ncols, donecols = 0;
+    ghost_lidx ncolsbackup = res->traits.ncols, remcols = res->traits.ncols, donecols = 0;
     va_list argp_backup;
     va_copy(argp_backup,argp);
     DEBUG_LOG(1,"Performing SpMV");
@@ -131,7 +131,7 @@ static ghost_error_t ghost_vspmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, 
     }
 
     void *alpha = NULL, *beta = NULL, *gamma = NULL, *dot = NULL, *delta = NULL, *eta = NULL;
-    ghost_densemat_t *z = NULL;
+    ghost_densemat *z = NULL;
 
     // need to process varargs if CHAIN_AXPBY or DOT
     if ((!(*flags & GHOST_SPMV_NOT_REDUCE) && (*flags & GHOST_SPMV_DOT_ANY)) || (*flags & GHOST_SPMV_CHAIN_AXPBY)) {
@@ -149,7 +149,7 @@ static ghost_error_t ghost_vspmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, 
             dot = va_arg(argp_backup,void *);
         }
         if (*flags & GHOST_SPMV_CHAIN_AXPBY) {
-            z = va_arg(argp_backup,ghost_densemat_t *);
+            z = va_arg(argp_backup,ghost_densemat *);
             delta = va_arg(argp_backup,void *);
             eta = va_arg(argp_backup,void *);
         }
@@ -205,10 +205,10 @@ static ghost_error_t ghost_vspmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, 
 
     if (!(*flags & GHOST_SPMV_NOT_REDUCE) && (*flags & GHOST_SPMV_DOT_ANY)) {
 #ifdef GHOST_HAVE_MPI
-        ghost_mpi_op_t op;
-        ghost_mpi_datatype_t dt;
+        ghost_mpi_op op;
+        ghost_mpi_datatype dt;
         ghost_mpi_op_sum(&op,res->traits.datatype);
-        ghost_mpi_datatype(&dt,res->traits.datatype);
+        ghost_mpi_datatype_get(&dt,res->traits.datatype);
 
         MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE, dot, 3*invec->traits.ncols, dt, op, mat->context->mpicomm));
         GHOST_INSTR_STOP("dot_reduce");
@@ -221,14 +221,14 @@ static ghost_error_t ghost_vspmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, 
 
 
 }
-ghost_error_t ghost_spmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_densemat_t *invec, ghost_spmv_flags_t *flags, ...) 
+ghost_error ghost_spmv(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat *invec, ghost_spmv_flags *flags, ...) 
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
 
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
 
     if (*flags & GHOST_SPMV_DOT) {
-        *flags |= (ghost_spmv_flags_t)(GHOST_SPMV_DOT_YY|GHOST_SPMV_DOT_XY|GHOST_SPMV_DOT_XX);
+        *flags |= (ghost_spmv_flags)(GHOST_SPMV_DOT_YY|GHOST_SPMV_DOT_XY|GHOST_SPMV_DOT_XX);
     }
     va_list argp;
     va_start(argp, flags);
@@ -236,8 +236,8 @@ ghost_error_t ghost_spmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_de
     va_end(argp);
 
 #ifdef GHOST_HAVE_INSTR_TIMING
-    ghost_gidx_t nnz;
-    ghost_gidx_t nrow;
+    ghost_gidx nnz;
+    ghost_gidx nrow;
     
     ghost_sparsemat_nnz(&nnz,mat);
     ghost_sparsemat_nrows(&nrow,mat);
@@ -391,8 +391,8 @@ static void ghost_mpi_add_densemat_z(void *in, void *inout, int *len, MPI_Dataty
     MPI_Type_get_contents(*dtype, nints, naddresses, ntypes, 
             vecargs, vecaddrs, vectypes);
 
-    ghost_mpi_datatype_t dt_z;
-    ghost_mpi_datatype(&dt_z,(ghost_datatype_t)(GHOST_DT_DOUBLE|GHOST_DT_COMPLEX));
+    ghost_mpi_datatype dt_z;
+    ghost_mpi_datatype_get(&dt_z,(ghost_datatype)(GHOST_DT_DOUBLE|GHOST_DT_COMPLEX));
     // the complex double MPI datatype is derived and must be free'd
     MPI_Type_free(&vectypes[0]);
 
@@ -432,8 +432,8 @@ static void ghost_mpi_add_densemat_c(void *in, void *inout, int *len, MPI_Dataty
     MPI_Type_get_contents(*dtype, nints, naddresses, ntypes, 
             vecargs, vecaddrs, vectypes);
 
-    ghost_mpi_datatype_t dt_c;
-    ghost_mpi_datatype(&dt_c,(ghost_datatype_t)(GHOST_DT_FLOAT|GHOST_DT_COMPLEX));
+    ghost_mpi_datatype dt_c;
+    ghost_mpi_datatype_get(&dt_c,(ghost_datatype)(GHOST_DT_FLOAT|GHOST_DT_COMPLEX));
     // the complex double MPI datatype is derived and must be free'd
     MPI_Type_free(&vectypes[0]);
 
@@ -449,38 +449,38 @@ static void ghost_mpi_add_densemat_c(void *in, void *inout, int *len, MPI_Dataty
 }
 #endif
 
-static void ghost_spmv_selectMode(ghost_context_t * context, ghost_spmv_flags_t *flags, ghost_sparsemat_flags_t matflags)
+static void ghost_spmv_selectMode(ghost_context * context, ghost_spmv_flags *flags, ghost_sparsemat_flags_t matflags)
 {
     int nranks;
     ghost_nrank(&nranks,context->mpicomm);
     if (!(*flags & GHOST_SPMV_MODES_ALL)) { // no mode specified
 #ifdef GHOST_HAVE_MPI
         if (nranks == 1) {
-            *flags |= (ghost_spmv_flags_t)GHOST_SPMV_MODE_NOMPI;
+            *flags |= (ghost_spmv_flags)GHOST_SPMV_MODE_NOMPI;
         } else {
             if (matflags & GHOST_SPARSEMAT_NOT_STORE_SPLIT) {
-                *flags |= (ghost_spmv_flags_t)GHOST_SPMV_MODE_VECTOR;
+                *flags |= (ghost_spmv_flags)GHOST_SPMV_MODE_VECTOR;
             } else {
-                *flags |= (ghost_spmv_flags_t)GHOST_SPMV_MODE_OVERLAP;
+                *flags |= (ghost_spmv_flags)GHOST_SPMV_MODE_OVERLAP;
             }
         }
 #else
         UNUSED(context);
-        *flags |= (ghost_spmv_flags_t)GHOST_SPMV_MODE_NOMPI;
+        *flags |= (ghost_spmv_flags)GHOST_SPMV_MODE_NOMPI;
 #endif
         DEBUG_LOG(1,"No spMVM mode has been specified, selecting a sensible default, namely %s",ghost_spmv_mode_string(*flags));
     } else {
 #ifndef GHOST_HAVE_MPI
         if ((*flags & GHOST_SPMV_MODES_MPI)) {
             WARNING_LOG("Forcing non-MPI SpMV!");
-            *flags &= ~(ghost_spmv_flags_t)GHOST_SPMV_MODES_MPI;
-            *flags |= (ghost_spmv_flags_t)GHOST_SPMV_MODE_NOMPI;
+            *flags &= ~(ghost_spmv_flags)GHOST_SPMV_MODES_MPI;
+            *flags |= (ghost_spmv_flags)GHOST_SPMV_MODE_NOMPI;
         }
 #endif
     }
 }
 
-ghost_error_t ghost_mpi_op_sum(ghost_mpi_op_t * op, ghost_datatype_t datatype)
+ghost_error ghost_mpi_op_sum(ghost_mpi_op * op, ghost_datatype datatype)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     if (!op) {
@@ -511,7 +511,7 @@ ghost_error_t ghost_mpi_op_sum(ghost_mpi_op_t * op, ghost_datatype_t datatype)
 
 }
 
-ghost_error_t ghost_mpi_op_densemat_sum(ghost_mpi_op_t * op, ghost_datatype_t datatype)
+ghost_error ghost_mpi_op_densemat_sum(ghost_mpi_op * op, ghost_datatype datatype)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     if (!op) {
@@ -542,7 +542,7 @@ ghost_error_t ghost_mpi_op_densemat_sum(ghost_mpi_op_t * op, ghost_datatype_t da
 }
 
 
-ghost_error_t ghost_mpi_operations_create()
+ghost_error ghost_mpi_operations_create()
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_SETUP);
 #ifdef GHOST_HAVE_MPI
@@ -565,7 +565,7 @@ ghost_error_t ghost_mpi_operations_create()
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_mpi_operations_destroy()
+ghost_error ghost_mpi_operations_destroy()
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TEARDOWN);
 #ifdef GHOST_HAVE_MPI
@@ -581,7 +581,7 @@ ghost_error_t ghost_mpi_operations_destroy()
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_spmv_nflops(int *nFlops, ghost_datatype_t m_t, ghost_datatype_t v_t)
+ghost_error ghost_spmv_nflops(int *nFlops, ghost_datatype m_t, ghost_datatype v_t)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     if (!ghost_datatype_valid(m_t)) {
@@ -613,7 +613,7 @@ ghost_error_t ghost_spmv_nflops(int *nFlops, ghost_datatype_t m_t, ghost_datatyp
     return GHOST_SUCCESS;
 }
 
-char * ghost_spmv_mode_string(ghost_spmv_flags_t flags) 
+char * ghost_spmv_mode_string(ghost_spmv_flags flags) 
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     char *ret;
@@ -640,10 +640,10 @@ int ghost_spmv_perf(double *perf, double time, void *varg)
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_BENCH);
     ghost_spmv_perf_args_t arg = *(ghost_spmv_perf_args_t *)varg;
 
-    ghost_lidx_t ncol = arg.vecncols;
+    ghost_lidx ncol = arg.vecncols;
     double flops;
-    ghost_gidx_t nnz = arg.globalnnz;
-    ghost_gidx_t nrow = arg.globalrows;
+    ghost_gidx nnz = arg.globalnnz;
+    ghost_gidx nrow = arg.globalrows;
     int spmvFlopsPerMatrixEntry = 0;
     int flopsPerAdd = 1;
     int flopsPerMul = 1;
@@ -699,8 +699,8 @@ int ghost_axpbypcz_perf(double *perf, double time, void *varg)
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_BENCH);
     ghost_axpbypcz_perf_args_t arg = *(ghost_axpbypcz_perf_args_t *)varg;
 
-    ghost_lidx_t ncol = arg.ncols;
-    ghost_lidx_t nrow = arg.globnrows;
+    ghost_lidx ncol = arg.ncols;
+    ghost_lidx nrow = arg.globnrows;
 
     size_t size;
     ghost_datatype_size(&size,arg.dt);
@@ -716,8 +716,8 @@ int ghost_axpby_perf(double *perf, double time, void *varg)
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_BENCH);
     ghost_axpby_perf_args_t arg = *(ghost_axpby_perf_args_t *)varg;
 
-    ghost_lidx_t ncol = arg.ncols;
-    ghost_lidx_t nrow = arg.globnrows;
+    ghost_lidx ncol = arg.ncols;
+    ghost_lidx nrow = arg.globnrows;
 
     size_t size;
     ghost_datatype_size(&size,arg.dt);
@@ -733,8 +733,8 @@ int ghost_axpy_perf(double *perf, double time, void *varg)
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_BENCH);
     ghost_axpy_perf_args_t arg = *(ghost_axpy_perf_args_t *)varg;
 
-    ghost_lidx_t ncol = arg.ncols;
-    ghost_lidx_t nrow = arg.globnrows;
+    ghost_lidx ncol = arg.ncols;
+    ghost_lidx nrow = arg.globnrows;
 
     size_t size;
     ghost_datatype_size(&size,arg.dt);
@@ -750,8 +750,8 @@ int ghost_dot_perf(double *perf, double time, void *varg)
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_BENCH);
     ghost_dot_perf_args_t arg = *(ghost_dot_perf_args_t *)varg;
 
-    ghost_lidx_t ncol = arg.ncols;
-    ghost_lidx_t nrow = arg.globnrows;
+    ghost_lidx ncol = arg.ncols;
+    ghost_lidx nrow = arg.globnrows;
 
     size_t size;
     ghost_datatype_size(&size,arg.dt);
@@ -771,8 +771,8 @@ int ghost_scale_perf(double *perf, double time, void *varg)
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_BENCH);
     ghost_scale_perf_args_t arg = *(ghost_scale_perf_args_t *)varg;
     
-    ghost_lidx_t ncol = arg.ncols;
-    ghost_lidx_t nrow = arg.globnrows;
+    ghost_lidx ncol = arg.ncols;
+    ghost_lidx nrow = arg.globnrows;
 
     size_t size;
     ghost_datatype_size(&size,arg.dt);
@@ -783,7 +783,7 @@ int ghost_scale_perf(double *perf, double time, void *varg)
     return 0;
 }
 
-bool ghost_iszero(void *vnumber, ghost_datatype_t dt) 
+bool ghost_iszero(void *vnumber, ghost_datatype dt) 
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     bool ret = false;
@@ -810,7 +810,7 @@ bool ghost_iszero(void *vnumber, ghost_datatype_t dt)
     return ret;
 }
 
-bool ghost_isone(void *vnumber, ghost_datatype_t dt) 
+bool ghost_isone(void *vnumber, ghost_datatype dt) 
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     bool ret = false;

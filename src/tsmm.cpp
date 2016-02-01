@@ -24,9 +24,9 @@ using namespace std;
 // Hash function for unordered_map
 namespace std
 {
-    template<> struct hash<ghost_tsmm_parameters_t>
+    template<> struct hash<ghost_tsmm_parameters>
     {
-        typedef ghost_tsmm_parameters_t argument_type;
+        typedef ghost_tsmm_parameters argument_type;
         typedef std::size_t result_type;
         result_type operator()(argument_type const& a) const
         {
@@ -35,15 +35,15 @@ namespace std
     };
 }
 
-bool operator==(const ghost_tsmm_parameters_t& a, const ghost_tsmm_parameters_t& b)
+bool operator==(const ghost_tsmm_parameters& a, const ghost_tsmm_parameters& b)
 {
     return a.dt == b.dt && a.xcols == b.xcols && a.vcols == b.vcols && a.impl == b.impl && a.xstor == b.xstor && a.wstor == b.wstor && a.alignment == b.alignment && a.unroll == b.unroll;
 }
 
-static unordered_map<ghost_tsmm_parameters_t, ghost_tsmm_kernel_t> ghost_tsmm_kernels;
+static unordered_map<ghost_tsmm_parameters, ghost_tsmm_kernel> ghost_tsmm_kernels;
 
-ghost_error_t ghost_tsmm_valid(ghost_densemat_t *x, ghost_densemat_t *v,  const char * transv, 
-ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce, int printerror)
+ghost_error ghost_tsmm_valid(ghost_densemat *x, ghost_densemat *v,  const char * transv, 
+ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce, int printerror)
 {
     if (x->traits.datatype != v->traits.datatype || x->traits.datatype != w->traits.datatype) {
         if (printerror) {
@@ -89,10 +89,10 @@ ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce, in
 } 
 
 
-ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
+ghost_error ghost_tsmm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
-    ghost_error_t ret;
+    ghost_error ret;
 
     if ((ret = ghost_tsmm_valid(x,v,"N",w,"N",alpha,beta,GHOST_GEMM_NO_REDUCE,1)) != GHOST_SUCCESS) {
         INFO_LOG("TSMM cannot be applied. Checking whether GEMM is fine!");
@@ -117,11 +117,11 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
 #endif
     }
 
-    ghost_tsmm_parameters_t p;
+    ghost_tsmm_parameters p;
     p.dt = x->traits.datatype;
     p.alignment = GHOST_ALIGNED;
     
-    ghost_tsmm_kernel_t kernel = NULL;
+    ghost_tsmm_kernel kernel = NULL;
 #ifdef GHOST_HAVE_MIC
     p.impl = GHOST_IMPLEMENTATION_MIC;
 #elif defined(GHOST_HAVE_AVX)

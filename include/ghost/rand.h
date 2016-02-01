@@ -31,7 +31,7 @@ extern "C" {
      * OpenMP do not have to be pinned in order to return correct random seeds.
      * This function is used for thread-safe random number generation.
      */
-    ghost_error_t ghost_rand_get(unsigned int **s);
+    ghost_error ghost_rand_get(unsigned int **s);
     /**
      * @brief Create a random seed for each PU of the machine.
      *
@@ -39,7 +39,7 @@ extern "C" {
      *
      * This assumes that there at most as many OpenMP threads as there are PUs.
      */
-    ghost_error_t ghost_rand_create();
+    ghost_error ghost_rand_create();
     /**
      * @brief Destroy the random states.
      */
@@ -57,7 +57,7 @@ extern "C" {
      * This assumes that there at most as many OpenMP threads as there are PUs.
      * It is not possible to set the PU seed on CUDA devices.
      */
-    ghost_error_t ghost_rand_seed(ghost_rand_seed_t which, unsigned int seed);
+    ghost_error ghost_rand_seed(ghost_rand_seed_t which, unsigned int seed);
     /**
      * @brief Get the CUDA random seed.
      *
