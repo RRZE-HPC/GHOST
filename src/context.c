@@ -493,7 +493,7 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
     ghost_lidx_t acc_transfer_wishes, acc_transfer_dues;
 
     size_t size_nint, size_lcol, size_gcol;
-    size_t size_a2ai, size_nptr, size_pval;  
+    size_t size_nptr, size_pval;  
     size_t size_wish, size_dues;
     
     int nprocs;
@@ -534,7 +534,6 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
 
     size_nint = (size_t)( (size_t)(nprocs)   * sizeof(ghost_lidx_t)  );
     size_nptr = (size_t)( nprocs             * sizeof(ghost_lidx_t*) );
-    size_a2ai = (size_t)( nprocs*nprocs * sizeof(ghost_lidx_t)  );
 
 
     max_loc_elements = 0;
