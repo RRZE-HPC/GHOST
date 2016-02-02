@@ -127,7 +127,7 @@ ghost_error ghost_localdot(void *res, ghost_densemat *vec1, ghost_densemat *vec2
 
 out:
     if (!kernel) {
-        ghost_dot_perf_args_t dot_perfargs;
+        ghost_dot_perf_args dot_perfargs;
         dot_perfargs.ncols = vec1->traits.ncols;
         if (vec1->context) {
             dot_perfargs.globnrows = vec1->context->gnrows;

@@ -242,7 +242,7 @@ ghost_error ghost_tsmm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, 
     ret = kernel(x,v,w,alpha,beta);
     
 #ifdef GHOST_HAVE_INSTR_TIMING
-    ghost_gemm_perf_args_t tsmm_perfargs;
+    ghost_gemm_perf_args tsmm_perfargs;
     tsmm_perfargs.n = p.xcols;
     tsmm_perfargs.k = p.vcols;
     if (v->context) {

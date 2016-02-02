@@ -26,7 +26,7 @@ typedef enum {
     GHOST_GEMM_NOT_SPECIAL = 1,
     GHOST_GEMM_NOT_CLONE_ALIASED = 2,
     GHOST_GEMM_KAHAN = 4
-} ghost_gemm_flags_t;
+} ghost_gemm_flags;
 
 typedef struct {
     /* C = alpha(A*B) + beta(C)
@@ -39,7 +39,7 @@ typedef struct {
     bool betaiszero;
     ghost_datatype dt;
 }
-ghost_gemm_perf_args_t;
+ghost_gemm_perf_args;
 
 
 
@@ -53,7 +53,7 @@ typedef struct {
     ghost_datatype dt;
     ghost_spmv_flags flags;
 }
-ghost_spmv_perf_args_t;
+ghost_spmv_perf_args;
 #define GHOST_SPMV_PERF_UNIT "GF/s"
 #define GHOST_SPMV_PERF_TAG "spmv"
 
@@ -62,7 +62,7 @@ typedef struct {
     ghost_gidx globnrows;
     ghost_datatype dt;
 }
-ghost_axpy_perf_args_t;
+ghost_axpy_perf_args;
 #define GHOST_AXPY_PERF_UNIT "GB/s"
 #define GHOST_AXPY_PERF_TAG "axpy"
 
@@ -71,7 +71,7 @@ typedef struct {
     ghost_gidx globnrows;
     ghost_datatype dt;
 }
-ghost_axpby_perf_args_t;
+ghost_axpby_perf_args;
 #define GHOST_AXPBY_PERF_UNIT "GB/s"
 #define GHOST_AXPBY_PERF_TAG "axpby"
 
@@ -80,7 +80,7 @@ typedef struct {
     ghost_gidx globnrows;
     ghost_datatype dt;
 }
-ghost_axpbypcz_perf_args_t;
+ghost_axpbypcz_perf_args;
 #define GHOST_AXPBYPCZ_PERF_UNIT "GB/s"
 #define GHOST_AXPBYPCZ_PERF_TAG "axpbypcz"
 
@@ -90,7 +90,7 @@ typedef struct {
     ghost_datatype dt;
     bool samevec;
 }
-ghost_dot_perf_args_t;
+ghost_dot_perf_args;
 #define GHOST_DOT_PERF_UNIT "GB/s"
 #define GHOST_DOT_PERF_TAG "dot"
 
@@ -99,11 +99,11 @@ typedef struct {
     ghost_gidx globnrows;
     ghost_datatype dt;
 }
-ghost_scale_perf_args_t;
+ghost_scale_perf_args;
 #define GHOST_SCALE_PERF_UNIT "GB/s"
 #define GHOST_SCALE_PERF_TAG "scale"
 
-typedef ghost_error (*ghost_spmvsolver_t)(ghost_densemat*, ghost_sparsemat *, ghost_densemat*, ghost_spmv_flags, va_list argp);
+typedef ghost_error (*ghost_spmvsolver)(ghost_densemat*, ghost_sparsemat *, ghost_densemat*, ghost_spmv_flags, va_list argp);
 
 #ifdef __cplusplus
 #include "complex.h"
@@ -182,7 +182,7 @@ extern "C" {
      */
     ghost_error ghost_spmv(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat *invec, ghost_spmv_flags *flags, ...);
 ghost_error ghost_gemm_valid(ghost_densemat *x, ghost_densemat *v, const char * transv, 
-ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce,ghost_gemm_flags_t flags, int printerror); 
+ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce,ghost_gemm_flags flags, int printerror); 
     /**
      * @ingroup globops
      *
@@ -200,7 +200,7 @@ ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce,ghost
      *
      * @return 
      */
-    ghost_error ghost_gemm(ghost_densemat *x, ghost_densemat *v, const char *transv, ghost_densemat *w, const char * transw, void *alpha, void *beta, int reduce,ghost_gemm_flags_t flags); 
+    ghost_error ghost_gemm(ghost_densemat *x, ghost_densemat *v, const char *transv, ghost_densemat *w, const char * transw, void *alpha, void *beta, int reduce,ghost_gemm_flags flags); 
     ghost_error ghost_mpi_operations_create();
     ghost_error ghost_mpi_operations_destroy();
     ghost_error ghost_mpi_op_densemat_sum(ghost_mpi_op * op, ghost_datatype datatype);

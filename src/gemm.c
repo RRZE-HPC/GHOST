@@ -14,7 +14,7 @@
 #endif
 
 ghost_error ghost_gemm_valid(ghost_densemat *x, ghost_densemat *v, const char * transv, 
-ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce,ghost_gemm_flags_t flags, int printerror) 
+ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce,ghost_gemm_flags flags, int printerror) 
 {
     if (v->traits.datatype != w->traits.datatype) {
         if (printerror) {
@@ -61,7 +61,7 @@ ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce,ghost
 
 
 static ghost_error ghost_gemm_blas(ghost_densemat *x_in, ghost_densemat *v_in, const char * transv_in, 
-ghost_densemat *w_in, const char *transw_in, void *alpha, void *beta, int reduce,ghost_gemm_flags_t flags) 
+ghost_densemat *w_in, const char *transw_in, void *alpha, void *beta, int reduce,ghost_gemm_flags flags) 
 {
     UNUSED(flags);
 
@@ -146,7 +146,7 @@ ghost_densemat *w_in, const char *transw_in, void *alpha, void *beta, int reduce
     }
 
 #ifdef GHOST_HAVE_INSTR_TIMING
-    ghost_gemm_perf_args_t gemm_perfargs;
+    ghost_gemm_perf_args gemm_perfargs;
     gemm_perfargs.m = nrVglob;
     gemm_perfargs.k = ncVglob;
     gemm_perfargs.n = ncWglob;
@@ -443,7 +443,7 @@ out:
 }
 
 ghost_error ghost_gemm(ghost_densemat *x_in, ghost_densemat *v_in, const char * transv, 
-ghost_densemat *w_in, const char *transw, void *alpha, void *beta, int reduce,ghost_gemm_flags_t flags) 
+ghost_densemat *w_in, const char *transw, void *alpha, void *beta, int reduce,ghost_gemm_flags flags) 
 {
 #ifdef GHOST_IDX64_LOCAL
 #ifndef GHOST_HAVE_MKL
@@ -564,7 +564,7 @@ out:
 int ghost_gemm_perf_GFs(double *perf, double time, void *varg)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
-    ghost_gemm_perf_args_t arg = *(ghost_gemm_perf_args_t *)varg;
+    ghost_gemm_perf_args arg = *(ghost_gemm_perf_args *)varg;
     int maddflops = 2;
     int mulflops = 1;
     double totalflops = 0;
@@ -593,7 +593,7 @@ int ghost_gemm_perf_GBs(double *perf, double time, void *varg)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     size_t size;
-    ghost_gemm_perf_args_t arg = *(ghost_gemm_perf_args_t *)varg;
+    ghost_gemm_perf_args arg = *(ghost_gemm_perf_args *)varg;
     
     ghost_datatype_size(&size,arg.dt);
 

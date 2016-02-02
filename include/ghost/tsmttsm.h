@@ -59,7 +59,7 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error ghost_tsmttsm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int reduce, int conjv,ghost_gemm_flags_t flags);
+    ghost_error ghost_tsmttsm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int reduce, int conjv,ghost_gemm_flags flags);
     
     /**
      * @brief Check whether TSMTTSM can be applied instead of GEMM with the given arguments.
@@ -78,7 +78,7 @@ extern "C" {
      * @return 
      */
     ghost_error ghost_tsmttsm_valid(ghost_densemat *x, ghost_densemat *v, const char * transv, 
-        ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce, ghost_gemm_flags_t flags, int printerror);
+        ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce, ghost_gemm_flags flags, int printerror);
 
 #ifdef __cplusplus
 }

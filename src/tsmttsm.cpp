@@ -48,7 +48,7 @@ static unordered_map<ghost_tsmttsm_parameters, ghost_tsmttsm_kernel> ghost_tsmtt
 
 
 ghost_error ghost_tsmttsm_valid(ghost_densemat *x, ghost_densemat *v, const char * transv, 
-ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce, ghost_gemm_flags_t flags, int printerror) 
+ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce, ghost_gemm_flags flags, int printerror) 
 {
     /*if (w->traits.storage != GHOST_DENSEMAT_ROWMAJOR) {
         if (printerror) {
@@ -109,7 +109,7 @@ ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce, ghos
 }
 
 
-ghost_error ghost_tsmttsm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta,int reduce,int conjv,ghost_gemm_flags_t flags)
+ghost_error ghost_tsmttsm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta,int reduce,int conjv,ghost_gemm_flags flags)
 {
     ghost_error ret;
 
@@ -247,7 +247,7 @@ end_of_loop:
 
 
 #ifdef GHOST_HAVE_INSTR_TIMING
-    ghost_gemm_perf_args_t tsmttsm_perfargs;
+    ghost_gemm_perf_args tsmttsm_perfargs;
     tsmttsm_perfargs.n = w->traits.ncols;
     tsmttsm_perfargs.m = v->traits.ncols;
     if (v->context) {

@@ -57,7 +57,7 @@ while (<>) {
                 print "ghost_gidx nrow;\n";
                 print "ghost_sparsemat_nnz(&nnz,mat);\n";
                 print "ghost_sparsemat_nrows(&nrow,mat);\n";
-                print "ghost_spmv_perf_args_t spmv_perfargs;\n";
+                print "ghost_spmv_perf_args spmv_perfargs;\n";
                 print "spmv_perfargs.vecncols = rhs->traits.ncols;\n";
                 print "spmv_perfargs.globalnnz = nnz;\n";
                 print "spmv_perfargs.globalrows = nrow;\n";
@@ -76,7 +76,7 @@ while (<>) {
             print "pars.blocksz = ".$funcpars[4].";\n";
             print $funcname."_kernels[pars] = ".$funcname_full.";\n";
             if ($funcpars[4] ne "x" ) {
-                print "ghost_dot_perf_args_t dot_perfargs;\n";
+                print "ghost_dot_perf_args dot_perfargs;\n";
                 print "dot_perfargs.ncols = ".$funcpars[4].";\n";
                 print "if (vec1->context) {\n";
                 print "    dot_perfargs.globnrows = vec1->context->gnrows;\n";
@@ -113,7 +113,7 @@ while (<>) {
             print "pars.wstor = ".$storages{$funcpars[7]}.";\n";
             print $funcname."_kernels[pars] = ".$funcname_full.";\n"; 
             if ($funcpars[3] ne "x" and $funcpars[4] ne "x" ) {
-                print "ghost_gemm_perf_args_t tsmttsm_perfargs;\n";
+                print "ghost_gemm_perf_args tsmttsm_perfargs;\n";
                 print "tsmttsm_perfargs.n = ".$funcpars[3].";\n";
                 print "tsmttsm_perfargs.m = ".$funcpars[4].";\n";
                 print "if (v->context) {\n";
@@ -151,7 +151,7 @@ while (<>) {
             print "pars.wstor = ".$storages{$funcpars[7]}.";\n";
             print $funcname."_kernels[pars] = ".$funcname_full.";\n";
             if ($funcpars[3] ne "x" and $funcpars[4] ne "x" ) {
-                print "ghost_gemm_perf_args_t tsmm_perfargs;\n";
+                print "ghost_gemm_perf_args tsmm_perfargs;\n";
                 print "tsmm_perfargs.n = ".$funcpars[3].";\n";
                 print "tsmm_perfargs.k = ".$funcpars[4].";\n";
                 print "if (v->context) {\n";
@@ -185,7 +185,7 @@ while (<>) {
             }
             print $funcname."_kernels[pars] = ".$funcname_full.";\n"; 
             if ($funcpars[2] ne "x" and $funcpars[3] ne "x" ) {
-                print "ghost_gemm_perf_args_t tsmm_perfargs;\n";
+                print "ghost_gemm_perf_args tsmm_perfargs;\n";
                 print "tsmm_perfargs.n = ".$funcpars[2].";\n";
                 print "tsmm_perfargs.k = ".$funcpars[3].";\n";
                 print "if (x->context) {\n";

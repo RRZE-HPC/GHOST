@@ -44,7 +44,7 @@ ghost_error ghost_dot(void *res, ghost_densemat *vec, ghost_densemat *vec2)
 #endif
 
 #ifdef GHOST_HAVE_INSTR_TIMING
-    ghost_dot_perf_args_t pargs;
+    ghost_dot_perf_args pargs;
     pargs.ncols = vec->traits.ncols;
     if (vec->context) {
         pargs.globnrows = vec->context->gnrows;
@@ -113,7 +113,7 @@ static ghost_error ghost_vspmv(ghost_densemat *res, ghost_sparsemat *mat, ghost_
     va_list argp_backup;
     va_copy(argp_backup,argp);
     DEBUG_LOG(1,"Performing SpMV");
-    ghost_spmvsolver_t solver = NULL;
+    ghost_spmvsolver solver = NULL;
     ghost_spmv_selectMode(mat->context,flags,mat->traits.flags);
     if (*flags & GHOST_SPMV_MODE_VECTOR) {
         solver = &ghost_spmv_vectormode;
@@ -242,7 +242,7 @@ ghost_error ghost_spmv(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat
     ghost_sparsemat_nnz(&nnz,mat);
     ghost_sparsemat_nrows(&nrow,mat);
 
-    ghost_spmv_perf_args_t spmv_perfargs;
+    ghost_spmv_perf_args spmv_perfargs;
     spmv_perfargs.vecncols = invec->traits.ncols;
     spmv_perfargs.globalnnz = nnz;
     spmv_perfargs.globalrows = nrow;
@@ -638,7 +638,7 @@ char * ghost_spmv_mode_string(ghost_spmv_flags flags)
 int ghost_spmv_perf(double *perf, double time, void *varg)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_BENCH);
-    ghost_spmv_perf_args_t arg = *(ghost_spmv_perf_args_t *)varg;
+    ghost_spmv_perf_args arg = *(ghost_spmv_perf_args *)varg;
 
     ghost_lidx ncol = arg.vecncols;
     double flops;
@@ -697,7 +697,7 @@ int ghost_spmv_perf(double *perf, double time, void *varg)
 int ghost_axpbypcz_perf(double *perf, double time, void *varg)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_BENCH);
-    ghost_axpbypcz_perf_args_t arg = *(ghost_axpbypcz_perf_args_t *)varg;
+    ghost_axpbypcz_perf_args arg = *(ghost_axpbypcz_perf_args *)varg;
 
     ghost_lidx ncol = arg.ncols;
     ghost_lidx nrow = arg.globnrows;
@@ -714,7 +714,7 @@ int ghost_axpbypcz_perf(double *perf, double time, void *varg)
 int ghost_axpby_perf(double *perf, double time, void *varg)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_BENCH);
-    ghost_axpby_perf_args_t arg = *(ghost_axpby_perf_args_t *)varg;
+    ghost_axpby_perf_args arg = *(ghost_axpby_perf_args *)varg;
 
     ghost_lidx ncol = arg.ncols;
     ghost_lidx nrow = arg.globnrows;
@@ -731,7 +731,7 @@ int ghost_axpby_perf(double *perf, double time, void *varg)
 int ghost_axpy_perf(double *perf, double time, void *varg)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_BENCH);
-    ghost_axpy_perf_args_t arg = *(ghost_axpy_perf_args_t *)varg;
+    ghost_axpy_perf_args arg = *(ghost_axpy_perf_args *)varg;
 
     ghost_lidx ncol = arg.ncols;
     ghost_lidx nrow = arg.globnrows;
@@ -748,7 +748,7 @@ int ghost_axpy_perf(double *perf, double time, void *varg)
 int ghost_dot_perf(double *perf, double time, void *varg)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_BENCH);
-    ghost_dot_perf_args_t arg = *(ghost_dot_perf_args_t *)varg;
+    ghost_dot_perf_args arg = *(ghost_dot_perf_args *)varg;
 
     ghost_lidx ncol = arg.ncols;
     ghost_lidx nrow = arg.globnrows;
@@ -769,7 +769,7 @@ int ghost_dot_perf(double *perf, double time, void *varg)
 int ghost_scale_perf(double *perf, double time, void *varg)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_BENCH);
-    ghost_scale_perf_args_t arg = *(ghost_scale_perf_args_t *)varg;
+    ghost_scale_perf_args arg = *(ghost_scale_perf_args *)varg;
     
     ghost_lidx ncol = arg.ncols;
     ghost_lidx nrow = arg.globnrows;
