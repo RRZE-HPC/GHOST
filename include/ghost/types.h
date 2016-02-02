@@ -341,7 +341,7 @@ ghost_datatype name = (ghost_datatype)(GHOST_DT_DOUBLE|GHOST_DT_COMPLEX);
 ghost_datatype name = (ghost_datatype)(GHOST_DT_DOUBLE|GHOST_DT_COMPLEX);
 #endif
 
-#ifdef GHOST_HAVE_LONGIDX_GLOBAL
+#ifdef GHOST_IDX64_GLOBAL
 
 /**
  * @brief Type for global indices.
@@ -391,7 +391,7 @@ typedef int32_t ghost_gidx;
 
 #endif
 
-#ifdef GHOST_HAVE_LONGIDX_LOCAL
+#ifdef GHOST_IDX64_LOCAL
 
 /**
  * @brief Type for local indices.
@@ -448,12 +448,12 @@ typedef int ghost_blas_idx;
 
 #endif
 
-#if defined(GHOST_HAVE_LONGIDX_LOCAL) && defined(GHOST_HAVE_LONGIDX_GLOBAL)
-#define GHOST_HAVE_UNIFORM_IDX
+#if defined(GHOST_IDX64_LOCAL) && defined(GHOST_IDX64_GLOBAL)
+#define GHOST_IDX_UNIFORM
 #endif
 
-#if !defined(GHOST_HAVE_LONGIDX_LOCAL) && !defined(GHOST_HAVE_LONGIDX_GLOBAL)
-#define GHOST_HAVE_UNIFORM_IDX
+#if !defined(GHOST_IDX64_LOCAL) && !defined(GHOST_IDX64_GLOBAL)
+#define GHOST_IDX_UNIFORM
 #endif
 
 

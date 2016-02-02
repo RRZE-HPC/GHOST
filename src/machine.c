@@ -107,7 +107,7 @@ ghost_error ghost_machine_outercache_size(uint64_t *size)
         }
     }
 
-#ifdef GHOST_HAVE_MIC
+#ifdef GHOST_BUILD_MIC
     int ncores;
     GHOST_CALL_RETURN(ghost_machine_ncore(&ncores,GHOST_NUMANODE_ANY));
     *size *= ncores; // the cache is shared but not reported so
@@ -290,13 +290,13 @@ bool ghost_machine_bigendian()
 int ghost_machine_alignment()
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
-#ifdef GHOST_HAVE_MIC
+#ifdef GHOST_BUILD_MIC
     int alignment = 64;
-#elif defined(GHOST_HAVE_AVX2)
+#elif defined(GHOST_BUILD_AVX2)
     int alignment = 32;
-#elif defined(GHOST_HAVE_AVX)
+#elif defined(GHOST_BUILD_AVX)
     int alignment = 32;
-#elif defined(GHOST_HAVE_SSE)
+#elif defined(GHOST_BUILD_SSE)
     int alignment = 16;
 #else
     int alignment = 8;
@@ -308,13 +308,13 @@ int ghost_machine_alignment()
 int ghost_machine_simd_width()
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
-#ifdef GHOST_HAVE_MIC
+#ifdef GHOST_BUILD_MIC
     int width = 64;
-#elif defined(GHOST_HAVE_AVX2)
+#elif defined(GHOST_BUILD_AVX2)
     int width = 32;
-#elif defined(GHOST_HAVE_AVX)
+#elif defined(GHOST_BUILD_AVX)
     int width = 32;
-#elif defined(GHOST_HAVE_SSE)
+#elif defined(GHOST_BUILD_SSE)
     int width = 16;
 #else
     int width = 4;
@@ -458,13 +458,13 @@ ghost_implementation ghost_get_best_implementation_for_bytesize(int bytes)
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
 
     ghost_implementation machine_impl, best_impl;
-#ifdef GHOST_HAVE_MIC
+#ifdef GHOST_BUILD_MIC
     machine_impl = GHOST_IMPLEMENTATION_MIC;
-#elif defined(GHOST_HAVE_AVX2)
+#elif defined(GHOST_BUILD_AVX2)
     machine_impl = GHOST_IMPLEMENTATION_AVX2;
-#elif defined(GHOST_HAVE_AVX)
+#elif defined(GHOST_BUILD_AVX)
     machine_impl = GHOST_IMPLEMENTATION_AVX;
-#elif defined(GHOST_HAVE_SSE)
+#elif defined(GHOST_BUILD_SSE)
     machine_impl = GHOST_IMPLEMENTATION_SSE;
 #else
     machine_impl = GHOST_IMPLEMENTATION_PLAIN;

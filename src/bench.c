@@ -20,14 +20,14 @@ static void ghost_copy_kernel(double * __restrict__ a, const double * __restrict
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_KERNEL|GHOST_FUNCTYPE_BENCH);
     ghost_lidx i;
 
-#ifdef GHOST_HAVE_AVX
+#ifdef GHOST_BUILD_AVX
     __m256d bv;
 #pragma omp parallel for private(bv)
     for (i=0; i<N; i+=4) {
         bv = _mm256_load_pd(&b[i]);
         _mm256_stream_pd(&a[i],bv);
     }
-#elif defined(GHOST_HAVE_SSE)
+#elif defined(GHOST_BUILD_SSE)
     __m128d bv;
 #pragma omp parallel for private(bv)
     for (i=0; i<N; i+=2) {

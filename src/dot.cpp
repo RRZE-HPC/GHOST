@@ -78,11 +78,11 @@ ghost_error ghost_localdot(void *res, ghost_densemat *vec1, ghost_densemat *vec2
     p.alignment = GHOST_ALIGNED;
     
     ghost_dot_kernel kernel = NULL;
-#ifdef GHOST_HAVE_MIC
+#ifdef GHOST_BUILD_MIC
     p.impl = GHOST_IMPLEMENTATION_MIC;
-#elif defined(GHOST_HAVE_AVX)
+#elif defined(GHOST_BUILD_AVX)
     p.impl = GHOST_IMPLEMENTATION_AVX;
-#elif defined(GHOST_HAVE_SSE)
+#elif defined(GHOST_BUILD_SSE)
     p.impl = GHOST_IMPLEMENTATION_SSE;
 #else
     p.impl = GHOST_IMPLEMENTATION_PLAIN;

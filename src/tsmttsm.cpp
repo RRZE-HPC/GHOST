@@ -165,13 +165,13 @@ ghost_error ghost_tsmttsm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *
     p.wstor = w->traits.storage;
 
     // initial implementation
-#ifdef GHOST_HAVE_MIC
+#ifdef GHOST_BUILD_MIC
     opt_impl = GHOST_IMPLEMENTATION_MIC;
-#elif defined(GHOST_HAVE_AVX2)
+#elif defined(GHOST_BUILD_AVX2)
     opt_impl = GHOST_IMPLEMENTATION_AVX2;
-#elif defined(GHOST_HAVE_AVX)
+#elif defined(GHOST_BUILD_AVX)
     opt_impl = GHOST_IMPLEMENTATION_AVX;
-#elif defined(GHOST_HAVE_SSE)
+#elif defined(GHOST_BUILD_SSE)
     opt_impl = GHOST_IMPLEMENTATION_SSE;
 #else
     opt_impl = GHOST_IMPLEMENTATION_PLAIN;

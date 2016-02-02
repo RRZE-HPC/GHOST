@@ -246,7 +246,7 @@ ghost_error ghost_init(int argc, char **argv)
 #endif
 
     int nactivephis = 0;
-#ifdef GHOST_HAVE_MIC
+#ifdef GHOST_BUILD_MIC
     nactivephis = 1;
 #endif
 
@@ -636,17 +636,17 @@ ghost_error ghost_string(char **str)
     ghost_line_string(str,"Version",NULL,"%s",GHOST_VERSION);
     ghost_line_string(str,"Build date",NULL,"%s",__DATE__);
     ghost_line_string(str,"Build time",NULL,"%s",__TIME__);
-#ifdef GHOST_HAVE_MIC
+#ifdef GHOST_BUILD_MIC
     ghost_line_string(str,"MIC kernels",NULL,"Enabled");
 #else
     ghost_line_string(str,"MIC kernels",NULL,"Disabled");
 #endif
-#ifdef GHOST_HAVE_AVX
+#ifdef GHOST_BUILD_AVX
     ghost_line_string(str,"AVX kernels",NULL,"Enabled");
 #else
     ghost_line_string(str,"AVX kernels",NULL,"Disabled");
 #endif
-#ifdef GHOST_HAVE_SSE
+#ifdef GHOST_BUILD_SSE
     ghost_line_string(str,"SSE kernels",NULL,"Enabled");
 #else
     ghost_line_string(str,"SSE kernels",NULL,"Disabled");
@@ -666,8 +666,8 @@ ghost_error ghost_string(char **str)
 #else
     ghost_line_string(str,"CUDA support",NULL,"Disabled");
 #endif
-    ghost_line_string(str,"Configured SELL chunk heights",NULL,"%s",GHOST_CFG_SELL_CHUNKHEIGHTS);
-    ghost_line_string(str,"Configured blockvector widths",NULL,"%s",GHOST_CFG_BLOCKVECTOR_SIZES);
+    ghost_line_string(str,"Configured SELL chunk heights",NULL,"%s",GHOST_GEN_SELL_C);
+    ghost_line_string(str,"Configured blockvector widths",NULL,"%s",GHOST_GEN_DENSEMAT_DIM);
 #ifdef GHOST_HAVE_INSTR_LIKWID
 #ifdef GHOST_HAVE_INSTR_TIMING
     ghost_line_string(str,"Instrumentation",NULL,"Likwid+Timing");
@@ -681,12 +681,12 @@ ghost_error ghost_string(char **str)
     ghost_line_string(str,"Instrumentation",NULL,"Disabled");
 #endif
 #endif
-#ifdef GHOST_HAVE_LONGIDX_GLOBAL
+#ifdef GHOST_IDX64_GLOBAL
     ghost_line_string(str,"Gobal index size","bits","64");
 #else
     ghost_line_string(str,"Gobal index size","bits","32");
 #endif
-#ifdef GHOST_HAVE_LONGIDX_LOCAL
+#ifdef GHOST_IDX64_LOCAL
     ghost_line_string(str,"Local index size","bits","64");
 #else
     ghost_line_string(str,"Local index size","bits","32");

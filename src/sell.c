@@ -182,7 +182,7 @@ static ghost_error SELL_split(ghost_sparsemat *mat)
     ghost_lidx idx, row;
 
     GHOST_INSTR_START("init_compressed_cols");
-#ifdef GHOST_HAVE_UNIFORM_IDX
+#ifdef GHOST_IDX_UNIFORM
     if (!(mat->traits.flags & GHOST_SPARSEMAT_SAVE_ORIG_COLS)) {
         DEBUG_LOG(1,"In-place column compression!");
         SELL(mat)->col = mat->col_orig;
@@ -204,7 +204,7 @@ static ghost_error SELL_split(ghost_sparsemat *mat)
    
     GHOST_CALL_GOTO(ghost_context_comm_init(mat->context,mat->col_orig,fullSELL->col),err,ret);
 
-#ifndef GHOST_HAVE_UNIFORM_IDX
+#ifndef GHOST_IDX_UNIFORM
     if (!(mat->traits.flags & GHOST_SPARSEMAT_SAVE_ORIG_COLS)) {
         DEBUG_LOG(1,"Free orig cols");
         free(mat->col_orig);
@@ -499,7 +499,7 @@ int ghost_sell_max_cfg_chunkheight()
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     
     int max = 0;
-    char *cfgch = strdup(GHOST_CFG_SELL_CHUNKHEIGHTS);
+    char *cfgch = strdup(GHOST_GEN_SELL_C);
     char *ch = strtok(cfgch,",");
 
     while (ch) {

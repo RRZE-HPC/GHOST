@@ -14,7 +14,7 @@
 ghost_error ghost_tsmttsm__a_sse_d_CFGK_CFGM_1_cm_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conmv)
 {
     UNUSED(conmv);
-#ifdef GHOST_HAVE_SSE
+#ifdef GHOST_BUILD_SSE
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
 

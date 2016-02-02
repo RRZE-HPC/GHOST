@@ -13,7 +13,7 @@
 
 ghost_error ghost_tsmm__a_sse_d_x_x_1_rm_cm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
 {
-#ifdef GHOST_HAVE_SSE
+#ifdef GHOST_BUILD_SSE
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
 
@@ -96,7 +96,7 @@ out:
 
 ghost_error ghost_tsmm__u_sse_d_x_x_1_rm_cm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
 {
-#ifdef GHOST_HAVE_SSE
+#ifdef GHOST_BUILD_SSE
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
 

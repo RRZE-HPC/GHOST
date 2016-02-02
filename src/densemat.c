@@ -157,9 +157,9 @@ static ghost_error getNrowsFromContext(ghost_densemat *vec)
     } else {
         ghost_lidx padding = vec->elSize;
         if (vec->traits.nrows > 1) {
-#ifdef GHOST_HAVE_MIC
+#ifdef GHOST_BUILD_MIC
             padding = 64; // 64 byte padding
-#elif defined(GHOST_HAVE_AVX) || defined(GHOST_HAVE_AVX2)
+#elif defined(GHOST_BUILD_AVX) || defined(GHOST_BUILD_AVX2)
             padding = 32; // 32 byte padding
             if (vec->traits.ncols == 2) {
                 padding = 16; // SSE in this case: only 16 byte alignment required
@@ -167,7 +167,7 @@ static ghost_error getNrowsFromContext(ghost_densemat *vec)
             if (vec->traits.ncols == 1) {
                 padding = vec->elSize; // (pseudo-) row-major: no padding
             }
-#elif defined (GHOST_HAVE_SSE)
+#elif defined (GHOST_BUILD_SSE)
             padding = 16; // 16 byte padding
             if (vec->traits.ncols == 1) {
                 padding = vec->elSize; // (pseudo-) row-major: no padding
@@ -181,7 +181,7 @@ static ghost_error getNrowsFromContext(ghost_densemat *vec)
       
         padding = ghost_densemat_row_padding(); 
 
-#ifdef GHOST_HAVE_MIC
+#ifdef GHOST_BUILD_MIC
         WARNING_LOG("Extremely large row padding because the performance for TSMM and a large dimension power of two is very bad. This has to be fixed!");
         padding=500000; 
 #endif
@@ -474,7 +474,7 @@ ghost_error ghost_densemat_halocommStart_common(ghost_densemat *vec, ghost_dense
         if (vec->context->wishes[from_PE]>0) {
             recv = comm->tmprecv[from_PE];
 
-#ifdef GHOST_HAVE_TRACK_DATATRANSFERS
+#ifdef GHOST_TRACK_DATATRANSFERS
             ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_IN,from_PE,vec->context->wishes[from_PE]*vec->elSize*vec->traits.ncols);
 #endif
             int msg;
@@ -494,7 +494,7 @@ ghost_error ghost_densemat_halocommStart_common(ghost_densemat *vec, ghost_dense
     }
     for (to_PE=0 ; to_PE<nprocs ; to_PE++){
         if (vec->context->dues[to_PE]>0){
-#ifdef GHOST_HAVE_TRACK_DATATRANSFERS
+#ifdef GHOST_TRACK_DATATRANSFERS
             ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_OUT,to_PE,vec->context->dues[to_PE]*vec->elSize*vec->traits.ncols);
 #endif
             int msg;

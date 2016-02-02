@@ -445,9 +445,9 @@ out:
 ghost_error ghost_gemm(ghost_densemat *x_in, ghost_densemat *v_in, const char * transv, 
 ghost_densemat *w_in, const char *transw, void *alpha, void *beta, int reduce,ghost_gemm_flags_t flags) 
 {
-#ifdef GHOST_HAVE_LONGIDX_LOCAL
+#ifdef GHOST_IDX64_LOCAL
 #ifndef GHOST_HAVE_MKL
-    WARNING_LOG("Will cast 64-bit indices to 32 bit for non-MKL GEMM with LONGIDX");
+    WARNING_LOG("Will cast 64-bit indices to 32 bit for non-MKL GEMM with 64 bit indices");
 #endif
 #endif
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);

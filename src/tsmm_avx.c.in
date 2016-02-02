@@ -27,7 +27,7 @@
 
 ghost_error ghost_tsmm__a_avx_z_CFGK_CFGM_OUTERUNROLL_rm_cm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
 {
-#ifdef GHOST_HAVE_AVX
+#ifdef GHOST_BUILD_AVX
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
 
@@ -175,7 +175,7 @@ ghost_error ghost_tsmm__a_avx_z_CFGK_CFGM_OUTERUNROLL_rm_cm(ghost_densemat *x, g
 #GHOST_FUNC_BEGIN#CFGK=${BLOCKDIM1}#CFGM=${BLOCKDIM2}
 ghost_error ghost_tsmm2__a_avx_z_CFGK_CFGM_rm_cm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
 {
-#ifdef GHOST_HAVE_AVX
+#ifdef GHOST_BUILD_AVX
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
 
@@ -350,7 +350,7 @@ ghost_error ghost_tsmm2__a_avx_z_CFGK_CFGM_rm_cm(ghost_densemat *x, ghost_densem
 #GHOST_FUNC_BEGIN#CFGK=${BLOCKDIM1}#CFGM=${BLOCKDIM2}
 ghost_error ghost_tsmm1__a_avx_z_CFGK_CFGM_rm_cm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
 {
-#ifdef GHOST_HAVE_AVX
+#ifdef GHOST_BUILD_AVX
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
 
@@ -519,7 +519,7 @@ ghost_error ghost_tsmm1__a_avx_z_CFGK_CFGM_rm_cm(ghost_densemat *x, ghost_densem
 #GHOST_FUNC_BEGIN#CFGK=${BLOCKDIM1}#CFGM=${BLOCKDIM2}
 ghost_error ghost_tsmm4__a_avx_d_CFGK_CFGM_rm_cm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
 {
-#ifdef GHOST_HAVE_AVX
+#ifdef GHOST_BUILD_AVX
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
 
@@ -662,7 +662,7 @@ ghost_error ghost_tsmm4__a_avx_d_CFGK_CFGM_rm_cm(ghost_densemat *x, ghost_densem
 
 ghost_error ghost_tsmm__a_avx_d_CFGK_CFGM_OUTERUNROLL_rm_cm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
 {
-#ifdef GHOST_HAVE_AVX
+#ifdef GHOST_BUILD_AVX
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
 
@@ -789,7 +789,7 @@ ghost_error ghost_tsmm__a_avx_d_CFGK_CFGM_OUTERUNROLL_rm_cm(ghost_densemat *x, g
 
 ghost_error ghost_tsmm1__a_avx_d_CFGK_CFGM_1_rm_cm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
 {
-#ifdef GHOST_HAVE_AVX
+#ifdef GHOST_BUILD_AVX
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
 
@@ -870,7 +870,7 @@ ghost_error ghost_tsmm1__a_avx_d_CFGK_CFGM_1_rm_cm(ghost_densemat *x, ghost_dens
 
 ghost_error ghost_tsmm__u_avx_d_CFGK_CFGM_1_rm_cm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
 {
-#ifdef GHOST_HAVE_AVX
+#ifdef GHOST_BUILD_AVX
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
 

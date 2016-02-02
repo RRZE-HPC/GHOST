@@ -69,9 +69,9 @@ ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, gho
             
             ghost_gidx dim[2]; 
             ghost_sparsemat_rowfunc_bincrs(GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_GETDIM,NULL,dim,&args,NULL);
-#ifndef GHOST_HAVE_LONGIDX_GLOBAL
+#ifndef GHOST_IDX64_GLOBAL
             if (dim[0] >= (int64_t)INT_MAX) {
-                ERROR_LOG("The matrix is too big for 32-bit indices. Recompile with LONGIDX enabled!");
+                ERROR_LOG("The matrix is too big for 32-bit indices. Recompile with 64 bit indices enabled!");
                 return GHOST_ERR_DATATYPE;
             }
 #endif
@@ -84,9 +84,9 @@ ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, gho
 #if 0
             ghost_bincrs_header_t fileheader;
             GHOST_CALL_GOTO(ghost_bincrs_header_read(&fileheader,(char *)matrixSource),err,ret);
-#ifndef GHOST_HAVE_LONGIDX_GLOBAL
+#ifndef GHOST_IDX64_GLOBAL
             if (fileheader.nrows >= (int64_t)INT_MAX) {
-                ERROR_LOG("The matrix is too big for 32-bit indices. Recompile with LONGIDX enabled!");
+                ERROR_LOG("The matrix is too big for 32-bit indices. Recompile with 64 bit indices enabled!");
                 return GHOST_ERR_DATATYPE;
             }
 #endif
@@ -103,9 +103,9 @@ ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, gho
             
             ghost_gidx dim[2]; 
             ghost_sparsemat_rowfunc_mm(GHOST_SPARSEMAT_ROWFUNC_MM_ROW_GETDIM,NULL,dim,&args,NULL);
-#ifndef GHOST_HAVE_LONGIDX_GLOBAL
+#ifndef GHOST_IDX64_GLOBAL
             if (dim[0] >= (int64_t)INT_MAX) {
-                ERROR_LOG("The matrix is too big for 32-bit indices. Recompile with LONGIDX enabled!");
+                ERROR_LOG("The matrix is too big for 32-bit indices. Recompile with 64 bit indices enabled!");
                 return GHOST_ERR_DATATYPE;
             }
 #endif
@@ -122,9 +122,9 @@ ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, gho
             ERROR_LOG("The given context dimensions are smaller than zero which may be due to an integer overlow. Check your idx types!");
             return GHOST_ERR_DATATYPE;
     } else {
-#ifndef GHOST_HAVE_LONGIDX_GLOBAL
+#ifndef GHOST_IDX64_GLOBAL
         if (gnrows >= (int64_t)INT_MAX) {
-            ERROR_LOG("The matrix is too big for 32-bit indices. Recompile with LONGIDX enabled!");
+            ERROR_LOG("The matrix is too big for 32-bit indices. Recompile with 64 bit indices enabled!");
             return GHOST_ERR_DATATYPE;
         }
 #endif

@@ -14,7 +14,7 @@
 
 ghost_error ghost_sellspmv__a_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat, ghost_densemat* res, ghost_densemat* invec, ghost_spmv_flags spmvmOptions,va_list argp)
 {
-#if defined(GHOST_HAVE_SSE) && NVECS>=2
+#if defined(GHOST_BUILD_SSE) && NVECS>=2
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
 
     double *mval = (double *)SELL(mat)->val;
@@ -142,7 +142,7 @@ ghost_error ghost_sellspmv__a_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat,
 
 ghost_error ghost_sellspmv__u_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat, ghost_densemat* res, ghost_densemat* invec, ghost_spmv_flags spmvmOptions,va_list argp)
 {
-#if defined(GHOST_HAVE_SSE) && NVECS>=2
+#if defined(GHOST_BUILD_SSE) && NVECS>=2
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
 
     double *mval = (double *)SELL(mat)->val;

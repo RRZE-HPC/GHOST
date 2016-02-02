@@ -20,7 +20,7 @@
 ghost_error ghost_tsmttsm__a_avx_d_x_x_1_cm_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
 {
     UNUSED(conjv);
-#ifdef GHOST_HAVE_AVX
+#ifdef GHOST_BUILD_AVX
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
 

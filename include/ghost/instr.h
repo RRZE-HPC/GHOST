@@ -11,13 +11,13 @@
 #include <ghost/error.h>
 #include <pthread.h>
 
-#ifdef GHOST_HAVE_INSTR_TIMING
+#ifdef GHOST_INSTR_TIMING
 
 #include <ghost/timing.h>
 
 #endif
 
-#ifdef GHOST_HAVE_INSTR_LIKWID
+#ifdef GHOST_INSTR_LIKWID
 
 #include <likwid.h>
 
@@ -25,9 +25,9 @@
 
 extern pthread_key_t ghost_instr_enable_key;
 
-#ifdef GHOST_HAVE_INSTR_TIMING
+#ifdef GHOST_INSTR_TIMING
 
-#ifdef GHOST_HAVE_INSTR_LIKWID
+#ifdef GHOST_INSTR_LIKWID
 
 #define GHOST_INSTR_START(tag) {\
     if (pthread_getspecific(ghost_instr_enable_key)) {\
@@ -81,9 +81,9 @@ extern pthread_key_t ghost_instr_enable_key;
 
 #endif
 
-#else //GHOST_HAVE_INSTR_TIMING
+#else //GHOST_INSTR_TIMING
 
-#ifdef GHOST_HAVE_INSTR_LIKWID
+#ifdef GHOST_INSTR_LIKWID
 
 /**
  * @brief Start a LIKWID marker region.

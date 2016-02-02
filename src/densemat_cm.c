@@ -419,7 +419,7 @@ static ghost_error densemat_cm_halocommInit(ghost_densemat *vec, ghost_densemat_
 #ifdef GHOST_HAVE_CUDA
     if (vec->traits.location & GHOST_LOCATION_DEVICE) {
         GHOST_INSTR_START("downloadcomm->work");
-#ifdef GHOST_HAVE_TRACK_DATATRANSFERS
+#ifdef GHOST_TRACK_DATATRANSFERS
         ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_IN,GHOST_DATATRANSFER_RANK_GPU,vec->traits.ncols*comm->acc_dues*vec->elSize);
 
 #endif
@@ -468,7 +468,7 @@ static ghost_error densemat_cm_halocommFinalize(ghost_densemat *vec, ghost_dense
 #ifdef GHOST_HAVE_CUDA 
     GHOST_INSTR_START("upload")
     if (vec->traits.location & GHOST_LOCATION_DEVICE) {
-#ifdef GHOST_HAVE_TRACK_DATATRANSFERS
+#ifdef GHOST_TRACK_DATATRANSFERS
         ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_OUT,GHOST_DATATRANSFER_RANK_GPU,vec->context->halo_elements*vec->traits.ncols*vec->elSize);
 #endif
         for (from_PE=0; from_PE<nprocs; from_PE++){
