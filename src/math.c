@@ -117,6 +117,8 @@ static ghost_error ghost_vspmv(ghost_densemat *res, ghost_sparsemat *mat, ghost_
         solver = &ghost_spmv_goodfaith;
     } else if (flags & GHOST_SPMV_MODE_TASK) {
         solver = &ghost_spmv_taskmode; 
+    } else if (flags & GHOST_SPMV_MODE_NOCOMM) {
+        solver = &ghost_spmv_nompi; 
     } else {
 #ifdef GHOST_HAVE_MPI
         solver = &ghost_spmv_vectormode;
