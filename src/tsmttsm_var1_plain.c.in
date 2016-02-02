@@ -237,11 +237,10 @@ ghost_error_t ghost_tsmttsm__a_plain_d_BLOCKSZ_x_1_cm_rm(ghost_densemat_t *x, gh
         memset(x_priv,0,m*BLOCKSZ*sizeof(double));
 #pragma omp for schedule(runtime)
         for (i=0; i<n; i++) {
+            for (k=0; k<BLOCKSZ; k++) {
 #pragma vector aligned
 #pragma ivdep
 #pragma simd
-            for (k=0; k<BLOCKSZ; k++) {
-#pragma unroll_and_jam
               for (j=0; j<m; j++) {
                     x_priv[j*BLOCKSZ+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
                 }
@@ -250,11 +249,10 @@ ghost_error_t ghost_tsmttsm__a_plain_d_BLOCKSZ_x_1_cm_rm(ghost_densemat_t *x, gh
         }
 #pragma omp critical
         {
+            for (k=0; k<BLOCKSZ; k++) {
 #pragma vector aligned
 #pragma ivdep
 #pragma simd
-            for (k=0; k<BLOCKSZ; k++) {
-#pragma unroll_and_jam
                 for (j=0; j<m; j++) {
                     xval[k*ldx+j] += x_priv[j*BLOCKSZ+k];
                 }

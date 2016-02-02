@@ -217,7 +217,7 @@ extern "C" {
      * @return ::GHOST_SUCCESS on success or an error indicator.
      * 
      * The following fields of ghost_context_t are being filled in this function:
-     * wishes, wishlist, dues, duelist, hput_pos.
+     * wishes, wishlist, dues, duelist, hput_pos, wishpartners, nwishpartners, duepartners, nduepartners.
      * Additionally, the columns in col_orig are being compressed and stored in col.
      */
     ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_orig, ghost_lidx_t *col);

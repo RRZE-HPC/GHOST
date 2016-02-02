@@ -432,8 +432,7 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
     p.vdt = rhs->traits.datatype;
     p.mdt = mat->traits.datatype;
     p.storage = rhs->traits.storage;
-    if (p.storage == GHOST_DENSEMAT_ROWMAJOR && p.blocksz == 1 && 
-            rhs->stride == 1 && lhs->stride == 1) {
+    if (p.storage == GHOST_DENSEMAT_ROWMAJOR && rhs->stride == 1 && lhs->stride == 1) {
         INFO_LOG("Chose col-major kernel for row-major densemat with 1 column");
         p.storage = GHOST_DENSEMAT_COLMAJOR;
     }
@@ -450,14 +449,8 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
         }
     }
     
-    if (opt_impl == GHOST_IMPLEMENTATION_SSE && 
-            p.storage == GHOST_DENSEMAT_ROWMAJOR && rhs->traits.ncols % 2) {
-        PERFWARNING_LOG("Remainder loops not yet implemented for SSE, fallback to plain");
-        opt_impl = GHOST_IMPLEMENTATION_PLAIN;
-    }
-
     int al = ghost_machine_alignment();
-    if (IS_ALIGNED(lhs->val,al) && IS_ALIGNED(rhs->val,al) && ((lhs->traits.ncols == 1) || (!((lhs->stride*lhs->elSize) % al) && !((rhs->stride*rhs->elSize) % al)))) {
+    if (IS_ALIGNED(lhs->val,al) && IS_ALIGNED(rhs->val,al) && ((lhs->traits.ncols == 1 && lhs->stride == 1) || (!((lhs->stride*lhs->elSize) % al) && !((rhs->stride*rhs->elSize) % al)))) {
         opt_align = GHOST_ALIGNED;
     } else {
         if (!IS_ALIGNED(lhs->val,al)) {
@@ -488,6 +481,11 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
     for (pos_chunkheight = 0; pos_chunkheight < n_chunkheight; pos_chunkheight++) {  
         for (pos_blocksz = 0; pos_blocksz < n_blocksz; pos_blocksz++) {  
             for (p.impl = opt_impl; (int)p.impl >= GHOST_IMPLEMENTATION_PLAIN; p.impl  = (ghost_implementation_t)((int)p.impl-1)) {
+                if (p.impl == GHOST_IMPLEMENTATION_SSE && p.storage == GHOST_DENSEMAT_ROWMAJOR && try_blocksz[pos_blocksz] % 2) {
+                    PERFWARNING_LOG("Remainder loops not yet implemented for SSE, fallback to plain");
+                    p.impl  = (ghost_implementation_t)((int)p.impl-1);
+                }
+
                 for (p.alignment = opt_align; (int)p.alignment >= GHOST_UNALIGNED; p.alignment = (ghost_alignment_t)((int)p.alignment-1)) {
                     p.chunkheight = try_chunkheight[pos_chunkheight];
                     p.blocksz = try_blocksz[pos_blocksz];
