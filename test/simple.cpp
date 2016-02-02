@@ -122,7 +122,7 @@ int main(int argc, char **argv) {
             GHOST_TEST_CALL(y->fromScalar(y,&zero));
           
             printf("Test SpMV with %s matrix (%s) and %s vectors (%s)\n",ghost_datatype_string(A->traits.datatype),A->formatName(A),ghost_datatype_string(x->traits.datatype),ghost_densemat_storage_string(x));
-            GHOST_TEST_CALL(ghost_spmv(y,A,x,&spmvflags));
+            GHOST_TEST_CALL(ghost_spmv(y,A,x,spmvflags));
 
             size_t vecdtsize;
             ghost_datatype_size(&vecdtsize,vtraits_it->datatype);

@@ -180,7 +180,7 @@ extern "C" {
      * \warning If there is something wrong with the variadic arguments, i.e., if (following from the flags) more arguments are expected than present, random errors may occur. In order to avoid this, passing NULL as the last argument is a good practice.
      *
      */
-    ghost_error ghost_spmv(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat *invec, ghost_spmv_flags *flags, ...);
+    ghost_error ghost_spmv(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat *invec, ghost_spmv_flags flags, ...);
 ghost_error ghost_gemm_valid(ghost_densemat *x, ghost_densemat *v, const char * transv, 
 ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce,ghost_gemm_flags flags, int printerror); 
     /**
@@ -207,16 +207,6 @@ ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce,ghost
     ghost_error ghost_mpi_op_sum(ghost_mpi_op * op, ghost_datatype datatype);
     
     ghost_error ghost_spmv_nflops(int *nFlops, ghost_datatype m_t, ghost_datatype v_t);
-    /**
-     * @ingroup stringification
-     *
-     * @brief Get a string about the SpMV solver mode. 
-     *
-     * @param flags The SpMV flags.
-     *
-     * @return The string.
-     */
-    char * ghost_spmv_mode_string(ghost_spmv_flags flags);
 
     int ghost_spmv_perf(double *perf, double time, void *arg);
     int ghost_axpy_perf(double *perf, double time, void *arg);

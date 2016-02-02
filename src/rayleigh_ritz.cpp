@@ -138,7 +138,7 @@ static ghost_error ghost_rayleigh_ritz_tmpl (ghost_sparsemat * mat, void * void_
     //spMVM_Options &=  ~GHOST_SPMV_VSHIFT;
     //spMVM_Options &=  ~GHOST_SPMV_SHIFT;
     //spMVM_Options &=  ~GHOST_SPMV_SCALE;
-    ghost_spmv( v_eigs, mat, v_res, &spMVM_Options, NULL);
+    ghost_spmv( v_eigs, mat, v_res, spMVM_Options, NULL);
         
     //GHOST_CALL_GOTO(ghost_tsmttsm( x, v_eigs, v_res,&one,&zero,GHOST_GEMM_ALL_REDUCE,1),err,ret);
     GHOST_CALL_GOTO(ghost_tsmttsm( x, v_eigs, v_res,&one,&zero,GHOST_GEMM_ALL_REDUCE,1,GHOST_GEMM_KAHAN),err,ret);
@@ -167,7 +167,7 @@ static ghost_error ghost_rayleigh_ritz_tmpl (ghost_sparsemat * mat, void * void_
 
     if (obtion){
         spMVM_Options = spMVM_Options|GHOST_SPMV_VSHIFT;
-        ghost_spmv( v_res, mat, v_eigs, &spMVM_Options,eigs_T  ,NULL);
+        ghost_spmv( v_res, mat, v_eigs, spMVM_Options,eigs_T  ,NULL);
         ghost_dot( res_T, v_res, v_res);
         for(i=0;i<n;i++) res[i] = std::sqrt(std::real(res_T[i]));
     }
@@ -257,7 +257,7 @@ static ghost_error ghost_grayleigh_ritz_tmpl (ghost_sparsemat * mat, void * void
     //GHOST_CALL_GOTO(ghost_tsmttsm( b, v_res, v_res,&one,&zero,GHOST_GEMM_ALL_REDUCE,1),err,ret);
     GHOST_CALL_GOTO(ghost_tsmttsm( b, v_res, v_res,&one,&zero,GHOST_GEMM_ALL_REDUCE,1,GHOST_GEMM_KAHAN),err,ret);
     
-    ghost_spmv( v_eigs, mat, v_res, &spMVM_Options, NULL);
+    ghost_spmv( v_eigs, mat, v_res, spMVM_Options, NULL);
         
     //GHOST_CALL_GOTO(ghost_tsmttsm( x, v_eigs, v_res,&one,&zero,GHOST_GEMM_ALL_REDUCE,1),err,ret);
     GHOST_CALL_GOTO(ghost_tsmttsm( x, v_eigs, v_res,&one,&zero,GHOST_GEMM_ALL_REDUCE,1,GHOST_GEMM_KAHAN),err,ret);
@@ -287,7 +287,7 @@ static ghost_error ghost_grayleigh_ritz_tmpl (ghost_sparsemat * mat, void * void
 
     if (obtion){
         spMVM_Options = spMVM_Options|GHOST_SPMV_VSHIFT;
-        ghost_spmv( v_res, mat, v_eigs, &spMVM_Options,eigs_T  ,NULL);
+        ghost_spmv( v_res, mat, v_eigs, spMVM_Options,eigs_T  ,NULL);
         ghost_dot( res_T, v_res, v_res);
         for(i=0;i<n;i++) res[i] = std::sqrt(std::real(res_T[i]));
     }

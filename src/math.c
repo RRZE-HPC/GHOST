@@ -20,7 +20,6 @@ static ghost_mpi_op GHOST_MPI_OP_SUM_DENSEMAT_D = MPI_OP_NULL;
 static ghost_mpi_op GHOST_MPI_OP_SUM_DENSEMAT_C = MPI_OP_NULL;
 static ghost_mpi_op GHOST_MPI_OP_SUM_DENSEMAT_Z = MPI_OP_NULL;
 
-static void ghost_spmv_selectMode(ghost_context * context, ghost_spmv_flags *flags, ghost_sparsemat_flags_t matflags);
 /*
 ghost_error ghost_dot(void *res, ghost_densemat *vec, ghost_densemat *vec2)
 {
@@ -106,7 +105,7 @@ ghost_error ghost_normalize(ghost_densemat *vec)
     return GHOST_SUCCESS;
 }
 
-static ghost_error ghost_vspmv(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat *invec, ghost_spmv_flags *flags, va_list argp)
+static ghost_error ghost_vspmv(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat *invec, ghost_spmv_flags flags, va_list argp)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_lidx ncolsbackup = res->traits.ncols, remcols = res->traits.ncols, donecols = 0;
@@ -114,15 +113,16 @@ static ghost_error ghost_vspmv(ghost_densemat *res, ghost_sparsemat *mat, ghost_
     va_copy(argp_backup,argp);
     DEBUG_LOG(1,"Performing SpMV");
     ghost_spmvsolver solver = NULL;
-    ghost_spmv_selectMode(mat->context,flags,mat->traits.flags);
-    if (*flags & GHOST_SPMV_MODE_VECTOR) {
-        solver = &ghost_spmv_vectormode;
-    } else if (*flags & GHOST_SPMV_MODE_OVERLAP) {
+    if (flags & GHOST_SPMV_MODE_OVERLAP) {
         solver = &ghost_spmv_goodfaith;
-    } else if (*flags & GHOST_SPMV_MODE_TASK) {
+    } else if (flags & GHOST_SPMV_MODE_TASK) {
         solver = &ghost_spmv_taskmode; 
-    } else if (*flags & GHOST_SPMV_MODE_NOMPI) {
+    } else {
+#ifdef GHOST_HAVE_MPI
+        solver = &ghost_spmv_vectormode;
+#else
         solver = &ghost_spmv_nompi; 
+#endif
     }
 
     if (!solver) {
@@ -134,21 +134,21 @@ static ghost_error ghost_vspmv(ghost_densemat *res, ghost_sparsemat *mat, ghost_
     ghost_densemat *z = NULL;
 
     // need to process varargs if CHAIN_AXPBY or DOT
-    if ((!(*flags & GHOST_SPMV_NOT_REDUCE) && (*flags & GHOST_SPMV_DOT_ANY)) || (*flags & GHOST_SPMV_CHAIN_AXPBY)) {
+    if ((!(flags & GHOST_SPMV_NOT_REDUCE) && (flags & GHOST_SPMV_DOT_ANY)) || (flags & GHOST_SPMV_CHAIN_AXPBY)) {
         GHOST_INSTR_START("dot_reduce");
-        if (*flags & GHOST_SPMV_SCALE) {
+        if (flags & GHOST_SPMV_SCALE) {
             alpha = va_arg(argp_backup,void *);
         }
-        if (*flags & GHOST_SPMV_AXPBY) {
+        if (flags & GHOST_SPMV_AXPBY) {
             beta = va_arg(argp_backup,void *);
         }
-        if ((*flags & GHOST_SPMV_SHIFT) || (*flags & GHOST_SPMV_VSHIFT)) {
+        if ((flags & GHOST_SPMV_SHIFT) || (flags & GHOST_SPMV_VSHIFT)) {
             gamma = va_arg(argp_backup,void *);
         }
-        if (*flags & GHOST_SPMV_DOT_ANY) {
+        if (flags & GHOST_SPMV_DOT_ANY) {
             dot = va_arg(argp_backup,void *);
         }
-        if (*flags & GHOST_SPMV_CHAIN_AXPBY) {
+        if (flags & GHOST_SPMV_CHAIN_AXPBY) {
             z = va_arg(argp_backup,ghost_densemat *);
             delta = va_arg(argp_backup,void *);
             eta = va_arg(argp_backup,void *);
@@ -176,7 +176,7 @@ static ghost_error ghost_vspmv(ghost_densemat *res, ghost_sparsemat *mat, ghost_
             z->val += donecols*z->elSize;
             z->traits.ncols = GHOST_MAX_SPMMV_WIDTH;
         }
-        GHOST_CALL_RETURN(solver(res,mat,invec,*flags,argp));
+        GHOST_CALL_RETURN(solver(res,mat,invec,flags,argp));
 
         donecols += GHOST_MAX_SPMMV_WIDTH;
         remcols -= donecols;
@@ -191,7 +191,7 @@ static ghost_error ghost_vspmv(ghost_densemat *res, ghost_sparsemat *mat, ghost_
         z->traits.ncols = remcols;
     }
     
-    GHOST_CALL_RETURN(solver(res,mat,invec,*flags,argp));
+    GHOST_CALL_RETURN(solver(res,mat,invec,flags,argp));
 
     res->val -= (ncolsbackup-remcols)*res->elSize;
     invec->val -= (ncolsbackup-remcols)*invec->elSize;
@@ -203,7 +203,7 @@ static ghost_error ghost_vspmv(ghost_densemat *res, ghost_sparsemat *mat, ghost_
         z->val -= (ncolsbackup-remcols)*z->elSize;
     }
 
-    if (!(*flags & GHOST_SPMV_NOT_REDUCE) && (*flags & GHOST_SPMV_DOT_ANY)) {
+    if (!(flags & GHOST_SPMV_NOT_REDUCE) && (flags & GHOST_SPMV_DOT_ANY)) {
 #ifdef GHOST_HAVE_MPI
         ghost_mpi_op op;
         ghost_mpi_datatype dt;
@@ -221,14 +221,14 @@ static ghost_error ghost_vspmv(ghost_densemat *res, ghost_sparsemat *mat, ghost_
 
 
 }
-ghost_error ghost_spmv(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat *invec, ghost_spmv_flags *flags, ...) 
+ghost_error ghost_spmv(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat *invec, ghost_spmv_flags flags, ...) 
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
 
     ghost_error ret = GHOST_SUCCESS;
 
-    if (*flags & GHOST_SPMV_DOT) {
-        *flags |= (ghost_spmv_flags)(GHOST_SPMV_DOT_YY|GHOST_SPMV_DOT_XY|GHOST_SPMV_DOT_XX);
+    if (flags & GHOST_SPMV_DOT) {
+        flags |= (ghost_spmv_flags)(GHOST_SPMV_DOT_YY|GHOST_SPMV_DOT_XY|GHOST_SPMV_DOT_XX);
     }
     va_list argp;
     va_start(argp, flags);
@@ -247,7 +247,7 @@ ghost_error ghost_spmv(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat
     spmv_perfargs.globalnnz = nnz;
     spmv_perfargs.globalrows = nrow;
     spmv_perfargs.dt = invec->traits.datatype;
-    spmv_perfargs.flags = *flags;
+    spmv_perfargs.flags = flags;
     ghost_timing_set_perfFunc(NULL,__ghost_functag,ghost_spmv_perf,(void *)&spmv_perfargs,sizeof(spmv_perfargs),GHOST_SPMV_PERF_UNIT);
 #endif 
     
@@ -449,37 +449,6 @@ static void ghost_mpi_add_densemat_c(void *in, void *inout, int *len, MPI_Dataty
 }
 #endif
 
-static void ghost_spmv_selectMode(ghost_context * context, ghost_spmv_flags *flags, ghost_sparsemat_flags_t matflags)
-{
-    int nranks;
-    ghost_nrank(&nranks,context->mpicomm);
-    if (!(*flags & GHOST_SPMV_MODES_ALL)) { // no mode specified
-#ifdef GHOST_HAVE_MPI
-        if (nranks == 1) {
-            *flags |= (ghost_spmv_flags)GHOST_SPMV_MODE_NOMPI;
-        } else {
-            if (matflags & GHOST_SPARSEMAT_NOT_STORE_SPLIT) {
-                *flags |= (ghost_spmv_flags)GHOST_SPMV_MODE_VECTOR;
-            } else {
-                *flags |= (ghost_spmv_flags)GHOST_SPMV_MODE_OVERLAP;
-            }
-        }
-#else
-        UNUSED(context);
-        *flags |= (ghost_spmv_flags)GHOST_SPMV_MODE_NOMPI;
-#endif
-        DEBUG_LOG(1,"No spMVM mode has been specified, selecting a sensible default, namely %s",ghost_spmv_mode_string(*flags));
-    } else {
-#ifndef GHOST_HAVE_MPI
-        if ((*flags & GHOST_SPMV_MODES_MPI)) {
-            WARNING_LOG("Forcing non-MPI SpMV!");
-            *flags &= ~(ghost_spmv_flags)GHOST_SPMV_MODES_MPI;
-            *flags |= (ghost_spmv_flags)GHOST_SPMV_MODE_NOMPI;
-        }
-#endif
-    }
-}
-
 ghost_error ghost_mpi_op_sum(ghost_mpi_op * op, ghost_datatype datatype)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
@@ -611,28 +580,6 @@ ghost_error ghost_spmv_nflops(int *nFlops, ghost_datatype m_t, ghost_datatype v_
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return GHOST_SUCCESS;
-}
-
-char * ghost_spmv_mode_string(ghost_spmv_flags flags) 
-{
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
-    char *ret;
-    if (flags & GHOST_SPMV_MODE_NOMPI) {
-        ret = "Non-MPI";
-    }
-    if (flags & GHOST_SPMV_MODE_VECTOR) {
-        ret = "Vector mode";
-    }
-    if (flags & GHOST_SPMV_MODE_OVERLAP) {
-        ret = "Naïve overlap mode";
-    }
-    if (flags & GHOST_SPMV_MODE_TASK) {
-        ret = "Task mode";
-    }
-    ret = "Invalid";
-    
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
-    return ret;
 }
 
 int ghost_spmv_perf(double *perf, double time, void *varg)
