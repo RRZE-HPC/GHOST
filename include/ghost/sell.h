@@ -9,6 +9,7 @@
 #include "config.h"
 #include "types.h"
 #include "sparsemat.h"
+#include "math.h"
 
 /**
  * @brief A CUDA SELL-C-sigma matrix.
@@ -168,14 +169,14 @@ extern "C" {
      * @param mat The matrix.
      * @param lhs The result densemat.
      * @param rhs The input densemat.
-     * @param options Options to the SpMV.
-     * @param argp The varargs. 
+     * @param traits The SpMV traits.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error ghost_sell_spmv_selector(ghost_sparsemat *mat, 
-            ghost_densemat *lhs, ghost_densemat *rhs, 
-            ghost_spmv_flags options, va_list argp);
+    ghost_error ghost_sell_spmv_selector(ghost_densemat *lhs, 
+            ghost_sparsemat *mat, 
+            ghost_densemat *rhs, 
+            ghost_spmv_traits traits);
     
     /**
      * @brief Select and call the right SELL stringification function.
@@ -195,16 +196,17 @@ extern "C" {
      * @param mat The matrix.
      * @param lhs The result densemat.
      * @param rhs The input densemat.
-     * @param flags Options to the SpMV.
-     * @param argp The varargs. 
+     * @param traits The SpMV traits.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error ghost_cu_sell_spmv_selector(ghost_sparsemat *mat, 
-            ghost_densemat *lhs, ghost_densemat *rhs, 
-            ghost_spmv_flags flags, va_list argp);
+    ghost_error ghost_cu_sell_spmv_selector(ghost_densemat *lhs, 
+            ghost_sparsemat *mat, 
+            ghost_densemat *rhs, 
+            ghost_spmv_traits traits);
 
-    ghost_error ghost_cu_sell1_spmv_selector(ghost_sparsemat *mat, ghost_densemat * lhs_in, ghost_densemat * rhs_in, ghost_spmv_flags options, va_list argp);
+    ghost_error ghost_cu_sell1_spmv_selector(ghost_densemat * lhs_in, 
+            ghost_sparsemat *mat, ghost_densemat * rhs_in, ghost_spmv_traits traits);
 
     /**
      * @brief Perform a Kaczmarz sweep with the SELL matrix. 

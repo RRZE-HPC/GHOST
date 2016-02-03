@@ -11,7 +11,7 @@
 
 #GHOST_SUBST CHUNKHEIGHT ${CHUNKHEIGHT}
 
-ghost_error ghost_sellspmv__a_plain_z_z_rm_CHUNKHEIGHT_x(ghost_sparsemat *mat, ghost_densemat* res, ghost_densemat* invec, ghost_spmv_flags spmvmOptions,va_list argp)
+ghost_error ghost_sellspmv__a_plain_z_z_rm_CHUNKHEIGHT_x(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat* invec, ghost_spmv_traits traits)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
 
@@ -28,10 +28,10 @@ ghost_error ghost_sellspmv__a_plain_z_z_rm_CHUNKHEIGHT_x(ghost_sparsemat *mat, g
     ghost_machine_cacheline_size(&clsize);
     int pad = (int) clsize/sizeof(complex double);
 
-    GHOST_SPMV_PARSE_ARGS(spmvmOptions,argp,scale,beta,shift,local_dot_product,z,delta,eta,complex double,
+    GHOST_SPMV_PARSE_TRAITS(traits,scale,beta,shift,local_dot_product,z,delta,eta,complex double,
             complex double);
 
-    if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
+    if (traits.flags & GHOST_SPMV_DOT) {
 #pragma omp parallel
         nthreads = ghost_omp_nthread();
 
@@ -80,36 +80,36 @@ ghost_error ghost_sellspmv__a_plain_z_z_rm_CHUNKHEIGHT_x(ghost_sparsemat *mat, g
                 if (z) {
                     zrow = zval+z->stride*row;
                 }
-                if ((spmvmOptions & GHOST_SPMV_SHIFT) && shift) {
+                if ((traits.flags & GHOST_SPMV_SHIFT) && shift) {
 #pragma simd
                     for (v=0; v<res->traits.ncols; v++) {
                         tmp[r][v] = tmp[r][v]-shift[0]*rrow[v];
                     }
                 }
-                if ((spmvmOptions & GHOST_SPMV_VSHIFT) && shift) {
+                if ((traits.flags & GHOST_SPMV_VSHIFT) && shift) {
 #pragma simd
                     for (v=0; v<res->traits.ncols; v++) {
                         tmp[r][v] = tmp[r][v]-shift[v]*rrow[v];
                     }
                 }
-                if (spmvmOptions & GHOST_SPMV_SCALE) {
+                if (traits.flags & GHOST_SPMV_SCALE) {
 #pragma simd
                     for (v=0; v<res->traits.ncols; v++) {
                         tmp[r][v] = tmp[r][v]*scale;
                     }
                 }
-                if (spmvmOptions & GHOST_SPMV_AXPY) {
+                if (traits.flags & GHOST_SPMV_AXPY) {
 #pragma simd
                     for (v=0; v<res->traits.ncols; v++) {
                         lrow[v] += tmp[r][v];
                     }
-                } else if (spmvmOptions & GHOST_SPMV_AXPBY) {
+                } else if (traits.flags & GHOST_SPMV_AXPBY) {
 #pragma simd
                     for (v=0; v<res->traits.ncols; v++) {
                         lrow[v] = beta*lrow[v] + tmp[r][v];
                     }
                 } else {
-                    if (spmvmOptions & GHOST_SPMV_CHAIN_AXPBY) {
+                    if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
 #pragma simd
                         for (v=0; v<res->traits.ncols; v++) {
                             lrow[v] = tmp[r][v];
@@ -122,14 +122,14 @@ ghost_error ghost_sellspmv__a_plain_z_z_rm_CHUNKHEIGHT_x(ghost_sparsemat *mat, g
                         }
                     }
                 }
-                if (spmvmOptions & GHOST_SPMV_CHAIN_AXPBY) {
+                if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
 #pragma simd
                     for (v=0; v<res->traits.ncols; v++) {
                         zrow[v] = delta*zrow[v] + eta*lrow[v];
                     }
                 }
                     
-                if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
+                if (traits.flags & GHOST_SPMV_DOT) {
 #pragma simd
                     for (v=0; v<res->traits.ncols; v++) {
                         partsums[((pad+3*res->traits.ncols)*tid)+3*v+0] += 
@@ -143,7 +143,7 @@ ghost_error ghost_sellspmv__a_plain_z_z_rm_CHUNKHEIGHT_x(ghost_sparsemat *mat, g
             }
         }
     }
-    if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
+    if (traits.flags & GHOST_SPMV_DOT) {
         if (!local_dot_product) {
             ERROR_LOG("The location of the local dot products is NULL!");
             return GHOST_ERR_INVALID_ARG;

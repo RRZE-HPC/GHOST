@@ -17,15 +17,14 @@
 #include <omp.h>
 #endif
 
-ghost_error ghost_spmv_vectormode(ghost_densemat* res, ghost_sparsemat* mat, ghost_densemat* invec, ghost_spmv_flags flags,va_list argp)
+ghost_error ghost_spmv_vectormode(ghost_densemat* res, ghost_sparsemat* mat, ghost_densemat* invec, ghost_spmv_traits traits)
 {
 #ifndef GHOST_HAVE_MPI
     UNUSED(mat->context);
     UNUSED(res);
     UNUSED(mat);
     UNUSED(invec);
-    UNUSED(flags);
-    UNUSED(argp);
+    UNUSED(traits);
     ERROR_LOG("Cannot execute this spMV solver without MPI");
     return GHOST_ERR_UNKNOWN;
 #else
@@ -43,12 +42,10 @@ ghost_error ghost_spmv_vectormode(ghost_densemat* res, ghost_sparsemat* mat, gho
     GHOST_CALL_GOTO(invec->halocommInit(invec,&comm),err,ret);
     GHOST_CALL_GOTO(invec->halocommStart(invec,&comm),err,ret);
     GHOST_CALL_GOTO(invec->halocommFinalize(invec,&comm),err,ret);
-//    GHOST_CALL_GOTO(ghost_spmv_haloexchange_initiate(invec,false),err,ret);
-//    GHOST_CALL_GOTO(ghost_spmv_haloexchange_finalize(invec),err,ret);
     GHOST_INSTR_STOP("comm");
 
     GHOST_INSTR_START("comp");
-    GHOST_CALL_GOTO(mat->spmv(mat,res,invec,flags,argp),err,ret);    
+    GHOST_CALL_GOTO(mat->spmv(res,mat,invec,traits),err,ret);    
     GHOST_INSTR_STOP("comp");
 
     goto out;

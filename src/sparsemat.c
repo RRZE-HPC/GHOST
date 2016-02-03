@@ -35,6 +35,17 @@ const ghost_sparsemat_traits GHOST_SPARSEMAT_TRAITS_INITIALIZER = {
     .opt_blockvec_width = 0
 };
 
+const ghost_spmv_traits GHOST_SPMV_TRAITS_INITIALIZER = {
+    .flags = GHOST_SPMV_DEFAULT,
+    .alpha = NULL,
+    .beta = NULL,
+    .gamma = NULL,
+    .delta = NULL,
+    .eta = NULL,
+    .dot = NULL,
+    .z = NULL
+};
+
 ghost_error ghost_sparsemat_create(ghost_sparsemat ** mat, ghost_context *context, ghost_sparsemat_traits *traits, int nTraits)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_SETUP);

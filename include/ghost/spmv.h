@@ -21,7 +21,6 @@ typedef enum {
     GHOST_SPMV_SHIFT = 32,
     GHOST_SPMV_SCALE = 64,
     GHOST_SPMV_AXPBY = 128,
-    GHOST_SPMV_DOT = 256,
     GHOST_SPMV_DOT_YY = 512,
     GHOST_SPMV_DOT_XY = 1024,
     GHOST_SPMV_DOT_XX = 2048,
@@ -33,7 +32,7 @@ typedef enum {
 } ghost_spmv_flags;
 
 
-#define GHOST_SPMV_DOT_ANY (GHOST_SPMV_DOT_YY|GHOST_SPMV_DOT_XY|\
+#define GHOST_SPMV_DOT (GHOST_SPMV_DOT_YY|GHOST_SPMV_DOT_XY|\
         GHOST_SPMV_DOT_XX)
 
 /**
@@ -59,69 +58,69 @@ typedef enum {
  *
  * @return 
  */
-#define GHOST_SPMV_PARSE_ARGS(flags,argp,alpha,beta,gamma,dot,z,delta,eta,dt_in,dt_out){\
+#define GHOST_SPMV_PARSE_TRAITS(traits,_alpha,_beta,_gamma,_dot,_z,_delta,_eta,dt_in,dt_out){\
     dt_in *arg = NULL;\
-    if (flags & GHOST_SPMV_SCALE) {\
-        arg = va_arg(argp,dt_in *);\
+    if (traits.flags & GHOST_SPMV_SCALE) {\
+        arg = (dt_in *)traits.alpha;\
         if (!arg) {\
             ERROR_LOG("Scale argument is NULL!");\
             return GHOST_ERR_INVALID_ARG;\
         }\
-        alpha = *(dt_out *)arg;\
+        _alpha = *(dt_out *)arg;\
     }\
-    if (flags & GHOST_SPMV_AXPBY) {\
-        arg = va_arg(argp,dt_in *);\
+    if (traits.flags & GHOST_SPMV_AXPBY) {\
+        arg = (dt_in *)traits.beta;\
         if (!arg) {\
             ERROR_LOG("AXPBY argument is NULL!");\
             return GHOST_ERR_INVALID_ARG;\
         }\
-        beta = *(dt_out *)arg;\
+        _beta = *(dt_out *)arg;\
     }\
-    if (flags & (GHOST_SPMV_SHIFT | GHOST_SPMV_VSHIFT)) {\
-        arg = va_arg(argp,dt_in *);\
+    if (traits.flags & (GHOST_SPMV_SHIFT | GHOST_SPMV_VSHIFT)) {\
+        arg = (dt_in *)traits.gamma;\
         if (!arg) {\
             ERROR_LOG("Shift argument is NULL!");\
             return GHOST_ERR_INVALID_ARG;\
         }\
-        gamma = (dt_out *)arg;\
+        _gamma = (dt_out *)arg;\
     }\
-    if (flags & GHOST_SPMV_DOT_ANY) {\
-        arg = va_arg(argp,dt_in *);\
+    if (traits.flags & GHOST_SPMV_DOT) {\
+        arg = (dt_in *)traits.dot;\
         if (!arg) {\
             ERROR_LOG("Dot argument is NULL!");\
             return GHOST_ERR_INVALID_ARG;\
         }\
-        dot = arg;\
+        _dot = arg;\
     }\
-    if (flags & GHOST_SPMV_CHAIN_AXPBY) {\
+    if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {\
         ghost_densemat *zarg;\
-        zarg = va_arg(argp,ghost_densemat *);\
+        zarg = (ghost_densemat *)traits.z;\
         if (!zarg) {\
             ERROR_LOG("z argument is NULL!");\
             return GHOST_ERR_INVALID_ARG;\
         }\
-        z = zarg;\
-        arg = va_arg(argp,dt_in *);\
+        _z = zarg;\
+        arg = (dt_in *)traits.delta;\
         if (!arg) {\
             ERROR_LOG("delta argument is NULL!");\
             return GHOST_ERR_INVALID_ARG;\
         }\
-        delta = *(dt_out *)arg;\
-        arg = va_arg(argp,dt_in *);\
+        _delta = *(dt_out *)arg;\
+        arg = (dt_in *)traits.eta;\
         if (!arg) {\
             ERROR_LOG("eta argument is NULL!");\
             return GHOST_ERR_INVALID_ARG;\
         }\
-        eta = *(dt_out *)arg;\
+        _eta = *(dt_out *)arg;\
     }\
-    if (flags & GHOST_SPMV_REMOTE) {\
-        flags = (ghost_spmv_flags)(flags & ~GHOST_SPMV_AXPBY);\
-        flags = (ghost_spmv_flags)(flags & ~GHOST_SPMV_SHIFT);\
-        flags = (ghost_spmv_flags)(flags & ~GHOST_SPMV_VSHIFT);\
-        flags = (ghost_spmv_flags)(flags | GHOST_SPMV_AXPY);\
-    } else if (flags & GHOST_SPMV_LOCAL) {\
-        flags = (ghost_spmv_flags)(flags & ~GHOST_SPMV_DOT_ANY);\
-        flags = (ghost_spmv_flags)(flags & ~GHOST_SPMV_CHAIN_AXPBY);\
+    if (traits.flags & GHOST_SPMV_REMOTE) {\
+        traits.flags = (ghost_spmv_flags)(traits.flags & ~GHOST_SPMV_AXPBY);\
+        traits.flags = (ghost_spmv_flags)(traits.flags & ~GHOST_SPMV_SHIFT);\
+        traits.flags = (ghost_spmv_flags)(traits.flags & ~GHOST_SPMV_VSHIFT);\
+        traits.flags = (ghost_spmv_flags)(traits.flags | GHOST_SPMV_AXPY);\
+    } else if (traits.flags & GHOST_SPMV_LOCAL) {\
+        traits.flags = (ghost_spmv_flags)(traits.flags & ~GHOST_SPMV_DOT);\
+        traits.flags = (ghost_spmv_flags)(traits.flags & ~GHOST_SPMV_CHAIN_AXPBY);\
     }\
 }\
 

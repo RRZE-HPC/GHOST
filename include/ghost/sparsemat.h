@@ -70,8 +70,22 @@ typedef struct ghost_sparsemat ghost_sparsemat;
 
 typedef int (*ghost_sparsemat_fromRowFunc_t)(ghost_gidx, ghost_lidx *, 
         ghost_gidx *, void *, void *);
-typedef ghost_error (*ghost_spmv_kernel)(ghost_sparsemat *, 
-        ghost_densemat *, ghost_densemat *, ghost_spmv_flags, va_list);
+
+typedef struct{
+    ghost_spmv_flags flags;
+    void *alpha;
+    void *beta;
+    void *gamma;
+    void *delta;
+    void *eta;
+    void *dot;
+    ghost_densemat *z;
+} 
+ghost_spmv_traits;
+
+extern const ghost_spmv_traits GHOST_SPMV_TRAITS_INITIALIZER;
+
+typedef ghost_error (*ghost_spmv_kernel)(ghost_densemat*, ghost_sparsemat *, ghost_densemat*, ghost_spmv_traits);
 
 /**
  * @brief Flags to be passed to a row-wise matrix assembly function.

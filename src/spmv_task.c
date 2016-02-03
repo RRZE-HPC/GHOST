@@ -54,8 +54,7 @@ typedef struct {
     ghost_sparsemat *mat;
     ghost_densemat *res;
     ghost_densemat *invec;
-    ghost_spmv_flags spmvOptions;
-    va_list argp;
+    ghost_spmv_traits spmvtraits;
 } compArgs;
 
 static void *computeLocal(void *vargs)
@@ -68,7 +67,7 @@ static void *computeLocal(void *vargs)
     *ret = GHOST_SUCCESS;
 
     compArgs *args = (compArgs *)vargs;
-    GHOST_CALL_GOTO(args->mat->spmv(args->mat,args->res,args->invec,args->spmvOptions,args->argp),err,*ret);
+    GHOST_CALL_GOTO(args->mat->spmv(args->res,args->mat,args->invec,args->spmvtraits),err,*ret);
 
     goto out;
 err:
@@ -78,14 +77,13 @@ out:
 }
 #endif
 
-ghost_error ghost_spmv_taskmode(ghost_densemat* res, ghost_sparsemat* mat, ghost_densemat* invec, ghost_spmv_flags spmvOptions, va_list argp)
+ghost_error ghost_spmv_taskmode(ghost_densemat* res, ghost_sparsemat* mat, ghost_densemat* invec, ghost_spmv_traits traits)
 {
 #ifndef GHOST_HAVE_MPI
     UNUSED(res);
     UNUSED(mat);
     UNUSED(invec);
-    UNUSED(spmvOptions);
-    UNUSED(argp);
+    UNUSED(traits);
     ERROR_LOG("Cannot execute this spMV solver without MPI");
     return GHOST_ERR_UNKNOWN;
 #else
@@ -93,8 +91,8 @@ ghost_error ghost_spmv_taskmode(ghost_densemat* res, ghost_sparsemat* mat, ghost
     GHOST_INSTR_START("prepare");
     ghost_error ret = GHOST_SUCCESS;
 
-    ghost_spmv_flags localopts = spmvOptions;
-    ghost_spmv_flags remoteopts = spmvOptions;
+    ghost_spmv_traits localtraits = traits;
+    ghost_spmv_traits remotetraits = traits;
 
 /*    int remoteExists;
     ghost_nrank(&remoteExists,mat->context->mpicomm);
@@ -103,8 +101,8 @@ ghost_error ghost_spmv_taskmode(ghost_densemat* res, ghost_sparsemat* mat, ghost
     MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&remoteExists,1,MPI_INT,MPI_MAX,mat->context->mpicomm));
    
     if (remoteExists) {
-        localopts |= (ghost_spmv_flags)GHOST_SPMV_LOCAL;
-        remoteopts |= (ghost_spmv_flags)GHOST_SPMV_REMOTE;
+        localtraits.flags |= (ghost_spmv_flags)GHOST_SPMV_LOCAL;
+        remotetraits.flags |= (ghost_spmv_flags)GHOST_SPMV_REMOTE;
     }
 
     ghost_densemat_halo_comm comm = GHOST_DENSEMAT_HALO_COMM_INITIALIZER;
@@ -136,8 +134,7 @@ ghost_error ghost_spmv_taskmode(ghost_densemat* res, ghost_sparsemat* mat, ghost
     cplargs.mat = mat->localPart;
     cplargs.invec = invec;
     cplargs.res = res;
-    cplargs.spmvOptions = localopts;
-    va_copy(cplargs.argp,argp);
+    cplargs.spmvtraits = localtraits;
 
     GHOST_INSTR_STOP("prepare");
     
@@ -166,7 +163,7 @@ ghost_error ghost_spmv_taskmode(ghost_densemat* res, ghost_sparsemat* mat, ghost
 
     GHOST_INSTR_START("remote");
     if (remoteExists) {
-        mat->remotePart->spmv(mat->remotePart,res,invec,remoteopts,argp);
+        mat->remotePart->spmv(res,mat->remotePart,invec,remotetraits);
     }
     GHOST_INSTR_STOP("remote");
        

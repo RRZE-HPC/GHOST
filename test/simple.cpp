@@ -103,8 +103,6 @@ int main(int argc, char **argv) {
     ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_c,dt_z)] = diag_ref<ghost_complex<float>,ghost_complex<double>>;
     ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_c,dt_c)] = diag_ref<ghost_complex<float>,ghost_complex<float>>;
 
-    ghost_spmv_flags spmvflags = GHOST_SPMV_DEFAULT;
-    
     GHOST_TEST_CALL(ghost_init(argc,argv));
     
    
@@ -122,7 +120,7 @@ int main(int argc, char **argv) {
             GHOST_TEST_CALL(y->fromScalar(y,&zero));
           
             printf("Test SpMV with %s matrix (%s) and %s vectors (%s)\n",ghost_datatype_string(A->traits.datatype),A->formatName(A),ghost_datatype_string(x->traits.datatype),ghost_densemat_storage_string(x));
-            GHOST_TEST_CALL(ghost_spmv(y,A,x,spmvflags));
+            GHOST_TEST_CALL(ghost_spmv(y,A,x,GHOST_SPMV_TRAITS_INITIALIZER));
 
             size_t vecdtsize;
             ghost_datatype_size(&vecdtsize,vtraits_it->datatype);

@@ -16,7 +16,7 @@
 #define complex_mul(a,b) _mm256_addsub_pd(_mm256_mul_pd(_mm256_shuffle_pd(b,b,0),a),_mm256_mul_pd(_mm256_shuffle_pd(b,b,0xF),_mm256_shuffle_pd(a,a,5)))
 #define complex_mul_conj1(b,a) _mm256_addsub_pd(_mm256_mul_pd(_mm256_shuffle_pd(b,b,0),a),_mm256_mul_pd(_mm256_mul_pd(_mm256_shuffle_pd(b,b,0xF),_mm256_set1_pd(-1.)),_mm256_shuffle_pd(a,a,5)))
 
-ghost_error ghost_sellspmvUNROLLEDDOESNOTWORK__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat, ghost_densemat* res, ghost_densemat* invec, ghost_spmv_flags spmvmOptions,va_list argp)
+ghost_error ghost_sellspmvUNROLLEDDOESNOTWORK__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat* invec, ghost_spmv_traits traits)
 {
 #if defined(GHOST_BUILD_AVX) && CHUNKHEIGHT>=4
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
@@ -30,7 +30,7 @@ ghost_error ghost_sellspmvUNROLLEDDOESNOTWORK__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(gh
     double sdelta = 0., seta = 0.;
     ghost_densemat *z = NULL;
 
-    GHOST_SPMV_PARSE_ARGS(spmvmOptions,argp,sscale,sbeta,sshift,local_dot_product,z,sdelta,seta,double,double);
+    GHOST_SPMV_PARSE_TRAITS(traits,sscale,sbeta,sshift,local_dot_product,z,sdelta,seta,double,double);
     scale = _mm256_broadcast_sd(&sscale);
     beta = _mm256_broadcast_sd(&sbeta);
 
@@ -38,7 +38,7 @@ ghost_error ghost_sellspmvUNROLLEDDOESNOTWORK__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(gh
     unsigned clsize;
     ghost_machine_cacheline_size(&clsize);
     int padding = (int)clsize/sizeof(double);
-    if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
+    if (traits.flags & GHOST_SPMV_DOT) {
 
 #pragma omp parallel 
         {
@@ -88,26 +88,26 @@ ghost_error ghost_sellspmvUNROLLEDDOESNOTWORK__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(gh
 
                 }
 
-                if (spmvmOptions & (GHOST_SPMV_SHIFT | GHOST_SPMV_VSHIFT)) {
-                    if (spmvmOptions & GHOST_SPMV_SHIFT) {
+                if (traits.flags & (GHOST_SPMV_SHIFT | GHOST_SPMV_VSHIFT)) {
+                    if (traits.flags & GHOST_SPMV_SHIFT) {
                         shift = _mm256_broadcast_sd(&sshift[0]);
                     } else {
                         shift = _mm256_broadcast_sd(&sshift[v]);
                     }
                     #GHOST_UNROLL#tmp@ = _mm256_sub_pd(tmp@,_mm256_mul_pd(shift,_mm256_load_pd(&rval[c*CHUNKHEIGHT+(4*@)])));#CHUNKHEIGHT/4
                 }
-                if (spmvmOptions & GHOST_SPMV_SCALE) {
+                if (traits.flags & GHOST_SPMV_SCALE) {
                     #GHOST_UNROLL#tmp@ = _mm256_mul_pd(scale,tmp@);#CHUNKHEIGHT/4
                 }
-                if (spmvmOptions & GHOST_SPMV_AXPY) {
+                if (traits.flags & GHOST_SPMV_AXPY) {
                     #GHOST_UNROLL#_mm256_store_pd(&lval[c*CHUNKHEIGHT+(4*@)],_mm256_add_pd(tmp@,_mm256_load_pd(&lval[c*CHUNKHEIGHT+(4*@)])));#CHUNKHEIGHT/4
-                } else if (spmvmOptions & GHOST_SPMV_AXPBY) {
+                } else if (traits.flags & GHOST_SPMV_AXPBY) {
                     #GHOST_UNROLL#_mm256_store_pd(&lval[c*CHUNKHEIGHT+(4*@)],_mm256_add_pd(tmp@,_mm256_mul_pd(beta,_mm256_load_pd(&lval[c*CHUNKHEIGHT+(4*@)]))));#CHUNKHEIGHT/4
                 } else {
                     #GHOST_UNROLL#_mm256_stream_pd(&lval[~(@/(CHUNKHEIGHT/4))~*res->stride+c*CHUNKHEIGHT+(4*((@)%(CHUNKHEIGHT/4)))],tmp@);#CHUNKHEIGHT/4*NVECS
                 }
 
-                if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
+                if (traits.flags & GHOST_SPMV_DOT) {
                     if ((c+1)*CHUNKHEIGHT <= mat->nrows) {
                         #GHOST_UNROLL#dot1[v] = _mm256_add_pd(dot1[v],_mm256_mul_pd(_mm256_load_pd(&lval[c*CHUNKHEIGHT+(4*@)]),_mm256_load_pd(&lval[c*CHUNKHEIGHT+(4*@)])));#CHUNKHEIGHT/4
                         #GHOST_UNROLL#dot2[v] = _mm256_add_pd(dot2[v],_mm256_mul_pd(_mm256_load_pd(&rval[c*CHUNKHEIGHT+(4*@)]),_mm256_load_pd(&lval[c*CHUNKHEIGHT+(4*@)])));#CHUNKHEIGHT/4
@@ -124,7 +124,7 @@ ghost_error ghost_sellspmvUNROLLEDDOESNOTWORK__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(gh
             }
         }
 
-        if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
+        if (traits.flags & GHOST_SPMV_DOT) {
             __m256d sum12;
             __m128d sum12high;
             __m128d res12;
@@ -144,7 +144,7 @@ ghost_error ghost_sellspmvUNROLLEDDOESNOTWORK__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(gh
             }
         }
     }
-    if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
+    if (traits.flags & GHOST_SPMV_DOT) {
         if (!local_dot_product) {
             WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
             return GHOST_SUCCESS;
@@ -162,7 +162,7 @@ ghost_error ghost_sellspmvUNROLLEDDOESNOTWORK__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(gh
         }
         free(partsums);
     }
-    if (spmvmOptions & GHOST_SPMV_CHAIN_AXPBY) {
+    if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
         PERFWARNING_LOG("AXPBY will not be done on-the-fly!");
         z->axpby(z,res,&seta,&sdelta);
     }
@@ -173,8 +173,8 @@ ghost_error ghost_sellspmvUNROLLEDDOESNOTWORK__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(gh
     UNUSED(mat);
     UNUSED(res);
     UNUSED(invec);
-    UNUSED(spmvmOptions);
-    UNUSED(argp);
+    UNUSED(traits);
+    
 #if CHUNKHEIGHT < 4
     ERROR_LOG("Invalid chunk height!");
 #else
@@ -184,7 +184,7 @@ ghost_error ghost_sellspmvUNROLLEDDOESNOTWORK__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(gh
 #endif
 }
 
-ghost_error ghost_sellspmv__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat, ghost_densemat* res, ghost_densemat* invec, ghost_spmv_flags spmvmOptions,va_list argp)
+ghost_error ghost_sellspmv__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat* invec, ghost_spmv_traits traits)
 {
 #if defined(GHOST_BUILD_AVX) && CHUNKHEIGHT>=4
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
@@ -199,7 +199,7 @@ ghost_error ghost_sellspmv__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat,
     double sdelta = 0., seta = 0.;
     ghost_densemat *z = NULL;
 
-    GHOST_SPMV_PARSE_ARGS(spmvmOptions,argp,sscale,sbeta,sshift,local_dot_product,z,sdelta,seta,double,double);
+    GHOST_SPMV_PARSE_TRAITS(traits,sscale,sbeta,sshift,local_dot_product,z,sdelta,seta,double,double);
     scale = _mm256_broadcast_sd(&sscale);
     beta = _mm256_broadcast_sd(&sbeta);
 
@@ -207,7 +207,7 @@ ghost_error ghost_sellspmv__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat,
     unsigned clsize;
     ghost_machine_cacheline_size(&clsize);
     int padding = (int)clsize/sizeof(double);
-    if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
+    if (traits.flags & GHOST_SPMV_DOT) {
 
 #pragma omp parallel 
         {
@@ -256,26 +256,26 @@ ghost_error ghost_sellspmv__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat,
                     #GHOST_UNROLL#val    = _mm256_load_pd(&mval[offs]);rhstmp = _mm_loadl_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);rhstmp = _mm_loadh_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);rhs    = _mm256_insertf128_pd(rhs,rhstmp,0);rhstmp = _mm_loadl_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);rhstmp = _mm_loadh_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);rhs    = _mm256_insertf128_pd(rhs,rhstmp,1);tmp@    = _mm256_add_pd(tmp@,_mm256_mul_pd(val,rhs));#CHUNKHEIGHT/4
                 }
 
-                if (spmvmOptions & (GHOST_SPMV_SHIFT | GHOST_SPMV_VSHIFT)) {
-                    if (spmvmOptions & GHOST_SPMV_SHIFT) {
+                if (traits.flags & (GHOST_SPMV_SHIFT | GHOST_SPMV_VSHIFT)) {
+                    if (traits.flags & GHOST_SPMV_SHIFT) {
                         shift = _mm256_broadcast_sd(&sshift[0]);
                     } else {
                         shift = _mm256_broadcast_sd(&sshift[v]);
                     }
                     #GHOST_UNROLL#tmp@ = _mm256_sub_pd(tmp@,_mm256_mul_pd(shift,_mm256_load_pd(&rval[c*CHUNKHEIGHT+(4*@)])));#CHUNKHEIGHT/4
                 }
-                if (spmvmOptions & GHOST_SPMV_SCALE) {
+                if (traits.flags & GHOST_SPMV_SCALE) {
                     #GHOST_UNROLL#tmp@ = _mm256_mul_pd(scale,tmp@);#CHUNKHEIGHT/4
                 }
-                if (spmvmOptions & GHOST_SPMV_AXPY) {
+                if (traits.flags & GHOST_SPMV_AXPY) {
                     #GHOST_UNROLL#_mm256_store_pd(&lval[c*CHUNKHEIGHT+(4*@)],_mm256_add_pd(tmp@,_mm256_load_pd(&lval[c*CHUNKHEIGHT+(4*@)])));#CHUNKHEIGHT/4
-                } else if (spmvmOptions & GHOST_SPMV_AXPBY) {
+                } else if (traits.flags & GHOST_SPMV_AXPBY) {
                     #GHOST_UNROLL#_mm256_store_pd(&lval[c*CHUNKHEIGHT+(4*@)],_mm256_add_pd(tmp@,_mm256_mul_pd(beta,_mm256_load_pd(&lval[c*CHUNKHEIGHT+(4*@)]))));#CHUNKHEIGHT/4
                 } else {
                     #GHOST_UNROLL#_mm256_stream_pd(&lval[c*CHUNKHEIGHT+(4*@)],tmp@);#CHUNKHEIGHT/4
                 }
 
-                if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
+                if (traits.flags & GHOST_SPMV_DOT) {
                     if ((c+1)*CHUNKHEIGHT <= mat->nrows) {
                         #GHOST_UNROLL#dot1[v] = _mm256_add_pd(dot1[v],_mm256_mul_pd(_mm256_load_pd(&lval[c*CHUNKHEIGHT+(4*@)]),_mm256_load_pd(&lval[c*CHUNKHEIGHT+(4*@)])));#CHUNKHEIGHT/4
                         #GHOST_UNROLL#dot2[v] = _mm256_add_pd(dot2[v],_mm256_mul_pd(_mm256_load_pd(&rval[c*CHUNKHEIGHT+(4*@)]),_mm256_load_pd(&lval[c*CHUNKHEIGHT+(4*@)])));#CHUNKHEIGHT/4
@@ -292,7 +292,7 @@ ghost_error ghost_sellspmv__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat,
             }
         }
 
-        if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
+        if (traits.flags & GHOST_SPMV_DOT) {
             __m256d sum12;
             __m128d sum12high;
             __m128d res12;
@@ -312,7 +312,7 @@ ghost_error ghost_sellspmv__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat,
             }
         }
     }
-    if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
+    if (traits.flags & GHOST_SPMV_DOT) {
         if (!local_dot_product) {
             WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
             return GHOST_SUCCESS;
@@ -330,7 +330,7 @@ ghost_error ghost_sellspmv__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat,
         }
         free(partsums);
     }
-    if (spmvmOptions & GHOST_SPMV_CHAIN_AXPBY) {
+    if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
         PERFWARNING_LOG("AXPBY will not be done on-the-fly!");
         z->axpby(z,res,&seta,&sdelta);
     }
@@ -341,8 +341,8 @@ ghost_error ghost_sellspmv__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat,
     UNUSED(mat);
     UNUSED(res);
     UNUSED(invec);
-    UNUSED(spmvmOptions);
-    UNUSED(argp);
+    UNUSED(traits);
+    
 #if CHUNKHEIGHT < 4
     ERROR_LOG("Invalid chunk height!");
 #else
@@ -352,7 +352,7 @@ ghost_error ghost_sellspmv__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat,
 #endif
 }
 
-ghost_error ghost_sellspmv__a_avx_z_z_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat, ghost_densemat* res, ghost_densemat* invec, ghost_spmv_flags spmvmOptions,va_list argp)
+ghost_error ghost_sellspmv__a_avx_z_z_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat* invec, ghost_spmv_traits traits)
 {
 #if defined(GHOST_BUILD_AVX) && CHUNKHEIGHT>=2
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
@@ -367,14 +367,14 @@ ghost_error ghost_sellspmv__a_avx_z_z_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat,
     complex double sdelta = 0., seta = 0.;
     ghost_densemat *z = NULL;
 
-    GHOST_SPMV_PARSE_ARGS(spmvmOptions,argp,sscale,sbeta,sshift,local_dot_product,z,sdelta,seta,complex double,complex double);
+    GHOST_SPMV_PARSE_TRAITS(traits,sscale,sbeta,sshift,local_dot_product,z,sdelta,seta,complex double,complex double);
     scale = _mm256_setzero_pd();
     scale = _mm256_insertf128_pd(scale,_mm_loadu_pd((double *)&sscale),0);
     scale = _mm256_insertf128_pd(scale,_mm_loadu_pd((double *)&sscale),1);
     beta = _mm256_setzero_pd();
     beta = _mm256_insertf128_pd(beta,_mm_loadu_pd((double *)&sbeta),0);
     beta = _mm256_insertf128_pd(beta,_mm_loadu_pd((double *)&sbeta),1);
-    if (spmvmOptions & GHOST_SPMV_CHAIN_AXPBY) {
+    if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
         delta = _mm256_setzero_pd();
         delta = _mm256_insertf128_pd(delta,_mm_load_pd((double *)&sdelta),0);
         delta = _mm256_insertf128_pd(delta,_mm_load_pd((double *)&sdelta),1);
@@ -387,7 +387,7 @@ ghost_error ghost_sellspmv__a_avx_z_z_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat,
     unsigned clsize;
     ghost_machine_cacheline_size(&clsize);
     int padding = (int)clsize/sizeof(complex double);
-    if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
+    if (traits.flags & GHOST_SPMV_DOT) {
 
 #pragma omp parallel 
         {
@@ -440,8 +440,8 @@ ghost_error ghost_sellspmv__a_avx_z_z_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat,
                     #GHOST_UNROLL#val    = _mm256_load_pd((double *)&mval[offs]);rhstmp = _mm_load_pd((double *)&rval[(SELL(mat)->col[offs++])]);rhs = _mm256_insertf128_pd(rhs,rhstmp,0);rhstmp = _mm_load_pd((double *)&rval[(SELL(mat)->col[offs++])]);rhs = _mm256_insertf128_pd(rhs,rhstmp,1);tmp@ = _mm256_add_pd(tmp@,complex_mul(val,rhs));#CHUNKHEIGHT/2
                 }
 
-                if (spmvmOptions & (GHOST_SPMV_SHIFT | GHOST_SPMV_VSHIFT)) {
-                    if (spmvmOptions & GHOST_SPMV_SHIFT) {
+                if (traits.flags & (GHOST_SPMV_SHIFT | GHOST_SPMV_VSHIFT)) {
+                    if (traits.flags & GHOST_SPMV_SHIFT) {
                         shift = _mm256_insertf128_pd(shift,_mm_load_pd((double *)&sshift[0]),0);
                         shift = _mm256_insertf128_pd(shift,_mm_load_pd((double *)&sshift[0]),1);
                     } else {
@@ -450,23 +450,23 @@ ghost_error ghost_sellspmv__a_avx_z_z_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat,
                     }
                     #GHOST_UNROLL#tmp@ = _mm256_sub_pd(tmp@,complex_mul(shift,_mm256_load_pd((double *)&rval[c*CHUNKHEIGHT+(2*@)])));#CHUNKHEIGHT/2
                 }
-                if (spmvmOptions & GHOST_SPMV_SCALE) {
+                if (traits.flags & GHOST_SPMV_SCALE) {
                     #GHOST_UNROLL#tmp@ = complex_mul(scale,tmp@);#CHUNKHEIGHT/2
                 }
-                if (spmvmOptions & GHOST_SPMV_AXPY) {
+                if (traits.flags & GHOST_SPMV_AXPY) {
                     #GHOST_UNROLL#_mm256_store_pd((double *)&lval[c*CHUNKHEIGHT+(2*@)],_mm256_add_pd(tmp@,_mm256_load_pd((double *)&lval[c*CHUNKHEIGHT+(2*@)])));#CHUNKHEIGHT/2
-                } else if (spmvmOptions & GHOST_SPMV_AXPBY) {
+                } else if (traits.flags & GHOST_SPMV_AXPBY) {
                     #GHOST_UNROLL#_mm256_store_pd((double *)&lval[c*CHUNKHEIGHT+(2*@)],_mm256_add_pd(tmp@,complex_mul(beta,_mm256_load_pd((double *)&lval[c*CHUNKHEIGHT+(2*@)]))));#CHUNKHEIGHT/2
-                } else if (spmvmOptions & GHOST_SPMV_CHAIN_AXPBY) {
+                } else if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
                     #GHOST_UNROLL#_mm256_store_pd((double *)&lval[c*CHUNKHEIGHT+(2*@)],tmp@);#CHUNKHEIGHT/2
                 } else {
                     #GHOST_UNROLL#_mm256_stream_pd((double *)&lval[c*CHUNKHEIGHT+(2*@)],tmp@);#CHUNKHEIGHT/2
                 }
-                if (spmvmOptions & GHOST_SPMV_CHAIN_AXPBY) {
+                if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
                     #GHOST_UNROLL#_mm256_store_pd((double *)&zval[c*CHUNKHEIGHT+(2*@)],_mm256_add_pd(complex_mul(delta,_mm256_load_pd((double *)&zval[c*CHUNKHEIGHT+(2*@)])),complex_mul(eta,_mm256_load_pd((double *)&lval[c*CHUNKHEIGHT+(2*@)]))));#CHUNKHEIGHT/2
                 }
 
-                if (spmvmOptions & GHOST_SPMV_DOT_YY) {
+                if (traits.flags & GHOST_SPMV_DOT_YY) {
                     if ((c+1)*CHUNKHEIGHT <= mat->nrows) {
                         #GHOST_UNROLL#dot1[v] = _mm256_add_pd(dot1[v],complex_mul_conj1(_mm256_load_pd((double *)&lval[c*CHUNKHEIGHT+(2*@)]),_mm256_load_pd((double *)&lval[c*CHUNKHEIGHT+(2*@)])));#CHUNKHEIGHT/2
                     } else {
@@ -476,7 +476,7 @@ ghost_error ghost_sellspmv__a_avx_z_z_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat,
                         }
                     }
                 }
-                if (spmvmOptions & GHOST_SPMV_DOT_XY) {
+                if (traits.flags & GHOST_SPMV_DOT_XY) {
                     if ((c+1)*CHUNKHEIGHT <= mat->nrows) {
                         #GHOST_UNROLL#dot2[v] = _mm256_add_pd(dot2[v],complex_mul_conj1(_mm256_load_pd((double *)&rval[c*CHUNKHEIGHT+(2*@)]),_mm256_load_pd((double *)&lval[c*CHUNKHEIGHT+(2*@)])));#CHUNKHEIGHT/2
                     } else {
@@ -486,7 +486,7 @@ ghost_error ghost_sellspmv__a_avx_z_z_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat,
                         }
                     }
                 }
-                if (spmvmOptions & GHOST_SPMV_DOT_XX) {
+                if (traits.flags & GHOST_SPMV_DOT_XX) {
                     if ((c+1)*CHUNKHEIGHT <= mat->nrows) {
                         #GHOST_UNROLL#dot3[v] = _mm256_add_pd(dot3[v],complex_mul_conj1(_mm256_load_pd((double *)&rval[c*CHUNKHEIGHT+(2*@)]),_mm256_load_pd((double *)&rval[c*CHUNKHEIGHT+(2*@)])));#CHUNKHEIGHT/2
                     } else {
@@ -499,7 +499,7 @@ ghost_error ghost_sellspmv__a_avx_z_z_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat,
             }
         }
 
-        if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
+        if (traits.flags & GHOST_SPMV_DOT) {
             for (v=0; v<NVECS; v++) {
                 partsums[((padding+3*NVECS)*tid)+3*v+0] += ((complex double *)dot1)[2*v] + ((complex double *)dot1)[2*v+1];
                 partsums[((padding+3*NVECS)*tid)+3*v+1] += ((complex double *)dot2)[2*v] + ((complex double *)dot2)[2*v+1];
@@ -507,7 +507,7 @@ ghost_error ghost_sellspmv__a_avx_z_z_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat,
             }
         }
     }
-    if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
+    if (traits.flags & GHOST_SPMV_DOT) {
         if (!local_dot_product) {
             WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
             return GHOST_SUCCESS;
@@ -532,8 +532,8 @@ ghost_error ghost_sellspmv__a_avx_z_z_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat,
     UNUSED(mat);
     UNUSED(res);
     UNUSED(invec);
-    UNUSED(spmvmOptions);
-    UNUSED(argp);
+    UNUSED(traits);
+    
 #if CHUNKHEIGHT < 2
     ERROR_LOG("Invalid chunk height!");
 #else
@@ -543,7 +543,7 @@ ghost_error ghost_sellspmv__a_avx_z_z_cm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat,
 #endif
 }
 
-ghost_error ghost_sellspmv__u_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat, ghost_densemat* res, ghost_densemat* invec, ghost_spmv_flags spmvmOptions,va_list argp)
+ghost_error ghost_sellspmv__u_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat* invec, ghost_spmv_traits traits)
 {
 #if defined(GHOST_BUILD_AVX)
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
@@ -569,7 +569,7 @@ ghost_error ghost_sellspmv__u_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat,
     ghost_machine_cacheline_size(&clsize);
     int padding = (int)clsize/sizeof(double);
 
-    UNUSED(argp);
+    
     
     double sscale = 1., sbeta = 1.;
     double *sshift = NULL;
@@ -577,11 +577,11 @@ ghost_error ghost_sellspmv__u_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat,
     double sdelta = 0., seta = 0.;
     ghost_densemat *z = NULL;
 
-    GHOST_SPMV_PARSE_ARGS(spmvmOptions,argp,sscale,sbeta,sshift,local_dot_product,z,sdelta,seta,double,double);
+    GHOST_SPMV_PARSE_TRAITS(traits,sscale,sbeta,sshift,local_dot_product,z,sdelta,seta,double,double);
     
     double *sshiftpadded = NULL;
     int sshiftcopied = 0;
-    if ((spmvmOptions & GHOST_SPMV_VSHIFT) ) {
+    if ((traits.flags & GHOST_SPMV_VSHIFT) ) {
         GHOST_CALL_RETURN(ghost_malloc_align((void **)&sshiftpadded,PAD(invec->traits.ncols,4)*sizeof(double),256));
         memset(sshiftpadded,0,PAD(invec->traits.ncols,4)*sizeof(double));
         memcpy(sshiftpadded,sshift,invec->traits.ncols*sizeof(double));
@@ -590,7 +590,7 @@ ghost_error ghost_sellspmv__u_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat,
     scale = _mm256_broadcast_sd(&sscale);
     beta = _mm256_broadcast_sd(&sbeta);
     
-    if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
+    if (traits.flags & GHOST_SPMV_DOT) {
 
 #pragma omp parallel 
         {
@@ -641,20 +641,20 @@ ghost_error ghost_sellspmv__u_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat,
                 tmp~NVECS/4~ = _mm256_add_pd(tmp~NVECS/4~,_mm256_mul_pd(matval,_mm256_maskload_pd(((double *)(invec->val))+invec->stride*(matcol)+(~NVECS/4~)*4,mask)));
 #endif
             }
-            if (spmvmOptions & GHOST_SPMV_SHIFT) {
+            if (traits.flags & GHOST_SPMV_SHIFT) {
                 #GHOST_UNROLL#tmp@ = _mm256_sub_pd(tmp@,_mm256_mul_pd(_mm256_broadcast_sd(&sshift[0]),_mm256_loadu_pd(rval+@*4)));#(NVECS+3)/4
-            } else if (spmvmOptions & GHOST_SPMV_VSHIFT) {
+            } else if (traits.flags & GHOST_SPMV_VSHIFT) {
                 #GHOST_UNROLL#tmp@ = _mm256_sub_pd(tmp@,_mm256_mul_pd(_mm256_loadu_pd(&sshiftpadded[@*4]),_mm256_loadu_pd(rval+@*4)));#(NVECS+3)/4
             }
-            if (spmvmOptions & GHOST_SPMV_SCALE) {
+            if (traits.flags & GHOST_SPMV_SCALE) {
                 #GHOST_UNROLL#tmp@ = _mm256_mul_pd(scale,tmp@);#(NVECS+3)/4
             }
-            if (spmvmOptions & GHOST_SPMV_AXPY) {
+            if (traits.flags & GHOST_SPMV_AXPY) {
                 #GHOST_UNROLL#_mm256_storeu_pd(lval+@*4,_mm256_add_pd(tmp@,_mm256_loadu_pd(lval+@*4)));#NVECS/4
 #if NVECS%4
                 _mm256_maskstore_pd(lval+(~NVECS/4~)*4,mask,_mm256_add_pd(tmp~NVECS/4~,_mm256_loadu_pd(lval+(~NVECS/4~)*4)));
 #endif
-            } else if (spmvmOptions & GHOST_SPMV_AXPBY) {
+            } else if (traits.flags & GHOST_SPMV_AXPBY) {
                 #GHOST_UNROLL#_mm256_storeu_pd(lval+@*4,_mm256_add_pd(tmp@,_mm256_mul_pd(_mm256_loadu_pd(lval+@*4),beta)));#NVECS/4
 #if NVECS%4
                 _mm256_maskstore_pd(lval+(~NVECS/4~)*4,mask,_mm256_add_pd(tmp~NVECS/4~,_mm256_mul_pd(_mm256_loadu_pd(lval+(~NVECS/4~)*4),beta)));
@@ -666,7 +666,7 @@ ghost_error ghost_sellspmv__u_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat,
 #endif
             }
 
-            if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
+            if (traits.flags & GHOST_SPMV_DOT) {
                 #GHOST_UNROLL#dot1_@ = _mm256_add_pd(dot1_@,_mm256_mul_pd(_mm256_loadu_pd(lval+@*4),_mm256_loadu_pd(lval+@*4)));#NVECS/4
                 #GHOST_UNROLL#dot2_@ = _mm256_add_pd(dot2_@,_mm256_mul_pd(_mm256_loadu_pd(rval+@*4),_mm256_loadu_pd(lval+@*4)));#NVECS/4
                 #GHOST_UNROLL#dot3_@ = _mm256_add_pd(dot3_@,_mm256_mul_pd(_mm256_loadu_pd(rval+@*4),_mm256_loadu_pd(rval+@*4)));#NVECS/4
@@ -679,14 +679,14 @@ ghost_error ghost_sellspmv__u_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat,
 #endif
             }
         }
-        if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
+        if (traits.flags & GHOST_SPMV_DOT) {
             __m128d part;
             #GHOST_UNROLL#part=_mm256_extractf128_pd(dot1_@,0);_mm_storel_pd(&partsums[((padding+3*PAD(invec->traits.ncols,4))*tid)+12*@+0],part);_mm_storeh_pd(&partsums[((padding+3*PAD(invec->traits.ncols,4))*tid)+12*@+3+0],part);part=_mm256_extractf128_pd(dot1_@,1);_mm_storel_pd(&partsums[((padding+3*PAD(invec->traits.ncols,4))*tid)+12*@+6+0],part);_mm_storeh_pd(&partsums[((padding+3*PAD(invec->traits.ncols,4))*tid)+12*@+9+0],part);#(NVECS+3)/4
             #GHOST_UNROLL#part=_mm256_extractf128_pd(dot2_@,0);_mm_storel_pd(&partsums[((padding+3*PAD(invec->traits.ncols,4))*tid)+12*@+1],part);_mm_storeh_pd(&partsums[((padding+3*PAD(invec->traits.ncols,4))*tid)+12*@+3+1],part);part=_mm256_extractf128_pd(dot2_@,1);_mm_storel_pd(&partsums[((padding+3*PAD(invec->traits.ncols,4))*tid)+12*@+6+1],part);_mm_storeh_pd(&partsums[((padding+3*PAD(invec->traits.ncols,4))*tid)+12*@+9+1],part);#(NVECS+3)/4
             #GHOST_UNROLL#part=_mm256_extractf128_pd(dot3_@,0);_mm_storel_pd(&partsums[((padding+3*PAD(invec->traits.ncols,4))*tid)+12*@+2],part);_mm_storeh_pd(&partsums[((padding+3*PAD(invec->traits.ncols,4))*tid)+12*@+3+2],part);part=_mm256_extractf128_pd(dot3_@,1);_mm_storel_pd(&partsums[((padding+3*PAD(invec->traits.ncols,4))*tid)+12*@+6+2],part);_mm_storeh_pd(&partsums[((padding+3*PAD(invec->traits.ncols,4))*tid)+12*@+9+2],part);#(NVECS+3)/4
         }
     }
-    if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
+    if (traits.flags & GHOST_SPMV_DOT) {
         if (!local_dot_product) {
             WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
             return GHOST_SUCCESS;
@@ -704,7 +704,7 @@ ghost_error ghost_sellspmv__u_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat,
         }
         free(partsums);
     }
-    if (spmvmOptions & GHOST_SPMV_CHAIN_AXPBY) {
+    if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
         PERFWARNING_LOG("AXPBY will not be done on-the-fly!");
         z->axpby(z,res,&seta,&sdelta);
     }
@@ -718,14 +718,14 @@ ghost_error ghost_sellspmv__u_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat,
     UNUSED(mat);
     UNUSED(res);
     UNUSED(invec);
-    UNUSED(spmvmOptions);
-    UNUSED(argp);
+    UNUSED(traits);
+    
     ERROR_LOG("No AVX available");
     return GHOST_ERR_UNKNOWN;
 #endif
 }
 
-ghost_error ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat, ghost_densemat* res, ghost_densemat* invec, ghost_spmv_flags spmvmOptions,va_list argp)
+ghost_error ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat* invec, ghost_spmv_traits traits)
 {
 #if defined(GHOST_BUILD_AVX)
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
@@ -752,7 +752,7 @@ ghost_error ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat,
     ghost_machine_cacheline_size(&clsize);
     int padding = (int)clsize/sizeof(double);
 
-    UNUSED(argp);
+    
     
     double sscale = 1., sbeta = 1.;
     double *sshift = NULL;
@@ -760,11 +760,11 @@ ghost_error ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat,
     double sdelta = 0., seta = 0.;
     ghost_densemat *z = NULL;
 
-    GHOST_SPMV_PARSE_ARGS(spmvmOptions,argp,sscale,sbeta,sshift,local_dot_product,z,sdelta,seta,double,double);
+    GHOST_SPMV_PARSE_TRAITS(traits,sscale,sbeta,sshift,local_dot_product,z,sdelta,seta,double,double);
     
     double *sshiftpadded = NULL;
     int sshiftcopied = 0;
-    if ((spmvmOptions & GHOST_SPMV_VSHIFT) ) {
+    if ((traits.flags & GHOST_SPMV_VSHIFT) ) {
         GHOST_CALL_RETURN(ghost_malloc_align((void **)&sshiftpadded,PAD(invec->traits.ncols,4)*sizeof(double),256));
         memset(sshiftpadded,0,PAD(invec->traits.ncols,4)*sizeof(double));
         memcpy(sshiftpadded,sshift,invec->traits.ncols*sizeof(double));
@@ -773,7 +773,7 @@ ghost_error ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat,
     scale = _mm256_broadcast_sd(&sscale);
     beta = _mm256_broadcast_sd(&sbeta);
     
-    if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
+    if (traits.flags & GHOST_SPMV_DOT) {
 
 #pragma omp parallel 
         {
@@ -824,20 +824,20 @@ ghost_error ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat,
                 tmp~NVECS/4~ = _mm256_add_pd(tmp~NVECS/4~,_mm256_mul_pd(matval,_mm256_maskload_pd(((double *)(invec->val))+invec->stride*(matcol)+(~NVECS/4~)*4,mask)));
 #endif
             }
-            if (spmvmOptions & GHOST_SPMV_SHIFT) {
+            if (traits.flags & GHOST_SPMV_SHIFT) {
                 #GHOST_UNROLL#tmp@ = _mm256_sub_pd(tmp@,_mm256_mul_pd(_mm256_broadcast_sd(&sshift[0]),_mm256_load_pd(rval+@*4)));#(NVECS+3)/4
-            } else if (spmvmOptions & GHOST_SPMV_VSHIFT) {
+            } else if (traits.flags & GHOST_SPMV_VSHIFT) {
                 #GHOST_UNROLL#tmp@ = _mm256_sub_pd(tmp@,_mm256_mul_pd(_mm256_load_pd(&sshiftpadded[@*4]),_mm256_load_pd(rval+@*4)));#(NVECS+3)/4
             }
-            if (spmvmOptions & GHOST_SPMV_SCALE) {
+            if (traits.flags & GHOST_SPMV_SCALE) {
                 #GHOST_UNROLL#tmp@ = _mm256_mul_pd(scale,tmp@);#(NVECS+3)/4
             }
-            if (spmvmOptions & GHOST_SPMV_AXPY) {
+            if (traits.flags & GHOST_SPMV_AXPY) {
                 #GHOST_UNROLL#_mm256_store_pd(lval+@*4,_mm256_add_pd(tmp@,_mm256_load_pd(lval+@*4)));#NVECS/4
 #if NVECS%4
                 _mm256_maskstore_pd(lval+(~NVECS/4~)*4,mask,_mm256_add_pd(tmp~NVECS/4~,_mm256_load_pd(lval+(~NVECS/4~)*4)));
 #endif
-            } else if (spmvmOptions & GHOST_SPMV_AXPBY) {
+            } else if (traits.flags & GHOST_SPMV_AXPBY) {
                 #GHOST_UNROLL#_mm256_store_pd(lval+@*4,_mm256_add_pd(tmp@,_mm256_mul_pd(_mm256_load_pd(lval+@*4),beta)));#NVECS/4
 #if NVECS%4
                 _mm256_maskstore_pd(lval+(~NVECS/4~)*4,mask,_mm256_add_pd(tmp~NVECS/4~,_mm256_mul_pd(_mm256_load_pd(lval+(~NVECS/4~)*4),beta)));
@@ -849,7 +849,7 @@ ghost_error ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat,
 #endif
             }
 
-            if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
+            if (traits.flags & GHOST_SPMV_DOT) {
                 #GHOST_UNROLL#dot1_@ = _mm256_add_pd(dot1_@,_mm256_mul_pd(_mm256_load_pd(lval+@*4),_mm256_load_pd(lval+@*4)));#NVECS/4
                 #GHOST_UNROLL#dot2_@ = _mm256_add_pd(dot2_@,_mm256_mul_pd(_mm256_load_pd(rval+@*4),_mm256_load_pd(lval+@*4)));#NVECS/4
                 #GHOST_UNROLL#dot3_@ = _mm256_add_pd(dot3_@,_mm256_mul_pd(_mm256_load_pd(rval+@*4),_mm256_load_pd(rval+@*4)));#NVECS/4
@@ -862,14 +862,14 @@ ghost_error ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat,
 #endif
             }
         }
-        if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
+        if (traits.flags & GHOST_SPMV_DOT) {
             __m128d part;
             #GHOST_UNROLL#part=_mm256_extractf128_pd(dot1_@,0);_mm_storel_pd(&partsums[((padding+3*PAD(invec->traits.ncols,4))*tid)+12*@+0],part);_mm_storeh_pd(&partsums[((padding+3*PAD(invec->traits.ncols,4))*tid)+12*@+3+0],part);part=_mm256_extractf128_pd(dot1_@,1);_mm_storel_pd(&partsums[((padding+3*PAD(invec->traits.ncols,4))*tid)+12*@+6+0],part);_mm_storeh_pd(&partsums[((padding+3*PAD(invec->traits.ncols,4))*tid)+12*@+9+0],part);#(NVECS+3)/4
             #GHOST_UNROLL#part=_mm256_extractf128_pd(dot2_@,0);_mm_storel_pd(&partsums[((padding+3*PAD(invec->traits.ncols,4))*tid)+12*@+1],part);_mm_storeh_pd(&partsums[((padding+3*PAD(invec->traits.ncols,4))*tid)+12*@+3+1],part);part=_mm256_extractf128_pd(dot2_@,1);_mm_storel_pd(&partsums[((padding+3*PAD(invec->traits.ncols,4))*tid)+12*@+6+1],part);_mm_storeh_pd(&partsums[((padding+3*PAD(invec->traits.ncols,4))*tid)+12*@+9+1],part);#(NVECS+3)/4
             #GHOST_UNROLL#part=_mm256_extractf128_pd(dot3_@,0);_mm_storel_pd(&partsums[((padding+3*PAD(invec->traits.ncols,4))*tid)+12*@+2],part);_mm_storeh_pd(&partsums[((padding+3*PAD(invec->traits.ncols,4))*tid)+12*@+3+2],part);part=_mm256_extractf128_pd(dot3_@,1);_mm_storel_pd(&partsums[((padding+3*PAD(invec->traits.ncols,4))*tid)+12*@+6+2],part);_mm_storeh_pd(&partsums[((padding+3*PAD(invec->traits.ncols,4))*tid)+12*@+9+2],part);#(NVECS+3)/4
         }
     }
-    if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
+    if (traits.flags & GHOST_SPMV_DOT) {
         if (!local_dot_product) {
             WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
             return GHOST_SUCCESS;
@@ -887,7 +887,7 @@ ghost_error ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat,
         }
         free(partsums);
     }
-    if (spmvmOptions & GHOST_SPMV_CHAIN_AXPBY) {
+    if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
         PERFWARNING_LOG("AXPBY will not be done on-the-fly!");
         z->axpby(z,res,&seta,&sdelta);
     }
@@ -901,14 +901,14 @@ ghost_error ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat,
     UNUSED(mat);
     UNUSED(res);
     UNUSED(invec);
-    UNUSED(spmvmOptions);
-    UNUSED(argp);
+    UNUSED(traits);
+    
     ERROR_LOG("No AVX available");
     return GHOST_ERR_UNKNOWN;
 #endif
 }
 
-ghost_error ghost_sellspmv__a_avx_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat, ghost_densemat* res, ghost_densemat* invec, ghost_spmv_flags spmvmOptions,va_list argp)
+ghost_error ghost_sellspmv__a_avx_z_z_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat* invec, ghost_spmv_traits traits)
 {
 #if defined(GHOST_BUILD_AVX)
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
@@ -925,7 +925,7 @@ ghost_error ghost_sellspmv__a_avx_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat,
     ghost_machine_cacheline_size(&clsize);
     int padding = (int)clsize/sizeof(double);
 
-    UNUSED(argp);
+    
     
     complex double sscale = 1., sbeta = 1.;
     complex double *sshift = NULL;
@@ -933,11 +933,11 @@ ghost_error ghost_sellspmv__a_avx_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat,
     ghost_densemat *z = NULL;
     __m256d scale, beta, shift, delta, eta;
 
-    GHOST_SPMV_PARSE_ARGS(spmvmOptions,argp,sscale,sbeta,sshift,local_dot_product,z,sdelta,seta,complex double,complex double);
+    GHOST_SPMV_PARSE_TRAITS(traits,sscale,sbeta,sshift,local_dot_product,z,sdelta,seta,complex double,complex double);
     
     complex double *sshiftpadded = NULL;
     int sshiftcopied = 0;
-    if ((spmvmOptions & GHOST_SPMV_VSHIFT)) {
+    if ((traits.flags & GHOST_SPMV_VSHIFT)) {
         GHOST_CALL_RETURN(ghost_malloc_align((void **)&sshiftpadded,PAD(invec->traits.ncols,2)*sizeof(complex double),256));
         memset(sshiftpadded,0,PAD(invec->traits.ncols,2)*sizeof(complex double));
         memcpy(sshiftpadded,sshift,invec->traits.ncols*sizeof(complex double));
@@ -951,12 +951,12 @@ ghost_error ghost_sellspmv__a_avx_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat,
     beta = _mm256_insertf128_pd(beta,_mm_load_pd((double *)&sbeta),0);
     beta = _mm256_insertf128_pd(beta,_mm_load_pd((double *)&sbeta),1);
 
-    if (spmvmOptions & GHOST_SPMV_SHIFT) {
+    if (traits.flags & GHOST_SPMV_SHIFT) {
         shift = _mm256_setzero_pd();
         shift = _mm256_insertf128_pd(shift,_mm_load_pd((double *)&sshift[0]),0);
         shift = _mm256_insertf128_pd(shift,_mm_load_pd((double *)&sshift[0]),1);
     }
-    if (spmvmOptions & GHOST_SPMV_CHAIN_AXPBY) {
+    if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
         delta = _mm256_setzero_pd();
         delta = _mm256_insertf128_pd(delta,_mm_load_pd((double *)&sdelta),0);
         delta = _mm256_insertf128_pd(delta,_mm_load_pd((double *)&sdelta),1);
@@ -966,7 +966,7 @@ ghost_error ghost_sellspmv__a_avx_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat,
     }
 
     
-    if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
+    if (traits.flags & GHOST_SPMV_DOT) {
 
 #pragma omp parallel 
         {
@@ -1016,25 +1016,25 @@ ghost_error ghost_sellspmv__a_avx_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat,
                 tmp~NVECS/2~ = _mm256_add_pd(tmp~NVECS/2~,complex_mul(rhs,matval));
 #endif
             }
-            if (spmvmOptions & GHOST_SPMV_SHIFT) {
+            if (traits.flags & GHOST_SPMV_SHIFT) {
                 #GHOST_UNROLL#tmp@ = _mm256_sub_pd(tmp@,complex_mul(shift,_mm256_load_pd(((double *)rval)+@*4)));#(NVECS+1)/2
-            } else if (spmvmOptions & GHOST_SPMV_VSHIFT) {
+            } else if (traits.flags & GHOST_SPMV_VSHIFT) {
                 #GHOST_UNROLL#tmp@ = _mm256_sub_pd(tmp@,complex_mul(_mm256_load_pd(((double *)sshiftpadded)+(@*4)),_mm256_load_pd(((double *)rval)+@*4)));#(NVECS+1)/2
             }
-            if (spmvmOptions & GHOST_SPMV_SCALE) {
+            if (traits.flags & GHOST_SPMV_SCALE) {
                 #GHOST_UNROLL#tmp@ = complex_mul(scale,tmp@);#(NVECS+1)/2
             }
-            if (spmvmOptions & GHOST_SPMV_AXPY) {
+            if (traits.flags & GHOST_SPMV_AXPY) {
                 #GHOST_UNROLL#_mm256_store_pd(((double *)lval)+@*4,_mm256_add_pd(tmp@,_mm256_load_pd(((double *)lval)+@*4)));#NVECS/2
 #if NVECS%2
                 _mm256_maskstore_pd(((double *)lval)+(~NVECS/2~)*4,mask,_mm256_add_pd(tmp~NVECS/2~,_mm256_load_pd(((double *)lval)+(~NVECS/2~)*4)));
 #endif
-            } else if (spmvmOptions & GHOST_SPMV_AXPBY) {
+            } else if (traits.flags & GHOST_SPMV_AXPBY) {
                 #GHOST_UNROLL#_mm256_store_pd(((double *)lval)+@*4,_mm256_add_pd(tmp@,complex_mul(_mm256_load_pd(((double *)lval)+@*4),beta)));#NVECS/2
 #if NVECS%2
                 _mm256_maskstore_pd(((double *)lval)+(~NVECS/2~)*4,mask,_mm256_add_pd(tmp~NVECS/2~,complex_mul(_mm256_load_pd(((double *)lval)+(~NVECS/2~)*4),beta)));
 #endif
-            } else if (spmvmOptions & GHOST_SPMV_CHAIN_AXPBY) {
+            } else if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
                 #GHOST_UNROLL#_mm256_store_pd(((double *)lval)+@*4,tmp@);#NVECS/2
 #if NVECS%2
                 _mm256_maskstore_pd(((double *)lval)+(~NVECS/2~)*4,mask,tmp~NVECS/2~);
@@ -1046,46 +1046,46 @@ ghost_error ghost_sellspmv__a_avx_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat,
 #endif
             }
 
-            if (spmvmOptions & GHOST_SPMV_CHAIN_AXPBY) {
+            if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
                 #GHOST_UNROLL#_mm256_store_pd(((double *)zval)+@*4,_mm256_add_pd(complex_mul(_mm256_load_pd(((double *)zval)+@*4),delta),complex_mul(_mm256_load_pd(((double *)lval)+@*4),eta)));#NVECS/2
 #if NVECS%2
                 _mm256_maskstore_pd(((double *)zval)+(~NVECS/2~)*4,mask,_mm256_add_pd(complex_mul(_mm256_maskload_pd(((double *)zval)+(~NVECS/2~)*4,mask),delta),complex_mul(_mm256_maskload_pd(((double *)lval)+(~NVECS/2~)*4,mask),eta)));
 #endif
             }
-            if (spmvmOptions & GHOST_SPMV_DOT_YY) {
+            if (traits.flags & GHOST_SPMV_DOT_YY) {
                 #GHOST_UNROLL#dot1_@ = _mm256_add_pd(dot1_@,complex_mul_conj1(_mm256_load_pd((const double*)lval+@*4),_mm256_load_pd((const double*)lval+@*4)));#NVECS/2
 #if NVECS%2
                 dot1_~NVECS/2~ = _mm256_add_pd(dot1_~NVECS/2~,complex_mul_conj1(_mm256_maskload_pd((const double*)lval+(~NVECS/2~)*4,mask),_mm256_maskload_pd((const double*)lval+(~NVECS/2~)*4,mask)));
 #endif
             }
-            if (spmvmOptions & GHOST_SPMV_DOT_XY) {
+            if (traits.flags & GHOST_SPMV_DOT_XY) {
                 #GHOST_UNROLL#dot2_@ = _mm256_add_pd(dot2_@,complex_mul_conj1(_mm256_load_pd((const double*)rval+@*4),_mm256_load_pd((const double*)lval+@*4)));#NVECS/2
 #if NVECS%2
                 dot2_~NVECS/2~ = _mm256_add_pd(dot2_~NVECS/2~,complex_mul_conj1(_mm256_maskload_pd((const double*)rval+(~NVECS/2~)*4,mask),_mm256_maskload_pd((const double*)lval+(~NVECS/2~)*4,mask)));
 #endif
             }
-            if (spmvmOptions & GHOST_SPMV_DOT_XX) {
+            if (traits.flags & GHOST_SPMV_DOT_XX) {
                 #GHOST_UNROLL#dot3_@ = _mm256_add_pd(dot3_@,complex_mul_conj1(_mm256_load_pd((const double*)rval+@*4),_mm256_load_pd((const double*)rval+@*4)));#NVECS/2
 #if NVECS%2
                 dot3_~NVECS/2~ = _mm256_add_pd(dot3_~NVECS/2~,complex_mul_conj1(_mm256_maskload_pd((const double*)rval+(~NVECS/2~)*4,mask),_mm256_maskload_pd((const double*)rval+(~NVECS/2~)*4,mask)));
 #endif
             }
         }
-        if (spmvmOptions & GHOST_SPMV_DOT_YY) {
+        if (traits.flags & GHOST_SPMV_DOT_YY) {
             __m128d v128;
             #GHOST_UNROLL#v128 = _mm256_castpd256_pd128(dot1_@); _mm_storeu_pd(&((double *)partsums)[2*(((padding+3*PAD(invec->traits.ncols,2))*tid)+6*@+0)],v128); v128 = _mm256_extractf128_pd(dot1_@,1); _mm_storeu_pd(&((double *)partsums)[2*(((padding+3*PAD(invec->traits.ncols,2))*tid)+6*@+3+0)],v128);#~NVECS/2~
 #if NVECS%2
             v128 = _mm256_castpd256_pd128(dot1_~NVECS/2~); _mm_storeu_pd(&((double *)partsums)[2*(((padding+3*PAD(invec->traits.ncols,2))*tid)+6*(~NVECS/2~)+0)],v128);
 #endif
         }
-        if (spmvmOptions & GHOST_SPMV_DOT_XY) {
+        if (traits.flags & GHOST_SPMV_DOT_XY) {
             __m128d v128;
             #GHOST_UNROLL#v128 = _mm256_castpd256_pd128(dot2_@); _mm_storeu_pd(&((double *)partsums)[2*(((padding+3*PAD(invec->traits.ncols,2))*tid)+6*@+1)],v128); v128 = _mm256_extractf128_pd(dot2_@,1); _mm_storeu_pd(&((double *)partsums)[2*(((padding+3*PAD(invec->traits.ncols,2))*tid)+6*@+3+1)],v128);#NVECS/2
 #if NVECS%2
             v128 = _mm256_castpd256_pd128(dot2_~NVECS/2~); _mm_storeu_pd(&((double *)partsums)[2*(((padding+3*PAD(invec->traits.ncols,2))*tid)+6*(~NVECS/2~)+1)],v128);
 #endif
         }
-        if (spmvmOptions & GHOST_SPMV_DOT_XX) {
+        if (traits.flags & GHOST_SPMV_DOT_XX) {
             __m128d v128;
             #GHOST_UNROLL#v128 = _mm256_castpd256_pd128(dot3_@); _mm_storeu_pd(&((double *)partsums)[2*(((padding+3*PAD(invec->traits.ncols,2))*tid)+6*@+2)],v128); v128 = _mm256_extractf128_pd(dot3_@,1); _mm_storeu_pd(&((double *)partsums)[2*(((padding+3*PAD(invec->traits.ncols,2))*tid)+6*@+3+2)],v128);#NVECS/2
 #if NVECS%2
@@ -1094,7 +1094,7 @@ ghost_error ghost_sellspmv__a_avx_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat,
 
         }
     }
-    if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
+    if (traits.flags & GHOST_SPMV_DOT) {
         if (!local_dot_product) {
             WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
             return GHOST_SUCCESS;
@@ -1123,8 +1123,8 @@ ghost_error ghost_sellspmv__a_avx_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat,
     UNUSED(mat);
     UNUSED(res);
     UNUSED(invec);
-    UNUSED(spmvmOptions);
-    UNUSED(argp);
+    UNUSED(traits);
+    
     ERROR_LOG("No AVX available");
     return GHOST_ERR_UNKNOWN;
 #endif
@@ -1133,7 +1133,7 @@ ghost_error ghost_sellspmv__a_avx_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat,
 #if 0
 
 #GHOST_FUNC_BEGIN#CHUNKHEIGHT=${CHUNKHEIGHT}
-ghost_error ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat *mat, ghost_densemat* res, ghost_densemat* invec, ghost_spmv_flags spmvmOptions,va_list argp)
+ghost_error ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_x(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat* invec, ghost_spmv_traits traits)
 {
 #ifdef GHOST_BUILD_AVX
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
@@ -1151,7 +1151,7 @@ ghost_error ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat *mat, gho
     ghost_machine_cacheline_size(&clsize);
     int padding = (int)clsize/sizeof(double);
 
-    UNUSED(argp);
+    
     
     double sscale = 1., sbeta = 1.;
     double *sshift = NULL;
@@ -1159,12 +1159,12 @@ ghost_error ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat *mat, gho
     double sdelta = 0., seta = 0.;
     ghost_densemat *z = NULL;
 
-    GHOST_SPMV_PARSE_ARGS(spmvmOptions,argp,sscale,sbeta,sshift,local_dot_product,z,sdelta,seta,double,double);
+    GHOST_SPMV_PARSE_TRAITS(traits,sscale,sbeta,sshift,local_dot_product,z,sdelta,seta,double,double);
     scale = _mm256_broadcast_sd(&sscale);
     beta = _mm256_broadcast_sd(&sbeta);
     int axpy = spmvmOptions & (GHOST_SPMV_AXPY | GHOST_SPMV_AXPBY);
     
-    if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
+    if (traits.flags & GHOST_SPMV_DOT) {
 
 #pragma omp parallel 
         {
@@ -1203,27 +1203,27 @@ ghost_error ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat *mat, gho
                     #GHOST_UNROLL#rhs = _mm256_load_pd(((double *)(invec->val))+invec->stride*SELL(mat)->col[offs]+donecols);tmp@ = _mm256_add_pd(tmp@,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));#CHUNKHEIGHT
                 }
               
-                if (spmvmOptions & (GHOST_SPMV_SHIFT | GHOST_SPMV_VSHIFT)) {
-                    if (spmvmOptions & GHOST_SPMV_SHIFT) {
+                if (traits.flags & (GHOST_SPMV_SHIFT | GHOST_SPMV_VSHIFT)) {
+                    if (traits.flags & GHOST_SPMV_SHIFT) {
                         shift = _mm256_broadcast_sd(&sshift[0]);
                     } else {
                         shift = _mm256_load_pd(&sshift[donecols]);
                     }
                     #GHOST_UNROLL#tmp@ = _mm256_sub_pd(tmp@,_mm256_mul_pd(shift,_mm256_load_pd(((double *)(invec->val)) + res->stride*(c*CHUNKHEIGHT+@)+donecols)));#CHUNKHEIGHT
                 }
-                if (spmvmOptions & GHOST_SPMV_SCALE) {
+                if (traits.flags & GHOST_SPMV_SCALE) {
                     #GHOST_UNROLL#tmp@ = _mm256_mul_pd(scale,tmp@);#CHUNKHEIGHT
                 }
                 if (axpy || ncolspadded<=4 || CHUNKHEIGHT == 1) {
-                    if (spmvmOptions & GHOST_SPMV_AXPY) {
+                    if (traits.flags & GHOST_SPMV_AXPY) {
                         #GHOST_UNROLL#_mm256_store_pd(&lval[invec->traits.ncolspadded*@+donecols],_mm256_add_pd(tmp@,_mm256_load_pd(&lval[invec->traits.ncolspadded*@+donecols])));#CHUNKHEIGHT
-                    } else if (spmvmOptions & GHOST_SPMV_AXPBY) {
+                    } else if (traits.flags & GHOST_SPMV_AXPBY) {
                         #GHOST_UNROLL#_mm256_store_pd(&lval[invec->traits.ncolspadded*@+donecols],_mm256_add_pd(tmp@,_mm256_mul_pd(_mm256_load_pd(&lval[invec->traits.ncolspadded*@+donecols]),beta)));#CHUNKHEIGHT
                     } else {
                         #GHOST_UNROLL#_mm256_store_pd(&lval[invec->traits.ncolspadded*@+donecols],tmp@);#CHUNKHEIGHT
                     }
                     if ((c+1)*CHUNKHEIGHT < mat->nrows) {
-                        if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
+                        if (traits.flags & GHOST_SPMV_DOT) {
                             for (col = donecols; col<donecols+4; col++) {
                                 #GHOST_UNROLL#partsums[((padding+3*invec->traits.ncols)*tid)+3*col+0] += lval[col+@*invec->traits.ncolspadded]*lval[col+@*invec->traits.ncolspadded];#CHUNKHEIGHT
                                 #GHOST_UNROLL#partsums[((padding+3*invec->traits.ncols)*tid)+3*col+1] += lval[col+@*invec->traits.ncolspadded]*rval[col+@*invec->traits.ncolspadded];#CHUNKHEIGHT
@@ -1234,7 +1234,7 @@ ghost_error ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat *mat, gho
                         ghost_lidx row = c*CHUNKHEIGHT;
                         ghost_lidx rowinchunk = 0;
                         for (; row<mat->nrows; row++) {
-                            if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
+                            if (traits.flags & GHOST_SPMV_DOT) {
                                 for (col = donecols; col<donecols+4; col++) {
                                     partsums[((padding+3*invec->traits.ncols)*tid)+3*col+0] += lval[col+rowinchunk*invec->traits.ncolspadded]*lval[col+rowinchunk*invec->traits.ncolspadded];
                                     partsums[((padding+3*invec->traits.ncols)*tid)+3*col+1] += lval[col+rowinchunk*invec->traits.ncolspadded]*rval[col+rowinchunk*invec->traits.ncolspadded];
@@ -1246,7 +1246,7 @@ ghost_error ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat *mat, gho
                     }
                 } else { 
                     #GHOST_UNROLL#_mm256_store_pd(&tmpresult[@*ncolspadded+donecols],tmp@);#CHUNKHEIGHT
-                    if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
+                    if (traits.flags & GHOST_SPMV_DOT) {
                         WARNING_LOG("local dot currently not working here!");
                     }
                     // TODO if non-AXPY cxompute DOT from tmp instead of lval
@@ -1259,7 +1259,7 @@ ghost_error ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat *mat, gho
         }
         free(tmpresult);
     }
-    if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
+    if (traits.flags & GHOST_SPMV_DOT) {
         if (!local_dot_product) {
             WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
             return GHOST_SUCCESS;
@@ -1276,7 +1276,7 @@ ghost_error ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat *mat, gho
         }
         free(partsums);
     }
-    if (spmvmOptions & GHOST_SPMV_CHAIN_AXPBY) {
+    if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
         PERFWARNING_LOG("AXPBY will not be done on-the-fly!");
         z->axpby(z,res,&seta,&sdelta);
     }
@@ -1286,8 +1286,8 @@ ghost_error ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat *mat, gho
     UNUSED(mat);
     UNUSED(res);
     UNUSED(invec);
-    UNUSED(spmvmOptions);
-    UNUSED(argp);
+    UNUSED(traits);
+    
     ERROR_LOG("No AVX available");
     return GHOST_ERR_UNKNOWN;
 #endif
@@ -1296,7 +1296,7 @@ ghost_error ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat *mat, gho
 #GHOST_FUNC_END
 
 #GHOST_FUNC_BEGIN#NVECS=${BLOCKDIM1}#CHUNKHEIGHT=${CHUNKHEIGHT}
-ghost_error ghost_sellspmv_v2__avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat, ghost_densemat* res, ghost_densemat* invec, ghost_spmv_flags spmvmOptions,va_list argp)
+ghost_error ghost_sellspmv_v2__avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat* invec, ghost_spmv_traits traits)
 {
 #if defined(GHOST_BUILD_AVX) && NVECS>=4
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
@@ -1310,17 +1310,17 @@ ghost_error ghost_sellspmv_v2__avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat
     ghost_machine_cacheline_size(&clsize);
     int padding = (int)clsize/sizeof(double);
 
-    UNUSED(argp);
+    
     
     double sscale = 1., sbeta = 1.;
     double *sshift = NULL;
     __m256d scale, beta;
 
-    GHOST_SPMV_PARSE_ARGS(spmvmOptions,argp,sscale,sbeta,sshift,local_dot_product,double,double);
+    GHOST_SPMV_PARSE_TRAITS(traits,sscale,sbeta,sshift,local_dot_product,double,double);
     scale = _mm256_broadcast_sd(&sscale);
     beta = _mm256_broadcast_sd(&sbeta);
     
-    if (spmvmOptions & GHOST_SPMV_DOT) {
+    if (traits.flags & GHOST_SPMV_DOT) {
 
 #pragma omp parallel 
         {
@@ -1356,22 +1356,22 @@ ghost_error ghost_sellspmv_v2__avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat
                 
                 #GHOST_UNROLL#rhs = _mm256_load_pd((double *)invec->val[SELL(mat)->col[offs]]+(@%(~NVECS/4~))*4);tmp@ = _mm256_add_pd(tmp@,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs]),rhs));if(!((@+1)%(~NVECS/4~)))offs++;#CHUNKHEIGHT*NVECS/4
             }
-            if (spmvmOptions & GHOST_SPMV_SHIFT) {
+            if (traits.flags & GHOST_SPMV_SHIFT) {
                 #GHOST_UNROLL#tmp@ = _mm256_sub_pd(tmp@,_mm256_mul_pd(_mm256_broadcast_sd(&sshift[0]),_mm256_load_pd(rval+@*4)));#CHUNKHEIGHT*NVECS/4
-            } else if (spmvmOptions & GHOST_SPMV_VSHIFT) {
+            } else if (traits.flags & GHOST_SPMV_VSHIFT) {
                 #GHOST_UNROLL#tmp@ = _mm256_sub_pd(tmp@,_mm256_mul_pd(_mm256_load_pd(&sshift[(@%(~NVECS/4~))*4]),_mm256_load_pd(rval+@*4)));#CHUNKHEIGHT*NVECS/4
             }
-            if (spmvmOptions & GHOST_SPMV_SCALE) {
+            if (traits.flags & GHOST_SPMV_SCALE) {
                 #GHOST_UNROLL#tmp@ = _mm256_mul_pd(scale,tmp@);#CHUNKHEIGHT*NVECS/4
             }
-            if (spmvmOptions & GHOST_SPMV_AXPY) {
+            if (traits.flags & GHOST_SPMV_AXPY) {
                 #GHOST_UNROLL#_mm256_store_pd(lval+@*4,_mm256_add_pd(tmp@,_mm256_load_pd(lval+@*4)));#CHUNKHEIGHT*NVECS/4
-            } else if (spmvmOptions & GHOST_SPMV_AXPBY) {
+            } else if (traits.flags & GHOST_SPMV_AXPBY) {
                 #GHOST_UNROLL#_mm256_store_pd(lval+@*4,_mm256_add_pd(tmp@,_mm256_mul_pd(_mm256_load_pd(lval+@*4),beta)));#CHUNKHEIGHT*NVECS/4
             } else {
                 #GHOST_UNROLL#_mm256_stream_pd(lval+@*4,tmp@);#CHUNKHEIGHT*NVECS/4
             }
-            if (spmvmOptions & GHOST_SPMV_DOT) {
+            if (traits.flags & GHOST_SPMV_DOT) {
                 for (col = 0; col<invec->traits.ncols; col++) {
                     #GHOST_UNROLL#partsums[((padding+3*invec->traits.ncols)*tid)+3*col+0] += lval[col+@*invec->traits.ncolspadded]*lval[col+@*invec->traits.ncolspadded];#CHUNKHEIGHT
                     #GHOST_UNROLL#partsums[((padding+3*invec->traits.ncols)*tid)+3*col+1] += lval[col+@*invec->traits.ncolspadded]*rval[col+@*invec->traits.ncolspadded];#CHUNKHEIGHT
@@ -1380,7 +1380,7 @@ ghost_error ghost_sellspmv_v2__avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat
             }
         }
     }
-    if (spmvmOptions & GHOST_SPMV_DOT) {
+    if (traits.flags & GHOST_SPMV_DOT) {
         if (!local_dot_product) {
             WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
             return GHOST_SUCCESS;
@@ -1404,8 +1404,8 @@ ghost_error ghost_sellspmv_v2__avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat *mat
     UNUSED(mat);
     UNUSED(res);
     UNUSED(invec);
-    UNUSED(spmvmOptions);
-    UNUSED(argp);
+    UNUSED(traits);
+    
 #if NVECS < 4
     ERROR_LOG("Invalid nVecs");
 #else

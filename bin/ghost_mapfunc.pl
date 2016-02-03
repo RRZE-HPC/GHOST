@@ -62,7 +62,7 @@ while (<>) {
                 print "spmv_perfargs.globalnnz = nnz;\n";
                 print "spmv_perfargs.globalrows = nrow;\n";
                 print "spmv_perfargs.dt = rhs->traits.datatype;\n";
-                print "spmv_perfargs.flags = options;\n";
+                print "spmv_perfargs.flags = traits.flags;\n";
                 print "ghost_timing_set_perfFunc(__ghost_functag,\"".$funcname_noprefix."\",ghost_spmv_perf,(void *)&spmv_perfargs,sizeof(spmv_perfargs),GHOST_SPMV_PERF_UNIT);\n";
             }
             print "}\n";

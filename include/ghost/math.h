@@ -103,7 +103,6 @@ ghost_scale_perf_args;
 #define GHOST_SCALE_PERF_UNIT "GB/s"
 #define GHOST_SCALE_PERF_TAG "scale"
 
-typedef ghost_error (*ghost_spmvsolver)(ghost_densemat*, ghost_sparsemat *, ghost_densemat*, ghost_spmv_flags, va_list argp);
 
 #ifdef __cplusplus
 #include "complex.h"
@@ -180,7 +179,7 @@ extern "C" {
      * \warning If there is something wrong with the variadic arguments, i.e., if (following from the flags) more arguments are expected than present, random errors may occur. In order to avoid this, passing NULL as the last argument is a good practice.
      *
      */
-    ghost_error ghost_spmv(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat *invec, ghost_spmv_flags flags, ...);
+    ghost_error ghost_spmv(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat *invec, ghost_spmv_traits traits);
 ghost_error ghost_gemm_valid(ghost_densemat *x, ghost_densemat *v, const char * transv, 
 ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce,ghost_gemm_flags flags, int printerror); 
     /**
