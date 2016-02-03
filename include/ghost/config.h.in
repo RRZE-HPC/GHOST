@@ -6,14 +6,14 @@
 #ifndef GHOST_CONFIG_H
 #define GHOST_CONFIG_H
 
-// project settings
+/* project settings */
 #define GHOST_NAME "${CMAKE_PROJECT_NAME}"
 #define GHOST_VERSION "${GHOST_VERSION}"
 #define GHOST_VERSION_MAJOR ${GHOST_VERSION_MAJOR}
 #define GHOST_VERSION_MINOR ${GHOST_VERSION_MINOR}
 #define GHOST_VERSION_REVISION ${GHOST_VERSION_REVISION}
 
-// third party libraries
+/* third party libraries */
 #cmakedefine GHOST_HAVE_MPI
 #cmakedefine GHOST_HAVE_OPENMP
 #cmakedefine GHOST_HAVE_SCOTCH
@@ -25,13 +25,13 @@
 #cmakedefine GHOST_HAVE_LIBSCI
 #cmakedefine GHOST_HAVE_LAPACK
 
-// hardware features
+/* hardware features */
 #cmakedefine GHOST_BUILD_MIC
 #cmakedefine GHOST_BUILD_AVX2
 #cmakedefine GHOST_BUILD_AVX
 #cmakedefine GHOST_BUILD_SSE
 
-// instrumentation
+/* instrumentation */
 #cmakedefine GHOST_INSTR_TIMING
 #cmakedefine GHOST_INSTR_IACA
 #cmakedefine GHOST_INSTR_LIKWID
@@ -39,16 +39,16 @@
 #cmakedefine GHOST_INSTRUMENT "${GHOST_INSTRUMENT}"
 #define GHOST_INSTRUMENT_FUNCTYPES "${GHOST_INSTRUMENT_FUNCTYPES}"
 
-// logging
+/* logging */
 #cmakedefine GHOST_LOG_ONLYFIRST
 #define GHOST_LOG_RANK ${GHOST_LOG_RANK}
 #define GHOST_VERBOSITY ${GHOST_VERBOSITY}
 
-// index size
+/* index size */
 #cmakedefine GHOST_IDX64_LOCAL
 #cmakedefine GHOST_IDX64_GLOBAL
 
-// code generation
+/* code generation */
 #define GHOST_GEN_SELL_C "${GHOST_GEN_SELL_C}"
 #define GHOST_GEN_DENSEMAT_DIM "${GHOST_GEN_DENSEMAT_DIM}"
 
