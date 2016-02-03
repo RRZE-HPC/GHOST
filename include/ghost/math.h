@@ -152,14 +152,14 @@ extern "C" {
      * @param res The result vector.
      * @param mat The sparse matrix.
      * @param invec The right hand side vector.
-     * @param flags Configuration flags for the spMV operation.
+     * @param traits Configuration traits for the spMV operation.
      * @param ... Further arguments \f$\alpha\f$ , \f$\beta\f$, \f$\gamma\f$, \a dot, \a z, \f$\delta\f$, and \f$\eta\f$ (in that exact order) if configured in the flags (cf. detailed description).
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      *
      * In the most general case, this function computes the operation \f$y = \alpha (A - \gamma I) x + \beta y\f$.
-     * If required  by the operation, \f$\alpha\f$ , \f$\beta\f$, \f$\gamma\f$, and \a dot have 
-     * to be given in the correct order as pointers to variables of the same type as the vector's data.
+     * If required  by the operation, \f$\alpha\f$ , \f$\beta\f$, \f$\gamma\f$, \f$\delta\f$, \f$\eta\f$, \a dot, and \a z have 
+     * to be given in the \a traits struct (z has to be pointer to a ghost_densemat, everyhing else are pointers to variables of the same type as the vector's data).
      *
      * Application of the scaling factor \f$\alpha\f$ can be switched on by setting ::GHOST_SPMV_SCALE in the flags.
      * Otherwise, \f$\alpha=1\f$.
@@ -174,10 +174,7 @@ extern "C" {
      * Column-wise dot products \f$y^Hy, x^Hy, x^Hx\f$ will be computed and stored to this location.
      *
      * This operation maybe changed with an additional AXPBY operation on the vector z: \f$z = \delta z + \eta y\f$
-     * If this should be done, ::GHOST_SPMV_CHAIN_AXPBY has to be set in the flags and the variadic arguments have to be set accordingly.
-     *
-     * \warning If there is something wrong with the variadic arguments, i.e., if (following from the flags) more arguments are expected than present, random errors may occur. In order to avoid this, passing NULL as the last argument is a good practice.
-     *
+     * If this should be done, ::GHOST_SPMV_CHAIN_AXPBY has to be set in the flags.
      */
     ghost_error ghost_spmv(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat *invec, ghost_spmv_traits traits);
 ghost_error ghost_gemm_valid(ghost_densemat *x, ghost_densemat *v, const char * transv, 
