@@ -1,10 +1,10 @@
 #include "ghost/config.h"
 #include "ghost/types.h"
-#include "ghost/sell.h"
 #include "ghost/log.h"
 #include "ghost/cu_util.h"
 #include "ghost/cu_complex.h"
 #include "ghost/util.h"
+#include "ghost/sparsemat.h"
 
 #include <complex.h>
 #include <cuda_runtime.h>

@@ -83,6 +83,142 @@ typedef struct{
 } 
 ghost_spmv_traits;
 
+/**
+ * @brief A CUDA SELL-C-sigma matrix.
+ */
+typedef struct 
+{
+    /**
+     * @brief The values.
+     */
+    char * val;
+    /**
+     * @brief The column indices.
+     */
+    ghost_lidx * col;
+    /**
+     * @brief The length of each row.
+     */
+    ghost_lidx * rowLen;
+    /**
+     * @brief Needed if T>1.
+     */
+    ghost_lidx * rowLenPadded;
+    /**
+     * @brief Pointer to start of each chunk.
+     */
+    ghost_lidx * chunkStart;
+    /**
+     * @brief The length of each chunk.
+     */
+    ghost_lidx * chunkLen;
+}
+ghost_cu_sell;
+
+/**
+ * @brief Struct defining a SELL-C-sigma matrix.
+ */
+typedef struct 
+{
+    /**
+     * @brief The values.
+     */
+    char *val;
+    /**
+     * @brief The column indices.
+     */
+    ghost_lidx *col;
+    /**
+     * @brief Pointer to start of each chunk.
+     */
+    ghost_lidx *chunkStart;
+    /**
+     * @brief Minimal row length in a chunk.
+     */
+    ghost_lidx *chunkMin;
+    /**
+     * @brief The length of each chunk.
+     */
+    ghost_lidx *chunkLen;
+    /**
+     * @brief Needed if T>1.
+     */
+    ghost_lidx *chunkLenPadded;
+    /**
+     * @brief Length of each row.
+     *
+     * Especially useful in SELL-1 kernels.
+     */
+    ghost_lidx *rowLen;
+    /**
+     * @brief Needed if T>1.
+     */
+    ghost_lidx *rowLenPadded; 
+    /**
+     * @brief The CUDA matrix.
+     */
+    ghost_cu_sell *cumat;
+}
+ghost_sell;
+
+/**
+ * @brief Get the SELL data of a general sparsemat.
+ *
+ * @param mat The sparsemat.
+ *
+ * @return Pointer to the SELL data.
+ */
+#define SELL(mat) (mat->sell)
+
+/**
+ * @brief Create only a single chunk, i.e., use the ELLPACK storage format.
+ */
+#define GHOST_SELL_CHUNKHEIGHT_ELLPACK 0
+/**
+ * @brief A chunkheight should automatically be determined.
+ */
+#define GHOST_SELL_CHUNKHEIGHT_AUTO -1
+
+/**
+ * @brief The parameters to identify a SELL SpMV kernel.
+ *
+ * On kernel execution, GHOST will try to find an auto-generated kernel which
+ * matches all of these parameters.
+ */
+typedef struct 
+{
+    /**
+     * @brief The data access alignment.
+     */
+    ghost_alignment alignment;
+    /**
+     * @brief The implementation.
+     */
+    ghost_implementation impl;
+    /**
+     * @brief The matrix data type.
+     */
+    ghost_datatype mdt;
+    /**
+     * @brief The densemat data type.
+     */
+    ghost_datatype vdt;
+    /**
+     * @brief The densemat width.
+     */
+    int blocksz;
+    /**
+     * @brief The SELL matrix chunk height.
+     */
+    int chunkheight;
+    /**
+     * @brief The densemat storage order.
+     */
+    ghost_densemat_storage storage;
+
+}
+ghost_sellspmv_parameters;
+
 extern const ghost_spmv_traits GHOST_SPMV_TRAITS_INITIALIZER;
 
 typedef ghost_error (*ghost_spmv_kernel)(ghost_densemat*, ghost_sparsemat *, ghost_densemat*, ghost_spmv_traits);
@@ -269,7 +405,7 @@ struct ghost_sparsemat
      * @brief Pointer to actual sparse matrix data which may be one of 
      * ghost_crs_t ghost_sell.
      */
-    void *data;
+    ghost_sell *sell;
     /**
      * @brief Size (in bytes) of one matrix element.
      */
@@ -698,6 +834,72 @@ extern "C" {
      * @param[inout] mat The matrix.
      */
     void ghost_sparsemat_destroy_common(ghost_sparsemat *mat);
+    /**
+     * @brief Select and call the right SELL SpMV kernel. 
+     *
+     * @param mat The matrix.
+     * @param lhs The result densemat.
+     * @param rhs The input densemat.
+     * @param traits The SpMV traits.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error ghost_sell_spmv_selector(ghost_densemat *lhs, 
+            ghost_sparsemat *mat, 
+            ghost_densemat *rhs, 
+            ghost_spmv_traits traits);
+    
+    /**
+     * @brief Select and call the right SELL stringification function.
+     *
+     * @param mat The matrix.
+     * @param str Where to store the string.
+     * @param dense Print in a dense or sparse manner.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error ghost_sell_stringify_selector(ghost_sparsemat *mat, 
+            char **str, int dense);
+    
+    /**
+     * @brief Select and call the right CUDA SELL SpMV kernel. 
+     *
+     * @param mat The matrix.
+     * @param lhs The result densemat.
+     * @param rhs The input densemat.
+     * @param traits The SpMV traits.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error ghost_cu_sell_spmv_selector(ghost_densemat *lhs, 
+            ghost_sparsemat *mat, 
+            ghost_densemat *rhs, 
+            ghost_spmv_traits traits);
+
+    ghost_error ghost_cu_sell1_spmv_selector(ghost_densemat * lhs_in, 
+            ghost_sparsemat *mat, ghost_densemat * rhs_in, ghost_spmv_traits traits);
+
+    /**
+     * @brief Perform a Kaczmarz sweep with the SELL matrix. 
+     *
+     * @param mat The matrix.
+     * @param lhs Output densemat.
+     * @param rhs Input densemat.
+     * @param omega The scaling factor omega.
+     * @param forward 1 if forward, 0 if backward sweep should be done.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error ghost_sell_kacz(ghost_sparsemat *mat, ghost_densemat *lhs, 
+            ghost_densemat *rhs, void *omega, int forward);
+
+    /**
+     * @brief Get the largest SELL chunk height of auto-generated kernels.
+     *
+     * @return The largest configured SELL chunk height or 0 if none has been 
+     * configured.
+     */
+    int ghost_sell_max_cfg_chunkheight();
 
 
     ghost_error ghost_sparsemat_from_bincrs(ghost_sparsemat *mat, char *path);

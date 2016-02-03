@@ -12,7 +12,6 @@
 #include "ghost/machine.h"
 #include "ghost/log.h"
 #include "ghost/bindensemat.h"
-#include "ghost/sell.h"
 #include "ghost/constants.h"
 #include "ghost/datatransfers.h"
 

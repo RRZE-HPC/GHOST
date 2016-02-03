@@ -70,7 +70,6 @@ set (SOURCES
     src/densemat_rm.cpp
     src/dot.cpp 
     src/errorhandler.cpp
-    src/sell.cpp
     src/sell_kacz.cpp
     src/sell_spmv.cpp
     src/sparsemat.cpp
@@ -103,7 +102,6 @@ set (SOURCES
     src/omp.c
     src/pumap.c
     src/rand.c
-    src/sell.c 
     src/sparsemat.c
     src/sparsemat_perm_scotch.c
     src/spmv_overlap.c 
@@ -149,7 +147,6 @@ set (HEADERS
     include/ghost/perm.h
     include/ghost/pumap.h
     include/ghost/rand.h
-    include/ghost/sell.h
     include/ghost/sparsemat.h
     include/ghost/spmv.h
     include/ghost/spmv_solvers.h

@@ -11,7 +11,6 @@
 #include "ghost/pumap.h"
 #include "ghost/omp.h"
 #include "ghost/rand.h"
-//#include "ghost/sell.h"
 //#include "ghost/tsmm.h"
 //#include "ghost/tsmm_inplace.h"
 //#include "ghost/tsmttsm.h"

@@ -3,7 +3,6 @@
 
 #include "ghost/complex.h"
 #include "ghost/util.h"
-#include "ghost/sell.h"
 #include "ghost/densemat.h"
 #include "ghost/math.h"
 #include "ghost/log.h"
@@ -32,7 +31,7 @@ static ghost_error ghost_sell_spmv_plain_rm(ghost_densemat *lhs,
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     PERFWARNING_LOG("In plain row-major SEL SpMV with scatteredvecs=%d, blocksz=%d",scatteredvecs,rhs->traits.ncols);
-    ghost_sell *sell = (ghost_sell *)(mat->data);
+    ghost_sell *sell = (ghost_sell *)(mat->sell);
     v_t *local_dot_product = NULL, *partsums = NULL;
     ghost_lidx i,j,c,rcol,lcol,zcol,cidx;
     ghost_lidx v;
@@ -201,7 +200,7 @@ static ghost_error ghost_sell_spmv_plain_cm(ghost_densemat *lhs,
         ghost_spmv_traits traits)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
-    ghost_sell *sell = (ghost_sell *)(mat->data);
+    ghost_sell *sell = (ghost_sell *)(mat->sell);
     v_t *local_dot_product = NULL, *partsums = NULL;
     ghost_lidx i,j,c;
     ghost_lidx v;
