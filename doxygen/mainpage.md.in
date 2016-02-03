@@ -42,7 +42,6 @@ int main(int argc, char **argv)
     
     ghost_sparsemat_traits_t mtraits = GHOST_SPARSEMAT_TRAITS_INITIALIZER;
     ghost_densemat_traits_t vtraits = GHOST_DENSEMAT_TRAITS_INITIALIZER;
-    ghost_spmv_flags_t spmvflags = GHOST_SPMV_DEFAULT; // we want to perform y = A*x
 
     ghost_init(argc,argv);
 
@@ -65,7 +64,7 @@ int main(int argc, char **argv)
     y->fromScalar(y,&zero); // y = 0
 
     // compute y = A*x
-    ghost_spmv(y,A,x,&spmvflags);
+    ghost_spmv(y,A,x,GHOST_SPMV_TRAITS_INITIALIZER);
    
     // print y, A and x 
     A->string(A,&Astr,1);
