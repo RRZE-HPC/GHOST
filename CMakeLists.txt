@@ -778,8 +778,14 @@ configure_file(
     IMMEDIATE @ONLY)
 add_custom_target(uninstall "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_BINARY_DIR}/cmake/cmake_uninstall.cmake") 
 
+    
+file(GLOB TESTS "${PROJECT_SOURCE_DIR}/test/[^.]*")
+
 find_package(Doxygen)
 if (DOXYGEN_FOUND)
+    # this pseudo configure_file is needed in order to re-gernated mainpage.md if minimal.c has changed
+    configure_file(${PROJECT_SOURCE_DIR}/test/minimal.c ${PROJECT_BINARY_DIR}/test/minimal.c)
+    file(READ ${PROJECT_BINARY_DIR}/test/minimal.c GHOST_MINIMAL_EXAMPLE)
     configure_file(${PROJECT_SOURCE_DIR}/doxygen/mainpage.md.in ${PROJECT_BINARY_DIR}/doxygen/mainpage.md @ONLY)
     configure_file(${PROJECT_SOURCE_DIR}/doxygen/Doxyfile.in ${PROJECT_BINARY_DIR}/doxygen/Doxyfile @ONLY)
     set(DOC_INSTALL_PREFIX "" CACHE PATH "Where to store the generated documentation")
@@ -788,7 +794,7 @@ if (DOXYGEN_FOUND)
     if (EXISTS ${DOC_INSTALL_PREFIX})
         add_custom_command(
             OUTPUT ${PROJECT_BINARY_DIR}/doc/html/index.html 
-            DEPENDS ${HEADERS} ${DOCFILES}
+            DEPENDS ${SOURCES} ${HEADERS} ${DOCFILES} ${TESTS}
             COMMAND ${DOXYGEN_EXECUTABLE} ${PROJECT_BINARY_DIR}/doxygen/Doxyfile && 
             cp ${PROJECT_SOURCE_DIR}/contrib/ghost_logo.png ${PROJECT_BINARY_DIR}/doc/html && 
             rsync -a ${PROJECT_BINARY_DIR}/doc/html/. ${DOC_INSTALL_PREFIX} && 
@@ -799,7 +805,7 @@ if (DOXYGEN_FOUND)
     else ()
         add_custom_command(
             OUTPUT ${PROJECT_BINARY_DIR}/doc/html/index.html 
-            DEPENDS ${SOURCES} ${HEADERS} ${DOCFILES} 
+            DEPENDS ${SOURCES} ${HEADERS} ${DOCFILES} ${TESTS}
             COMMAND ${DOXYGEN_EXECUTABLE} ${PROJECT_BINARY_DIR}/doxygen/Doxyfile && 
             cp ${PROJECT_SOURCE_DIR}/contrib/ghost_logo.png ${PROJECT_BINARY_DIR}/doc/html 
             )
@@ -811,5 +817,6 @@ endif()
 add_subdirectory(${PROJECT_SOURCE_DIR}/test)
 enable_testing()
 add_test(NAME simple WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/test COMMAND simple)
+add_test(NAME minimal WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/test COMMAND minimal)
 add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} --force-new-ctest-process --output-on-failure DEPENDS simple)
 

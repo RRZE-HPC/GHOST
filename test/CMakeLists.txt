@@ -6,14 +6,19 @@ if(NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "PGI")
 endif()
 
 add_executable(simple simple.cpp)
+add_executable(minimal minimal.c)
+set(TESTS simple minimal)
 
-add_dependencies(simple ghost)
+foreach(TEST ${TESTS})
+    add_dependencies(${TEST} ghost)
+    add_dependencies(${TEST} ghost)
 
-if (${BUILD_SHARED_LIBS})
-    target_link_libraries(simple ${CMAKE_BINARY_DIR}/libghost.so)
-else ()
-    target_link_libraries(simple ${CMAKE_BINARY_DIR}/libghost.a)
-endif()
+    if (${BUILD_SHARED_LIBS})
+        target_link_libraries(${TEST} ${CMAKE_BINARY_DIR}/libghost.so)
+    else ()
+        target_link_libraries(${TEST} ${CMAKE_BINARY_DIR}/libghost.a)
+    endif()
 
-target_link_libraries(simple ${HWLOC_LIBRARIES} ${MPI_LIBRARIES} ${SCOTCH_LIBRARIES} ${CUDA_LIBRARIES} ${LIKWID_LIBRARIES} ${COLPACK_LIBRARIES} ${LAPACK_LIBRARIES} ${BLAS_LIBRARIES} -lpthread)
+    target_link_libraries(${TEST} ${HWLOC_LIBRARIES} ${MPI_LIBRARIES} ${SCOTCH_LIBRARIES} ${CUDA_LIBRARIES} ${LIKWID_LIBRARIES} ${COLPACK_LIBRARIES} ${LAPACK_LIBRARIES} ${BLAS_LIBRARIES} -lpthread)
 
+endforeach()
