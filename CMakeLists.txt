@@ -104,6 +104,7 @@ set (SOURCES
     src/rand.c
     src/sparsemat.c
     src/sparsemat_perm_scotch.c
+    src/spmv.c
     src/spmv_overlap.c 
     src/spmv_nompi.c 
     src/spmv_task.c
