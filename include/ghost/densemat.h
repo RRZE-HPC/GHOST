@@ -482,13 +482,7 @@ struct ghost_densemat
      */
     ghost_error (*norm) (ghost_densemat *vec, void *norm, void *pow);
     /**
-     * @brief Permute a densemat with a given permutation.
-     *
-     * @param vec The densemat.
-     * @param perm The permutation.
-     * @param dir The permutation direction.
-     *
-     * @return ::GHOST_SUCCESS on success or an error indicator.
+     * Documented in ghost_densemat_permute()
      */
     ghost_error (*permute) (ghost_densemat *vec, ghost_permutation_direction dir);
     /**

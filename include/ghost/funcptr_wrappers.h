@@ -335,6 +335,17 @@ static inline ghost_error ghost_densemat_string(char **str, ghost_densemat *x)
 }
 
 /**
+ * @brief Permute a densemat with according to its local permutation with a given direction.
+ * @param x The densemat.
+ * @param dir The permutation direction.
+ * @return ::GHOST_SUCCESS on success or an error indicator.
+ */
+static inline ghost_error ghost_densemat_permute(ghost_densemat *x, ghost_permutation_direction dir)
+{
+    return x->permute(x,dir);
+}
+
+/**
  * @ingroup sparseinit
  * @brief Initializes a sparsemat from a row-based callback function.
  * @param mat The matrix.
