@@ -103,11 +103,12 @@ The same applies for hwloc and the variables `HWLOC_INCLUDE_DIR` and `HWLOC_LIBR
 
 If you are using GHOST in your publication please use the following citation:
 
-> @article{GHOST,
->     author    = {Moritz Kreutzer and Jonas Thies and Melven R{\"{o}}hrig{-}Z{\"{o}}llner and
->             Andreas Pieper and Faisal Shahzad and Martin Galgon and Achim Basermann and
->             Holger Fehske and Georg Hager and Gerhard Wellein},
->     title     = {{GHOST:} Building blocks for high performance sparse linear algebra on heterogeneous systems},
->     note      = {preprint},
->     url       = {http://arxiv.org/abs/1507.08101},
-> }
+
+    @article{GHOST,
+        author    = {Moritz Kreutzer and Jonas Thies and Melven R{\"{o}}hrig{-}Z{\"{o}}llner and
+                Andreas Pieper and Faisal Shahzad and Martin Galgon and Achim Basermann and
+                Holger Fehske and Georg Hager and Gerhard Wellein},
+        title     = {{GHOST:} Building blocks for high performance sparse linear algebra on heterogeneous systems},
+        note      = {preprint},
+        url       = {http://arxiv.org/abs/1507.08101},
+    }
