@@ -112,12 +112,13 @@ static ghost_error ghost_rayleigh_ritz_tmpl (ghost_sparsemat * mat, void * void_
     ghost_lidx ldx;
     T *eigs_T = NULL, *res_T = NULL;
     ghost_densemat_traits xtraits = GHOST_DENSEMAT_TRAITS_INITIALIZER;
-    ghost_spmv_traits spmvtraits = GHOST_SPMV_TRAITS_INITIALIZER;
+    ghost_spmv_opts spmvtraits = GHOST_SPMV_OPTS_INITIALIZER;
     spmvtraits.flags = spMVM_Options;
     spmvtraits.gamma = eigs_T;
     
     T_b * eigs = (T_b *)void_eigs;
     T_b * res  = (T_b *)void_res;
+    T *  xval = (T *)x->val;
     
     GHOST_CALL_GOTO(ghost_malloc((void **)&eigs_T, n*sizeof(T)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&res_T, n*sizeof(T)),err,ret);
@@ -135,8 +136,6 @@ static ghost_error ghost_rayleigh_ritz_tmpl (ghost_sparsemat * mat, void * void_
     GHOST_CALL_GOTO(x->fromScalar(x,&zero),err,ret);
     ldx = x->stride;
 
-    T *  xval;
-    GHOST_CALL_GOTO(ghost_densemat_valptr(x,(void **)&xval),err,ret);
     
     //spMVM_Options &=  ~GHOST_SPMV_VSHIFT;
     //spMVM_Options &=  ~GHOST_SPMV_SHIFT;
@@ -179,7 +178,7 @@ static ghost_error ghost_rayleigh_ritz_tmpl (ghost_sparsemat * mat, void * void_
 err:
 
 out: 
-    x->destroy(x);
+    ghost_densemat_destroy(x);
     free(eigs_T);
     free(res_T);
     
@@ -223,12 +222,14 @@ static ghost_error ghost_grayleigh_ritz_tmpl (ghost_sparsemat * mat, void * void
     ghost_lidx ldx, ldb;
     T *eigs_T = NULL, *res_T = NULL;
     ghost_densemat_traits xtraits = GHOST_DENSEMAT_TRAITS_INITIALIZER;
-    ghost_spmv_traits spmvtraits = GHOST_SPMV_TRAITS_INITIALIZER;
+    ghost_spmv_opts spmvtraits = GHOST_SPMV_OPTS_INITIALIZER;
     spmvtraits.flags = spMVM_Options;
     spmvtraits.gamma = eigs_T;
     
     T_b * eigs = (T_b *)void_eigs;
     T_b * res  = (T_b *)void_res;
+    T *  xval = (T *)x->val;
+    T *  bval = (T *)b->val;
     
     GHOST_CALL_GOTO(ghost_malloc((void **)&eigs_T, n*sizeof(T)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&res_T, n*sizeof(T)),err,ret);
@@ -251,10 +252,6 @@ static ghost_error ghost_grayleigh_ritz_tmpl (ghost_sparsemat * mat, void * void
     ldb = b->stride;
 
 
-    T *  xval;
-    GHOST_CALL_GOTO(ghost_densemat_valptr(x,(void **)&xval),err,ret);
-    T *  bval;
-    GHOST_CALL_GOTO(ghost_densemat_valptr(b,(void **)&bval),err,ret);
     
     //spMVM_Options &=  ~GHOST_SPMV_VSHIFT;
     //spMVM_Options &=  ~GHOST_SPMV_SHIFT;
@@ -302,8 +299,8 @@ static ghost_error ghost_grayleigh_ritz_tmpl (ghost_sparsemat * mat, void * void
 err:
 
 out: 
-    x->destroy(x);
-    b->destroy(b);
+    ghost_densemat_destroy(x);
+    ghost_densemat_destroy(b);
     free(eigs_T);
     free(res_T);
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_SOLVER);

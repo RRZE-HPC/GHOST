@@ -11,7 +11,7 @@
 
 #GHOST_SUBST CHUNKHEIGHT ${CHUNKHEIGHT}
 
-ghost_error ghost_sellspmv__a_plain_z_z_rm_CHUNKHEIGHT_x(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat* invec, ghost_spmv_traits traits)
+ghost_error ghost_sellspmv__a_plain_z_z_rm_CHUNKHEIGHT_x(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat* invec, ghost_spmv_opts traits)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
 

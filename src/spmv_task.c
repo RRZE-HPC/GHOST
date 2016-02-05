@@ -54,7 +54,7 @@ typedef struct {
     ghost_sparsemat *mat;
     ghost_densemat *res;
     ghost_densemat *invec;
-    ghost_spmv_traits spmvtraits;
+    ghost_spmv_opts spmvtraits;
 } compArgs;
 
 static void *computeLocal(void *vargs)
@@ -77,7 +77,7 @@ out:
 }
 #endif
 
-ghost_error ghost_spmv_taskmode(ghost_densemat* res, ghost_sparsemat* mat, ghost_densemat* invec, ghost_spmv_traits traits)
+ghost_error ghost_spmv_taskmode(ghost_densemat* res, ghost_sparsemat* mat, ghost_densemat* invec, ghost_spmv_opts traits)
 {
 #ifndef GHOST_HAVE_MPI
     UNUSED(res);
@@ -91,8 +91,8 @@ ghost_error ghost_spmv_taskmode(ghost_densemat* res, ghost_sparsemat* mat, ghost
     GHOST_INSTR_START("prepare");
     ghost_error ret = GHOST_SUCCESS;
 
-    ghost_spmv_traits localtraits = traits;
-    ghost_spmv_traits remotetraits = traits;
+    ghost_spmv_opts localtraits = traits;
+    ghost_spmv_opts remotetraits = traits;
 
 /*    int remoteExists;
     ghost_nrank(&remoteExists,mat->context->mpicomm);

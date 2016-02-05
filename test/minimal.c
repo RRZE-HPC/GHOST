@@ -28,37 +28,37 @@ int main(int argc, char **argv)
     // create matrix source
     ghost_sparsemat_src_rowfunc matsrc = GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER;
     matsrc.func = diag;
-    matsrc.maxrowlen = N;
+    matsrc.maxrowlen = 1;
 
     // create context
     ghost_context_create(&ctx,N,N,GHOST_CONTEXT_DEFAULT,&matsrc,GHOST_SPARSEMAT_SRC_FUNC,MPI_COMM_WORLD,1.);
    
     // create sparse matrix A from row-wise function    
     ghost_sparsemat_create(&A, ctx, &mtraits, 1);
-    A->fromRowFunc(A,&matsrc);
+    ghost_sparsemat_init_rowfunc(A,&matsrc);
 
-    // create input vector x and output vector y
+    // create and initialize input vector x and output vector y
     ghost_densemat_create(&x, ctx, vtraits);
     ghost_densemat_create(&y, ctx, vtraits);
-    x->fromRand(x); // x = random
-    y->fromScalar(y,&zero); // y = 0
+    ghost_densemat_init_rand(x);      // x = random
+    ghost_densemat_init_val(y,&zero); // y = 0
 
     // compute y = A*x
-    ghost_spmv(y,A,x,GHOST_SPMV_TRAITS_INITIALIZER);
+    ghost_spmv(y,A,x,GHOST_SPMV_OPTS_INITIALIZER);
    
     // print y, A and x 
-    A->string(A,&Astr,1);
-    x->string(x,&xstr);
-    y->string(y,&ystr);
+    ghost_sparsemat_string(&Astr,A,1);
+    ghost_densemat_string(&xstr,x);
+    ghost_densemat_string(&ystr,y);
     printf("%s\n=\n%s\n*\n%s\n",ystr,Astr,xstr);
    
     // clean up 
     free(Astr); 
     free(xstr);
     free(ystr);
-    A->destroy(A);
-    x->destroy(x);
-    y->destroy(y);
+    ghost_sparsemat_destroy(A);
+    ghost_densemat_destroy(x);
+    ghost_densemat_destroy(y);
     ghost_context_destroy(ctx);
 
     ghost_finalize();

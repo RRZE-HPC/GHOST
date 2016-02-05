@@ -31,6 +31,17 @@
         return GHOST_ERR_INVALID_ARG;\
     }
 
+/**
+ * @brief Callback function to construct a ghost_densemat
+ *
+ * @param[in] row The global row index.
+ * @param[in] col The column.
+ * @param[out] val The value at the specified location.
+ * @param[inout] arg Additional arguments.
+ *
+ * @return  
+ */
+typedef int (*ghost_densemat_srcfunc)(ghost_gidx row, ghost_lidx col, void * val, void * arg);
 
 /**
  * @brief Flags to configure a densemat.
@@ -50,12 +61,12 @@ typedef enum {
     GHOST_DENSEMAT_VIEW      = 32,
     /**
      * @brief The densemat is scattered in leading dimension, i.e., the rows/columns are not 
-     * consecutive in memory. This is only possible for views. The densemat::ldmask is a valid bitmask.
+     * consecutive in memory. This is only possible for views. 
      */
     GHOST_DENSEMAT_SCATTERED_LD = 64,
     /**
      * @brief The densemat is scattered in trailing dimension, i.e., the rows/columns are not 
-     * consecutive in memory. This is only possible for views. The densemat::val has one entry for each row.
+     * consecutive in memory. This is only possible for views. 
      */
     GHOST_DENSEMAT_SCATTERED_TR = 128,
     /**
@@ -297,39 +308,17 @@ struct ghost_densemat
      * @param The densemat. 
      */
     ghost_error (*averageHalo) (ghost_densemat *vec);
-    /** 
-     * @ingroup locops
-     *
-     * @brief Performs <em>y := a*x + y</em> with scalar a
-     *
-     * @param y The in-/output densemat
-     * @param x The input densemat
-     * @param a Points to the scale factor.
+    /**
+     * Documented in ghost_axpy()
      */
     ghost_error (*axpy) (ghost_densemat *y, ghost_densemat *x, void *a);
     /**
-     * @ingroup locops
-     *
-     * @brief Performs <em>y := a*x + b*y</em> with scalar a and b
-     *
-     * @param y The in-/output densemat.
-     * @param x The input densemat
-     * @param a Points to the scale factor a.
-     * @param b Points to the scale factor b.
+     * Documented in ghost_axpby()
      */
     ghost_error (*axpby) (ghost_densemat *y, ghost_densemat *x, void *a, 
             void *b);
     /**
-     * @ingroup locops
-     *
-     * @brief Performs <em>y := a*x + b*y + c*z</em> with scalar a, b, and c
-     *
-     * @param y The in-/output densemat.
-     * @param x The input densemat x
-     * @param z The input densemat z
-     * @param a Points to the scale factor a.
-     * @param b Points to the scale factor b.
-     * @param c Points to the scale factor c.
+     * Documented in ghost_axpbypcz()
      */
     ghost_error (*axpbypcz) (ghost_densemat *y, ghost_densemat *x, void *a, 
             void *b,ghost_densemat *z, void *c);
@@ -357,9 +346,7 @@ struct ghost_densemat
      */
     ghost_error (*compress) (ghost_densemat *vec);
     /**
-     * @brief Conjugate the densemat. This function does nothing for real valued densemats.
-     *
-     * @param vec The densemat.
+     * Documented in ghost_conj()
      */
     ghost_error (*conj) (ghost_densemat *vec);
     /**
@@ -370,12 +357,6 @@ struct ghost_densemat
      * @param globvec The global densemat.
      */
     ghost_error (*collect) (ghost_densemat *vec, ghost_densemat *globvec);
-    /**
-     * @brief Destroys a densemat, i.e., frees all its data structures.
-     *
-     * @param vec The densemat
-     */
-    void          (*destroy) (ghost_densemat *vec);
  
     /**
      * @brief Distributes a global densemat into node-local vetors.
@@ -386,21 +367,8 @@ struct ghost_densemat
     ghost_error (*distribute) (ghost_densemat *vec, 
             ghost_densemat *localVec);
     /**
-     * @ingroup locops
-     * 
-     * @brief Compute the local dot product of two vectors/matrices.
-     *
-     * @param a The first densemat.
-     * @param res Where to store the result.
-     * @param b The second densemat.
-     *
-     * For complex data, the first vector gets conjugated (like the BLAS call dotc()).
-     *
-     * @return ::GHOST_SUCCESS on success or an error indicator.
-     *
-     * For the global operation see ghost_dot().
-     *
-     * @see ghost_dot()
+     * Fallback dot product of two vectors.
+     * This function should not be called directly, see ghost_dot() and ghost_localdot() instead.
      */
     ghost_error (*localdot_vanilla) (ghost_densemat *a, void *res, ghost_densemat *b);
     /**
@@ -430,76 +398,34 @@ struct ghost_densemat
     ghost_error (*entry) (ghost_densemat *vec, void *entry, ghost_lidx i, 
             ghost_lidx j);
     /**
-     * @ingroup denseinit
-     *
-     * @brief Initializes a densemat from a given function.
-     * Malloc's memory for the densemat's values if this hasn't happened before.
-     *
-     * @param vec The densemat.
-     * @param fp The function pointer. The function takes four arguments: The
-     *  row index, the column index, a pointer to where to store the value at 
-     *  this position and a pointer to an arbitrary argument.
-     *  @param arg The argument which should be forwarded to the callback.
-     *
-     * @return ::GHOST_SUCCESS on success or an error indicator.
+     * Documented in ghost_densemat_fill_func()
      */
-    ghost_error (*fromFunc) (ghost_densemat *vec, int (*fp)(ghost_gidx, 
-                ghost_lidx, void *, void *), void *arg);
+    ghost_error (*fromFunc) (ghost_densemat *vec, ghost_densemat_srcfunc, void *arg);
     /**
-     * @ingroup denseinit
-     *
-     * @brief Initializes a densemat from another densemat at a given column and 
-     * row offset.
-     *
-     * Malloc's memory for the densemat's values if this hasn't happened before.
-     *
-     * @param vec The densemat.
-     * @param src The source.
-     * @param roffs The first row to clone.
-     * @param coffs The first column to clone.
-     *
-     * @return ::GHOST_SUCCESS on success or an error indicator.
+     * Documented in ghost_densemat_fill_densemat()
      */
     ghost_error (*fromVec) (ghost_densemat *vec, ghost_densemat *src, 
             ghost_lidx roffs, ghost_lidx coffs);
     /**
-     * @ingroup denseinit
-     *
-     * @brief Initializes a densemat from a file.
-     * Malloc's memory for the densemat's values if this hasn't happened before.
-     *
-     * @param vec The densemat.
-     * @param filename Path to the file.
-     * @param singleFile Read from a single (global) file. Ignored in the 
-     * non-MPI case.
-     *
-     * @return ::GHOST_SUCCESS on success or an error indicator.
+     * Documented in ghost_densemat_fill_file)
      */
-    ghost_error (*fromFile) (ghost_densemat *vec, char *filename, 
-            bool singleFile);
+    ghost_error (*fromFile) (ghost_densemat *vec, char *filename, bool singleFile);
     /**
-     * @ingroup denseinit
-     *
-     * @brief Initiliazes a densemat from random values.
-     *
-     * @param vec The densemat.
-     *
-     * @return ::GHOST_SUCCESS on success or an error indicator.
+     * Documented in ghost_densemat_fill_rand()
      */
     ghost_error (*fromRand) (ghost_densemat *vec);
     /**
      * @brief Sets the densemat to have the same values on all processes.
      *
      * @param vec The densemat.
+     * @param comm The communicator in which to synchronize.
      * @param root The process from which to take the values.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error (*syncValues) (ghost_densemat *vec, ghost_mpi_comm, int root);
+    ghost_error (*syncValues) (ghost_densemat *vec, ghost_mpi_comm comm, int root);
     /**
-     * @ingroup denseinit
-     *
-     * @brief Reduces the densemats in a given communicator.
+     * @brief Reduces the densemats using addition in a given communicator.
      *
      * @param vec The densemat.
      * @param comm The communicator.
@@ -509,14 +435,7 @@ struct ghost_densemat
      */
     ghost_error (*reduce) (ghost_densemat *vec, ghost_mpi_comm comm, int dest);
     /**
-     * @ingroup denseinit
-     *
-     * @brief Initializes a densemat from a given scalar value.
-     *
-     * @param vec The densemat.
-     * @param val A pointer to the value.
-     *
-     * @return ::GHOST_SUCCESS on success or an error indicator.
+     * Documented in ghost_densemat_fill_val()
      */
     ghost_error (*fromScalar) (ghost_densemat *vec, void *val);
     /**
@@ -549,11 +468,7 @@ struct ghost_densemat
      */
     ghost_error (*halocommFinalize) (ghost_densemat *vec, ghost_densemat_halo_comm *comm);
     /**
-     * @brief Normalize a densemat, i.e., scale it such that its 2-norm is one.
-     *
-     * @param vec The densemat.
-     *
-     * @return ::GHOST_SUCCESS on success or an error indicator.
+     * Documented in ghost_normalize()
      */
     ghost_error (*normalize) (ghost_densemat *vec);
     /**
@@ -588,14 +503,7 @@ struct ghost_densemat
      */
     ghost_error (*string) (ghost_densemat *vec, char **str);
     /**
-     * @ingroup locops
-     *
-     * @brief Scale a densemat with a given scalar.
-     *
-     * @param vec The densemat.
-     * @param scale The scale factor.
-     *
-     * @return ::GHOST_SUCCESS on success or an error indicator.
+     * Documented in ghost_scale()
      */
     ghost_error (*scale) (ghost_densemat *vec, void *scale);
     /**
@@ -620,125 +528,47 @@ struct ghost_densemat
      */
     ghost_error (*upload) (ghost_densemat *vec);
     /**
-     * @ingroup gputransfer
-     * 
-     * @brief Uploads only a densemat's local elements (i.e., without halo
-     * elements) to a compute device. Does nothing if the densemat is not
-     * present on the device.
-     *
-     * @param vec The densemat.
+     * Documented in ghost_densemat_view_plain()
      */
     ghost_error (*viewPlain) (ghost_densemat *vec, void *data, 
             ghost_lidx lda);
     /**
-     * @brief Create a densemat as a scattered view of another densemat.
-     *
-     * @param src The source densemat.
-     * @param nr The nunber of rows to view.
-     * @param roffs The row offsets.
-     * @param dst Where to store the new vector.
-     * @param nc The nunber of columns to view.
-     * @param coffs The column offsets.
-     *
-     * @return ::GHOST_SUCCESS on success or an error indicator.
+     * Documented in ghost_densemat_create_and_view_densemat_scattered()
      */
     ghost_error (*viewScatteredVec) (ghost_densemat *src, 
             ghost_densemat **dst, ghost_lidx nr, ghost_lidx *roffs,  
             ghost_lidx nc, ghost_lidx *coffs);
     /**
-     * @brief Create a densemat as a view of a scattered block of columns of 
-     * another densemat.
-     *
-     * @param src The source densemat. 
-     * @param dst Where to store the new densemat view.
-     * @param nc The number of columns.
-     * @param coffs The column index of each viewed column in the source 
-     * densemat.
-     *
-     * @return ::GHOST_SUCCESS on success or an error indicator.
+     * Documented in ghost_densemat_create_and_view_densemat_cols_scattered()
      */
     ghost_error (*viewScatteredCols) (ghost_densemat *src, 
             ghost_densemat **dst, ghost_lidx nc, ghost_lidx *coffs);
     /**
-     * @brief Create a densemat as a view of a dense block of columns of another 
-     * densemat.
-     *
-     * @param src The source densemat. 
-     * @param dst Where to store the new densemat view.
-     * @param nc The number of columns.
-     * @param coffs The column offset in the source densemat.
-     *
-     * @return ::GHOST_SUCCESS on success or an error indicator.
+     * Documented in ghost_densemat_create_and_view_densemat_cols()
      */
     ghost_error (*viewCols) (ghost_densemat *src, ghost_densemat **dst, 
             ghost_lidx nc, ghost_lidx coffs);
     /**
-     * @brief Create a densemat as a view of another densemat.
-     *
-     * @param src The source densemat.
-     * @param nr The nunber of rows to view.
-     * @param roffs The row offset.
-     * @param dst Where to store the new vector.
-     * @param nc The nunber of columns to view.
-     * @param coffs The column offset.
-     *
-     * @return ::GHOST_SUCCESS on success or an error indicator.
+     * Documented in ghost_densemat_create_and_view_densemat()
      */
     ghost_error (*viewVec) (ghost_densemat *src, ghost_densemat **dst, 
             ghost_lidx nr, ghost_lidx roffs, ghost_lidx nc, 
             ghost_lidx coffs);
     /**
-     * @ingroup locops
-     * 
-     * @brief Scale each column of a densemat with a separate scale factor.
-     *
-     * @param vec The densemat.
-     * @param scale The scale factors. Length must be the same as the number of 
-     * densemat columns.
+     * Documented in ghost_vscale()
      */
     ghost_error (*vscale) (ghost_densemat *, void *);
-    /** 
-     * @ingroup locops
-     *
-     * @brief Performs <em>y := a_i*x + y</em> with separate scalars a_i for 
-     * each column
-     *
-     * @param y The in-/output densemat
-     * @param x The input densemat
-     * @param a The scale factors. Length must be the same as the number of 
-     * densemat columns.
+    /**
+     * Documented in ghost_vaxpy()
      */
     ghost_error (*vaxpy) (ghost_densemat *, ghost_densemat *, void *);
     /**
-     * @ingroup locops
-     *
-     * @brief Performs <em>y := a_i*x + b_i*y</em> with separate scalars a_i 
-     * and b_i
-     *
-     * @param y The in-/output densemat.
-     * @param x The input densemat
-     * @param a The scale factors a. Length must be the same as the number of 
-     * densemat columns.
-     * @param b The scale factors b. Length must be the same as the number of 
-     * densemat columns.
+     * Documented in ghost_vaxpby()
      */
     ghost_error (*vaxpby) (ghost_densemat *, ghost_densemat *, void *, 
             void *);
     /**
-     * @ingroup locops
-     *
-     * @brief Performs <em>y := a_i*x + b_i*y + c_i*z</em> with separate scalars a_i, 
-     * b_i, and c_i
-     *
-     * @param y The in-/output densemat.
-     * @param x The input densemat x
-     * @param z The input densemat z
-     * @param a The scale factors a. Length must be the same as the number of 
-     * densemat columns.
-     * @param b The scale factors b. Length must be the same as the number of 
-     * densemat columns.
-     * @param c The scale factors c. Length must be the same as the number of 
-     * densemat columns.
+     * Documented in ghost_vaxpbypcz()
      */
     ghost_error (*vaxpbypcz) (ghost_densemat *, ghost_densemat *, void *, 
             void *, ghost_densemat *, void *);
@@ -762,6 +592,7 @@ extern "C" {
 
     /**
      * @ingroup types
+     * @ingroup densecreate
      *
      * @brief Create a dense matrix/vector. 
      *
@@ -770,20 +601,13 @@ extern "C" {
      * @param traits The matrix traits.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
+     *
+     * @note No memory will be allocated in this function. Before any operation with the densemat is done,
+     * an initialization function (see @ref denseinit) has to be called with the densemat.
      */
     ghost_error ghost_densemat_create(ghost_densemat **vec, 
             ghost_context *ctx, ghost_densemat_traits traits);
     
-    /**
-     * @brief Get the location of the first viewed data element.
-     *
-     * @param vec The densemat.
-     * @param ptr Where to store the pointer.
-     *
-     * @return ::GHOST_SUCCESS on success or an error indicator.
-     */
-    ghost_error ghost_densemat_valptr(ghost_densemat *vec, void **ptr);
-    ghost_error ghost_densemat_cu_valptr(ghost_densemat *vec, void **ptr);
     /**
      * @brief Create an array of chars ('0' or '1') of the densemat mask.
      *
@@ -866,6 +690,11 @@ extern "C" {
      */
     ghost_error ghost_densemat_halocommFinalize_common(ghost_densemat_halo_comm *comm);
 
+    /**
+     * @ingroup teardown
+     * @brief Destroys a densemat, i.e., frees all its data structures.
+     * @param vec The densemat
+     */
     void ghost_densemat_destroy(ghost_densemat* vec);
 
     /**

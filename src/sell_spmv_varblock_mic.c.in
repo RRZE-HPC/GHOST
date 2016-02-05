@@ -11,7 +11,7 @@
 
 #GHOST_SUBST CHUNKHEIGHT ${CHUNKHEIGHT}
 
-ghost_error ghost_sellspmv__a_mic_d_d_cm_CHUNKHEIGHT_x(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat* invec, ghost_spmv_traits traits)
+ghost_error ghost_sellspmv__a_mic_d_d_cm_CHUNKHEIGHT_x(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat* invec, ghost_spmv_opts traits)
 {
     
 #if defined(GHOST_BUILD_MIC) && CHUNKHEIGHT>=16
@@ -145,7 +145,7 @@ ghost_error ghost_sellspmv__a_mic_d_d_cm_CHUNKHEIGHT_x(ghost_densemat *res, ghos
     return GHOST_SUCCESS;
 }
 
-ghost_error ghost_sellspmv__a_mic_d_d_rm_CHUNKHEIGHT_x(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat* invec, ghost_spmv_traits traits)
+ghost_error ghost_sellspmv__a_mic_d_d_rm_CHUNKHEIGHT_x(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat* invec, ghost_spmv_opts traits)
 {
 #if defined(GHOST_BUILD_MIC) && CHUNKHEIGHT>=8
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);

@@ -219,38 +219,6 @@ static ghost_error getNrowsFromContext(ghost_densemat *vec)
     return GHOST_SUCCESS; 
 }
 
-ghost_error ghost_densemat_valptr(ghost_densemat *vec, void **ptr)
-{
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
-    WARNING_LOG("Deprecated! Use vec->val directly instead!");
-    
-    if (!ptr) {
-        ERROR_LOG("NULL pointer");
-        return GHOST_ERR_INVALID_ARG;
-    }
-
-    *ptr = vec->val;
-
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
-    return GHOST_SUCCESS;
-}
-
-ghost_error ghost_densemat_cu_valptr(ghost_densemat *vec, void **ptr)
-{
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
-    WARNING_LOG("Deprecated! Use vec->cu_val directly instead!");
-
-    if (!ptr) {
-        ERROR_LOG("NULL pointer");
-        return GHOST_ERR_INVALID_ARG;
-    }
-
-    *ptr = vec->cu_val;
-
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
-    return GHOST_SUCCESS;
-}
-
 ghost_error ghost_densemat_mask2charfield(ghost_bitmap mask, ghost_lidx len, char *charfield)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);

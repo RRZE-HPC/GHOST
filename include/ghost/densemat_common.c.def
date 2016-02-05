@@ -410,7 +410,7 @@ static ghost_error FUNCNAME(entry(ghost_densemat * vec, void *val, ghost_lidx r,
     GHOST_CALL_RETURN(vec->viewVec(vec,&singleent,1,r,1,c));
     memcpy(val,singleent->val,singleent->elSize);
 
-    singleent->destroy(singleent);
+    ghost_densemat_destroy(singleent);
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
     return GHOST_SUCCESS;
@@ -473,7 +473,7 @@ err:
 out:
 
     if (vec != vec_in) {
-        vec->destroy(vec);
+        ghost_densemat_destroy(vec);
     }
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_COMMUNICATION);
     return ret;
@@ -641,7 +641,7 @@ static ghost_error FUNCNAME(toFile(ghost_densemat *vec, char *path, bool singleF
             ghost_densemat_create(&writevec,vec->context,writevectraits);
             writevec->fromVec(writevec,vec,0,0);
             writevec->toFile(writevec,path,singleFile);
-            writevec->destroy(writevec);
+            ghost_densemat_destroy(writevec);
         } else {
             INFO_LOG("Fast write");
             MPI_CALL_RETURN(MPI_File_write(fileh,vec->val,1,vec->fullmpidt,&status));
@@ -747,19 +747,19 @@ static ghost_error FUNCNAME(fromFile(ghost_densemat *vec, char *path, bool singl
     
     if (ret != 6) {
         ERROR_LOG("fread failed: read %zu instead of 6 header entries",ret);
-        vec->destroy(vec);
+        ghost_densemat_destroy(vec);
         return GHOST_ERR_IO;
     }
 #endif
     if (endianess != GHOST_BINDENSEMAT_LITTLE_ENDIAN) {
         ERROR_LOG("Cannot read big endian vectors");
-        vec->destroy(vec);
+        ghost_densemat_destroy(vec);
         return GHOST_ERR_IO;
     }
 
     if (version != 1) {
         ERROR_LOG("Cannot read vector files with format version != 1 (is %d)",version);
-        vec->destroy(vec);
+        ghost_densemat_destroy(vec);
         return GHOST_ERR_IO;
     }
 
@@ -796,7 +796,7 @@ static ghost_error FUNCNAME(fromFile(ghost_densemat *vec, char *path, bool singl
         ghost_densemat_create(&readvec,vec->context,readvectraits);
         readvec->fromFile(readvec,path,singleFile);
         vec->fromVec(vec,readvec,0,0);
-        readvec->destroy(readvec);
+        ghost_densemat_destroy(readvec);
     }
 
 #else

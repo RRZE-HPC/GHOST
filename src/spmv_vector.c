@@ -17,7 +17,7 @@
 #include <omp.h>
 #endif
 
-ghost_error ghost_spmv_vectormode(ghost_densemat* res, ghost_sparsemat* mat, ghost_densemat* invec, ghost_spmv_traits traits)
+ghost_error ghost_spmv_vectormode(ghost_densemat* res, ghost_sparsemat* mat, ghost_densemat* invec, ghost_spmv_opts traits)
 {
 #ifndef GHOST_HAVE_MPI
     UNUSED(mat->context);

@@ -36,7 +36,7 @@ typedef cusparseStatus_t (*cusparse_sell1_spmmv_rm_kernel_t) (cusparseHandle_t h
         void           *y, int ldy);
 
     template<typename dt1, typename dt2>
-static ghost_error ghost_cu_sell1spmv_tmpl(ghost_sparsemat *mat, ghost_densemat * lhs, ghost_densemat * rhs, ghost_spmv_traits traits, cusparse_sell1_spmv_kernel_t sell1kernel)
+static ghost_error ghost_cu_sell1spmv_tmpl(ghost_sparsemat *mat, ghost_densemat * lhs, ghost_densemat * rhs, ghost_spmv_opts traits, cusparse_sell1_spmv_kernel_t sell1kernel)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     cusparseHandle_t cusparse_handle;
@@ -66,7 +66,7 @@ static ghost_error ghost_cu_sell1spmv_tmpl(ghost_sparsemat *mat, ghost_densemat 
 }
     
     template<typename dt1, typename dt2>
-static ghost_error ghost_cu_sell1spmmv_cm_tmpl(ghost_sparsemat *mat, ghost_densemat * lhs, ghost_densemat * rhs, ghost_spmv_traits traits, cusparse_sell1_spmmv_cm_kernel_t sell1kernel)
+static ghost_error ghost_cu_sell1spmmv_cm_tmpl(ghost_sparsemat *mat, ghost_densemat * lhs, ghost_densemat * rhs, ghost_spmv_opts traits, cusparse_sell1_spmmv_cm_kernel_t sell1kernel)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     cusparseHandle_t cusparse_handle;
@@ -95,7 +95,7 @@ static ghost_error ghost_cu_sell1spmmv_cm_tmpl(ghost_sparsemat *mat, ghost_dense
 }
 
     template<typename dt1, typename dt2>
-static ghost_error ghost_cu_sell1spmmv_rm_tmpl(ghost_sparsemat *mat, ghost_densemat * lhs, ghost_densemat * rhs, ghost_spmv_traits traits, cusparse_sell1_spmmv_rm_kernel_t sell1kernel)
+static ghost_error ghost_cu_sell1spmmv_rm_tmpl(ghost_sparsemat *mat, ghost_densemat * lhs, ghost_densemat * rhs, ghost_spmv_opts traits, cusparse_sell1_spmmv_rm_kernel_t sell1kernel)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     cusparseHandle_t cusparse_handle;
@@ -126,7 +126,7 @@ static ghost_error ghost_cu_sell1spmmv_rm_tmpl(ghost_sparsemat *mat, ghost_dense
 }
     
     template<typename dt1, typename dt2>
-static ghost_error ghost_cu_sell1spmv_augfunc_tmpl(ghost_densemat * lhs, ghost_densemat * rhs, ghost_spmv_traits traits)
+static ghost_error ghost_cu_sell1spmv_augfunc_tmpl(ghost_densemat * lhs, ghost_densemat * rhs, ghost_spmv_opts traits)
 {
     dt2 *localdot = NULL;
     dt1 *shift = NULL, scale, __attribute__((unused)) beta, sdelta, seta;
@@ -173,7 +173,7 @@ static ghost_error ghost_cu_sell1spmv_augfunc_tmpl(ghost_densemat * lhs, ghost_d
     return GHOST_SUCCESS; 
 }
 
-ghost_error ghost_cu_sell1_spmv_selector(ghost_densemat * lhs_in, ghost_sparsemat *mat, ghost_densemat * rhs_in, ghost_spmv_traits traits)
+ghost_error ghost_cu_sell1_spmv_selector(ghost_densemat * lhs_in, ghost_sparsemat *mat, ghost_densemat * rhs_in, ghost_spmv_opts traits)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     
@@ -271,10 +271,10 @@ ghost_error ghost_cu_sell1_spmv_selector(ghost_densemat * lhs_in, ghost_sparsema
     
     if (lhs != lhs_in) {
         lhs_in->fromVec(lhs_in,lhs,0,0);
-        lhs->destroy(lhs);
+        ghost_densemat_destroy(lhs);
     }
     if (rhs != rhs_in) {
-        rhs->destroy(rhs);
+        ghost_densemat_destroy(rhs);
     }
 
     if (mat->traits.datatype & GHOST_DT_DOUBLE) {

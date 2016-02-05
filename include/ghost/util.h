@@ -105,6 +105,15 @@ extern "C" {
      * If CUDA is not enabled, a normal malloc is done.
      */
     ghost_error ghost_malloc_pinned(void **mem, const size_t size);
+    
+    /**
+     * @brief Get the largest SELL chunk height of auto-generated kernels.
+     *
+     * @return The largest configured SELL chunk height or 0 if none has been 
+     * configured.
+     */
+    int ghost_sell_max_cfg_chunkheight();
+
 
     /**
      * @brief Computes a hash from three integral input values.

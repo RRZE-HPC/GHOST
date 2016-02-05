@@ -426,11 +426,11 @@ ghost_densemat *w_in, const char *transw_in, void *alpha, void *beta, int reduce
     }
     if (w != w_in) {
         INFO_LOG("Destroy clone of w");
-        w->destroy(w);
+        ghost_densemat_destroy(w);
     }
     if (v != v_in) {
         INFO_LOG("Destroy clone of v");
-        v->destroy(v);
+        ghost_densemat_destroy(v);
     }
     
     goto out;
@@ -549,7 +549,7 @@ ghost_densemat *w_in, const char *transw, void *alpha, void *beta, int reduce,gh
     if (x != x_in) {
         INFO_LOG("Transform x back");
         GHOST_CALL_GOTO(x_in->fromVec(x_in,x,0,0),err,ret);
-        x->destroy(x);
+        ghost_densemat_destroy(x);
     }
     
     goto out;

@@ -511,7 +511,7 @@ static ghost_error FUNCNAME(permute_tmpl(ghost_densemat *vec, ghost_permutation_
             DENSEMAT_ITER(vec,*valptr = *(v_t *)DENSEMAT_VALPTR(vecclone,vec->context->perm_local->perm[row],col));
         }
 
-        vecclone->destroy(vecclone);
+        ghost_densemat_destroy(vecclone);
     }
 
     

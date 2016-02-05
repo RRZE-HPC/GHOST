@@ -41,8 +41,6 @@ typedef struct {
 }
 ghost_gemm_perf_args;
 
-
-
 #define GHOST_GEMM_ALL_REDUCE GHOST_ALLREDUCE
 #define GHOST_GEMM_NO_REDUCE -2
 
@@ -119,32 +117,6 @@ extern "C" {
 #endif
 
     /**
-     *
-     * @ingroup globops
-     * @brief Normalize a dense matrix (interpreted as a multi-vector). 
-     *
-     * @param mat The dense matrix.
-     *
-     * @return ::GHOST_SUCCESS on success or an error indicator.
-     *
-     * This function normalizes every column of the matrix to have Euclidian norm 1.
-     */
-    ghost_error ghost_normalize(ghost_densemat *mat);
-    /**
-     * @ingroup globops
-     *
-     * @brief Compute the global dot product of two dense vectors/matrices.
-     *
-     * @param res Where to store the result.
-     * @param a The first vector/matrix.
-     * @param b The second vector/matrix.
-     *
-     * @return ::GHOST_SUCCESS on success or an error indicator.
-     *
-     * This function first computes the local dot product ghost_densemat::dot and then performs an allreduce on the result.
-     */
-//    ghost_error ghost_dot(void *res, ghost_densemat *a, ghost_densemat *b);
-    /**
      * @ingroup globops
      *
      * @brief Multiply a sparse matrix with a dense vector.
@@ -152,9 +124,7 @@ extern "C" {
      * @param res The result vector.
      * @param mat The sparse matrix.
      * @param invec The right hand side vector.
-     * @param traits Configuration traits for the spMV operation.
-     * @param ... Further arguments \f$\alpha\f$ , \f$\beta\f$, \f$\gamma\f$, \a dot, \a z, \f$\delta\f$, and \f$\eta\f$ (in that exact order) if configured in the flags (cf. detailed description).
-     *
+     * @param opts Configuration options for the spMV operation.
      * @return ::GHOST_SUCCESS on success or an error indicator.
      *
      * In the most general case, this function computes the operation \f$y = \alpha (A - \gamma I) x + \beta y\f$.
@@ -176,9 +146,9 @@ extern "C" {
      * This operation maybe changed with an additional AXPBY operation on the vector z: \f$z = \delta z + \eta y\f$
      * If this should be done, ::GHOST_SPMV_CHAIN_AXPBY has to be set in the flags.
      */
-    ghost_error ghost_spmv(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat *invec, ghost_spmv_traits traits);
-ghost_error ghost_gemm_valid(ghost_densemat *x, ghost_densemat *v, const char * transv, 
-ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce,ghost_gemm_flags flags, int printerror); 
+    ghost_error ghost_spmv(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat *invec, ghost_spmv_opts opts);
+    ghost_error ghost_gemm_valid(ghost_densemat *x, ghost_densemat *v, const char * transv, 
+    ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce,ghost_gemm_flags flags, int printerror); 
     /**
      * @ingroup globops
      *

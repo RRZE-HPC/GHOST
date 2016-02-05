@@ -52,6 +52,10 @@
 #define GHOST_GEN_SELL_C "${GHOST_GEN_SELL_C}"
 #define GHOST_GEN_DENSEMAT_DIM "${GHOST_GEN_DENSEMAT_DIM}"
 
+/* sparsemat statistics */
+#cmakedefine GHOST_SPARSEMAT_STATS
+#cmakedefine GHOST_SPARSEMAT_GLOBALSTATS
+
 #endif
 
 

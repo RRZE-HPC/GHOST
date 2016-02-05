@@ -839,7 +839,7 @@ __global__ void SELL_kernel_CU_tmpl(
 }
 
 template<typename m_dt, typename v_dt_host, typename v_dt_device, typename v_dt_base>
-static ghost_error ghost_cu_sell_spmv_tmpl(ghost_sparsemat *mat, ghost_densemat *lhs, ghost_densemat *rhs, ghost_spmv_traits traits)
+static ghost_error ghost_cu_sell_spmv_tmpl(ghost_sparsemat *mat, ghost_densemat *lhs, ghost_densemat *rhs, ghost_spmv_opts traits)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     cudaGetLastError(); /* Remove previous error */
@@ -859,8 +859,8 @@ static ghost_error ghost_cu_sell_spmv_tmpl(ghost_sparsemat *mat, ghost_densemat 
     } else {
         rhscompact = rhs;
     }
-    GHOST_CALL_RETURN(ghost_densemat_cu_valptr(lhscompact,&lhsval));
-    GHOST_CALL_RETURN(ghost_densemat_cu_valptr(rhscompact,&rhsval));
+    lhsval = lhscompact->cu_val;
+    rhsval = rhscompact->cu_val;
     int cu_device;
     GHOST_CALL_RETURN(ghost_cu_device(&cu_device));
     v_dt_device *cu_localdot = NULL;
@@ -878,7 +878,7 @@ static ghost_error ghost_cu_sell_spmv_tmpl(ghost_sparsemat *mat, ghost_densemat 
     }
     if (z) {
         zstride = z->stride;
-        GHOST_CALL_RETURN(ghost_densemat_cu_valptr(zcompact,&zval));
+        zval = zcompact->cu_val;
     } else {
         zstride = 0;
     }
@@ -1026,12 +1026,12 @@ static ghost_error ghost_cu_sell_spmv_tmpl(ghost_sparsemat *mat, ghost_densemat 
     if (lhscompact != lhs) {
         DEBUG_LOG(1,"Transform lhs back");
         GHOST_CALL_RETURN(lhs->fromVec(lhs,lhscompact,0,0));
-        lhscompact->destroy(lhscompact);
+        ghost_densemat_destroy(lhscompact);
     }
     if (rhscompact != rhs) {
         DEBUG_LOG(1,"Transform rhs back");
         GHOST_CALL_RETURN(rhs->fromVec(rhs,rhscompact,0,0));
-        rhscompact->destroy(rhscompact);
+        ghost_densemat_destroy(rhscompact);
     }
     cudaDeviceSynchronize();
     GHOST_INSTR_STOP("spmv_cuda")
@@ -1076,7 +1076,7 @@ static ghost_error ghost_cu_sell_spmv_tmpl(ghost_sparsemat *mat, ghost_densemat 
     return ret;
 }
 
-extern "C" ghost_error ghost_cu_sell_spmv_selector(ghost_densemat *lhs, ghost_sparsemat *mat, ghost_densemat *rhs, ghost_spmv_traits traits)
+extern "C" ghost_error ghost_cu_sell_spmv_selector(ghost_densemat *lhs, ghost_sparsemat *mat, ghost_densemat *rhs, ghost_spmv_opts traits)
 {
     ghost_error ret;
 

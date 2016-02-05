@@ -85,7 +85,6 @@ ghost_error ghost_densemat_rm_setfuncs(ghost_densemat *vec)
     vec->distribute = &ghost_distributeVector;
     vec->collect = &ghost_collectVectors;
     vec->normalize = &ghost_densemat_rm_normalize_selector;
-    vec->destroy = &ghost_densemat_destroy;
     vec->permute = &ghost_densemat_rm_permute_selector;
     vec->clone = &ghost_cloneVector;
     vec->entry = &ghost_densemat_rm_entry;
@@ -144,7 +143,7 @@ static ghost_error vec_rm_fromFunc(ghost_densemat *vec, int (*fp)(ghost_gidx, gh
         GHOST_CALL_RETURN(ghost_densemat_create(&hostVec,vec->context,htraits));
         GHOST_CALL_RETURN(hostVec->fromFunc(hostVec,fp,arg));
         GHOST_CALL_RETURN(vec->fromVec(vec,hostVec,0,0));
-        hostVec->destroy(hostVec);
+        ghost_densemat_destroy(hostVec);
     }
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);

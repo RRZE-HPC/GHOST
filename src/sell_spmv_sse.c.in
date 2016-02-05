@@ -12,7 +12,7 @@
 #GHOST_SUBST NVECS ${BLOCKDIM1}
 #GHOST_SUBST CHUNKHEIGHT ${CHUNKHEIGHT}
 
-ghost_error ghost_sellspmv__a_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat* invec, ghost_spmv_traits traits)
+ghost_error ghost_sellspmv__a_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat* invec, ghost_spmv_opts traits)
 {
 #if defined(GHOST_BUILD_SSE) && NVECS>=2
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
@@ -140,7 +140,7 @@ ghost_error ghost_sellspmv__a_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
 #endif
 }
 
-ghost_error ghost_sellspmv__u_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat* invec, ghost_spmv_traits traits)
+ghost_error ghost_sellspmv__u_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat* invec, ghost_spmv_opts traits)
 {
 #if defined(GHOST_BUILD_SSE) && NVECS>=2
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);

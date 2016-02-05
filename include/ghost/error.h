@@ -17,20 +17,65 @@ typedef enum {
      * @brief No error occured.
      */
     GHOST_SUCCESS,
+    /**
+     * @brief One or more of the arguments are invalid.
+     */
     GHOST_ERR_INVALID_ARG,
+    /**
+     * @brief An error in an MPI call occured.
+     */
     GHOST_ERR_MPI,
+    /**
+     * @brief An error in a CUDA call occured.
+     */
     GHOST_ERR_CUDA,
+    /**
+     * @brief An error in a CUBLAS call occured.
+     */
     GHOST_ERR_CUBLAS,
+    /**
+     * @brief An error in a CUSPARSE call occured.
+     */
     GHOST_ERR_CUSPARSE,
+    /**
+     * @brief An error in a CURAND call occured.
+     */
     GHOST_ERR_CURAND,
+    /**
+     * @brief An error in a Hwloc call occured.
+     */
     GHOST_ERR_HWLOC,
+    /**
+     * @brief An error in a SCOTCH call occured.
+     */
     GHOST_ERR_SCOTCH,
+    /**
+     * @brief An unknown error occured.
+     */
     GHOST_ERR_UNKNOWN,
+    /**
+     * @brief The function is not (yet) implemented.
+     */
     GHOST_ERR_NOT_IMPLEMENTED,
+    /**
+     * @brief An error during I/O occured.
+     */
     GHOST_ERR_IO,
+    /**
+     * @brief An error with datatypes occured.
+     */
     GHOST_ERR_DATATYPE,
+    /**
+     * @brief An error in a ColPack call occured.
+     */
     GHOST_ERR_COLPACK,
+    /**
+     * @brief An error in a LAPACK call occured.
+     */
     GHOST_ERR_LAPACK,
+    /**
+     * @brief An error in a BLAS call occured.
+     */
     GHOST_ERR_BLAS
 } ghost_error;
 

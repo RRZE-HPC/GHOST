@@ -221,6 +221,25 @@ ghost_error ghost_malloc_align(void **mem, const size_t size, const size_t align
     return GHOST_SUCCESS;
 }
 
+int ghost_sell_max_cfg_chunkheight()
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+    
+    int max = 0;
+    char *cfgch = strdup(GHOST_GEN_SELL_C);
+    char *ch = strtok(cfgch,",");
+
+    while (ch) {
+        max = MAX(max,atoi(ch));
+        ch = strtok(NULL,",");
+    }
+
+    free(cfgch);
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
+    return max;
+}
+
 /*
 // make this inline for not wasting too much time hashing for kernel-map indexes
 int ghost_hash(int a, int b, int c)

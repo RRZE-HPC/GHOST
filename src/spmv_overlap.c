@@ -17,7 +17,7 @@
 #include <omp.h>
 #endif
 
-ghost_error ghost_spmv_goodfaith(ghost_densemat* res, ghost_sparsemat* mat, ghost_densemat* invec, ghost_spmv_traits traits)
+ghost_error ghost_spmv_goodfaith(ghost_densemat* res, ghost_sparsemat* mat, ghost_densemat* invec, ghost_spmv_opts traits)
 {
 #ifndef GHOST_HAVE_MPI
     UNUSED(res);
@@ -30,7 +30,7 @@ ghost_error ghost_spmv_goodfaith(ghost_densemat* res, ghost_sparsemat* mat, ghos
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error ret = GHOST_SUCCESS;
 
-    ghost_spmv_traits localtraits = traits, remotetraits = traits;
+    ghost_spmv_opts localtraits = traits, remotetraits = traits;
     localtraits.flags = (ghost_spmv_flags)(localtraits.flags|(ghost_spmv_flags)GHOST_SPMV_LOCAL);
     remotetraits.flags = (ghost_spmv_flags)(remotetraits.flags|(ghost_spmv_flags)GHOST_SPMV_REMOTE);
     

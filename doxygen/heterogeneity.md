@@ -3,7 +3,7 @@ Heterogeneous execution
 
 GHOST is capable of running on different compute architectures.
 Distinction between architectures is done on a per-process base.
-Each GHOST process has set a type of #ghost_type_t which can be either ::GHOST_TYPE_WORK for processes which work themselves or ::GHOST_TYPE_CUDA for processes which drive a CUDA GPU as an accelerator.
+Each GHOST process has set a type of #ghost_type which can be either ::GHOST_TYPE_WORK for processes which work themselves or ::GHOST_TYPE_CUDA for processes which drive a CUDA GPU as an accelerator.
 The type can either be set by means of the environment variable GHOST_TYPE (like `GHOST_TYPE=CUDA ./a.out`) or via the function ghost_type_set().
 
 Type identification
@@ -26,9 +26,9 @@ Data locality
 
 Sparse or dense matrices may reside in the host and/or device memory.
 Obviously, if a process is of ::GHOST_TYPE_WORK, the data resides on host memory only.
-If a process is of ::GHOST_TYPE_CUDA, a #ghost_densemat_t resides in both host and device memory by default.
-This allows easy exchange of densemat data between host and device.
+On the other side, if a process is of ::GHOST_TYPE_CUDA, a #ghost_densemat will be allocated on the device if not specified otherwise.
+For easy exchange of densemat data between host and device, densemats will automatically get duplicated to the host/device memory if ghost_densemat_upload() or ghost_densemat_download() get called and ::GHOST_DENSEMAT_NOT_RELOCATE is not set. 
 Note that all numerical kernels on the densemat will be executed on the device in this case.
+
 This behaviour can be changed by setting the according flags ::GHOST_DENSEMAT_HOST and ::GHOST_DENSEMAT_DEVICE at creation time. 
-In contrast ti this, sparse matrices are only stored on the device for ::GHOST_TYPE_CUDA processes.
 

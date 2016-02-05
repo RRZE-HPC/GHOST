@@ -7,7 +7,7 @@
 
 #define GHOST_MAX_SPMMV_WIDTH INT_MAX
 
-ghost_error ghost_spmv(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat *invec, ghost_spmv_traits traits)
+ghost_error ghost_spmv(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat *invec, ghost_spmv_opts traits)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_lidx ncolsbackup = res->traits.ncols, remcols = res->traits.ncols, donecols = 0;

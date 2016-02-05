@@ -19,7 +19,7 @@ const ghost_sparsemat_src_rowfunc GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER = {
     .func = NULL,
     .maxrowlen = 0,
     .base = 0,
-    .flags = GHOST_SPARSEMAT_FROMROWFUNC_DEFAULT,
+    .flags = GHOST_SPARSEMAT_ROWFUNC_DEFAULT,
     .arg = NULL
 };
     
@@ -40,9 +40,8 @@ static ghost_error SELL_split(ghost_sparsemat *mat);
 static ghost_error SELL_upload(ghost_sparsemat *mat);
 static ghost_error SELL_toBinCRS(ghost_sparsemat *mat, char *matrixPath);
 static ghost_error SELL_fromRowFunc(ghost_sparsemat *mat, ghost_sparsemat_src_rowfunc *src);
-static void SELL_free(ghost_sparsemat *mat);
 
-const ghost_spmv_traits GHOST_SPMV_TRAITS_INITIALIZER = {
+const ghost_spmv_opts GHOST_SPMV_OPTS_INITIALIZER = {
     .flags = GHOST_SPMV_DEFAULT,
     .alpha = NULL,
     .beta = NULL,
@@ -84,9 +83,7 @@ ghost_error ghost_sparsemat_create(ghost_sparsemat ** mat, ghost_context *contex
     (*mat)->fromMM = &ghost_sparsemat_from_mm;
     (*mat)->fromCRS = &ghost_sparsemat_from_crs;
     (*mat)->formatName = NULL;
-    (*mat)->destroy = NULL;
     (*mat)->upload = NULL;
-    (*mat)->destroy = NULL;
     (*mat)->bandwidth = 0;
     (*mat)->lowerBandwidth = 0;
     (*mat)->upperBandwidth = 0;
@@ -112,7 +109,7 @@ ghost_error ghost_sparsemat_create(ghost_sparsemat ** mat, ghost_context *contex
         (*mat)->traits.sortScope = (*mat)->nrows;
     }
 
-#ifdef GHOST_GATHER_SPARSEMAT_GLOBAL_STATISTICS
+#ifdef GHOST_SPARSEMAT_GLOBALSTATS
     GHOST_CALL_GOTO(ghost_malloc((void **)&((*mat)->nzDist),sizeof(ghost_gidx)*(2*context->gnrows-1)),err,ret);
 #endif
     GHOST_CALL_GOTO(ghost_datatype_size(&(*mat)->elSize,(*mat)->traits.datatype),err,ret);
@@ -148,7 +145,6 @@ ghost_error ghost_sparsemat_create(ghost_sparsemat ** mat, ghost_context *contex
         (*mat)->kacz = NULL;
     }
 #endif
-    (*mat)->destroy  = &SELL_free;
 
     (*mat)->sell->val = NULL;
     (*mat)->sell->col = NULL;
@@ -222,7 +218,7 @@ ghost_error ghost_sparsemat_fromfunc_common(ghost_lidx *rl, ghost_lidx *rlp, gho
     mat->ncols = mat->context->gncols;
     mat->nrows = mat->context->lnrows[me];
 
-#ifdef GHOST_GATHER_SPARSEMAT_GLOBAL_STATISTICS
+#ifdef GHOST_SPARSEMAT_GLOBALSTATS
     memset(mat->nzDist,0,sizeof(ghost_gidx)*(2*mat->context->gnrows-1));
 #endif
     mat->lowerBandwidth = 0;
@@ -569,13 +565,13 @@ ghost_error ghost_sparsemat_fromfunc_common(ghost_lidx *rl, ghost_lidx *rlp, gho
             for (i=0; (i<C) && (chunk*C+i < mat->nrows); i++) {
                 row = chunk*C+i;
                 ghost_sparsemat_sortrow(&((*col)[(*chunkptr)[chunk]+i]),&(*val)[((*chunkptr)[chunk]+i)*mat->elSize],mat->elSize,rl[row],C);
-#ifdef GHOST_GATHER_SPARSEMAT_STATISTICS
+#ifdef GHOST_SPARSEMAT_STATS
                 ghost_sparsemat_registerrow(mat,mat->context->lfRow[me]+row,&(*col)[(*chunkptr)[chunk]+i],rl[row],C);
 #endif
             }
         }
     } else {
-#ifdef GHOST_GATHER_SPARSEMAT_STATISTICS
+#ifdef GHOST_SPARSEMAT_STATS
         for( chunk = 0; chunk < nchunks; chunk++ ) {
             for (i=0; (i<C) && (chunk*C+i < mat->nrows); i++) {
                 row = chunk*C+i;
@@ -585,7 +581,7 @@ ghost_error ghost_sparsemat_fromfunc_common(ghost_lidx *rl, ghost_lidx *rlp, gho
 #endif
     }
 
-#ifdef GHOST_GATHER_SPARSEMAT_STATISTICS
+#ifdef GHOST_SPARSEMAT_STATS
     ghost_sparsemat_registerrow_finalize(mat);
 #endif
     GHOST_INSTR_STOP("sort_and_register");
@@ -843,7 +839,7 @@ ghost_error ghost_sparsemat_nnz(ghost_gidx *nnz, ghost_sparsemat *mat)
     return GHOST_SUCCESS;
 }
 
-ghost_error ghost_sparsemat_string(char **str, ghost_sparsemat *mat)
+ghost_error ghost_sparsemat_info_string(char **str, ghost_sparsemat *mat)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     GHOST_CALL_RETURN(ghost_malloc((void **)str,1));
@@ -1039,17 +1035,48 @@ const char * ghost_sparsemat_symmetry_string(ghost_sparsemat_symmetry symmetry)
     return "Invalid";
 }
 
-void ghost_sparsemat_destroy_common(ghost_sparsemat *mat)
+void ghost_sparsemat_destroy(ghost_sparsemat *mat)
 {
     if (!mat) {
         return;
     }
 
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TEARDOWN);
-    
+    if (mat->sell) {
+#ifdef GHOST_HAVE_CUDA
+        if (mat->traits.flags & GHOST_SPARSEMAT_DEVICE && SELL(mat)->cumat) {
+            ghost_cu_free(SELL(mat)->cumat->rowLen);
+            ghost_cu_free(SELL(mat)->cumat->rowLenPadded);
+            ghost_cu_free(SELL(mat)->cumat->col);
+            ghost_cu_free(SELL(mat)->cumat->val);
+            ghost_cu_free(SELL(mat)->cumat->chunkStart);
+            ghost_cu_free(SELL(mat)->cumat->chunkLen);
+            free(SELL(mat)->cumat);
+        }
+#endif
+        free(SELL(mat)->val); SELL(mat)->val = NULL;
+        free(SELL(mat)->col); SELL(mat)->col = NULL;
+        free(SELL(mat)->chunkStart); SELL(mat)->chunkStart = NULL;
+        free(SELL(mat)->chunkMin); SELL(mat)->chunkMin = NULL;
+        free(SELL(mat)->chunkLen); SELL(mat)->chunkLen = NULL;
+        free(SELL(mat)->chunkLenPadded); SELL(mat)->chunkLenPadded = NULL;
+        free(SELL(mat)->rowLen); SELL(mat)->rowLen = NULL;
+        free(SELL(mat)->rowLenPadded); SELL(mat)->rowLenPadded = NULL;
+    }
+
+         
+    if (mat->localPart) {
+        ghost_sparsemat_destroy(mat->localPart);
+    }
+
+    if (mat->remotePart) {
+        ghost_sparsemat_destroy(mat->remotePart);
+    }
+
     free(mat->sell); mat->sell = NULL;
     free(mat->col_orig); mat->col_orig = NULL;
     
+    free(mat);
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TEARDOWN);
 }
 
@@ -1151,7 +1178,7 @@ out:
 
 extern inline int ghost_sparsemat_rowfunc_crs(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *col, void *val, void *arg);
 
-ghost_error ghost_sparsemat_from_crs(ghost_sparsemat *mat, ghost_gidx offs, ghost_gidx n, ghost_gidx *col, void *val, ghost_lidx *rpt)
+ghost_error ghost_sparsemat_from_crs(ghost_sparsemat *mat, ghost_gidx offs, ghost_lidx n, ghost_gidx *col, void *val, ghost_lidx *rpt)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     
@@ -1489,8 +1516,8 @@ static ghost_error SELL_split(ghost_sparsemat *mat)
 
     goto out;
 err:
-    mat->localPart->destroy(mat->localPart); mat->localPart = NULL;
-    mat->remotePart->destroy(mat->remotePart); mat->remotePart = NULL;
+    ghost_sparsemat_destroy(mat->localPart); mat->localPart = NULL;
+    ghost_sparsemat_destroy(mat->remotePart); mat->remotePart = NULL;
 
 out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
@@ -1540,65 +1567,3 @@ static ghost_error SELL_upload(ghost_sparsemat* mat)
     return GHOST_SUCCESS;
 }
 
-static void SELL_free(ghost_sparsemat *mat)
-{
-    if (!mat) {
-        return;
-    }
-
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TEARDOWN);
-    if (mat->sell) {
-#ifdef GHOST_HAVE_CUDA
-        if (mat->traits.flags & GHOST_SPARSEMAT_DEVICE && SELL(mat)->cumat) {
-            ghost_cu_free(SELL(mat)->cumat->rowLen);
-            ghost_cu_free(SELL(mat)->cumat->rowLenPadded);
-            ghost_cu_free(SELL(mat)->cumat->col);
-            ghost_cu_free(SELL(mat)->cumat->val);
-            ghost_cu_free(SELL(mat)->cumat->chunkStart);
-            ghost_cu_free(SELL(mat)->cumat->chunkLen);
-            free(SELL(mat)->cumat);
-        }
-#endif
-        free(SELL(mat)->val); SELL(mat)->val = NULL;
-        free(SELL(mat)->col); SELL(mat)->col = NULL;
-        free(SELL(mat)->chunkStart); SELL(mat)->chunkStart = NULL;
-        free(SELL(mat)->chunkMin); SELL(mat)->chunkMin = NULL;
-        free(SELL(mat)->chunkLen); SELL(mat)->chunkLen = NULL;
-        free(SELL(mat)->chunkLenPadded); SELL(mat)->chunkLenPadded = NULL;
-        free(SELL(mat)->rowLen); SELL(mat)->rowLen = NULL;
-        free(SELL(mat)->rowLenPadded); SELL(mat)->rowLenPadded = NULL;
-    }
-
-         
-    if (mat->localPart) {
-        SELL_free(mat->localPart);
-    }
-
-    if (mat->remotePart) {
-        SELL_free(mat->remotePart);
-    }
-
-    ghost_sparsemat_destroy_common(mat);
-
-    free(mat);
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TEARDOWN);
-}
-
-int ghost_sell_max_cfg_chunkheight()
-{
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
-    
-    int max = 0;
-    char *cfgch = strdup(GHOST_GEN_SELL_C);
-    char *ch = strtok(cfgch,",");
-
-    while (ch) {
-        max = MAX(max,atoi(ch));
-        ch = strtok(NULL,",");
-    }
-
-    free(cfgch);
-
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
-    return max;
-}

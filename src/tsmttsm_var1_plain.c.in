@@ -203,17 +203,13 @@ ghost_error ghost_tsmttsm__a_plain_d_BLOCKSZ_x_1_cm_rm(ghost_densemat *x, ghost_
     
     INFO_LOG("In TSMTTSM with fixed k BLOCKSZ and arbitrary m %d: %dx%d <- %dx%d * %dx%d",m,m,BLOCKSZ,m,n,n,BLOCKSZ);
     
-    double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
+    double * restrict vval = (double * restrict) v->val, * restrict wval = (double * restrict) w->val, * restrict xval = (double * restrict) x->val;
     ghost_lidx ldv, ldw, ldx;
 
     ldv = v->stride;
     ldw = w->stride;
     ldx = x->stride;
 
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
-    
     double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
     
@@ -290,16 +286,12 @@ ghost_error ghost_tsmttsm__a_plain_d_BLOCKSZ_x_1_rm_rm(ghost_densemat *x, ghost_
     
     INFO_LOG("In TSMTTSM with fixed k BLOCKSZ and arbitrary m %d: %dx%d <- %dx%d * %dx%d",m,m,BLOCKSZ,m,n,n,BLOCKSZ);
     
-    double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
+    double * restrict vval = (double * restrict) v->val, * restrict wval = (double * restrict) w->val, * restrict xval = (double * restrict) x->val;
     ghost_lidx ldv, ldw, ldx;
 
     ldv = v->stride;
     ldw = w->stride;
     ldx = x->stride;
-
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
     
     double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
@@ -379,17 +371,13 @@ ghost_error ghost_tsmttsm__a_plain_z_x_BLOCKSZ_1_cm_rm(ghost_densemat *x, ghost_
     
     INFO_LOG("In TSMTTSM with fixed m BLOCKSZ and arbitrary k %d: %dx%d <- %dx%d * %dx%d",K,BLOCKSZ,K,BLOCKSZ,n,n,K);
     
-    complex double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
+    complex double * restrict vval = (complex double * restrict) v->val, * restrict wval = (complex double * restrict) w->val, * restrict xval = (complex double * restrict) x->val;
     ghost_lidx ldv, ldw, ldx;
 
     ldv = v->stride;
     ldw = w->stride;
     ldx = x->stride;
 
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
-    
     complex double dalpha = *(complex double *)alpha;
     complex double dbeta = *(complex double *)beta;
     
@@ -489,17 +477,13 @@ ghost_error ghost_tsmttsm__a_plain_z_BLOCKSZ_x_1_cm_rm(ghost_densemat *x, ghost_
     
     INFO_LOG("In TSMTTSM with fixed k BLOCKSZ and arbitrary m %d: %dx%d <- %dx%d * %dx%d",m,m,BLOCKSZ,m,n,n,BLOCKSZ);
     
-    complex double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
+    complex double * restrict vval = (complex double * restrict) v->val, * restrict wval = (complex double * restrict) w->val, * restrict xval = (complex double * restrict) x->val;
     ghost_lidx ldv, ldw, ldx;
 
     ldv = v->stride;
     ldw = w->stride;
     ldx = x->stride;
 
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
-    
     complex double dalpha = *(complex double *)alpha;
     complex double dbeta = *(complex double *)beta;
     
@@ -598,16 +582,12 @@ ghost_error ghost_tsmttsm__a_plain_z_BLOCKSZ_x_1_rm_rm(ghost_densemat *x, ghost_
     
     INFO_LOG("In TSMTTSM with fixed k BLOCKSZ and arbitrary m %d: %dx%d <- %dx%d * %dx%d",m,m,BLOCKSZ,m,n,n,BLOCKSZ);
     
-    complex double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
+    complex double * restrict vval = (complex double *restrict) v->val, * restrict wval =  (complex double *restrict)w->val, * restrict xval =  (complex double *restrict)x->val;
     ghost_lidx ldv, ldw, ldx;
 
     ldv = v->stride;
     ldw = w->stride;
     ldx = x->stride;
-
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
     
     complex double dalpha = *(complex double *)alpha;
     complex double dbeta = *(complex double *)beta;

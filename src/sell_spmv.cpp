@@ -27,7 +27,7 @@ using namespace std;
     template<typename m_t, typename v_t, bool scatteredvecs> 
 static ghost_error ghost_sell_spmv_plain_rm(ghost_densemat *lhs, 
         ghost_sparsemat *mat, ghost_densemat *rhs, 
-        ghost_spmv_traits traits)
+        ghost_spmv_opts traits)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     PERFWARNING_LOG("In plain row-major SEL SpMV with scatteredvecs=%d, blocksz=%d",scatteredvecs,rhs->traits.ncols);
@@ -184,7 +184,7 @@ static ghost_error ghost_sell_spmv_plain_rm(ghost_densemat *lhs,
 static ghost_error ghost_sell_spmv_plain_rm_selector(ghost_densemat *lhs, 
         ghost_sparsemat *mat, 
         ghost_densemat *rhs, 
-        ghost_spmv_traits traits)
+        ghost_spmv_opts traits)
 {
     if ((lhs->traits.flags & GHOST_DENSEMAT_SCATTERED) || (rhs->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
         return ghost_sell_spmv_plain_rm<m_t,v_t,true>(lhs,mat,rhs,traits);
@@ -197,7 +197,7 @@ static ghost_error ghost_sell_spmv_plain_rm_selector(ghost_densemat *lhs,
 static ghost_error ghost_sell_spmv_plain_cm(ghost_densemat *lhs, 
         ghost_sparsemat *mat, 
         ghost_densemat *rhs, 
-        ghost_spmv_traits traits)
+        ghost_spmv_opts traits)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     ghost_sell *sell = (ghost_sell *)(mat->sell);
@@ -344,7 +344,7 @@ static ghost_error ghost_sell_spmv_plain_cm(ghost_densemat *lhs,
 static ghost_error ghost_sell_spmv_plain_cm_selector(ghost_densemat *lhs, 
         ghost_sparsemat *mat, 
         ghost_densemat *rhs, 
-        ghost_spmv_traits traits)
+        ghost_spmv_opts traits)
 {
     if ((lhs->traits.flags & GHOST_DENSEMAT_SCATTERED) || (rhs->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
         return ghost_sell_spmv_plain_cm<m_t,v_t,true>(lhs,mat,rhs,traits);
@@ -382,7 +382,7 @@ ghost_sellspmv_kernels = unordered_map<ghost_sellspmv_parameters,ghost_spmv_kern
 extern "C" ghost_error ghost_sell_spmv_selector(ghost_densemat *lhs, 
         ghost_sparsemat *mat, 
         ghost_densemat *rhs, 
-        ghost_spmv_traits traits)
+        ghost_spmv_opts traits)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     if (rhs->traits.storage != lhs->traits.storage) {

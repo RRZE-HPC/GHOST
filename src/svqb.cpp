@@ -39,7 +39,7 @@ static ghost_error ghost_blockortho_tmpl (ghost_densemat * w , ghost_densemat * 
 err:
 
 out: 
-    x->destroy(x);
+    ghost_densemat_destroy(x);
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_SOLVER);
 
     return ret;
@@ -125,6 +125,7 @@ static ghost_error ghost_svqb_tmpl (ghost_densemat * v_ot , ghost_densemat * v)
     ghost_densemat *x = NULL;
     ghost_lidx ldx;
     T_b *eigs = NULL, *D = NULL;
+    T *  xval = (T *)x->val;
     ghost_densemat_traits xtraits = GHOST_DENSEMAT_TRAITS_INITIALIZER;
     
     GHOST_CALL_GOTO(ghost_malloc((void **)&eigs, n*sizeof(T_b)),err,ret);
@@ -144,8 +145,6 @@ static ghost_error ghost_svqb_tmpl (ghost_densemat * v_ot , ghost_densemat * v)
     GHOST_CALL_GOTO(x->fromScalar(x,&zero),err,ret);
     ldx = x->stride;
 
-    T *  xval;
-    GHOST_CALL_GOTO(ghost_densemat_valptr(x,(void **)&xval),err,ret);
     
     //GHOST_CALL_GOTO(ghost_tsmttsm( x, v, v,&one,&zero,GHOST_GEMM_ALL_REDUCE,1),err,ret);
     GHOST_CALL_GOTO(ghost_tsmttsm( x, v, v,&one,&zero,GHOST_GEMM_ALL_REDUCE,1,GHOST_GEMM_KAHAN),err,ret);
@@ -211,7 +210,7 @@ static ghost_error ghost_svqb_tmpl (ghost_densemat * v_ot , ghost_densemat * v)
       ghost_densemat * vec_view2rand;
       v_ot->viewScatteredCols(v_ot, &vec_view2rand, n_set_rand, set_rand);
       vec_view2rand->fromRand( vec_view2rand );
-      vec_view2rand->destroy(vec_view2rand);
+      ghost_densemat_destroy(vec_view2rand);
      }  
    
    
@@ -219,7 +218,7 @@ static ghost_error ghost_svqb_tmpl (ghost_densemat * v_ot , ghost_densemat * v)
 err:
 
 out: 
-    x->destroy(x);
+    ghost_densemat_destroy(x);
     free(eigs);
     free(D);
     free(set_rand);
@@ -264,6 +263,7 @@ static ghost_error ghost_svd_deflation_tmpl ( ghost_lidx *svd_offset, ghost_dens
     ghost_lidx ldx;
     ghost_densemat_traits xtraits = GHOST_DENSEMAT_TRAITS_INITIALIZER;
     T_b * eigs = NULL;
+    T *  xval = (T *)x->val;
     
     GHOST_CALL_GOTO(ghost_malloc((void **)&eigs, n*sizeof(T_b)),err,ret);
     
@@ -280,8 +280,6 @@ static ghost_error ghost_svd_deflation_tmpl ( ghost_lidx *svd_offset, ghost_dens
     GHOST_CALL_GOTO(x->fromScalar(x,&zero),err,ret);
     ldx = x->stride;
 
-    T *  xval;
-    GHOST_CALL_GOTO(ghost_densemat_valptr(x,(void **)&xval),err,ret);
     
     
     //GHOST_CALL_GOTO(ghost_tsmttsm( x, vec, vec,&one,&zero,GHOST_GEMM_ALL_REDUCE,1),err,ret);
@@ -330,7 +328,7 @@ static ghost_error ghost_svd_deflation_tmpl ( ghost_lidx *svd_offset, ghost_dens
 err:
 
 out: 
-    x->destroy(x);
+    ghost_densemat_destroy(x);
     free(eigs);
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_SOLVER);
     

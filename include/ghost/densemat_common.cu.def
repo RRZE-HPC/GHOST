@@ -396,8 +396,8 @@ extern "C" ghost_error FUNCNAME(vaxpby)(ghost_densemat *v1, ghost_densemat *v2, 
     } else {
         v2compact = v2;
     }
-    GHOST_CALL_GOTO(ghost_densemat_cu_valptr(v1compact,&v1val),err,ret);
-    GHOST_CALL_GOTO(ghost_densemat_cu_valptr(v2compact,&v2val),err,ret);
+    v1val = v1compact->cu_val;
+    v2val = v2compact->cu_val;
     
 
     if (v1->traits.datatype & GHOST_DT_COMPLEX)
@@ -432,10 +432,10 @@ extern "C" ghost_error FUNCNAME(vaxpby)(ghost_densemat *v1, ghost_densemat *v2, 
     }
     if (v1compact != v1) {
         GHOST_CALL_GOTO(v1->fromVec(v1,v1compact,0,0),err,ret);
-        v1compact->destroy(v1compact);
+        ghost_densemat_destroy(v1compact);
     }
     if (v2compact != v2) {
-        v2compact->destroy(v2compact);
+        ghost_densemat_destroy(v2compact);
     }
     
     goto out;
@@ -500,10 +500,9 @@ extern "C" ghost_error FUNCNAME(vaxpbypcz)(ghost_densemat *v1, ghost_densemat *v
     } else {
         v3compact = v3;
     }
-    GHOST_CALL_GOTO(ghost_densemat_cu_valptr(v1compact,&v1val),err,ret);
-    GHOST_CALL_GOTO(ghost_densemat_cu_valptr(v2compact,&v2val),err,ret);
-    GHOST_CALL_GOTO(ghost_densemat_cu_valptr(v3compact,&v3val),err,ret);
-    
+    v1val = v1compact->cu_val;
+    v2val = v2compact->cu_val;
+    v3val = v3compact->cu_val;
 
     if (v1->traits.datatype & GHOST_DT_COMPLEX)
     {
@@ -537,13 +536,13 @@ extern "C" ghost_error FUNCNAME(vaxpbypcz)(ghost_densemat *v1, ghost_densemat *v
     }
     if (v1compact != v1) {
         GHOST_CALL_GOTO(v1->fromVec(v1,v1compact,0,0),err,ret);
-        v1compact->destroy(v1compact);
+        ghost_densemat_destroy(v1compact);
     }
     if (v2compact != v2) {
-        v2compact->destroy(v2compact);
+        ghost_densemat_destroy(v2compact);
     }
     if (v3compact != v3) {
-        v3compact->destroy(v3compact);
+        ghost_densemat_destroy(v3compact);
     }
     
     goto out;
@@ -701,10 +700,10 @@ extern "C" ghost_error FUNCNAME(dotprod)(ghost_densemat *vec, void *res, ghost_d
     }
     
     if (veccompact != vec) {
-        veccompact->destroy(veccompact);
+        ghost_densemat_destroy(veccompact);
     }
     if (vec2compact != vec2) {
-        vec2compact->destroy(vec2compact);
+        ghost_densemat_destroy(vec2compact);
     }
     goto out;
 err:
@@ -776,8 +775,8 @@ extern "C" ghost_error FUNCNAME(axpby)(ghost_densemat *v1, ghost_densemat *v2, v
     } else {
         v2compact = v2;
     }
-    GHOST_CALL_GOTO(ghost_densemat_cu_valptr(v1compact,&v1val),err,ret);
-    GHOST_CALL_GOTO(ghost_densemat_cu_valptr(v2compact,&v2val),err,ret);
+    v1val = v1compact->cu_val;
+    v2val = v2compact->cu_val;
 
     if (v1->traits.datatype & GHOST_DT_COMPLEX)
     {
@@ -808,10 +807,10 @@ extern "C" ghost_error FUNCNAME(axpby)(ghost_densemat *v1, ghost_densemat *v2, v
     }
     if (v1compact != v1) {
         GHOST_CALL_GOTO(v1->fromVec(v1,v1compact,0,0),err,ret);
-        v1compact->destroy(v1compact);
+        ghost_densemat_destroy(v1compact);
     }
     if (v2compact != v2) {
-        v2compact->destroy(v2compact);
+        ghost_densemat_destroy(v2compact);
     }
 
     goto out;
@@ -859,9 +858,9 @@ extern "C" ghost_error FUNCNAME(axpbypcz)(ghost_densemat *v1, ghost_densemat *v2
     } else {
         v3compact = v3;
     }
-    GHOST_CALL_GOTO(ghost_densemat_cu_valptr(v1compact,&v1val),err,ret);
-    GHOST_CALL_GOTO(ghost_densemat_cu_valptr(v2compact,&v2val),err,ret);
-    GHOST_CALL_GOTO(ghost_densemat_cu_valptr(v3compact,&v3val),err,ret);
+    v1val = v1compact->cu_val;
+    v2val = v2compact->cu_val;
+    v3val = v3compact->cu_val;
     
 
     if (v1->traits.datatype & GHOST_DT_COMPLEX)
@@ -896,13 +895,13 @@ extern "C" ghost_error FUNCNAME(axpbypcz)(ghost_densemat *v1, ghost_densemat *v2
     }
     if (v1compact != v1) {
         GHOST_CALL_GOTO(v1->fromVec(v1,v1compact,0,0),err,ret);
-        v1compact->destroy(v1compact);
+        ghost_densemat_destroy(v1compact);
     }
     if (v2compact != v2) {
-        v2compact->destroy(v2compact);
+        ghost_densemat_destroy(v2compact);
     }
     if (v3compact != v3) {
-        v3compact->destroy(v3compact);
+        ghost_densemat_destroy(v3compact);
     }
     
     goto out;
@@ -928,7 +927,7 @@ extern "C" ghost_error FUNCNAME(scale)(ghost_densemat *vec, void *a)
     } else {
         veccompact = vec;
     }
-    GHOST_CALL_GOTO(ghost_densemat_cu_valptr(veccompact,&vecval),err,ret);
+    vecval = veccompact->cu_val;
     
     if (vec->traits.datatype & GHOST_DT_COMPLEX)
     {
@@ -963,7 +962,7 @@ extern "C" ghost_error FUNCNAME(scale)(ghost_densemat *vec, void *a)
     if (veccompact != vec) {
         INFO_LOG("Transform back");
         GHOST_CALL_GOTO(vec->fromVec(vec,veccompact,0,0),err,ret);
-        veccompact->destroy(veccompact);
+        ghost_densemat_destroy(veccompact);
     }
     
     goto out;
@@ -994,7 +993,7 @@ extern "C" ghost_error FUNCNAME(vscale)(ghost_densemat *vec, void *a)
     } else {
         veccompact = vec;
     }
-    GHOST_CALL_GOTO(ghost_densemat_cu_valptr(veccompact,&vecval),err,ret);
+    vecval = veccompact->cu_val;
 
     GHOST_CALL_GOTO(ghost_cu_malloc(&d_a,vec->traits.ncols*vec->elSize),err,ret);
     
@@ -1035,7 +1034,7 @@ extern "C" ghost_error FUNCNAME(vscale)(ghost_densemat *vec, void *a)
     if (veccompact != vec) {
         INFO_LOG("Transform back");
         GHOST_CALL_GOTO(vec->fromVec(vec,veccompact,0,0),err,ret);
-        veccompact->destroy(veccompact);
+        ghost_densemat_destroy(veccompact);
     }
 
     goto out;
@@ -1063,7 +1062,7 @@ extern "C" ghost_error FUNCNAME(fromScalar)(ghost_densemat *vec, void *a)
     } else {
         veccompact = vec;
     }
-    GHOST_CALL_GOTO(ghost_densemat_cu_valptr(veccompact,&vecval),err,ret);
+    vecval = veccompact->cu_val;
 
     if (vec->traits.datatype & GHOST_DT_COMPLEX)
     {
@@ -1098,7 +1097,7 @@ extern "C" ghost_error FUNCNAME(fromScalar)(ghost_densemat *vec, void *a)
     if (veccompact != vec) {
         INFO_LOG("Transform back");
         GHOST_CALL_GOTO(vec->fromVec(vec,veccompact,0,0),err,ret);
-        veccompact->destroy(veccompact);
+        ghost_densemat_destroy(veccompact);
     }
     
     goto out;
@@ -1165,13 +1164,13 @@ extern "C" ghost_error FUNCNAME(fromRand)(ghost_densemat *vec)
     }
     if (compactvec != vec) {
         vec->fromVec(vec,compactvec,0,0);
-        compactvec->destroy(compactvec);
+        ghost_densemat_destroy(compactvec);
     }
     goto out;
 err:
 out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
-    onevec->destroy(onevec);
+    ghost_densemat_destroy(onevec);
     cudaFree(raw);
 
     return ret;
@@ -1194,7 +1193,7 @@ extern "C" ghost_error FUNCNAME(conj)(ghost_densemat *vec)
     } else {
         veccompact = vec;
     }
-    GHOST_CALL_GOTO(ghost_densemat_cu_valptr(veccompact,&vecval),err,ret);
+    vecval = veccompact->cu_val;
     
     if (vec->traits.datatype & GHOST_DT_DOUBLE)
     {
@@ -1211,7 +1210,7 @@ extern "C" ghost_error FUNCNAME(conj)(ghost_densemat *vec)
     if (veccompact != vec) {
         INFO_LOG("Transform back");
         GHOST_CALL_GOTO(vec->fromVec(vec,veccompact,0,0),err,ret);
-        veccompact->destroy(veccompact);
+        ghost_densemat_destroy(veccompact);
     }
     
     goto out;

@@ -41,25 +41,9 @@ find_package(PkgConfig)
 
 add_definitions(-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE)
 if (GHOST_IDX64_LOCAL)
-    set(GHOST_HAVE_LONGIDX_LOCAL 1)
     if (NOT GHOST_IDX64_GLOBAL)
         message(FATAL_ERROR "Having 64-bit indices locally and only 32-bit indices globally is not allowed (and not sensible)!")
     endif()
-endif()
-if (GHOST_IDX64_GLOBAL)
-    set(GHOST_HAVE_LONGIDX_GLOBAL 1)
-endif()
-
-if (GHOST_TRACK_DATATRANSFERS)
-    set(GHOST_HAVE_GHOST_TRACK_DATATRANSFERS 1)
-endif()
-
-if (GHOST_SPARSEMAT_GLOBALSTATS)
-    add_definitions(-DGHOST_GHOST_SPARSEMAT_GLOBALSTATS)
-endif()
-
-if (GHOST_SPARSEMAT_STATS)
-    add_definitions(-DGHOST_GHOST_SPARSEMAT_STATS)
 endif()
 
 set (SOURCES
@@ -137,6 +121,7 @@ set (HEADERS
     include/ghost/dot.h
     include/ghost/error.h
     include/ghost/errorhandler.h
+    include/ghost/funcptr_wrappers.h
     include/ghost/helper.h
     include/ghost/instr.h
     include/ghost/locality.h	
@@ -784,6 +769,7 @@ if (DOXYGEN_FOUND)
     # this pseudo configure_file is needed in order to re-gernated mainpage.md if minimal.c has changed
     configure_file(${PROJECT_SOURCE_DIR}/test/minimal.c ${PROJECT_BINARY_DIR}/test/minimal.c)
     file(READ ${PROJECT_BINARY_DIR}/test/minimal.c GHOST_MINIMAL_EXAMPLE)
+    file(READ ${PROJECT_BINARY_DIR}/ghost/config.h GHOST_CONFIG_H)
     configure_file(${PROJECT_SOURCE_DIR}/doxygen/mainpage.md.in ${PROJECT_BINARY_DIR}/doxygen/mainpage.md @ONLY)
     configure_file(${PROJECT_SOURCE_DIR}/doxygen/Doxyfile.in ${PROJECT_BINARY_DIR}/doxygen/Doxyfile @ONLY)
     set(DOC_INSTALL_PREFIX "" CACHE PATH "Where to store the generated documentation")

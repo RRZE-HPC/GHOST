@@ -14,7 +14,7 @@ extern "C" ghost_error ghost_sparsemat_perm_color(ghost_sparsemat *mat, void *ma
     ghost_lidx *curcol = NULL;
     uint32_t** adolc = new uint32_t*[mat->nrows];
     std::vector<int>* colvec = NULL;
-    uint32_t *adolc_data;
+    uint32_t *adolc_data = NULL;
     ColPack::GraphColoring *GC=new ColPack::GraphColoring();
 
     int me, i, j;
@@ -70,7 +70,7 @@ extern "C" ghost_error ghost_sparsemat_perm_color(ghost_sparsemat *mat, void *ma
             
 #pragma omp for
             for (i=0; i<mat->context->lnrows[me]; i++) {
-                src->func(mat->context->lfRow[me]+i,&rowlen,tmpcol,tmpval);
+                src->func(mat->context->lfRow[me]+i,&rowlen,tmpcol,tmpval,NULL);
                 nnz += rowlen;
                 for (j=0; j<rowlen; j++) {
                     if (tmpcol[j] >= mat->context->lfRow[me] && tmpcol[j] < mat->context->lnrows[me]) {
@@ -91,7 +91,7 @@ extern "C" ghost_error ghost_sparsemat_perm_color(ghost_sparsemat *mat, void *ma
             for (i=0; i<mat->context->lnrows[me]; i++) {
 #pragma omp ordered
                 {
-                    src->func(mat->context->lfRow[me]+i,&rowlen,&col[rpt[i]],tmpval);
+                    src->func(mat->context->lfRow[me]+i,&rowlen,&col[rpt[i]],tmpval,NULL);
                     rpt[i+1] = rpt[i] + rowlen;
                 }
             }
@@ -136,14 +136,14 @@ extern "C" ghost_error ghost_sparsemat_perm_color(ghost_sparsemat *mat, void *ma
 
     mat->ncolors = GC->GetVertexColorCount();
     
-    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->permutation,sizeof(ghost_permutation)),err,ret);
-    mat->context->permutation->scope = GHOST_PERMUTATION_LOCAL;
-    mat->context->permutation->len = mat->nrows;
-    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->permutation->perm,sizeof(ghost_gidx)*mat->nrows),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->permutation->invPerm,sizeof(ghost_gidx)*mat->nrows),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local,sizeof(ghost_permutation)),err,ret);
+    mat->context->perm_local->scope = GHOST_PERMUTATION_LOCAL;
+    mat->context->perm_local->len = mat->nrows;
+    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->perm,sizeof(ghost_gidx)*mat->nrows),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->invPerm,sizeof(ghost_gidx)*mat->nrows),err,ret);
 
 #ifdef GHOST_HAVE_CUDA
-    GHOST_CALL_GOTO(ghost_cu_malloc((void **)&mat->context->permutation->cu_perm,sizeof(ghost_gidx)*mat->nrows),err,ret);
+    GHOST_CALL_GOTO(ghost_cu_malloc((void **)&mat->context->perm_local->cu_perm,sizeof(ghost_gidx)*mat->nrows),err,ret);
 #endif
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->color_ptr,(mat->ncolors+1)*sizeof(ghost_lidx)),err,ret);
@@ -166,12 +166,12 @@ extern "C" ghost_error ghost_sparsemat_perm_color(ghost_sparsemat *mat, void *ma
     }
     
     for (int i=0;i<mat->nrows;i++) {
-        mat->context->permutation->perm[i] = curcol[(*colvec)[i]] + mat->color_ptr[(*colvec)[i]];
+        mat->context->perm_local->perm[i] = curcol[(*colvec)[i]] + mat->color_ptr[(*colvec)[i]];
         curcol[(*colvec)[i]]++;
     }
     
     for (int i=0;i<mat->nrows;i++) {
-        mat->context->permutation->invPerm[mat->context->permutation->perm[i]] = i;
+        mat->context->perm_local->invPerm[mat->context->perm_local->perm[i]] = i;
     }
 
 
