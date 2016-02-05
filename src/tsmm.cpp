@@ -35,7 +35,7 @@ namespace std
     };
 }
 
-bool operator==(const ghost_tsmm_parameters& a, const ghost_tsmm_parameters& b)
+static bool operator==(const ghost_tsmm_parameters& a, const ghost_tsmm_parameters& b)
 {
     return a.dt == b.dt && a.xcols == b.xcols && a.vcols == b.vcols && a.impl == b.impl && a.xstor == b.xstor && a.wstor == b.wstor && a.alignment == b.alignment && a.unroll == b.unroll;
 }

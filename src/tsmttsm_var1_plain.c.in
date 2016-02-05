@@ -203,7 +203,7 @@ ghost_error ghost_tsmttsm__a_plain_d_BLOCKSZ_x_1_cm_rm(ghost_densemat *x, ghost_
     
     INFO_LOG("In TSMTTSM with fixed k BLOCKSZ and arbitrary m %d: %dx%d <- %dx%d * %dx%d",m,m,BLOCKSZ,m,n,n,BLOCKSZ);
     
-    double * restrict vval = (double * restrict) v->val, * restrict wval = (double * restrict) w->val, * restrict xval = (double * restrict) x->val;
+    double * restrict vval = (double *) v->val, * restrict wval = (double *) w->val, * restrict xval = (double *) x->val;
     ghost_lidx ldv, ldw, ldx;
 
     ldv = v->stride;
@@ -286,7 +286,7 @@ ghost_error ghost_tsmttsm__a_plain_d_BLOCKSZ_x_1_rm_rm(ghost_densemat *x, ghost_
     
     INFO_LOG("In TSMTTSM with fixed k BLOCKSZ and arbitrary m %d: %dx%d <- %dx%d * %dx%d",m,m,BLOCKSZ,m,n,n,BLOCKSZ);
     
-    double * restrict vval = (double * restrict) v->val, * restrict wval = (double * restrict) w->val, * restrict xval = (double * restrict) x->val;
+    double * restrict vval = (double *) v->val, * restrict wval = (double *) w->val, * restrict xval = (double *) x->val;
     ghost_lidx ldv, ldw, ldx;
 
     ldv = v->stride;
@@ -371,7 +371,7 @@ ghost_error ghost_tsmttsm__a_plain_z_x_BLOCKSZ_1_cm_rm(ghost_densemat *x, ghost_
     
     INFO_LOG("In TSMTTSM with fixed m BLOCKSZ and arbitrary k %d: %dx%d <- %dx%d * %dx%d",K,BLOCKSZ,K,BLOCKSZ,n,n,K);
     
-    complex double * restrict vval = (complex double * restrict) v->val, * restrict wval = (complex double * restrict) w->val, * restrict xval = (complex double * restrict) x->val;
+    complex double * restrict vval = (complex double *) v->val, * restrict wval = (complex double *) w->val, * restrict xval = (complex double *) x->val;
     ghost_lidx ldv, ldw, ldx;
 
     ldv = v->stride;
@@ -477,7 +477,7 @@ ghost_error ghost_tsmttsm__a_plain_z_BLOCKSZ_x_1_cm_rm(ghost_densemat *x, ghost_
     
     INFO_LOG("In TSMTTSM with fixed k BLOCKSZ and arbitrary m %d: %dx%d <- %dx%d * %dx%d",m,m,BLOCKSZ,m,n,n,BLOCKSZ);
     
-    complex double * restrict vval = (complex double * restrict) v->val, * restrict wval = (complex double * restrict) w->val, * restrict xval = (complex double * restrict) x->val;
+    complex double * restrict vval = (complex double *) v->val, * restrict wval = (complex double *) w->val, * restrict xval = (complex double *) x->val;
     ghost_lidx ldv, ldw, ldx;
 
     ldv = v->stride;
@@ -582,7 +582,7 @@ ghost_error ghost_tsmttsm__a_plain_z_BLOCKSZ_x_1_rm_rm(ghost_densemat *x, ghost_
     
     INFO_LOG("In TSMTTSM with fixed k BLOCKSZ and arbitrary m %d: %dx%d <- %dx%d * %dx%d",m,m,BLOCKSZ,m,n,n,BLOCKSZ);
     
-    complex double * restrict vval = (complex double *restrict) v->val, * restrict wval =  (complex double *restrict)w->val, * restrict xval =  (complex double *restrict)x->val;
+    complex double * restrict vval = (complex double *) v->val, * restrict wval =  (complex double *)w->val, * restrict xval =  (complex double *)x->val;
     ghost_lidx ldv, ldw, ldx;
 
     ldv = v->stride;

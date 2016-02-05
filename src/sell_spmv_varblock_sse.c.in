@@ -55,7 +55,7 @@ ghost_error ghost_sellspmv__a_sse_d_d_cm_CHUNKHEIGHT_x(ghost_densemat *res, ghos
         ghost_lidx j,c,v;
         ghost_lidx offs;
         __m128d val;
-        __m128d rhs;
+        __m128d rhs = _mm_setzero_pd();
         #GHOST_UNROLL#__m128d tmp@;#CHUNKHEIGHT/2
         int tid = ghost_omp_threadnum();
         __m128d dot1[invec->traits.ncols],dot2[invec->traits.ncols],dot3[invec->traits.ncols];

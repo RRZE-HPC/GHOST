@@ -229,8 +229,8 @@ ghost_error ghost_sellspmv__a_avx_z_z_cm_CHUNKHEIGHT_x(ghost_densemat *res, ghos
         ghost_lidx j,c,v;
         ghost_lidx offs;
         __m256d val;
-        __m256d rhs;
-        __m256d shift;
+        __m256d rhs = _mm256_setzero_pd();
+        __m256d shift = _mm256_setzero_pd();
         __m128d rhstmp;
         #GHOST_UNROLL#__m256d tmp@;#CHUNKHEIGHT/2
         int tid = ghost_omp_threadnum();
@@ -718,7 +718,7 @@ ghost_error ghost_sellspmv__a_avx_z_z_rm_CHUNKHEIGHT_x(ghost_densemat *res, ghos
         ghost_lidx j,c;
         ghost_lidx offs;
         __m256d rhs;
-        __m256d matval;
+        __m256d matval = _mm256_setzero_pd();
         int tid = ghost_omp_threadnum();
         __m256d tmp[ncolspadded/2];
         __m256i mask = _mm256_set_epi64x(~0,~0,~0,~0); 

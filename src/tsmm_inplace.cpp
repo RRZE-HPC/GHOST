@@ -30,7 +30,7 @@ namespace std
     };
 }
 
-bool operator==(const ghost_tsmm_inplace_parameters& a, const ghost_tsmm_inplace_parameters& b)
+static bool operator==(const ghost_tsmm_inplace_parameters& a, const ghost_tsmm_inplace_parameters& b)
 {
     return a.dt == b.dt && a.ncolsin == b.ncolsin && a.ncolsout == b.ncolsout && a.impl == b.impl;
 }

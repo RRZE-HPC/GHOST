@@ -51,7 +51,7 @@ ghost_error ghost_tsmttsm__u_plain_d_CFGK_CFGM_OUTERUNROLL_cm_cm(ghost_densemat 
     }
     INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
     
-    double * restrict vval = (double * restrict) v->val, * restrict wval = (double * restrict) w->val, * restrict xval = (double * restrict) x->val;
+    double * restrict vval = (double *) v->val, * restrict wval = (double *) w->val, * restrict xval = (double *) x->val;
     ghost_lidx ldv, ldw, ldx;
 
     ldv = v->stride;
@@ -176,7 +176,7 @@ ghost_error ghost_tsmttsm__a_plain_z_CFGK_CFGM_1_cm_rm(ghost_densemat *x, ghost_
     ghost_lidx n = v->traits.nrows;
     INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
     
-    complex double * restrict vval = (complex double * restrict) v->val, * restrict wval = (complex double * restrict) w->val, * restrict xval = (complex double * restrict) x->val;
+    complex double * restrict vval = (complex double *) v->val, * restrict wval = (complex double *) w->val, * restrict xval = (complex double *) x->val;
     ghost_lidx ldv, ldw, ldx;
 
     ldv = v->stride;
@@ -290,7 +290,7 @@ ghost_error ghost_tsmttsm__a_plain_d_CFGK_CFGM_1_cm_rm(ghost_densemat *x, ghost_
     ghost_lidx n = v->traits.nrows;
     INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
     
-    double * restrict vval = (double * restrict) v->val, * restrict wval = (double * restrict) w->val, * restrict xval = (double * restrict) x->val;
+    double * restrict vval = (double *) v->val, * restrict wval = (double *) w->val, * restrict xval = (double *) x->val;
     ghost_lidx ldv, ldw, ldx;
 
     ldv = v->stride;
@@ -382,7 +382,7 @@ ghost_error ghost_tsmttsm__a_plain_d_CFGK_CFGM_4_cm_cm(ghost_densemat *x, ghost_
     }
     INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
     
-    double * restrict vval = (double * restrict) v->val, * restrict wval = (double * restrict) w->val, * restrict xval = (double * restrict) x->val;
+    double * restrict vval = (double *) v->val, * restrict wval = (double *) w->val, * restrict xval = (double *) x->val;
     ghost_lidx ldv, ldw, ldx;
 
     ldv = v->stride;

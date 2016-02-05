@@ -27,7 +27,7 @@ namespace std
 }
 
 
-bool operator==(const ghost_dot_parameters& a, const ghost_dot_parameters& b)
+static bool operator==(const ghost_dot_parameters& a, const ghost_dot_parameters& b)
 {
     return a.dt == b.dt && a.blocksz == b.blocksz && a.impl == b.impl && a.storage == b.storage;
 }
