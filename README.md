@@ -101,7 +101,7 @@ The same applies for hwloc and the variables `HWLOC_INCLUDE_DIR` and `HWLOC_LIBR
 # Citing GHOST #
 ---
 
-If you are using GHOST in your publication please use the following citation:
+If you are using GHOST in your publication please use the following reference:
 
 
     @article{GHOST,
