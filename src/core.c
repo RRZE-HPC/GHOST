@@ -11,13 +11,18 @@
 #include "ghost/pumap.h"
 #include "ghost/omp.h"
 #include "ghost/rand.h"
-//#include "ghost/sell.h"
 //#include "ghost/tsmm.h"
 //#include "ghost/tsmm_inplace.h"
 //#include "ghost/tsmttsm.h"
 #include "ghost/instr.h"
 
 #include <hwloc.h>
+#if HWLOC_API_VERSION >= 0x00010700
+#include <hwloc/intel-mic.h>
+#else
+#warning "The HWLOC version is too old. Cannot detect Intel Xeon Phis!"
+#endif
+
 #ifdef GHOST_HAVE_INSTR_LIKWID
 #include <likwid.h>
 #endif
@@ -29,55 +34,88 @@
 
 #include <strings.h>
 
-static ghost_type_t ghost_type = GHOST_TYPE_INVALID;
+static ghost_type mytype = GHOST_TYPE_INVALID;
 static int MPIwasInitialized = 0;
 static int initialized = 0;
 
-char * ghost_type_string(ghost_type_t t)
-{
+/**
+ * @brief A communicator containing only the processes with GHOST_HAVE_CUDA enabled.
+ *
+ * This is necessary, e.g., for gathering CUDA information in heterogeneous runs containing Xeon Phis.
+ */
+static ghost_mpi_comm ghost_cuda_comm = MPI_COMM_NULL;
 
+char * ghost_type_string(ghost_type t)
+{
+    char *ret;
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     switch (t) {
         case GHOST_TYPE_CUDA: 
-            return "CUDA";
+            ret = "CUDA";
             break;
         case GHOST_TYPE_WORK:
-            return "WORK";
+            ret = "WORK";
             break;
         case GHOST_TYPE_INVALID:
-            return "INVALID";
+            ret = "INVALID";
             break;
         default:
-            return "Unknown";
+            ret = "Unknown";
     }
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
+    return ret;
 }
 
-ghost_error_t ghost_type_set(ghost_type_t t)
+ghost_error ghost_type_set(ghost_type t)
 {
-    ghost_type = t;
-
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+    
+    mytype = t;
+    
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_type_get(ghost_type_t *t)
+ghost_error ghost_type_get(ghost_type *t)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+ 
     if (!t) {
         ERROR_LOG("NULL pointer");
         return GHOST_ERR_INVALID_ARG;
     }
 
-    *t = ghost_type;
-
+    *t = mytype;
+    
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return GHOST_SUCCESS;
 }
 
 int ghost_initialized()
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return initialized; 
 }
 
-ghost_error_t ghost_init(int argc, char **argv)
+#ifdef GHOST_HAVE_INSTR_LIKWID
+static void *likwidThreadInitTask(void *arg)
 {
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_PREPROCESS);
+    UNUSED(arg);
+#pragma omp parallel
+    {
+        likwid_markerThreadInit();
+        ghost_instr_prefix_set("");
+        ghost_instr_suffix_set("");
+    }
+
+    return NULL;
+}
+#endif
+
+ghost_error ghost_init(int argc, char **argv)
+{
     if (initialized) {
         return GHOST_SUCCESS;
     } else {
@@ -104,7 +142,11 @@ ghost_error_t ghost_init(int argc, char **argv)
     } else {
         INFO_LOG("MPI was already initialized, not doing it!");
     }
+    
 
+    ghost_instr_create();
+    ghost_instr_prefix_set("");
+    ghost_instr_suffix_set("");
     ghost_nodecomm_setup(MPI_COMM_WORLD);
     ghost_mpi_datatypes_create();
     ghost_mpi_operations_create();
@@ -116,87 +158,148 @@ ghost_error_t ghost_init(int argc, char **argv)
 
 #endif // ifdef GHOST_HAVE_MPI
     
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_SETUP);
+    
     hwloc_topology_t topology;
     ghost_topology_create();
     ghost_topology_get(&topology);
-
-#ifdef GHOST_HAVE_INSTR_LIKWID
-    LIKWID_MARKER_INIT;
-
-#pragma omp parallel
-    LIKWID_MARKER_THREADINIT;
-#endif
 
 
     hwloc_cpuset_t cpuset = hwloc_bitmap_alloc();
     hwloc_get_cpubind(topology,cpuset,HWLOC_CPUBIND_PROCESS);
     if (hwloc_bitmap_weight(cpuset) < hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_PU)) {
-        WARNING_LOG("GHOST is running in a restricted CPU set. This is probably not what you want because GHOST cares for pinning itself...");
+        char *cpusetstr;
+        ghost_bitmap_list_asprintf(&cpusetstr,cpuset);
+        WARNING_LOG("GHOST is running in a restricted CPU set: %s. This is probably not what you want because GHOST cares for pinning itself. If you want to restrict the resources exposed to GHOST use the GHOST_CPUSET environment variable.",cpusetstr);
+        free(cpusetstr);
     }
     hwloc_bitmap_free(cpuset); cpuset = NULL;
 
+    hwloc_cpuset_t mycpuset = hwloc_bitmap_alloc();
 
     // auto-set rank types 
-    ghost_mpi_comm_t nodeComm;
+    ghost_mpi_comm nodeComm;
     int nnoderanks;
     int noderank;
     GHOST_CALL_RETURN(ghost_nodecomm_get(&nodeComm));
     GHOST_CALL_RETURN(ghost_nrank(&nnoderanks, nodeComm));
     GHOST_CALL_RETURN(ghost_rank( &noderank,  nodeComm));
 
+    hwloc_cpuset_t availcpuset = hwloc_bitmap_alloc();
+
+    char *envset = getenv("GHOST_CPUSET");
+    if (envset) {
+        hwloc_bitmap_list_sscanf(availcpuset,envset);
+    } else {
+        hwloc_bitmap_copy(availcpuset,hwloc_topology_get_allowed_cpuset(topology));
+    }
+    IF_DEBUG(2) {
+        char *cpusetStr;
+        hwloc_bitmap_list_asprintf(&cpusetStr,availcpuset);
+        DEBUG_LOG(2,"Available CPU set: %s",cpusetStr);
+        free(cpusetStr);
+    }
+
+    int nxeonphis_total;
     int ncudadevs = 0;
+    int nxeonphis = -1;
     int nnumanodes;
-    ghost_machine_nnuma(&nnumanodes);
+    int npus;
+    int ncores;
+    int nsockets;
+
+    nsockets = hwloc_get_nbobjs_inside_cpuset_by_type(topology,availcpuset,HWLOC_OBJ_SOCKET);
+    nnumanodes = hwloc_get_nbobjs_inside_cpuset_by_type(topology,availcpuset,HWLOC_OBJ_NODE);
+    ncores = hwloc_get_nbobjs_inside_cpuset_by_type(topology,availcpuset,HWLOC_OBJ_CORE);
+    npus = hwloc_get_nbobjs_inside_cpuset_by_type(topology,availcpuset,HWLOC_OBJ_PU);
+
+    INFO_LOG("# sockets: %d, # NUMA nodes: %d, # cores: %d, # PUs: %d",nsockets,nnumanodes,ncores,npus);
 
 #ifdef GHOST_HAVE_CUDA
     GHOST_CALL_RETURN(ghost_cu_ndevice(&ncudadevs));
 #endif
 
-    if (nnoderanks != nnumanodes+ncudadevs) {
-        PERFWARNING_LOG("The number of MPI processes (%d) on this node is not "
-                "optimal! Suggested number: %d (%d CUDA devices + %d NUMA "
-                "domains)",nnoderanks,nnumanodes+ncudadevs,ncudadevs,nnumanodes);
+
+#if HWLOC_API_VERSION >= 0x00010700
+    hwloc_obj_t phi = NULL;
+
+    do {
+        nxeonphis++;
+        phi = hwloc_intel_mic_get_device_osdev_by_index(topology,nxeonphis);
+    } while (phi);
+
+    if (noderank == 0) {
+        nxeonphis_total = nxeonphis;
+    } else {
+        nxeonphis_total = 0;
     }
 
-    ghost_type_t settype;
+#ifdef GHOST_HAVE_MPI    
+    MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&nxeonphis_total,1,MPI_INT,MPI_SUM,MPI_COMM_WORLD));
+#endif
+
+#else
+    WARNING_LOG("Possibly wrong information about the number of Xeon Phis due to outdated HWLOC!");
+    nxeonphis_total = 0;
+#endif
+
+    int nactivephis = 0;
+#ifdef GHOST_BUILD_MIC
+    nactivephis = 1;
+#endif
+
+#ifdef GHOST_HAVE_MPI
+    MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&nactivephis,1,MPI_INT,MPI_SUM,MPI_COMM_WORLD));
+#endif
+
+    if (nactivephis < nxeonphis_total) {
+        PERFWARNING_LOG("There %s %d Xeon Phi%s in the set of active nodes but only %d %s used!",
+                nxeonphis_total>1?"are":"is",nxeonphis_total,nxeonphis_total>1?"s":"",nactivephis,nactivephis==1?"is":"are");
+    }
+
+    if (nnoderanks != nnumanodes+ncudadevs) {
+        PERFWARNING_LOG("The number of MPI processes (%d) on this node is not "
+                "optimal! Suggested number: %d (%d NUMA domain%s + %d CUDA device%s)",
+                nnoderanks,nnumanodes+ncudadevs,nnumanodes,nnumanodes==1?"":"s",ncudadevs,ncudadevs==1?"":"s");
+    }
+
+    // get GHOST type set by the user
+    ghost_type settype;
     GHOST_CALL_RETURN(ghost_type_get(&settype));
     
     if (settype == GHOST_TYPE_INVALID) {
         char *envtype = getenv("GHOST_TYPE");
         if (envtype) {
-            if (!strncasecmp(envtype,"CUDA",4)) {
-                ghost_type = GHOST_TYPE_CUDA;
-            } else if (!strncasecmp(envtype,"WORK",4)) {
-                ghost_type = GHOST_TYPE_WORK;
+            if (!strncasecmp(envtype,"CUDA",4) || !strncasecmp(envtype,"GPU",3)) {
+                mytype = GHOST_TYPE_CUDA;
+            } else if (!strncasecmp(envtype,"WORK",4) || !strncasecmp(envtype,"CPU",3)) {
+                mytype = GHOST_TYPE_WORK;
             }
         }
     }
 
     // type has been set by neither env nor API
-    if (settype == GHOST_TYPE_INVALID && ghost_type == GHOST_TYPE_INVALID) {
+    if (settype == GHOST_TYPE_INVALID && mytype == GHOST_TYPE_INVALID) {
         if (noderank == 0) {
-            ghost_type = GHOST_TYPE_WORK;
+            mytype = GHOST_TYPE_WORK;
         } else if (noderank <= ncudadevs) {
-            ghost_type = GHOST_TYPE_CUDA;
+            mytype = GHOST_TYPE_CUDA;
         } else {
-            ghost_type = GHOST_TYPE_WORK;
+            mytype = GHOST_TYPE_WORK;
         }
         if (ncudadevs && nnoderanks > 1) {
-            INFO_LOG("Setting GHOST type to %s due to heuristics.",ghost_type_string(ghost_type));
+            INFO_LOG("Setting GHOST type to %s due to heuristics.",ghost_type_string(mytype));
         }
     } 
 
 #ifndef GHOST_HAVE_CUDA
-    if (ghost_type == GHOST_TYPE_CUDA) {
+    if (mytype == GHOST_TYPE_CUDA) {
         WARNING_LOG("This rank is supposed to be a CUDA management rank but CUDA is not available. Re-setting GHOST type");
-        ghost_type = GHOST_TYPE_WORK;
+        mytype = GHOST_TYPE_WORK;
     }
 #endif
     
-    GHOST_CALL_RETURN(ghost_type_set(ghost_type));
-
-
-    int nLocalCuda = ghost_type==GHOST_TYPE_CUDA;
+    GHOST_CALL_RETURN(ghost_type_set(mytype));
 
     int i;
     int localTypes[nnoderanks];
@@ -204,67 +307,31 @@ ghost_error_t ghost_init(int argc, char **argv)
     for (i=0; i<nnoderanks; i++) {
         localTypes[i] = GHOST_TYPE_INVALID;
     }
-    localTypes[noderank] = ghost_type;
+    localTypes[noderank] = mytype;
+    
+    int ncudaranks_on_node = mytype==GHOST_TYPE_CUDA;
 #ifdef GHOST_HAVE_MPI
-    ghost_mpi_comm_t ghost_node_comm;
+    ghost_mpi_comm ghost_node_comm;
     GHOST_CALL_RETURN(ghost_nodecomm_get(&ghost_node_comm));
-    MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&nLocalCuda,1,MPI_INT,MPI_SUM,ghost_node_comm));
+    MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&ncudaranks_on_node,1,MPI_INT,MPI_SUM,ghost_node_comm));
 
 #ifdef GHOST_HAVE_CUDA
-    if (ncudadevs < nLocalCuda) {
-        WARNING_LOG("There are %d CUDA management ranks on this node but only %d CUDA devices.",nLocalCuda,ncudadevs);
+    if (ncudadevs < ncudaranks_on_node) {
+        WARNING_LOG("There are %d CUDA management ranks on this node but only %d CUDA devices.",ncudaranks_on_node,ncudadevs);
     }
 #endif
 
 
     MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&localTypes,nnoderanks,MPI_INT,MPI_MAX,ghost_node_comm));
 #endif   
-
-    ghost_hybridmode_t ghost_hybridmode;
-    GHOST_CALL_RETURN(ghost_hybridmode_get(&ghost_hybridmode));
-
-    int oversubscribed = 0;
-    if (ghost_hybridmode == GHOST_HYBRIDMODE_INVALID) {
-        if (nnoderanks <=  nLocalCuda+1) {
-            ghost_hybridmode = GHOST_HYBRIDMODE_ONEPERNODE;
-        } else if (nnoderanks == nLocalCuda+nnumanodes) {
-            ghost_hybridmode = GHOST_HYBRIDMODE_ONEPERNUMA;
-        } else if (nnoderanks == hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_CORE)) {
-            ghost_hybridmode = GHOST_HYBRIDMODE_ONEPERCORE;
-        } else {
-            ghost_hybridmode = GHOST_HYBRIDMODE_CUSTOM;
-        }
-    }
-    GHOST_CALL_RETURN(ghost_hybridmode_set(ghost_hybridmode));
-
-    int maxcore;
-    ghost_machine_ncore(&maxcore, GHOST_NUMANODE_ANY);
     
-    int maxpu;
-    ghost_machine_npu(&maxpu, GHOST_NUMANODE_ANY);
-
-    hwloc_cpuset_t mycpuset = hwloc_bitmap_alloc();
-    hwloc_cpuset_t globcpuset = hwloc_bitmap_alloc();
-
-    hwloc_bitmap_copy(globcpuset,hwloc_topology_get_allowed_cpuset(topology));
-    ghost_hwconfig_t hwconfig;
+    ghost_hwconfig hwconfig;
     ghost_hwconfig_get(&hwconfig);
 
-    if (hwconfig.ncore == GHOST_HWCONFIG_INVALID) {
-        ghost_machine_ncore(&hwconfig.ncore, GHOST_NUMANODE_ANY);
-    }
-    if (hwconfig.nsmt == GHOST_HWCONFIG_INVALID) {
-        ghost_machine_nsmt(&hwconfig.nsmt);
-    }
-
-    IF_DEBUG(2) {
-        char *cpusetStr;
-        hwloc_bitmap_list_asprintf(&cpusetStr,globcpuset);
-        DEBUG_LOG(2,"Available CPU set: %s",cpusetStr);
-        free(cpusetStr);
-    }
-
+    int hasCuda = 0;
+    hwloc_cpuset_t cudaOccupiedCpuset = hwloc_bitmap_alloc();
 #ifdef GHOST_HAVE_CUDA
+    hasCuda = 1;
     int cudaDevice = 0;
 
     if (hwconfig.cudevice != GHOST_HWCONFIG_INVALID) {
@@ -282,9 +349,9 @@ ghost_error_t ghost_init(int argc, char **argv)
     }
     GHOST_CALL_RETURN(ghost_hwconfig_set(hwconfig));
 
-
     // CUDA ranks have a physical core
     cudaDevice = 0;
+    hwloc_obj_t cudaCore = NULL;
     for (i=0; i<nnoderanks; i++) {
         if (localTypes[i] == GHOST_TYPE_CUDA) {
             hwloc_cpuset_t fullCuCpuset = hwloc_bitmap_alloc();
@@ -293,147 +360,225 @@ ghost_error_t ghost_init(int argc, char **argv)
             HWLOC_CALL_RETURN(hwloc_cudart_get_device_cpuset(topology,cudaDevice,fullCuCpuset));
             
             // restrict CUDA cpuset to CPUs which are still in global cpuset
-            hwloc_bitmap_and(fullCuCpuset,fullCuCpuset,globcpuset);
+            hwloc_bitmap_and(fullCuCpuset,fullCuCpuset,availcpuset);
             
-            reducedCuCpuset = hwloc_get_next_obj_inside_cpuset_by_type(topology,fullCuCpuset,HWLOC_OBJ_CORE,NULL)->cpuset;
+            if (hwloc_bitmap_iszero(fullCuCpuset)) {
+                PERFWARNING_LOG("Placing CUDA process on far socket!");
+                hwloc_bitmap_copy(fullCuCpuset,availcpuset);
+            }
+
+            if (nnoderanks > 1) {
+                // select a single core for this CUDA rank 
+                cudaCore = hwloc_get_next_obj_inside_cpuset_by_type(topology,fullCuCpuset,HWLOC_OBJ_CORE,cudaCore);
+                reducedCuCpuset = cudaCore->cpuset;
+            } else {
+                reducedCuCpuset = fullCuCpuset;
+            }
         
-            // delete CUDA cores from global cpuset
-            hwloc_bitmap_andnot(globcpuset,globcpuset,reducedCuCpuset);
-            hwloc_bitmap_copy(mycpuset,reducedCuCpuset);
-            
+            if (noderank == i) {
+                hwloc_bitmap_copy(mycpuset,reducedCuCpuset);
+            }
+            hwloc_bitmap_or(cudaOccupiedCpuset,cudaOccupiedCpuset,reducedCuCpuset);
+
             hwloc_bitmap_free(fullCuCpuset);
             
             cudaDevice++;
         }
     }
 #endif
-
-    if (ghost_hybridmode == GHOST_HYBRIDMODE_ONEPERNODE) {
-        if (ghost_type == GHOST_TYPE_WORK) {
-            hwloc_bitmap_copy(mycpuset,globcpuset);
+        
+    int ncpuranks_on_node = nnoderanks-ncudaranks_on_node;
+    
+    if (ncpuranks_on_node > 1) {   
+        // indicate whether the CPU ranks cover a full hwloc obj
+        bool ranks_cover_obj = true; 
+        hwloc_obj_type_t distr_type;
+        if (nsockets == ncpuranks_on_node) {
+            INFO_LOG("One process per socket");
+            distr_type = HWLOC_OBJ_SOCKET;
+        } else if (nnumanodes == ncpuranks_on_node) {
+            INFO_LOG("One process per NUMA node");
+            distr_type = HWLOC_OBJ_NODE;
+        } else if (ncores == ncpuranks_on_node) {
+            INFO_LOG("One process per core");
+            distr_type = HWLOC_OBJ_CORE;
+        } else if (npus == ncpuranks_on_node) {
+            INFO_LOG("One process per PU");
+            distr_type = HWLOC_OBJ_PU;
+        } else if (npus < ncpuranks_on_node) {
+            distr_type = HWLOC_OBJ_PU;
+            PERFWARNING_LOG("Oversubscription! Some processes will share PUs!");
+            ranks_cover_obj = false;
+        } else {
+            PERFWARNING_LOG("Naively sharing %d PUs among %d ranks",npus,ncpuranks_on_node);
+            ranks_cover_obj = false;
         }
-        hwloc_bitmap_andnot(globcpuset,globcpuset,globcpuset);
-    } else if (ghost_hybridmode == GHOST_HYBRIDMODE_ONEPERNUMA) {
-        int numaNode = 0;
+
+        hwloc_obj_t coverobj = NULL;
+        int cpurank = 0;
+        hwloc_bitmap_t rank_cpuset = hwloc_bitmap_alloc();
+
+        // we need a copy because we delete PUs from availcpuset as we go through the processes
+        hwloc_cpuset_t fullavailcpuset = hwloc_bitmap_dup(availcpuset);
+        
         for (i=0; i<nnoderanks; i++) {
+            hwloc_bitmap_zero(rank_cpuset);
             if (localTypes[i] == GHOST_TYPE_WORK) {
-                if (nnumanodes > numaNode) {
-                    hwloc_cpuset_t nodeCpuset;
-                    if (hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_NODE) > 0) {
-                        nodeCpuset = hwloc_get_obj_by_type(topology,HWLOC_OBJ_NODE,numaNode)->cpuset;
-                    } else {
-                        nodeCpuset = hwloc_get_obj_by_type(topology,HWLOC_OBJ_SOCKET,numaNode)->cpuset;
-                    }
-                    if (i == noderank) {
-                        hwloc_bitmap_and(mycpuset,globcpuset,nodeCpuset);
-                    }
-                    hwloc_bitmap_andnot(globcpuset,globcpuset,nodeCpuset);
-                    numaNode++;
+
+                if (ranks_cover_obj) {
+                    // the obj covered by this rank
+                    coverobj = hwloc_get_obj_inside_cpuset_by_type(topology, fullavailcpuset, distr_type,cpurank);
+                    hwloc_bitmap_copy(rank_cpuset,coverobj->cpuset);
                 } else {
-                    oversubscribed = 1;
-                    WARNING_LOG("More processes (%d) than NUMA nodes (%d)",numaNode,nnumanodes);
-                    break;
-                }
-            }
-        }
-    } else if (ghost_hybridmode == GHOST_HYBRIDMODE_ONEPERCORE) {
-        if (nnoderanks > maxcore) {
-            oversubscribed = 1;
-            WARNING_LOG("More processes (%d) than cores available (%d)",nnoderanks,maxcore);
-        } else {
-            for (i=0; i<nnoderanks; i++) {
-                if (localTypes[i] == GHOST_TYPE_WORK) {
-                    hwloc_cpuset_t coreCpuset;
-                    coreCpuset = hwloc_get_obj_by_type(topology,HWLOC_OBJ_CORE,i)->cpuset;
-                    if (i == noderank) {
-                        hwloc_bitmap_and(mycpuset,globcpuset,coreCpuset);
-                    }
-                    hwloc_bitmap_andnot(globcpuset,globcpuset,coreCpuset);
-                }
-            }
-        }
-    } else if (ghost_hybridmode == GHOST_HYBRIDMODE_CUSTOM) {
-        if (nnoderanks > maxpu) {
-            oversubscribed = 1;
-            WARNING_LOG("More processes (%d) than PUs available (%d)",nnoderanks,maxpu);
-        } else {
-            int pusperrank = maxpu/nnoderanks;
-
-            for (i=0; i<nnoderanks-1; i++) { // the last rank will get the remaining PUs
-                if (localTypes[i] == GHOST_TYPE_WORK) {
-                    hwloc_cpuset_t puCpuset;
-                    int pu;
-                    for (pu=0; pu<pusperrank; pu++) {
-                        puCpuset = hwloc_get_obj_by_type(topology,HWLOC_OBJ_PU,i*pusperrank+pu)->cpuset;
-                        if (i == noderank) {
-                            hwloc_bitmap_t bak = hwloc_bitmap_dup(mycpuset);
-                            hwloc_bitmap_and(mycpuset,globcpuset,puCpuset);
-                            hwloc_bitmap_or(mycpuset,mycpuset,bak);
-                            hwloc_bitmap_free(bak);
+                    hwloc_obj_type_t dist_obj;
+                    int obj_per_rank;
+                    int nobj;
+                    if (ncpuranks_on_node <= ncores) {
+                        PERFWARNING_LOG("Distributing cores among processes");
+                        dist_obj = HWLOC_OBJ_CORE;
+                        obj_per_rank = ncores/ncpuranks_on_node;
+                        nobj = ncores;
+                    } else {
+                        dist_obj = HWLOC_OBJ_PU;
+                        nobj = npus;
+                        if (ncpuranks_on_node <= npus) {
+                            PERFWARNING_LOG("Distributing PUs among processes");
+                            obj_per_rank = npus/ncpuranks_on_node;
+                        } else {
+                            PERFWARNING_LOG("More processes than PUs!");
+                            obj_per_rank = 1;
                         }
-                        hwloc_bitmap_andnot(globcpuset,globcpuset,puCpuset);
+                    }
+                        
+                    if (i == noderank) {
+                        int r,oi;
+
+                        
+                        // assign cores
+                        r = MIN(cpurank*obj_per_rank,(nobj-1));
+                        for (oi=0; oi < obj_per_rank; oi++) {
+                            hwloc_bitmap_or(rank_cpuset,rank_cpuset,hwloc_get_obj_inside_cpuset_by_type(topology,fullavailcpuset,dist_obj,r)->cpuset);
+                            if (r<(nobj-1)) {
+                                r++;
+                            }
+                        }
+
+
+                        // remainder
+                        if (cpurank == ncpuranks_on_node-1) {
+                            for (; r<nobj; r++) {
+                                hwloc_bitmap_or(rank_cpuset,rank_cpuset,hwloc_get_obj_inside_cpuset_by_type(topology,fullavailcpuset,dist_obj,r)->cpuset);
+                            }
+                        }
+
+                    }
+                    cpurank++;
+                }
+
+                // set mycpuset
+                if (i == noderank) {
+                    hwloc_bitmap_copy(mycpuset,rank_cpuset);
+                }
+
+                // delete my PUs from available CPU set
+                hwloc_bitmap_andnot(availcpuset,availcpuset,rank_cpuset);
+              
+                if (ranks_cover_obj) { 
+                    // only go to next obj if no oversubscription 
+                    if (cpurank < hwloc_get_nbobjs_inside_cpuset_by_type(topology, fullavailcpuset, distr_type)-1) {
+                        cpurank++; 
                     }
                 }
             }
-            if (localTypes[i] == GHOST_TYPE_WORK && i == noderank) {
-                hwloc_bitmap_copy(mycpuset,globcpuset);
-            }
-            hwloc_bitmap_andnot(globcpuset,globcpuset,globcpuset);
         }
 
+        hwloc_bitmap_free(rank_cpuset);
+        hwloc_bitmap_free(fullavailcpuset);
+       
+    } else {
+        INFO_LOG("One process per node");
+        if (mytype == GHOST_TYPE_WORK) {
+            hwloc_bitmap_copy(mycpuset,availcpuset);
+        }
+    }    
+
+    if (mytype == GHOST_TYPE_WORK) {
+    // exclude CUDA cores from CPU set
+        hwloc_bitmap_andnot(mycpuset,mycpuset,cudaOccupiedCpuset);
+    }
+    
+
+
+    if (hwconfig.ncore == GHOST_HWCONFIG_INVALID) {
+        ghost_machine_ncore(&hwconfig.ncore,GHOST_NUMANODE_ANY);
+    }
+    if (hwconfig.nsmt == GHOST_HWCONFIG_INVALID) {
+        ghost_machine_nsmt(&hwconfig.nsmt);
     }
 
-    if (oversubscribed) {
-        mycpuset = hwloc_bitmap_dup(hwloc_get_obj_by_depth(topology,HWLOC_OBJ_SYSTEM,0)->cpuset);
-    }
 
-    // delete PUs from cpuset according to hwconfig
-    hwloc_obj_t obj;
+
+#ifdef GHOST_HAVE_MPI
+    int rank;
+    ghost_mpi_comm tmpcomm;
+    GHOST_CALL_RETURN(ghost_rank(&rank,MPI_COMM_WORLD));
+    MPI_CALL_RETURN(MPI_Comm_dup(MPI_COMM_WORLD,&tmpcomm));
+    MPI_CALL_RETURN(MPI_Comm_split(tmpcomm,hasCuda,rank,&ghost_cuda_comm));
+    MPI_CALL_RETURN(MPI_Comm_split(tmpcomm,hasCuda,rank,&ghost_cuda_comm));
+    MPI_CALL_RETURN(MPI_Comm_free(&tmpcomm));
+#else
+    UNUSED(hasCuda);
+#endif
+
+    // delete excess PUs
+    unsigned int firstcpu = hwloc_get_pu_obj_by_os_index(topology,hwloc_bitmap_first(mycpuset))->parent->logical_index;
     unsigned int cpu;
+    hwloc_bitmap_foreach_begin(cpu,mycpuset);
+        hwloc_obj_t obj = hwloc_get_pu_obj_by_os_index(topology,cpu);
 
-    // we probably need this because we would manipulate the CPU set which we are iterating otherwise
-    hwloc_bitmap_t backup = hwloc_bitmap_dup(mycpuset);
-
-    // delete excess cores
-    hwloc_obj_t core_to_delete = hwloc_get_obj_inside_cpuset_by_type(topology,mycpuset,HWLOC_OBJ_CORE,hwconfig.ncore);
-    while (core_to_delete) {
-        hwloc_bitmap_andnot(mycpuset,mycpuset,core_to_delete->cpuset);
-        core_to_delete = hwloc_get_next_obj_inside_cpuset_by_type(topology,mycpuset,HWLOC_OBJ_CORE,core_to_delete);
-    }
-
-    // delete excess SMT threads
-    // this has to be done _after_ deleting excess cores because 
-    // hwloc_get_obj_inside_cpuset_by_type() needs to find full cores in the CPU set
-    hwloc_bitmap_foreach_begin(cpu,backup);
-    obj = hwloc_get_pu_obj_by_os_index(topology,cpu);
-
-    if ((int)(obj->sibling_rank) >= hwconfig.nsmt) {
-        hwloc_bitmap_clr(mycpuset,obj->os_index);
-    } 
+        if (obj->parent->logical_index-firstcpu >= (unsigned)hwconfig.ncore) {
+            hwloc_bitmap_clr(mycpuset,obj->os_index);
+            if (hwloc_bitmap_iszero(mycpuset)) {
+                WARNING_LOG("Ignoring hwconfig setting as it would zero the CPU set!");
+                hwloc_bitmap_set(mycpuset,obj->os_index);
+            }
+        }
+        if ((int)(obj->sibling_rank) >= hwconfig.nsmt) {
+            hwloc_bitmap_clr(mycpuset,obj->os_index);
+            if (hwloc_bitmap_iszero(mycpuset)) {
+                WARNING_LOG("Ignoring hwconfig setting as it would zero the CPU set!");
+                hwloc_bitmap_set(mycpuset,obj->os_index);
+            }
+        } 
     hwloc_bitmap_foreach_end();
 
-    hwloc_bitmap_free(backup);
-
-    void *(*threadFunc)(void *);
-
     ghost_taskq_create();
-    ghost_taskq_startroutine(&threadFunc);
-    ghost_thpool_create(hwloc_bitmap_weight(mycpuset)+1,threadFunc);
     ghost_pumap_create(mycpuset);
 
     ghost_rand_create();
-    hwloc_bitmap_free(mycpuset); mycpuset = NULL; 
-    hwloc_bitmap_free(globcpuset); globcpuset = NULL;
+    
+#ifdef GHOST_HAVE_INSTR_LIKWID
+    likwid_markerInit();
 
-//    ghost_tsmm_kernelmap_generate();
-//    ghost_tsmm_inplace_kernelmap_generate();
-//    ghost_tsmttsm_kernelmap_generate();
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_PREPROCESS);
+    ghost_task *t;
+    ghost_task_create(&t,GHOST_TASK_FILL_ALL,0,&likwidThreadInitTask,NULL,GHOST_TASK_DEFAULT, NULL, 0);
+    ghost_task_enqueue(t);
+    ghost_task_wait(t);
+    ghost_task_destroy(t);
+#endif
+   
+
+    hwloc_bitmap_free(cudaOccupiedCpuset);
+    hwloc_bitmap_free(mycpuset); mycpuset = NULL; 
+    hwloc_bitmap_free(availcpuset); availcpuset = NULL;
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_SETUP);
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_finalize()
+ghost_error ghost_finalize()
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TEARDOWN);
     static int finalized = 0;
 
     if (finalized) {
@@ -444,17 +589,18 @@ ghost_error_t ghost_finalize()
 
 
     ghost_rand_destroy();
+    ghost_cu_finalize();
 
 #ifdef GHOST_HAVE_INSTR_LIKWID
-    LIKWID_MARKER_CLOSE;
+    likwid_markerClose();
 #endif
     
 #ifdef GHOST_HAVE_INSTR_TIMING
 #if GHOST_VERBOSITY
-    char *str;
-    ghost_timing_summarystring(&str);
-    INFO_LOG("\n%s",str);
-    free(str);
+//    char *str;
+//    ghost_timing_summarystring(&str);
+//    INFO_LOG("\n%s",str);
+//    free(str);
 #endif
 #endif
 
@@ -473,11 +619,14 @@ ghost_error_t ghost_finalize()
     }
 #endif
 
+    ghost_instr_destroy();
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TEARDOWN);
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_string(char **str) 
+ghost_error ghost_string(char **str) 
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     GHOST_CALL_RETURN(ghost_malloc((void **)str,1));
     memset(*str,'\0',1);
 
@@ -485,17 +634,17 @@ ghost_error_t ghost_string(char **str)
     ghost_line_string(str,"Version",NULL,"%s",GHOST_VERSION);
     ghost_line_string(str,"Build date",NULL,"%s",__DATE__);
     ghost_line_string(str,"Build time",NULL,"%s",__TIME__);
-#ifdef GHOST_HAVE_MIC
+#ifdef GHOST_BUILD_MIC
     ghost_line_string(str,"MIC kernels",NULL,"Enabled");
 #else
     ghost_line_string(str,"MIC kernels",NULL,"Disabled");
 #endif
-#ifdef GHOST_HAVE_AVX
+#ifdef GHOST_BUILD_AVX
     ghost_line_string(str,"AVX kernels",NULL,"Enabled");
 #else
     ghost_line_string(str,"AVX kernels",NULL,"Disabled");
 #endif
-#ifdef GHOST_HAVE_SSE
+#ifdef GHOST_BUILD_SSE
     ghost_line_string(str,"SSE kernels",NULL,"Enabled");
 #else
     ghost_line_string(str,"SSE kernels",NULL,"Disabled");
@@ -515,8 +664,8 @@ ghost_error_t ghost_string(char **str)
 #else
     ghost_line_string(str,"CUDA support",NULL,"Disabled");
 #endif
-    ghost_line_string(str,"Configured SELL chunk heights",NULL,"%s",GHOST_CFG_SELL_CHUNKHEIGHTS);
-    ghost_line_string(str,"Configured blockvector widths",NULL,"%s",GHOST_CFG_BLOCKVECTOR_SIZES);
+    ghost_line_string(str,"Configured SELL chunk heights",NULL,"%s",GHOST_GEN_SELL_C);
+    ghost_line_string(str,"Configured blockvector widths",NULL,"%s",GHOST_GEN_DENSEMAT_DIM);
 #ifdef GHOST_HAVE_INSTR_LIKWID
 #ifdef GHOST_HAVE_INSTR_TIMING
     ghost_line_string(str,"Instrumentation",NULL,"Likwid+Timing");
@@ -530,36 +679,45 @@ ghost_error_t ghost_string(char **str)
     ghost_line_string(str,"Instrumentation",NULL,"Disabled");
 #endif
 #endif
-#ifdef GHOST_HAVE_LONGIDX_GLOBAL
+#ifdef GHOST_IDX64_GLOBAL
     ghost_line_string(str,"Gobal index size","bits","64");
 #else
     ghost_line_string(str,"Gobal index size","bits","32");
 #endif
-#ifdef GHOST_HAVE_LONGIDX_LOCAL
+#ifdef GHOST_IDX64_LOCAL
     ghost_line_string(str,"Local index size","bits","64");
 #else
     ghost_line_string(str,"Local index size","bits","32");
 #endif
     ghost_footer_string(str);
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return GHOST_SUCCESS;
 
 }
 
-ghost_error_t ghost_barrier()
+ghost_error ghost_barrier()
 {
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
+//    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
 #ifdef GHOST_HAVE_MPI
     MPI_CALL_RETURN(MPI_Barrier(MPI_COMM_WORLD));
 #endif
 #ifdef GHOST_HAVE_CUDA
-    ghost_type_t type;
+    ghost_type type;
     ghost_type_get(&type);
     if (type == GHOST_TYPE_CUDA) {
         GHOST_CALL_RETURN(ghost_cu_barrier());
     }
 #endif
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_COMMUNICATION);
+//    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_COMMUNICATION);
 
+    return GHOST_SUCCESS;
+}
+    
+ghost_error ghost_cuda_comm_get(ghost_mpi_comm *comm)
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+    *comm = ghost_cuda_comm;
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return GHOST_SUCCESS;
 }

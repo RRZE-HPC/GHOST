@@ -4,16 +4,16 @@
 #include <complex>
 
 template<typename T>
-static ghost_error_t ghost_densemat_cm_averagehalo_tmpl(ghost_densemat_t *vec)
+static ghost_error ghost_densemat_cm_averagehalo_tmpl(ghost_densemat *vec)
 {
 #ifdef GHOST_HAVE_MPI
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
 
     int rank, nrank, i, acc_dues = 0;
     T *work = NULL, *curwork = NULL;
     MPI_Request *req = NULL;
-    ghost_lidx_t *curdue = NULL;
+    ghost_lidx *curdue = NULL;
     T *sum = NULL;
     int *nrankspresent = NULL;
     
@@ -55,7 +55,7 @@ static ghost_error_t ghost_densemat_cm_averagehalo_tmpl(ghost_densemat_t *vec)
 
     MPI_CALL_GOTO(MPI_Waitall(2*nrank,req,MPI_STATUSES_IGNORE),err,ret);
     
-    GHOST_CALL_GOTO(ghost_malloc((void **)&curdue, nrank*sizeof(ghost_lidx_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&curdue, nrank*sizeof(ghost_lidx)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&sum, vec->context->lnrows[rank]*sizeof(T)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&nrankspresent, vec->context->lnrows[rank]*sizeof(int)),err,ret);
 
@@ -68,7 +68,7 @@ static ghost_error_t ghost_densemat_cm_averagehalo_tmpl(ghost_densemat_t *vec)
         nrankspresent[i] = 1;
     }
     
-    ghost_lidx_t currow;
+    ghost_lidx currow;
     curwork = work;
     for (i=0; i<nrank; i++) {
         if (i == rank) {
@@ -106,11 +106,13 @@ out:
 #endif
 }
 
-ghost_error_t ghost_densemat_cm_averagehalo_selector(ghost_densemat_t *vec)
+ghost_error ghost_densemat_cm_averagehalo_selector(ghost_densemat *vec)
 {
-    ghost_error_t ret = GHOST_SUCCESS;
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
+    ghost_error ret = GHOST_SUCCESS;
 
     SELECT_TMPL_1DATATYPE(vec->traits.datatype,std::complex,ret,ghost_densemat_cm_averagehalo_tmpl,vec);
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_COMMUNICATION);
     return ret;
 }

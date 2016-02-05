@@ -22,11 +22,11 @@
 #endif
 
 
-
-ghost_error_t ghost_task_unpin(ghost_task_t *task)
+ghost_error ghost_task_unpin(ghost_task *task)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING);
     unsigned int pu;
-    ghost_thpool_t *ghost_thpool = NULL;
+    ghost_thpool *ghost_thpool = NULL;
     ghost_thpool_get(&ghost_thpool);
     if (!(task->flags & GHOST_TASK_NOT_PIN)) {
         hwloc_bitmap_foreach_begin(pu,task->coremap);
@@ -41,11 +41,13 @@ ghost_error_t ghost_task_unpin(ghost_task_t *task)
         hwloc_bitmap_foreach_end();
     }
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING);
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_task_string(char **str, ghost_task_t *t) 
+ghost_error ghost_task_string(char **str, ghost_task *t) 
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING|GHOST_FUNCTYPE_UTIL);
     GHOST_CALL_RETURN(ghost_malloc((void **)str,1));
     memset(*str,'\0',1);
 
@@ -54,66 +56,90 @@ ghost_error_t ghost_task_string(char **str, ghost_task_t *t)
     ghost_line_string(str,"NUMA node",NULL,"%d",t->LD);
     ghost_footer_string(str);
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING|GHOST_FUNCTYPE_UTIL);
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_task_enqueue(ghost_task_t *t)
+ghost_error ghost_task_enqueue(ghost_task *t)
 {
-    pthread_mutex_lock(t->mutex);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING);
+    pthread_mutex_lock(t->stateMutex);
     t->state = GHOST_TASK_INVALID;
+    pthread_mutex_unlock(t->stateMutex);
 
+    pthread_mutex_lock(t->mutex);
     hwloc_bitmap_zero(t->coremap);
     hwloc_bitmap_zero(t->childusedmap);
-    GHOST_CALL_RETURN(ghost_task_cur(&t->parent));
+    pthread_mutex_unlock(t->mutex);
 
+    if( t->parent != NULL ) {
+      DEBUG_LOG(1,"Task's parent overwritten!");
+    }
+    else {
+      GHOST_CALL_RETURN(ghost_task_cur(&t->parent));
+    }
+
+    pthread_mutex_lock(t->stateMutex);
     ghost_taskq_add(t);
     t->state = GHOST_TASK_ENQUEUED;
-    pthread_mutex_unlock(t->mutex);
+    pthread_mutex_unlock(t->stateMutex);
 
     DEBUG_LOG(1,"Task added successfully");
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING);
     return GHOST_SUCCESS;
 }
 
-ghost_task_state_t ghost_task_test(ghost_task_t * t)
+ghost_task_state ghost_taskest(ghost_task * t)
 {
     if (!t) {
         return GHOST_TASK_INVALID;
     }
-    return t->state;
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING);
+    ghost_task_state state;
+    pthread_mutex_lock(t->stateMutex);
+    state = t->state;
+    pthread_mutex_unlock(t->stateMutex);
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING);
+    return state;
 }
 
-ghost_error_t ghost_task_wait(ghost_task_t * task)
+ghost_error ghost_task_wait(ghost_task * task)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING);
     DEBUG_LOG(1,"Waiting for task %p whose state is %s",(void *)task,ghost_task_state_string(task->state));
 
 
-    //    ghost_task_t *parent = (ghost_task_t *)pthread_getspecific(ghost_thread_key);
+    //    ghost_task *parent = (ghost_task *)pthread_getspecific(ghost_thread_key);
     //    if (parent != NULL) {
     //    WARNING_LOG("Waiting on a task from within a task ===> free'ing the parent task's resources, idle PUs: %d",NIDLECORES);
     //    ghost_task_unpin(parent);
     //    WARNING_LOG("Now idle PUs: %d",NIDLECORES);
     //    }
-
-    pthread_mutex_lock(task->mutex);
-    if (task->state != GHOST_TASK_FINISHED) {
-        DEBUG_LOG(1,"Waiting for signal @ cond %p from task %p",(void *)task->finishedCond,(void *)task);
-        pthread_cond_wait(task->finishedCond,task->mutex);
-    } else {
-        DEBUG_LOG(1,"Task %p has already finished",(void *)task);
+    ghost_task *cur;
+    ghost_task_cur(&cur);
+    if (cur == task) {
+        WARNING_LOG("Should wait on myself. Bad idea!");
     }
 
-    // pin again if have been unpinned
-
-    pthread_mutex_unlock(task->mutex);
+    pthread_mutex_lock(task->stateMutex);
+    while (task->state != GHOST_TASK_FINISHED) {
+        DEBUG_LOG(1,"Waiting for signal @ cond %p from task %p",(void *)task->finishedCond,(void *)task);
+        pthread_cond_wait(task->finishedCond,task->stateMutex);
+    }
+    pthread_mutex_unlock(task->stateMutex);
     DEBUG_LOG(1,"Finished waitung for task %p!",(void *)task);
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING);
     return GHOST_SUCCESS;
 
 }
 
-char *ghost_task_state_string(ghost_task_state_t state)
+const char *ghost_task_state_string(ghost_task_state state)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING|GHOST_FUNCTYPE_UTIL);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING|GHOST_FUNCTYPE_UTIL);
     switch (state) {
         case GHOST_TASK_INVALID: 
             return "Invalid";
@@ -136,27 +162,36 @@ char *ghost_task_state_string(ghost_task_state_t state)
     }
 }
 
-void ghost_task_destroy(ghost_task_t *t)
+void ghost_task_destroy(ghost_task *t)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING|GHOST_FUNCTYPE_TEARDOWN);
     if (t) {
-        pthread_mutex_destroy(t->mutex);
+        if (t->state != GHOST_TASK_FINISHED) {
+            WARNING_LOG("The task is not finished but should be destroyed!");
+        }
+        sem_destroy(t->progressSem);
         pthread_cond_destroy(t->finishedCond);
-
-//        free(t->cores);
         hwloc_bitmap_free(t->coremap);
         hwloc_bitmap_free(t->childusedmap);
-        free(t->ret);
-        free(t->mutex);
+        free(t->progressSem);
         free(t->finishedCond);
+        pthread_mutex_destroy(t->mutex);
+        pthread_mutex_destroy(t->stateMutex);
+        pthread_mutex_destroy(t->finishedMutex);
+        free(t->mutex);
+        free(t->stateMutex);
+        free(t->finishedMutex);
+        free(t);
     }
-    free(t); t = NULL;
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING|GHOST_FUNCTYPE_TEARDOWN);
 }
 
-ghost_error_t ghost_task_create(ghost_task_t **t, int nThreads, int LD, void *(*func)(void *), void *arg, ghost_task_flags_t flags, ghost_task_t **depends, int ndepends)
+ghost_error ghost_task_create(ghost_task **t, int nThreads, int LD, void *(*func)(void *), void *arg, ghost_task_flags flags, ghost_task **depends, int ndepends)
 {
-    ghost_error_t ret = GHOST_SUCCESS;
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING|GHOST_FUNCTYPE_SETUP);
+    ghost_error ret = GHOST_SUCCESS;
 
-    GHOST_CALL_RETURN(ghost_malloc((void **)t,sizeof(ghost_task_t)));
+    GHOST_CALL_GOTO(ghost_malloc((void **)t,sizeof(ghost_task)),err,ret);
     
     if (nThreads == GHOST_TASK_FILL_LD) {
         if (LD < 0) {
@@ -184,10 +219,15 @@ ghost_error_t ghost_task_create(ghost_task_t **t, int nThreads, int LD, void *(*
     (*t)->ndepends = ndepends;
 
 //    GHOST_CALL_GOTO(ghost_malloc((void **)&(*t)->cores,sizeof(int)*(*t)->nThreads),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&(*t)->progressSem,sizeof(sem_t)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&(*t)->finishedCond,sizeof(pthread_cond_t)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&(*t)->mutex,sizeof(pthread_mutex_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&(*t)->ret,sizeof(void *)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&(*t)->finishedMutex,sizeof(pthread_mutex_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&(*t)->stateMutex,sizeof(pthread_mutex_t)),err,ret);
+    sem_init((*t)->progressSem,0,0);
     pthread_mutex_init((*t)->mutex,NULL);
+    pthread_mutex_init((*t)->finishedMutex,NULL);
+    pthread_mutex_init((*t)->stateMutex,NULL);
     pthread_cond_init((*t)->finishedCond,NULL);
     (*t)->state = GHOST_TASK_CREATED;
     (*t)->coremap = hwloc_bitmap_alloc();
@@ -201,6 +241,7 @@ ghost_error_t ghost_task_create(ghost_task_t **t, int nThreads, int LD, void *(*
     (*t)->next = NULL;
     (*t)->prev = NULL;
     (*t)->parent = NULL;
+    (*t)->ret = NULL;
 
     goto out;
 err:
@@ -215,15 +256,19 @@ err:
     free(*t); *t = NULL;
 out:
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING|GHOST_FUNCTYPE_SETUP);
     return ret;
 }
 
-ghost_error_t ghost_task_cur(ghost_task_t **task)
+ghost_error ghost_task_cur(ghost_task **task)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING);
+    
     pthread_key_t key;
     GHOST_CALL_RETURN(ghost_thpool_key(&key));
-    *task = (ghost_task_t *)pthread_getspecific(key);
+    *task = (ghost_task *)pthread_getspecific(key);
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING);
     return GHOST_SUCCESS;
 
 }

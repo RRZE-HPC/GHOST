@@ -1,0 +1,258 @@
+/*!GHOST_AUTOGEN BLOCKDIM1;BLOCKDIM2 */
+#include "ghost/config.h"
+#include "ghost/types.h"
+#include "ghost/math.h"
+#include "ghost/instr.h"
+#include "ghost/locality.h"
+#include "ghost/util.h"
+#include "ghost/tsmttsm_kahan_plain_gen.h"
+
+#GHOST_SUBST CFGK ${BLOCKDIM1}
+#GHOST_SUBST CFGM ${BLOCKDIM2}
+
+ghost_error ghost_tsmttsm_kahan__a_plain_d_CFGK_CFGM_1_cm_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
+{
+    UNUSED(conjv);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
+    ghost_error ret = GHOST_SUCCESS;
+
+    int myrank=0;
+
+    if (v->context) {
+        GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
+    }
+
+    ghost_lidx n = v->traits.nrows;
+    INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
+    
+    const double * const restrict vval = (const double *) v->val;
+    const double * const restrict wval = (const double *) w->val;
+    double * const restrict xval = (double *) x->val;
+
+    const ghost_lidx ldv = v->stride;
+    const ghost_lidx ldw = w->stride;
+    const ghost_lidx ldx = x->stride;
+    
+    double dalpha = *(double *)alpha;
+    double dbeta = *(double *)beta;
+    
+    // make sure that the initial x only gets added up once
+    if (myrank) {
+        dbeta = 0.;
+    }
+
+    ghost_lidx i,j;
+    
+    if (x->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
+        ghost_lidx k;
+#if CFGK>1
+#pragma simd
+#endif
+        for (k=0; k<CFGK; k++) {
+            for (j=0; j<CFGM; j++) {
+                xval[k*ldx+j] = dbeta*xval[k*ldx+j];
+            }
+        }
+            
+        double finalc[CFGM*CFGK];
+        memset(finalc,0,sizeof(finalc));
+
+
+#pragma omp parallel private(j,k) shared(finalc)
+        {
+            double *x_priv, *c, *y, *t;
+            ghost_malloc((void **)&x_priv,CFGM*CFGK*sizeof(double));
+            ghost_malloc((void **)&c,CFGM*CFGK*sizeof(double));
+            ghost_malloc((void **)&y,CFGM*CFGK*sizeof(double));
+            ghost_malloc((void **)&t,CFGM*CFGK*sizeof(double));
+            memset(x_priv,0,CFGM*CFGK*sizeof(double));
+            memset(c,0,CFGM*CFGK*sizeof(double));
+
+#pragma omp for schedule(runtime)
+            for (i=0; i<n-3; i+=4) {
+                for (k=0; k<CFGK; k++) {
+#pragma simd
+                  for (j=0; j<CFGM; j++) {
+                        y[j*CFGK+k] = dalpha*(vval[i*ldv+j]*wval[i*ldw+k]+vval[(i+1)*ldv+j]*wval[(i+1)*ldw+k]+vval[(i+2)*ldv+j]*wval[(i+2)*ldw+k]+vval[(i+3)*ldv+j]*wval[(i+3)*ldw+k]) - c[j*CFGK+k];
+                        t[j*CFGK+k] = x_priv[j*CFGK+k] + y[j*CFGK+k];
+                        c[j*CFGK+k] = (t[j*CFGK+k] - x_priv[j*CFGK+k]) - y[j*CFGK+k];
+                        x_priv[j*CFGK+k] = t[j*CFGK+k]; 
+                    }
+                }
+
+            }
+#pragma omp critical
+            for (k=0; k<CFGK; k++) {
+#pragma simd
+                for (j=0; j<CFGM; j++) {
+                    y[j*CFGK+k] = x_priv[j*CFGK+k] - finalc[j*CFGK+k];
+                    t[j*CFGK+k] = xval[k*ldx+j] + y[j*CFGK+k];
+                    finalc[j*CFGK+k] = (t[j*CFGK+k] - xval[k*ldx+j]) - y[j*CFGK+k];
+                    xval[k*ldx+j] = t[j*CFGK+k];
+                }
+            }
+            free(x_priv);
+            free(c);
+            free(y);
+            free(t);
+        }
+    } else {
+        ERROR_LOG("Will be implemented soon :-)!");
+        ret = GHOST_ERR_NOT_IMPLEMENTED;
+        goto err;
+    }
+   
+    goto out;
+err:
+
+out:
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
+    return ret;
+}
+
+ghost_error ghost_tsmttsm_kahan__a_plain_z_CFGK_CFGM_1_cm_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
+{
+    UNUSED(conjv);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
+    ghost_error ret = GHOST_SUCCESS;
+
+    int myrank=0;
+
+    if (v->context) {
+        GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
+    }
+
+    ghost_lidx n = v->traits.nrows;
+    INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
+    
+    const double complex * const restrict vval = (const double complex*) v->val;
+    const double complex * const restrict wval = (const double complex*) w->val;
+    double complex * const restrict xval = (double complex*) x->val;
+
+    const ghost_lidx ldv = v->stride;
+    const ghost_lidx ldw = w->stride;
+    const ghost_lidx ldx = x->stride;
+    
+    const complex double dalpha = *(complex double *)alpha;
+    complex double dbeta = *(complex double *)beta;
+    
+    ghost_mpi_op mpiop_zadd;
+    ghost_mpi_datatype mpidt_z;
+    ghost_mpi_op_sum(&mpiop_zadd,(ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
+    ghost_mpi_datatype_get(&mpidt_z,(ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
+    
+    // make sure that the initial x only gets added up once
+    if (myrank) {
+        dbeta = 0.;
+    }
+
+    ghost_lidx i,j;
+    
+    if (x->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
+        ghost_lidx k;
+#if CFGK>2
+#pragma simd
+#endif
+        for (k=0; k<CFGK; k++) {
+            for (j=0; j<CFGM; j++) {
+                xval[k*ldx+j] = dbeta*xval[k*ldx+j];
+            }
+        }
+            
+        complex double finalc[CFGM*CFGK];
+        memset(finalc,0,sizeof(finalc));
+
+
+#pragma omp parallel private(j,k) shared(finalc)
+        {
+            complex double *x_priv, *c, *y, *t;
+
+            ghost_malloc((void **)&x_priv,CFGM*CFGK*sizeof(complex double));
+            ghost_malloc((void **)&c,CFGM*CFGK*sizeof(complex double));
+            ghost_malloc((void **)&y,CFGM*CFGK*sizeof(complex double));
+            ghost_malloc((void **)&t,CFGM*CFGK*sizeof(complex double));
+
+            memset(x_priv,0,CFGM*CFGK*sizeof(complex double));
+            memset(c,0,CFGM*CFGK*sizeof(complex double));
+
+            if (conjv) {
+
+#pragma omp for schedule(runtime)
+                for (i=0; i<n; i++) {
+#if CFGK>2
+#pragma simd
+#pragma vector aligned
+#pragma ivdep
+#endif
+                    for (k=0; k<CFGK; k++) {
+#pragma float_control(precise,on)
+#pragma unroll_and_jam
+                      for (j=0; j<CFGM; j++) {
+                            y[j*CFGK+k] = dalpha*conj(vval[i*ldv+j])*wval[i*ldw+k] - c[j*CFGK+k];
+                            t[j*CFGK+k] = x_priv[j*CFGK+k] + y[j*CFGK+k];
+                            c[j*CFGK+k] = (t[j*CFGK+k] - x_priv[j*CFGK+k]) - y[j*CFGK+k];
+                            x_priv[j*CFGK+k] = t[j*CFGK+k]; 
+                            //x_priv[j*CFGK+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
+                        }
+                    }
+
+                }
+
+            } else {
+                
+                for (i=0; i<n; i++) {
+#if CFGK>2
+#pragma simd
+#pragma vector aligned
+#pragma ivdep
+#endif
+                    for (k=0; k<CFGK; k++) {
+#pragma float_control(precise,on)
+#pragma unroll_and_jam
+                      for (j=0; j<CFGM; j++) {
+                            y[j*CFGK+k] = dalpha*vval[i*ldv+j]*wval[i*ldw+k] - c[j*CFGK+k];
+                            t[j*CFGK+k] = x_priv[j*CFGK+k] + y[j*CFGK+k];
+                            c[j*CFGK+k] = (t[j*CFGK+k] - x_priv[j*CFGK+k]) - y[j*CFGK+k];
+                            x_priv[j*CFGK+k] = t[j*CFGK+k]; 
+                            //x_priv[j*CFGK+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
+                        }
+                    }
+
+                }
+            }
+
+#pragma omp critical
+#if CFGK>2
+#pragma simd
+#pragma vector aligned
+#pragma ivdep
+#endif
+            for (k=0; k<CFGK; k++) {
+#pragma float_control(precise,on)
+#pragma unroll_and_jam
+                for (j=0; j<CFGM; j++) {
+                    y[j*CFGK+k] = x_priv[j*CFGK+k] - finalc[j*CFGK+k];
+                    t[j*CFGK+k] = xval[k*ldx+j] + y[j*CFGK+k];
+                    finalc[j*CFGK+k] = (t[j*CFGK+k] - xval[k*ldx+j]) - y[j*CFGK+k];
+                    xval[k*ldx+j] = t[j*CFGK+k];
+                }
+            }
+
+            free(x_priv);
+            free(c);
+            free(y);
+            free(t);
+        }
+    } else {
+        ERROR_LOG("Will be implemented soon :-)!");
+        ret = GHOST_ERR_NOT_IMPLEMENTED;
+        goto err;
+    }
+   
+    goto out;
+err:
+
+out:
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
+    return ret;
+}

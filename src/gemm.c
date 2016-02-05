@@ -5,53 +5,97 @@
 #include "ghost/locality.h"
 #include "ghost/blas_mangle.h"
 #include "ghost/blas_util.h"
+#include "ghost/tsmttsm.h"
+#include "ghost/tsmm.h"
 
 #include <strings.h>
 #ifdef GHOST_HAVE_CUDA
 #include <cublas_v2.h>
 #endif
 
-static ghost_error_t ghost_gemm_blas(ghost_densemat_t *x_in, ghost_densemat_t *v_in, const char * transv_in, 
-ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int reduce,ghost_gemm_flags_t flags) 
+ghost_error ghost_gemm_valid(ghost_densemat *x, ghost_densemat *v, const char * transv, 
+ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce,ghost_gemm_flags flags, int printerror) 
+{
+    if (v->traits.datatype != w->traits.datatype) {
+        if (printerror) {
+            ERROR_LOG("GEMM with mixed datatypes does not work!");
+        }
+        return GHOST_ERR_NOT_IMPLEMENTED;
+    }
+    if (!((v->traits.location & w->traits.location) & x->traits.location)) { 
+        ERROR_LOG("Invalid densemat locations: %s <- %s x %s",ghost_location_string(x->traits.location),ghost_location_string(v->traits.location),ghost_location_string(w->traits.location));
+        return GHOST_ERR_INVALID_ARG;
+    }
+    
+
+    ghost_lidx nrV,ncV,nrW,ncW,nrX,ncX;
+
+    if (strncasecmp(transv,"N",1)) {
+        nrV=v->traits.ncols; ncV=v->traits.nrows;
+    } else {
+        nrV=v->traits.nrows; ncV=v->traits.ncols;
+    }
+    if (strncasecmp(transw,"N",1)) {
+        nrW=w->traits.ncols; ncW=w->traits.nrows;
+    } else {
+        nrW=w->traits.nrows; ncW=w->traits.ncols;
+    }
+
+    nrX=x->traits.nrows;
+    ncX=x->traits.ncols;
+    
+    if ((x!=v) && (x!=w) && (ncV!=nrW || nrV!=nrX || ncW!=ncX)) {
+        if (printerror) {
+            ERROR_LOG("GEMM with incompatible vectors: %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX" = %"PRLIDX"x%"PRLIDX,nrV,ncV,nrW,ncW,nrX,ncX);
+        }
+        return GHOST_ERR_INVALID_ARG;
+    }
+
+    UNUSED(alpha);
+    UNUSED(beta);
+    UNUSED(reduce);
+    UNUSED(flags);
+    return GHOST_SUCCESS;
+
+}
+
+
+static ghost_error ghost_gemm_blas(ghost_densemat *x_in, ghost_densemat *v_in, const char * transv_in, 
+ghost_densemat *w_in, const char *transw_in, void *alpha, void *beta, int reduce,ghost_gemm_flags flags) 
 {
     UNUSED(flags);
 
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
     char transv[1], transw[1];
     
     transv[0]=transv_in[0];
     transw[0]=transw_in[0];
     
-    ghost_densemat_t *x = x_in;
-    ghost_densemat_t *v = v_in;
-    ghost_densemat_t *w = w_in;
+    ghost_densemat *x = x_in;
+    ghost_densemat *v = v_in;
+    ghost_densemat *w = w_in;
     
     
-    if ((v->traits.storage != w->traits.storage) || (x->traits.storage != w->traits.storage)){
+    /*if ((v->traits.storage != w->traits.storage) || (x->traits.storage != w->traits.storage)){
         ERROR_LOG("Different storage layouts of input densemats!");
         return GHOST_ERR_INVALID_ARG;
-    }
+    }*/
 
     if (v == x && !(flags & GHOST_GEMM_NOT_CLONE_ALIASED)) {
         WARNING_LOG("x equals v! v will be cloned.");
-        ghost_densemat_t *vc;
+        ghost_densemat *vc;
         v->clone(v,&vc,v->traits.nrows,0,v->traits.ncols,0);
         v = vc;
     }
 
     if (w == x && !(flags & GHOST_GEMM_NOT_CLONE_ALIASED)) {
         WARNING_LOG("x equals w! w will be cloned.");
-        ghost_densemat_t *wc;
+        ghost_densemat *wc;
         w->clone(w,&wc,w->traits.nrows,0,w->traits.ncols,0);
         w = wc;
     }
     
-    if (v->traits.datatype != w->traits.datatype) {
-        ERROR_LOG("GEMM with mixed datatypes does not work!");
-        return GHOST_ERR_NOT_IMPLEMENTED;
-    }
-
     if (v->context == NULL && w->context == NULL && x->context == NULL && reduce != GHOST_GEMM_NO_REDUCE) {
         INFO_LOG("Reduction should be done but none of the vectors has a context. Ommitting the reduction...");
         reduce = GHOST_GEMM_NO_REDUCE;
@@ -68,49 +112,69 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
         reduce = 0;
     }
 
-    ghost_lidx_t nrV,ncV,nrW,ncW,nrX,ncX;
+    ghost_lidx nrV,ncV,ncW,nrVglob,ncVglob,ncWglob;
 
     if (strncasecmp(transv_in,"N",1)) {
-        nrV=v->traits.ncols; ncV=v->traits.nrows;
+        nrV = v->traits.ncols; 
+        ncV = v->traits.nrows;
+        if (v->context) {
+            ncVglob = v->context->gnrows;
+        } else {
+            ncVglob = w->traits.nrows;
+        }
+        nrVglob = v->traits.ncols;
     } else {
-        nrV=v->traits.nrows; ncV=v->traits.ncols;
+        nrV = v->traits.nrows; 
+        ncV = v->traits.ncols;
+        if (v->context) {
+            nrVglob = v->context->gnrows;
+        } else {
+            nrVglob = v->traits.nrows;
+        }
+        ncVglob = v->traits.ncols;
     }
     if (strncasecmp(transw_in,"N",1)) {
-        nrW=w->traits.ncols; ncW=w->traits.nrows;
+        ncW = w->traits.nrows;
+        if (w->context) {
+            ncWglob = w->context->gnrows;
+        } else {
+            ncWglob = w->traits.nrows;
+        }
     } else {
-        nrW=w->traits.nrows; ncW=w->traits.ncols;
+        ncW = w->traits.ncols;
+        ncWglob = w->traits.ncols;
     }
 
-    nrX=x->traits.nrows;
-    ncX=x->traits.ncols;
-    
-    if (ncV!=nrW || nrV!=nrX || ncW!=ncX) {
-        ERROR_LOG("GEMM with incompatible vectors: %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX" = %"PRLIDX"x%"PRLIDX,nrV,ncV,nrW,ncW,nrX,ncX);
-       // return GHOST_ERR_INVALID_ARG;
-    }
-    if (v->traits.datatype != w->traits.datatype) {
-        ERROR_LOG("GEMM with vectors of different datatype does not work");
-        return GHOST_ERR_INVALID_ARG;
-    }
+#ifdef GHOST_HAVE_INSTR_TIMING
+    ghost_gemm_perf_args gemm_perfargs;
+    gemm_perfargs.m = nrVglob;
+    gemm_perfargs.k = ncVglob;
+    gemm_perfargs.n = ncWglob;
+    gemm_perfargs.dt = x->traits.datatype;
+    gemm_perfargs.betaiszero = ghost_iszero(beta,v->traits.datatype);
+    gemm_perfargs.alphaisone = ghost_isone(alpha,v->traits.datatype);
+    ghost_timing_set_perfFunc(NULL,__ghost_functag,ghost_gemm_perf_GFs,(void *)&gemm_perfargs,sizeof(gemm_perfargs),"GF/s");
+#else
+    UNUSED(nrVglob);
+    UNUSED(ncVglob);
+    UNUSED(ncWglob);
+#endif
 
 
     complex double zero = 0.+I*0.;
 
-    ghost_blas_idx_t *m, *n, *k;
-    m = (ghost_blas_idx_t *)&nrV;
-    k = (ghost_blas_idx_t *)&ncV;
-    n = (ghost_blas_idx_t *)&ncW;
+    ghost_blas_idx *m, *n, *k;
+    m = (ghost_blas_idx *)&nrV;
+    k = (ghost_blas_idx *)&ncV;
+    n = (ghost_blas_idx *)&ncW;
 
-    ghost_blas_idx_t *ldv = &v->stride;
-    ghost_blas_idx_t *ldw = &w->stride;
-    ghost_blas_idx_t *ldx = &x->stride;
+    ghost_blas_idx *ldv = &v->stride;
+    ghost_blas_idx *ldw = &w->stride;
+    ghost_blas_idx *ldx = &x->stride;
 
-    void *vdata = NULL;
-    void *wdata = NULL;
-    void *xdata = NULL;
-    GHOST_CALL_GOTO(ghost_densemat_valptr(v,&vdata),err,ret);
-    GHOST_CALL_GOTO(ghost_densemat_valptr(w,&wdata),err,ret);
-    GHOST_CALL_GOTO(ghost_densemat_valptr(x,&xdata),err,ret);
+    void *vdata = v->val;
+    void *wdata = w->val;
+    void *xdata = x->val;
     
     //note: if no reduction is requested, none of the input vecs may have
     // a context (or an MPI comm). If any reduction is requested, only v
@@ -151,11 +215,10 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
         printf("\nv\n%s\n%s\nw\n%s\n%s\nx\n%s\n%s\n\n",vstr,vvstr,wstr,wvstr,xstr,xvstr);
         WARNING_LOG("GEMM %dx%d * %dx%d = %dx%d",*m,*k,*k,*n,*m,*n);
         WARNING_LOG("%s %s",transv,transw);*/
-    if (v->traits.flags & w->traits.flags & x->traits.flags & GHOST_DENSEMAT_DEVICE)
-    {
+    if (((v->traits.location & w->traits.location) & x->traits.location) & GHOST_LOCATION_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
         cublasHandle_t ghost_cublas_handle;
-        ghost_blas_idx_t culdv,culdw,culdx;
+        ghost_blas_idx culdv,culdw,culdx;
         
         GHOST_CALL_GOTO(ghost_cu_cublas_handle(&ghost_cublas_handle),err,ret); 
         cublasOperation_t cutransv = !strncasecmp(transv,"T",1)?CUBLAS_OP_T:!strncasecmp(transv,"C",1)?CUBLAS_OP_C:CUBLAS_OP_N;
@@ -164,7 +227,13 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
         culdv = *ldv;
         culdw = *ldw;
         culdx = *ldx;
-        if (v->traits.storage == GHOST_DENSEMAT_ROWMAJOR && w->traits.storage == GHOST_DENSEMAT_ROWMAJOR && (cutransv == CUBLAS_OP_T || cutransv == CUBLAS_OP_C) && cutransw == CUBLAS_OP_N) {
+
+        void *xcuval = x->cu_val;
+        void *vcuval = v->cu_val;
+        void *wcuval = w->cu_val;
+
+
+        /*if (v->traits.storage == GHOST_DENSEMAT_ROWMAJOR && w->traits.storage == GHOST_DENSEMAT_ROWMAJOR && (cutransv == CUBLAS_OP_T || cutransv == CUBLAS_OP_C) && cutransw == CUBLAS_OP_N) {
             INFO_LOG("special case 1");
             cutransw = cutransv;
             cutransv = CUBLAS_OP_N;
@@ -174,6 +243,75 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
             //needMemTransposeX = 1;
             cutransv = CUBLAS_OP_T;
             culdx = x->traits.nrows;
+        }*/
+
+        // TSMM hack
+        if (v->traits.storage == GHOST_DENSEMAT_ROWMAJOR && x->traits.storage == GHOST_DENSEMAT_ROWMAJOR &&
+                !strncasecmp(transv_in,"N",1) && !strncasecmp(transw_in,"N",1)) {
+            INFO_LOG("v and x are row-major and no transposing should be done. Tricking CUBLAS into thinking they are col-major!");
+            
+            void *tmp;
+            tmp = vcuval;
+            vcuval = wcuval;
+            wcuval = tmp;
+
+            tmp = m;
+            m = n;
+            n = tmp;
+            
+            ghost_blas_idx ldtmp = culdv;
+            culdv = culdw;
+            culdw = ldtmp;
+
+            if (w->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
+                cutransv = CUBLAS_OP_T;
+            }
+        }
+        
+        // TSMTTSM hack
+        if (v->traits.storage == GHOST_DENSEMAT_ROWMAJOR && w->traits.storage == GHOST_DENSEMAT_ROWMAJOR &&
+                strncasecmp(transv_in,"N",1) && !strncasecmp(transw_in,"N",1)) {
+            INFO_LOG("v and w are row-major and v is (conjugate) transposed. Tricking CUBLAS into thinking they are col-major!");
+
+            /* 
+             * Double-transpose W and interpret V as col-major as it is transposed
+             *
+             * [CM]   [CM ]   [CM ] 
+             *
+             * (X ) = (V^T) * (W^T)^T
+             */
+
+            if (!strncasecmp(transv_in,"C",1) && v->traits.datatype & GHOST_DT_COMPLEX) {
+                INFO_LOG("Conjugating input densemats. They have been cloned before, so this is safe.");
+                v->conj(v);
+                w->conj(w);
+            }
+
+            cutransw = cutransv; 
+            cutransv = CUBLAS_OP_N;
+            
+            if (x->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
+                
+                /* 
+                 * Fake-transpose X and interchange V and W
+                 *
+                 * [CM ]   [CM ]    [CM ] 
+                 *
+                 * (X^T) = (W^T)^T * V^T
+                 */
+                void *tmp;
+                tmp = vcuval;
+                vcuval = wcuval;
+                wcuval = tmp;
+
+                tmp = m;
+                m = n;
+                n = tmp;
+                
+                ghost_blas_idx ldtmp = culdv;
+                culdv = culdw;
+                culdw = ldtmp;
+            }
         }
             
 /*
@@ -206,14 +344,6 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
         WARNING_LOG("CUBLAS GEMM v %s:%d ::: w %s:%d ::: x %s:%d",ghost_densemat_storage_string(v),culdv,ghost_densemat_storage_string(w),culdw,ghost_densemat_storage_string(x),culdx);*/
 
 
-
-        void *xcuval;
-        void *vcuval;
-        void *wcuval;
-        GHOST_CALL_GOTO(ghost_densemat_cu_valptr(x,&xcuval),err,ret);
-        GHOST_CALL_GOTO(ghost_densemat_cu_valptr(v,&vcuval),err,ret);
-        GHOST_CALL_GOTO(ghost_densemat_cu_valptr(w,&wcuval),err,ret);
-
         if (v->traits.datatype & GHOST_DT_COMPLEX) 
         {
             if (v->traits.datatype & GHOST_DT_DOUBLE) 
@@ -238,124 +368,70 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
         }
 #endif
     } else
-    if (v->traits.flags & w->traits.flags & x->traits.flags & GHOST_DENSEMAT_HOST)
-    {
+    if ((v->traits.location == w->traits.location) && (v->traits.location ==  x->traits.location) && 
+            (v->traits.location & GHOST_LOCATION_HOST)) {
+        // BLAS cannot handle different storage layouts at once:
+        if( x->traits.storage != v->traits.storage )
+        {
+          if( strncasecmp(transv,"N",1) == 0 )
+            transv[0] = 'T';
+          else if( strncasecmp(transv,"T",1) == 0 )
+            transv[0] = 'N';
+          else
+          {
+            // cannot do it
+            ret = GHOST_ERR_NOT_IMPLEMENTED;
+            goto err;
+          }
+        }
+        if( x->traits.storage != w->traits.storage )
+        {
+          if( strncasecmp(transw,"N",1) == 0 )
+            transw[0] = 'T';
+          else if( strncasecmp(transw,"T",1) == 0 )
+            transw[0] = 'N';
+          else
+          {
+            // cannot do it
+            ret = GHOST_ERR_NOT_IMPLEMENTED;
+            goto err;
+          }
+        }
         if (v->traits.datatype & GHOST_DT_COMPLEX) 
         {
             if (v->traits.datatype & GHOST_DT_DOUBLE) 
             {
-                BLAS_CALL_GOTO(zgemm(v->traits.storage,transv,transw, m,n, k, alpha, vdata, ldv, wdata, ldw, mybeta, xdata, ldx),err,ret);
+                BLAS_CALL_GOTO(zgemm(x->traits.storage,transv,transw, m,n, k, alpha, vdata, ldv, wdata, ldw, mybeta, xdata, ldx),err,ret);
             } 
             else 
             {
-                BLAS_CALL_GOTO(cgemm(v->traits.storage,transv,transw, m,n, k, alpha, vdata, ldv, wdata, ldw, mybeta, xdata, ldx),err,ret);
+                BLAS_CALL_GOTO(cgemm(x->traits.storage,transv,transw, m,n, k, alpha, vdata, ldv, wdata, ldw, mybeta, xdata, ldx),err,ret);
             }
         } 
         else 
         {
             if (v->traits.datatype & GHOST_DT_DOUBLE) 
             {
-                BLAS_CALL_GOTO(dgemm(v->traits.storage,transv,transw, m,n, k, (double *)alpha, vdata, ldv, wdata, ldw, (double *)mybeta, xdata, ldx),err,ret);
+                BLAS_CALL_GOTO(dgemm(x->traits.storage,transv,transw, m,n, k, (double *)alpha, vdata, ldv, wdata, ldw, (double *)mybeta, xdata, ldx),err,ret);
             } 
             else 
             {
-                BLAS_CALL_GOTO(sgemm(v->traits.storage,transv,transw, m,n, k, (float *)alpha, vdata, ldv, wdata, ldw, (float *)mybeta, xdata, ldx),err,ret);
+                BLAS_CALL_GOTO(sgemm(x->traits.storage,transv,transw, m,n, k, (float *)alpha, vdata, ldv, wdata, ldw, (float *)mybeta, xdata, ldx),err,ret);
             }    
         }
     }
-        /*x->string(x,&xvstr);
 
-        printf("\n\n%s\n\n",xvstr);*/
-
-#ifdef GHOST_HAVE_MPI 
-    ghost_lidx_t i;
-    if (reduce != GHOST_GEMM_NO_REDUCE) {
-
-#ifdef GHOST_HAVE_CUDA
-        ghost_lidx_t lda = x->stride;
-#endif
-        ghost_lidx_t dima;
-        ghost_lidx_t dimb;
-        if (x->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
-            dima = x->traits.nrows;
-            dimb = x->traits.ncols;
-        } else if (x->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
-            dima = x->traits.ncols;
-            dimb = x->traits.nrows;
-        } else {
-            ERROR_LOG("Invalid vector storage");
-            return GHOST_ERR_NOT_IMPLEMENTED;
-        }
-
-
-        for (i=0; i<dima; ++i) 
-        {
-            int copied = 0;
-            void *val = NULL;
-            if (x->traits.flags & GHOST_DENSEMAT_DEVICE)
-            {
-#ifdef GHOST_HAVE_CUDA
-                size_t sizeofdt;
-                ghost_datatype_size(&sizeofdt,x->traits.datatype);
-
-                GHOST_CALL_GOTO(ghost_malloc((void **)&val,dimb*sizeofdt),err,ret);
-                ghost_cu_download(val, &x->cu_val[i*lda*sizeofdt], dimb*sizeofdt);
-                copied = 1;
-#endif
-            }
-            else if (x->traits.flags & GHOST_DENSEMAT_HOST)
-            {
-                val = x->val+i*x->stride*x->elSize;
-            }
-            ghost_mpi_op_t sumOp;
-            ghost_mpi_datatype_t mpiDt;
-            GHOST_CALL_GOTO(ghost_mpi_op_sum(&sumOp,x->traits.datatype),err,ret);
-            GHOST_CALL_GOTO(ghost_mpi_datatype(&mpiDt,x->traits.datatype),err,ret);
-
-            if (v->context) {
-                if (reduce == GHOST_GEMM_ALL_REDUCE) {
-                    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,val,dimb,mpiDt,sumOp,v->context->mpicomm),err,ret);
-                } else {
-                    if (myrank == reduce) 
-                    {
-                        MPI_CALL_GOTO(MPI_Reduce(MPI_IN_PLACE,val,dimb,mpiDt,sumOp,reduce,v->context->mpicomm),err,ret);
-                    } 
-                    else 
-                    {
-                        MPI_CALL_GOTO(MPI_Reduce(val,NULL,dimb,mpiDt,sumOp,reduce,v->context->mpicomm),err,ret);
-                    }
-                }
-                if (copied) {
-#ifdef GHOST_HAVE_CUDA
-                    size_t sizeofdt;
-                    ghost_datatype_size(&sizeofdt,x->traits.datatype);
-                    GHOST_CALL_GOTO(ghost_cu_upload(&x->cu_val[i*lda*sizeofdt],val,dimb*sizeofdt),err,ret);
-                    free(val);
-#endif
-                }
-            }
-        }
+    if ((reduce != GHOST_GEMM_NO_REDUCE) && (v->context)) {
+        x->reduce(x,v->context->mpicomm,reduce);
     }
-#else
-    UNUSED(reduce);
-#endif
-
-#ifdef GHOST_HAVE_INSTR_TIMING
-    ghost_gemm_perf_args_t gemm_perfargs;
-    gemm_perfargs.xcols = x->traits.ncols;
-    gemm_perfargs.vcols = v->traits.ncols;
-    if (v->context) {
-        gemm_perfargs.vrows = v->context->gnrows;
-    } else {
-        gemm_perfargs.vrows = v->traits.nrows;
+    if (w != w_in) {
+        INFO_LOG("Destroy clone of w");
+        ghost_densemat_destroy(w);
     }
-    gemm_perfargs.dt = x->traits.datatype;
-    ghost_timing_set_perfFunc(__ghost_functag,ghost_gemm_perf_GFs,(void *)&gemm_perfargs,sizeof(gemm_perfargs),"GF/s");
-#endif
-
-    //char *str;
-    //x->string(x,&str);
-    //printf("$$$$$\n%s\n$$$$$",str);
+    if (v != v_in) {
+        INFO_LOG("Destroy clone of v");
+        ghost_densemat_destroy(v);
+    }
     
     goto out;
 err:
@@ -366,28 +442,21 @@ out:
 
 }
 
-ghost_error_t ghost_gemm(ghost_densemat_t *x_in, ghost_densemat_t *v_in, const char * transv, 
-ghost_densemat_t *w_in, const char *transw, void *alpha, void *beta, int reduce,ghost_gemm_flags_t flags) 
+ghost_error ghost_gemm(ghost_densemat *x_in, ghost_densemat *v_in, const char * transv, 
+ghost_densemat *w_in, const char *transw, void *alpha, void *beta, int reduce,ghost_gemm_flags flags) 
 {
-#ifdef GHOST_HAVE_LONGIDX_LOCAL
+#ifdef GHOST_IDX64_LOCAL
 #ifndef GHOST_HAVE_MKL
-    WARNING_LOG("Will cast 64-bit indices to 32 bit for non-MKL GEMM with LONGIDX");
+    WARNING_LOG("Will cast 64-bit indices to 32 bit for non-MKL GEMM with 64 bit indices");
 #endif
 #endif
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
     int donespecial = 0;
-       
-    int deviceflags = (v_in->traits.flags & GHOST_DENSEMAT_DEVICE) + (w_in->traits.flags & GHOST_DENSEMAT_DEVICE) + (x_in->traits.flags & GHOST_DENSEMAT_DEVICE);
-
-    if (deviceflags != 0 && deviceflags != (3*GHOST_DENSEMAT_DEVICE)) {
-        ERROR_LOG("The storage of all densemats has to be uniform (host or device)!");
-        return GHOST_ERR_INVALID_ARG;
-    }
-    
-    ghost_densemat_t *x = NULL;
-    ghost_densemat_t *v = v_in;
-    ghost_densemat_t *w = w_in;
+      
+    ghost_densemat *x = NULL;
+    ghost_densemat *v = v_in;
+    ghost_densemat *w = w_in;
     
     // scattered vectors are copied together, if this occurs the user should rethink his or 
     // her data layout.
@@ -398,60 +467,89 @@ ghost_densemat_t *w_in, const char *transw, void *alpha, void *beta, int reduce,
         x = x_in;
     }
         
-
-    if (v_in->traits.flags & GHOST_DENSEMAT_SCATTERED)
+#ifdef GHOST_HAVE_CUDA
+    if (((v->traits.location & w->traits.location) & x->traits.location) & GHOST_LOCATION_DEVICE) {
+        if (v_in->traits.storage == GHOST_DENSEMAT_ROWMAJOR && w_in->traits.storage == GHOST_DENSEMAT_ROWMAJOR &&
+                !strncasecmp(transv,"C",1) && !strncasecmp(transw,"N",1) && v->traits.datatype & GHOST_DT_COMPLEX) {
+            WARNING_LOG("Cloning both input vectors because they need to be conjugated!");
+            ghost_densemat *vc;
+            v_in->clone(v_in,&vc,v->traits.nrows,0,v->traits.ncols,0);
+            v = vc;
+            ghost_densemat *wc;
+            w_in->clone(w_in,&wc,w->traits.nrows,0,w->traits.ncols,0);
+            w = wc;
+        }
+    }
+#endif
+    if (v->traits.flags & GHOST_DENSEMAT_SCATTERED)
     {
         WARNING_LOG("The vector v is scattered. It will be cloned to a compressed "
                 "vector before computation but not be changed itself.");
-        ghost_densemat_t *vc;
-        v_in->clone(v_in,&vc,v->traits.nrows,0,v->traits.ncols,0);
+        ghost_densemat *vc;
+        v->clone(v,&vc,v->traits.nrows,0,v->traits.ncols,0);
         v = vc;
     }
     if (w->traits.flags & GHOST_DENSEMAT_SCATTERED)
     {
         WARNING_LOG("The vector w is scattered. It will be cloned to a compressed "
                 "vector before computation but not be changed itself.");
-        ghost_densemat_t *wc;
-        w_in->clone(w_in,&wc,w->traits.nrows,0,w->traits.ncols,0);
+        ghost_densemat *wc;
+        w->clone(w,&wc,w->traits.nrows,0,w->traits.ncols,0);
         w = wc;
     }
     
-    if (!(v->traits.flags & GHOST_DENSEMAT_DEVICE) && !(flags & GHOST_GEMM_NOT_SPECIAL)) { 
-        if (flags & GHOST_GEMM_KAHAN) {
+    if (!(flags & GHOST_GEMM_NOT_SPECIAL)) { 
+        /*if (flags & GHOST_GEMM_KAHAN) {
             if (ghost_tsmttsm_kahan_valid(x,v,transv,w,transw,alpha,beta,reduce,0) == GHOST_SUCCESS) {
                 INFO_LOG("Transparently call special implementation Kahan-TSMTTSM");
-                GHOST_CALL_GOTO(ghost_tsmttsm_kahan(x,v,w,alpha,beta,reduce,transv[0] == 'C' || transv[0] == 'c'),err,ret);
-                donespecial = 1;
-            } else {
+
+                ret = ghost_tsmttsm_kahan(x,v,w,alpha,beta,reduce,transv[0] == 'C' || transv[0] == 'c');
+                if( ret == GHOST_SUCCESS )
+                  donespecial = 1;
+                else if( ret != GHOST_ERR_INVALID_ARG )
+                  goto err;
+            }
+            if( !donespecial ) {
                 WARNING_LOG("Will not do Kahan summation although requested!");
             }
-        }
+        }*/
 
-        if (ghost_tsmttsm_valid(x,v,transv,w,transw,alpha,beta,reduce,0) == GHOST_SUCCESS) {
+        if (ghost_tsmttsm_valid(x,v,transv,w,transw,alpha,beta,reduce,flags,0) == GHOST_SUCCESS) {
             INFO_LOG("Transparently call special implementation TSMTTSM");
-            GHOST_CALL_GOTO(ghost_tsmttsm(x,v,w,alpha,beta,reduce,transv[0] == 'C' || transv[0] == 'c'),err,ret);
-            donespecial = 1;
+            ret = ghost_tsmttsm(x,v,w,alpha,beta,reduce,transv[0] == 'C' || transv[0] == 'c',flags);
+            if( ret == GHOST_SUCCESS )
+              donespecial = 1;
+            else if( ret != GHOST_ERR_INVALID_ARG )
+              goto err;
         }
         if (ghost_tsmm_valid(x,v,transv,w,transw,alpha,beta,reduce,0) == GHOST_SUCCESS) {
             INFO_LOG("Transparently call special implementation TSMM");
-            GHOST_CALL_GOTO(ghost_tsmm(x,v,w,alpha,beta),err,ret);
-            donespecial = 1;
+            ret = ghost_tsmm(x,v,w,alpha,beta);
+            if( ret == GHOST_SUCCESS )
+              donespecial = 1;
+            else if( ret != GHOST_ERR_INVALID_ARG )
+              goto err;
         }
         if (ghost_tsmm_inplace_valid(x,v,transv,w,transw,alpha,beta,reduce,0) == GHOST_SUCCESS) {
             INFO_LOG("Transparently call special implementation TSMM-inplace");
-            GHOST_CALL_GOTO(ghost_tsmm_inplace(x,w,alpha,beta),err,ret);
-            donespecial = 1;
+            ret = ghost_tsmm_inplace(x,w,alpha,beta);
+            if( ret == GHOST_SUCCESS )
+              donespecial = 1;
+            else if( ret != GHOST_ERR_INVALID_ARG )
+              goto err;
         }
     }
 
     if (!donespecial) {
-        ret = ghost_gemm_blas(x,v,transv,w,transw,alpha,beta,reduce,flags);
+        if ((ret = ghost_gemm_valid(x,v,transv,w,transw,alpha,beta,reduce,flags,1)) == GHOST_SUCCESS) {
+            ret = ghost_gemm_blas(x,v,transv,w,transw,alpha,beta,reduce,flags);
+        }
     }
     
     if (x != x_in) {
         INFO_LOG("Transform x back");
         GHOST_CALL_GOTO(x_in->fromVec(x_in,x,0,0),err,ret);
-        x->destroy(x);
+        ghost_densemat_destroy(x);
     }
     
     goto out;
@@ -465,9 +563,46 @@ out:
 
 int ghost_gemm_perf_GFs(double *perf, double time, void *varg)
 {
-    ghost_gemm_perf_args_t arg = *(ghost_gemm_perf_args_t *)varg;
-    
-    *perf = (arg.vrows*arg.xcols*(1+arg.vcols*3))/1.e9/time;
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+    ghost_gemm_perf_args arg = *(ghost_gemm_perf_args *)varg;
+    int maddflops = 2;
+    int mulflops = 1;
+    double totalflops = 0;
 
+    if (arg.dt & GHOST_DT_COMPLEX) {
+        maddflops = 8;
+        mulflops = 6;
+    }
+    totalflops = (double)maddflops*arg.n*arg.m*arg.k;
+  
+    WARNING_LOG("The performance computation has to be checked for correctness!"); 
+    if (!arg.alphaisone) {
+        totalflops += mulflops*arg.m*arg.n; 
+    }
+    if (!arg.betaiszero) {
+        totalflops += maddflops*arg.m*arg.n; 
+    }
+
+    *perf = totalflops/1.e9/time;
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
+    return 0;
+}
+
+int ghost_gemm_perf_GBs(double *perf, double time, void *varg)
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+    size_t size;
+    ghost_gemm_perf_args arg = *(ghost_gemm_perf_args *)varg;
+    
+    ghost_datatype_size(&size,arg.dt);
+
+    if (arg.betaiszero) {
+        *perf = size*(arg.m*arg.n+arg.m*arg.k+arg.n*arg.k)/1.e9/time;
+    } else {
+        *perf = size*(2*arg.m*arg.n+arg.m*arg.k+arg.n*arg.k)/1.e9/time;
+    }
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return 0;
 }

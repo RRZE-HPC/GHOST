@@ -13,10 +13,24 @@
  * @brief Create strings holding information on GHOST objects.
  */
 
+/**
+ * @defgroup densecreate Dense matrix creation
+ * @brief Functions to create dense matrices/vectors.
+ */
+
+/**
+ * @defgroup denseview Dense matrix views
+ * @brief Functions to create views of dense matrices/vectors.
+ */
 
 /**
  * @defgroup denseinit Dense matrix initialization
  * @brief Functions to initialize dense matrices/vectors.
+ */
+
+/**
+ * @defgroup sparseinit Sparse matrix initialization
+ * @brief Functions to initialize sparse matrices.
  */
 
 /**
@@ -25,18 +39,24 @@
  */
 
 /** 
- * @defgroup locops Local math
- * @brief Mathematical operations not involving communication.
- * 
- * These operations are usually executed by function pointers which are part of the matrix or vector. 
+ * @defgroup locops Local operations
+ * @ingroup numops
+ * @brief Numerical operations not involving communication.
  */
 
 /** 
- * @defgroup globops Global math
- * @brief Mathematical operations which involve communication.
+ * @defgroup globops Global operations
+ * @ingroup numops
+ * @brief Numerical operations which involve communication.
  *
  * These operations usually call one or more local operations (cf. \ref locops) together with communication calls.
  */
+
+/** 
+ * @defgroup numops Numerical operations
+ * @brief All numerical operations available in GHOST.
+ */
+
 
 /** 
  * @defgroup machine Machine query
@@ -51,4 +71,9 @@
 /**
  * @defgroup io I/O of vector and matrix data
  * @brief Functionality related to reading and writing vector and matrix files.
+ */
+
+/**
+ * @defgroup teardown Teardown
+ * @brief Teardown and destruction of data structures.
  */

@@ -2,9 +2,10 @@
 #include <sys/time.h>
 #include <errno.h>
 #include "ghost/timing.h"
+#include "ghost/func_util.h"
 
 
-ghost_error_t ghost_timing_wc(double *time)
+ghost_error ghost_timing_wc(double *time)
 {
     struct timeval tp;
     int err;
@@ -15,11 +16,10 @@ ghost_error_t ghost_timing_wc(double *time)
     }
 
     *time = (double)tp.tv_sec + (double)tp.tv_usec/1000000.0;
-
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_timing_wcmilli(double *time)
+ghost_error ghost_timing_wcmilli(double *time)
 {
     struct timeval tp;
     int err;
@@ -30,7 +30,6 @@ ghost_error_t ghost_timing_wcmilli(double *time)
     }
 
     *time = (double)tp.tv_sec*1000.0 + (double)tp.tv_usec/1000.0;
-
     return GHOST_SUCCESS;
 }
 

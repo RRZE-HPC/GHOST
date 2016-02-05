@@ -34,11 +34,11 @@ break out of the infinite loop.
 Task types
 ----------
 
-A GHOST task is of type ghost_task_t and should be initialized via ghost_task_create(), given a number of
+A GHOST task is of type ghost_task and should be initialized via ghost_task_create(), given a number of
 parameters.
 
 There are several types of tasks which can be distinguished by the value of
-their ghost_task_t#flags variable. They can be combined by bitwise OR-ing the flags.
+their ghost_task#flags variable. They can be combined by bitwise OR-ing the flags.
 
 1. **GHOST_TASK_DEFAULT** identifies default tasks.
 They are added to a single task queue. However, if none of the threads in this

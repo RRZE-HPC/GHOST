@@ -1,0 +1,63 @@
+/*!GHOST_AUTOGEN BLOCKDIM1;BLOCKDIM2 */
+#include "ghost/config.h"
+#include "ghost/types.h"
+#include "ghost/util.h"
+#include "ghost/densemat.h"
+#include "ghost/log.h"
+#include "ghost/timing.h"
+#include "ghost/locality.h"
+#include "ghost/instr.h"
+#include "ghost/rand.h"
+#include "ghost/tsmm_inplace_cu_gen.h"
+#include "ghost/tsmm_inplace_cu_kernel.h"
+
+#include <cuda_runtime.h>
+#include <stdio.h>
+#include <cublas_v2.h>
+#include <curand.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <complex.h>
+
+#include "ghost/cu_complex.h"
+#include "ghost/complex.h"
+
+#GHOST_SUBST NCOLSIN ${BLOCKDIM1}
+#GHOST_SUBST NCOLSOUT ${BLOCKDIM2}
+
+#define THREADSPERBLOCK 512
+
+ghost_error ghost_tsmm_inplace__cuda_x_NCOLSIN_NCOLSOUT(ghost_densemat *x, ghost_densemat *w, void *alpha, void *beta) 
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL); 
+    ghost_error ret = GHOST_SUCCESS;
+    dim3 block, grid;
+    grid.x = (int)ceil((double)x->traits.nrows/THREADSPERBLOCK);
+    grid.y = 1;
+    grid.z = 1;
+    block.x = THREADSPERBLOCK;
+    block.y = 1;
+    block.z = 1;
+
+    if (x->traits.datatype & GHOST_DT_COMPLEX) {
+        if (x->traits.datatype & GHOST_DT_DOUBLE) {
+            ghost_tsmm_inplace_cu_rm_cm<cuDoubleComplex,NCOLSOUT,NCOLSIN><<< grid,block >>>(
+                    (cuDoubleComplex *)x->cu_val,(const cuDoubleComplex *)w->cu_val,*(cuDoubleComplex *)alpha,*(cuDoubleComplex *)beta,x->traits.nrows,x->stride,w->stride);
+        } else {
+            ghost_tsmm_inplace_cu_rm_cm<cuFloatComplex,NCOLSOUT,NCOLSIN><<< grid,block >>>(
+                    (cuFloatComplex *)x->cu_val,(const cuFloatComplex *)w->cu_val,*(cuFloatComplex *)alpha,*(cuFloatComplex *)beta,x->traits.nrows,x->stride,w->stride);
+        }
+    } else {
+        if (x->traits.datatype & GHOST_DT_DOUBLE) {
+            ghost_tsmm_inplace_cu_rm_cm<double,NCOLSOUT,NCOLSIN><<< grid,block >>>(
+                   (double *)x->cu_val,(const double *)w->cu_val,*(double *)alpha,*(double *)beta,x->traits.nrows,x->stride,w->stride);
+        } else {
+            ghost_tsmm_inplace_cu_rm_cm<float,NCOLSOUT,NCOLSIN><<< grid,block >>>(
+                   (float *)x->cu_val,(const float *)w->cu_val,*(float *)alpha,*(float *)beta,x->traits.nrows,x->stride,w->stride);
+        }
+    }
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL); 
+    CUDA_CALL_RETURN(cudaGetLastError());
+    return ret;
+}

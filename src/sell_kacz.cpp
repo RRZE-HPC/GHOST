@@ -1,12 +1,16 @@
-#include "ghost/sell.h"
+#include "ghost/types.h"
 #include "ghost/complex.h"
 #include "ghost/locality.h"
 #include "ghost/util.h"
+#include "ghost/timing.h"
+#include "ghost/sparsemat.h"
 #include <complex>
 
 template<typename m_t, typename v_t, bool forward>
-static ghost_error_t sell_kacz(ghost_sparsemat_t *mat, ghost_densemat_t *x, ghost_densemat_t *b, v_t *omega)
+static ghost_error sell_kacz(ghost_sparsemat *mat, ghost_densemat *x, ghost_densemat *b, v_t *omega)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+    
     if (!mat->color_ptr || mat->ncolors == 0) {
         WARNING_LOG("Matrix has not been colored!");
     }
@@ -15,13 +19,13 @@ static ghost_error_t sell_kacz(ghost_sparsemat_t *mat, ghost_densemat_t *x, ghos
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
    
-    ghost_lidx_t c;
-    ghost_lidx_t row;
-    ghost_lidx_t rowinchunk;
-    ghost_lidx_t j;
-    ghost_lidx_t color;
-    ghost_sell_t *sellmat = SELL(mat);
-    ghost_lidx_t fchunk, lchunk;
+    ghost_lidx c;
+    ghost_lidx row;
+    ghost_lidx rowinchunk;
+    ghost_lidx j;
+    ghost_lidx color;
+    ghost_sell *sellmat = SELL(mat);
+    ghost_lidx fchunk, lchunk;
     v_t *bval = (v_t *)(b->val);
     v_t *xval = (v_t *)(x->val);
     m_t *mval = (m_t *)sellmat->val;
@@ -30,7 +34,7 @@ static ghost_error_t sell_kacz(ghost_sparsemat_t *mat, ghost_densemat_t *x, ghos
     int rank;
     ghost_rank(&rank,mat->context->mpicomm);
 
-    ghost_lidx_t firstcolor, lastcolor, stride;
+    ghost_lidx firstcolor, lastcolor, stride;
     
     if (forward) {
         firstcolor = 0;
@@ -44,33 +48,33 @@ static ghost_error_t sell_kacz(ghost_sparsemat_t *mat, ghost_densemat_t *x, ghos
 
     
     for (color=firstcolor; color!=lastcolor; color+=stride) {
-        fchunk = mat->color_ptr[color]/sellmat->chunkHeight;
-        lchunk = mat->color_ptr[color+1]/sellmat->chunkHeight;
+        fchunk = mat->color_ptr[color]/mat->traits.C;
+        lchunk = mat->color_ptr[color+1]/mat->traits.C;
 #pragma omp parallel
         { 
             m_t *rownorm;
-            ghost_malloc((void **)&rownorm,sellmat->chunkHeight*sizeof(m_t));
+            ghost_malloc((void **)&rownorm,mat->traits.C*sizeof(m_t));
 #pragma omp for private(j,row,rowinchunk)
             for (c=fchunk; c<lchunk; c++) {
-                for (rowinchunk = 0; rowinchunk < sellmat->chunkHeight; rowinchunk++) {
-                    row = rowinchunk + c*sellmat->chunkHeight;
+                for (rowinchunk = 0; rowinchunk < mat->traits.C; rowinchunk++) {
+                    row = rowinchunk + c*mat->traits.C;
                     rownorm[rowinchunk] = 0.;
 
-                    ghost_lidx_t idx = sellmat->chunkStart[c]+rowinchunk;
+                    ghost_lidx idx = sellmat->chunkStart[c]+rowinchunk;
                     v_t scal = -bval[row];
 
                     for (j=0; j<sellmat->rowLen[row]; j++) {
                         scal += (v_t)mval[idx] * xval[sellmat->col[idx]];
                         rownorm[rowinchunk] += mval[idx]*mval[idx];
-                        idx += sellmat->chunkHeight;
+                        idx += mat->traits.C;
                     }
 
-                    idx -= sellmat->chunkHeight*sellmat->rowLen[row];
+                    idx -= mat->traits.C*sellmat->rowLen[row];
                     scal /= (v_t)rownorm[rowinchunk];
 
                     for (j=0; j<sellmat->rowLen[row]; j++) {
                         xval[sellmat->col[idx]] = xval[sellmat->col[idx]] - (*omega) * scal * (v_t)mval[idx];
-                        idx += sellmat->chunkHeight;
+                        idx += mat->traits.C;
                     }
                 }
             }
@@ -79,12 +83,16 @@ static ghost_error_t sell_kacz(ghost_sparsemat_t *mat, ghost_densemat_t *x, ghos
         }
     }
     
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_sell_kacz(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, void *omega, int forward)
+ghost_error ghost_sell_kacz(ghost_sparsemat *mat, ghost_densemat *lhs, ghost_densemat *rhs, void *omega, int forward)
 {
-    if (mat->traits->datatype != lhs->traits.datatype || lhs->traits.datatype != rhs->traits.datatype) {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
+    
+    if (mat->traits.datatype != lhs->traits.datatype || lhs->traits.datatype != rhs->traits.datatype) {
         WARNING_LOG("Mixed data types not yet implemented!");
     }
 

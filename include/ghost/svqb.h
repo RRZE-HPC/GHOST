@@ -18,8 +18,10 @@
 extern "C" {
 #endif
 
-ghost_error_t ghost_svqb(ghost_densemat_t * v_ot , ghost_densemat_t * v);
-ghost_error_t ghost_blockortho(ghost_densemat_t * w , ghost_densemat_t * v);
+ghost_error ghost_svqb(ghost_densemat * v_ot , ghost_densemat * v);
+ghost_error ghost_blockortho(ghost_densemat * w , ghost_densemat * v);
+ghost_error ghost_svd_deflation( ghost_lidx *svd_offset, ghost_densemat * ot_vec, ghost_densemat * vec, float limit);
+
 
 #ifdef __cplusplus
 }

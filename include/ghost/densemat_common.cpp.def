@@ -9,6 +9,9 @@
 #include <iomanip>
 #include <complex>
 #include <stdio.h>
+#ifdef GHOST_HAVE_OPENMP
+#include <omp.h>
+#endif
 
 #include "ghost/complex.h"
 #include "ghost/rand.h"
@@ -19,6 +22,8 @@
 #include "ghost/locality.h"
 #include "ghost/log.h"
 #include "ghost/machine.h"
+
+#define DENSEMAT_DT v_t
 #include "ghost/densemat_iter_macros.h"
 
 #ifdef ROWMAJOR
@@ -26,8 +31,12 @@
 #error "Only one of ROWMAJOR or COLMAJOR must be defined!"
 #endif
 #define PREFIX rm
+#define GHOST_DENSEMAT_SCATTERED_ROWS GHOST_DENSEMAT_SCATTERED_TR
+#define GHOST_DENSEMAT_SCATTERED_COLS GHOST_DENSEMAT_SCATTERED_LD
 #elif defined (COLMAJOR)
 #define PREFIX cm
+#define GHOST_DENSEMAT_SCATTERED_ROWS GHOST_DENSEMAT_SCATTERED_LD
+#define GHOST_DENSEMAT_SCATTERED_COLS GHOST_DENSEMAT_SCATTERED_TR
 #else
 #error "One of ROWMAJOR or COLMAJOR must be defined!"
 #endif
@@ -40,11 +49,11 @@
 using namespace std;
 
 template<typename v_t>
-static ghost_error_t FUNCNAME(normalize_tmpl(ghost_densemat_t *vec))
+static ghost_error FUNCNAME(normalize_tmpl(ghost_densemat *vec))
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
-    ghost_error_t ret = GHOST_SUCCESS;
-    ghost_lidx_t v;
+    ghost_error ret = GHOST_SUCCESS;
+    ghost_lidx v;
     v_t *s = NULL;
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&s,vec->traits.ncols*sizeof(v_t)),err,ret);
@@ -67,36 +76,132 @@ out:
 }
 
 template <typename v_t> 
-static ghost_error_t FUNCNAME(dotprod_tmpl(ghost_densemat_t *vec, void *res, ghost_densemat_t *vec2))
+static ghost_error FUNCNAME(dotprod_tmpl(ghost_densemat *vec, void *res, ghost_densemat *vec2))
 { 
     // the parallelization is done manually because reduction does not work with ghost_complex numbers
    
     GHOST_DENSEMAT_CHECK_SIMILARITY(vec,vec2);
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
 
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
+    int nthreads, i;
+   
+     if (DENSEMAT_SINGLECOL_STRIDE1(vec) && DENSEMAT_SINGLECOL_STRIDE1(vec2) && vec->traits.nrows == vec->traits.nrowsorig && vec2->traits.nrows == vec2->traits.nrowsorig) {
+         GHOST_INSTR_START("fast_singlecol"); 
+         v_t * v1 = (v_t *)vec->val;
+         v_t * v2 = (v_t *)vec2->val;
+         ((v_t *)res)[0] = 0;
+         ghost_lidx row;
+         if (v1 == v2) {
+#pragma omp parallel
+             {
+                v_t result = 0.;
+#pragma omp for schedule(runtime)
+                for (row=0; row<vec->traits.nrows; row++) {
+                    result += conjugate(v1+row) * v1[row];
+                }
+
+#pragma omp critical
+                ((v_t *)res)[0] += result;
+             }
+         } else {
+#pragma omp parallel
+             {
+                v_t result = 0.;
+#pragma omp for schedule(runtime)
+                for (row=0; row<vec->traits.nrows; row++) {
+                    result += conjugate(v1+row) * v2[row];
+                }
+
+#pragma omp critical
+                ((v_t *)res)[0] += result;
+             }
+         }
+         GHOST_INSTR_STOP("fast_singlecol"); 
+     } else {
+        v_t *partsums;
+        unsigned clsize;
+
+#pragma omp parallel
+        {
+#pragma omp single
+        nthreads = ghost_omp_nthread();
+        }
+       
+        ghost_machine_cacheline_size(&clsize);
+        int padding = (8*(int)clsize)/sizeof(v_t);
+        int ncolsPadded = PAD(vec->traits.ncols,padding);
+            
+        GHOST_CALL_GOTO(ghost_malloc_align((void **)&partsums,nthreads*ncolsPadded*sizeof(v_t),64),err,ret);
+        memset(partsums,0,nthreads*ncolsPadded*sizeof(v_t));
+        if (vec == vec2) {
+#pragma omp parallel shared(partsums) 
+            {
+                int tid = ghost_omp_threadnum();
+                DENSEMAT_ITER(vec,
+                    partsums[ncolsPadded*tid+col] += conjugate(valptr) * *valptr);
+            }
+        }else {
+#pragma omp parallel shared(partsums) 
+            {
+                int tid = ghost_omp_threadnum();
+                DENSEMAT_ITER2(vec,vec2,
+                    partsums[ncolsPadded*tid+col] += conjugate(valptr1) * *valptr2);
+            }
+        }
+        ghost_lidx col;
+        for (col=0; col<vec->traits.ncols; col++) {
+            ((v_t *)res)[col] = 0.;
+
+            for (i=0; i<nthreads; i++) {
+                ((v_t *)res)[col] += partsums[i*ncolsPadded+col];
+            }
+        }
+        free(partsums);
+    }
+    
+
+    goto out;
+err:
+
+out:
+    
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+    return ret;
+}
+
+template <typename v_t> 
+static ghost_error FUNCNAME(norm_tmpl(ghost_densemat *vec, void *res, void *p))
+{ 
+    // the parallelization is done manually because reduction does not work with ghost_complex numbers
+   
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+
+    ghost_error ret = GHOST_SUCCESS;
     int nthreads, i;
     v_t *partsums;
     unsigned clsize;
 
 #pragma omp parallel
+    {
 #pragma omp single
     nthreads = ghost_omp_nthread();
+    }
    
     ghost_machine_cacheline_size(&clsize);
     int padding = 8*(int)clsize/sizeof(v_t);
         
     GHOST_CALL_GOTO(ghost_malloc_align((void **)&partsums,nthreads*(vec->traits.ncols+padding)*sizeof(v_t),64),err,ret);
     memset(partsums,0,nthreads*(vec->traits.ncols+padding)*sizeof(v_t));
-    
+   
 #pragma omp parallel shared(partsums) 
     {
         int tid = ghost_omp_threadnum();
-        DENSEMAT_ITER2(vec,vec2,
-            partsums[(padding+vec->traits.ncols)*tid+col] += *(v_t *)valptr2 * 
-                conjugate((v_t *)valptr1));
+        DENSEMAT_ITER(vec,partsums[(padding+vec->traits.ncols)*tid+col] += pow(*(v_t *)valptr * 
+                conjugate((v_t *)valptr),*(v_t *)p));
     }
-    ghost_lidx_t col;
+    
+    ghost_lidx col;
     for (col=0; col<vec->traits.ncols; col++) {
         ((v_t *)res)[col] = 0.;
 
@@ -116,7 +221,7 @@ out:
 }
 
 template <typename v_t> 
-static ghost_error_t FUNCNAME(vaxpy_tmpl(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale))
+static ghost_error FUNCNAME(vaxpy_tmpl(ghost_densemat *vec, ghost_densemat *vec2, void *scale))
 {
     GHOST_DENSEMAT_CHECK_SIMILARITY(vec,vec2);
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
@@ -125,12 +230,24 @@ static ghost_error_t FUNCNAME(vaxpy_tmpl(ghost_densemat_t *vec, ghost_densemat_t
     
     DENSEMAT_ITER2(vec,vec2,*(v_t *)valptr1 += *(v_t *)valptr2 * s[col]);
 
+#ifdef GHOST_HAVE_INSTR_TIMING
+    ghost_axpy_perf_args pargs;
+    pargs.ncols = vec->traits.ncols;
+    if (vec->context) {
+        pargs.globnrows = vec->context->gnrows;
+    } else {
+        pargs.globnrows = vec->traits.nrows;
+    }
+    pargs.dt = vec->traits.datatype;
+
+    ghost_timing_set_perfFunc(NULL,__ghost_functag,ghost_axpy_perf,(void *)&pargs,sizeof(pargs),GHOST_AXPY_PERF_UNIT);
+#endif
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     return GHOST_SUCCESS;
 }
 
 template <typename v_t> 
-static ghost_error_t FUNCNAME(vaxpby_tmpl(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale, void *b_))
+static ghost_error FUNCNAME(vaxpby_tmpl(ghost_densemat *vec, ghost_densemat *vec2, void *scale, void *b_))
 {
     GHOST_DENSEMAT_CHECK_SIMILARITY(vec,vec2);
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
@@ -141,19 +258,100 @@ static ghost_error_t FUNCNAME(vaxpby_tmpl(ghost_densemat_t *vec, ghost_densemat_
     DENSEMAT_ITER2(vec,vec2,*(v_t *)valptr1 = *(v_t *)valptr2 * s[col] + 
             *(v_t *)valptr1 * b[col]);
     
+#ifdef GHOST_HAVE_INSTR_TIMING
+    ghost_axpby_perf_args pargs;
+    pargs.ncols = vec->traits.ncols;
+    if (vec->context) {
+        pargs.globnrows = vec->context->gnrows;
+    } else {
+        pargs.globnrows = vec->traits.nrows;
+    }
+    pargs.dt = vec->traits.datatype;
+
+    ghost_timing_set_perfFunc(NULL,__ghost_functag,ghost_axpby_perf,(void *)&pargs,sizeof(pargs),GHOST_AXPBY_PERF_UNIT);
+#endif
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+    return GHOST_SUCCESS;
+}
+
+template <typename v_t> 
+static ghost_error FUNCNAME(vaxpbypcz_tmpl(ghost_densemat *vec, ghost_densemat *vec2, void *scale, void *b_, ghost_densemat *vec3, void *c_))
+{
+    GHOST_DENSEMAT_CHECK_SIMILARITY(vec,vec2);
+    GHOST_DENSEMAT_CHECK_SIMILARITY(vec,vec3);
+    if (!DENSEMAT_COMPACT(vec) || !DENSEMAT_COMPACT(vec2) ||!DENSEMAT_COMPACT(vec3)) {
+        ERROR_LOG("(V)AXPBYCZ not yet implemented for scattered densemats");
+    }
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+
+    v_t *s = (v_t *)scale;
+    v_t *b = (v_t *)b_;
+    v_t *c = (v_t *)c_;
+
+    
+    DENSEMAT_ITER(vec,*(v_t *)valptr = *(v_t *)valptr * b[col] + 
+            *(v_t *)DENSEMAT_VALPTR(vec2,row,col) * s[col] + *(v_t *)DENSEMAT_VALPTR(vec3,row,col) * c[col]);
+
+#ifdef GHOST_HAVE_INSTR_TIMING
+    ghost_axpbypcz_perf_args pargs;
+    pargs.ncols = vec->traits.ncols;
+    if (vec->context) {
+        pargs.globnrows = vec->context->gnrows;
+    } else {
+        pargs.globnrows = vec->traits.nrows;
+    }
+    pargs.dt = vec->traits.datatype;
+
+    ghost_timing_set_perfFunc(NULL,__ghost_functag,ghost_axpbypcz_perf,(void *)&pargs,sizeof(pargs),GHOST_AXPBYPCZ_PERF_UNIT);
+#endif
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     return GHOST_SUCCESS;
 }
 
 template<typename v_t> 
-static ghost_error_t FUNCNAME(vscale_tmpl(ghost_densemat_t *vec, void *scale))
+static ghost_error FUNCNAME(vscale_tmpl(ghost_densemat *vec, void *scale))
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
         
     DENSEMAT_ITER(vec,*(v_t *)valptr *= ((v_t *)scale)[col]);
 
+#ifdef GHOST_HAVE_INSTR_TIMING
+    ghost_scale_perf_args pargs;
+    pargs.ncols = vec->traits.ncols;
+    if (vec->context) {
+        pargs.globnrows = vec->context->gnrows;
+    } else {
+        pargs.globnrows = vec->traits.nrows;
+    }
+    pargs.dt = vec->traits.datatype;
+
+    ghost_timing_set_perfFunc(NULL,__ghost_functag,ghost_scale_perf,(void *)&pargs,sizeof(pargs),GHOST_SCALE_PERF_UNIT);
+#endif
+
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     return GHOST_SUCCESS;
+}
+
+template<typename v_t> 
+static ghost_error FUNCNAME(conj_tmpl(ghost_densemat *vec))
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+        
+    DENSEMAT_ITER(vec,*(v_t *)valptr = std::conj(*(v_t *)valptr));
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+    return GHOST_SUCCESS;
+}
+
+template<> ghost_error FUNCNAME(conj_tmpl<double>(ghost_densemat *vec))
+{
+    UNUSED(vec);
+    return GHOST_SUCCESS; 
+}
+template<> ghost_error FUNCNAME(conj_tmpl<float>(ghost_densemat *vec))
+{
+    UNUSED(vec);
+    return GHOST_SUCCESS; 
 }
 
 // thread-safe type generic random function, returns pseudo-random numbers between -1 and 1.
@@ -181,20 +379,179 @@ static inline void my_rand(unsigned int* state, ghost_complex<float_type>* resul
     my_rand<float_type>(state,((float_type *)result)+1);
 }
 
+template<typename v_t>
+struct ghost_densemat_perment_t {
+    v_t val;
+    ghost_gidx pidx;
+};
+
+template <typename v_t> 
+static int densemat_perment_cmp (const void *a, const void *b)
+{
+    return ((ghost_densemat_perment_t<v_t> *)a)->pidx - ((ghost_densemat_perment_t<v_t> *)b)->pidx;
+
+}
 
 
 template <typename v_t> 
-static ghost_error_t FUNCNAME(fromRand_tmpl(ghost_densemat_t *vec))
+static ghost_error FUNCNAME(permute_tmpl(ghost_densemat *vec, ghost_permutation_direction dir))
+{
+    if (!vec->context->perm_local && !vec->context->perm_global) {
+        WARNING_LOG("No permutation vector present!");
+        return GHOST_SUCCESS;
+    }
+
+    if (vec->context->perm_global) {
+#ifdef GHOST_HAVE_MPI
+        ghost_lidx colidx;
+        ghost_lidx i,me,nprocs;
+        
+        int blocklengths[] = {1,1};
+        MPI_Aint displacements[2];
+        displacements[0] = 0;
+        displacements[1] = sizeof(v_t);
+        ghost_mpi_datatype types[] = {vec->mpidt,ghost_mpi_dt_gidx};
+
+        ghost_mpi_datatype ghost_mpi_dt_densemat_perment;
+        MPI_CALL_RETURN(MPI_Type_create_struct(2,blocklengths,displacements,types,&ghost_mpi_dt_densemat_perment));
+        MPI_CALL_RETURN(MPI_Type_commit(&ghost_mpi_dt_densemat_perment));
+            
+        GHOST_CALL_RETURN(ghost_rank(&me,vec->context->mpicomm));
+        GHOST_CALL_RETURN(ghost_nrank(&nprocs,vec->context->mpicomm));
+        GHOST_CALL_RETURN(vec->download(vec));
+            
+        int* permcnt, *invpermcnt, *permdispl, *invpermdispl;
+        GHOST_CALL_RETURN(ghost_malloc((void **)&permcnt,nprocs*sizeof(int)));
+        GHOST_CALL_RETURN(ghost_malloc((void **)&invpermcnt,nprocs*sizeof(int)));
+        GHOST_CALL_RETURN(ghost_malloc((void **)&permdispl,nprocs*sizeof(int)));
+        GHOST_CALL_RETURN(ghost_malloc((void **)&invpermdispl,nprocs*sizeof(int)));
+
+        for (colidx=0; colidx<vec->traits.ncols; colidx++) {
+            struct ghost_densemat_perment_t<v_t> *permsorted, *invpermsorted;
+
+            GHOST_CALL_RETURN(ghost_malloc((void **)&permsorted,sizeof(struct ghost_densemat_perment_t<v_t>)*vec->context->perm_global->len));
+            GHOST_CALL_RETURN(ghost_malloc((void **)&invpermsorted,sizeof(struct ghost_densemat_perment_t<v_t>)*vec->context->perm_global->len));
+
+            for (i=0; i<vec->context->perm_global->len; i++) {
+                if (vec->context->perm_local && dir == GHOST_PERMUTATION_PERM2ORIG) {
+                    permsorted[i].val = *(v_t *)DENSEMAT_VALPTR(vec,i,colidx);
+                    invpermsorted[i].val = *(v_t *)DENSEMAT_VALPTR(vec,i,colidx);
+                    permsorted[i].pidx = vec->context->perm_global->perm[vec->context->perm_local->perm[i]];
+                    invpermsorted[i].pidx = vec->context->perm_global->invPerm[vec->context->perm_local->invPerm[i]];
+                } else {
+                    permsorted[i].val = *(v_t *)DENSEMAT_VALPTR(vec,i,colidx);
+                    invpermsorted[i].val = *(v_t *)DENSEMAT_VALPTR(vec,i,colidx);
+                    permsorted[i].pidx = vec->context->perm_global->perm[i];
+                    invpermsorted[i].pidx = vec->context->perm_global->invPerm[i];
+                }
+                
+            }
+            qsort(permsorted,vec->context->perm_global->len,sizeof(struct ghost_densemat_perment_t<v_t>),densemat_perment_cmp<v_t>);
+            qsort(invpermsorted,vec->context->perm_global->len,sizeof(struct ghost_densemat_perment_t<v_t>),densemat_perment_cmp<v_t>);
+
+
+            memset(permcnt,0,nprocs*sizeof(int));
+            memset(invpermcnt,0,nprocs*sizeof(int));
+            memset(permdispl,0,nprocs*sizeof(int));
+            memset(invpermdispl,0,nprocs*sizeof(int));
+
+            int permproc = 0, invpermproc = 0;
+            for (i=0; i<vec->context->perm_global->len; i++) {
+                while (permsorted[i].pidx >= (vec->context->lfRow[permproc]+vec->context->lnrows[permproc])) {
+                    permproc++;
+                }
+                while (invpermsorted[i].pidx >= (vec->context->lfRow[invpermproc]+vec->context->lnrows[invpermproc])) {
+                    invpermproc++;
+                }
+                permcnt[permproc]++;
+                invpermcnt[invpermproc]++;
+            }
+            for (i=1; i<nprocs; i++) {
+                permdispl[i] = permdispl[i-1]+permcnt[i-1];
+                invpermdispl[i] = invpermdispl[i-1]+invpermcnt[i-1];
+            }
+
+            if (dir == GHOST_PERMUTATION_ORIG2PERM) {
+                MPI_CALL_RETURN(MPI_Alltoallv(permsorted,permcnt,permdispl,ghost_mpi_dt_densemat_perment,invpermsorted,invpermcnt,invpermdispl,ghost_mpi_dt_densemat_perment,vec->context->mpicomm));
+                if (vec->context->perm_local) {
+                    for (i=0; i<vec->context->perm_global->len; i++) {
+                        *(v_t *)DENSEMAT_VALPTR(vec,vec->context->perm_local->perm[invpermsorted[i].pidx-vec->context->lfRow[me]],colidx) = invpermsorted[i].val;
+                    }
+                } else {
+                    for (i=0; i<vec->context->perm_global->len; i++) {
+                        *(v_t *)DENSEMAT_VALPTR(vec,i,colidx) = invpermsorted[i].val;
+                    }
+                }
+            } else {
+                MPI_CALL_RETURN(MPI_Alltoallv(invpermsorted,invpermcnt,invpermdispl,ghost_mpi_dt_densemat_perment,permsorted,permcnt,permdispl,ghost_mpi_dt_densemat_perment,vec->context->mpicomm));
+                for (i=0; i<vec->context->perm_global->len; i++) {
+                    *(v_t *)DENSEMAT_VALPTR(vec,permsorted[i].pidx-vec->context->lfRow[me],colidx) = permsorted[i].val;
+                }
+            }
+
+            free(permsorted);
+            free(invpermsorted);
+        }
+        MPI_Type_free(&ghost_mpi_dt_densemat_perment);
+        free(permcnt);
+        free(invpermcnt);
+        free(permdispl);
+        free(invpermdispl);
+#else
+        ERROR_LOG("There should not be a global permutation in case MPI is disabled!");
+#endif
+    } else if (vec->context->perm_local) {
+        ghost_densemat *vecclone;
+
+        vec->clone(vec,&vecclone,vec->traits.nrows,0,vec->traits.ncols,0);
+
+        if (dir == GHOST_PERMUTATION_ORIG2PERM) {
+            DENSEMAT_ITER(vec,*valptr = *(v_t *)DENSEMAT_VALPTR(vecclone,vec->context->perm_local->invPerm[row],col));
+        } else {
+            DENSEMAT_ITER(vec,*valptr = *(v_t *)DENSEMAT_VALPTR(vecclone,vec->context->perm_local->perm[row],col));
+        }
+
+        ghost_densemat_destroy(vecclone);
+    }
+
+    
+    if (dir == GHOST_PERMUTATION_ORIG2PERM) {
+        vec->traits.flags |= (ghost_densemat_flags)GHOST_DENSEMAT_PERMUTED;
+    } else {
+        vec->traits.flags &= (ghost_densemat_flags)(~GHOST_DENSEMAT_PERMUTED);
+    }
+        
+
+    return GHOST_SUCCESS;
+
+
+}
+
+template <typename v_t> 
+static ghost_error FUNCNAME(fromRand_tmpl(ghost_densemat *vec))
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
-    
-    FUNCNAME(malloc(vec));
+
+    int needInit = 0;
+    FUNCNAME(malloc(vec,&needInit));
+#ifdef GHOST_HAVE_OPENMP
+    omp_sched_t omp_sched;
+    int omp_sched_mod;
+    omp_get_schedule(&omp_sched,&omp_sched_mod);
+    if (ghost_rand_customseed() && (omp_sched != omp_sched_static)) {
+        WARNING_LOG("A custon random seed has been set but the OpenMP scheduling is not STATIC. This may lead to unexpected results!");
+    }
+#endif
 
 #pragma omp parallel
     {
         unsigned int *state;
         ghost_rand_get(&state);
-        DENSEMAT_ITER(vec,my_rand(state,(v_t *)valptr));
+        if( needInit ) {
+          DENSEMAT_ITER_INIT(vec,my_rand(state,(v_t *)valptr));
+        } else {
+          DENSEMAT_ITER(vec,my_rand(state,(v_t *)valptr));
+        }
     }
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
@@ -202,15 +559,19 @@ static ghost_error_t FUNCNAME(fromRand_tmpl(ghost_densemat_t *vec))
 }
 
 template <typename v_t> 
-static ghost_error_t FUNCNAME(fromScalar_tmpl(ghost_densemat_t *vec, void *val))
+static ghost_error FUNCNAME(fromScalar_tmpl(ghost_densemat *vec, void *val))
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
-    
-    FUNCNAME(malloc(vec));
 
-    DENSEMAT_ITER(vec,*(v_t *)valptr = *(v_t *)val);
+    int needInit = 0;
+    FUNCNAME(malloc(vec,&needInit));
+
+    if( needInit ) {
+      DENSEMAT_ITER_INIT(vec,*(v_t *)valptr = *(v_t *)val);
+    } else {
+      DENSEMAT_ITER(vec,*(v_t *)valptr = *(v_t *)val);
+    }
     
-    vec->upload(vec);
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
     
@@ -219,22 +580,15 @@ static ghost_error_t FUNCNAME(fromScalar_tmpl(ghost_densemat_t *vec, void *val))
 
 
 template <typename v_t> 
-static ghost_error_t FUNCNAME(string_tmpl(char **str, ghost_densemat_t *vec))
+static ghost_error FUNCNAME(string_tmpl(char **str, ghost_densemat *vec))
 {
     stringstream buffer;
     buffer << std::setprecision(6)
            << std::right
-           << std::scientific
-           << std::setw(10);
+           << std::scientific;
 
-    if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
-#ifdef GHOST_HAVE_CUDA
-        v_t val;
-        GHOST_SINGLETHREAD(DENSEMAT_ITER(vec,ghost_cu_download(&val,cuvalptr,vec->elSize);buffer<<val<<(col==vec->traits.ncols-1?"\n":"\t")));
-#endif
-    } else {
-        GHOST_SINGLETHREAD(DENSEMAT_ITER(vec,buffer<<*(v_t *)valptr<<(col==vec->traits.ncols-1?"\n":"\t")));
-    }
+    vec->download(vec);
+    GHOST_SINGLETHREAD(DENSEMAT_ITER(vec,buffer<<*(v_t *)valptr<<(col==vec->traits.ncols-1?"\n":"\t")));
 
     GHOST_CALL_RETURN(ghost_malloc((void **)str,buffer.str().length()+1));
     strcpy(*str,buffer.str().c_str());
@@ -243,128 +597,210 @@ static ghost_error_t FUNCNAME(string_tmpl(char **str, ghost_densemat_t *vec))
 }
 
 template <typename v_t> 
-static ghost_error_t FUNCNAME(fromVec_tmpl(ghost_densemat_t *vec, ghost_densemat_t *vec2, ghost_lidx_t roffs, ghost_lidx_t coffs))
+static ghost_error FUNCNAME(fromVec_tmpl(ghost_densemat *vec, ghost_densemat *vec2, ghost_lidx roffs, ghost_lidx coffs))
 {
-    FUNCNAME(malloc(vec));
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
+    int needInit = 0;
+    FUNCNAME(malloc(vec,&needInit));
+    if( needInit && (vec->traits.location & GHOST_LOCATION_HOST) ) {
+        if( vec->traits.ncolspadded != vec->traits.ncols || vec->traits.nrowspadded != vec->traits.nrows || roffs != 0 ) {
+            PERFWARNING_LOG("Fast initializing of padded vector block from another vector not implemented, filling with zeros first");
+            DENSEMAT_ITER_INIT(vec,memset(valptr,0,sizeof(v_t)));
+        }
+    }
+
+
     
     if (vec2->traits.storage == vec->traits.storage) { 
-        if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
-            if (vec2->traits.flags & GHOST_DENSEMAT_DEVICE) {
-                DENSEMAT_ITER2_OFFS(vec,vec2,roffs,coffs,
-                        ghost_cu_memcpy(cuvalptr1,cuvalptr2,vec->elSize));
+        if (vec->traits.location & GHOST_LOCATION_DEVICE) {
+            if (vec2->traits.location & GHOST_LOCATION_DEVICE) {
+                if (DENSEMAT_COMPACT(vec) && DENSEMAT_COMPACT(vec2)) {
+                    ghost_cu_memcpy2d(vec->cu_val,vec->stride*vec->elSize,DENSEMAT_CUVALPTR(vec2,roffs,coffs),vec2->stride*vec->elSize,vec->blocklen*vec->elSize,vec->nblock);
+                } else {
+                    PERFWARNING_LOG("Potentially slow element-wise memcpy!");
+                    DENSEMAT_ITER2_OFFS(vec,vec2,roffs,coffs,
+                            ghost_cu_memcpy(cuvalptr1,cuvalptr2,vec->elSize));
+                }
             } else {
-                DENSEMAT_ITER2_OFFS(vec,vec2,roffs,coffs,
-                        ghost_cu_upload(cuvalptr1,valptr2,vec->elSize));
+                if (DENSEMAT_COMPACT(vec) && DENSEMAT_COMPACT(vec2)) {
+                    ghost_cu_upload2d(vec->cu_val,vec->stride*vec->elSize,DENSEMAT_VALPTR(vec2,roffs,coffs),vec2->stride*vec2->elSize,vec2->blocklen*vec2->elSize,vec2->nblock);
+                } else {
+                    PERFWARNING_LOG("Potentially slow element-wise upload! (Fast copying not yet implemented)");
+                    DENSEMAT_ITER2_OFFS(vec,vec2,roffs,coffs,
+                            ghost_cu_upload(cuvalptr1,valptr2,vec->elSize));
+                }
             }
         } else {
-            if (vec2->traits.flags & GHOST_DENSEMAT_DEVICE) {
-                DENSEMAT_ITER2_OFFS(vec,vec2,roffs,coffs,
-                        ghost_cu_download(valptr1,cuvalptr2,vec->elSize));
+            if (vec2->traits.location & GHOST_LOCATION_DEVICE) {
+                if (DENSEMAT_COMPACT(vec) && DENSEMAT_COMPACT(vec2)) {
+                    ghost_cu_download2d(vec->val,vec->stride*vec->elSize,DENSEMAT_CUVALPTR(vec2,roffs,coffs),vec2->stride*vec2->elSize,vec2->blocklen*vec2->elSize,vec2->nblock);
+                } else {
+                    PERFWARNING_LOG("Potentially slow element-wise download! (Fast copying not yet implemented)");
+                    DENSEMAT_ITER2_OFFS(vec,vec2,roffs,coffs,
+                            ghost_cu_download(valptr1,cuvalptr2,vec->elSize));
+                }
             } else {
                 DENSEMAT_ITER2_OFFS(vec,vec2,roffs,coffs,
                         *(v_t *)valptr1 = *(v_t *)valptr2);
             }
         }
     } else {
-        INFO_LOG("On-the-fly memtranpose");
-        if (vec->traits.flags & GHOST_DENSEMAT_DEVICE || 
-                vec2->traits.flags & GHOST_DENSEMAT_DEVICE) {
-            ERROR_LOG("fromVec with memtranspose not available for GPU!");
-            return GHOST_ERR_NOT_IMPLEMENTED;
+#if defined(COLMAJOR)
+        INFO_LOG("On-the-fly memtranpose RM -> CM");
+#else
+        INFO_LOG("On-the-fly memtranpose CM -> RM");
+#endif
+        if (!(vec->traits.location & vec2->traits.location)) {
+           ERROR_LOG("Inter-device memtranspose not yet implemented!");
+           return GHOST_ERR_NOT_IMPLEMENTED;
         }
         if (vec2->traits.flags & GHOST_DENSEMAT_SCATTERED) {
             ERROR_LOG("Not implemented!");
             return GHOST_ERR_NOT_IMPLEMENTED;
         }
-
-        DENSEMAT_ITER2_COMPACT_OFFS_TRANSPOSED(vec,vec2,roffs,coffs,*(v_t *)valptr1 = *(v_t *)valptr2);
+           
+        if (vec->traits.location & GHOST_LOCATION_DEVICE && 
+                vec2->traits.location & GHOST_LOCATION_DEVICE) {
+#ifdef GHOST_HAVE_CUDA
+            ghost_lidx m,n;
+#if defined(COLMAJOR)
+            m = vec->traits.nrows;
+            n = vec->traits.ncols;
+#elif defined(ROWMAJOR)
+            m = vec->traits.ncols;
+            n = vec->traits.nrows;
+#else
+#error "Neither ROWMAJOR nor COLMAJOR defined!"
+#endif
+            GHOST_CALL_RETURN(ghost_cu_memtranspose(m,n,vec->cu_val,vec->stride,vec2->cu_val,vec2->stride,vec->traits.datatype));
+#endif
+        } else {
+            DENSEMAT_ITER2_COMPACT_OFFS_TRANSPOSED(vec,vec2,roffs,coffs,*(v_t *)valptr1 = *(v_t *)valptr2);
+        }
     }
 
-    vec->traits.flags |= (ghost_densemat_flags_t)(vec2->traits.flags & GHOST_DENSEMAT_PERMUTED);
+    vec->traits.flags |= (ghost_densemat_flags)(vec2->traits.flags & GHOST_DENSEMAT_PERMUTED);
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
     return GHOST_SUCCESS;
 }
 
 
 
-extern "C" ghost_error_t FUNCNAME(string_selector(ghost_densemat_t *vec, char **str))
+extern "C" ghost_error FUNCNAME(string_selector(ghost_densemat *vec, char **str))
 { 
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
 
     SELECT_TMPL_1DATATYPE(vec->traits.datatype,ghost_complex,ret,FUNCNAME(string_tmpl),str,vec);
 
     return ret;
 }
 
-extern "C" ghost_error_t FUNCNAME(normalize_selector(ghost_densemat_t *vec))
+extern "C" ghost_error FUNCNAME(normalize_selector(ghost_densemat *vec))
 { 
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
 
     SELECT_TMPL_1DATATYPE(vec->traits.datatype,ghost_complex,ret,FUNCNAME(normalize_tmpl),vec);
 
     return ret;
 }
 
-extern "C" ghost_error_t FUNCNAME(dotprod_selector(ghost_densemat_t *vec, void *res, ghost_densemat_t *vec2)) 
+extern "C" ghost_error FUNCNAME(dotprod_selector(ghost_densemat *vec, void *res, ghost_densemat *vec2)) 
 {
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
 
     SELECT_TMPL_1DATATYPE(vec->traits.datatype,ghost_complex,ret,FUNCNAME(dotprod_tmpl),vec,res,vec2);
 
     return ret;
 }
 
-extern "C" ghost_error_t FUNCNAME(vscale_selector(ghost_densemat_t *vec, void *scale)) 
+extern "C" ghost_error FUNCNAME(norm_selector(ghost_densemat *vec, void *res, void *p)) 
+{
+    ghost_error ret = GHOST_SUCCESS;
+
+    SELECT_TMPL_1DATATYPE(vec->traits.datatype,ghost_complex,ret,FUNCNAME(norm_tmpl),vec,res,p);
+
+    return ret;
+}
+
+extern "C" ghost_error FUNCNAME(vscale_selector(ghost_densemat *vec, void *scale)) 
 { 
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
 
     SELECT_TMPL_1DATATYPE(vec->traits.datatype,ghost_complex,ret,FUNCNAME(vscale_tmpl),vec,scale);
 
     return ret;
 }
 
-extern "C" ghost_error_t FUNCNAME(vaxpy_selector(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale))
+extern "C" ghost_error FUNCNAME(vaxpy_selector(ghost_densemat *vec, ghost_densemat *vec2, void *scale))
 { 
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
 
     SELECT_TMPL_1DATATYPE(vec->traits.datatype,ghost_complex,ret,FUNCNAME(vaxpy_tmpl),vec,vec2,scale);
 
     return ret;
 }
 
-extern "C" ghost_error_t FUNCNAME(vaxpby_selector(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale, void *b))
+extern "C" ghost_error FUNCNAME(vaxpby_selector(ghost_densemat *vec, ghost_densemat *vec2, void *scale, void *b))
 { 
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
 
     SELECT_TMPL_1DATATYPE(vec->traits.datatype,ghost_complex,ret,FUNCNAME(vaxpby_tmpl),vec,vec2,scale,b);
 
     return ret;
 }
 
-extern "C" ghost_error_t FUNCNAME(fromRand_selector(ghost_densemat_t *vec))
+extern "C" ghost_error FUNCNAME(vaxpbypcz_selector(ghost_densemat *vec, ghost_densemat *vec2, void *scale, void *b, ghost_densemat *vec3, void *c))
+{
+    ghost_error ret = GHOST_SUCCESS;
+
+    SELECT_TMPL_1DATATYPE(vec->traits.datatype,ghost_complex,ret,FUNCNAME(vaxpbypcz_tmpl),vec,vec2,scale,b,vec3,c);
+
+    return ret;
+}
+
+extern "C" ghost_error FUNCNAME(fromRand_selector(ghost_densemat *vec))
 { 
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
 
     SELECT_TMPL_1DATATYPE(vec->traits.datatype,ghost_complex,ret,FUNCNAME(fromRand_tmpl),vec);
 
     return ret;
 }
 
-
-extern "C" ghost_error_t FUNCNAME(fromScalar_selector(ghost_densemat_t *vec, void *val))
+extern "C" ghost_error FUNCNAME(fromScalar_selector(ghost_densemat *vec, void *val))
 { 
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
 
     SELECT_TMPL_1DATATYPE(vec->traits.datatype,ghost_complex,ret,FUNCNAME(fromScalar_tmpl),vec,val);
 
     return ret;
 }
 
-extern "C" ghost_error_t FUNCNAME(fromVec_selector(ghost_densemat_t *vec, ghost_densemat_t *vec2, ghost_lidx_t roffs, ghost_lidx_t coffs))
+extern "C" ghost_error FUNCNAME(fromVec_selector(ghost_densemat *vec, ghost_densemat *vec2, ghost_lidx roffs, ghost_lidx coffs))
 { 
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
 
     SELECT_TMPL_1DATATYPE(vec->traits.datatype,ghost_complex,ret,FUNCNAME(fromVec_tmpl),vec,vec2,roffs,coffs);
 
     return ret;
 }
+
+extern "C" ghost_error FUNCNAME(permute_selector(ghost_densemat *vec, ghost_permutation_direction dir))
+{ 
+    ghost_error ret = GHOST_SUCCESS;
+
+    SELECT_TMPL_1DATATYPE(vec->traits.datatype,ghost_complex,ret,FUNCNAME(permute_tmpl),vec,dir);
+
+    return ret;
+}
+
+extern "C" ghost_error FUNCNAME(conj_selector(ghost_densemat *vec)) 
+{
+    ghost_error ret = GHOST_SUCCESS;
+
+    SELECT_TMPL_1DATATYPE(vec->traits.datatype,std::complex,ret,FUNCNAME(conj_tmpl),vec);
+
+    return ret;
+}
+

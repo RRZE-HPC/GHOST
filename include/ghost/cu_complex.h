@@ -6,6 +6,8 @@
 #ifndef GHOST_CU_COMPLEX_H
 #define GHOST_CU_COMPLEX_H
 
+#include <cuComplex.h>
+
 template<typename T>
 __device__  __host__ inline void zero(T &val)
 {
@@ -33,13 +35,13 @@ __device__ __host__ inline void one(T &val)
 template<>
 __device__  __host__ inline void one<cuFloatComplex>(cuFloatComplex &val)
 {
-    val = make_cuFloatComplex(1.,1.);
+    val = make_cuFloatComplex(1.,0.);
 }
 
 template<>
 __device__  __host__ inline void one<cuDoubleComplex>(cuDoubleComplex &val)
 {
-    val = make_cuDoubleComplex(1.,1.);
+    val = make_cuDoubleComplex(1.,0.);
 }
 
 template<typename T, typename T_b>
@@ -58,6 +60,25 @@ template<>
 __device__ inline void fromReal<cuFloatComplex,float>(cuFloatComplex &val, float real)
 {
     val = make_cuFloatComplex(real,0.f);
+}
+
+// val += val2
+template<typename t>
+__device__ inline t accu(t val, t val2)
+{
+    return val+val2;
+}
+
+template<>
+__device__ inline cuFloatComplex accu<cuFloatComplex>(cuFloatComplex val, cuFloatComplex val2)
+{
+    return cuCaddf(val,val2);
+}
+
+template<>
+__device__ inline cuDoubleComplex accu<cuDoubleComplex>(cuDoubleComplex val, cuDoubleComplex val2)
+{
+    return cuCadd(val,val2);
 }
 
 // val += val2*val3
@@ -163,6 +184,24 @@ template<>
 __device__ inline double mulConjSame<cuDoubleComplex,double>(cuDoubleComplex x)
 {
     return cuCreal(x)*cuCreal(x) + cuCimag(x)*cuCimag(x);
+}
+
+template<typename T>
+__device__ inline T conj(T x)
+{
+    return x;
+}
+
+template<>
+__device__ inline cuFloatComplex conj<cuFloatComplex>(cuFloatComplex x)
+{
+    return cuConjf(x);
+}
+
+template<>
+__device__ inline cuDoubleComplex conj<cuDoubleComplex>(cuDoubleComplex x)
+{
+    return cuConj(x);
 }
 
 template<typename T>

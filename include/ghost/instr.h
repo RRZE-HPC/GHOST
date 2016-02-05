@@ -7,46 +7,61 @@
 #define GHOST_INSTR_H
 
 #include "config.h"
+#include <ghost/log.h>
+#include <ghost/error.h>
+#include <pthread.h>
 
-#ifdef GHOST_HAVE_INSTR_TIMING
+#ifdef GHOST_INSTR_TIMING
 
-#include "log.h"
-#include "timing.h"
+#include <ghost/timing.h>
 
 #endif
 
-#ifdef GHOST_HAVE_INSTR_LIKWID
+#ifdef GHOST_INSTR_LIKWID
 
 #include <likwid.h>
 
 #endif
 
-extern int ghost_instr_enable;
+extern pthread_key_t ghost_instr_enable_key;
 
-#ifdef GHOST_HAVE_INSTR_TIMING
+#ifdef GHOST_INSTR_TIMING
 
-#ifdef GHOST_HAVE_INSTR_LIKWID
+#ifdef GHOST_INSTR_LIKWID
 
 #define GHOST_INSTR_START(tag) {\
-    char region[256] = "";\
-    snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), tag, ghost_instr_suffix_get());\
-    ghost_timing_tick(region);\
-    _Pragma("omp parallel")\
-    LIKWID_MARKER_START(region);\
+    if (pthread_getspecific(ghost_instr_enable_key)) {\
+        if (GHOST_VERBOSITY > 1) {\
+            DEBUG_LOG(1,"Enter instrumented region %s",tag);\
+        }\
+        char region[256] = "";\
+        snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), tag, ghost_instr_suffix_get());\
+        ghost_timing_tick(region);\
+        _Pragma("omp parallel")\
+        likwid_markerStartRegion(region);\
+    }\
 }\
 
 #define GHOST_INSTR_STOP(tag) {\
-    char region[256] = "";\
-    snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), tag, ghost_instr_suffix_get());\
-    ghost_timing_tock(region);\
-    _Pragma("omp parallel")\
-    LIKWID_MARKER_STOP(region);\
+    if (pthread_getspecific(ghost_instr_enable_key)) {\
+        if (GHOST_VERBOSITY > 1) {\
+            DEBUG_LOG(1,"Exit instrumented region %s",tag);\
+        }\
+        char region[256] = "";\
+        snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), tag, ghost_instr_suffix_get());\
+        ghost_timing_tock(region);\
+        _Pragma("omp parallel")\
+        likwid_markerStopRegion(region);\
+    }\
 }\
     
 #else
 
 #define GHOST_INSTR_START(tag) {\
-    if (ghost_instr_enable) {\
+    if (pthread_getspecific(ghost_instr_enable_key)) {\
+        if (GHOST_VERBOSITY > 1) {\
+            DEBUG_LOG(1,"Enter instrumented region %s",tag);\
+        }\
         char region[256] = "";\
         snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), tag, ghost_instr_suffix_get());\
         ghost_timing_tick(region);\
@@ -54,7 +69,10 @@ extern int ghost_instr_enable;
 }\
 
 #define GHOST_INSTR_STOP(tag) {\
-    if (ghost_instr_enable) {\
+    if (pthread_getspecific(ghost_instr_enable_key)) {\
+        if (GHOST_VERBOSITY > 1) {\
+            DEBUG_LOG(1,"Exit instrumented region %s",tag);\
+        }\
         char region[256] = "";\
         snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), tag, ghost_instr_suffix_get());\
         ghost_timing_tock(region);\
@@ -63,9 +81,9 @@ extern int ghost_instr_enable;
 
 #endif
 
-#else //GHOST_HAVE_INSTR_TIMING
+#else //GHOST_INSTR_TIMING
 
-#ifdef GHOST_HAVE_INSTR_LIKWID
+#ifdef GHOST_INSTR_LIKWID
 
 /**
  * @brief Start a LIKWID marker region.
@@ -73,10 +91,15 @@ extern int ghost_instr_enable;
  * @param tag The tag identifying the region.
  */
 #define GHOST_INSTR_START(tag) {\
-    char region[256] = "";\
-    snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), tag, ghost_instr_suffix_get());\
-    _Pragma("omp parallel")\
-    LIKWID_MARKER_START(region);\
+    if (pthread_getspecific(ghost_instr_enable_key)) {\
+        if (GHOST_VERBOSITY > 1) {\
+            DEBUG_LOG(1,"Enter instrumented region %s",tag);\
+        }\
+        char region[256] = "";\
+        snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), tag, ghost_instr_suffix_get());\
+        _Pragma("omp parallel")\
+        likwid_markerStartRegion(region);\
+    }\
 }\
 
 /**
@@ -85,10 +108,15 @@ extern int ghost_instr_enable;
  * @param tag The tag identifying the region.
  */
 #define GHOST_INSTR_STOP(tag) {\
-    char region[256] = "";\
-    snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), tag, ghost_instr_suffix_get());\
-    _Pragma("omp parallel")\
-    LIKWID_MARKER_STOP(region);\
+    if (pthread_getspecific(ghost_instr_enable_key)) {\
+        if (GHOST_VERBOSITY > 1) {\
+            DEBUG_LOG(1,"Exit instrumented region %s",tag);\
+        }\
+        char region[256] = "";\
+        snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), tag, ghost_instr_suffix_get());\
+        _Pragma("omp parallel")\
+        likwid_markerStopRegion(region);\
+    }\
 }\
     
 #else
@@ -96,12 +124,18 @@ extern int ghost_instr_enable;
 /**
  * @brief Instrumentation will be ignored. 
  */
-#define GHOST_INSTR_START(tag)
+#define GHOST_INSTR_START(tag)\
+    if (GHOST_VERBOSITY > 1) {\
+        DEBUG_LOG(1,"Enter instrumented region %s",tag);\
+    }\
 
 /**
  * @brief Instrumentation will be ignored. 
  */
-#define GHOST_INSTR_STOP(tag)
+#define GHOST_INSTR_STOP(tag) \
+    if (GHOST_VERBOSITY > 1) {\
+        DEBUG_LOG(1,"Exit instrumented region %s",tag);\
+    }\
 
 #endif
 
@@ -132,6 +166,8 @@ extern "C" {
     void ghost_instr_suffix_set(const char *suffix);
 
     char *ghost_instr_suffix_get();
+    ghost_error ghost_instr_create();
+    ghost_error ghost_instr_destroy();
 
 #ifdef __cplusplus
 }

@@ -6,51 +6,99 @@
 #ifndef GHOST_FUNC_UTIL_H
 #define GHOST_FUNC_UTIL_H
 
+#include <ghost/util.h>
 #include <ghost/task.h>
+#include <ghost/core.h>
 
 typedef enum
 {
     GHOST_FUNCTYPE_MATH = 1,
     GHOST_FUNCTYPE_UTIL = 2,
+    /**
+     * @brief Functions involving communication via MPI or CUDA
+     */
     GHOST_FUNCTYPE_COMMUNICATION = 4,
-    GHOST_FUNCTYPE_PREPROCESS = 8,
+    /**
+     * @brief Setup of GHOST or creation (no filling with data) data structures    
+     */
+    GHOST_FUNCTYPE_SETUP = 8,
+    /**
+     * @brief Functions involving initialization of sparse or dense matrices
+     */
     GHOST_FUNCTYPE_INITIALIZATION = 16,
-    GHOST_FUNCTYPE_KERNEL = 32
-} ghost_functype_t;
+    GHOST_FUNCTYPE_KERNEL = 32,
+    GHOST_FUNCTYPE_BENCH = 64,
+    /**
+     * @brief Functions involving disk I/O
+     */
+    GHOST_FUNCTYPE_IO = 128,
+    /**
+     * @brief Teardown of GHOST or destruction data structures    
+     */
+    GHOST_FUNCTYPE_TEARDOWN = 256,
+    /**
+     * @brief Functions with tasking or resource managament functionality
+     */
+    GHOST_FUNCTYPE_TASKING = 512,
+    GHOST_FUNCTYPE_SOLVER = 1024
+} ghost_functype;
+
+#define GHOST_FUNCTYPE_ANY (\
+        GHOST_FUNCTYPE_MATH|\
+        GHOST_FUNCTYPE_UTIL|\
+        GHOST_FUNCTYPE_COMMUNICATION|\
+        GHOST_FUNCTYPE_SETUP|\
+        GHOST_FUNCTYPE_INITIALIZATION|\
+        GHOST_FUNCTYPE_KERNEL|\
+        GHOST_FUNCTYPE_BENCH|\
+        GHOST_FUNCTYPE_IO|\
+        GHOST_FUNCTYPE_SOLVER)
 
 #define GHOST_FUNC_ENTER(functype)\
     int __funcnameoffset;\
-    bool __ghost_instr_enable_backup;\
-    char * __prefixbackup;\
-    char __prefix[256];\
-    char __ghost_functag[256];\
-    if (${INSTRUMENTATION_FUNCTYPES}) {\
+    char * __prefixbackup = NULL;\
+    char * __prefix = NULL;\
+    char * __ghost_functag = NULL;\
+    void * __ghost_instr_enable_backup = pthread_getspecific(ghost_instr_enable_key);\
+    if ((${GHOST_INSTRUMENT_FUNCTYPES}) && ${GHOST_INSTRUMENT}) {\
+        __prefix = (char *)malloc(1024*sizeof(char));\
+        __ghost_functag = (char *)malloc(1024*sizeof(char));\
         __funcnameoffset = strncmp(__FUNCTION__,"ghost_",6)?0:6;\
-        __ghost_instr_enable_backup = ghost_instr_enable;\
         __prefixbackup = ghost_instr_prefix_get();\
-        snprintf(__ghost_functag,256,"%s%s",__prefixbackup,\
+        snprintf(__ghost_functag,1024,"%s%s",__prefixbackup,\
                 __FUNCTION__+__funcnameoffset);\
-        snprintf(__prefix,256,"%s%s->",__prefixbackup,\
+        snprintf(__prefix,1024,"%s%s->",__prefixbackup,\
             __FUNCTION__+__funcnameoffset);\
-        ghost_instr_enable = true;\
+        pthread_setspecific(ghost_instr_enable_key,(void *)0x1);\
         GHOST_INSTR_START(__FUNCTION__+__funcnameoffset);\
         ghost_instr_prefix_set(__prefix);\
     } else {\
-        ghost_instr_enable = false;\
+        pthread_setspecific(ghost_instr_enable_key,NULL);\
     }\
     if ((functype) == (GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)) {\
-        ghost_task_t *cur = NULL;\
+        ghost_task *cur = NULL;\
         ghost_task_cur(&cur);\
         if (!cur) {\
-            PERFWARNING_LOG("A mathematical kernel has been called outside a task!");\
+            PERFWARNING_LOG("A kernel function has been called outside a task!");\
+        }else if(cur->nThreads == 0) {\
+            PERFWARNING_LOG("A kernel function has been called in a task with 0 threads!");\
         }\
     }\
+    if (GHOST_VERBOSITY > 1) {\
+        DEBUG_LOG(1,"Enter function %s",__FUNCTION__);\
+    } 
 
 #define GHOST_FUNC_EXIT(functype)\
-    if (${INSTRUMENTATION_FUNCTYPES}) {\
+    if ((${GHOST_INSTRUMENT_FUNCTYPES}) && ${GHOST_INSTRUMENT}) {\
+        /*ghost_barrier();*/\
         ghost_instr_prefix_set(__prefixbackup);\
         GHOST_INSTR_STOP(__FUNCTION__+__funcnameoffset);\
-        ghost_instr_enable = __ghost_instr_enable_backup;\
+        free(__ghost_functag);\
+        free(__prefix);\
     }\
+    pthread_setspecific(ghost_instr_enable_key,__ghost_instr_enable_backup);\
+    if (GHOST_VERBOSITY > 1) {\
+        DEBUG_LOG(1,"Exit function %s",__FUNCTION__);\
+    } 
 
 #endif

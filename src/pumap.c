@@ -3,10 +3,12 @@
 #include "ghost/util.h"
 #include "ghost/locality.h"
 
-static ghost_pumap_t *pumap = NULL;
+static ghost_pumap *pumap = NULL;
+pthread_mutex_t ghost_pumap_mutex;
 
-ghost_error_t ghost_pumap_npu(int *nPUs, int numanode)
+ghost_error ghost_pumap_npu(int *nPUs, int numanode)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_TASKING);
 
     if (!nPUs) {
         ERROR_LOG("NULL pointer");
@@ -28,11 +30,13 @@ ghost_error_t ghost_pumap_npu(int *nPUs, int numanode)
         hwloc_bitmap_free(contained);
     }
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_TASKING);
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_pumap_nidle(int *nPUs, int numanode)
+ghost_error ghost_pumap_nidle(int *nPUs, int numanode)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_TASKING);
 
     if (numanode == GHOST_NUMANODE_ANY) {
         *nPUs = hwloc_bitmap_weight(pumap->cpuset)-hwloc_bitmap_weight(pumap->busy);
@@ -50,11 +54,14 @@ ghost_error_t ghost_pumap_nidle(int *nPUs, int numanode)
         *nPUs = w;
     }
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_TASKING);
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_pumap_setidle(hwloc_bitmap_t cpuset)
+ghost_error ghost_pumap_setidle(hwloc_bitmap_t cpuset)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_TASKING);
+    
     if (!hwloc_bitmap_isincluded(cpuset,pumap->cpuset)) {
         ERROR_LOG("The given CPU set is not included in the PU map's CPU set");
         return GHOST_ERR_INVALID_ARG;
@@ -62,11 +69,14 @@ ghost_error_t ghost_pumap_setidle(hwloc_bitmap_t cpuset)
     
     hwloc_bitmap_andnot(pumap->busy,pumap->busy,cpuset);
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_TASKING);
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_pumap_setidle_idx(int idx)
+ghost_error ghost_pumap_setidle_idx(int idx)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_TASKING);
+    
     if (!hwloc_bitmap_isset(pumap->cpuset,idx)) {
         ERROR_LOG("The given index %d is not included in the PU map's CPU set",idx);
         return GHOST_ERR_INVALID_ARG;
@@ -74,11 +84,14 @@ ghost_error_t ghost_pumap_setidle_idx(int idx)
 
     hwloc_bitmap_clr(pumap->busy,idx);
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_TASKING);
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_pumap_setbusy(hwloc_bitmap_t cpuset)
+ghost_error ghost_pumap_setbusy(hwloc_bitmap_t cpuset)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_TASKING);
+    
     if (!hwloc_bitmap_isincluded(cpuset,pumap->cpuset)) {
         ERROR_LOG("The given CPU set is not included in the PU map's CPU set");
         return GHOST_ERR_INVALID_ARG;
@@ -86,11 +99,14 @@ ghost_error_t ghost_pumap_setbusy(hwloc_bitmap_t cpuset)
 
     hwloc_bitmap_or(pumap->busy,pumap->busy,cpuset);
     
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_TASKING);
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_pumap_get(ghost_pumap_t **map)
+ghost_error ghost_pumap_get(ghost_pumap **map)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_TASKING);
+    
 
     if (!map) {
         ERROR_LOG("NULL pointer");
@@ -99,16 +115,20 @@ ghost_error_t ghost_pumap_get(ghost_pumap_t **map)
 
     *map = pumap;
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_TASKING);
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_pumap_create(hwloc_cpuset_t cpuset)
+ghost_error ghost_pumap_create(hwloc_cpuset_t cpuset)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_TASKING|GHOST_FUNCTYPE_SETUP);
+    
     if (!cpuset) {
         ERROR_LOG("CPU set is NULL");
         return GHOST_ERR_INVALID_ARG;
     }
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
+    pthread_mutex_init(&ghost_pumap_mutex,NULL);
     
     pumap = NULL;
     hwloc_nodeset_t nodeset = NULL;
@@ -124,7 +144,7 @@ ghost_error_t ghost_pumap_create(hwloc_cpuset_t cpuset)
     hwloc_topology_t topology;
     GHOST_CALL_GOTO(ghost_topology_get(&topology),err,ret);
 
-    GHOST_CALL_GOTO(ghost_malloc((void **)&pumap,sizeof(ghost_pumap_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&pumap,sizeof(ghost_pumap)),err,ret);
     pumap->cpuset = hwloc_bitmap_dup(cpuset);
     pumap->busy = hwloc_bitmap_alloc();
 
@@ -182,6 +202,7 @@ ghost_error_t ghost_pumap_create(hwloc_cpuset_t cpuset)
         }
     }
 
+
     goto out;
 err:
     if (pumap) {
@@ -202,12 +223,16 @@ out:
     hwloc_bitmap_free(remoteCPUset); remoteCPUset = NULL;
     hwloc_bitmap_free(localCPUset); localCPUset = NULL;
     free(domains); domains = NULL;
+    
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_TASKING|GHOST_FUNCTYPE_SETUP);
     return ret;
 
 }
 
 void ghost_pumap_destroy()
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_TASKING|GHOST_FUNCTYPE_TEARDOWN);
+    
     if (pumap) {
         if (pumap->PUs) {
             int d;
@@ -221,13 +246,16 @@ void ghost_pumap_destroy()
     }
     free(pumap); pumap = NULL;
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_TASKING|GHOST_FUNCTYPE_TEARDOWN);
 }
 
-ghost_error_t ghost_pumap_string(char **str)
+ghost_error ghost_pumap_string(char **str)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_TASKING);
+    
     int myrank;
     int mynoderank;
-    ghost_mpi_comm_t nodecomm;
+    ghost_mpi_comm nodecomm;
     
     GHOST_CALL_RETURN(ghost_nodecomm_get(&nodecomm));
     GHOST_CALL_RETURN(ghost_rank(&myrank, MPI_COMM_WORLD));
@@ -237,8 +265,8 @@ ghost_error_t ghost_pumap_string(char **str)
     
 
     int nIdle = 0;
-    char *cpusetstr;
-    char *busystr;
+    char *cpusetstr = NULL;
+    char *busystr = NULL;
     
     hwloc_bitmap_list_asprintf(&cpusetstr,pumap->cpuset);
     hwloc_bitmap_list_asprintf(&busystr,pumap->busy);
@@ -249,6 +277,11 @@ ghost_error_t ghost_pumap_string(char **str)
     ghost_line_string(str,"Busy CPU set",NULL,"%s",cpusetstr);
     ghost_line_string(str,"No. of idle PUs",NULL,"%d",nIdle);
     ghost_footer_string(str);
+
+    free(cpusetstr);
+    free(busystr);
+    
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_TASKING);
 
     return GHOST_SUCCESS;
 

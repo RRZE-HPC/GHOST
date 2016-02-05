@@ -33,19 +33,22 @@ ghost_datatransfer_region_accu_t;
 
 static map<string,ghost_datatransfer_region_accu_t> datatransfers;
 
-ghost_error_t ghost_datatransfer_register(const char *tag, ghost_datatransfer_direction_t dir, int rank, size_t volume)
+ghost_error ghost_datatransfer_register(const char *tag, ghost_datatransfer_direction_t dir, int rank, size_t volume)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     if (dir == GHOST_DATATRANSFER_OUT) {
         datatransfers[tag].sendbytes[rank].push_back(volume);
     } else {
         datatransfers[tag].recvbytes[rank].push_back(volume);
     }
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return GHOST_SUCCESS;
 }
 
 static size_t ghost_datatransfer_volume_get(const char *tag, ghost_datatransfer_direction_t dir, int rank)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     size_t vol = 0;
 
     if (rank == GHOST_DATATRANSFER_RANK_ALL || rank == GHOST_DATATRANSFER_RANK_ALL_W_GPU) {
@@ -74,11 +77,13 @@ static size_t ghost_datatransfer_volume_get(const char *tag, ghost_datatransfer_
         }
     }
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return vol;
 }
 
 static int ghost_datatransfer_nneigh_get(const char *tag, ghost_datatransfer_direction_t dir)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
 
     if (dir == GHOST_DATATRANSFER_OUT) {
         map<int,vector<size_t>> tmp = datatransfers[tag].sendbytes;
@@ -96,11 +101,15 @@ static int ghost_datatransfer_nneigh_get(const char *tag, ghost_datatransfer_dir
         tmp.erase(GHOST_DATATRANSFER_RANK_GPU);
         return tmp.size();
     }
+    
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return 0;
 } 
 
-ghost_error_t ghost_datatransfer_summarystring(char **str)
+ghost_error ghost_datatransfer_summarystring(char **str)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+
     stringstream buffer;
     map<string,ghost_datatransfer_region_accu_t>::iterator iter;
     
@@ -185,5 +194,6 @@ ghost_error_t ghost_datatransfer_summarystring(char **str)
     GHOST_CALL_RETURN(ghost_malloc((void **)str,buffer.str().length()+1));
     strcpy(*str,buffer.str().c_str());
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return GHOST_SUCCESS;
 }

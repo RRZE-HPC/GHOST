@@ -2,16 +2,17 @@
 #include "ghost/types.h"
 #include "ghost/util.h"
 
-static ghost_mpi_datatype_t GHOST_MPI_DT_C = MPI_DATATYPE_NULL;
-static ghost_mpi_datatype_t GHOST_MPI_DT_Z = MPI_DATATYPE_NULL;
+static ghost_mpi_datatype GHOST_MPI_DT_C = MPI_DATATYPE_NULL;
+static ghost_mpi_datatype GHOST_MPI_DT_Z = MPI_DATATYPE_NULL;
 
-ghost_error_t ghost_mpi_datatype(ghost_mpi_datatype_t *dt, ghost_datatype_t datatype)
+ghost_error ghost_mpi_datatype_get(ghost_mpi_datatype *dt, ghost_datatype datatype)
 {
     if (!dt) {
         ERROR_LOG("NULL pointer");
         return GHOST_ERR_INVALID_ARG;
     }
 #ifdef GHOST_HAVE_MPI
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     if (datatype & GHOST_DT_FLOAT) {
         if (datatype & GHOST_DT_COMPLEX)
             *dt = GHOST_MPI_DT_C;
@@ -23,6 +24,7 @@ ghost_error_t ghost_mpi_datatype(ghost_mpi_datatype_t *dt, ghost_datatype_t data
         else
             *dt = MPI_DOUBLE;
     }
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
 #else
     UNUSED(datatype);
     *dt = MPI_DATATYPE_NULL;
@@ -32,14 +34,16 @@ ghost_error_t ghost_mpi_datatype(ghost_mpi_datatype_t *dt, ghost_datatype_t data
 }
 
 
-ghost_error_t ghost_mpi_datatypes_create()
+ghost_error ghost_mpi_datatypes_create()
 {
 #ifdef GHOST_HAVE_MPI
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_SETUP);
     MPI_CALL_RETURN(MPI_Type_contiguous(2,MPI_FLOAT,&GHOST_MPI_DT_C));
     MPI_CALL_RETURN(MPI_Type_commit(&GHOST_MPI_DT_C));
 
     MPI_CALL_RETURN(MPI_Type_contiguous(2,MPI_DOUBLE,&GHOST_MPI_DT_Z));
     MPI_CALL_RETURN(MPI_Type_commit(&GHOST_MPI_DT_Z));
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_SETUP);
 #else
     UNUSED(GHOST_MPI_DT_C);
     UNUSED(GHOST_MPI_DT_Z);
@@ -48,23 +52,26 @@ ghost_error_t ghost_mpi_datatypes_create()
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_mpi_datatypes_destroy()
+ghost_error ghost_mpi_datatypes_destroy()
 {
 #ifdef GHOST_HAVE_MPI
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_TEARDOWN);
     MPI_CALL_RETURN(MPI_Type_free(&GHOST_MPI_DT_C));
     MPI_CALL_RETURN(MPI_Type_free(&GHOST_MPI_DT_Z));
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_TEARDOWN);
 #endif
 
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_datatype_size(size_t *size, ghost_datatype_t datatype)
+ghost_error ghost_datatype_size(size_t *size, ghost_datatype datatype)
 {
     if (!ghost_datatype_valid(datatype)) {
         ERROR_LOG("Invalid data type %d",(int)datatype);
         return GHOST_ERR_INVALID_ARG;
     }
 
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     *size = 0;
 
     if (datatype & GHOST_DT_FLOAT) {
@@ -77,11 +84,18 @@ ghost_error_t ghost_datatype_size(size_t *size, ghost_datatype_t datatype)
         *size *= 2;
     }
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return GHOST_SUCCESS;
 }
 
-bool ghost_datatype_valid(ghost_datatype_t datatype)
+bool ghost_datatype_valid(ghost_datatype datatype)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
+    if (datatype == GHOST_DT_ANY) {
+        return 1;
+    }
+
     if ((datatype & GHOST_DT_FLOAT) &&
             (datatype & GHOST_DT_DOUBLE))
         return 0;
@@ -101,10 +115,16 @@ bool ghost_datatype_valid(ghost_datatype_t datatype)
     return 1;
 }
 
-char * ghost_datatype_string(ghost_datatype_t datatype)
+const char * ghost_datatype_string(ghost_datatype datatype)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     if (!ghost_datatype_valid(datatype)) {
         return "Invalid";
+    }
+
+    if (datatype == GHOST_DT_ANY) {
+        return "any";
     }
 
     if (datatype & GHOST_DT_FLOAT) {
@@ -122,12 +142,13 @@ char * ghost_datatype_string(ghost_datatype_t datatype)
     }
 }
 
-ghost_error_t ghost_datatype_idx(ghost_datatype_idx_t *idx, ghost_datatype_t datatype)
+ghost_error ghost_datatype_idx_get(ghost_datatype_idx *idx, ghost_datatype datatype)
 {
     if (!ghost_datatype_valid(datatype)) {
         ERROR_LOG("Invalid data type");
         return GHOST_ERR_INVALID_ARG;
     }
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
 
     if (datatype & GHOST_DT_FLOAT) {
         if (datatype & GHOST_DT_COMPLEX) {
@@ -143,28 +164,73 @@ ghost_error_t ghost_datatype_idx(ghost_datatype_idx_t *idx, ghost_datatype_t dat
         }
     }
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_idx2datatype(ghost_datatype_t *datatype, ghost_datatype_idx_t idx)
+ghost_error ghost_idx2datatype(ghost_datatype *datatype, ghost_datatype_idx idx)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+   
     switch(idx) {
-        case (ghost_datatype_idx_t)0: 
-            *datatype = (ghost_datatype_t)(GHOST_DT_REAL|GHOST_DT_FLOAT);
+        case (ghost_datatype_idx)0: 
+            *datatype = (ghost_datatype)(GHOST_DT_REAL|GHOST_DT_FLOAT);
             break;
-        case (ghost_datatype_idx_t)1: 
-            *datatype = (ghost_datatype_t)(GHOST_DT_REAL|GHOST_DT_DOUBLE);
+        case (ghost_datatype_idx)1: 
+            *datatype = (ghost_datatype)(GHOST_DT_REAL|GHOST_DT_DOUBLE);
             break;
-        case (ghost_datatype_idx_t)2: 
-            *datatype = (ghost_datatype_t)(GHOST_DT_COMPLEX|GHOST_DT_FLOAT);
+        case (ghost_datatype_idx)2: 
+            *datatype = (ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_FLOAT);
             break;
-        case (ghost_datatype_idx_t)3: 
-            *datatype = (ghost_datatype_t)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE);
+        case (ghost_datatype_idx)3: 
+            *datatype = (ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE);
             break;
         default:
             ERROR_LOG("Invalid datatype index!");
             return GHOST_ERR_INVALID_ARG;
     }
+    
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return GHOST_SUCCESS;
 }
+   
+const char * ghost_location_string(ghost_location location)
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     
+    if (location & GHOST_LOCATION_HOST) {
+        if (location & GHOST_LOCATION_DEVICE) {
+            return "Host&Device";
+        } else {
+            return "Host";
+        }
+    } else if (location & GHOST_LOCATION_DEVICE) {
+        return "Device";
+    } else {
+        return "Invalid";
+    }
+}
+    
+const char * ghost_implementation_string(ghost_implementation implementation)
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
+    
+    switch(implementation) {
+        case GHOST_IMPLEMENTATION_PLAIN:
+            return "vanilla";
+        case GHOST_IMPLEMENTATION_SSE:
+            return "SSE";
+        case GHOST_IMPLEMENTATION_AVX:
+            return "AVX";
+        case GHOST_IMPLEMENTATION_AVX2:
+            return "AVX2";
+        case GHOST_IMPLEMENTATION_MIC:
+            return "MIC";
+        case GHOST_IMPLEMENTATION_CUDA:
+            return "CUDA";
+        default:
+            return "unknown";
+    }
+}

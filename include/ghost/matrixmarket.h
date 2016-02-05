@@ -16,7 +16,7 @@
 typedef struct 
 {
     char *filename;
-    ghost_datatype_t dt;
+    ghost_datatype dt;
 } ghost_sparsemat_rowfunc_mm_initargs;
 
 /**
@@ -31,9 +31,11 @@ typedef struct
  *
  * If called with row #GHOST_SPARSEMAT_ROWFUNC_MM_ROW_INIT, the parameter
  * \p val has to be a ghost_sparsemat_rowfunc_mm_initargs * with the according
- * information filled in. The parameter \p col has to be a ghost_gidx_t[2] in 
+ * information filled in. The parameter \p col has to be a ghost_gidx[2] in 
  * which the number of rows and columns will be stored.
  */
-int ghost_sparsemat_rowfunc_mm(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, void *val);
+int ghost_sparsemat_rowfunc_mm(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *col, void *val, void *arg);
+
+int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *col, void *val, void *arg);
 
 #endif

@@ -43,7 +43,7 @@ for (func ## _it=0; func ## _it<nIter; func ## _it++) {\
 ghost_timing_wc(&func ## _tend);\
 func ## _tavg = (func ## _tend - func ## _tstart)/((double)nIter);\
 
-typedef int (*ghost_compute_performance_func_t)(double *perf, double time, void *arg);
+typedef int (*ghost_compute_performance_func)(double *perf, double time, void *arg);
 
 /**
  * @brief Information about a timed region.
@@ -74,9 +74,13 @@ typedef struct
      * @brief The accumulated runtime.
      */
     double accTime;
+    /**
+     * @brief The average time omitting the first ten calls (useful for benchmarking).
+     */
+    double skip10avgTime;
     
 }
-ghost_timing_region_t;
+ghost_timing_region;
 
 #ifdef __cplusplus
 extern "C" {
@@ -101,7 +105,7 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_timing_summarystring(char **str);
+    ghost_error ghost_timing_summarystring(char **str);
     /**
      * @brief Obtain timing info about a specific region.
      *
@@ -110,13 +114,13 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_timing_region_create(ghost_timing_region_t ** region, const char *tag);
+    ghost_error ghost_timing_region_create(ghost_timing_region ** region, const char *tag);
     /**
      * @brief Destroy a timing region.
      *
      * @param region The region.
      */
-    void ghost_timing_region_destroy(ghost_timing_region_t * region);
+    void ghost_timing_region_destroy(ghost_timing_region * region);
 
     /**
      * @brief Get the wallclock time in seconds.
@@ -125,7 +129,7 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_timing_wc(double *time);
+    ghost_error ghost_timing_wc(double *time);
     /**
      * @brief Get the wallclock time in milliseconds.
      *
@@ -133,18 +137,19 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_timing_wcmilli(double *time);
+    ghost_error ghost_timing_wcmilli(double *time);
 
     /**
      * @brief Set a performance computation function to a given tag.
      *
+     * @param[in] prefix The prefix of the region tag. Usually the variable __ghost_functag can be used here.
      * @param[in] tag The region tag.
      * @param[in] func The performance callback function.
      * @param[in] arg Argument to the function.
      * @param[in] sizeofarg Size of the arg struct.
      * @param[in] unit The unit of performance.
      */
-    void ghost_timing_set_perfFunc(const char *tag, ghost_compute_performance_func_t func, void *arg, size_t sizeofarg, const char *unit);
+    void ghost_timing_set_perfFunc(const char *prefix, const char *tag, ghost_compute_performance_func func, void *arg, size_t sizeofarg, const char *unit);
 
 #ifdef __cplusplus
 }

@@ -11,17 +11,8 @@ v_t ghost_shfl_down(v_t var, unsigned int srcLane) {
 
 template<>
 __device__ inline
-double ghost_shfl_down<double>(double var, unsigned int srcLane) {
-    int2 a = *reinterpret_cast<int2*>(&var);
-    a.x = __shfl_down(a.x, srcLane, warpSize);
-    a.y = __shfl_down(a.y, srcLane, warpSize);
-    return *reinterpret_cast<double*>(&a);
-}
-
-template<>
-__device__ inline
 cuFloatComplex ghost_shfl_down<cuFloatComplex>(cuFloatComplex var, unsigned int srcLane) {
-    int2 a = *reinterpret_cast<int2*>(&var);
+    float2 a = *reinterpret_cast<float2*>(&var);
     a.x = __shfl_down(a.x, srcLane, warpSize);
     a.y = __shfl_down(a.y, srcLane, warpSize);
     return *reinterpret_cast<cuFloatComplex*>(&a);
@@ -30,11 +21,9 @@ cuFloatComplex ghost_shfl_down<cuFloatComplex>(cuFloatComplex var, unsigned int 
 template<>
 __device__ inline
 cuDoubleComplex ghost_shfl_down<cuDoubleComplex>(cuDoubleComplex var, unsigned int srcLane) {
-    int4 a = *reinterpret_cast<int4*>(&var);
+    double2 a = *reinterpret_cast<double2*>(&var);
     a.x = __shfl_down(a.x, srcLane, warpSize);
     a.y = __shfl_down(a.y, srcLane, warpSize);
-    a.z = __shfl_down(a.z, srcLane, warpSize);
-    a.w = __shfl_down(a.w, srcLane, warpSize);
     return *reinterpret_cast<cuDoubleComplex*>(&a);
 }
 
@@ -226,10 +215,10 @@ struct CustomSum
 };
 
 template<typename v_t>
-__global__ void ghost_deviceReduceSum(v_t *in, v_t *out, ghost_lidx_t N)
+__global__ void ghost_deviceReduceSum(v_t *in, v_t *out, ghost_lidx N)
 {
 
-    ghost_lidx_t i;
+    ghost_lidx i;
     v_t sum;
     zero<v_t>(sum);
 

@@ -8,15 +8,17 @@
 
 #include "config.h"
 
+#define GHOST_ALLREDUCE -1
+
 #ifdef GHOST_HAVE_MPI
 #include <mpi.h>
-typedef MPI_Comm ghost_mpi_comm_t;
-typedef MPI_Op ghost_mpi_op_t;
-typedef MPI_Datatype ghost_mpi_datatype_t;
+typedef MPI_Comm ghost_mpi_comm;
+typedef MPI_Op ghost_mpi_op;
+typedef MPI_Datatype ghost_mpi_datatype;
 #else
-typedef int ghost_mpi_comm_t;
-typedef int ghost_mpi_op_t;
-typedef int ghost_mpi_datatype_t;
+typedef int ghost_mpi_comm;
+typedef int ghost_mpi_op;
+typedef int ghost_mpi_datatype;
 #define MPI_COMM_NULL 0
 #define MPI_OP_NULL 0
 #define MPI_DATATYPE_NULL 0
@@ -200,20 +202,51 @@ typedef enum {
      * @brief Complex numbers.
      */
     GHOST_DT_COMPLEX = 8
-} ghost_datatype_t;
+} ghost_datatype;
+
+#define GHOST_DT_ANY (ghost_datatype)-1
+
+typedef enum {
+    /**
+     * @brief Default location. This is only a placeholder and the actual location has to be specified by GHOST.
+     */
+    GHOST_LOCATION_DEFAULT = 0,
+    /**
+     * @brief Data is located on host.
+     */
+    GHOST_LOCATION_HOST = 1,
+    /**
+     * @brief Data is located on device (accelerator, GPU).
+     */
+    GHOST_LOCATION_DEVICE = 2,
+}
+ghost_location;
 
 #ifdef __cplusplus
-inline ghost_datatype_t operator|(const ghost_datatype_t &a, const ghost_datatype_t &b)
-{return static_cast<ghost_datatype_t>(static_cast<int>(a) | static_cast<int>(b));}
+inline ghost_location operator|(const ghost_location &a, const ghost_location &b) {
+    return static_cast<ghost_location>(static_cast<int>(a) | static_cast<int>(b));
+}
+inline ghost_location& operator&=(ghost_location &a, const ghost_location &b) {
+    a = static_cast<ghost_location>(static_cast<int>(a) & static_cast<int>(b));
+    return a;
+}
+inline ghost_location& operator|=(ghost_location &a, const ghost_location &b) {
+    a = static_cast<ghost_location>(static_cast<int>(a) | static_cast<int>(b));
+    return a;
+}
+// Melven: somehow this doesn't compile here (with GCC)
+//inline ghost_datatype operator|(const ghost_datatype &a, const ghost_datatype &b) {
+//    return static_cast<ghost_datatype>(static_cast<int>(a) | static_cast<int>(b));
+//}
 #endif
 
 /**
  * @brief Possible alignments of data access.
  */
 typedef enum {
-    GHOST_ALIGNED,
-    GHOST_UNALIGNED
-} ghost_alignment_t;
+    GHOST_UNALIGNED = 0,
+    GHOST_ALIGNED = 1
+} ghost_alignment;
 
 /**
  * @brief Possible implementations of a CPU function.
@@ -222,8 +255,10 @@ typedef enum {
     GHOST_IMPLEMENTATION_PLAIN = 0,
     GHOST_IMPLEMENTATION_SSE = 1,
     GHOST_IMPLEMENTATION_AVX = 2,
-    GHOST_IMPLEMENTATION_MIC = 3
-} ghost_implementation_t;
+    GHOST_IMPLEMENTATION_AVX2 = 3,
+    GHOST_IMPLEMENTATION_MIC = 4,
+    GHOST_IMPLEMENTATION_CUDA = 5
+} ghost_implementation;
 
 /**
  * @brief Contiguous indices for data types.
@@ -247,7 +282,7 @@ typedef enum {
      * @brief Complex double.
      */
     GHOST_DT_Z_IDX = 3
-} ghost_datatype_idx_t;
+} ghost_datatype_idx;
 
 /**
  * @brief Size of the largest data type (complex double).
@@ -261,18 +296,18 @@ typedef enum {
  *
  * This macro enables easy switching of data types in applications.
  * After calling the macros with identifier "mydata" a typedef "typedef mydata_t double;"
- * and a variable "ghost_datatype_t mydata = GHOST_DT_DOUBLE|GHOST_DT_REAL;" will be present.
+ * and a variable "ghost_datatype mydata = GHOST_DT_DOUBLE|GHOST_DT_REAL;" will be present.
  */
 #define GHOST_REGISTER_DT_D(name) \
     typedef double name ## _t; \
-ghost_datatype_t name = (ghost_datatype_t)(GHOST_DT_DOUBLE|GHOST_DT_REAL); \
+ghost_datatype name = (ghost_datatype)(GHOST_DT_DOUBLE|GHOST_DT_REAL); \
 
 /**
  * @see GHOST_REGISTER_DT_D with float instead of double.
  */
 #define GHOST_REGISTER_DT_S(name) \
     typedef float name ## _t; \
-ghost_datatype_t name = (ghost_datatype_t)(GHOST_DT_FLOAT|GHOST_DT_REAL); \
+ghost_datatype name = (ghost_datatype)(GHOST_DT_FLOAT|GHOST_DT_REAL); \
 
 #ifdef __cplusplus
 /**
@@ -280,14 +315,14 @@ ghost_datatype_t name = (ghost_datatype_t)(GHOST_DT_FLOAT|GHOST_DT_REAL); \
  */
 #define GHOST_REGISTER_DT_C(name) \
     typedef ghost_complex<float> name ## _t; \
-ghost_datatype_t name = (ghost_datatype_t)(GHOST_DT_FLOAT|GHOST_DT_COMPLEX);
+ghost_datatype name = (ghost_datatype)(GHOST_DT_FLOAT|GHOST_DT_COMPLEX);
 #else
 /**
  * @see GHOST_REGISTER_DT_D with float complex instead of double.
  */
 #define GHOST_REGISTER_DT_C(name) \
     typedef complex float name ## _t; \
-ghost_datatype_t name = (ghost_datatype_t)(GHOST_DT_FLOAT|GHOST_DT_COMPLEX);
+ghost_datatype name = (ghost_datatype)(GHOST_DT_FLOAT|GHOST_DT_COMPLEX);
 #endif
 
 #ifdef __cplusplus
@@ -296,26 +331,33 @@ ghost_datatype_t name = (ghost_datatype_t)(GHOST_DT_FLOAT|GHOST_DT_COMPLEX);
  */
 #define GHOST_REGISTER_DT_Z(name) \
     typedef ghost_complex<double> name ## _t; \
-ghost_datatype_t name = (ghost_datatype_t)(GHOST_DT_DOUBLE|GHOST_DT_COMPLEX);
+ghost_datatype name = (ghost_datatype)(GHOST_DT_DOUBLE|GHOST_DT_COMPLEX);
 #else
 /**
  * @see GHOST_REGISTER_DT_D with double complex instead of double.
  */
 #define GHOST_REGISTER_DT_Z(name) \
     typedef complex double name ## _t; \
-ghost_datatype_t name = (ghost_datatype_t)(GHOST_DT_DOUBLE|GHOST_DT_COMPLEX);
+ghost_datatype name = (ghost_datatype)(GHOST_DT_DOUBLE|GHOST_DT_COMPLEX);
 #endif
 
-#ifdef GHOST_HAVE_LONGIDX_GLOBAL
+#ifdef GHOST_IDX64_GLOBAL
 
 /**
  * @brief Type for global indices.
  */
-typedef int64_t ghost_gidx_t; 
+typedef int64_t ghost_gidx; 
+#ifdef MPI_INT64_T
 /**
  * @brief MPI data type for matrix row/column indices
  */
 #define ghost_mpi_dt_gidx MPI_INT64_T
+#else
+#ifdef GHOST_HAVE_MPI
+#warning "Assuming that MPI_LONG_LONG_INT is 64 bits long"
+#endif
+#define ghost_mpi_dt_gidx MPI_LONG_LONG_INT
+#endif
 /**
  * @brief Macro to print matrix/vector row/column indices depending on index size
  */
@@ -328,11 +370,18 @@ typedef int64_t ghost_gidx_t;
 /**
  * @brief Type for global indices.
  */
-typedef int32_t ghost_gidx_t; 
+typedef int32_t ghost_gidx; 
+#ifdef MPI_INT32_T
 /**
  * @brief MPI data type for matrix row/column indices
  */
 #define ghost_mpi_dt_gidx MPI_INT32_T
+#else
+#ifdef GHOST_HAVE_MPI
+#warning "Assuming that MPI_INT is 32 bits long"
+#endif
+#define ghost_mpi_dt_gidx MPI_INT
+#endif
 /**
  * @brief Macro to print matrix/vector row/column indices depending on index size
  */
@@ -342,16 +391,23 @@ typedef int32_t ghost_gidx_t;
 
 #endif
 
-#ifdef GHOST_HAVE_LONGIDX_LOCAL
+#ifdef GHOST_IDX64_LOCAL
 
 /**
  * @brief Type for local indices.
  */
-typedef int64_t ghost_lidx_t; 
+typedef int64_t ghost_lidx; 
+#ifdef MPI_INT64_T
 /**
  * @brief MPI data type for matrix row/column indices
  */
 #define ghost_mpi_dt_lidx MPI_INT64_T
+#else
+#ifdef GHOST_HAVE_MPI
+#warning "Assuming that MPI_LONG_LONG_INT is 64 bits long"
+#endif
+#define ghost_mpi_dt_gidx MPI_LONG_LONG_INT
+#endif
 /**
  * @brief Macro to print matrix/vector row/column indices depending on index size
  */
@@ -361,10 +417,10 @@ typedef int64_t ghost_lidx_t;
 /**
  * @brief Type for indices used in BLAS calls
  */
-typedef long long int ghost_blas_idx_t;
+typedef long long int ghost_blas_idx;
 #define PRBLASIDX PRId64
 #else
-typedef int ghost_blas_idx_t;
+typedef int ghost_blas_idx;
 #define PRBLASIDX PRId32
 #endif
 
@@ -374,9 +430,16 @@ typedef int ghost_blas_idx_t;
 
 #else
 
-typedef int32_t ghost_lidx_t;
+typedef int32_t ghost_lidx;
+#ifdef MPI_INT32_T
 #define ghost_mpi_dt_lidx MPI_INT32_T
-typedef int ghost_blas_idx_t;
+#else
+#ifdef GHOST_HAVE_MPI
+#warning "Assuming that MPI_INT is 32 bits long"
+#endif
+#define ghost_mpi_dt_lidx MPI_INT
+#endif
+typedef int ghost_blas_idx;
 #define PRBLASIDX PRId32
 
 #define PRLIDX PRId32
@@ -385,19 +448,15 @@ typedef int ghost_blas_idx_t;
 
 #endif
 
-#if defined(GHOST_HAVE_LONGIDX_LOCAL) && defined(GHOST_HAVE_LONGIDX_GLOBAL)
-#define GHOST_HAVE_UNIFORM_IDX
+#if defined(GHOST_IDX64_LOCAL) && defined(GHOST_IDX64_GLOBAL)
+#define GHOST_IDX_UNIFORM
 #endif
 
-#if !defined(GHOST_HAVE_LONGIDX_LOCAL) && !defined(GHOST_HAVE_LONGIDX_GLOBAL)
-#define GHOST_HAVE_UNIFORM_IDX
+#if !defined(GHOST_IDX64_LOCAL) && !defined(GHOST_IDX64_GLOBAL)
+#define GHOST_IDX_UNIFORM
 #endif
 
 
-/**
- * @brief For backward compatibility.
- */
-typedef ghost_gidx_t ghost_idx_t;
 #define PRIDX PRGIDX
 #define ghost_mpi_dt_idx ghost_mpi_dt_gidx
 
@@ -439,23 +498,25 @@ extern "C" {
      * An data type is valid if exactly one of GHOST_DT_FLOAT and GHOST_DT_DOUBLE and 
      * exactly one of GHOST_DT_REAL and GHOST_DT_COMPLEX is set.
      */
-    bool ghost_datatype_valid(ghost_datatype_t datatype);
+    bool ghost_datatype_valid(ghost_datatype datatype);
     /**
      * @ingroup stringification
      *
-     * @brief Stringify a ghost_datatype_t.
+     * @brief Stringify a ghost_datatype.
      *
      * @param datatype The data type.
      *
      * @return A string representation of the data type. 
      */
-    char * ghost_datatype_string(ghost_datatype_t datatype);
-    ghost_error_t ghost_datatype_idx(ghost_datatype_idx_t *idx, ghost_datatype_t datatype);
-    ghost_error_t ghost_idx2datatype(ghost_datatype_t *datatype, ghost_datatype_idx_t idx);
-    ghost_error_t ghost_datatype_size(size_t *size, ghost_datatype_t datatype);
-    ghost_error_t ghost_mpi_datatype(ghost_mpi_datatype_t *dt, ghost_datatype_t datatype);
-    ghost_error_t ghost_mpi_datatypes_create();
-    ghost_error_t ghost_mpi_datatypes_destroy();
+    const char * ghost_datatype_string(ghost_datatype datatype);
+    const char * ghost_location_string(ghost_location location);
+    const char * ghost_implementation_string(ghost_implementation implementation);
+    ghost_error ghost_datatype_idx_get(ghost_datatype_idx *idx, ghost_datatype datatype);
+    ghost_error ghost_idx2datatype(ghost_datatype *datatype, ghost_datatype_idx idx);
+    ghost_error ghost_datatype_size(size_t *size, ghost_datatype datatype);
+    ghost_error ghost_mpi_datatype_get(ghost_mpi_datatype *dt, ghost_datatype datatype);
+    ghost_error ghost_mpi_datatypes_create();
+    ghost_error ghost_mpi_datatypes_destroy();
 
 #ifdef __cplusplus
 }

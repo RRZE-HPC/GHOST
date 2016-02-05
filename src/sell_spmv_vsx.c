@@ -2,10 +2,10 @@
 
 #include <altivec.h>
 
-static void SELL_kernel_VSX (ghost_sparsemat_t *mat, ghost_densemat_t * lhs, ghost_densemat_t * invec, int options)
+static void SELL_kernel_VSX (ghost_sparsemat *mat, ghost_densemat * lhs, ghost_densemat * invec, int options)
 {
-    ghost_lidx_t c,j;
-    ghost_lidx_t offs;
+    ghost_lidx c,j;
+    ghost_lidx offs;
     vector double tmp;
     vector double val;
     vector double rhs;

@@ -8,6 +8,7 @@
 #define GHOST_TASK_H
 
 #include <pthread.h>
+#include <semaphore.h>
 #include <hwloc.h>
 #include "error.h"
 
@@ -36,7 +37,7 @@ typedef enum {
     GHOST_TASK_ONLY_HYPERTHREADS = 16,
     GHOST_TASK_NO_HYPERTHREADS = 32
 } 
-ghost_task_flags_t;
+ghost_task_flags;
 
 
 /**
@@ -69,18 +70,18 @@ typedef enum {
      * @brief Task has finished.
      */
     GHOST_TASK_FINISHED
-} ghost_task_state_t;
+} ghost_task_state;
 
 /**
  * @brief This structure represents a GHOST task.
  *
  * This data structure holds all necessary information for
- * a task. The members ghost_task_t#nThreads, ghost_task_t#LD, ghost_task_t#flags, 
- * ghost_task_t#func, ghost_task_t#arg, ghost_task_t#depends, and ghost_task_t#ndepends have to be set by
+ * a task. The members ghost_task#nThreads, ghost_task#LD, ghost_task#flags, 
+ * ghost_task#func, ghost_task#arg, ghost_task#depends, and ghost_task#ndepends have to be set by
  * the user in ghost_task_init(). All other members are set by the library at
  * some point.
  */
-typedef struct ghost_task_t {
+typedef struct ghost_task {
     /**
      * @brief The number of threads the task should use. (user-defined)
      */
@@ -105,17 +106,21 @@ typedef struct ghost_task_t {
     /**
      * @brief A list of tasks which have to be finished before this task can start. (user-defined)
      */
-    struct ghost_task_t ** depends;
+    struct ghost_task ** depends;
     /**
      * @brief The number of dependencies. (user-defined)
      */
     int ndepends;
+    /**
+     * @brief A semaphore for the *user* to mark progress in this thread. (set by the library)
+     */
+    sem_t *progressSem;
 
     // set by the library
     /**
      * @brief The current state of the task. (set by the library)
      */
-    ghost_task_state_t state;
+    ghost_task_state state;
     /**
      * @brief The list of cores where the task's threads are running. (set by the library)
      */
@@ -135,16 +140,16 @@ typedef struct ghost_task_t {
     /**
      * @brief Pointer to the next task in the queue. (set by the library)
      */
-    struct ghost_task_t *next; 
+    struct ghost_task *next; 
     /**
      * @brief Pointer to the previous task in the queue. (set by the library)
      */
-    struct ghost_task_t *prev;
+    struct ghost_task *prev;
     /**
-     * @brief The adding task if the task has been added from within a task.
-     * (set by the library)
+     * @brief The enqueueing task if the task has been enqueued from within a task.
+     * (set by the library, can be overwritten by the user *before* enqueueing)
      */
-    struct ghost_task_t *parent;
+    struct ghost_task *parent;
     /**
      * @brief Indicator that the task is finished. (set by the library)
      */
@@ -153,6 +158,8 @@ typedef struct ghost_task_t {
      * @brief Protect accesses to the task's members. (set by the library)
      */
     pthread_mutex_t *mutex;
+    pthread_mutex_t *finishedMutex;
+    pthread_mutex_t *stateMutex;
     /**
      * @brief Set to one as soon as the task's resources have been free'd.
      * This can be the case when the task waits for a child-task to finish or
@@ -160,7 +167,7 @@ typedef struct ghost_task_t {
      * @deprecated
      */
     int freed;
-} ghost_task_t;
+} ghost_task;
 
 #ifdef __cplusplus
 extern "C" {
@@ -175,12 +182,12 @@ extern "C" {
      * @param func The function the task should execute
      * @param arg The arguments to the task's function
      * @param flags The task's flags
-     * @param depends List of ghost_task_t * on which this task depends
+     * @param depends List of ghost_task * on which this task depends
      * @param ndepends Length of the depends argument
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_task_create(ghost_task_t **task, int nThreads, int LD, void *(*func)(void *), void *arg, ghost_task_flags_t flags, ghost_task_t **depends, int ndepends);
+    ghost_error ghost_task_create(ghost_task **task, int nThreads, int LD, void *(*func)(void *), void *arg, ghost_task_flags flags, ghost_task **depends, int ndepends);
     /**
      * @brief Enqueue a task.
      *
@@ -188,7 +195,7 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_task_enqueue(ghost_task_t *t);
+    ghost_error ghost_task_enqueue(ghost_task *t);
     /**
      * @brief Wait for a task to finish
      *
@@ -196,7 +203,7 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_task_wait(ghost_task_t *t);
+    ghost_error ghost_task_wait(ghost_task *t);
     /**
      * @brief Test the task's current state
      *
@@ -204,13 +211,13 @@ extern "C" {
      *
      * @return  The state of the task
      */
-    ghost_task_state_t ghost_task_test(ghost_task_t *t);
+    ghost_task_state ghost_taskest(ghost_task *t);
     /**
      * @brief Destroy a task.
      *
      * @param[inout] t The task to be destroyed
      */
-    void ghost_task_destroy(ghost_task_t *t); 
+    void ghost_task_destroy(ghost_task *t); 
     /**
      * @brief Unpin a task's threads.
      *
@@ -218,7 +225,7 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_task_unpin(ghost_task_t *task);
+    ghost_error ghost_task_unpin(ghost_task *task);
     /**
      * @ingroup stringification
      *
@@ -228,7 +235,7 @@ extern "C" {
      *
      * @return The state string
      */
-    char *ghost_task_state_string(ghost_task_state_t state);
+    const char *ghost_task_state_string(ghost_task_state state);
     /**
      * @ingroup stringification
      *
@@ -239,9 +246,10 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_task_string(char **str, ghost_task_t *t); 
+    ghost_error ghost_task_string(char **str, ghost_task *t); 
 
-    ghost_error_t ghost_task_cur(ghost_task_t **task);
+    ghost_error ghost_task_cur(ghost_task **task);
+
 #ifdef __cplusplus
 }// extern "C"
 #endif

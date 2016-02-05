@@ -60,14 +60,16 @@
     if (logmacroerr != MPI_SUCCESS) {\
         logmacrome = -1;\
     }\
-    fprintf(stderr, color "PE%d " #type " at %s() <%s:%d>: " FIRST(__VA_ARGS__) ANSI_COLOR_RESET "\n", logmacrome, __func__, FILE_BASENAME, __LINE__ REST(__VA_ARGS__)); \
-    fflush(stderr);\
+    if (logmacrome == GHOST_LOG_RANK || -1 == GHOST_LOG_RANK) {\
+        fprintf(stderr, color "[GHOST] PE%d " #type " at %s() <%s:%d>: " FIRST(__VA_ARGS__) ANSI_COLOR_RESET "\n", logmacrome, __func__, FILE_BASENAME, __LINE__ REST(__VA_ARGS__)); \
+        fflush(stderr);\
+    }\
 }\
 
 #else
 
 #define LOG(type,color,...) {\
-    fprintf(stderr, color #type " at %s() <%s:%d>: " FIRST(__VA_ARGS__) ANSI_COLOR_RESET "\n", __func__, FILE_BASENAME, __LINE__ REST(__VA_ARGS__));\
+    fprintf(stderr, color "[GHOST] " #type " at %s() <%s:%d>: " FIRST(__VA_ARGS__) ANSI_COLOR_RESET "\n", __func__, FILE_BASENAME, __LINE__ REST(__VA_ARGS__));\
 }\
 
 #endif
@@ -75,7 +77,7 @@
 
 #define DEBUG_LOG(level,...) {if(GHOST_VERBOSITY > level) { LOG(DEBUG,ANSI_COLOR_RESET,__VA_ARGS__) }}
 
-#ifdef GHOST_ERR_WARN_INFO_PRINTONCE
+#ifdef GHOST_LOG_ONLYFIRST
 #define INFO_LOG(...) {static int __printed = 0; if(!__printed && GHOST_VERBOSITY) { LOG(INFO,ANSI_COLOR_BLUE,__VA_ARGS__); __printed=1; }}
 #define WARNING_LOG(...) {static int __printed = 0; if(!__printed && GHOST_VERBOSITY) { LOG(WARNING,ANSI_COLOR_YELLOW,__VA_ARGS__); __printed=1; }}
 #define PERFWARNING_LOG(...) {static int __printed = 0; if(!__printed && GHOST_VERBOSITY) { LOG(PERFWARNING,ANSI_COLOR_MAGENTA,__VA_ARGS__); __printed=1; }}
