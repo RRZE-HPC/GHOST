@@ -87,7 +87,16 @@ static void ghost_tsmttsm_cu_cm_rm(T* const __restrict__ C,
                                    const T beta, ghost_lidx_t K,
                                    ghost_lidx_t ldc, ghost_lidx_t lda,
                                    ghost_lidx_t ldb) {
-  int blockCount = 26;
+  const int threadsPerBlock = 128;
+  int deviceUsed;
+  cudaGetDevice(&deviceUsed);
+  cudaDeviceProp prop;
+  cudaGetDeviceProperties(&prop, deviceUsed);
+  int numBlocks;
+  cudaOccupancyMaxActiveBlocksPerMultiprocessor(
+      &numBlocks, GENV3::blockProductKernel<N, M, threadsPerBlock, true>,
+      threadsPerBlock, 0);
+  int blockCount = prop.multiProcessorCount * numBlocks;
 
   if (temp_storage_bytes == 0 || temp_storage == NULL) {
     temp_storage_bytes = blockCount * sizeof(T) * N * ldc;
@@ -95,10 +104,12 @@ static void ghost_tsmttsm_cu_cm_rm(T* const __restrict__ C,
     if (temp_storage == NULL) temp_storage_bytes = 0;
   }
   if (N > M) {
-    GENV3::blockProductKernel<N, M, 256, true><<<blockCount, 256>>>(
+    GENV3::blockProductKernel<N, M, threadsPerBlock,
+                              true><<<blockCount, threadsPerBlock>>>(
         B, A, (T*)temp_storage, K, ldb, lda, ldc);
   } else {
-    GENV3::blockProductKernel<M, N, 256, false><<<blockCount, 256>>>(
+    GENV3::blockProductKernel<M, N, threadsPerBlock,
+                              false><<<blockCount, threadsPerBlock>>>(
         A, B, (T*)temp_storage, K, lda, ldb, ldc);
   }
   GENV3::deviceReduce<M, N><<<M * N / 256 + 1, 256>>>(
