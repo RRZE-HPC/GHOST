@@ -19,17 +19,17 @@
 
 #include <unordered_map>
 
-typedef ghost_tsmttsm_parameters_t ghost_tsmttsm_kahan_parameters_t;
-typedef ghost_tsmttsm_parameters_t ghost_tsmttsm_kahan_parameters_t;
+typedef ghost_tsmttsm_parameters ghost_tsmttsm_kahan_parameters;
+typedef ghost_tsmttsm_parameters ghost_tsmttsm_kahan_parameters;
 
 using namespace std;
 
 // Hash function for unordered_map
 namespace std
 {
-    template<> struct hash<ghost_tsmttsm_parameters_t>
+    template<> struct hash<ghost_tsmttsm_parameters>
     {
-        typedef ghost_tsmttsm_parameters_t argument_type;
+        typedef ghost_tsmttsm_parameters argument_type;
         typedef std::size_t result_type;
         result_type operator()(argument_type const& a) const
         {
@@ -38,17 +38,17 @@ namespace std
     };
 }
 
-bool operator==(const ghost_tsmttsm_parameters_t& a, const ghost_tsmttsm_parameters_t& b)
+static bool operator==(const ghost_tsmttsm_parameters& a, const ghost_tsmttsm_parameters& b)
 {
     return a.dt == b.dt && a.wcols == b.wcols && a.vcols == b.vcols && a.impl == b.impl && a.xstor == b.xstor && a.wstor == b.wstor && a.alignment == b.alignment && a.unroll == b.unroll;
 }
 
-static unordered_map<ghost_tsmttsm_parameters_t, ghost_tsmttsm_kernel_t> ghost_tsmttsm_kernels;
-static unordered_map<ghost_tsmttsm_parameters_t, ghost_tsmttsm_kernel_t> ghost_tsmttsm_kahan_kernels;
+static unordered_map<ghost_tsmttsm_parameters, ghost_tsmttsm_kernel> ghost_tsmttsm_kernels;
+static unordered_map<ghost_tsmttsm_parameters, ghost_tsmttsm_kernel> ghost_tsmttsm_kahan_kernels;
 
 
-ghost_error_t ghost_tsmttsm_valid(ghost_densemat_t *x, ghost_densemat_t *v, const char * transv, 
-ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce, ghost_gemm_flags_t flags, int printerror) 
+ghost_error ghost_tsmttsm_valid(ghost_densemat *x, ghost_densemat *v, const char * transv, 
+ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce, ghost_gemm_flags flags, int printerror) 
 {
     /*if (w->traits.storage != GHOST_DENSEMAT_ROWMAJOR) {
         if (printerror) {
@@ -109,9 +109,9 @@ ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce, gh
 }
 
 
-ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta,int reduce,int conjv,ghost_gemm_flags_t flags)
+ghost_error ghost_tsmttsm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta,int reduce,int conjv,ghost_gemm_flags flags)
 {
-    ghost_error_t ret;
+    ghost_error ret;
 
     const char *vtrans;
     if (conjv && v->traits.datatype & GHOST_DT_COMPLEX) {
@@ -131,7 +131,7 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
     }
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
    
-    unordered_map<ghost_tsmttsm_parameters_t, ghost_tsmttsm_kernel_t> kernels;
+    unordered_map<ghost_tsmttsm_parameters, ghost_tsmttsm_kernel> kernels;
     if (flags & GHOST_GEMM_KAHAN) { 
         if (ghost_tsmttsm_kahan_kernels.empty()) {
 #include "tsmttsm_kahan_plain.def"
@@ -154,24 +154,24 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
 
 
     
-    ghost_tsmttsm_parameters_t p;
-    ghost_implementation_t opt_impl;
-    ghost_alignment_t opt_align;
+    ghost_tsmttsm_parameters p;
+    ghost_implementation opt_impl;
+    ghost_alignment opt_align;
     int opt_unroll;
-    ghost_tsmttsm_kernel_t kernel = NULL;
+    ghost_tsmttsm_kernel kernel = NULL;
     
     // fix properties    
     p.xstor = x->traits.storage;
     p.wstor = w->traits.storage;
 
     // initial implementation
-#ifdef GHOST_HAVE_MIC
+#ifdef GHOST_BUILD_MIC
     opt_impl = GHOST_IMPLEMENTATION_MIC;
-#elif defined(GHOST_HAVE_AVX2)
+#elif defined(GHOST_BUILD_AVX2)
     opt_impl = GHOST_IMPLEMENTATION_AVX2;
-#elif defined(GHOST_HAVE_AVX)
+#elif defined(GHOST_BUILD_AVX)
     opt_impl = GHOST_IMPLEMENTATION_AVX;
-#elif defined(GHOST_HAVE_SSE)
+#elif defined(GHOST_BUILD_SSE)
     opt_impl = GHOST_IMPLEMENTATION_SSE;
 #else
     opt_impl = GHOST_IMPLEMENTATION_PLAIN;
@@ -187,9 +187,9 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
         opt_align = GHOST_UNALIGNED;
     }
     
-    ghost_lidx_t try_wcols[2] = {w->traits.ncols,-1};
-    ghost_lidx_t try_vcols[2] = {v->traits.ncols,-1};
-    ghost_datatype_t try_dt[2] = {v->traits.datatype,GHOST_DT_ANY};
+    ghost_lidx try_wcols[2] = {w->traits.ncols,-1};
+    ghost_lidx try_vcols[2] = {v->traits.ncols,-1};
+    ghost_datatype try_dt[2] = {v->traits.datatype,GHOST_DT_ANY};
 
     if (x->traits.flags & GHOST_DENSEMAT_VIEW || v->traits.flags & GHOST_DENSEMAT_VIEW) {
         opt_unroll = 1;
@@ -197,16 +197,16 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
         opt_unroll = GHOST_MAX_ROWS_UNROLL;
     }
     
-    int n_wcols = sizeof(try_wcols)/sizeof(ghost_lidx_t); 
-    int n_vcols = sizeof(try_vcols)/sizeof(ghost_lidx_t); 
-    int n_dt = sizeof(try_dt)/sizeof(ghost_datatype_t); 
+    int n_wcols = sizeof(try_wcols)/sizeof(ghost_lidx); 
+    int n_vcols = sizeof(try_vcols)/sizeof(ghost_lidx); 
+    int n_dt = sizeof(try_dt)/sizeof(ghost_datatype); 
     int pos_wcols, pos_vcols, pos_dt;
     bool optimal = true; // if we find a kernel with highest specialization grade (regardless unrolling), this remains true and no performance warning gets printed
 
     for (pos_wcols = 0; pos_wcols < n_wcols; pos_wcols++) {  
         for (pos_vcols = 0; pos_vcols < n_vcols; pos_vcols++) {  
-            for (p.impl = opt_impl; (int)p.impl >= GHOST_IMPLEMENTATION_PLAIN; p.impl  = (ghost_implementation_t)((int)p.impl-1)) {
-                for (p.alignment = opt_align; (int)p.alignment >= GHOST_UNALIGNED; p.alignment = (ghost_alignment_t)((int)p.alignment-1)) {
+            for (p.impl = opt_impl; (int)p.impl >= GHOST_IMPLEMENTATION_PLAIN; p.impl  = (ghost_implementation)((int)p.impl-1)) {
+                for (p.alignment = opt_align; (int)p.alignment >= GHOST_UNALIGNED; p.alignment = (ghost_alignment)((int)p.alignment-1)) {
                     for (p.unroll = opt_unroll; p.unroll > 0; p.unroll /= 2) {
                         for (pos_dt = 0; pos_dt < n_dt; pos_dt++) {
                             p.wcols = try_wcols[pos_wcols];
@@ -247,7 +247,7 @@ end_of_loop:
 
 
 #ifdef GHOST_HAVE_INSTR_TIMING
-    ghost_gemm_perf_args_t tsmttsm_perfargs;
+    ghost_gemm_perf_args tsmttsm_perfargs;
     tsmttsm_perfargs.n = w->traits.ncols;
     tsmttsm_perfargs.m = v->traits.ncols;
     if (v->context) {

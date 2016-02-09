@@ -11,12 +11,12 @@
 #GHOST_SUBST CFGK ${BLOCKDIM1}
 #GHOST_SUBST CFGM ${BLOCKDIM2}
 
-ghost_error_t ghost_tsmttsm__a_sse_d_CFGK_CFGM_1_cm_rm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conmv)
+ghost_error ghost_tsmttsm__a_sse_d_CFGK_CFGM_1_cm_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conmv)
 {
     UNUSED(conmv);
-#ifdef GHOST_HAVE_SSE
+#ifdef GHOST_BUILD_SSE
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
 
     int myrank=0;
 
@@ -24,16 +24,16 @@ ghost_error_t ghost_tsmttsm__a_sse_d_CFGK_CFGM_1_cm_rm(ghost_densemat_t *x, ghos
         GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
     }
 
-    ghost_lidx_t n = v->traits.nrows;
+    ghost_lidx n = v->traits.nrows;
     INFO_LOG("In SSE TSMTTSM with two fixed block sizes [CFGK][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
     
     const double * const restrict vval = (const double *) v->val;
     const double * const restrict wval = (const double *) w->val;
     double * const restrict xval = (double *) x->val;
 
-    const ghost_lidx_t ldv = v->stride;
-    const ghost_lidx_t ldw = w->stride;
-    const ghost_lidx_t ldx = x->stride;
+    const ghost_lidx ldv = v->stride;
+    const ghost_lidx ldw = w->stride;
+    const ghost_lidx ldx = x->stride;
 
     __m128d betavec, alphavec;
     
@@ -49,9 +49,9 @@ ghost_error_t ghost_tsmttsm__a_sse_d_CFGK_CFGM_1_cm_rm(ghost_densemat_t *x, ghos
         betavec = _mm_setzero_pd();
     }
 
-    ghost_lidx_t i,m;
+    ghost_lidx i,m;
 
-    ghost_lidx_t k;
+    ghost_lidx k;
     for (k=0; k<CFGK; k++) {
         for (m=0; m+2<=CFGM; m+=2) {
             _mm_store_pd(&xval[k*ldx+m],_mm_mul_pd(_mm_load_pd(&xval[k*ldx+m]),betavec));
@@ -67,7 +67,7 @@ ghost_error_t ghost_tsmttsm__a_sse_d_CFGK_CFGM_1_cm_rm(ghost_densemat_t *x, ghos
        
         double print[2]; 
         double *x_priv;
-        ghost_lidx_t ldxpriv = PAD(CFGM,2);
+        ghost_lidx ldxpriv = PAD(CFGM,2);
         if (ldxpriv != CFGM) {
             INFO_LOG("Pad xpriv from %d to %d",CFGM,ldxpriv);
         }
@@ -99,7 +99,7 @@ ghost_error_t ghost_tsmttsm__a_sse_d_CFGK_CFGM_1_cm_rm(ghost_densemat_t *x, ghos
         #GHOST_UNROLL#__m128d wvec@;#2
 
         double *x_priv;
-        ghost_lidx_t ldxpriv = PAD(CFGM,2);
+        ghost_lidx ldxpriv = PAD(CFGM,2);
         if (ldxpriv != CFGM) {
             INFO_LOG("Pad xpriv from %d to %d",CFGM,ldxpriv);
         }

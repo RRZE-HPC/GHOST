@@ -16,7 +16,7 @@
 
 static hwloc_topology_t ghost_topology = NULL;
 
-ghost_error_t ghost_topology_create()
+ghost_error ghost_topology_create()
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_SETUP);
     if (ghost_topology) {
@@ -51,7 +51,7 @@ void ghost_topology_destroy()
     return;
 }
 
-ghost_error_t ghost_topology_get(hwloc_topology_t *topo)
+ghost_error ghost_topology_get(hwloc_topology_t *topo)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     if (!topo) {
@@ -71,7 +71,7 @@ ghost_error_t ghost_topology_get(hwloc_topology_t *topo)
 
 }
 
-ghost_error_t ghost_machine_innercache_size(uint64_t *size)
+ghost_error ghost_machine_innercache_size(uint64_t *size)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     hwloc_topology_t topology;
@@ -91,7 +91,7 @@ ghost_error_t ghost_machine_innercache_size(uint64_t *size)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_machine_outercache_size(uint64_t *size)
+ghost_error ghost_machine_outercache_size(uint64_t *size)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     hwloc_topology_t topology;
@@ -107,7 +107,7 @@ ghost_error_t ghost_machine_outercache_size(uint64_t *size)
         }
     }
 
-#ifdef GHOST_HAVE_MIC
+#ifdef GHOST_BUILD_MIC
     int ncores;
     GHOST_CALL_RETURN(ghost_machine_ncore(&ncores,GHOST_NUMANODE_ANY));
     *size *= ncores; // the cache is shared but not reported so
@@ -117,7 +117,7 @@ ghost_error_t ghost_machine_outercache_size(uint64_t *size)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_machine_cacheline_size(unsigned *size)
+ghost_error ghost_machine_cacheline_size(unsigned *size)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     hwloc_topology_t topology;
@@ -138,7 +138,7 @@ ghost_error_t ghost_machine_cacheline_size(unsigned *size)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_machine_ncore(int *ncore, int numanode)
+ghost_error ghost_machine_ncore(int *ncore, int numanode)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     int nPUs;
@@ -162,7 +162,7 @@ ghost_error_t ghost_machine_ncore(int *ncore, int numanode)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_machine_npu(int *nPUs, int numanode)
+ghost_error ghost_machine_npu(int *nPUs, int numanode)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     hwloc_topology_t topology;
@@ -182,7 +182,7 @@ ghost_error_t ghost_machine_npu(int *nPUs, int numanode)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_machine_npu_in_cpuset(int *nPUs, hwloc_const_cpuset_t set)
+ghost_error ghost_machine_npu_in_cpuset(int *nPUs, hwloc_const_cpuset_t set)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     hwloc_topology_t topology;
@@ -201,7 +201,7 @@ ghost_error_t ghost_machine_npu_in_cpuset(int *nPUs, hwloc_const_cpuset_t set)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_machine_ncore_in_cpuset(int *nCores, hwloc_const_cpuset_t set)
+ghost_error ghost_machine_ncore_in_cpuset(int *nCores, hwloc_const_cpuset_t set)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     hwloc_topology_t topology;
@@ -220,7 +220,7 @@ ghost_error_t ghost_machine_ncore_in_cpuset(int *nCores, hwloc_const_cpuset_t se
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_machine_nsmt(int *nLevels)
+ghost_error ghost_machine_nsmt(int *nLevels)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     hwloc_topology_t topology;
@@ -238,7 +238,7 @@ ghost_error_t ghost_machine_nsmt(int *nLevels)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_machine_nnuma_in_cpuset(int *nNodes, hwloc_const_cpuset_t set)
+ghost_error ghost_machine_nnuma_in_cpuset(int *nNodes, hwloc_const_cpuset_t set)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     hwloc_topology_t topology;
@@ -257,7 +257,7 @@ ghost_error_t ghost_machine_nnuma_in_cpuset(int *nNodes, hwloc_const_cpuset_t se
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_machine_nnuma(int *nNodes)
+ghost_error ghost_machine_nnuma(int *nNodes)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     hwloc_topology_t topology;
@@ -290,13 +290,13 @@ bool ghost_machine_bigendian()
 int ghost_machine_alignment()
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
-#ifdef GHOST_HAVE_MIC
+#ifdef GHOST_BUILD_MIC
     int alignment = 64;
-#elif defined(GHOST_HAVE_AVX2)
+#elif defined(GHOST_BUILD_AVX2)
     int alignment = 32;
-#elif defined(GHOST_HAVE_AVX)
+#elif defined(GHOST_BUILD_AVX)
     int alignment = 32;
-#elif defined(GHOST_HAVE_SSE)
+#elif defined(GHOST_BUILD_SSE)
     int alignment = 16;
 #else
     int alignment = 8;
@@ -308,13 +308,13 @@ int ghost_machine_alignment()
 int ghost_machine_simd_width()
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
-#ifdef GHOST_HAVE_MIC
+#ifdef GHOST_BUILD_MIC
     int width = 64;
-#elif defined(GHOST_HAVE_AVX2)
+#elif defined(GHOST_BUILD_AVX2)
     int width = 32;
-#elif defined(GHOST_HAVE_AVX)
+#elif defined(GHOST_BUILD_AVX)
     int width = 32;
-#elif defined(GHOST_HAVE_SSE)
+#elif defined(GHOST_BUILD_SSE)
     int width = 16;
 #else
     int width = 4;
@@ -323,7 +323,7 @@ int ghost_machine_simd_width()
     return width; 
 }
 
-ghost_error_t ghost_machine_numanode(hwloc_obj_t *node, int idx)
+ghost_error ghost_machine_numanode(hwloc_obj_t *node, int idx)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     if (!node) {
@@ -353,7 +353,7 @@ ghost_error_t ghost_machine_numanode(hwloc_obj_t *node, int idx)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_machine_string(char **str)
+ghost_error ghost_machine_string(char **str)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
 
@@ -369,7 +369,7 @@ ghost_error_t ghost_machine_string(char **str)
 #ifdef GHOST_HAVE_CUDA
     int cu_device;
     struct cudaDeviceProp devprop;
-    ghost_type_t mytype;
+    ghost_type mytype;
     ghost_type_get(&mytype);
     
     if (mytype == GHOST_TYPE_CUDA) {
@@ -380,7 +380,7 @@ ghost_error_t ghost_machine_string(char **str)
     int cuVersion;
     GHOST_CALL_RETURN(ghost_cu_version(&cuVersion));
 
-    ghost_gpu_info_t * CUdevInfo;
+    ghost_gpu_info * CUdevInfo;
     GHOST_CALL_RETURN(ghost_cu_gpu_info_create(&CUdevInfo));
 #endif
 
@@ -453,18 +453,18 @@ ghost_error_t ghost_machine_string(char **str)
 
 }
 
-ghost_implementation_t ghost_get_best_implementation_for_bytesize(int bytes)
+ghost_implementation ghost_get_best_implementation_for_bytesize(int bytes)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
 
-    ghost_implementation_t machine_impl, best_impl;
-#ifdef GHOST_HAVE_MIC
+    ghost_implementation machine_impl, best_impl;
+#ifdef GHOST_BUILD_MIC
     machine_impl = GHOST_IMPLEMENTATION_MIC;
-#elif defined(GHOST_HAVE_AVX2)
+#elif defined(GHOST_BUILD_AVX2)
     machine_impl = GHOST_IMPLEMENTATION_AVX2;
-#elif defined(GHOST_HAVE_AVX)
+#elif defined(GHOST_BUILD_AVX)
     machine_impl = GHOST_IMPLEMENTATION_AVX;
-#elif defined(GHOST_HAVE_SSE)
+#elif defined(GHOST_BUILD_SSE)
     machine_impl = GHOST_IMPLEMENTATION_SSE;
 #else
     machine_impl = GHOST_IMPLEMENTATION_PLAIN;
@@ -488,7 +488,7 @@ ghost_implementation_t ghost_get_best_implementation_for_bytesize(int bytes)
     }
     if (!(bytes % 16)) {
         // fallback to SSE in case of AVX or AVX2
-        best_impl = (ghost_implementation_t)MIN((int)machine_impl,(int)GHOST_IMPLEMENTATION_SSE);
+        best_impl = (ghost_implementation)MIN((int)machine_impl,(int)GHOST_IMPLEMENTATION_SSE);
         GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
         return best_impl;
     }

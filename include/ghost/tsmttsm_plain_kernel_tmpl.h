@@ -1,15 +1,15 @@
 #include <complex>
     
 template<typename T, int CFGK, int CFGM, int UNROLL>
-static ghost_error_t ghost_tsmttsm__a_plain_cm_rm_tmpl(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, T *alpha, T *beta, int conjv)
+static ghost_error ghost_tsmttsm__a_plain_cm_rm_tmpl(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, T *alpha, T *beta, int conjv)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
 
     int myrank=0;
-    ghost_lidx_t n = v->traits.nrows;
-    ghost_lidx_t i,j,k;
-    ghost_lidx_t ldv, ldw, ldx;
+    ghost_lidx n = v->traits.nrows;
+    ghost_lidx i,j,k;
+    ghost_lidx ldv, ldw, ldx;
     T * vval =  (T *)v->val, * wval = (T *)w->val, * xval = (T *)x->val;
     T mybeta = *beta; 
 

@@ -2,7 +2,7 @@
 #include "ghost/util.h"
 #include "ghost/locality.h"
 
-ghost_error_t ghost_carp(ghost_sparsemat_t *mat, ghost_densemat_t *x, ghost_densemat_t *b, void *omega)
+ghost_error ghost_carp(ghost_sparsemat *mat, ghost_densemat *x, ghost_densemat *b, void *omega)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_SOLVER);
 
@@ -11,7 +11,7 @@ ghost_error_t ghost_carp(ghost_sparsemat_t *mat, ghost_densemat_t *x, ghost_dens
     // 3. communicate remote halo x entries to local
     //    if column is present on more procs: average!
 
-    ghost_densemat_halo_comm_t comm = GHOST_DENSEMAT_HALO_COMM_INITIALIZER;
+    ghost_densemat_halo_comm comm = GHOST_DENSEMAT_HALO_COMM_INITIALIZER;
     GHOST_CALL_RETURN(x->halocommInit(x,&comm));
     GHOST_CALL_RETURN(x->halocommStart(x,&comm));
     GHOST_CALL_RETURN(x->halocommFinalize(x,&comm));

@@ -11,7 +11,6 @@
 #include "ghost/pumap.h"
 #include "ghost/omp.h"
 #include "ghost/rand.h"
-//#include "ghost/sell.h"
 //#include "ghost/tsmm.h"
 //#include "ghost/tsmm_inplace.h"
 //#include "ghost/tsmttsm.h"
@@ -35,7 +34,7 @@
 
 #include <strings.h>
 
-static ghost_type_t ghost_type = GHOST_TYPE_INVALID;
+static ghost_type mytype = GHOST_TYPE_INVALID;
 static int MPIwasInitialized = 0;
 static int initialized = 0;
 
@@ -44,9 +43,9 @@ static int initialized = 0;
  *
  * This is necessary, e.g., for gathering CUDA information in heterogeneous runs containing Xeon Phis.
  */
-static ghost_mpi_comm_t ghost_cuda_comm = MPI_COMM_NULL;
+static ghost_mpi_comm ghost_cuda_comm = MPI_COMM_NULL;
 
-char * ghost_type_string(ghost_type_t t)
+char * ghost_type_string(ghost_type t)
 {
     char *ret;
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
@@ -68,17 +67,17 @@ char * ghost_type_string(ghost_type_t t)
     return ret;
 }
 
-ghost_error_t ghost_type_set(ghost_type_t t)
+ghost_error ghost_type_set(ghost_type t)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     
-    ghost_type = t;
+    mytype = t;
     
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_type_get(ghost_type_t *t)
+ghost_error ghost_type_get(ghost_type *t)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
  
@@ -87,7 +86,7 @@ ghost_error_t ghost_type_get(ghost_type_t *t)
         return GHOST_ERR_INVALID_ARG;
     }
 
-    *t = ghost_type;
+    *t = mytype;
     
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return GHOST_SUCCESS;
@@ -115,7 +114,7 @@ static void *likwidThreadInitTask(void *arg)
 }
 #endif
 
-ghost_error_t ghost_init(int argc, char **argv)
+ghost_error ghost_init(int argc, char **argv)
 {
 
     if (initialized) {
@@ -180,7 +179,7 @@ ghost_error_t ghost_init(int argc, char **argv)
     hwloc_cpuset_t mycpuset = hwloc_bitmap_alloc();
 
     // auto-set rank types 
-    ghost_mpi_comm_t nodeComm;
+    ghost_mpi_comm nodeComm;
     int nnoderanks;
     int noderank;
     GHOST_CALL_RETURN(ghost_nodecomm_get(&nodeComm));
@@ -246,7 +245,7 @@ ghost_error_t ghost_init(int argc, char **argv)
 #endif
 
     int nactivephis = 0;
-#ifdef GHOST_HAVE_MIC
+#ifdef GHOST_BUILD_MIC
     nactivephis = 1;
 #endif
 
@@ -266,42 +265,42 @@ ghost_error_t ghost_init(int argc, char **argv)
     }
 
     // get GHOST type set by the user
-    ghost_type_t settype;
+    ghost_type settype;
     GHOST_CALL_RETURN(ghost_type_get(&settype));
     
     if (settype == GHOST_TYPE_INVALID) {
         char *envtype = getenv("GHOST_TYPE");
         if (envtype) {
             if (!strncasecmp(envtype,"CUDA",4) || !strncasecmp(envtype,"GPU",3)) {
-                ghost_type = GHOST_TYPE_CUDA;
+                mytype = GHOST_TYPE_CUDA;
             } else if (!strncasecmp(envtype,"WORK",4) || !strncasecmp(envtype,"CPU",3)) {
-                ghost_type = GHOST_TYPE_WORK;
+                mytype = GHOST_TYPE_WORK;
             }
         }
     }
 
     // type has been set by neither env nor API
-    if (settype == GHOST_TYPE_INVALID && ghost_type == GHOST_TYPE_INVALID) {
+    if (settype == GHOST_TYPE_INVALID && mytype == GHOST_TYPE_INVALID) {
         if (noderank == 0) {
-            ghost_type = GHOST_TYPE_WORK;
+            mytype = GHOST_TYPE_WORK;
         } else if (noderank <= ncudadevs) {
-            ghost_type = GHOST_TYPE_CUDA;
+            mytype = GHOST_TYPE_CUDA;
         } else {
-            ghost_type = GHOST_TYPE_WORK;
+            mytype = GHOST_TYPE_WORK;
         }
         if (ncudadevs && nnoderanks > 1) {
-            INFO_LOG("Setting GHOST type to %s due to heuristics.",ghost_type_string(ghost_type));
+            INFO_LOG("Setting GHOST type to %s due to heuristics.",ghost_type_string(mytype));
         }
     } 
 
 #ifndef GHOST_HAVE_CUDA
-    if (ghost_type == GHOST_TYPE_CUDA) {
+    if (mytype == GHOST_TYPE_CUDA) {
         WARNING_LOG("This rank is supposed to be a CUDA management rank but CUDA is not available. Re-setting GHOST type");
-        ghost_type = GHOST_TYPE_WORK;
+        mytype = GHOST_TYPE_WORK;
     }
 #endif
     
-    GHOST_CALL_RETURN(ghost_type_set(ghost_type));
+    GHOST_CALL_RETURN(ghost_type_set(mytype));
 
     int i;
     int localTypes[nnoderanks];
@@ -309,11 +308,11 @@ ghost_error_t ghost_init(int argc, char **argv)
     for (i=0; i<nnoderanks; i++) {
         localTypes[i] = GHOST_TYPE_INVALID;
     }
-    localTypes[noderank] = ghost_type;
+    localTypes[noderank] = mytype;
     
-    int ncudaranks_on_node = ghost_type==GHOST_TYPE_CUDA;
+    int ncudaranks_on_node = mytype==GHOST_TYPE_CUDA;
 #ifdef GHOST_HAVE_MPI
-    ghost_mpi_comm_t ghost_node_comm;
+    ghost_mpi_comm ghost_node_comm;
     GHOST_CALL_RETURN(ghost_nodecomm_get(&ghost_node_comm));
     MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&ncudaranks_on_node,1,MPI_INT,MPI_SUM,ghost_node_comm));
 
@@ -327,7 +326,7 @@ ghost_error_t ghost_init(int argc, char **argv)
     MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&localTypes,nnoderanks,MPI_INT,MPI_MAX,ghost_node_comm));
 #endif   
     
-    ghost_hwconfig_t hwconfig;
+    ghost_hwconfig hwconfig;
     ghost_hwconfig_get(&hwconfig);
 
     int hasCuda = 0;
@@ -499,12 +498,12 @@ ghost_error_t ghost_init(int argc, char **argv)
        
     } else {
         INFO_LOG("One process per node");
-        if (ghost_type == GHOST_TYPE_WORK) {
+        if (mytype == GHOST_TYPE_WORK) {
             hwloc_bitmap_copy(mycpuset,availcpuset);
         }
     }    
 
-    if (ghost_type == GHOST_TYPE_WORK) {
+    if (mytype == GHOST_TYPE_WORK) {
     // exclude CUDA cores from CPU set
         hwloc_bitmap_andnot(mycpuset,mycpuset,cudaOccupiedCpuset);
     }
@@ -522,7 +521,7 @@ ghost_error_t ghost_init(int argc, char **argv)
 
 #ifdef GHOST_HAVE_MPI
     int rank;
-    ghost_mpi_comm_t tmpcomm;
+    ghost_mpi_comm tmpcomm;
     GHOST_CALL_RETURN(ghost_rank(&rank,MPI_COMM_WORLD));
     MPI_CALL_RETURN(MPI_Comm_dup(MPI_COMM_WORLD,&tmpcomm));
     MPI_CALL_RETURN(MPI_Comm_split(tmpcomm,hasCuda,rank,&ghost_cuda_comm));
@@ -562,7 +561,7 @@ ghost_error_t ghost_init(int argc, char **argv)
 #ifdef GHOST_HAVE_INSTR_LIKWID
     likwid_markerInit();
 
-    ghost_task_t *t;
+    ghost_task *t;
     ghost_task_create(&t,GHOST_TASK_FILL_ALL,0,&likwidThreadInitTask,NULL,GHOST_TASK_DEFAULT, NULL, 0);
     ghost_task_enqueue(t);
     ghost_task_wait(t);
@@ -578,7 +577,7 @@ ghost_error_t ghost_init(int argc, char **argv)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_finalize()
+ghost_error ghost_finalize()
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TEARDOWN);
     static int finalized = 0;
@@ -626,7 +625,7 @@ ghost_error_t ghost_finalize()
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_string(char **str) 
+ghost_error ghost_string(char **str) 
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     GHOST_CALL_RETURN(ghost_malloc((void **)str,1));
@@ -636,17 +635,17 @@ ghost_error_t ghost_string(char **str)
     ghost_line_string(str,"Version",NULL,"%s",GHOST_VERSION);
     ghost_line_string(str,"Build date",NULL,"%s",__DATE__);
     ghost_line_string(str,"Build time",NULL,"%s",__TIME__);
-#ifdef GHOST_HAVE_MIC
+#ifdef GHOST_BUILD_MIC
     ghost_line_string(str,"MIC kernels",NULL,"Enabled");
 #else
     ghost_line_string(str,"MIC kernels",NULL,"Disabled");
 #endif
-#ifdef GHOST_HAVE_AVX
+#ifdef GHOST_BUILD_AVX
     ghost_line_string(str,"AVX kernels",NULL,"Enabled");
 #else
     ghost_line_string(str,"AVX kernels",NULL,"Disabled");
 #endif
-#ifdef GHOST_HAVE_SSE
+#ifdef GHOST_BUILD_SSE
     ghost_line_string(str,"SSE kernels",NULL,"Enabled");
 #else
     ghost_line_string(str,"SSE kernels",NULL,"Disabled");
@@ -666,8 +665,8 @@ ghost_error_t ghost_string(char **str)
 #else
     ghost_line_string(str,"CUDA support",NULL,"Disabled");
 #endif
-    ghost_line_string(str,"Configured SELL chunk heights",NULL,"%s",GHOST_CFG_SELL_CHUNKHEIGHTS);
-    ghost_line_string(str,"Configured blockvector widths",NULL,"%s",GHOST_CFG_BLOCKVECTOR_SIZES);
+    ghost_line_string(str,"Configured SELL chunk heights",NULL,"%s",GHOST_GEN_SELL_C);
+    ghost_line_string(str,"Configured blockvector widths",NULL,"%s",GHOST_GEN_DENSEMAT_DIM);
 #ifdef GHOST_HAVE_INSTR_LIKWID
 #ifdef GHOST_HAVE_INSTR_TIMING
     ghost_line_string(str,"Instrumentation",NULL,"Likwid+Timing");
@@ -681,12 +680,12 @@ ghost_error_t ghost_string(char **str)
     ghost_line_string(str,"Instrumentation",NULL,"Disabled");
 #endif
 #endif
-#ifdef GHOST_HAVE_LONGIDX_GLOBAL
+#ifdef GHOST_IDX64_GLOBAL
     ghost_line_string(str,"Gobal index size","bits","64");
 #else
     ghost_line_string(str,"Gobal index size","bits","32");
 #endif
-#ifdef GHOST_HAVE_LONGIDX_LOCAL
+#ifdef GHOST_IDX64_LOCAL
     ghost_line_string(str,"Local index size","bits","64");
 #else
     ghost_line_string(str,"Local index size","bits","32");
@@ -698,14 +697,14 @@ ghost_error_t ghost_string(char **str)
 
 }
 
-ghost_error_t ghost_barrier()
+ghost_error ghost_barrier()
 {
 //    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
 #ifdef GHOST_HAVE_MPI
     MPI_CALL_RETURN(MPI_Barrier(MPI_COMM_WORLD));
 #endif
 #ifdef GHOST_HAVE_CUDA
-    ghost_type_t type;
+    ghost_type type;
     ghost_type_get(&type);
     if (type == GHOST_TYPE_CUDA) {
         GHOST_CALL_RETURN(ghost_cu_barrier());
@@ -716,7 +715,7 @@ ghost_error_t ghost_barrier()
     return GHOST_SUCCESS;
 }
     
-ghost_error_t ghost_cuda_comm_get(ghost_mpi_comm_t *comm)
+ghost_error ghost_cuda_comm_get(ghost_mpi_comm *comm)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     *comm = ghost_cuda_comm;

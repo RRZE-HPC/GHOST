@@ -9,7 +9,7 @@ static pthread_key_t ghost_instr_prefix_key;
 static pthread_key_t ghost_instr_suffix_key;
 pthread_key_t ghost_instr_enable_key;
 
-ghost_error_t ghost_instr_create()
+ghost_error ghost_instr_create()
 {
     int err = 0;
     err += pthread_key_create(&ghost_instr_prefix_key,NULL);
@@ -24,7 +24,7 @@ ghost_error_t ghost_instr_create()
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_instr_destroy()
+ghost_error ghost_instr_destroy()
 {
     int err = 0;
     err += pthread_key_delete(ghost_instr_prefix_key);

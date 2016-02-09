@@ -1,8 +1,8 @@
 cmake_minimum_required (VERSION 2.8)
 project (GHOST)
 
-set(GHOST_VERSION_MAJOR 0)
-set(GHOST_VERSION_MINOR 8)
+set(GHOST_VERSION_MAJOR 1)
+set(GHOST_VERSION_MINOR 0)
 set(GHOST_VERSION_REVISION 0)
 set(GHOST_VERSION_IDENTIFIER)
 set(GHOST_VERSION "${GHOST_VERSION_MAJOR}.${GHOST_VERSION_MINOR}.${GHOST_VERSION_REVISION}")
@@ -16,56 +16,35 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/")
 include(CheckCCompilerFlag)
 include(${PROJECT_SOURCE_DIR}/cmake/OptimizeForArchitecture.cmake)
 
-option(USE_MPI "Build with MPI" 1)
-option(USE_OPENMP "Build with OpenMP" 1)
-option(USE_CUDA "Build with CUDA" 0)
-option(USE_SCOTCH "Use PT-Scotch for matrix re-ordering" 0)
-option(USE_COLPACK "Use ColPack for matrix coloring" 0)
-option(USE_LONGIDX_LOCAL "Enable 64-bit indices for local quantities" 0)
-option(USE_LONGIDX_GLOBAL "Enable 64-bit indices for global quantities" 1)
-option(OPTIMIZE_HOSTARCH "Create optimized code for the host's architecture" 1)
-option(BUILD_MIC "Build for Intel MIC" 0)
-option(LOG_ONLY_FIRST_OCCURENCE "Print all errors, warnings and info only once for each occurence" 1)
-option(TRACK_DATATRANSFERS "Track MPI and CUDA data transfers" 0)
-option(GATHER_SPARSEMAT_GLOBAL_STATISTICS "Gather some global statistics on sparse matrices (should be disabled for large-scale runs)" 0)
-option(GATHER_SPARSEMAT_STATISTICS "Gather statistics about sparse matrices (slows down matrix construction)" 0)
-set(LOG_MPIRANK "-1" CACHE STRING "The MPI rank for which the log messages will be printed. -1 for full verbosity.")
-set(CFG_BLOCKVECTOR_SIZES "1,2,4,8" CACHE STRING "The block vector sizes for which generated kernels are being created (comma-separated list)")
-set(CFG_SELL_CHUNKHEIGHTS "1,32" CACHE STRING "The SELL chunk heights for which generated kernels are being created (comma-separated list)")
-set(CFG_SELL_CUDA_KERNELS "true,true,true,true,true,true,true;true,false,false,false,false,false,false;false,false,false,false,false,false,false" CACHE STRING "The permutations of SELL SpMV CUDA kernels to instantiate (semicolon-separated list of comma-separated lists). AXP(B)Y,SCALE,(V)SHIFT,DOT_YY,DOT_XY,DOT_XX,CHAIN_AXPBY")
-set(VERBOSITY 1 CACHE STRING "Level of verbosity information. Valid values: 0 (be totally silent), 1 (print warnings, errors and further important information), 2, 3, 4 (increasing level of verbosity)")
-set(INSTRUMENTATION "" CACHE STRING "Type of instrumentation (semicolon separated list). Valid values: TIMING, LIKWID, IACA")
-set(INSTRUMENTATION_FUNCTYPES "(functype) & GHOST_FUNCTYPE_ANY" CACHE STRING "Logical selection of function types to instrument defined in func_util.h.")
+option(GHOST_USE_MPI "Build with MPI" 1)
+option(GHOST_USE_OPENMP "Build with OpenMP" 1)
+option(GHOST_USE_CUDA "Build with CUDA" 0)
+option(GHOST_USE_SCOTCH "Use PT-Scotch for matrix re-ordering" 0)
+option(GHOST_USE_COLPACK "Use ColPack for matrix coloring" 0)
+option(GHOST_IDX64_LOCAL "Enable 64-bit indices for local quantities" 0)
+option(GHOST_IDX64_GLOBAL "Enable 64-bit indices for global quantities" 1)
+option(GHOST_OPTIMIZE_HOSTARCH "Create optimized code for the host's architecture" 1)
+option(GHOST_BUILD_MIC "Build for Intel MIC" 0)
+option(GHOST_LOG_ONLYFIRST "Print all errors, warnings and info only once for each occurence" 1)
+option(GHOST_TRACK_DATATRANSFERS "Track MPI and CUDA data transfers" 0)
+option(GHOST_SPARSEMAT_GLOBALSTATS "Gather some global statistics on sparse matrices (should be disabled for large-scale runs)" 0)
+option(GHOST_SPARSEMAT_STATS "Gather statistics about sparse matrices (slows down matrix construction)" 0)
+set(GHOST_LOG_RANK "-1" CACHE STRING "The MPI rank for which the log messages will be printed. -1 for full verbosity.")
+set(GHOST_GEN_DENSEMAT_DIM "1,2,4,8" CACHE STRING "The block vector sizes for which generated kernels are being created (comma-separated list)")
+set(GHOST_GEN_SELL_C "1,32" CACHE STRING "The SELL chunk heights for which generated kernels are being created (comma-separated list)")
+set(GHOST_GEN_CUSELLSPMV "true,true,true,true,true,true,true;true,false,false,false,false,false,false;false,false,false,false,false,false,false" CACHE STRING "The permutations of SELL SpMV CUDA kernels to instantiate (semicolon-separated list of comma-separated lists). AXP(B)Y,SCALE,(V)SHIFT,DOT_YY,DOT_XY,DOT_XX,CHAIN_AXPBY")
+set(GHOST_VERBOSITY 1 CACHE STRING "Level of verbosity information. Valid values: 0 (be totally silent), 1 (print warnings, errors and further important information), 2, 3, 4 (increasing level of verbosity)")
+set(GHOST_INSTRUMENT "" CACHE STRING "Type of instrumentation (semicolon separated list). Valid values: TIMING, LIKWID, IACA")
+set(GHOST_INSTRUMENT_FUNCTYPES "(functype) & GHOST_FUNCTYPE_ANY" CACHE STRING "Logical selection of function types to instrument defined in func_util.h.")
 
 find_package(PkgConfig)
 
 add_definitions(-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE)
-if (USE_LONGIDX_LOCAL)
-    set(GHOST_HAVE_LONGIDX_LOCAL 1)
-    if (NOT USE_LONGIDX_GLOBAL)
+if (GHOST_IDX64_LOCAL)
+    if (NOT GHOST_IDX64_GLOBAL)
         message(FATAL_ERROR "Having 64-bit indices locally and only 32-bit indices globally is not allowed (and not sensible)!")
     endif()
 endif()
-if (USE_LONGIDX_GLOBAL)
-    set(GHOST_HAVE_LONGIDX_GLOBAL 1)
-    set(GHOST_HAVE_LONGIDX 1) # backward compatibility
-endif()
-
-if (TRACK_DATATRANSFERS)
-    set(GHOST_HAVE_TRACK_DATATRANSFERS 1)
-endif()
-
-if (GATHER_SPARSEMAT_GLOBAL_STATISTICS)
-    add_definitions(-DGHOST_GATHER_SPARSEMAT_GLOBAL_STATISTICS)
-endif()
-
-if (GATHER_SPARSEMAT_STATISTICS)
-    add_definitions(-DGHOST_GATHER_SPARSEMAT_STATISTICS)
-endif()
-
-set(GHOST_VERBOSITY ${VERBOSITY})
-set(GHOST_LOG_ONLY_FIRST_OCCURENCE ${LOG_ONLY_FIRST_OCCURENCE})
-set(GHOST_LOG_MPIRANK ${LOG_MPIRANK})
 
 set (SOURCES
     src/datatransfers.cpp 
@@ -75,7 +54,6 @@ set (SOURCES
     src/densemat_rm.cpp
     src/dot.cpp 
     src/errorhandler.cpp
-    src/sell.cpp
     src/sell_kacz.cpp
     src/sell_spmv.cpp
     src/sparsemat.cpp
@@ -108,9 +86,9 @@ set (SOURCES
     src/omp.c
     src/pumap.c
     src/rand.c
-    src/sell.c 
     src/sparsemat.c
     src/sparsemat_perm_scotch.c
+    src/spmv.c
     src/spmv_overlap.c 
     src/spmv_nompi.c 
     src/spmv_task.c
@@ -143,6 +121,7 @@ set (HEADERS
     include/ghost/dot.h
     include/ghost/error.h
     include/ghost/errorhandler.h
+    include/ghost/funcptr_wrappers.h
     include/ghost/helper.h
     include/ghost/instr.h
     include/ghost/locality.h	
@@ -154,7 +133,6 @@ set (HEADERS
     include/ghost/perm.h
     include/ghost/pumap.h
     include/ghost/rand.h
-    include/ghost/sell.h
     include/ghost/sparsemat.h
     include/ghost/spmv.h
     include/ghost/spmv_solvers.h
@@ -171,17 +149,17 @@ set (HEADERS
     include/ghost/rayleigh_ritz.h
     )
 
-string(REPLACE "," ";" CFG_SELL_CHUNKHEIGHTS_LIST ${CFG_SELL_CHUNKHEIGHTS})
-string(REPLACE "," ";" CFG_BLOCKVECTOR_SIZES_LIST ${CFG_BLOCKVECTOR_SIZES})
+string(REPLACE "," ";" GHOST_GEN_SELL_C_LIST ${GHOST_GEN_SELL_C})
+string(REPLACE "," ";" GHOST_GEN_DENSEMAT_DIM_LIST ${GHOST_GEN_DENSEMAT_DIM})
 
 set(SELL_CU_SPMV_SWITCHCASCADE "bool do_fallback = false;\\\nswitch \(mat->traits.C) {\\\n")
-foreach (SELL_CHUNKHEIGHT ${CFG_SELL_CHUNKHEIGHTS_LIST})
+foreach (SELL_CHUNKHEIGHT ${GHOST_GEN_SELL_C_LIST})
     set(SELL_CU_SPMV_SWITCHCASCADE "${SELL_CU_SPMV_SWITCHCASCADE}    case ${SELL_CHUNKHEIGHT}:\\\n")
     set(SELL_CU_SPMV_SWITCHCASCADE "${SELL_CU_SPMV_SWITCHCASCADE}        switch \(rhs->traits.ncols) {\\\n")
-    foreach (SELL_NCOLS ${CFG_BLOCKVECTOR_SIZES_LIST})
+    foreach (SELL_NCOLS ${GHOST_GEN_DENSEMAT_DIM_LIST})
         set(SELL_CU_SPMV_SWITCHCASCADE "${SELL_CU_SPMV_SWITCHCASCADE}            case ${SELL_NCOLS}:\\\n")
-        foreach(SELL_CUDA_VARIANT ${CFG_SELL_CUDA_KERNELS})
-            set(SELL_CU_SPMV_SWITCHCASCADE "${SELL_CU_SPMV_SWITCHCASCADE}                if(!(strcmp(boolstr,\"${SELL_CUDA_VARIANT}\"))) { kernel<dt1,dt2,dt2_b,${SELL_CHUNKHEIGHT},${SELL_NCOLS},${SELL_CUDA_VARIANT}><<<grid,block,smem>>>((dt2 *)lhsval,(int)(lhs->stride),(dt2 *)rhsval,(int)rhs->stride,flags,mat->nrows,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,(dt2 *)cu_shift,(dt2)scale,(dt2)beta,(dt2 *)cu_localdot,(dt2 *)zval,zstride,(dt2)sdelta,(dt2)seta); } else \\\n")
+        foreach(SELL_CUDA_VARIANT ${GHOST_GEN_CUSELLSPMV})
+            set(SELL_CU_SPMV_SWITCHCASCADE "${SELL_CU_SPMV_SWITCHCASCADE}                if(!(strcmp(boolstr,\"${SELL_CUDA_VARIANT}\"))) { kernel<dt1,dt2,dt2_b,${SELL_CHUNKHEIGHT},${SELL_NCOLS},${SELL_CUDA_VARIANT}><<<grid,block,smem>>>((dt2 *)lhsval,(int)(lhs->stride),(dt2 *)rhsval,(int)rhs->stride,traits.flags,mat->nrows,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,(dt2 *)cu_shift,(dt2)scale,(dt2)beta,(dt2 *)cu_localdot,(dt2 *)zval,zstride,(dt2)sdelta,(dt2)seta); } else \\\n")
         endforeach()
         set(SELL_CU_SPMV_SWITCHCASCADE "${SELL_CU_SPMV_SWITCHCASCADE}                { PERFWARNING_LOG(\"Non-configured bool variant: %s\",boolstr);\\\n                do_fallback = true; }\\\n")
         set(SELL_CU_SPMV_SWITCHCASCADE "${SELL_CU_SPMV_SWITCHCASCADE}        break;\\\n")
@@ -220,7 +198,7 @@ foreach(TEMPLATE_SRCFILE ${TEMPLATE_SRCFILES})
     endif()
    
     if(TEMPLATE_DEPS_LIST MATCHES "^BLOCKDIM1$")
-        foreach(BLOCKDIM1 ${CFG_BLOCKVECTOR_SIZES_LIST})
+        foreach(BLOCKDIM1 ${GHOST_GEN_DENSEMAT_DIM_LIST})
             configure_file (
                 ${TEMPLATE_SRCFILE}
                 ${PROJECT_BINARY_DIR}/src_generated/${AUTOGEN_FUNCTION}__${BLOCKDIM1}${TEMPLATE_SRCFILE_EXT}
@@ -228,7 +206,7 @@ foreach(TEMPLATE_SRCFILE ${TEMPLATE_SRCFILES})
             list(APPEND GENERATED_FILES ${PROJECT_BINARY_DIR}/src_generated/${AUTOGEN_FUNCTION}__${BLOCKDIM1}${TEMPLATE_SRCFILE_EXT})
         endforeach()
     elseif(TEMPLATE_DEPS_LIST MATCHES "^CHUNKHEIGHT$")
-        foreach(CHUNKHEIGHT ${CFG_SELL_CHUNKHEIGHTS_LIST})
+        foreach(CHUNKHEIGHT ${GHOST_GEN_SELL_C_LIST})
 configure_file (
                 ${TEMPLATE_SRCFILE}
                 ${PROJECT_BINARY_DIR}/src_generated/${AUTOGEN_FUNCTION}__${CHUNKHEIGHT}${TEMPLATE_SRCFILE_EXT}
@@ -236,8 +214,8 @@ configure_file (
             list(APPEND GENERATED_FILES ${PROJECT_BINARY_DIR}/src_generated/${AUTOGEN_FUNCTION}__${CHUNKHEIGHT}${TEMPLATE_SRCFILE_EXT})
         endforeach()
     elseif(TEMPLATE_DEPS_LIST MATCHES "^BLOCKDIM1;CHUNKHEIGHT$")
-        foreach(BLOCKDIM1 ${CFG_BLOCKVECTOR_SIZES_LIST})
-            foreach(CHUNKHEIGHT ${CFG_SELL_CHUNKHEIGHTS_LIST})
+        foreach(BLOCKDIM1 ${GHOST_GEN_DENSEMAT_DIM_LIST})
+            foreach(CHUNKHEIGHT ${GHOST_GEN_SELL_C_LIST})
                 configure_file (
                     ${TEMPLATE_SRCFILE}
                     ${PROJECT_BINARY_DIR}/src_generated/${AUTOGEN_FUNCTION}__${BLOCKDIM1}_${CHUNKHEIGHT}${TEMPLATE_SRCFILE_EXT}
@@ -246,8 +224,8 @@ configure_file (
             endforeach()
         endforeach()
     elseif(TEMPLATE_DEPS_LIST MATCHES "^BLOCKDIM1;BLOCKDIM2$")
-        foreach(BLOCKDIM1 ${CFG_BLOCKVECTOR_SIZES_LIST})
-            foreach(BLOCKDIM2 ${CFG_BLOCKVECTOR_SIZES_LIST})
+        foreach(BLOCKDIM1 ${GHOST_GEN_DENSEMAT_DIM_LIST})
+            foreach(BLOCKDIM2 ${GHOST_GEN_DENSEMAT_DIM_LIST})
                 configure_file (
                     ${TEMPLATE_SRCFILE}
                     ${PROJECT_BINARY_DIR}/src_generated/${AUTOGEN_FUNCTION}__${BLOCKDIM1}_${BLOCKDIM2}${TEMPLATE_SRCFILE_EXT}
@@ -345,17 +323,17 @@ set(HWLOC_LIBRARIES ${LIBHWLOC})
 mark_as_advanced(LIBHWLOC)
 mark_as_advanced(CLEAR HWLOC_INCLUDE_DIR)
 
-if (INSTRUMENTATION)
-  set(GHOST_HAVE_INSTR 1)
+if (GHOST_INSTRUMENT)
+    set(GHOST_INSTRUMENT 1)
 else()
-  set(GHOST_HAVE_INSTR 0)
+  set(GHOST_INSTRUMENT 0)
 endif()
-foreach(instr ${INSTRUMENTATION})
+foreach(instr ${GHOST_INSTRUMENT})
     if (${instr} STREQUAL "TIMING")
-        set(GHOST_HAVE_INSTR_TIMING 1)
+        set(GHOST_INSTR_TIMING 1)
     endif()
     if (${instr} STREQUAL "LIKWID")
-        set(GHOST_HAVE_INSTR_LIKWID 1)
+        set(GHOST_INSTR_LIKWID 1)
         set(LIKWID_INCLUDE_DIR "" CACHE PATH "Location of likwid.h")
         include_directories(${LIKWID_INCLUDE_DIR})
         get_filename_component(LIKWID_LIBDIR ${LIKWID_INCLUDE_DIR}/../lib REALPATH)
@@ -363,21 +341,21 @@ foreach(instr ${INSTRUMENTATION})
     endif()
     if (${instr} STREQUAL "IACA")
         message(STATUS "Disabling OpenMP because IACA instrumentation is enabled")
-        set(GHOST_HAVE_INSTR_IACA 1)
-        set(USE_OPENMP OFF)
+        set(GHOST_INSTR_IACA 1)
+        set(GHOST_USE_OPENMP OFF)
     endif()
 endforeach()
 
-if (NOT GHOST_HAVE_INSTR_IACA)
+if (NOT GHOST_INSTR_IACA)
     add_definitions(-DIACA_MARKS_OFF)
 endif()
 
-if (USE_MPI)
+if (GHOST_USE_MPI)
     set(MPI_LIBRARIES "-lmpi_mt")
     find_package(MPI QUIET)
     include_directories(SYSTEM ${MPI_INCLUDE_PATH})
     foreach(item ${MPI_LIBRARIES})
-        if (BUILD_MIC)
+        if (GHOST_BUILD_MIC)
             string(REPLACE "intel64" "mic" item_mic ${item})
             list(REMOVE_ITEM MPI_LIBRARIES ${item})
             list(APPEND MPI_LIBRARIES ${item_mic})
@@ -407,8 +385,8 @@ endif()
 
 
 
-if (USE_CUDA)
-    set(CUDA_USE_STATIC_CUDA_RUNTIME Off)
+if (GHOST_USE_CUDA)
+    option(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
     find_package(CUDA)
     if (CUDA_FOUND)
         set(GHOST_HAVE_CUDA 1)
@@ -418,7 +396,7 @@ if (USE_CUDA)
         if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
             list(APPEND CUDA_NVCC_FLAGS -O0)
         endif()
-        if (USE_OPENMP)
+        if (GHOST_USE_OPENMP)
             list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fopenmp)
         endif()
         if (CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -446,7 +424,7 @@ if (USE_CUDA)
             CUDA_VERBOSE_BUILD
             )
     else ()
-        message(WARNING "Could not find CUDA! You might want to make CUDA available or set USE_CUDA=OFF to suppress this warning.")
+        message(WARNING "Could not find CUDA! You might want to make CUDA available or set GHOST_USE_CUDA=OFF to suppress this warning.")
     endif()
 endif()
 
@@ -454,14 +432,14 @@ add_library(ghost ${SOURCES})
 add_dependencies(ghost autogen)
 
 
-if (USE_CUDA)
-    set(CUDA_LIBRARIES ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${CUDA_cusparse_LIBRARY} ${LIBCUDADEVRT})
+if (GHOST_USE_CUDA)
+    set(CUDA_LIBRARIES ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${CUDA_cusparse_LIBRARY})
 endif()
 
-if (USE_SCOTCH)
+if (GHOST_USE_SCOTCH)
     set(GHOST_HAVE_SCOTCH 1)
     set(SCOTCH_INCLUDE_DIR "${SCOTCH_INCLUDE_DIR}" CACHE PATH "Location of PT-Scotch headers")
-    if (USE_MPI)
+    if (GHOST_USE_MPI)
         if (NOT EXISTS "${SCOTCH_INCLUDE_DIR}/ptscotch.h")
             message(FATAL_ERROR "Could not find ptscotch.h in SCOTCH_INCLUDE_DIR!")
         endif()
@@ -482,7 +460,7 @@ if (USE_SCOTCH)
     find_library(LIBSCOTCH scotch ${SCOTCH_LIBDIR})
     find_library(LIBPTSCOTCHERR ptscotcherr ${SCOTCH_LIBDIR})
     find_library(LIBSCOTCHERR scotcherr ${SCOTCH_LIBDIR})
-    if (USE_MPI)
+    if (GHOST_USE_MPI)
         set(SCOTCH_LIBRARIES ${LIBPTSCOTCH} ${LIBSCOTCH} ${LIBPTSCOTCHERR})
     else()
         set(SCOTCH_LIBRARIES ${LIBSCOTCH} ${LIBSCOTCHERR})
@@ -491,7 +469,7 @@ if (USE_SCOTCH)
 endif()
 
 
-if (USE_COLPACK)
+if (GHOST_USE_COLPACK)
     set(GHOST_HAVE_COLPACK 1)
     set(COLPACK_INCLUDE_DIR "${COLPACK_INCLUDE_DIR}" CACHE PATH "Location of ColPack headers")
     include_directories(${COLPACK_INCLUDE_DIR})
@@ -503,7 +481,7 @@ if (USE_COLPACK)
     endif()
 endif()
 
-if (USE_OPENMP)	
+if (GHOST_USE_OPENMP)	
     find_package(OpenMP REQUIRED)
     set(GHOST_HAVE_OPENMP 1)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
@@ -541,7 +519,7 @@ if (${CBLAS_H} STREQUAL "mkl_cblas.h")
     message(STATUS "MKL BLAS found")
     set(GHOST_HAVE_MKL 1)
     set(GHOST_HAVE_LAPACK 1)
-    if (BUILD_MIC)
+    if (GHOST_BUILD_MIC)
         get_filename_component(MKL_LIBDIR ${CBLAS_INCLUDE_DIR}/../lib/mic REALPATH)
     else ()
         get_filename_component(MKL_LIBDIR ${CBLAS_INCLUDE_DIR}/../lib/intel64 REALPATH)
@@ -553,14 +531,14 @@ if (${CBLAS_H} STREQUAL "mkl_cblas.h")
 
     find_library(LIBMKL_CORE mkl_core ${MKL_LIBDIR})
 
-    if (USE_LONGIDX_LOCAL)
+    if (GHOST_IDX64_LOCAL)
         add_definitions(-DMKL_ILP64)
         find_library(LIBMKL_INTEL_XLP64 mkl_intel_ilp64 ${MKL_LIBDIR})
     else()
         find_library(LIBMKL_INTEL_XLP64 mkl_intel_lp64 ${MKL_LIBDIR})
     endif()
 
-    if(USE_OPENMP)
+    if(GHOST_USE_OPENMP)
         if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel") 
             find_library(LIBMKL_X_THREAD mkl_intel_thread ${MKL_LIBDIR})
         elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU") 
@@ -694,11 +672,11 @@ else ()
                 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast -fstrict-aliasing")
             endif()
             if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" AND NOT "${CMAKE_CXX_COMPILER_VERSION}" VERSION_LESS "4.8"))
-                set(CLANG_SANITIZE "" CACHE STRING "What should be sanitized by Clang/GCC for a Debug build? (address, thread, memory, undefined or leave empty)")
-                if (NOT "${CLANG_SANITIZE}" STREQUAL "") 
-                    string(TOLOWER "${CLANG_SANITIZE}" CLANG_SANITIZE)
-                    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -fsanitize=${CLANG_SANITIZE} -fno-omit-frame-pointer -pie")
-                    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -fsanitize=${CLANG_SANITIZE} -fno-omit-frame-pointer -pie")
+                set(SANITIZER "" CACHE STRING "What should be sanitized by Clang/GCC for a build? (address, thread, memory, undefined or leave empty)")
+                if (NOT "${SANITIZER}" STREQUAL "") 
+                    string(TOLOWER "${SANITIZER}" SANITIZER)
+                    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -fsanitize=${SANITIZER} -fno-omit-frame-pointer -pie")
+                    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -fsanitize=${SANITIZER} -fno-omit-frame-pointer -pie")
                 endif()
             endif()
         endif()
@@ -712,34 +690,34 @@ endif()
 
 
 
-if (BUILD_MIC)
-    set(GHOST_HAVE_MIC 1 CACHE BOOL "Generate MIC kernels")
-    set(GHOST_HAVE_AVX2 0)
-    set(GHOST_HAVE_AVX 0)
-    set(GHOST_HAVE_SSE 0)
+if (GHOST_BUILD_MIC)
+    set(GHOST_BUILD_MIC 1 CACHE BOOL "Generate MIC kernels")
+    set(GHOST_BUILD_AVX2 0)
+    set(GHOST_BUILD_AVX 0)
+    set(GHOST_BUILD_SSE 0)
     if (NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
-        message(FATAL_ERROR "The ${CMAKE_CXX_COMPILER_ID} compiler cannot build MIC code. Specify a suited compiler or set BUILD_MIC=OFF!")
+        message(FATAL_ERROR "The ${CMAKE_CXX_COMPILER_ID} compiler cannot build MIC code. Specify a suited compiler or set GHOST_BUILD_MIC=OFF!")
     endif()
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mmic")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmic")
 else()
-    set(GHOST_HAVE_MIC 0 CACHE BOOL "Generate MIC kernels")
-    if (OPTIMIZE_HOSTARCH)
+    set(GHOST_BUILD_MIC 0 CACHE BOOL "Generate MIC kernels")
+    if (GHOST_OPTIMIZE_HOSTARCH)
         AutodetectHostArchitecture()
         if (USE_AVX2)
-            set(GHOST_HAVE_AVX2 1 CACHE BOOL "Generate AVX2 kernels")
+            set(GHOST_BUILD_AVX2 1 CACHE BOOL "Generate AVX2 kernels")
         else ()
-            set(GHOST_HAVE_AVX2 0 CACHE BOOL "Generate AVX2 kernels")
+            set(GHOST_BUILD_AVX2 0 CACHE BOOL "Generate AVX2 kernels")
         endif()
         if (USE_AVX)
-            set(GHOST_HAVE_AVX 1 CACHE BOOL "Generate AVX kernels")
+            set(GHOST_BUILD_AVX 1 CACHE BOOL "Generate AVX kernels")
         else ()
-            set(GHOST_HAVE_AVX 0 CACHE BOOL "Generate AVX kernels")
+            set(GHOST_BUILD_AVX 0 CACHE BOOL "Generate AVX kernels")
         endif()
         if (USE_SSE2 OR USE_SSE3 OR USE_SSE4_1 OR USE_SSE4_2 OR USE_SSE4a)
-            set(GHOST_HAVE_SSE 1 CACHE BOOL "Generate SSE kernels")
+            set(GHOST_BUILD_SSE 1 CACHE BOOL "Generate SSE kernels")
         else ()
-            set(GHOST_HAVE_SSE 0 CACHE BOOL "Generate SSE kernels")
+            set(GHOST_BUILD_SSE 0 CACHE BOOL "Generate SSE kernels")
         endif()
 
         if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
@@ -783,8 +761,15 @@ configure_file(
     IMMEDIATE @ONLY)
 add_custom_target(uninstall "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_BINARY_DIR}/cmake/cmake_uninstall.cmake") 
 
+    
+file(GLOB TESTS "${PROJECT_SOURCE_DIR}/test/[^.]*")
+
 find_package(Doxygen)
 if (DOXYGEN_FOUND)
+    # this pseudo configure_file is needed in order to re-gernated mainpage.md if minimal.c has changed
+    configure_file(${PROJECT_SOURCE_DIR}/test/minimal.c ${PROJECT_BINARY_DIR}/test/minimal.c)
+    file(READ ${PROJECT_BINARY_DIR}/test/minimal.c GHOST_MINIMAL_EXAMPLE)
+    file(READ ${PROJECT_BINARY_DIR}/ghost/config.h GHOST_CONFIG_H)
     configure_file(${PROJECT_SOURCE_DIR}/doxygen/mainpage.md.in ${PROJECT_BINARY_DIR}/doxygen/mainpage.md @ONLY)
     configure_file(${PROJECT_SOURCE_DIR}/doxygen/Doxyfile.in ${PROJECT_BINARY_DIR}/doxygen/Doxyfile @ONLY)
     set(DOC_INSTALL_PREFIX "" CACHE PATH "Where to store the generated documentation")
@@ -793,7 +778,7 @@ if (DOXYGEN_FOUND)
     if (EXISTS ${DOC_INSTALL_PREFIX})
         add_custom_command(
             OUTPUT ${PROJECT_BINARY_DIR}/doc/html/index.html 
-            DEPENDS ${HEADERS} ${DOCFILES}
+            DEPENDS ${SOURCES} ${HEADERS} ${DOCFILES} ${TESTS}
             COMMAND ${DOXYGEN_EXECUTABLE} ${PROJECT_BINARY_DIR}/doxygen/Doxyfile && 
             cp ${PROJECT_SOURCE_DIR}/contrib/ghost_logo.png ${PROJECT_BINARY_DIR}/doc/html && 
             rsync -a ${PROJECT_BINARY_DIR}/doc/html/. ${DOC_INSTALL_PREFIX} && 
@@ -804,7 +789,7 @@ if (DOXYGEN_FOUND)
     else ()
         add_custom_command(
             OUTPUT ${PROJECT_BINARY_DIR}/doc/html/index.html 
-            DEPENDS ${SOURCES} ${HEADERS} ${DOCFILES} 
+            DEPENDS ${SOURCES} ${HEADERS} ${DOCFILES} ${TESTS}
             COMMAND ${DOXYGEN_EXECUTABLE} ${PROJECT_BINARY_DIR}/doxygen/Doxyfile && 
             cp ${PROJECT_SOURCE_DIR}/contrib/ghost_logo.png ${PROJECT_BINARY_DIR}/doc/html 
             )
@@ -816,5 +801,6 @@ endif()
 add_subdirectory(${PROJECT_SOURCE_DIR}/test)
 enable_testing()
 add_test(NAME simple WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/test COMMAND simple)
+add_test(NAME minimal WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/test COMMAND minimal)
 add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} --force-new-ctest-process --output-on-failure DEPENDS simple)
 

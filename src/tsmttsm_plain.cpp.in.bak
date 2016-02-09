@@ -13,7 +13,7 @@
 #GHOST_SUBST CFGM ${BLOCKDIM2}
 #GHOST_SUBST OUTERUNROLL 1
 
-ghost_error_t ghost_tsmttsm__a_plain_x_CFGK_CFGM_OUTERUNROLL_cm_rm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conjv)
+ghost_error ghost_tsmttsm__a_plain_x_CFGK_CFGM_OUTERUNROLL_cm_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
 {
     if (x->traits.datatype & GHOST_DT_COMPLEX) {
         if (x->traits.datatype & GHOST_DT_DOUBLE) {

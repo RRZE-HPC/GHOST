@@ -2,7 +2,6 @@
 #undef GHOST_HAVE_MPI
 #undef GHOST_HAVE_INSTR_LIKWID
 #include "ghost/types.h"
-#include "ghost/sell.h"
 #include "ghost/complex.h"
 #include "ghost/instr.h"
 #include "ghost/log.h"
@@ -192,7 +191,7 @@
 #endif
 
 #define CHOOSE_KERNEL(dt1,dt2,dt2_host) {\
-    ghost_error_t ret = GHOST_SUCCESS;\
+    ghost_error ret = GHOST_SUCCESS;\
     int cu_device;\
     GHOST_CALL_RETURN(ghost_cu_device(&cu_device));\
     dt2 *cu_localdot = NULL;\
@@ -323,7 +322,7 @@
 }
 
     template<typename m_t, typename v_t>
-__global__ void SELL_kernel_CU_ELLPACK_tmpl(v_t *lhs, int lhs_lda, v_t *rhs, int rhs_lda, ghost_spmv_flags_t flags, int nrows, int nrowspadded, ghost_lidx_t *rowlen, ghost_lidx_t *col, m_t *val, ghost_lidx_t *chunkstart, ghost_lidx_t *chunklen, int C, int T, v_t *shift, v_t alpha, v_t beta, v_t *localdot, const bool do_axpy, const bool do_axpby, const bool do_scale, const bool do_shift, const bool do_vshift, const bool do_localdot)
+__global__ void SELL_kernel_CU_ELLPACK_tmpl(v_t *lhs, int lhs_lda, v_t *rhs, int rhs_lda, ghost_spmv_flags flags, int nrows, int nrowspadded, ghost_lidx *rowlen, ghost_lidx *col, m_t *val, ghost_lidx *chunkstart, ghost_lidx *chunklen, int C, int T, v_t *shift, v_t alpha, v_t beta, v_t *localdot, const bool do_axpy, const bool do_axpby, const bool do_scale, const bool do_shift, const bool do_vshift, const bool do_localdot)
 {
     UNUSED(C);
     UNUSED(T);
@@ -359,7 +358,7 @@ __global__ void SELL_kernel_CU_ELLPACK_tmpl(v_t *lhs, int lhs_lda, v_t *rhs, int
 }
 
     template<typename m_t, typename v_t>  
-__global__ void SELL_kernel_scattered_CU_tmpl(v_t *lhs, int lhs_lda, v_t *rhs, int rhs_lda, ghost_spmv_flags_t flags, int nrowsorig, int nrowspadded, int ncolsorig, ghost_lidx_t *rowlen, ghost_lidx_t *col, m_t *val, ghost_lidx_t *chunkstart, ghost_lidx_t *chunklen, int C, int T, char *colmask, char *rowmask, v_t *shift, v_t alpha, v_t beta, v_t *localdot, const bool do_axpy, const bool do_axpby, const bool do_scale, const bool do_shift, const bool do_vshift, const bool do_localdot)
+__global__ void SELL_kernel_scattered_CU_tmpl(v_t *lhs, int lhs_lda, v_t *rhs, int rhs_lda, ghost_spmv_flags flags, int nrowsorig, int nrowspadded, int ncolsorig, ghost_lidx *rowlen, ghost_lidx *col, m_t *val, ghost_lidx *chunkstart, ghost_lidx *chunklen, int C, int T, char *colmask, char *rowmask, v_t *shift, v_t alpha, v_t beta, v_t *localdot, const bool do_axpy, const bool do_axpby, const bool do_scale, const bool do_shift, const bool do_vshift, const bool do_localdot)
 {
     UNUSED(T);
     int i = threadIdx.x+blockIdx.x*blockDim.x;
@@ -412,7 +411,7 @@ __global__ void SELL_kernel_scattered_CU_tmpl(v_t *lhs, int lhs_lda, v_t *rhs, i
 }
 
     template<typename m_t, typename v_t>  
-__global__ void SELL_kernel_CU_rm_tmpl(v_t *lhs, int lhs_lda, v_t *rhs, int rhs_lda, ghost_spmv_flags_t flags, int nrows, int nrowspadded, int ncols, ghost_lidx_t *rowlen, ghost_lidx_t *mcol, m_t *val, ghost_lidx_t *chunkstart, ghost_lidx_t *chunklen, int C, int T, v_t *shift, v_t alpha, v_t beta, v_t *localdot, const bool do_axpy, const bool do_axpby, const bool do_scale, const bool do_shift, const bool do_vshift, const bool do_localdot)
+__global__ void SELL_kernel_CU_rm_tmpl(v_t *lhs, int lhs_lda, v_t *rhs, int rhs_lda, ghost_spmv_flags flags, int nrows, int nrowspadded, int ncols, ghost_lidx *rowlen, ghost_lidx *mcol, m_t *val, ghost_lidx *chunkstart, ghost_lidx *chunklen, int C, int T, v_t *shift, v_t alpha, v_t beta, v_t *localdot, const bool do_axpy, const bool do_axpby, const bool do_scale, const bool do_shift, const bool do_vshift, const bool do_localdot)
 {
     UNUSED(T);
     int i = threadIdx.y+blockIdx.x*blockDim.y;
@@ -488,7 +487,7 @@ __global__ void SELL_kernel_CU_rm_tmpl(v_t *lhs, int lhs_lda, v_t *rhs, int rhs_
 }
 
     template<typename m_t, typename v_t>  
-__global__ void SELL_kernel_CU_tmpl(v_t *lhs, int lhs_lda, v_t *rhs, int rhs_lda, ghost_spmv_flags_t flags, int nrows, int nrowspadded, int ncols, ghost_lidx_t *rowlen, ghost_lidx_t *mcol, m_t *val, ghost_lidx_t *chunkstart, ghost_lidx_t *chunklen, int C, int T, v_t *shift, v_t alpha, v_t beta, v_t *localdot, const bool do_axpy, const bool do_axpby, const bool do_scale, const bool do_shift, const bool do_vshift, const bool do_localdot)
+__global__ void SELL_kernel_CU_tmpl(v_t *lhs, int lhs_lda, v_t *rhs, int rhs_lda, ghost_spmv_flags flags, int nrows, int nrowspadded, int ncols, ghost_lidx *rowlen, ghost_lidx *mcol, m_t *val, ghost_lidx *chunkstart, ghost_lidx *chunklen, int C, int T, v_t *shift, v_t alpha, v_t beta, v_t *localdot, const bool do_axpy, const bool do_axpby, const bool do_scale, const bool do_shift, const bool do_vshift, const bool do_localdot)
 {
     UNUSED(T);
     int i = threadIdx.x+blockIdx.x*blockDim.x;
@@ -563,7 +562,7 @@ __global__ void SELL_kernel_CU_tmpl(v_t *lhs, int lhs_lda, v_t *rhs, int rhs_lda
 }
 
     template<typename m_t, typename v_t>
-__global__ void SELLT_kernel_CU_tmpl(v_t *lhs, v_t *rhs, ghost_spmv_flags_t flags, ghost_lidx_t nrows, ghost_lidx_t nrowspadded, ghost_lidx_t *rowlen, ghost_lidx_t *col, m_t *val, ghost_lidx_t *chunkstart, ghost_lidx_t *chunklen, ghost_lidx_t C, int T, v_t *shift, v_t alpha, v_t beta, v_t *localdot, const bool do_axpy, const bool do_axpby, const bool do_scale, const bool do_shift, const bool do_vshift, const bool do_localdot)
+__global__ void SELLT_kernel_CU_tmpl(v_t *lhs, v_t *rhs, ghost_spmv_flags flags, ghost_lidx nrows, ghost_lidx nrowspadded, ghost_lidx *rowlen, ghost_lidx *col, m_t *val, ghost_lidx *chunkstart, ghost_lidx *chunklen, ghost_lidx C, int T, v_t *shift, v_t alpha, v_t beta, v_t *localdot, const bool do_axpy, const bool do_axpby, const bool do_scale, const bool do_shift, const bool do_vshift, const bool do_localdot)
 {
     int i = threadIdx.x+blockIdx.x*blockDim.x;
 
@@ -676,82 +675,82 @@ __global__ void SELLT_kernel_CU_tmpl(v_t *lhs, v_t *rhs, ghost_spmv_flags_t flag
 }
 
 
-extern "C" ghost_error_t dd_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags, va_list argp)
+extern "C" ghost_error dd_SELL_kernel_CU(ghost_sparsemat *mat, ghost_densemat *lhs, ghost_densemat *rhs, ghost_spmv_flags flags, va_list argp)
 {
     CHOOSE_KERNEL(double,double,double);
 }
 
-extern "C" ghost_error_t ds_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags, va_list argp)
+extern "C" ghost_error ds_SELL_kernel_CU(ghost_sparsemat *mat, ghost_densemat *lhs, ghost_densemat *rhs, ghost_spmv_flags flags, va_list argp)
 { 
     CHOOSE_KERNEL(double,float,float);
 }
 
-extern "C" ghost_error_t dc_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags, va_list argp)
+extern "C" ghost_error dc_SELL_kernel_CU(ghost_sparsemat *mat, ghost_densemat *lhs, ghost_densemat *rhs, ghost_spmv_flags flags, va_list argp)
 { 
     CHOOSE_KERNEL(double,cuFloatComplex,complex float);
 }
 
-extern "C" ghost_error_t dz_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags, va_list argp)
+extern "C" ghost_error dz_SELL_kernel_CU(ghost_sparsemat *mat, ghost_densemat *lhs, ghost_densemat *rhs, ghost_spmv_flags flags, va_list argp)
 { 
     CHOOSE_KERNEL(double,cuDoubleComplex,complex double);
 }
 
-extern "C" ghost_error_t sd_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags, va_list argp)
+extern "C" ghost_error sd_SELL_kernel_CU(ghost_sparsemat *mat, ghost_densemat *lhs, ghost_densemat *rhs, ghost_spmv_flags flags, va_list argp)
 { 
     CHOOSE_KERNEL(float,double,double);
 }
 
-extern "C" ghost_error_t ss_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags, va_list argp)
+extern "C" ghost_error ss_SELL_kernel_CU(ghost_sparsemat *mat, ghost_densemat *lhs, ghost_densemat *rhs, ghost_spmv_flags flags, va_list argp)
 { 
     CHOOSE_KERNEL(float,float,float);
 }
 
-extern "C" ghost_error_t sc_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags, va_list argp)
+extern "C" ghost_error sc_SELL_kernel_CU(ghost_sparsemat *mat, ghost_densemat *lhs, ghost_densemat *rhs, ghost_spmv_flags flags, va_list argp)
 { 
     CHOOSE_KERNEL(float,cuFloatComplex,complex float);
 }
 
-extern "C" ghost_error_t sz_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags, va_list argp)
+extern "C" ghost_error sz_SELL_kernel_CU(ghost_sparsemat *mat, ghost_densemat *lhs, ghost_densemat *rhs, ghost_spmv_flags flags, va_list argp)
 { 
     CHOOSE_KERNEL(float,cuDoubleComplex,complex double);
 }
 
-extern "C" ghost_error_t zd_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags, va_list argp)
+extern "C" ghost_error zd_SELL_kernel_CU(ghost_sparsemat *mat, ghost_densemat *lhs, ghost_densemat *rhs, ghost_spmv_flags flags, va_list argp)
 { 
     CHOOSE_KERNEL(cuDoubleComplex,double,double);
 }
 
-extern "C" ghost_error_t zs_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags, va_list argp)
+extern "C" ghost_error zs_SELL_kernel_CU(ghost_sparsemat *mat, ghost_densemat *lhs, ghost_densemat *rhs, ghost_spmv_flags flags, va_list argp)
 { 
     CHOOSE_KERNEL(cuDoubleComplex,float,float);
 }
 
-extern "C" ghost_error_t zc_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags, va_list argp)
+extern "C" ghost_error zc_SELL_kernel_CU(ghost_sparsemat *mat, ghost_densemat *lhs, ghost_densemat *rhs, ghost_spmv_flags flags, va_list argp)
 { 
     CHOOSE_KERNEL(cuDoubleComplex,cuFloatComplex,complex float);
 }
 
-extern "C" ghost_error_t zz_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags, va_list argp)
+extern "C" ghost_error zz_SELL_kernel_CU(ghost_sparsemat *mat, ghost_densemat *lhs, ghost_densemat *rhs, ghost_spmv_flags flags, va_list argp)
 { 
     CHOOSE_KERNEL(cuDoubleComplex,cuDoubleComplex,complex double);
 }
 
-extern "C" ghost_error_t cd_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags, va_list argp)
+extern "C" ghost_error cd_SELL_kernel_CU(ghost_sparsemat *mat, ghost_densemat *lhs, ghost_densemat *rhs, ghost_spmv_flags flags, va_list argp)
 { 
     CHOOSE_KERNEL(cuFloatComplex,double,double);
 }
 
-extern "C" ghost_error_t cs_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags, va_list argp)
+extern "C" ghost_error cs_SELL_kernel_CU(ghost_sparsemat *mat, ghost_densemat *lhs, ghost_densemat *rhs, ghost_spmv_flags flags, va_list argp)
 { 
     CHOOSE_KERNEL(cuFloatComplex,float,float);
 }
 
-extern "C" ghost_error_t cc_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags, va_list argp)
+extern "C" ghost_error cc_SELL_kernel_CU(ghost_sparsemat *mat, ghost_densemat *lhs, ghost_densemat *rhs, ghost_spmv_flags flags, va_list argp)
 { 
     CHOOSE_KERNEL(cuFloatComplex,cuFloatComplex,complex float);
 }
 
-extern "C" ghost_error_t cz_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags, va_list argp)
+extern "C" ghost_error cz_SELL_kernel_CU(ghost_sparsemat *mat, ghost_densemat *lhs, ghost_densemat *rhs, ghost_spmv_flags flags, va_list argp)
 { 
     CHOOSE_KERNEL(cuFloatComplex,cuDoubleComplex,complex double);
 }

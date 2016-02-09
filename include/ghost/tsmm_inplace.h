@@ -15,7 +15,7 @@ typedef struct
     /**
      * @brief The data type of the densemats.
      */
-    ghost_datatype_t dt;
+    ghost_datatype dt;
     /**
      * @brief The number of columns for the input densemat.
      */
@@ -25,13 +25,13 @@ typedef struct
      */
     int ncolsout;
 
-    ghost_implementation_t impl;
-} ghost_tsmm_inplace_parameters_t;
+    ghost_implementation impl;
+} ghost_tsmm_inplace_parameters;
 
 /**
  * @brief A tsmm-inplace kernel function. 
  */
-typedef ghost_error_t (*ghost_tsmm_inplace_kernel_t)(ghost_densemat_t *, ghost_densemat_t *, void *, void *);
+typedef ghost_error (*ghost_tsmm_inplace_kernel)(ghost_densemat *, ghost_densemat *, void *, void *);
 
 
 #ifdef __cplusplus
@@ -61,7 +61,7 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_tsmm_inplace(ghost_densemat_t *x, ghost_densemat_t *w, void *alpha, void *beta);
+    ghost_error ghost_tsmm_inplace(ghost_densemat *x, ghost_densemat *w, void *alpha, void *beta);
 
     /**
      * @brief Check whether TSMM-inplace can be applied instead of GEMM with the given arguments.
@@ -78,8 +78,8 @@ extern "C" {
      *
      * @return 
      */
-    ghost_error_t ghost_tsmm_inplace_valid(ghost_densemat_t *x, ghost_densemat_t *v, const char * transv, 
-        ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce, int printerror);
+    ghost_error ghost_tsmm_inplace_valid(ghost_densemat *x, ghost_densemat *v, const char * transv, 
+        ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce, int printerror);
 
 #ifdef __cplusplus
 }

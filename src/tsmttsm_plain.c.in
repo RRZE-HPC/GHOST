@@ -28,11 +28,11 @@ static void add_CFGKxCFGM(struct dCFGKxCFGM * x,struct dCFGKxCFGM * y){
 #GHOST_FUNC_END
 #endif
 
-ghost_error_t ghost_tsmttsm__u_plain_d_CFGK_CFGM_OUTERUNROLL_cm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conjv)
+ghost_error ghost_tsmttsm__u_plain_d_CFGK_CFGM_OUTERUNROLL_cm_cm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
 {
     UNUSED(conjv);
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
 
 #ifdef GHOST_TSMTTSM_KAHAN
     WARNING_LOG("Kahan summation not implemented for this kernel. Falling back to normal summation!");
@@ -44,24 +44,20 @@ ghost_error_t ghost_tsmttsm__u_plain_d_CFGK_CFGM_OUTERUNROLL_cm_cm(ghost_densema
         GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
     }
 
-    ghost_lidx_t n = v->traits.nrows;
+    ghost_lidx n = v->traits.nrows;
     if (n%OUTERUNROLL) {
         n+=(OUTERUNROLL-n%OUTERUNROLL);
         INFO_LOG("Padding large dimension to %d\n",n);
     }
     INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
     
-    double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    double * restrict vval = (double *) v->val, * restrict wval = (double *) w->val, * restrict xval = (double *) x->val;
+    ghost_lidx ldv, ldw, ldx;
 
     ldv = v->stride;
     ldw = w->stride;
     ldx = x->stride;
 
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
-    
     double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
     
@@ -70,9 +66,9 @@ ghost_error_t ghost_tsmttsm__u_plain_d_CFGK_CFGM_OUTERUNROLL_cm_cm(ghost_densema
         dbeta = 0.;
     }
 
-    ghost_lidx_t i;
+    ghost_lidx i;
 #if 0
-    ghost_lidx_t j,k;
+    ghost_lidx j,k;
     struct dCFGKxCFGM xnopad;
 
     for (k=0; k<CFGK; k++) {
@@ -122,7 +118,7 @@ ghost_error_t ghost_tsmttsm__u_plain_d_CFGK_CFGM_OUTERUNROLL_cm_cm(ghost_densema
 #else
 #pragma omp parallel private(j,k)
     {
-        ghost_lidx_t t;
+        ghost_lidx t;
         double *x_priv;
         ghost_malloc_align((void **)&x_priv,CFGM*CFGK*sizeof(double),64);
         memset(x_priv,0,CFGM*CFGK*sizeof(double));
@@ -161,11 +157,11 @@ out:
     return ret;
 }
 
-ghost_error_t ghost_tsmttsm__a_plain_z_CFGK_CFGM_1_cm_rm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conjv)
+ghost_error ghost_tsmttsm__a_plain_z_CFGK_CFGM_1_cm_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
 {
     UNUSED(conjv);
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
 
 #ifdef GHOST_TSMTTSM_KAHAN
     WARNING_LOG("Kahan summation not implemented for this kernel. Falling back to normal summation!");
@@ -177,36 +173,32 @@ ghost_error_t ghost_tsmttsm__a_plain_z_CFGK_CFGM_1_cm_rm(ghost_densemat_t *x, gh
         GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
     }
 
-    ghost_lidx_t n = v->traits.nrows;
+    ghost_lidx n = v->traits.nrows;
     INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
     
-    complex double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    complex double * restrict vval = (complex double *) v->val, * restrict wval = (complex double *) w->val, * restrict xval = (complex double *) x->val;
+    ghost_lidx ldv, ldw, ldx;
 
     ldv = v->stride;
     ldw = w->stride;
     ldx = x->stride;
-
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
     
     complex double dalpha = *(complex double *)alpha;
     complex double dbeta = *(complex double *)beta;
     
-    ghost_mpi_op_t mpiop_zadd;
-    ghost_mpi_datatype_t mpidt_z;
-    ghost_mpi_op_sum(&mpiop_zadd,(ghost_datatype_t)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
-    ghost_mpi_datatype(&mpidt_z,(ghost_datatype_t)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
+    ghost_mpi_op mpiop_zadd;
+    ghost_mpi_datatype mpidt_z;
+    ghost_mpi_op_sum(&mpiop_zadd,(ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
+    ghost_mpi_datatype_get(&mpidt_z,(ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
     
     // make sure that the initial x only gets added up once
     if (myrank) {
         dbeta = 0.;
     }
 
-    ghost_lidx_t i,j;
+    ghost_lidx i,j;
     
-    ghost_lidx_t k;
+    ghost_lidx k;
 #if CFGK>1
 #pragma simd
 #endif
@@ -279,11 +271,11 @@ out:
     return ret;
 }
 
-ghost_error_t ghost_tsmttsm__a_plain_d_CFGK_CFGM_1_cm_rm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conjv)
+ghost_error ghost_tsmttsm__a_plain_d_CFGK_CFGM_1_cm_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
 {
     UNUSED(conjv);
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
 
 #ifdef GHOST_TSMTTSM_KAHAN
     WARNING_LOG("Kahan summation not implemented for this kernel. Falling back to normal summation!");
@@ -295,20 +287,16 @@ ghost_error_t ghost_tsmttsm__a_plain_d_CFGK_CFGM_1_cm_rm(ghost_densemat_t *x, gh
         GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
     }
 
-    ghost_lidx_t n = v->traits.nrows;
+    ghost_lidx n = v->traits.nrows;
     INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
     
-    double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    double * restrict vval = (double *) v->val, * restrict wval = (double *) w->val, * restrict xval = (double *) x->val;
+    ghost_lidx ldv, ldw, ldx;
 
     ldv = v->stride;
     ldw = w->stride;
     ldx = x->stride;
 
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
-    
     double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
     
@@ -317,9 +305,9 @@ ghost_error_t ghost_tsmttsm__a_plain_d_CFGK_CFGM_1_cm_rm(ghost_densemat_t *x, gh
         dbeta = 0.;
     }
 
-    ghost_lidx_t i,j;
+    ghost_lidx i,j;
     
-    ghost_lidx_t k;
+    ghost_lidx k;
 #if CFGK>1
 #pragma simd
 #endif
@@ -371,11 +359,11 @@ out:
     return ret;
 }
 
-ghost_error_t ghost_tsmttsm__a_plain_d_CFGK_CFGM_4_cm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conjv)
+ghost_error ghost_tsmttsm__a_plain_d_CFGK_CFGM_4_cm_cm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
 {
     UNUSED(conjv);
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
 
 #ifdef GHOST_TSMTTSM_KAHAN
     WARNING_LOG("Kahan summation not implemented for this kernel. Falling back to normal summation!");
@@ -387,23 +375,19 @@ ghost_error_t ghost_tsmttsm__a_plain_d_CFGK_CFGM_4_cm_cm(ghost_densemat_t *x, gh
         GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
     }
 
-    ghost_lidx_t n = v->traits.nrows;
+    ghost_lidx n = v->traits.nrows;
     if (n%4) {
         n+=(4-n%4);
         INFO_LOG("Padding large dimension to %d",n);
     }
     INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
     
-    double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
-    ghost_lidx_t ldv, ldw, ldx;
+    double * restrict vval = (double *) v->val, * restrict wval = (double *) w->val, * restrict xval = (double *) x->val;
+    ghost_lidx ldv, ldw, ldx;
 
     ldv = v->stride;
     ldw = w->stride;
     ldx = x->stride;
-
-    ghost_densemat_valptr(v,(void **)&vval);
-    ghost_densemat_valptr(w,(void **)&wval);
-    ghost_densemat_valptr(x,(void **)&xval);
     
     double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
@@ -413,9 +397,9 @@ ghost_error_t ghost_tsmttsm__a_plain_d_CFGK_CFGM_4_cm_cm(ghost_densemat_t *x, gh
         dbeta = 0.;
     }
 
-    ghost_lidx_t i,j,t;
+    ghost_lidx i,j,t;
     
-    ghost_lidx_t k;
+    ghost_lidx k;
     for (k=0; k<CFGK; k++) {
         for (j=0; j<CFGM; j++) {
             xval[k*ldx+j] = dbeta*xval[k*ldx+j];

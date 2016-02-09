@@ -24,7 +24,7 @@
 #define MAXVALUELEN 1024
 
 
-ghost_error_t ghost_header_string(char **str, const char *fmt, ...)
+ghost_error ghost_header_string(char **str, const char *fmt, ...)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
 
@@ -96,7 +96,7 @@ ghost_error_t ghost_header_string(char **str, const char *fmt, ...)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_footer_string(char **str) 
+ghost_error ghost_footer_string(char **str) 
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     
@@ -123,7 +123,7 @@ ghost_error_t ghost_footer_string(char **str)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_line_string(char **str, const char *label, const char *unit, const char *fmt, ...)
+ghost_error ghost_line_string(char **str, const char *label, const char *unit, const char *fmt, ...)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     int nLines, l;
@@ -169,7 +169,7 @@ ghost_error_t ghost_line_string(char **str, const char *label, const char *unit,
 }
 
 
-ghost_error_t ghost_malloc(void **mem, const size_t size)
+ghost_error ghost_malloc(void **mem, const size_t size)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     if (!mem) {
@@ -192,7 +192,7 @@ ghost_error_t ghost_malloc(void **mem, const size_t size)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_malloc_pinned(void **mem, const size_t size)
+ghost_error ghost_malloc_pinned(void **mem, const size_t size)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
@@ -203,7 +203,7 @@ ghost_error_t ghost_malloc_pinned(void **mem, const size_t size)
 #endif
 }
 
-ghost_error_t ghost_malloc_align(void **mem, const size_t size, const size_t align)
+ghost_error ghost_malloc_align(void **mem, const size_t size, const size_t align)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
 
@@ -219,6 +219,25 @@ ghost_error_t ghost_malloc_align(void **mem, const size_t size, const size_t ali
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return GHOST_SUCCESS;
+}
+
+int ghost_sell_max_cfg_chunkheight()
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+    
+    int max = 0;
+    char *cfgch = strdup(GHOST_GEN_SELL_C);
+    char *ch = strtok(cfgch,",");
+
+    while (ch) {
+        max = MAX(max,atoi(ch));
+        ch = strtok(NULL,",");
+    }
+
+    free(cfgch);
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
+    return max;
 }
 
 /*

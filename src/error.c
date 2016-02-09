@@ -1,7 +1,7 @@
 #include "ghost/error.h"
 #include "ghost/func_util.h"
 
-char * ghost_error_string(ghost_error_t e)
+char * ghost_error_string(ghost_error e)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     char *ret;

@@ -8,19 +8,18 @@
 
 
     template <typename T, typename T_b>
-static ghost_error_t ghost_blockortho_tmpl (ghost_densemat_t * w , ghost_densemat_t * v)
+static ghost_error ghost_blockortho_tmpl (ghost_densemat * w , ghost_densemat * v)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_SOLVER);
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
     T one = 1.0;
     T zero = 0.0;
     T minusone = -1.;
-    ghost_idx_t m = v->traits.ncols;
-    ghost_idx_t n = w->traits.ncols;
-    ghost_datatype_t DT = v->traits.datatype;
-    ghost_densemat_t *x;
-    //ghost_idx_t ldx;
-    ghost_densemat_traits_t xtraits = GHOST_DENSEMAT_TRAITS_INITIALIZER;
+    ghost_lidx m = v->traits.ncols;
+    ghost_lidx n = w->traits.ncols;
+    ghost_datatype DT = v->traits.datatype;
+    ghost_densemat *x;
+    ghost_densemat_traits xtraits = GHOST_DENSEMAT_TRAITS_INITIALIZER;
         
     xtraits.flags |= GHOST_DENSEMAT_NO_HALO; 
     xtraits.ncols = n;
@@ -40,13 +39,13 @@ static ghost_error_t ghost_blockortho_tmpl (ghost_densemat_t * w , ghost_densema
 err:
 
 out: 
-    x->destroy(x);
+    ghost_densemat_destroy(x);
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_SOLVER);
 
     return ret;
 }
 
-ghost_error_t ghost_blockortho(ghost_densemat_t * w , ghost_densemat_t * v)
+ghost_error ghost_blockortho(ghost_densemat * w , ghost_densemat * v)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
@@ -112,25 +111,26 @@ lapack_int call_eig_function<std::complex<double>,double>(int matrix_order, char
 }
 
     template <typename T, typename T_b>
-static ghost_error_t ghost_svqb_tmpl (ghost_densemat_t * v_ot , ghost_densemat_t * v)
+static ghost_error ghost_svqb_tmpl (ghost_densemat * v_ot , ghost_densemat * v)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_SOLVER);
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
     T one = 1.0;
     T zero = 0.0;
-    ghost_lidx_t n_set_rand = 0;
-    ghost_lidx_t *set_rand = NULL;
-    ghost_idx_t i,j;
-    ghost_idx_t n = v->traits.ncols;
-    ghost_datatype_t DT = v->traits.datatype;
-    ghost_densemat_t *x = NULL;
-    ghost_idx_t ldx;
+    ghost_lidx n_set_rand = 0;
+    ghost_lidx *set_rand = NULL;
+    ghost_lidx i,j;
+    ghost_lidx n = v->traits.ncols;
+    ghost_datatype DT = v->traits.datatype;
+    ghost_densemat *x = NULL;
+    ghost_lidx ldx;
     T_b *eigs = NULL, *D = NULL;
-    ghost_densemat_traits_t xtraits = GHOST_DENSEMAT_TRAITS_INITIALIZER;
+    T *  xval = (T *)x->val;
+    ghost_densemat_traits xtraits = GHOST_DENSEMAT_TRAITS_INITIALIZER;
     
     GHOST_CALL_GOTO(ghost_malloc((void **)&eigs, n*sizeof(T_b)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&D, n*sizeof(T_b)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&set_rand, n*sizeof(ghost_lidx_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&set_rand, n*sizeof(ghost_lidx)),err,ret);
     
     xtraits.flags |= GHOST_DENSEMAT_NO_HALO; 
     xtraits.ncols = n;
@@ -145,8 +145,6 @@ static ghost_error_t ghost_svqb_tmpl (ghost_densemat_t * v_ot , ghost_densemat_t
     GHOST_CALL_GOTO(x->fromScalar(x,&zero),err,ret);
     ldx = x->stride;
 
-    T *  xval;
-    GHOST_CALL_GOTO(ghost_densemat_valptr(x,(void **)&xval),err,ret);
     
     //GHOST_CALL_GOTO(ghost_tsmttsm( x, v, v,&one,&zero,GHOST_GEMM_ALL_REDUCE,1),err,ret);
     GHOST_CALL_GOTO(ghost_tsmttsm( x, v, v,&one,&zero,GHOST_GEMM_ALL_REDUCE,1,GHOST_GEMM_KAHAN),err,ret);
@@ -173,9 +171,9 @@ static ghost_error_t ghost_svqb_tmpl (ghost_densemat_t * v_ot , ghost_densemat_t
         goto err;
     }
 #ifdef GHOST_HAVE_MPI
-        ghost_mpi_datatype_t dt, dt_b;
-        ghost_mpi_datatype(&dt,DT);
-        ghost_mpi_datatype(&dt_b,(ghost_datatype_t)(GHOST_DT_REAL | (DT&(GHOST_DT_FLOAT|GHOST_DT_DOUBLE))));
+        ghost_mpi_datatype dt, dt_b;
+        ghost_mpi_datatype_get(&dt,DT);
+        ghost_mpi_datatype_get(&dt_b,(ghost_datatype)(GHOST_DT_REAL | (DT&(GHOST_DT_FLOAT|GHOST_DT_DOUBLE))));
         MPI_Bcast( xval, ldx*n, dt  , 0, MPI_COMM_WORLD);
         MPI_Bcast( eigs,     n, dt_b, 0, MPI_COMM_WORLD);
 #endif
@@ -209,10 +207,10 @@ static ghost_error_t ghost_svqb_tmpl (ghost_densemat_t * v_ot , ghost_densemat_t
 #endif
    
    if( n_set_rand > 0 ){
-      ghost_densemat_t * vec_view2rand;
+      ghost_densemat * vec_view2rand;
       v_ot->viewScatteredCols(v_ot, &vec_view2rand, n_set_rand, set_rand);
       vec_view2rand->fromRand( vec_view2rand );
-      vec_view2rand->destroy(vec_view2rand);
+      ghost_densemat_destroy(vec_view2rand);
      }  
    
    
@@ -220,7 +218,7 @@ static ghost_error_t ghost_svqb_tmpl (ghost_densemat_t * v_ot , ghost_densemat_t
 err:
 
 out: 
-    x->destroy(x);
+    ghost_densemat_destroy(x);
     free(eigs);
     free(D);
     free(set_rand);
@@ -229,7 +227,7 @@ out:
     return ret;
 }
 
-ghost_error_t ghost_svqb(ghost_densemat_t * v_ot , ghost_densemat_t * v)
+ghost_error ghost_svqb(ghost_densemat * v_ot , ghost_densemat * v)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
@@ -252,19 +250,20 @@ ghost_error_t ghost_svqb(ghost_densemat_t * v_ot , ghost_densemat_t * v)
 
 
     template <typename T, typename T_b>
-static ghost_error_t ghost_svd_deflation_tmpl ( ghost_lidx_t *svd_offset, ghost_densemat_t * ot_vec, ghost_densemat_t * vec, float limit)
+static ghost_error ghost_svd_deflation_tmpl ( ghost_lidx *svd_offset, ghost_densemat * ot_vec, ghost_densemat * vec, float limit)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_SOLVER);
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
     T one = 1.0;
     T zero = 0.0;
-    ghost_idx_t i,j;
-    ghost_idx_t n = vec->traits.ncols;
-    ghost_datatype_t DT = vec->traits.datatype;
-    ghost_densemat_t *x = NULL;
-    ghost_idx_t ldx;
-    ghost_densemat_traits_t xtraits = GHOST_DENSEMAT_TRAITS_INITIALIZER;
+    ghost_lidx i,j;
+    ghost_lidx n = vec->traits.ncols;
+    ghost_datatype DT = vec->traits.datatype;
+    ghost_densemat *x = NULL;
+    ghost_lidx ldx;
+    ghost_densemat_traits xtraits = GHOST_DENSEMAT_TRAITS_INITIALIZER;
     T_b * eigs = NULL;
+    T *  xval = (T *)x->val;
     
     GHOST_CALL_GOTO(ghost_malloc((void **)&eigs, n*sizeof(T_b)),err,ret);
     
@@ -281,8 +280,6 @@ static ghost_error_t ghost_svd_deflation_tmpl ( ghost_lidx_t *svd_offset, ghost_
     GHOST_CALL_GOTO(x->fromScalar(x,&zero),err,ret);
     ldx = x->stride;
 
-    T *  xval;
-    GHOST_CALL_GOTO(ghost_densemat_valptr(x,(void **)&xval),err,ret);
     
     
     //GHOST_CALL_GOTO(ghost_tsmttsm( x, vec, vec,&one,&zero,GHOST_GEMM_ALL_REDUCE,1),err,ret);
@@ -297,9 +294,9 @@ static ghost_error_t ghost_svd_deflation_tmpl ( ghost_lidx_t *svd_offset, ghost_
     }
 
 #ifdef GHOST_HAVE_MPI
-        ghost_mpi_datatype_t dt, dt_b;
-        ghost_mpi_datatype(&dt,DT);
-        ghost_mpi_datatype(&dt_b,(ghost_datatype_t)(GHOST_DT_REAL | (DT&(GHOST_DT_FLOAT|GHOST_DT_DOUBLE))));
+        ghost_mpi_datatype dt, dt_b;
+        ghost_mpi_datatype_get(&dt,DT);
+        ghost_mpi_datatype_get(&dt_b,(ghost_datatype)(GHOST_DT_REAL | (DT&(GHOST_DT_FLOAT|GHOST_DT_DOUBLE))));
         MPI_Bcast( xval, ldx*n, dt  , 0, MPI_COMM_WORLD);
         MPI_Bcast( eigs,     n, dt_b, 0, MPI_COMM_WORLD);
 #endif
@@ -331,14 +328,14 @@ static ghost_error_t ghost_svd_deflation_tmpl ( ghost_lidx_t *svd_offset, ghost_
 err:
 
 out: 
-    x->destroy(x);
+    ghost_densemat_destroy(x);
     free(eigs);
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_SOLVER);
     
     return ret;
 }
 
-ghost_error_t ghost_svd_deflation( ghost_lidx_t *svd_offset, ghost_densemat_t * ot_vec, ghost_densemat_t * vec, float limit)
+ghost_error ghost_svd_deflation( ghost_lidx *svd_offset, ghost_densemat * ot_vec, ghost_densemat * vec, float limit)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH); 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH); 
@@ -359,7 +356,7 @@ ghost_error_t ghost_svd_deflation( ghost_lidx_t *svd_offset, ghost_densemat_t * 
 }
 
 #else
-ghost_error_t ghost_svqb(ghost_densemat_t * v_ot , ghost_densemat_t * v)
+ghost_error ghost_svqb(ghost_densemat * v_ot , ghost_densemat * v)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH); 
     
@@ -371,7 +368,7 @@ ghost_error_t ghost_svqb(ghost_densemat_t * v_ot , ghost_densemat_t * v)
     return GHOST_ERR_NOT_IMPLEMENTED;
 }
 
-ghost_error_t ghost_svd_deflation( ghost_lidx_t *svd_offset, ghost_densemat_t * ot_vec, ghost_densemat_t * vec, float limit)
+ghost_error ghost_svd_deflation( ghost_lidx *svd_offset, ghost_densemat * ot_vec, ghost_densemat * vec, float limit)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH); 
     

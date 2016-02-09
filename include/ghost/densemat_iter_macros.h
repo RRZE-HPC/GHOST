@@ -32,7 +32,7 @@
  * @return 
  */
 #define DENSEMAT_ITER(vec,call)\
-    ghost_lidx_t row=0,col=0,memrow=0,memcol=0;\
+    ghost_lidx row=0,col=0,memrow=0,memcol=0;\
     DENSEMAT_DT *valptr = NULL, *cuvalptr = NULL;\
     if (DENSEMAT_COMPACT(vec)) {\
         if (ghost_omp_in_parallel()) {\
@@ -98,7 +98,7 @@
  * @return 
  */
 #define DENSEMAT_ITER_INIT(vec,call)\
-    ghost_lidx_t row=0,col=0,memrow=0,memcol=0;\
+    ghost_lidx row=0,col=0,memrow=0,memcol=0;\
     DENSEMAT_DT *valptr = NULL, *cuvalptr = NULL;\
     if (DENSEMAT_COMPACT(vec)) {\
         if (ghost_omp_in_parallel()) {\
@@ -175,7 +175,7 @@
  * @return 
  */
 #define DENSEMAT_ITER2_OFFS(vec1,vec2,vec2roffs,vec2coffs,call)\
-    ghost_lidx_t row=0,col=0,memrow1=0,memcol1=0,memrow2=0,memcol2=0;\
+    ghost_lidx row=0,col=0,memrow1=0,memcol1=0,memrow2=0,memcol2=0;\
     DENSEMAT_DT *valptr1 = NULL, *valptr2 = NULL, *cuvalptr1 = NULL, *cuvalptr2 = NULL;\
     if (DENSEMAT_COMPACT(vec1) && DENSEMAT_COMPACT(vec2)) {\
         if (ghost_omp_in_parallel()) {\
@@ -292,7 +292,7 @@
  * @return 
  */
 #define DENSEMAT_ITER2_COMPACT_OFFS_TRANSPOSED(vec1,vec2,vec2roffs,vec2coffs,call)\
-    ghost_lidx_t row=0,col=0,memrow1=0,memcol1=0,memrow2=0,memcol2=0;\
+    ghost_lidx row=0,col=0,memrow1=0,memcol1=0,memrow2=0,memcol2=0;\
     DENSEMAT_DT *valptr1 = NULL, *valptr2 = NULL, *cuvalptr1 = NULL, *cuvalptr2 = NULL;\
     if (ghost_omp_in_parallel()) {\
         DENSEMAT_ITER2_BEGIN_COMPACT_OFFS_TRANSPOSED(vec1,vec2,row,col,memrow1,memrow2,memcol1,memcol2,vec2roffs,vec2coffs);\

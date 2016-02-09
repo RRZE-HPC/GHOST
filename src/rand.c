@@ -14,10 +14,10 @@ static int nrand = 0;
 static unsigned int cu_seed = 0;
 static bool customseed = false;
 
-ghost_error_t ghost_rand_create()
+ghost_error ghost_rand_create()
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_SETUP);
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
     int i;
     int rank;
     int time;
@@ -56,7 +56,7 @@ out:
     return ret;
 }
 
-ghost_error_t ghost_rand_get(unsigned int **s)
+ghost_error ghost_rand_get(unsigned int **s)
 {
     if (!s) {
         ERROR_LOG("NULL pointer");
@@ -71,14 +71,14 @@ ghost_error_t ghost_rand_get(unsigned int **s)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_rand_seed(ghost_rand_seed_t which, unsigned int seed)
+ghost_error ghost_rand_seed(ghost_rand_seed_t which, unsigned int seed)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
     double dtime;
     int i, rank, time;
-    ghost_type_t type;
+    ghost_type type;
 
     if (which & (GHOST_RAND_SEED_ALL)) {
         customseed = true;

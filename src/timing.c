@@ -5,7 +5,7 @@
 #include "ghost/func_util.h"
 
 
-ghost_error_t ghost_timing_wc(double *time)
+ghost_error ghost_timing_wc(double *time)
 {
     struct timeval tp;
     int err;
@@ -19,7 +19,7 @@ ghost_error_t ghost_timing_wc(double *time)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_timing_wcmilli(double *time)
+ghost_error ghost_timing_wcmilli(double *time)
 {
     struct timeval tp;
     int err;

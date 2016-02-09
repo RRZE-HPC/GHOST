@@ -11,8 +11,8 @@ typedef enum
     GHOST_BENCH_STREAM_COPY
 } ghost_bench_stream_test_t;
 
-ghost_error_t ghost_bench_stream(ghost_bench_stream_test_t, double *bw);
-ghost_error_t ghost_bench_pingpong(double *bw);
-ghost_error_t ghost_bench_peakperformance(double *gf);
+ghost_error ghost_bench_stream(ghost_bench_stream_test_t, double *bw);
+ghost_error ghost_bench_pingpong(double *bw);
+ghost_error ghost_bench_peakperformance(double *gf);
 
 #endif

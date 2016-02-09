@@ -4,7 +4,7 @@
 #include <complex>
 
 template<typename T>
-static ghost_error_t ghost_densemat_rm_averagehalo_tmpl(ghost_densemat_t *vec)
+static ghost_error ghost_densemat_rm_averagehalo_tmpl(ghost_densemat *vec)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
     
@@ -15,11 +15,11 @@ static ghost_error_t ghost_densemat_rm_averagehalo_tmpl(ghost_densemat_t *vec)
     return GHOST_ERR_NOT_IMPLEMENTED;
 }
 
-ghost_error_t ghost_densemat_rm_averagehalo_selector(ghost_densemat_t *vec)
+ghost_error ghost_densemat_rm_averagehalo_selector(ghost_densemat *vec)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
     
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
 
     SELECT_TMPL_1DATATYPE(vec->traits.datatype,std::complex,ret,ghost_densemat_rm_averagehalo_tmpl,vec);
 

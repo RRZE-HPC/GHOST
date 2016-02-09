@@ -17,12 +17,12 @@
 #define complex_mulf(a,b) _mm256_addsub_ps(_mm256_mul_ps(_mm256_shuffle_ps(b,b,0xA0),a),_mm256_mul_ps(_mm256_shuffle_ps(b,b,0xF5),_mm256_shuffle_ps(a,a,0xB1)))
 #define complex_mulf_conj1(b,a) _mm256_addsub_ps(_mm256_mul_ps(_mm256_shuffle_ps(b,b,0xA0),a),_mm256_mul_ps(_mm256_xor_ps(_mm256_shuffle_ps(b,b,0xF5),_mm256_set1_ps(-0.f)),_mm256_shuffle_ps(a,a,0xB1)))
 
-ghost_error_t ghost_tsmttsm__a_avx_d_x_x_1_cm_rm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conjv)
+ghost_error ghost_tsmttsm__a_avx_d_x_x_1_cm_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
 {
     UNUSED(conjv);
-#ifdef GHOST_HAVE_AVX
+#ifdef GHOST_BUILD_AVX
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
 
     int myrank=0;
 
@@ -34,11 +34,11 @@ ghost_error_t ghost_tsmttsm__a_avx_d_x_x_1_cm_rm(ghost_densemat_t *x, ghost_dens
     const double * const restrict wval = (const double *) w->val;
     double * const restrict xval = (double *) x->val;
 
-    const ghost_lidx_t ldv = v->stride;
-    const ghost_lidx_t ldw = w->stride;
-    const ghost_lidx_t ldx = x->stride;
+    const ghost_lidx ldv = v->stride;
+    const ghost_lidx ldw = w->stride;
+    const ghost_lidx ldx = x->stride;
 
-    ghost_lidx_t n = v->traits.nrows;
+    ghost_lidx n = v->traits.nrows;
     INFO_LOG("In AVX TSMTTSM with two non-fixed block sizes %dx%d <- %dx%d * %dx%d",ldv,ldw,ldv,n,n,ldw);
     
 
@@ -56,10 +56,10 @@ ghost_error_t ghost_tsmttsm__a_avx_d_x_x_1_cm_rm(ghost_densemat_t *x, ghost_dens
         betavec = _mm256_setzero_pd();
     }
 
-    ghost_lidx_t i,m;
+    ghost_lidx i,m;
 
     if (x->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
-        ghost_lidx_t k;
+        ghost_lidx k;
         for (k=0; k<x->traits.ncols; k++) {
             for (m=0; m+4<=x->traits.nrows; m+=4) {
                 _mm256_storeu_pd(&xval[k*ldx+m],_mm256_mul_pd(_mm256_loadu_pd(&xval[k*ldx+m]),betavec));
@@ -75,7 +75,7 @@ ghost_error_t ghost_tsmttsm__a_avx_d_x_x_1_cm_rm(ghost_densemat_t *x, ghost_dens
             #GHOST_UNROLL#__m256d wvec@;#4
 
             double *x_priv;
-            ghost_lidx_t ldxpriv = PAD(ldv,4);
+            ghost_lidx ldxpriv = PAD(ldv,4);
             if (ldxpriv != ldv) {
                 INFO_LOG("Pad xpriv from %d to %d",ldv,ldxpriv);
             }

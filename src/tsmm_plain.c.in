@@ -14,14 +14,14 @@
 #GHOST_SUBST CFGM ${BLOCKDIM2}
 #GHOST_SUBST OUTERUNROLL 8
 
-ghost_error_t ghost_tsmm__a_plain_d_CFGK_CFGM_1_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
+ghost_error ghost_tsmm__a_plain_d_CFGK_CFGM_1_rm_cm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
 
-    ghost_lidx_t k = w->traits.ncols;
-    ghost_lidx_t m = v->traits.ncols;
-    ghost_lidx_t n = v->traits.nrows;
+    ghost_lidx k = w->traits.ncols;
+    ghost_lidx m = v->traits.ncols;
+    ghost_lidx n = v->traits.nrows;
 
     INFO_LOG("In TSMM with two fixed block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
@@ -29,13 +29,13 @@ ghost_error_t ghost_tsmm__a_plain_d_CFGK_CFGM_1_rm_cm(ghost_densemat_t *x, ghost
     const double * const restrict wval = (const double *) w->val;
     double * const restrict xval = (double *) x->val;
 
-    const ghost_lidx_t ldv = v->stride;
-    const ghost_lidx_t ldw = w->stride;
-    const ghost_lidx_t ldx = x->stride;
+    const ghost_lidx ldv = v->stride;
+    const ghost_lidx ldw = w->stride;
+    const ghost_lidx ldx = x->stride;
 
     const double dalpha = *(double *)alpha;
     const double dbeta = *(double *)beta;
-    ghost_lidx_t i,j,s;
+    ghost_lidx i,j,s;
 
     double tmp;
     
@@ -88,14 +88,14 @@ ghost_error_t ghost_tsmm__a_plain_d_CFGK_CFGM_1_rm_cm(ghost_densemat_t *x, ghost
     return ret;
 }
 
-ghost_error_t ghost_tsmm__u_plain_d_CFGK_CFGM_1_rm_rm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
+ghost_error ghost_tsmm__u_plain_d_CFGK_CFGM_1_rm_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
 
-    ghost_lidx_t k = w->traits.ncols;
-    ghost_lidx_t m = v->traits.ncols;
-    ghost_lidx_t n = v->traits.nrows;
+    ghost_lidx k = w->traits.ncols;
+    ghost_lidx m = v->traits.ncols;
+    ghost_lidx n = v->traits.nrows;
 
     INFO_LOG("In TSMM with two fixed block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
@@ -103,13 +103,13 @@ ghost_error_t ghost_tsmm__u_plain_d_CFGK_CFGM_1_rm_rm(ghost_densemat_t *x, ghost
     const double * const restrict wval = (const double *) w->val;
     double * const restrict xval = (double *) x->val;
 
-    const ghost_lidx_t ldv = v->stride;
-    const ghost_lidx_t ldw = w->stride;
-    const ghost_lidx_t ldx = x->stride;
+    const ghost_lidx ldv = v->stride;
+    const ghost_lidx ldw = w->stride;
+    const ghost_lidx ldx = x->stride;
 
     const double dalpha = *(double *)alpha;
     const double dbeta = *(double *)beta;
-    ghost_lidx_t i,j,s;
+    ghost_lidx i,j,s;
 
     double tmp;
     
@@ -138,14 +138,14 @@ ghost_error_t ghost_tsmm__u_plain_d_CFGK_CFGM_1_rm_rm(ghost_densemat_t *x, ghost
     return ret;
 }
 
-ghost_error_t ghost_tsmm__a_plain_d_CFGK_CFGM_OUTERUNROLL_cm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
+ghost_error ghost_tsmm__a_plain_d_CFGK_CFGM_OUTERUNROLL_cm_cm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
 
-    ghost_lidx_t k = w->traits.ncols;
-    ghost_lidx_t m = v->traits.ncols;
-    ghost_lidx_t n = v->traits.nrows;
+    ghost_lidx k = w->traits.ncols;
+    ghost_lidx m = v->traits.ncols;
+    ghost_lidx n = v->traits.nrows;
     
     if (n%OUTERUNROLL) {
         n+=(OUTERUNROLL-n%OUTERUNROLL);
@@ -158,13 +158,13 @@ ghost_error_t ghost_tsmm__a_plain_d_CFGK_CFGM_OUTERUNROLL_cm_cm(ghost_densemat_t
     const double * const restrict wval = (const double *) w->val;
     double * const restrict xval = (double *) x->val;
 
-    const ghost_lidx_t ldv = v->stride;
-    const ghost_lidx_t ldw = w->stride;
-    const ghost_lidx_t ldx = x->stride;
+    const ghost_lidx ldv = v->stride;
+    const ghost_lidx ldw = w->stride;
+    const ghost_lidx ldx = x->stride;
 
     const double dalpha = *(double *)alpha;
     const double dbeta = *(double *)beta;
-    ghost_lidx_t i,j,s,t;
+    ghost_lidx i,j,s,t;
     
     double *wscale;
     ghost_malloc_align((void **)&wscale,CFGM*CFGK*sizeof(double),64);
@@ -258,14 +258,14 @@ ghost_error_t ghost_tsmm__a_plain_d_CFGK_CFGM_OUTERUNROLL_cm_cm(ghost_densemat_t
     return ret;
 }
 
-ghost_error_t ghost_tsmm__u_plain_d_CFGK_CFGM_OUTERUNROLL_cm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
+ghost_error ghost_tsmm__u_plain_d_CFGK_CFGM_OUTERUNROLL_cm_cm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
 
-    ghost_lidx_t k = w->traits.ncols;
-    ghost_lidx_t m = v->traits.ncols;
-    ghost_lidx_t n = v->traits.nrows;
+    ghost_lidx k = w->traits.ncols;
+    ghost_lidx m = v->traits.ncols;
+    ghost_lidx n = v->traits.nrows;
     
     if (n%OUTERUNROLL) {
         n+=(OUTERUNROLL-n%OUTERUNROLL);
@@ -278,13 +278,13 @@ ghost_error_t ghost_tsmm__u_plain_d_CFGK_CFGM_OUTERUNROLL_cm_cm(ghost_densemat_t
     const double * const restrict wval = (const double *) w->val;
     double * const restrict xval = (double *) x->val;
 
-    const ghost_lidx_t ldv = v->stride;
-    const ghost_lidx_t ldw = w->stride;
-    const ghost_lidx_t ldx = x->stride;
+    const ghost_lidx ldv = v->stride;
+    const ghost_lidx ldw = w->stride;
+    const ghost_lidx ldx = x->stride;
 
     const double dalpha = *(double *)alpha;
     const double dbeta = *(double *)beta;
-    ghost_lidx_t i,j,s,t;
+    ghost_lidx i,j,s,t;
     
     double *wscale;
     ghost_malloc((void **)&wscale,CFGM*CFGK*sizeof(double));
@@ -341,14 +341,14 @@ ghost_error_t ghost_tsmm__u_plain_d_CFGK_CFGM_OUTERUNROLL_cm_cm(ghost_densemat_t
     return ret;
 }
 
-ghost_error_t ghost_tsmm__u_plain_z_CFGK_CFGM_1_rm_cm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
+ghost_error ghost_tsmm__u_plain_z_CFGK_CFGM_1_rm_cm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
 
-    ghost_lidx_t k = w->traits.ncols;
-    ghost_lidx_t m = v->traits.ncols;
-    ghost_lidx_t n = v->traits.nrows;
+    ghost_lidx k = w->traits.ncols;
+    ghost_lidx m = v->traits.ncols;
+    ghost_lidx n = v->traits.nrows;
 
     INFO_LOG("In TSMM with two fixed block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
@@ -356,13 +356,13 @@ ghost_error_t ghost_tsmm__u_plain_z_CFGK_CFGM_1_rm_cm(ghost_densemat_t *x, ghost
     const double complex * const restrict wval = (const double complex*) w->val;
     double complex * const restrict xval = (double complex*) x->val;
 
-    const ghost_lidx_t ldv = v->stride;
-    const ghost_lidx_t ldw = w->stride;
-    const ghost_lidx_t ldx = x->stride;
+    const ghost_lidx ldv = v->stride;
+    const ghost_lidx ldw = w->stride;
+    const ghost_lidx ldx = x->stride;
 
     const double complex dalpha = *(double complex *)alpha;
     const double complex dbeta = *(double complex *)beta;
-    ghost_lidx_t i,j,s;
+    ghost_lidx i,j,s;
 
     double complex tmp;
     
@@ -391,14 +391,14 @@ ghost_error_t ghost_tsmm__u_plain_z_CFGK_CFGM_1_rm_cm(ghost_densemat_t *x, ghost
     return ret;
 }
 
-ghost_error_t ghost_tsmm__u_plain_z_CFGK_CFGM_1_rm_rm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
+ghost_error ghost_tsmm__u_plain_z_CFGK_CFGM_1_rm_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
 
-    ghost_lidx_t k = w->traits.ncols;
-    ghost_lidx_t m = v->traits.ncols;
-    ghost_lidx_t n = v->traits.nrows;
+    ghost_lidx k = w->traits.ncols;
+    ghost_lidx m = v->traits.ncols;
+    ghost_lidx n = v->traits.nrows;
 
     INFO_LOG("In TSMM with two fixed block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
@@ -406,13 +406,13 @@ ghost_error_t ghost_tsmm__u_plain_z_CFGK_CFGM_1_rm_rm(ghost_densemat_t *x, ghost
     const double complex * const restrict wval = (const double complex*) w->val;
     double complex * const restrict xval = (double complex*) x->val;
 
-    const ghost_lidx_t ldv = v->stride;
-    const ghost_lidx_t ldw = w->stride;
-    const ghost_lidx_t ldx = x->stride;
+    const ghost_lidx ldv = v->stride;
+    const ghost_lidx ldw = w->stride;
+    const ghost_lidx ldx = x->stride;
 
     const double complex dalpha = *(double complex *)alpha;
     const double complex dbeta = *(double complex *)beta;
-    ghost_lidx_t i,j,s;
+    ghost_lidx i,j,s;
 
     double complex tmp;
     

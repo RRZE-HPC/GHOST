@@ -33,7 +33,7 @@ ghost_datatransfer_region_accu_t;
 
 static map<string,ghost_datatransfer_region_accu_t> datatransfers;
 
-ghost_error_t ghost_datatransfer_register(const char *tag, ghost_datatransfer_direction_t dir, int rank, size_t volume)
+ghost_error ghost_datatransfer_register(const char *tag, ghost_datatransfer_direction_t dir, int rank, size_t volume)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     if (dir == GHOST_DATATRANSFER_OUT) {
@@ -106,7 +106,7 @@ static int ghost_datatransfer_nneigh_get(const char *tag, ghost_datatransfer_dir
     return 0;
 } 
 
-ghost_error_t ghost_datatransfer_summarystring(char **str)
+ghost_error ghost_datatransfer_summarystring(char **str)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
 

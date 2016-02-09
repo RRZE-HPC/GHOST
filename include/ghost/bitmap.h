@@ -13,9 +13,9 @@
 #include <hwloc.h>
 
 /**
- * @brief ghost_bitmap_t is just an alias for hwloc_bitmap_t
+ * @brief ghost_bitmap is just an alias for hwloc_bitmap_t
  */
-typedef hwloc_bitmap_t ghost_bitmap_t;
+typedef hwloc_bitmap_t ghost_bitmap;
 
 #define ghost_bitmap_set(bitmap,idx) hwloc_bitmap_set(bitmap,idx)
 #define ghost_bitmap_set_range(bitmap,start,end) hwloc_bitmap_set_range(bitmap,start,end)
@@ -37,7 +37,7 @@ typedef hwloc_bitmap_t ghost_bitmap_t;
 #ifdef __cplusplus
 extern "C" {
 #endif
-    ghost_error_t ghost_bitmap_copy_indices(ghost_bitmap_t dst, ghost_lidx_t *offset, ghost_bitmap_t src, ghost_lidx_t *idx, ghost_lidx_t nidx);
+    ghost_error ghost_bitmap_copy_indices(ghost_bitmap dst, ghost_lidx *offset, ghost_bitmap src, ghost_lidx *idx, ghost_lidx nidx);
 
 #ifdef __cplusplus
 }

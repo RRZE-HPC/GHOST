@@ -17,16 +17,16 @@
 #define LOCAL_HOSTNAME_MAX 	256
 #define ROTL32(num,amount) (((num) << (amount)) | ((num) >> (32 - (amount))))
 
-static ghost_hwconfig_t ghost_hwconfig = GHOST_HWCONFIG_INITIALIZER;
+static ghost_hwconfig my_hwconfig = GHOST_HWCONFIG_INITIALIZER;
 
-static ghost_mpi_comm_t ghost_node_comm = MPI_COMM_NULL;
+static ghost_mpi_comm ghost_node_comm = MPI_COMM_NULL;
 
 static int stringcmp(const void *x, const void *y)
 {
     return (strcmp((char *)x, (char *)y));
 }
 
-ghost_error_t ghost_thread_pin(int coreNumber)
+ghost_error ghost_thread_pin(int coreNumber)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_TASKING);
     hwloc_topology_t topology;
@@ -71,7 +71,7 @@ ghost_error_t ghost_thread_pin(int coreNumber)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_thread_unpin()
+ghost_error ghost_thread_unpin()
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_TASKING);
     IF_DEBUG(2) {
@@ -94,7 +94,7 @@ ghost_error_t ghost_thread_unpin()
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_cpu(int *core)
+ghost_error ghost_cpu(int *core)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     hwloc_topology_t topology;
@@ -116,7 +116,7 @@ ghost_error_t ghost_cpu(int *core)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_rank(int *rank, ghost_mpi_comm_t comm) 
+ghost_error ghost_rank(int *rank, ghost_mpi_comm comm) 
 {
 #ifdef GHOST_HAVE_MPI
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
@@ -130,7 +130,7 @@ ghost_error_t ghost_rank(int *rank, ghost_mpi_comm_t comm)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_nnode(int *nNodes, ghost_mpi_comm_t comm)
+ghost_error ghost_nnode(int *nNodes, ghost_mpi_comm comm)
 {
 #ifndef GHOST_HAVE_MPI
     UNUSED(stringcmp);
@@ -140,7 +140,7 @@ ghost_error_t ghost_nnode(int *nNodes, ghost_mpi_comm_t comm)
 #else
 
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_COMMUNICATION);
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
     int nameLen,me,size,i,distinctNames = 1;
     char name[MPI_MAX_PROCESSOR_NAME] = "";
     char *names = NULL;
@@ -185,7 +185,7 @@ out:
 #endif
 }
 
-ghost_error_t ghost_nrank(int *nRanks, ghost_mpi_comm_t comm)
+ghost_error ghost_nrank(int *nRanks, ghost_mpi_comm comm)
 {
 #ifdef GHOST_HAVE_MPI
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
@@ -198,25 +198,25 @@ ghost_error_t ghost_nrank(int *nRanks, ghost_mpi_comm_t comm)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_hwconfig_set(ghost_hwconfig_t a)
+ghost_error ghost_hwconfig_set(ghost_hwconfig a)
 {
     // function macros disabled because the instrumentation keys get created in ghost_init()
     // and hwconfig_set() is called before that
 
     //GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
-    ghost_hwconfig = a;
+    my_hwconfig = a;
     //GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return GHOST_SUCCESS; 
 }
 
-ghost_error_t ghost_hwconfig_get(ghost_hwconfig_t * hwconfig)
+ghost_error ghost_hwconfig_get(ghost_hwconfig * hwconfig)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     if (!hwconfig) {
         ERROR_LOG("NULL pointer");
         return GHOST_ERR_INVALID_ARG;
     }
-    *hwconfig = ghost_hwconfig;
+    *hwconfig = my_hwconfig;
     
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return GHOST_SUCCESS;
@@ -286,7 +286,7 @@ static void MurmurHash3_x86_32 ( const void * key, int len,
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
 } 
 
-static ghost_error_t ghost_hostname(char ** hostnamePtr, size_t * hostnameLength)
+static ghost_error ghost_hostname(char ** hostnamePtr, size_t * hostnameLength)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     // Trace();
@@ -339,7 +339,7 @@ static ghost_error_t ghost_hostname(char ** hostnamePtr, size_t * hostnameLength
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_nodecomm_get(ghost_mpi_comm_t *comm)
+ghost_error ghost_nodecomm_get(ghost_mpi_comm *comm)
 {
     if (!comm) {
         ERROR_LOG("NULL pointer");
@@ -357,7 +357,7 @@ ghost_error_t ghost_nodecomm_get(ghost_mpi_comm_t *comm)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_nodecomm_setup(ghost_mpi_comm_t comm)
+ghost_error ghost_nodecomm_setup(ghost_mpi_comm comm)
 {
 #ifdef GHOST_HAVE_MPI
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_COMMUNICATION);

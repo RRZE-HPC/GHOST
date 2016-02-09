@@ -9,13 +9,13 @@
 #GHOST_SUBST NCOLSIN ${BLOCKDIM1}
 #GHOST_SUBST NCOLSOUT ${BLOCKDIM2}
 
-ghost_error_t ghost_tsmm_inplace__plain_d_NCOLSIN_NCOLSOUT(ghost_densemat_t *x, ghost_densemat_t *w, void *alpha, void *beta)
+ghost_error ghost_tsmm_inplace__plain_d_NCOLSIN_NCOLSOUT(ghost_densemat *x, ghost_densemat *w, void *alpha, void *beta)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
 
-    ghost_lidx_t m = x->traits.ncols;
-    ghost_lidx_t n = x->traits.nrows;
+    ghost_lidx m = x->traits.ncols;
+    ghost_lidx n = x->traits.nrows;
 
     double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
@@ -25,14 +25,14 @@ ghost_error_t ghost_tsmm_inplace__plain_d_NCOLSIN_NCOLSOUT(ghost_densemat_t *x, 
     const double * const restrict wval = (const double *) w->val;
     double * const restrict xval = (double *) x->val;
 
-    const ghost_lidx_t ldw = w->stride;
-    const ghost_lidx_t ldx = x->stride;
+    const ghost_lidx ldw = w->stride;
+    const ghost_lidx ldx = x->stride;
 
-    ghost_lidx_t i,j,s;
+    ghost_lidx i,j,s;
 
     /* construct dense wval... we can safely copy it as it is small! */
     double * restrict wtmp = NULL;
-    ghost_lidx_t ncolsin_padded = PAD(NCOLSIN,4);
+    ghost_lidx ncolsin_padded = PAD(NCOLSIN,4);
     ghost_malloc_align((void**)&wtmp,ncolsin_padded*NCOLSOUT*sizeof(double),32);
     memset(wtmp,0,ncolsin_padded*NCOLSOUT*sizeof(double));
     for(s=0; s<NCOLSOUT; s++)

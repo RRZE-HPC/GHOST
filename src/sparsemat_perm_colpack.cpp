@@ -6,28 +6,28 @@
 #include "ColPack/ColPackHeaders.h"
 #endif
 
-extern "C" ghost_error_t ghost_sparsemat_perm_color(ghost_sparsemat_t *mat, void *matrixSource, ghost_sparsemat_src_t srcType)
+extern "C" ghost_error ghost_sparsemat_perm_color(ghost_sparsemat *mat, void *matrixSource, ghost_sparsemat_src srcType)
 {
 #ifdef GHOST_HAVE_COLPACK
     INFO_LOG("Create permutation from coloring");
-    ghost_error_t ret = GHOST_SUCCESS;
-    ghost_lidx_t *curcol = NULL;
+    ghost_error ret = GHOST_SUCCESS;
+    ghost_lidx *curcol = NULL;
     uint32_t** adolc = new uint32_t*[mat->nrows];
     std::vector<int>* colvec = NULL;
-    uint32_t *adolc_data;
+    uint32_t *adolc_data = NULL;
     ColPack::GraphColoring *GC=new ColPack::GraphColoring();
 
     int me, i, j;
-    ghost_gidx_t *rpt = NULL;
-    ghost_lidx_t *rptlocal = NULL;
-    ghost_gidx_t *col = NULL;
-    ghost_lidx_t *collocal = NULL;
-    ghost_lidx_t nnz = 0, nnzlocal = 0;
+    ghost_gidx *rpt = NULL;
+    ghost_lidx *rptlocal = NULL;
+    ghost_gidx *col = NULL;
+    ghost_lidx *collocal = NULL;
+    ghost_lidx nnz = 0, nnzlocal = 0;
     int64_t pos=0;
 
     GHOST_CALL_GOTO(ghost_rank(&me,mat->context->mpicomm),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,(mat->context->lnrows[me]+1) * sizeof(ghost_gidx_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&rptlocal,(mat->context->lnrows[me]+1) * sizeof(ghost_lidx_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,(mat->context->lnrows[me]+1) * sizeof(ghost_gidx)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&rptlocal,(mat->context->lnrows[me]+1) * sizeof(ghost_lidx)),err,ret);
 
         
     rpt[0] = 0;
@@ -42,7 +42,7 @@ extern "C" ghost_error_t ghost_sparsemat_perm_color(ghost_sparsemat_t *mat, void
         }
         rpt[0] = 0;
         nnz = rpt[mat->context->lnrows[me]];
-        GHOST_CALL_GOTO(ghost_malloc((void **)&col,nnz * sizeof(ghost_lidx_t)),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&col,nnz * sizeof(ghost_lidx)),err,ret);
         GHOST_CALL_GOTO(ghost_bincrs_col_read(col, matrixPath, mat->context->lfRow[me], mat->context->lnrows[me], NULL,1),err,ret);
        
 #pragma omp parallel for private(j) reduction(+:nnzlocal) 
@@ -57,20 +57,20 @@ extern "C" ghost_error_t ghost_sparsemat_perm_color(ghost_sparsemat_t *mat, void
     } else if (srcType == GHOST_SPARSEMAT_SRC_FUNC) {
 #endif
     if (srcType == GHOST_SPARSEMAT_SRC_FUNC || srcType == GHOST_SPARSEMAT_SRC_FILE) {
-        ghost_sparsemat_src_rowfunc_t *src = (ghost_sparsemat_src_rowfunc_t *)matrixSource;
+        ghost_sparsemat_src_rowfunc *src = (ghost_sparsemat_src_rowfunc *)matrixSource;
         char * tmpval = NULL;
-        ghost_gidx_t * tmpcol = NULL;
+        ghost_gidx * tmpcol = NULL;
 
-        ghost_lidx_t rowlen;
+        ghost_lidx rowlen;
 
 #pragma omp parallel private (tmpval,tmpcol,i,rowlen,j) reduction(+:nnz) reduction(+:nnzlocal)
         {
             ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize);
-            ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx_t));
+            ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx));
             
 #pragma omp for
             for (i=0; i<mat->context->lnrows[me]; i++) {
-                src->func(mat->context->lfRow[me]+i,&rowlen,tmpcol,tmpval);
+                src->func(mat->context->lfRow[me]+i,&rowlen,tmpcol,tmpval,NULL);
                 nnz += rowlen;
                 for (j=0; j<rowlen; j++) {
                     if (tmpcol[j] >= mat->context->lfRow[me] && tmpcol[j] < mat->context->lnrows[me]) {
@@ -81,17 +81,17 @@ extern "C" ghost_error_t ghost_sparsemat_perm_color(ghost_sparsemat_t *mat, void
             free(tmpval); tmpval = NULL;
             free(tmpcol); tmpcol = NULL;
         }
-        GHOST_CALL_GOTO(ghost_malloc((void **)&col,nnz * sizeof(ghost_gidx_t)),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&col,nnz * sizeof(ghost_gidx)),err,ret);
         
 #pragma omp parallel private (tmpval,tmpcol,i,rowlen) reduction(+:nnz)
         {
             ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize);
-            ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx_t));
+            ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx));
 #pragma omp for ordered
             for (i=0; i<mat->context->lnrows[me]; i++) {
 #pragma omp ordered
                 {
-                    src->func(mat->context->lfRow[me]+i,&rowlen,&col[rpt[i]],tmpval);
+                    src->func(mat->context->lfRow[me]+i,&rowlen,&col[rpt[i]],tmpval,NULL);
                     rpt[i+1] = rpt[i] + rowlen;
                 }
             }
@@ -100,7 +100,7 @@ extern "C" ghost_error_t ghost_sparsemat_perm_color(ghost_sparsemat_t *mat, void
         }
     }
         
-    GHOST_CALL_GOTO(ghost_malloc((void **)&collocal,nnzlocal * sizeof(ghost_lidx_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&collocal,nnzlocal * sizeof(ghost_lidx)),err,ret);
 
     for (i=0; i<mat->context->lnrows[me]; i++) {
         rptlocal[i+1] = rptlocal[i];
@@ -136,20 +136,20 @@ extern "C" ghost_error_t ghost_sparsemat_perm_color(ghost_sparsemat_t *mat, void
 
     mat->ncolors = GC->GetVertexColorCount();
     
-    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->permutation,sizeof(ghost_permutation_t)),err,ret);
-    mat->context->permutation->scope = GHOST_PERMUTATION_LOCAL;
-    mat->context->permutation->len = mat->nrows;
-    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->permutation->perm,sizeof(ghost_gidx_t)*mat->nrows),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->permutation->invPerm,sizeof(ghost_gidx_t)*mat->nrows),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local,sizeof(ghost_permutation)),err,ret);
+    mat->context->perm_local->scope = GHOST_PERMUTATION_LOCAL;
+    mat->context->perm_local->len = mat->nrows;
+    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->perm,sizeof(ghost_gidx)*mat->nrows),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->invPerm,sizeof(ghost_gidx)*mat->nrows),err,ret);
 
 #ifdef GHOST_HAVE_CUDA
-    GHOST_CALL_GOTO(ghost_cu_malloc((void **)&mat->context->permutation->cu_perm,sizeof(ghost_gidx_t)*mat->nrows),err,ret);
+    GHOST_CALL_GOTO(ghost_cu_malloc((void **)&mat->context->perm_local->cu_perm,sizeof(ghost_gidx)*mat->nrows),err,ret);
 #endif
 
-    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->color_ptr,(mat->ncolors+1)*sizeof(ghost_lidx_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->color_ptr,(mat->ncolors+1)*sizeof(ghost_lidx)),err,ret);
 
-    GHOST_CALL_GOTO(ghost_malloc((void **)&curcol,(mat->ncolors)*sizeof(ghost_lidx_t)),err,ret);
-    memset(curcol,0,mat->ncolors*sizeof(ghost_lidx_t));
+    GHOST_CALL_GOTO(ghost_malloc((void **)&curcol,(mat->ncolors)*sizeof(ghost_lidx)),err,ret);
+    memset(curcol,0,mat->ncolors*sizeof(ghost_lidx));
     
     colvec = GC->GetVertexColorsPtr();
 
@@ -166,12 +166,12 @@ extern "C" ghost_error_t ghost_sparsemat_perm_color(ghost_sparsemat_t *mat, void
     }
     
     for (int i=0;i<mat->nrows;i++) {
-        mat->context->permutation->perm[i] = curcol[(*colvec)[i]] + mat->color_ptr[(*colvec)[i]];
+        mat->context->perm_local->perm[i] = curcol[(*colvec)[i]] + mat->color_ptr[(*colvec)[i]];
         curcol[(*colvec)[i]]++;
     }
     
     for (int i=0;i<mat->nrows;i++) {
-        mat->context->permutation->invPerm[mat->context->permutation->perm[i]] = i;
+        mat->context->perm_local->invPerm[mat->context->perm_local->perm[i]] = i;
     }
 
 

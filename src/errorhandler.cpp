@@ -4,9 +4,9 @@
 
 using namespace std;
 
-static map<ghost_error_t,ghost_errorhandler_t> errorhandlers;
+static map<ghost_error,ghost_errorhandler> errorhandlers;
 
-ghost_errorhandler_t ghost_errorhandler_get(ghost_error_t e)
+ghost_errorhandler ghost_errorhandler_get(ghost_error e)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
@@ -14,7 +14,7 @@ ghost_errorhandler_t ghost_errorhandler_get(ghost_error_t e)
     return errorhandlers[e];
 }
 
-ghost_error_t ghost_errorhandler_set(ghost_error_t e, ghost_errorhandler_t h)
+ghost_error ghost_errorhandler_set(ghost_error e, ghost_errorhandler h)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     

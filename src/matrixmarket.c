@@ -3,10 +3,10 @@
 #include "ghost/mmio.h"
 #include "ghost/matrixmarket.h"
 
-int ghost_sparsemat_rowfunc_mm(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, void *val, void *arg)
+int ghost_sparsemat_rowfunc_mm(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *col, void *val, void *arg)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
-    static ghost_gidx_t *colInd = NULL, *rowPtr = NULL;
+    static ghost_gidx *colInd = NULL, *rowPtr = NULL;
     static char *values = NULL;
     static size_t dtsize = 0;
 
@@ -37,7 +37,7 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gid
         ghost_sparsemat_rowfunc_mm_initargs args = 
             *(ghost_sparsemat_rowfunc_mm_initargs *)val;
         char *filename = args.filename;
-        ghost_datatype_t matdt = args.dt;
+        ghost_datatype matdt = args.dt;
 
         ghost_datatype_size(&dtsize,matdt);
 
@@ -45,8 +45,8 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gid
         int ret_code;
         MM_typecode matcode;
         int M, N, nz, actualnz;
-        ghost_gidx_t * offset;
-        ghost_gidx_t i;
+        ghost_gidx * offset;
+        ghost_gidx i;
         int symm = 0;
 
         if ((f = fopen(filename,"r")) == NULL) {
@@ -93,17 +93,17 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gid
         }
 
 
-        ghost_malloc((void **)&colInd,actualnz * sizeof(ghost_gidx_t));
-        ghost_malloc((void **)&rowPtr,(M + 1) * sizeof(ghost_gidx_t));
+        ghost_malloc((void **)&colInd,actualnz * sizeof(ghost_gidx));
+        ghost_malloc((void **)&rowPtr,(M + 1) * sizeof(ghost_gidx));
         ghost_malloc((void **)&values,actualnz * dtsize);
-        ghost_malloc((void **)&offset,(M + 1) * sizeof(ghost_gidx_t));
+        ghost_malloc((void **)&offset,(M + 1) * sizeof(ghost_gidx));
 
         for(i = 0; i <= M; ++i){
             rowPtr[i] = 0;
             offset[i] = 0;
         }
 
-        ghost_gidx_t readrow,readcol;
+        ghost_gidx readrow,readcol;
         char value[dtsize];
         fpos_t pos;
         fgetpos(f,&pos);
@@ -185,7 +185,7 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gid
         free(values);
     } else {
         *rowlen = rowPtr[row+1]-rowPtr[row];
-        memcpy(col,&colInd[rowPtr[row]],(*rowlen)*sizeof(ghost_gidx_t));
+        memcpy(col,&colInd[rowPtr[row]],(*rowlen)*sizeof(ghost_gidx));
         memcpy(val,&values[rowPtr[row]*dtsize],(*rowlen)*dtsize);
     }
 
@@ -196,10 +196,10 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gid
 
 }
 
-int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, void *val, void *arg)
+int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *col, void *val, void *arg)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
-    static ghost_gidx_t *colInd = NULL, *rowPtr = NULL;
+    static ghost_gidx *colInd = NULL, *rowPtr = NULL;
     static char *values = NULL;
     static size_t dtsize = 0;
 
@@ -230,7 +230,7 @@ int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx_t row, ghost_lidx_t *rowlen,
         ghost_sparsemat_rowfunc_mm_initargs args = 
             *(ghost_sparsemat_rowfunc_mm_initargs *)val;
         char *filename = args.filename;
-        ghost_datatype_t matdt = args.dt;
+        ghost_datatype matdt = args.dt;
 
         ghost_datatype_size(&dtsize,matdt);
 
@@ -238,8 +238,8 @@ int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx_t row, ghost_lidx_t *rowlen,
         int ret_code;
         MM_typecode matcode;
         int M, N, nz, actualnz;
-        ghost_gidx_t * offset;
-        ghost_gidx_t i;
+        ghost_gidx * offset;
+        ghost_gidx i;
         int symm = 0;
 
         if ((f = fopen(filename,"r")) == NULL) {
@@ -286,17 +286,17 @@ int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx_t row, ghost_lidx_t *rowlen,
         }
 
 
-        ghost_malloc((void **)&colInd,actualnz * sizeof(ghost_gidx_t));
-        ghost_malloc((void **)&rowPtr,(M + 1) * sizeof(ghost_gidx_t));
+        ghost_malloc((void **)&colInd,actualnz * sizeof(ghost_gidx));
+        ghost_malloc((void **)&rowPtr,(M + 1) * sizeof(ghost_gidx));
         ghost_malloc((void **)&values,actualnz * dtsize);
-        ghost_malloc((void **)&offset,(M + 1) * sizeof(ghost_gidx_t));
+        ghost_malloc((void **)&offset,(M + 1) * sizeof(ghost_gidx));
 
         for(i = 0; i <= M; ++i){
             rowPtr[i] = 0;
             offset[i] = 0;
         }
 
-        ghost_gidx_t readrow,readcol;
+        ghost_gidx readrow,readcol;
         char value[dtsize];
         fpos_t pos;
         fgetpos(f,&pos);
@@ -378,7 +378,7 @@ int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx_t row, ghost_lidx_t *rowlen,
         free(values);
     } else {
         *rowlen = rowPtr[row+1]-rowPtr[row];
-        memcpy(col,&colInd[rowPtr[row]],(*rowlen)*sizeof(ghost_gidx_t));
+        memcpy(col,&colInd[rowPtr[row]],(*rowlen)*sizeof(ghost_gidx));
         memcpy(val,&values[rowPtr[row]*dtsize],(*rowlen)*dtsize);
     }
 

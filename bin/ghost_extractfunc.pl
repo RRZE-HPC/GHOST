@@ -3,7 +3,7 @@
 print "#ifdef __cplusplus\nextern \"C\" {\n#endif\n";
 
 while (<>) {
-    if ($_ =~ /(ghost_error_t .+\(.+\))/) {
+    if ($_ =~ /(ghost_error .+\(.+\))/) {
         chomp($_);
         print "$_;\n";
     }
