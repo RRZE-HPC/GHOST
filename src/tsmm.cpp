@@ -252,13 +252,12 @@ end_of_loop:
     ghost_timing_set_perfFunc(NULL,__ghost_functag,ghost_gemm_perf_GFs,(void *)&tsmm_perfargs,sizeof(tsmm_perfargs),"GF/s");
 #endif
 
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
-
     if (w != w_in) {
         ghost_densemat_init_densemat(w_in,w,0,0);
         ghost_densemat_destroy(w);
     }
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
         
     return ret;
 }
