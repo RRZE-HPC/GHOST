@@ -322,7 +322,7 @@ typedef enum {
      * If this is implemented for other rowfuncs, the _MM may get removed in the future.
      */
     GHOST_SPARSEMAT_TRANSPOSE_MM = 1024
-} ghost_sparsemat_flags_t;
+} ghost_sparsemat_flags;
 
 
 /**
@@ -332,7 +332,7 @@ struct ghost_sparsemat_traits {
     /**
      * @brief Flags to the matrix.
      */
-    ghost_sparsemat_flags_t flags;
+    ghost_sparsemat_flags flags;
     /**
      * @brief The matrix symmetry.
      */

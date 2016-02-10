@@ -122,9 +122,9 @@ ghost_error ghost_sparsemat_create(ghost_sparsemat ** mat, ghost_context *contex
         ghost_type ghost_type;
         GHOST_CALL_GOTO(ghost_type_get(&ghost_type),err,ret);
         if (ghost_type == GHOST_TYPE_CUDA) {
-            (*mat)->traits.flags |= (ghost_sparsemat_flags_t)GHOST_SPARSEMAT_DEVICE;
+            (*mat)->traits.flags |= (ghost_sparsemat_flags)GHOST_SPARSEMAT_DEVICE;
         } else {
-            (*mat)->traits.flags |= (ghost_sparsemat_flags_t)GHOST_SPARSEMAT_HOST;
+            (*mat)->traits.flags |= (ghost_sparsemat_flags)GHOST_SPARSEMAT_HOST;
         }
     }
     ghost_type ghost_type;
@@ -225,7 +225,7 @@ ghost_error ghost_sparsemat_fromfunc_common(ghost_lidx *rl, ghost_lidx *rlp, gho
     mat->upperBandwidth = 0;
     
     if (mat->traits.flags & GHOST_SPARSEMAT_SCOTCHIFY) {
-        mat->traits.flags |= (ghost_sparsemat_flags_t)GHOST_SPARSEMAT_PERMUTE;
+        mat->traits.flags |= (ghost_sparsemat_flags)GHOST_SPARSEMAT_PERMUTE;
     }
 
     if (mat->traits.flags & GHOST_SPARSEMAT_PERMUTE) {
@@ -245,8 +245,8 @@ ghost_error ghost_sparsemat_fromfunc_common(ghost_lidx *rl, ghost_lidx *rlp, gho
         if (mat->traits.sortScope > 1) {
             WARNING_LOG("Ignoring sorting scope");
         }
-        mat->traits.flags |= (ghost_sparsemat_flags_t)GHOST_SPARSEMAT_NOT_PERMUTE_COLS;
-        mat->traits.flags |= (ghost_sparsemat_flags_t)GHOST_SPARSEMAT_NOT_SORT_COLS;
+        mat->traits.flags |= (ghost_sparsemat_flags)GHOST_SPARSEMAT_NOT_PERMUTE_COLS;
+        mat->traits.flags |= (ghost_sparsemat_flags)GHOST_SPARSEMAT_NOT_SORT_COLS;
     }
 
     ghost_lidx *tmpclp = NULL;
