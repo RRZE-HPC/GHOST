@@ -18,6 +18,7 @@
 #include "ghost/constants.h"
 
 #include <unordered_map>
+#include <vector>
 
 using namespace std;
 
@@ -118,7 +119,6 @@ ghost_error ghost_tsmm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, 
     }
 
     ghost_tsmm_parameters p;
-    ghost_implementation opt_impl;
     ghost_alignment opt_align;
     int opt_unroll;
     ghost_tsmm_kernel kernel = NULL;
@@ -127,17 +127,26 @@ ghost_error ghost_tsmm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, 
     p.xstor = x->traits.storage;
     p.wstor = w->traits.storage;
 
-    // initial implementation
+    // possible implementations
+    std::vector<ghost_implementation> try_impl;
+#ifdef GHOST_HAVE_CUDA
+    if (x->traits.location & GHOST_LOCATION_DEVICE) {
+        try_impl = {GHOST_IMPLEMENTATION_CUDA};
+    } else {
+#endif
 #ifdef GHOST_BUILD_MIC
-    opt_impl = GHOST_IMPLEMENTATION_MIC;
+        try_impl = {GHOST_IMPLEMENTATION_MIC,GHOST_IMPLEMENTATION_PLAIN};
 #elif defined(GHOST_BUILD_AVX2)
-    opt_impl = GHOST_IMPLEMENTATION_AVX2;
+        try_impl = {GHOST_IMPLEMENTATION_AVX2,GHOST_IMPLEMENTATION_AVX,GHOST_IMPLEMENTATION_SSE,GHOST_IMPLEMENTATION_PLAIN};
 #elif defined(GHOST_BUILD_AVX)
-    opt_impl = GHOST_IMPLEMENTATION_AVX;
+        try_impl = {GHOST_IMPLEMENTATION_AVX,GHOST_IMPLEMENTATION_SSE,GHOST_IMPLEMENTATION_PLAIN};
 #elif defined(GHOST_BUILD_SSE)
-    opt_impl = GHOST_IMPLEMENTATION_SSE;
+        try_impl = {GHOST_IMPLEMENTATION_SSE,GHOST_IMPLEMENTATION_PLAIN};
 #else
-    opt_impl = GHOST_IMPLEMENTATION_PLAIN;
+        try_impl = {GHOST_IMPLEMENTATION_PLAIN};
+#endif
+#ifdef GHOST_HAVE_CUDA
+    }
 #endif
     
     
@@ -159,6 +168,14 @@ ghost_error ghost_tsmm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, 
     } else {
         opt_unroll = GHOST_MAX_ROWS_UNROLL;
     }
+
+#ifdef GHOST_HAVE_CUDA
+    if (x->traits.location & GHOST_LOCATION_DEVICE) {
+        try_dt[0] = GHOST_DT_ANY;
+        opt_align = GHOST_UNALIGNED;
+    }
+#endif
+
     
     int n_xcols = sizeof(try_xcols)/sizeof(ghost_lidx); 
     int n_vcols = sizeof(try_vcols)/sizeof(ghost_lidx); 
@@ -168,13 +185,14 @@ ghost_error ghost_tsmm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, 
 
     for (pos_xcols = 0; pos_xcols < n_xcols; pos_xcols++) {  
         for (pos_vcols = 0; pos_vcols < n_vcols; pos_vcols++) {  
-            for (p.impl = opt_impl; (int)p.impl >= GHOST_IMPLEMENTATION_PLAIN; p.impl  = (ghost_implementation)((int)p.impl-1)) {
+            for (std::vector<ghost_implementation>::iterator impl = try_impl.begin(); impl != try_impl.end(); impl++) {
                 for (p.alignment = opt_align; (int)p.alignment >= GHOST_UNALIGNED; p.alignment = (ghost_alignment)((int)p.alignment-1)) {
                     for (p.unroll = opt_unroll; p.unroll > 0; p.unroll /= 2) {
                         for (pos_dt = 0; pos_dt < n_dt; pos_dt++) {
                             p.xcols = try_xcols[pos_xcols];
                             p.vcols = try_vcols[pos_vcols];
                             p.dt = try_dt[pos_dt];
+                            p.impl = *impl;
                             INFO_LOG("Try xcols=%s, vcols=%s, impl=%s, %s, unroll=%d, dt=%s",
                                     p.xcols==-1?"arbitrary":to_string((long long)p.xcols).c_str(),p.vcols==-1?"arbitrary":to_string((long long)p.vcols).c_str(),
                                     ghost_implementation_string(p.impl),p.alignment==GHOST_UNALIGNED?"unaligned":"aligned",p.unroll,ghost_datatype_string(p.dt));
