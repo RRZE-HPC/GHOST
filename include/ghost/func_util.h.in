@@ -60,7 +60,7 @@ typedef enum
     char * __prefix = NULL;\
     char * __ghost_functag = NULL;\
     void * __ghost_instr_enable_backup = pthread_getspecific(ghost_instr_enable_key);\
-    if ((${GHOST_INSTRUMENT_FUNCTYPES}) && ${GHOST_INSTRUMENT}) {\
+    if ((${GHOST_INSTRUMENT_FUNCTYPES}) && (${GHOST_INSTR_TIMING} || ${GHOST_INSTR_LIKWID})) {\
         __prefix = (char *)malloc(1024*sizeof(char));\
         __ghost_functag = (char *)malloc(1024*sizeof(char));\
         __funcnameoffset = strncmp(__FUNCTION__,"ghost_",6)?0:6;\
@@ -89,7 +89,7 @@ typedef enum
     } 
 
 #define GHOST_FUNC_EXIT(functype)\
-    if ((${GHOST_INSTRUMENT_FUNCTYPES}) && ${GHOST_INSTRUMENT}) {\
+    if ((${GHOST_INSTRUMENT_FUNCTYPES}) && (${GHOST_INSTR_TIMING} || ${GHOST_INSTR_LIKWID})) {\
         /*ghost_barrier();*/\
         ghost_instr_prefix_set(__prefixbackup);\
         GHOST_INSTR_STOP(__FUNCTION__+__funcnameoffset);\
