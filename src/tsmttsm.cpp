@@ -252,7 +252,9 @@ end_of_loop:
         }
     } else {
         PERFWARNING_LOG("Could not find TSMTTSM kernel. Fallback to GEMM");
-        ghost_densemat_destroy(x);
+        if (x != x_in) {
+            ghost_densemat_destroy(x);
+        }
         x = x_in;
         ret = ghost_gemm(x_in,v,conjv?"C":"T",w,"N",alpha,beta,reduce,GHOST_GEMM_NOT_SPECIAL);
     }
