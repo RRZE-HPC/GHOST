@@ -230,7 +230,7 @@ static ghost_error FUNCNAME(vaxpy_tmpl(ghost_densemat *vec, ghost_densemat *vec2
     
     DENSEMAT_ITER2(vec,vec2,*(v_t *)valptr1 += *(v_t *)valptr2 * s[col]);
 
-#ifdef GHOST_HAVE_INSTR_TIMING
+#ifdef GHOST_INSTR_TIMING
     ghost_axpy_perf_args pargs;
     pargs.ncols = vec->traits.ncols;
     if (vec->context) {
@@ -258,7 +258,7 @@ static ghost_error FUNCNAME(vaxpby_tmpl(ghost_densemat *vec, ghost_densemat *vec
     DENSEMAT_ITER2(vec,vec2,*(v_t *)valptr1 = *(v_t *)valptr2 * s[col] + 
             *(v_t *)valptr1 * b[col]);
     
-#ifdef GHOST_HAVE_INSTR_TIMING
+#ifdef GHOST_INSTR_TIMING
     ghost_axpby_perf_args pargs;
     pargs.ncols = vec->traits.ncols;
     if (vec->context) {
@@ -292,7 +292,7 @@ static ghost_error FUNCNAME(vaxpbypcz_tmpl(ghost_densemat *vec, ghost_densemat *
     DENSEMAT_ITER(vec,*(v_t *)valptr = *(v_t *)valptr * b[col] + 
             *(v_t *)DENSEMAT_VALPTR(vec2,row,col) * s[col] + *(v_t *)DENSEMAT_VALPTR(vec3,row,col) * c[col]);
 
-#ifdef GHOST_HAVE_INSTR_TIMING
+#ifdef GHOST_INSTR_TIMING
     ghost_axpbypcz_perf_args pargs;
     pargs.ncols = vec->traits.ncols;
     if (vec->context) {
@@ -315,7 +315,7 @@ static ghost_error FUNCNAME(vscale_tmpl(ghost_densemat *vec, void *scale))
         
     DENSEMAT_ITER(vec,*(v_t *)valptr *= ((v_t *)scale)[col]);
 
-#ifdef GHOST_HAVE_INSTR_TIMING
+#ifdef GHOST_INSTR_TIMING
     ghost_scale_perf_args pargs;
     pargs.ncols = vec->traits.ncols;
     if (vec->context) {

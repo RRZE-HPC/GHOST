@@ -223,7 +223,7 @@ end_of_loop:
         ret = ghost_gemm(x,v,"N",w,"N",alpha,beta,GHOST_GEMM_NO_REDUCE,GHOST_GEMM_NOT_SPECIAL);
     }
 
-#ifdef GHOST_HAVE_INSTR_TIMING
+#ifdef GHOST_INSTR_TIMING
     ghost_gemm_perf_args tsmm_perfargs;
     tsmm_perfargs.n = p.xcols;
     tsmm_perfargs.k = p.vcols;

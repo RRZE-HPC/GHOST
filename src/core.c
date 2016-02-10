@@ -23,7 +23,7 @@
 #warning "The HWLOC version is too old. Cannot detect Intel Xeon Phis!"
 #endif
 
-#ifdef GHOST_HAVE_INSTR_LIKWID
+#ifdef GHOST_INSTR_LIKWID
 #include <likwid.h>
 #endif
 
@@ -99,7 +99,7 @@ int ghost_initialized()
     return initialized; 
 }
 
-#ifdef GHOST_HAVE_INSTR_LIKWID
+#ifdef GHOST_INSTR_LIKWID
 static void *likwidThreadInitTask(void *arg)
 {
     UNUSED(arg);
@@ -558,7 +558,7 @@ ghost_error ghost_init(int argc, char **argv)
 
     ghost_rand_create();
     
-#ifdef GHOST_HAVE_INSTR_LIKWID
+#ifdef GHOST_INSTR_LIKWID
     likwid_markerInit();
 
     ghost_task *t;
@@ -592,11 +592,11 @@ ghost_error ghost_finalize()
     ghost_rand_destroy();
     ghost_cu_finalize();
 
-#ifdef GHOST_HAVE_INSTR_LIKWID
+#ifdef GHOST_INSTR_LIKWID
     likwid_markerClose();
 #endif
     
-#ifdef GHOST_HAVE_INSTR_TIMING
+#ifdef GHOST_INSTR_TIMING
 #if GHOST_VERBOSITY
 //    char *str;
 //    ghost_timing_summarystring(&str);
@@ -667,14 +667,14 @@ ghost_error ghost_string(char **str)
 #endif
     ghost_line_string(str,"Configured SELL chunk heights",NULL,"%s",GHOST_GEN_SELL_C);
     ghost_line_string(str,"Configured blockvector widths",NULL,"%s",GHOST_GEN_DENSEMAT_DIM);
-#ifdef GHOST_HAVE_INSTR_LIKWID
-#ifdef GHOST_HAVE_INSTR_TIMING
+#ifdef GHOST_INSTR_LIKWID
+#ifdef GHOST_INSTR_TIMING
     ghost_line_string(str,"Instrumentation",NULL,"Likwid+Timing");
 #else
     ghost_line_string(str,"Instrumentation",NULL,"Likwid");
 #endif
 #else
-#ifdef GHOST_HAVE_INSTR_TIMING
+#ifdef GHOST_INSTR_TIMING
     ghost_line_string(str,"Instrumentation",NULL,"Timing");
 #else
     ghost_line_string(str,"Instrumentation",NULL,"Disabled");

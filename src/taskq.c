@@ -25,7 +25,7 @@
 #include <mkl.h>
 #endif
 
-#ifdef GHOST_HAVE_INSTR_LIKWID
+#ifdef GHOST_INSTR_LIKWID
 #include <likwid.h>
 #endif
 

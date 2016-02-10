@@ -145,7 +145,7 @@ ghost_densemat *w_in, const char *transw_in, void *alpha, void *beta, int reduce
         ncWglob = w->traits.ncols;
     }
 
-#ifdef GHOST_HAVE_INSTR_TIMING
+#ifdef GHOST_INSTR_TIMING
     ghost_gemm_perf_args gemm_perfargs;
     gemm_perfargs.m = nrVglob;
     gemm_perfargs.k = ncVglob;

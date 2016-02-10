@@ -246,7 +246,7 @@ end_of_loop:
     }
 
 
-#ifdef GHOST_HAVE_INSTR_TIMING
+#ifdef GHOST_INSTR_TIMING
     ghost_gemm_perf_args tsmttsm_perfargs;
     tsmttsm_perfargs.n = w->traits.ncols;
     tsmttsm_perfargs.m = v->traits.ncols;

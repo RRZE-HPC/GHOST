@@ -85,7 +85,7 @@ ghost_error ghost_spmv(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat
         GHOST_INSTR_STOP("dot_reduce");
 #endif
     }
-#ifdef GHOST_HAVE_INSTR_TIMING
+#ifdef GHOST_INSTR_TIMING
     ghost_gidx nnz;
     ghost_gidx nrow;
     
