@@ -27,7 +27,7 @@
 
 #define THREADSPERBLOCK 512
 
-ghost_error ghost_tsmm_inplace__cuda_x_NCOLSIN_NCOLSOUT(ghost_densemat *x, ghost_densemat *w, void *alpha, void *beta) 
+ghost_error ghost_tsmm_inplace__u_cuda_x_NCOLSIN_NCOLSOUT(ghost_densemat *x, ghost_densemat *w, void *alpha, void *beta) 
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL); 
     ghost_error ret = GHOST_SUCCESS;

@@ -171,23 +171,24 @@ while (<>) {
         } elsif ($funcname eq "ghost_tsmm_inplace") {
             print "{\n";
             print $funcname."_parameters pars;\n";
-            print "pars.impl = ".$implementations{$funcpars[0]}.";\n";
-            print "pars.dt = ".$datatypes{$funcpars[1]}.";\n";
-            if ($funcpars[2] eq "x") {
+            print "pars.alignment = ".$alignments{$funcpars[0]}.";\n";
+            print "pars.impl = ".$implementations{$funcpars[1]}.";\n";
+            print "pars.dt = ".$datatypes{$funcpars[2]}.";\n";
+            if ($funcpars[3] eq "x") {
                 print "pars.ncolsin = -1;\n";
             } else {
-                print "pars.ncolsin = ".$funcpars[2].";\n";
+                print "pars.ncolsin = ".$funcpars[3].";\n";
             }
-            if ($funcpars[3] eq "x") {
+            if ($funcpars[4] eq "x") {
                 print "pars.ncolsout = -1;\n";
             } else {
-                print "pars.ncolsout = ".$funcpars[3].";\n";
+                print "pars.ncolsout = ".$funcpars[4].";\n";
             }
             print $funcname."_kernels[pars] = ".$funcname_full.";\n"; 
-            if ($funcpars[2] ne "x" and $funcpars[3] ne "x" ) {
+            if ($funcpars[3] ne "x" and $funcpars[4] ne "x" ) {
                 print "ghost_gemm_perf_args tsmm_perfargs;\n";
-                print "tsmm_perfargs.n = ".$funcpars[2].";\n";
-                print "tsmm_perfargs.k = ".$funcpars[3].";\n";
+                print "tsmm_perfargs.n = ".$funcpars[3].";\n";
+                print "tsmm_perfargs.k = ".$funcpars[4].";\n";
                 print "if (x->context) {\n";
                 print "    tsmm_perfargs.m = x->context->gnrows;\n";
                 print "} else {\n";

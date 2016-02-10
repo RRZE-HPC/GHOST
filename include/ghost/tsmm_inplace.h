@@ -26,6 +26,7 @@ typedef struct
     int ncolsout;
 
     ghost_implementation impl;
+    ghost_alignment alignment;
 } ghost_tsmm_inplace_parameters;
 
 /**

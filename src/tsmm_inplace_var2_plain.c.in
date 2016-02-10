@@ -6,7 +6,7 @@
 #include "ghost/util.h"
 #include "ghost/tsmm_inplace_var2_plain_gen.h"
 
-ghost_error ghost_tsmm_inplace__plain_d_x_x(ghost_densemat *x, ghost_densemat *w, void *alpha, void *beta)
+ghost_error ghost_tsmm_inplace__a_plain_d_x_x(ghost_densemat *x, ghost_densemat *w, void *alpha, void *beta)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
@@ -71,7 +71,7 @@ ghost_error ghost_tsmm_inplace__plain_d_x_x(ghost_densemat *x, ghost_densemat *w
     return ret;
 }
 
-ghost_error ghost_tsmm_inplace__plain_z_x_x(ghost_densemat *x, ghost_densemat *w, void *alpha, void *beta)
+ghost_error ghost_tsmm_inplace__a_plain_z_x_x(ghost_densemat *x, ghost_densemat *w, void *alpha, void *beta)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
@@ -117,7 +117,7 @@ ghost_error ghost_tsmm_inplace__plain_z_x_x(ghost_densemat *x, ghost_densemat *w
     return ret;
 }
 
-ghost_error ghost_tsmm_inplace__plain_s_x_x(ghost_densemat *x, ghost_densemat *w, void *alpha, void *beta)
+ghost_error ghost_tsmm_inplace__a_plain_s_x_x(ghost_densemat *x, ghost_densemat *w, void *alpha, void *beta)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
@@ -183,7 +183,7 @@ ghost_error ghost_tsmm_inplace__plain_s_x_x(ghost_densemat *x, ghost_densemat *w
 }
 
 
-ghost_error ghost_tsmm_inplace__plain_c_x_x(ghost_densemat *x, ghost_densemat *w, void *alpha, void *beta)
+ghost_error ghost_tsmm_inplace__a_plain_c_x_x(ghost_densemat *x, ghost_densemat *w, void *alpha, void *beta)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
