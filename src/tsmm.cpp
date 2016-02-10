@@ -118,129 +118,93 @@ ghost_error ghost_tsmm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, 
     }
 
     ghost_tsmm_parameters p;
-    p.dt = x->traits.datatype;
-    p.alignment = GHOST_ALIGNED;
-    
+    ghost_implementation opt_impl;
+    ghost_alignment opt_align;
+    int opt_unroll;
     ghost_tsmm_kernel kernel = NULL;
-#ifdef GHOST_BUILD_MIC
-    p.impl = GHOST_IMPLEMENTATION_MIC;
-#elif defined(GHOST_BUILD_AVX)
-    p.impl = GHOST_IMPLEMENTATION_AVX;
-#elif defined(GHOST_BUILD_SSE)
-    p.impl = GHOST_IMPLEMENTATION_SSE;
-#else
-    p.impl = GHOST_IMPLEMENTATION_PLAIN;
-#endif
-#ifdef GHOST_HAVE_CUDA
-    if (x->traits.location & GHOST_LOCATION_DEVICE) {
-        p.impl = GHOST_IMPLEMENTATION_CUDA;
-        p.dt = GHOST_DT_ANY;
-        p.alignment = GHOST_UNALIGNED;
-    }
-#endif
-
+    
+    // fix properties    
     p.xstor = x->traits.storage;
     p.wstor = w->traits.storage;
 
-    p.xcols = x->traits.ncols;
-    p.vcols = v->traits.ncols;
-
-    int simd = ghost_machine_simd_width();
+    // initial implementation
+#ifdef GHOST_BUILD_MIC
+    opt_impl = GHOST_IMPLEMENTATION_MIC;
+#elif defined(GHOST_BUILD_AVX2)
+    opt_impl = GHOST_IMPLEMENTATION_AVX2;
+#elif defined(GHOST_BUILD_AVX)
+    opt_impl = GHOST_IMPLEMENTATION_AVX;
+#elif defined(GHOST_BUILD_SSE)
+    opt_impl = GHOST_IMPLEMENTATION_SSE;
+#else
+    opt_impl = GHOST_IMPLEMENTATION_PLAIN;
+#endif
+    
     
     // alignment of large input data
-    // the alignment of the w matrix does not matter because we can easily re-allocate it accordingly
+    // the alignment of the result array does not matter because we can easily re-allocate it accordingly
     int al = ghost_machine_alignment();
     if (IS_ALIGNED(x->val,al) && IS_ALIGNED(v->val,al) && !((x->stride*x->elSize) % al) && !((v->stride*v->elSize) % al)) {
-        p.alignment = GHOST_ALIGNED;
+        opt_align = GHOST_ALIGNED;
     } else {
-        p.alignment = GHOST_UNALIGNED;
+        opt_align = GHOST_UNALIGNED;
     }
+    
+    ghost_lidx try_xcols[2] = {x->traits.ncols,-1};
+    ghost_lidx try_vcols[2] = {v->traits.ncols,-1};
+    ghost_datatype try_dt[2] = {v->traits.datatype,GHOST_DT_ANY};
 
-    if (x->traits.flags & GHOST_DENSEMAT_VIEW || v->traits.flags & GHOST_DENSEMAT_VIEW) {
-        p.unroll = 1;
-        if (((p.xcols*v->elSize) % simd) || ((p.vcols*v->elSize) % simd)) {
-            p.impl = GHOST_IMPLEMENTATION_PLAIN;
-        }
+    if (w->traits.flags & GHOST_DENSEMAT_VIEW || v->traits.flags & GHOST_DENSEMAT_VIEW) {
+        opt_unroll = 1;
     } else {
-        p.unroll = GHOST_MAX_ROWS_UNROLL;
+        opt_unroll = GHOST_MAX_ROWS_UNROLL;
     }
     
-    INFO_LOG("Inital search for kernel dt=%d xcols=%d vcols=%d xstor=%d wstor=%d align=%d unroll=%d!",p.dt,p.xcols,p.vcols,p.xstor,p.wstor,p.alignment,p.unroll);
-    
-    kernel = ghost_tsmm_kernels[p];
-    
-    if (!kernel) {
-        PERFWARNING_LOG("Try plain implementation");
-        p.impl = GHOST_IMPLEMENTATION_PLAIN;
-        kernel = ghost_tsmm_kernels[p];
-    }
-    
-    if (!kernel) {
-        PERFWARNING_LOG("Decrease unroll size");
-        while (p.unroll > 1 && !kernel) {
-            p.unroll /= 2;
-            kernel = ghost_tsmm_kernels[p];
+    int n_xcols = sizeof(try_xcols)/sizeof(ghost_lidx); 
+    int n_vcols = sizeof(try_vcols)/sizeof(ghost_lidx); 
+    int n_dt = sizeof(try_dt)/sizeof(ghost_datatype); 
+    int pos_xcols, pos_vcols, pos_dt;
+    bool optimal = true; // if we find a kernel with highest specialization grade (regardless unrolling), this remains true and no performance warning gets printed
+
+    for (pos_xcols = 0; pos_xcols < n_xcols; pos_xcols++) {  
+        for (pos_vcols = 0; pos_vcols < n_vcols; pos_vcols++) {  
+            for (p.impl = opt_impl; (int)p.impl >= GHOST_IMPLEMENTATION_PLAIN; p.impl  = (ghost_implementation)((int)p.impl-1)) {
+                for (p.alignment = opt_align; (int)p.alignment >= GHOST_UNALIGNED; p.alignment = (ghost_alignment)((int)p.alignment-1)) {
+                    for (p.unroll = opt_unroll; p.unroll > 0; p.unroll /= 2) {
+                        for (pos_dt = 0; pos_dt < n_dt; pos_dt++) {
+                            p.xcols = try_xcols[pos_xcols];
+                            p.vcols = try_vcols[pos_vcols];
+                            p.dt = try_dt[pos_dt];
+                            INFO_LOG("Try xcols=%s, vcols=%s, impl=%s, %s, unroll=%d, dt=%s",
+                                    p.xcols==-1?"arbitrary":to_string((long long)p.xcols).c_str(),p.vcols==-1?"arbitrary":to_string((long long)p.vcols).c_str(),
+                                    ghost_implementation_string(p.impl),p.alignment==GHOST_UNALIGNED?"unaligned":"aligned",p.unroll,ghost_datatype_string(p.dt));
+                            kernel = ghost_tsmm_kernels[p];
+                            if (kernel) {
+                                goto end_of_loop;
+                            }
+                        }
+                    }
+                    optimal = false;
+                }
+            }
         }
     }
-    
-    if (!kernel) {
-        PERFWARNING_LOG("Try kernel with fixed xcols and arbitrary vcols");
-        p.xcols = x->traits.ncols;
-        p.vcols = -1;
-        kernel = ghost_tsmm_kernels[p];
+
+end_of_loop:
+
+    if (kernel) {
+        if (optimal) {
+            INFO_LOG("Found kernel with highest specialization grade: dt=%d xcols=%d vcols=%d xstor=%d wstor=%d align=%d unroll=%d impl=%s",p.dt,p.xcols,p.vcols,p.xstor,p.wstor,p.alignment,p.unroll,ghost_implementation_string(p.impl));
+        } else {
+            PERFWARNING_LOG("Using potentially non-optimal kernel: dt=%d xcols=%d vcols=%d xstor=%d wstor=%d align=%d unroll=%d impl=%s",p.dt,p.xcols,p.vcols,p.xstor,p.wstor,p.alignment,p.unroll,ghost_implementation_string(p.impl));
+        }
+
+        ret = kernel(x,v,w,alpha,beta);
+    } else {
+        PERFWARNING_LOG("Could not find TSMM kernel. Fallback to GEMM");
+        ret = ghost_gemm(x,v,"N",w,"N",alpha,beta,GHOST_GEMM_NO_REDUCE,GHOST_GEMM_NOT_SPECIAL);
     }
 
-    if (!kernel) {
-        PERFWARNING_LOG("Try kernel with fixed vcols and arbitrary xcols");
-        p.xcols = -1;
-        p.vcols = v->traits.ncols;
-        kernel = ghost_tsmm_kernels[p];
-    }
-
-    if (!kernel) {
-        PERFWARNING_LOG("Try kernel with arbitrary block sizes");
-        p.xcols = -1;
-        p.vcols = -1;
-        kernel = ghost_tsmm_kernels[p];
-    }
-
-    if (!kernel) {
-        PERFWARNING_LOG("Try kernel with fixed xcols and arbitrary vcols");
-        p.xcols = x->traits.ncols;
-        p.vcols = -1;
-        kernel = ghost_tsmm_kernels[p];
-    }
-
-    if (!kernel) {
-        PERFWARNING_LOG("Try kernel with fixed vcols and arbitrary xcols");
-        p.xcols = -1;
-        p.vcols = v->traits.ncols;
-        kernel = ghost_tsmm_kernels[p];
-    }
-
-    if (!kernel) {
-        PERFWARNING_LOG("Try kernel with arbitrary block sizes");
-        p.xcols = -1;
-        p.vcols = -1;
-        kernel = ghost_tsmm_kernels[p];
-    }
-    
-    if (!kernel) {
-        PERFWARNING_LOG("Try unaligned kernel");
-        p.alignment = GHOST_UNALIGNED;
-        kernel = ghost_tsmm_kernels[p];
-    }
-
-
-
-    if (!kernel) {
-        INFO_LOG("Could not find TSMM kernel with %d %d %d %d %d %d %d!",p.alignment,p.impl,p.dt,p.xcols,p.vcols,p.xstor,p.wstor);
-        GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
-        return GHOST_ERR_INVALID_ARG;
-    }
-
-    ret = kernel(x,v,w,alpha,beta);
-    
 #ifdef GHOST_HAVE_INSTR_TIMING
     ghost_gemm_perf_args tsmm_perfargs;
     tsmm_perfargs.n = p.xcols;
