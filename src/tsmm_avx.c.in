@@ -25,7 +25,7 @@
 #define complex_mul_asplit_bflip(are,aim,b,bflip) _mm256_addsub_pd(_mm256_mul_pd(are,b),_mm256_mul_pd(aim,bflip))
 #define complex_mul_aflip(a,aflip,b) _mm256_addsub_pd(_mm256_mul_pd(_mm256_shuffle_pd(b,b,0),a),_mm256_mul_pd(_mm256_shuffle_pd(b,b,0xF),aflip))
 
-ghost_error ghost_tsmm__a_avx_z_CFGK_CFGM_OUTERUNROLL_rm_cm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
+ghost_error ghost_tsmm__a_avx_z_CFGK_CFGM_OUTERUNROLL_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
 {
 #ifdef GHOST_BUILD_AVX
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
@@ -660,7 +660,7 @@ ghost_error ghost_tsmm4__a_avx_d_CFGK_CFGM_rm_cm(ghost_densemat *x, ghost_densem
 #GHOST_FUNC_END
 #endif
 
-ghost_error ghost_tsmm__a_avx_d_CFGK_CFGM_OUTERUNROLL_rm_cm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
+ghost_error ghost_tsmm__a_avx_d_CFGK_CFGM_OUTERUNROLL_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
 {
 #ifdef GHOST_BUILD_AVX
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
@@ -868,7 +868,7 @@ ghost_error ghost_tsmm1__a_avx_d_CFGK_CFGM_1_rm_cm(ghost_densemat *x, ghost_dens
 #endif
 }
 
-ghost_error ghost_tsmm__u_avx_d_CFGK_CFGM_1_rm_cm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
+ghost_error ghost_tsmm__u_avx_d_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
 {
 #ifdef GHOST_BUILD_AVX
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)

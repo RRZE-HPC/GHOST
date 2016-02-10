@@ -31,14 +31,14 @@ namespace std
         typedef std::size_t result_type;
         result_type operator()(argument_type const& a) const
         {
-            return ghost_hash(a.dt,a.xcols,ghost_hash(a.vcols,a.impl,ghost_hash(a.xstor,a.wstor,ghost_hash(a.alignment,a.unroll,0))));
+            return ghost_hash(a.dt,a.xcols,ghost_hash(a.vcols,a.impl,ghost_hash(a.xstor,a.alignment,a.unroll)));
         }
     };
 }
 
 static bool operator==(const ghost_tsmm_parameters& a, const ghost_tsmm_parameters& b)
 {
-    return a.dt == b.dt && a.xcols == b.xcols && a.vcols == b.vcols && a.impl == b.impl && a.xstor == b.xstor && a.wstor == b.wstor && a.alignment == b.alignment && a.unroll == b.unroll;
+    return a.dt == b.dt && a.xcols == b.xcols && a.vcols == b.vcols && a.impl == b.impl && a.xstor == b.xstor && a.alignment == b.alignment && a.unroll == b.unroll;
 }
 
 static unordered_map<ghost_tsmm_parameters, ghost_tsmm_kernel> ghost_tsmm_kernels;
@@ -90,18 +90,18 @@ ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce, int 
 } 
 
 
-ghost_error ghost_tsmm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
+ghost_error ghost_tsmm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w_in, void *alpha, void *beta)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error ret;
 
-    if ((ret = ghost_tsmm_valid(x,v,"N",w,"N",alpha,beta,GHOST_GEMM_NO_REDUCE,1)) != GHOST_SUCCESS) {
+    if ((ret = ghost_tsmm_valid(x,v,"N",w_in,"N",alpha,beta,GHOST_GEMM_NO_REDUCE,1)) != GHOST_SUCCESS) {
         INFO_LOG("TSMM cannot be applied. Checking whether GEMM is fine!");
-        if ((ret = ghost_gemm_valid(x,v,"N",w,"N",alpha,beta,GHOST_GEMM_NO_REDUCE,GHOST_GEMM_DEFAULT,1)) != GHOST_SUCCESS) {
+        if ((ret = ghost_gemm_valid(x,v,"N",w_in,"N",alpha,beta,GHOST_GEMM_NO_REDUCE,GHOST_GEMM_DEFAULT,1)) != GHOST_SUCCESS) {
             ERROR_LOG("GEMM cannot be applied!");
             return ret;
         } else {
-            return ghost_gemm(x,v,"N",w,"N",alpha,beta,GHOST_GEMM_NO_REDUCE,GHOST_GEMM_NOT_SPECIAL);
+            return ghost_gemm(x,v,"N",w_in,"N",alpha,beta,GHOST_GEMM_NO_REDUCE,GHOST_GEMM_NOT_SPECIAL);
         }
     }
     
@@ -118,14 +118,27 @@ ghost_error ghost_tsmm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, 
 #endif
     }
 
+    ghost_densemat *w;
     ghost_tsmm_parameters p;
     ghost_alignment opt_align;
     int opt_unroll;
     ghost_tsmm_kernel kernel = NULL;
+
+    if (w_in->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
+        w = w_in;
+    } else {
+        PERFWARNING_LOG("Need to transpose input densemat w!");
+        ghost_densemat_traits wtraits = w_in->traits;
+        wtraits.flags &= (ghost_densemat_flags)~GHOST_DENSEMAT_VIEW;
+        wtraits.storage = GHOST_DENSEMAT_COLMAJOR;
+        ghost_densemat_create(&w,w_in->context,wtraits);
+        ghost_densemat_init_densemat(w,w_in,0,0);
+    }
+
+
     
     // fix properties    
     p.xstor = x->traits.storage;
-    p.wstor = w->traits.storage;
 
     // possible implementations
     std::vector<ghost_implementation> try_impl;
@@ -212,9 +225,9 @@ end_of_loop:
 
     if (kernel) {
         if (optimal) {
-            INFO_LOG("Found kernel with highest specialization grade: dt=%d xcols=%d vcols=%d xstor=%d wstor=%d align=%d unroll=%d impl=%s",p.dt,p.xcols,p.vcols,p.xstor,p.wstor,p.alignment,p.unroll,ghost_implementation_string(p.impl));
+            INFO_LOG("Found kernel with highest specialization grade: dt=%d xcols=%d vcols=%d xstor=%d align=%d unroll=%d impl=%s",p.dt,p.xcols,p.vcols,p.xstor,p.alignment,p.unroll,ghost_implementation_string(p.impl));
         } else {
-            PERFWARNING_LOG("Using potentially non-optimal kernel: dt=%d xcols=%d vcols=%d xstor=%d wstor=%d align=%d unroll=%d impl=%s",p.dt,p.xcols,p.vcols,p.xstor,p.wstor,p.alignment,p.unroll,ghost_implementation_string(p.impl));
+            PERFWARNING_LOG("Using potentially non-optimal kernel: dt=%d xcols=%d vcols=%d xstor=%d align=%d unroll=%d impl=%s",p.dt,p.xcols,p.vcols,p.xstor,p.alignment,p.unroll,ghost_implementation_string(p.impl));
         }
 
         ret = kernel(x,v,w,alpha,beta);
@@ -241,6 +254,12 @@ end_of_loop:
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
 
+    if (w != w_in) {
+        ghost_densemat_init_densemat(w_in,w,0,0);
+        ghost_densemat_destroy(w);
+    }
+
+        
     return ret;
 }
 

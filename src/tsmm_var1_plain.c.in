@@ -12,7 +12,7 @@
 
 #GHOST_SUBST BLOCKSZ ${BLOCKDIM1}
 
-ghost_error ghost_tsmm__u_plain_d_BLOCKSZ_x_1_rm_cm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
+ghost_error ghost_tsmm__u_plain_d_BLOCKSZ_x_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
     ghost_error ret = GHOST_SUCCESS;
@@ -50,7 +50,7 @@ ghost_error ghost_tsmm__u_plain_d_BLOCKSZ_x_1_rm_cm(ghost_densemat *x, ghost_den
     return ret;
 }
 
-ghost_error ghost_tsmm__u_plain_d_x_BLOCKSZ_1_rm_cm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
+ghost_error ghost_tsmm__u_plain_d_x_BLOCKSZ_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
     ghost_error ret = GHOST_SUCCESS;
@@ -88,7 +88,7 @@ ghost_error ghost_tsmm__u_plain_d_x_BLOCKSZ_1_rm_cm(ghost_densemat *x, ghost_den
     return ret;
 }
 
-ghost_error ghost_tsmm__u_plain_z_BLOCKSZ_x_1_rm_cm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
+ghost_error ghost_tsmm__u_plain_z_BLOCKSZ_x_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
     ghost_error ret = GHOST_SUCCESS;
@@ -126,7 +126,7 @@ ghost_error ghost_tsmm__u_plain_z_BLOCKSZ_x_1_rm_cm(ghost_densemat *x, ghost_den
     return ret;
 }
 
-ghost_error ghost_tsmm__u_plain_z_x_BLOCKSZ_1_rm_cm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
+ghost_error ghost_tsmm__u_plain_z_x_BLOCKSZ_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
     ghost_error ret = GHOST_SUCCESS;
