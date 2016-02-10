@@ -109,8 +109,7 @@ while (<>) {
                 print "pars.vcols = ".$funcpars[4].";\n";
             }
             print "pars.unroll = ".$funcpars[5].";\n";
-            print "pars.xstor = ".$storages{$funcpars[6]}.";\n";
-            print "pars.wstor = ".$storages{$funcpars[7]}.";\n";
+            print "pars.wstor = ".$storages{$funcpars[6]}.";\n";
             print $funcname."_kernels[pars] = ".$funcname_full.";\n"; 
             if ($funcpars[3] ne "x" and $funcpars[4] ne "x" ) {
                 print "ghost_gemm_perf_args tsmttsm_perfargs;\n";
@@ -121,7 +120,7 @@ while (<>) {
                 print "} else {\n";
                 print "    tsmttsm_perfargs.k = v->traits.nrows;\n";
                 print "}\n";
-                print "tsmttsm_perfargs.dt = x->traits.datatype;\n";
+                print "tsmttsm_perfargs.dt = v->traits.datatype;\n";
                 print "if (tsmttsm_perfargs.dt == pars.dt) {\n";
                 print "tsmttsm_perfargs.betaiszero = ghost_iszero(beta,pars.dt);\n";
                 print "tsmttsm_perfargs.alphaisone = ghost_isone(alpha,pars.dt);\n";

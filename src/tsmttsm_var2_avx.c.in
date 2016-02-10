@@ -17,7 +17,7 @@
 #define complex_mulf(a,b) _mm256_addsub_ps(_mm256_mul_ps(_mm256_shuffle_ps(b,b,0xA0),a),_mm256_mul_ps(_mm256_shuffle_ps(b,b,0xF5),_mm256_shuffle_ps(a,a,0xB1)))
 #define complex_mulf_conj1(b,a) _mm256_addsub_ps(_mm256_mul_ps(_mm256_shuffle_ps(b,b,0xA0),a),_mm256_mul_ps(_mm256_xor_ps(_mm256_shuffle_ps(b,b,0xF5),_mm256_set1_ps(-0.f)),_mm256_shuffle_ps(a,a,0xB1)))
 
-ghost_error ghost_tsmttsm__a_avx_d_x_x_1_cm_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
+ghost_error ghost_tsmttsm__a_avx_d_x_x_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
 {
     UNUSED(conjv);
 #ifdef GHOST_BUILD_AVX

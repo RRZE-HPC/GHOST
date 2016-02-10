@@ -18,7 +18,6 @@ typedef struct
     int wcols;
     int vcols;
     ghost_implementation impl;
-    ghost_densemat_storage xstor;
     ghost_densemat_storage wstor;
     int unroll;
 } ghost_tsmttsm_parameters;

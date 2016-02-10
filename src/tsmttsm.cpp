@@ -33,14 +33,14 @@ namespace std
         typedef std::size_t result_type;
         result_type operator()(argument_type const& a) const
         {
-            return ghost_hash(a.dt,a.wcols,ghost_hash(a.vcols,a.impl,ghost_hash(a.xstor,a.wstor,ghost_hash(a.alignment,a.unroll,0))));
+            return ghost_hash(a.dt,a.wcols,ghost_hash(a.vcols,a.impl,ghost_hash(a.wstor,a.alignment,a.unroll)));
         }
     };
 }
 
 static bool operator==(const ghost_tsmttsm_parameters& a, const ghost_tsmttsm_parameters& b)
 {
-    return a.dt == b.dt && a.wcols == b.wcols && a.vcols == b.vcols && a.impl == b.impl && a.xstor == b.xstor && a.wstor == b.wstor && a.alignment == b.alignment && a.unroll == b.unroll;
+    return a.dt == b.dt && a.wcols == b.wcols && a.vcols == b.vcols && a.impl == b.impl && a.wstor == b.wstor && a.alignment == b.alignment && a.unroll == b.unroll;
 }
 
 static unordered_map<ghost_tsmttsm_parameters, ghost_tsmttsm_kernel> ghost_tsmttsm_kernels;
@@ -109,7 +109,7 @@ ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce, ghos
 }
 
 
-ghost_error ghost_tsmttsm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta,int reduce,int conjv,ghost_gemm_flags flags)
+ghost_error ghost_tsmttsm(ghost_densemat *x_in, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta,int reduce,int conjv,ghost_gemm_flags flags)
 {
     ghost_error ret;
 
@@ -120,13 +120,13 @@ ghost_error ghost_tsmttsm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *
         vtrans = "T";
     }
 
-    if ((ret = ghost_tsmttsm_valid(x,v,vtrans,w,"N",alpha,beta,reduce,flags,1)) != GHOST_SUCCESS) {
+    if ((ret = ghost_tsmttsm_valid(x_in,v,vtrans,w,"N",alpha,beta,reduce,flags,1)) != GHOST_SUCCESS) {
         INFO_LOG("TSMTTSM cannot be applied. Checking whether GEMM is fine!");
-        if ((ret = ghost_gemm_valid(x,v,vtrans,w,"N",alpha,beta,reduce,GHOST_GEMM_DEFAULT,1)) != GHOST_SUCCESS) {
+        if ((ret = ghost_gemm_valid(x_in,v,vtrans,w,"N",alpha,beta,reduce,GHOST_GEMM_DEFAULT,1)) != GHOST_SUCCESS) {
             ERROR_LOG("GEMM cannot be applied!");
             return ret;
         } else {
-            return ghost_gemm(x,v,vtrans,w,"N",alpha,beta,reduce,GHOST_GEMM_NOT_SPECIAL);
+            return ghost_gemm(x_in,v,vtrans,w,"N",alpha,beta,reduce,GHOST_GEMM_NOT_SPECIAL);
         }
     }
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
@@ -153,15 +153,25 @@ ghost_error ghost_tsmttsm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *
     }
 
 
-    
+    ghost_densemat *x = NULL;
     ghost_tsmttsm_parameters p;
     ghost_implementation opt_impl;
     ghost_alignment opt_align;
     int opt_unroll;
     ghost_tsmttsm_kernel kernel = NULL;
+
+    if (x_in->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
+        x = x_in;
+    } else {
+        PERFWARNING_LOG("Need to transpose output densemat x!");
+        ghost_densemat_traits xtraits = x_in->traits;
+        xtraits.flags &= (ghost_densemat_flags)~GHOST_DENSEMAT_VIEW;
+        xtraits.storage = GHOST_DENSEMAT_COLMAJOR;
+        ghost_densemat_create(&x,x_in->context,xtraits);
+        ghost_densemat_init_densemat(x,x_in,0,0);
+    }
     
     // fix properties    
-    p.xstor = x->traits.storage;
     p.wstor = w->traits.storage;
 
     // initial implementation
@@ -231,9 +241,9 @@ end_of_loop:
 
     if (kernel) {
         if (optimal) {
-            INFO_LOG("Found kernel with highest specialization grade: dt=%d wcols=%d vcols=%d xstor=%d wstor=%d align=%d unroll=%d impl=%s",p.dt,p.wcols,p.vcols,p.xstor,p.wstor,p.alignment,p.unroll,ghost_implementation_string(p.impl));
+            INFO_LOG("Found kernel with highest specialization grade: dt=%d wcols=%d vcols=%d wstor=%d align=%d unroll=%d impl=%s",p.dt,p.wcols,p.vcols,p.wstor,p.alignment,p.unroll,ghost_implementation_string(p.impl));
         } else {
-            PERFWARNING_LOG("Using potentially non-optimal kernel: dt=%d wcols=%d vcols=%d xstor=%d wstor=%d align=%d unroll=%d impl=%s",p.dt,p.wcols,p.vcols,p.xstor,p.wstor,p.alignment,p.unroll,ghost_implementation_string(p.impl));
+            PERFWARNING_LOG("Using potentially non-optimal kernel: dt=%d wcols=%d vcols=%d wstor=%d align=%d unroll=%d impl=%s",p.dt,p.wcols,p.vcols,p.wstor,p.alignment,p.unroll,ghost_implementation_string(p.impl));
         }
 
         ret = kernel(x,v,w,alpha,beta,conjv);
@@ -242,7 +252,9 @@ end_of_loop:
         }
     } else {
         PERFWARNING_LOG("Could not find TSMTTSM kernel. Fallback to GEMM");
-        ret = ghost_gemm(x,v,conjv?"C":"T",w,"N",alpha,beta,reduce,GHOST_GEMM_NOT_SPECIAL);
+        ghost_densemat_destroy(x);
+        x = x_in;
+        ret = ghost_gemm(x_in,v,conjv?"C":"T",w,"N",alpha,beta,reduce,GHOST_GEMM_NOT_SPECIAL);
     }
 
 
@@ -261,6 +273,11 @@ end_of_loop:
     ghost_timing_set_perfFunc(NULL,__ghost_functag,ghost_gemm_perf_GBs,(void *)&tsmttsm_perfargs,sizeof(tsmttsm_perfargs),"GB/s");
     ghost_timing_set_perfFunc(NULL,__ghost_functag,ghost_gemm_perf_GFs,(void *)&tsmttsm_perfargs,sizeof(tsmttsm_perfargs),"GF/s");
 #endif
+    
+    if (x != x_in) {
+        ghost_densemat_init_densemat(x_in,x,0,0);
+        ghost_densemat_destroy(x);
+    }
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
 

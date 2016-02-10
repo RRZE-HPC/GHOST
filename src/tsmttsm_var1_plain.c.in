@@ -10,7 +10,7 @@
 
 #GHOST_SUBST BLOCKSZ ${BLOCKDIM1}
 
-ghost_error ghost_tsmttsm__a_plain_d_x_BLOCKSZ_1_cm_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
+ghost_error ghost_tsmttsm__a_plain_d_x_BLOCKSZ_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
 {
     UNUSED(conjv);
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
@@ -96,93 +96,7 @@ out:
     return ret;
 }
 
-ghost_error ghost_tsmttsm__a_plain_d_x_BLOCKSZ_1_rm_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
-{
-    UNUSED(conjv);
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
-    ghost_error ret = GHOST_SUCCESS;
-    ghost_lidx K = w->traits.ncols;
-
-#ifdef GHOST_TSMTTSM_KAHAN
-    WARNING_LOG("Kahan summation not implemented for this kernel. Falling back to normal summation!");
-#endif
-    
-    int myrank=0;
-
-    if (v->context) {
-        GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
-    }
-
-    ghost_lidx n = v->traits.nrows;
-    
-    INFO_LOG("In TSMTTSM with fixed m BLOCKSZ and arbitrary k %d: %dx%d <- %dx%d * %dx%d",K,BLOCKSZ,K,BLOCKSZ,n,n,K);
-    
-    const double * const restrict vval = (const double *) v->val;
-    const double * const restrict wval = (const double *) w->val;
-    double * const restrict xval = (double *) x->val;
-
-    const ghost_lidx ldv = v->stride;
-    const ghost_lidx ldw = w->stride;
-    const ghost_lidx ldx = x->stride;
-    
-    const double dalpha = *(double *)alpha;
-    double dbeta = *(double *)beta;
-    
-    // make sure that the initial x only gets added up once
-    if (myrank) {
-        dbeta = 0.;
-    }
-
-    ghost_lidx i,j;
-    
-    ghost_lidx k;
-    for (j=0; j<BLOCKSZ; j++) {
-        for (k=0; k<K; k++) {
-            xval[k*ldx+j] = dbeta*xval[k*ldx+j];
-        }
-    }
-#pragma omp parallel private(j,k)
-    {
-        double *x_priv;
-        ghost_malloc((void **)&x_priv,BLOCKSZ*K*sizeof(double));
-        memset(x_priv,0,BLOCKSZ*K*sizeof(double));
-#pragma omp for schedule(runtime)
-        for (i=0; i<n; i++) {
-#pragma vector aligned
-#pragma ivdep
-#pragma simd
-            for (k=0; k<K; k++) {
-#pragma unroll_and_jam
-              for (j=0; j<BLOCKSZ; j++) {
-                    x_priv[j*K+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
-                }
-            }
-
-        }
-#pragma omp critical
-        {
-#pragma vector aligned
-#pragma ivdep
-#pragma simd
-            for (k=0; k<K; k++) {
-#pragma unroll_and_jam
-                for (j=0; j<BLOCKSZ; j++) {
-                    xval[k*ldx+j] += x_priv[j*K+k];
-                }
-            }
-        }
-        free(x_priv);
-    }
-    
-    goto out;
-err:
-
-out:
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
-    return ret;
-}
-
-ghost_error ghost_tsmttsm__a_plain_d_BLOCKSZ_x_1_cm_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
+ghost_error ghost_tsmttsm__a_plain_d_BLOCKSZ_x_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
 {
     UNUSED(conjv);
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
@@ -265,92 +179,7 @@ out:
     return ret;
 }
 
-ghost_error ghost_tsmttsm__a_plain_d_BLOCKSZ_x_1_rm_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
-{
-    UNUSED(conjv);
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
-    ghost_error ret = GHOST_SUCCESS;
-
-#ifdef GHOST_TSMTTSM_KAHAN
-    WARNING_LOG("Kahan summation not implemented for this kernel. Falling back to normal summation!");
-#endif
-    
-    int myrank=0;
-
-    if (v->context) {
-        GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
-    }
-
-    ghost_lidx n = v->traits.nrows;
-    ghost_lidx m = v->traits.ncols;
-    
-    INFO_LOG("In TSMTTSM with fixed k BLOCKSZ and arbitrary m %d: %dx%d <- %dx%d * %dx%d",m,m,BLOCKSZ,m,n,n,BLOCKSZ);
-    
-    double * restrict vval = (double *) v->val, * restrict wval = (double *) w->val, * restrict xval = (double *) x->val;
-    ghost_lidx ldv, ldw, ldx;
-
-    ldv = v->stride;
-    ldw = w->stride;
-    ldx = x->stride;
-    
-    double dalpha = *(double *)alpha;
-    double dbeta = *(double *)beta;
-    
-    // make sure that the initial x only gets added up once
-    if (myrank) {
-        dbeta = 0.;
-    }
-
-    ghost_lidx i,j;
-    
-    ghost_lidx k;
-    for (j=0; j<m; j++) {
-        for (k=0; k<BLOCKSZ; k++) {
-            xval[k*ldx+j] = dbeta*xval[k*ldx+j];
-        }
-    }
-#pragma omp parallel private(j,k)
-    {
-        double *x_priv;
-        ghost_malloc((void **)&x_priv,m*BLOCKSZ*sizeof(double));
-        memset(x_priv,0,m*BLOCKSZ*sizeof(double));
-#pragma omp for schedule(runtime)
-        for (i=0; i<n; i++) {
-#pragma vector aligned
-#pragma ivdep
-#pragma simd
-            for (k=0; k<BLOCKSZ; k++) {
-#pragma unroll_and_jam
-              for (j=0; j<m; j++) {
-                    x_priv[j*BLOCKSZ+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
-                }
-            }
-
-        }
-#pragma omp critical
-        {
-#pragma vector aligned
-#pragma ivdep
-#pragma simd
-            for (k=0; k<BLOCKSZ; k++) {
-#pragma unroll_and_jam
-                for (j=0; j<m; j++) {
-                    xval[k*ldx+j] += x_priv[j*BLOCKSZ+k];
-                }
-            }
-        }
-        free(x_priv);
-    }
-    
-    goto out;
-err:
-
-out:
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
-    return ret;
-}
-
-ghost_error ghost_tsmttsm__a_plain_z_x_BLOCKSZ_1_cm_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
+ghost_error ghost_tsmttsm__a_plain_z_x_BLOCKSZ_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
 {
     UNUSED(conjv);
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
@@ -456,7 +285,7 @@ out:
     return ret;
 }
 
-ghost_error ghost_tsmttsm__a_plain_z_BLOCKSZ_x_1_cm_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
+ghost_error ghost_tsmttsm__a_plain_z_BLOCKSZ_x_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
 {
     UNUSED(conjv);
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
@@ -553,115 +382,6 @@ ghost_error ghost_tsmttsm__a_plain_z_BLOCKSZ_x_1_cm_rm(ghost_densemat *x, ghost_
         free(x_priv);
     }
     
-    goto out;
-err:
-
-out:
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
-    return ret;
-}
-
-ghost_error ghost_tsmttsm__a_plain_z_BLOCKSZ_x_1_rm_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
-{
-    UNUSED(conjv);
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
-    ghost_error ret = GHOST_SUCCESS;
-
-#ifdef GHOST_TSMTTSM_KAHAN
-    WARNING_LOG("Kahan summation not implemented for this kernel. Falling back to normal summation!");
-#endif
-    
-    int myrank=0;
-
-    if (v->context) {
-        GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
-    }
-
-    ghost_lidx n = v->traits.nrows;
-    ghost_lidx m = v->traits.ncols;
-    
-    INFO_LOG("In TSMTTSM with fixed k BLOCKSZ and arbitrary m %d: %dx%d <- %dx%d * %dx%d",m,m,BLOCKSZ,m,n,n,BLOCKSZ);
-    
-    complex double * restrict vval = (complex double *) v->val, * restrict wval =  (complex double *)w->val, * restrict xval =  (complex double *)x->val;
-    ghost_lidx ldv, ldw, ldx;
-
-    ldv = v->stride;
-    ldw = w->stride;
-    ldx = x->stride;
-    
-    complex double dalpha = *(complex double *)alpha;
-    complex double dbeta = *(complex double *)beta;
-    
-    ghost_mpi_op mpiop_zadd;
-    ghost_mpi_datatype mpidt_z;
-    ghost_mpi_op_sum(&mpiop_zadd,(ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
-    ghost_mpi_datatype_get(&mpidt_z,(ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
-    
-    // make sure that the initial x only gets added up once
-    if (myrank) {
-        dbeta = 0.;
-    }
-
-    ghost_lidx i,j;
-    
-    ghost_lidx k;
-    for (j=0; j<m; j++) {
-        for (k=0; k<BLOCKSZ; k++) {
-            xval[j*ldx+k] = dbeta*xval[j*ldx+k];
-        }
-    }
-#pragma omp parallel private(j,k)
-    {
-        complex double *x_priv;
-        ghost_malloc((void **)&x_priv,m*BLOCKSZ*sizeof(complex double));
-        memset(x_priv,0,m*BLOCKSZ*sizeof(complex double));
-
-        if (conjv) {
-#pragma omp for schedule(runtime)
-            for (i=0; i<n; i++) {
-                for (j=0; j<m; j++) {
-#pragma simd
-#pragma vector always
-#pragma vector aligned
-#pragma ivdep
-#pragma unroll
-                    for (k=0; k<BLOCKSZ; k++) {
-                        x_priv[j*BLOCKSZ+k] += dalpha*conj(vval[i*ldv+j])*wval[i*ldw+k];
-                    }
-                }
-
-            }
-        } else {
-#pragma omp for schedule(runtime)
-            for (i=0; i<n; i++) {
-                for (j=0; j<m; j++) {
-#pragma simd
-#pragma vector always
-#pragma vector aligned
-#pragma ivdep
-#pragma unroll
-                    for (k=0; k<BLOCKSZ; k++) {
-                        x_priv[j*BLOCKSZ+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
-                    }
-                }
-
-            }
-        }
-
-#pragma omp critical
-        for (j=0; j<m; j++) {
-#pragma simd
-#pragma vector always
-#pragma vector aligned
-#pragma ivdep
-#pragma unroll
-            for (k=0; k<BLOCKSZ; k++) {
-                xval[j*ldx+k] += x_priv[j*BLOCKSZ+k];
-            }
-        }
-        free(x_priv);
-    }
-
     goto out;
 err:
 

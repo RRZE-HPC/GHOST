@@ -11,7 +11,7 @@
 #GHOST_SUBST CFGK ${BLOCKDIM1}
 #GHOST_SUBST CFGM ${BLOCKDIM2}
 
-ghost_error ghost_tsmttsm__a_sse_d_CFGK_CFGM_1_cm_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conmv)
+ghost_error ghost_tsmttsm__a_sse_d_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conmv)
 {
     UNUSED(conmv);
 #ifdef GHOST_BUILD_SSE

@@ -10,7 +10,7 @@
 #GHOST_SUBST CFGK ${BLOCKDIM1}
 #GHOST_SUBST CFGM ${BLOCKDIM2}
 
-ghost_error ghost_tsmttsm_kahan__a_plain_d_CFGK_CFGM_1_cm_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
+ghost_error ghost_tsmttsm_kahan__a_plain_d_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
 {
     UNUSED(conjv);
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
@@ -110,7 +110,7 @@ out:
     return ret;
 }
 
-ghost_error ghost_tsmttsm_kahan__a_plain_z_CFGK_CFGM_1_cm_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
+ghost_error ghost_tsmttsm_kahan__a_plain_z_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
 {
     UNUSED(conjv);
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
