@@ -9,6 +9,10 @@
 #include <string.h>
 #include "log.h"
 
+#ifndef GHOST_HAVE_ZOLTAN
+#define ZOLTAN_OK 0
+#endif
+
 /**
  * @brief Error return type.
  */
@@ -49,6 +53,10 @@ typedef enum {
      * @brief An error in a SCOTCH call occured.
      */
     GHOST_ERR_SCOTCH,
+    /**
+     * @brief An error in a Zoltan call occured.
+     */
+    GHOST_ERR_ZOLTAN,
     /**
      * @brief An unknown error occured.
      */
@@ -378,6 +386,33 @@ typedef enum {
             h((void *)&err);\
         }\
         __err = GHOST_ERR_COLPACK;\
+    }\
+}\
+
+#define ZOLTAN_CALL_RETURN(call) {\
+    ghost_error macroerr = GHOST_SUCCESS;\
+    ZOLTAN_CALL(call,macroerr);\
+    if (macroerr != GHOST_SUCCESS) {\
+        return macroerr;\
+    }\
+}\
+
+#define ZOLTAN_CALL_GOTO(call,label,__err) {\
+    ZOLTAN_CALL(call,__err);\
+    if (__err != GHOST_SUCCESS) {\
+        goto label;\
+    }\
+}\
+
+#define ZOLTAN_CALL(call,__err) {\
+    int err = call;\
+    if (err != ZOLTAN_OK) {\
+        ERROR_LOG("Zoltan Error: %d",err);\
+        ghost_errorhandler h = ghost_errorhandler_get(GHOST_ERR_ZOLTAN);\
+        if (h) {\
+            h((void *)&err);\
+        }\
+        __err = GHOST_ERR_ZOLTAN;\
     }\
 }\
 

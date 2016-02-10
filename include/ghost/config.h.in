@@ -18,6 +18,7 @@
 #cmakedefine GHOST_HAVE_OPENMP
 #cmakedefine GHOST_HAVE_SCOTCH
 #cmakedefine GHOST_HAVE_COLPACK
+#cmakedefine GHOST_HAVE_ZOLTAN
 #cmakedefine GHOST_HAVE_CUDA
 #cmakedefine GHOST_HAVE_OPENCL
 #cmakedefine GHOST_HAVE_MKL
