@@ -326,7 +326,7 @@ typedef enum {
      * @brief Re-order the matrix globally using Zoltan hypergraph partitioning.
      */
     GHOST_SPARSEMAT_ZOLTAN = 2048
-} ghost_sparsemat_flags_t;
+} ghost_sparsemat_flags;
 
 
 /**
