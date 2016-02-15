@@ -16,7 +16,7 @@ typedef struct
     ghost_gidx gncols;
     ghost_gidx entoffs;
     ghost_gidx rowoffs;
-    ghost_gidx uniquecols;
+    ghost_lidx uniquecols;
     ghost_gidx *colofvert;
 
 } zoltan_info;
@@ -33,6 +33,12 @@ static void get_vertex_list(void *data, int sizeGID, int sizeLID,
             ZOLTAN_ID_PTR globalID, ZOLTAN_ID_PTR localID,
                   int wgt_dim, float *obj_wgts, int *ierr)
 {
+    UNUSED(sizeGID);
+    UNUSED(sizeLID);
+    UNUSED(wgt_dim);
+    UNUSED(obj_wgts);
+    UNUSED(localID);
+
     zoltan_info *info = (zoltan_info *)data;
     *ierr = ZOLTAN_OK;
     ghost_lidx i;
@@ -59,6 +65,9 @@ static void get_hypergraph(void *data, int sizeGID, int num_edges, int num_nonze
                            int format, ZOLTAN_ID_PTR edgeGID, int *vtxPtr,
                            ZOLTAN_ID_PTR vtxGID, int *ierr)
 {
+    UNUSED(sizeGID);
+    UNUSED(format);
+    
     zoltan_info *info = (zoltan_info *)data;
     ghost_lidx i;
 
@@ -67,13 +76,10 @@ static void get_hypergraph(void *data, int sizeGID, int num_edges, int num_nonze
     for (i=0; i < num_edges; i++){
         edgeGID[i] = info->rowoffs + i;
         vtxPtr[i] = info->rpt[i];
-        WARNING_LOG("edgeGID[%d] = %d",i,edgeGID[i]);
-        WARNING_LOG("vtxPtr[%d] = %d",i,vtxPtr[i]);
     }
 
     for (i=0; i < num_nonzeroes; i++){
         vtxGID[i] = info->col[i];
-        WARNING_LOG("vtxGID[%d] = %d",i,vtxGID[i]);
     }
 
     return;
@@ -177,9 +183,8 @@ ghost_error ghost_sparsemat_perm_zoltan(ghost_sparsemat *mat, void *matrixSource
             info.uniquecols++;
         }
     }
-    ERROR_LOG("unique cols: %d",info.uniquecols);
     for (i=0; i<info.uniquecols; i++) {
-        INFO_LOG("colofvert[%d] = %d",i,info.colofvert[i]);
+    //    INFO_LOG("colofvert[%d] = %"PRGIDX,i,info.colofvert[i]);
     }
 
     ghost_gidx neigh_nnz; // nnz of previous rank
@@ -215,21 +220,10 @@ ghost_error ghost_sparsemat_perm_zoltan(ghost_sparsemat *mat, void *matrixSource
 
     /* General parameters */
 
-    ZOLTAN_CALL_GOTO(Zoltan_Set_Param(zz, "DEBUG_LEVEL", "0"),err,ret);
-    ZOLTAN_CALL_GOTO(Zoltan_Set_Param(zz, "LB_METHOD", "HYPERGRAPH"),err,ret);   /* partitioning method */
-    ZOLTAN_CALL_GOTO(Zoltan_Set_Param(zz, "HYPERGRAPH_PACKAGE", "PHG"),err,ret); /* version of method */
-    ZOLTAN_CALL_GOTO(Zoltan_Set_Param(zz, "NUM_GID_ENTRIES", "1"),err,ret);/* global IDs are integers */
-    ZOLTAN_CALL_GOTO(Zoltan_Set_Param(zz, "NUM_LID_ENTRIES", "1"),err,ret);/* local IDs are integers */
-    ZOLTAN_CALL_GOTO(Zoltan_Set_Param(zz, "RETURN_LISTS", "ALL"),err,ret); /* export AND import lists */
-    ZOLTAN_CALL_GOTO(Zoltan_Set_Param(zz, "OBJ_WEIGHT_DIM", "0"),err,ret); /* use Zoltan default vertex weights */
-    ZOLTAN_CALL_GOTO(Zoltan_Set_Param(zz, "EDGE_WEIGHT_DIM", "0"),err,ret);/* use Zoltan default hyperedge weights */
-
-    /* PHG parameters  - see the Zoltan User's Guide for many more
-    *   (The "REPARTITION" approach asks Zoltan to create a partitioning that is
-    *    better but is not too far from the current partitioning, rather than partitioning 
-    *    from scratch.  It may be faster but of lower quality that LB_APPROACH=PARTITION.)
-    */
-
+    ZOLTAN_CALL_GOTO(Zoltan_Set_Param(zz, "DEBUG_LEVEL", "1"),err,ret);
+    ZOLTAN_CALL_GOTO(Zoltan_Set_Param(zz, "LB_METHOD", "HYPERGRAPH"),err,ret);
+    ZOLTAN_CALL_GOTO(Zoltan_Set_Param(zz, "HYPERGRAPH_PACKAGE", "PHG"),err,ret);
+    ZOLTAN_CALL_GOTO(Zoltan_Set_Param(zz, "RETURN_LISTS", "PARTS"),err,ret);
     ZOLTAN_CALL_GOTO(Zoltan_Set_Param(zz, "LB_APPROACH", "PARTITION"),err,ret);
       
     ZOLTAN_CALL_GOTO(Zoltan_Set_Num_Obj_Fn(zz, get_number_of_vertices, &info),err,ret);
@@ -252,15 +246,48 @@ ghost_error ghost_sparsemat_perm_zoltan(ghost_sparsemat *mat, void *matrixSource
         &exportProcs,    /* Process to which I send each of the vertices */
         &exportToPart),err,ret);  /* Partition to which each vertex will belong */
 
-    INFO_LOG("numImport: %d",numImport);
-    for (i=0; i<numImport; i++) {
-        INFO_LOG("importGlobalGids[%d] = %d",i,importGlobalGids[i]);
-        INFO_LOG("importProcs[%d] = %d",i,importProcs[i]);
+    if (me == 0) {
+        printf("\n==================\n");
+        printf("At rank %d\n",me);
+        printf("==================\n\n");
+        printf("Number of vertices  : %d\n",info.uniquecols);
+        printf("Global vertex IDs   : ");
+        for (i=0; i<info.uniquecols; i++) {
+            printf("%"PRGIDX" ",info.colofvert[i]);
+        }
+        printf("\n");
+        printf("Number of lists     : %"PRGIDX"\n",info.nrows);
+        printf("Number of pins      : %"PRGIDX"\n",info.nnz);
+        printf("Global Hyperedge IDs: ");
+        for (i=0; i<info.nrows; i++) {
+            printf("%"PRGIDX" ",info.rowoffs+i);
+        }
+        printf("\n");
+        printf("HG vertex pointers  : ");
+        for (i=0; i<info.nrows; i++) {
+            printf("%"PRGIDX" ",info.rpt[i]);
+        }
+        printf("\n");
+        printf("HG vertex list      : ");
+        for (i=0; i<info.nnz; i++) {
+            printf("%"PRGIDX" ",info.col[i]);
+        }
+        printf("\n\n\n");
+
+        printf("Zoltan result\n");
+        printf("+++++++++++++\n\n");
+        printf("numExport: %d\n",numExport);
+        for (i=0; i<numExport; i++) {
+            printf("  %d export (GID -> Part): "ZOLTAN_ID_SPEC" -> %d\n",i,exportGlobalGids[i],exportToPart[i]);
+        }
     }
+
+    /*
     INFO_LOG("numExport: %d",numExport);
     for (i=0; i<numExport; i++) {
-        INFO_LOG("exportGlobalGids[%d] = %d",i,exportGlobalGids[i]);
+        INFO_LOG("%d export (GID -> Part): "ZOLTAN_ID_SPEC" -> %d",i,exportGlobalGids[i],exportToPart[i]);
     }
+    */
 
     goto out;
 err:
