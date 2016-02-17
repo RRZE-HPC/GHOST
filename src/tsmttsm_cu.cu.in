@@ -67,7 +67,7 @@ ghost_error ghost_tsmttsm__u_cuda_x_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_dens
               (const double *)w->cu_val, *(double *)alpha, *(double *)beta,
               v->traits.nrows, x->stride, v->stride, w->stride);
         } else {
-          ghost_tsmttsm_cu_cm_rm<float, CFGM, CFGK, 0>(
+          ghost_tsmttsm_cu_rm<float, CFGM, CFGK, 0>(
               (float *)x->cu_val, (const float *)v->cu_val,
               (const float *)w->cu_val, *(float *)alpha, *(float *)beta,
               v->traits.nrows, x->stride, v->stride, w->stride);
