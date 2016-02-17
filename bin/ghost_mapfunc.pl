@@ -126,7 +126,6 @@ while (<>) {
                 print "tsmttsm_perfargs.alphaisone = ghost_isone(alpha,pars.dt);\n";
                 print "ghost_timing_set_perfFunc(__ghost_functag,\"".$funcname_noprefix."\",ghost_gemm_perf_GBs,(void *)&tsmttsm_perfargs,sizeof(tsmttsm_perfargs),\"GB/s\");\n";
                 print "ghost_timing_set_perfFunc(__ghost_functag,\"".$funcname_noprefix."\",ghost_gemm_perf_GFs,(void *)&tsmttsm_perfargs,sizeof(tsmttsm_perfargs),\"GF/s\");\n";
-                print "}\n";
             }
             print "}\n";
         } elsif ($funcname eq "ghost_tsmm") {
@@ -158,12 +157,10 @@ while (<>) {
                 print "    tsmm_perfargs.m = v->traits.nrows;\n";
                 print "}\n";
                 print "tsmm_perfargs.dt = x->traits.datatype;\n";
-                print "if (tsmm_perfargs.dt == pars.dt) {\n";
-                print "tsmm_perfargs.betaiszero = ghost_iszero(beta,pars.dt);\n";
-                print "tsmm_perfargs.alphaisone = ghost_isone(alpha,pars.dt);\n";
+                print "tsmm_perfargs.betaiszero = ghost_iszero(beta,x->traits.datatype);\n";
+                print "tsmm_perfargs.alphaisone = ghost_isone(alpha,x->traits.datatype);\n";
                 print "ghost_timing_set_perfFunc(__ghost_functag,\"".$funcname_noprefix."\",ghost_gemm_perf_GBs,(void *)&tsmm_perfargs,sizeof(tsmm_perfargs),\"GB/s\");\n";
                 print "ghost_timing_set_perfFunc(__ghost_functag,\"".$funcname_noprefix."\",ghost_gemm_perf_GFs,(void *)&tsmm_perfargs,sizeof(tsmm_perfargs),\"GF/s\");\n";
-                print "}\n";
             }
             print "}\n";
         } elsif ($funcname eq "ghost_tsmm_inplace") {
@@ -193,12 +190,10 @@ while (<>) {
                 print "    tsmm_perfargs.m = x->traits.nrows;\n";
                 print "}\n";
                 print "tsmm_perfargs.dt = x->traits.datatype;\n";
-                print "if (tsmm_perfargs.dt == pars.dt) {\n";
-                print "tsmm_perfargs.betaiszero = ghost_iszero(beta,pars.dt);\n";
-                print "tsmm_perfargs.alphaisone = ghost_isone(alpha,pars.dt);\n";
+                print "tsmm_perfargs.betaiszero = ghost_iszero(beta,x->traits.datatype);\n";
+                print "tsmm_perfargs.alphaisone = ghost_isone(alpha,x->traits.datatype);\n";
                 print "ghost_timing_set_perfFunc(__ghost_functag,\"".$funcname_noprefix."\",ghost_gemm_perf_GBs,(void *)&tsmm_perfargs,sizeof(tsmm_perfargs),\"GB/s\");\n";
                 print "ghost_timing_set_perfFunc(__ghost_functag,\"".$funcname_noprefix."\",ghost_gemm_perf_GFs,(void *)&tsmm_perfargs,sizeof(tsmm_perfargs),\"GF/s\");\n";
-                print "}\n";
             }
             print "}\n";
         }

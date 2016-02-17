@@ -6,11 +6,13 @@
 #include "ghost/tsmttsm.h"
 #include "ghost/tsmttsm_var2_plain_gen.h"
 #include "ghost/tsmttsm_var2_avx_gen.h"
+#include "ghost/tsmttsm_var2_cu_gen.h"
 #include "ghost/tsmttsm_plain_gen.h"
 #include "ghost/tsmttsm_var1_plain_gen.h"
 #include "ghost/tsmttsm_avx2_gen.h"
 #include "ghost/tsmttsm_avx_gen.h"
 #include "ghost/tsmttsm_sse_gen.h"
+#include "ghost/tsmttsm_cu_gen.h"
 #include "ghost/tsmttsm_kahan_var2_plain_gen.h"
 #include "ghost/tsmttsm_kahan_plain_gen.h"
 #include "ghost/timing.h"
@@ -67,13 +69,13 @@ ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce, ghos
             ERROR_LOG("x must be stored col-major!");
         }
         return GHOST_ERR_INVALID_ARG;
-    }*/
+    }
     if (x->traits.location != GHOST_LOCATION_HOST || v->traits.location != GHOST_LOCATION_HOST || w->traits.location != GHOST_LOCATION_HOST) {
         if (printerror) {
             ERROR_LOG("TSMTTSM only implemented for host densemats!");
         }
         return GHOST_ERR_INVALID_ARG;
-    }
+    }*/
 
     if (v->traits.datatype != w->traits.datatype || v->traits.datatype != x->traits.datatype) {
         if (printerror) {
@@ -148,6 +150,10 @@ ghost_error ghost_tsmttsm(ghost_densemat *x_in, ghost_densemat *v, ghost_densema
 #include "tsmttsm_avx.def"
 #include "tsmttsm_var2_avx.def"
 #include "tsmttsm_sse.def"
+#ifdef GHOST_HAVE_CUDA
+#include "tsmttsm_cu.def"
+#include "tsmttsm_var2_cu.def"
+#endif
         }
         kernels = ghost_tsmttsm_kernels;
     }
@@ -196,6 +202,13 @@ ghost_error ghost_tsmttsm(ghost_densemat *x_in, ghost_densemat *v, ghost_densema
     } else {
         opt_align = GHOST_UNALIGNED;
     }
+
+#ifdef GHOST_HAVE_CUDA
+    if (x->traits.location & GHOST_LOCATION_DEVICE) {
+        opt_impl = GHOST_IMPLEMENTATION_CUDA;
+        opt_align = GHOST_UNALIGNED;
+    }
+#endif
     
     ghost_lidx try_wcols[2] = {w->traits.ncols,-1};
     ghost_lidx try_vcols[2] = {v->traits.ncols,-1};
