@@ -12,14 +12,15 @@
 
 namespace {
 
-void* temp_storage = NULL;
+void *temp_storage = NULL;
 size_t temp_storage_bytes = 0;
 
 namespace GENV3 {
-template <int M, int N>
-static __global__ void deviceReduce(double* blockResults, double* result,
-                                    double alpha, double beta, int blockCount,
-                                    size_t lda, size_t ldb, size_t ldc) {
+
+template <typename T, int M, int N>
+__global__ void deviceReduce(T *blockResults, T *result, T alpha, T beta,
+                             int blockCount, size_t lda, size_t ldb,
+                             size_t ldc) {
   size_t tidx = blockDim.x * blockIdx.x + threadIdx.x;
 
   if (tidx >= M * N) return;
@@ -27,20 +28,20 @@ static __global__ void deviceReduce(double* blockResults, double* result,
   int n = tidx / M;
   int m = tidx % M;
 
-  double sum = 0.0;
+  T sum = 0.0;
   for (int i = 0; i < blockCount; i++) {
     sum += blockResults[i * N * ldc + n * ldc + m];
   }
 
   result[n * ldc + m] = result[n * ldc + m] * beta + sum * alpha;
 }
-template <int M, int N, int BLOCKSIZE, bool TRANSPOSE>
-static __global__ void blockProductKernel(const double* A, const double* B,
-                                          double* out, size_t K, size_t lda,
-                                          size_t ldb, size_t ldc) {
+
+template <typename T, int M, int N, int BLOCKSIZE, bool TRANSPOSE>
+__global__ void blockProductKernel(const T *A, const T *B, T *out, size_t K,
+                                   size_t lda, size_t ldb, size_t ldc) {
   size_t tidx = blockDim.x * blockIdx.x + threadIdx.x;
 
-  __shared__ double blockStorage[BLOCKSIZE];
+  __shared__ T blockStorage[BLOCKSIZE];
 
   blockStorage[threadIdx.x] = 0.0;
 
@@ -48,7 +49,7 @@ static __global__ void blockProductKernel(const double* A, const double* B,
 
   if (blockDim.x * gridDim.x / M == tidx / M) return;
 
-  double threadSum[N];
+  T threadSum[N];
   for (int n = 0; n < N; n++) {
     threadSum[n] = 0;
   }
@@ -65,7 +66,7 @@ static __global__ void blockProductKernel(const double* A, const double* B,
     __syncthreads();
 
     if (threadIdx.x < M) {
-      double blockSum = 0.0;
+      T blockSum = 0.0;
       for (int i = threadIdx.x; i < BLOCKSIZE; i += M) {
         blockSum += blockStorage[i];
       }
@@ -81,9 +82,9 @@ static __global__ void blockProductKernel(const double* A, const double* B,
 }
 
 template <typename T, int M, int N, int conjv>
-static void ghost_tsmttsm_cu_cm_rm(T* const __restrict__ C,
-                                   const T* const __restrict__ A,
-                                   const T* const __restrict__ B, const T alpha,
+static void ghost_tsmttsm_cu_cm_rm(T *const __restrict__ C,
+                                   const T *const __restrict__ A,
+                                   const T *const __restrict__ B, const T alpha,
                                    const T beta, ghost_lidx_t K,
                                    ghost_lidx_t ldc, ghost_lidx_t lda,
                                    ghost_lidx_t ldb) {
@@ -94,7 +95,7 @@ static void ghost_tsmttsm_cu_cm_rm(T* const __restrict__ C,
   cudaGetDeviceProperties(&prop, deviceUsed);
   int numBlocks;
   cudaOccupancyMaxActiveBlocksPerMultiprocessor(
-      &numBlocks, GENV3::blockProductKernel<N, M, threadsPerBlock, true>,
+      &numBlocks, GENV3::blockProductKernel<T, N, M, threadsPerBlock, true>,
       threadsPerBlock, 0);
   int blockCount = prop.multiProcessorCount * numBlocks;
 
@@ -104,16 +105,16 @@ static void ghost_tsmttsm_cu_cm_rm(T* const __restrict__ C,
     if (temp_storage == NULL) temp_storage_bytes = 0;
   }
   if (N > M) {
-    GENV3::blockProductKernel<N, M, threadsPerBlock,
+    GENV3::blockProductKernel<T, N, M, threadsPerBlock,
                               true><<<blockCount, threadsPerBlock>>>(
-        B, A, (T*)temp_storage, K, ldb, lda, ldc);
+        B, A, (T *)temp_storage, K, ldb, lda, ldc);
   } else {
-    GENV3::blockProductKernel<M, N, threadsPerBlock,
+    GENV3::blockProductKernel<T, M, N, threadsPerBlock,
                               false><<<blockCount, threadsPerBlock>>>(
-        A, B, (T*)temp_storage, K, lda, ldb, ldc);
+        A, B, (T *)temp_storage, K, lda, ldb, ldc);
   }
-  GENV3::deviceReduce<M, N><<<M * N / 256 + 1, 256>>>(
-      (T*)temp_storage, C, alpha, beta, blockCount, lda, ldb, ldc);
+  GENV3::deviceReduce<T, M, N><<<M * N / 256 + 1, 256>>>(
+      (T *)temp_storage, C, alpha, beta, blockCount, lda, ldb, ldc);
   cudaDeviceSynchronize();
 }
 

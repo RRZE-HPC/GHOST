@@ -10,8 +10,7 @@
 #GHOST_SUBST CFGK ${BLOCKDIM1}
 #GHOST_SUBST CFGM ${BLOCKDIM2}
 
-
-ghost_error_t ghost_tsmttsm__u_cuda_x_CFGK_CFGM_1_cm_rm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conjv)
+ghost_error_t ghost_tsmttsm__u_cuda_x_CFGK_CFGM_1_cm_rm(ghost_densemat_t *x, ghost_densemat_t *v,ghost_densemat_t *w,void *alpha, void *beta,int conjv)
 {
   GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH | GHOST_FUNCTYPE_KERNEL);
   ghost_error_t ret = GHOST_SUCCESS;
@@ -63,18 +62,15 @@ ghost_error_t ghost_tsmttsm__u_cuda_x_CFGK_CFGM_1_cm_rm(ghost_densemat_t *x, gho
         ret = GHOST_ERR_NOT_IMPLEMENTED;
       } else {
         if (x->traits.datatype & GHOST_DT_DOUBLE) {
-
           ghost_tsmttsm_cu_cm_rm<double, CFGM, CFGK, 0>(
               (double *)x->cu_val, (const double *)v->cu_val,
               (const double *)w->cu_val, *(double *)alpha, *(double *)beta,
               v->traits.nrows, x->stride, v->stride, w->stride);
         } else {
-          /* ghost_tsmttsm_cu_cm_rm<float, CFGM, CFGK, 0>(
+          ghost_tsmttsm_cu_cm_rm<float, CFGM, CFGK, 0>(
               (float *)x->cu_val, (const float *)v->cu_val,
               (const float *)w->cu_val, *(float *)alpha, *(float *)beta,
               v->traits.nrows, x->stride, v->stride, w->stride);
-              }*/
-          ret = GHOST_ERR_NOT_IMPLEMENTED;
         }
       }
     }
@@ -83,5 +79,3 @@ ghost_error_t ghost_tsmttsm__u_cuda_x_CFGK_CFGM_1_cm_rm(ghost_densemat_t *x, gho
   CUDA_CALL_RETURN(cudaGetLastError());
   return ret;
 }
-
-
