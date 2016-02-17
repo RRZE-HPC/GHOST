@@ -126,6 +126,7 @@ while (<>) {
                 print "tsmttsm_perfargs.alphaisone = ghost_isone(alpha,pars.dt);\n";
                 print "ghost_timing_set_perfFunc(__ghost_functag,\"".$funcname_noprefix."\",ghost_gemm_perf_GBs,(void *)&tsmttsm_perfargs,sizeof(tsmttsm_perfargs),\"GB/s\");\n";
                 print "ghost_timing_set_perfFunc(__ghost_functag,\"".$funcname_noprefix."\",ghost_gemm_perf_GFs,(void *)&tsmttsm_perfargs,sizeof(tsmttsm_perfargs),\"GF/s\");\n";
+                print "}\n";
             }
             print "}\n";
         } elsif ($funcname eq "ghost_tsmm") {

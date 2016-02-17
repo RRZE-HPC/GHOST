@@ -20,6 +20,7 @@
 #include "ghost/constants.h"
 
 #include <unordered_map>
+#include <vector>
 
 typedef ghost_tsmttsm_parameters ghost_tsmttsm_kahan_parameters;
 typedef ghost_tsmttsm_parameters ghost_tsmttsm_kahan_parameters;
@@ -161,7 +162,6 @@ ghost_error ghost_tsmttsm(ghost_densemat *x_in, ghost_densemat *v, ghost_densema
 
     ghost_densemat *x = NULL;
     ghost_tsmttsm_parameters p;
-    ghost_implementation opt_impl;
     ghost_alignment opt_align;
     int opt_unroll;
     ghost_tsmttsm_kernel kernel = NULL;
@@ -180,19 +180,34 @@ ghost_error ghost_tsmttsm(ghost_densemat *x_in, ghost_densemat *v, ghost_densema
     // fix properties    
     p.wstor = w->traits.storage;
 
-    // initial implementation
-#ifdef GHOST_BUILD_MIC
-    opt_impl = GHOST_IMPLEMENTATION_MIC;
-#elif defined(GHOST_BUILD_AVX2)
-    opt_impl = GHOST_IMPLEMENTATION_AVX2;
-#elif defined(GHOST_BUILD_AVX)
-    opt_impl = GHOST_IMPLEMENTATION_AVX;
-#elif defined(GHOST_BUILD_SSE)
-    opt_impl = GHOST_IMPLEMENTATION_SSE;
-#else
-    opt_impl = GHOST_IMPLEMENTATION_PLAIN;
+    // possible implementations
+    std::vector<ghost_implementation> try_impl;
+#ifdef GHOST_HAVE_CUDA
+    if (x->traits.location & GHOST_LOCATION_DEVICE) {
+        try_impl.push_back(GHOST_IMPLEMENTATION_CUDA);
+    } else {
 #endif
-    
+#ifdef GHOST_BUILD_MIC
+        try_impl.push_back(GHOST_IMPLEMENTATION_MIC);
+        try_impl.push_back(GHOST_IMPLEMENTATION_PLAIN);
+#elif defined(GHOST_BUILD_AVX2)
+        try_impl.push_back(GHOST_IMPLEMENTATION_AVX2);
+        try_impl.push_back(GHOST_IMPLEMENTATION_AVX);
+        try_impl.push_back(GHOST_IMPLEMENTATION_SSE);
+        try_impl.push_back(GHOST_IMPLEMENTATION_PLAIN);
+#elif defined(GHOST_BUILD_AVX)
+        try_impl.push_back(GHOST_IMPLEMENTATION_AVX);
+        try_impl.push_back(GHOST_IMPLEMENTATION_SSE);
+        try_impl.push_back(GHOST_IMPLEMENTATION_PLAIN);
+#elif defined(GHOST_BUILD_SSE)
+        try_impl.push_back(GHOST_IMPLEMENTATION_SSE);
+        try_impl.push_back(GHOST_IMPLEMENTATION_PLAIN);
+#else
+        try_impl.push_back(GHOST_IMPLEMENTATION_PLAIN);
+#endif
+#ifdef GHOST_HAVE_CUDA
+    }
+#endif
     
     // alignment of large input data
     // the alignment of the result array does not matter because we can easily re-allocate it accordingly
@@ -203,13 +218,6 @@ ghost_error ghost_tsmttsm(ghost_densemat *x_in, ghost_densemat *v, ghost_densema
         opt_align = GHOST_UNALIGNED;
     }
 
-#ifdef GHOST_HAVE_CUDA
-    if (x->traits.location & GHOST_LOCATION_DEVICE) {
-        opt_impl = GHOST_IMPLEMENTATION_CUDA;
-        opt_align = GHOST_UNALIGNED;
-    }
-#endif
-    
     ghost_lidx try_wcols[2] = {w->traits.ncols,-1};
     ghost_lidx try_vcols[2] = {v->traits.ncols,-1};
     ghost_datatype try_dt[2] = {v->traits.datatype,GHOST_DT_ANY};
@@ -220,6 +228,13 @@ ghost_error ghost_tsmttsm(ghost_densemat *x_in, ghost_densemat *v, ghost_densema
         opt_unroll = GHOST_MAX_ROWS_UNROLL;
     }
     
+#ifdef GHOST_HAVE_CUDA
+    if (x->traits.location & GHOST_LOCATION_DEVICE) {
+        try_dt[0] = GHOST_DT_ANY;
+        opt_align = GHOST_UNALIGNED;
+    }
+#endif
+    
     int n_wcols = sizeof(try_wcols)/sizeof(ghost_lidx); 
     int n_vcols = sizeof(try_vcols)/sizeof(ghost_lidx); 
     int n_dt = sizeof(try_dt)/sizeof(ghost_datatype); 
@@ -228,15 +243,16 @@ ghost_error ghost_tsmttsm(ghost_densemat *x_in, ghost_densemat *v, ghost_densema
 
     for (pos_wcols = 0; pos_wcols < n_wcols; pos_wcols++) {  
         for (pos_vcols = 0; pos_vcols < n_vcols; pos_vcols++) {  
-            for (p.impl = opt_impl; (int)p.impl >= GHOST_IMPLEMENTATION_PLAIN; p.impl  = (ghost_implementation)((int)p.impl-1)) {
+            for (std::vector<ghost_implementation>::iterator impl = try_impl.begin(); impl != try_impl.end(); impl++) {
                 for (p.alignment = opt_align; (int)p.alignment >= GHOST_UNALIGNED; p.alignment = (ghost_alignment)((int)p.alignment-1)) {
                     for (p.unroll = opt_unroll; p.unroll > 0; p.unroll /= 2) {
                         for (pos_dt = 0; pos_dt < n_dt; pos_dt++) {
                             p.wcols = try_wcols[pos_wcols];
                             p.vcols = try_vcols[pos_vcols];
                             p.dt = try_dt[pos_dt];
-                            INFO_LOG("Try wcols=%s, vcols=%s, impl=%s, %s, unroll=%d, dt=%s",
-                                    p.wcols==-1?"arbitrary":to_string((long long)p.wcols).c_str(),p.vcols==-1?"arbitrary":to_string((long long)p.vcols).c_str(),
+                            p.impl = *impl;
+                            INFO_LOG("Try wstor=%s, wcols=%s, vcols=%s, impl=%s, %s, unroll=%d, dt=%s",
+                                    ghost_densemat_storage_string(w), p.wcols==-1?"arbitrary":to_string((long long)p.wcols).c_str(),p.vcols==-1?"arbitrary":to_string((long long)p.vcols).c_str(),
                                     ghost_implementation_string(p.impl),p.alignment==GHOST_UNALIGNED?"unaligned":"aligned",p.unroll,ghost_datatype_string(p.dt));
                             kernel = kernels[p];
                             if (kernel) {

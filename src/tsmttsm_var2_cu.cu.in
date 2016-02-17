@@ -23,17 +23,17 @@
 
 #define THREADSPERBLOCK 512
 
-template<typename T> __global__ static void ghost_tsmttsm_cu_cm_rm_fallback(T * const __restrict__ x, const T * const __restrict__ v, const T * const __restrict__ w, const T alpha, const T beta, ghost_lidx_t nrows, ghost_lidx_t stridex, ghost_lidx_t stridev, ghost_lidx_t stridew, const int M, const int K, const int conjv)
+template<typename T> __global__ static void ghost_tsmttsm_cu_rm_fallback(T * const __restrict__ x, const T * const __restrict__ v, const T * const __restrict__ w, const T alpha, const T beta, ghost_lidx nrows, ghost_lidx stridex, ghost_lidx stridev, ghost_lidx stridew, const int M, const int K, const int conjv)
 {
 
     // TODO
 
 }
 
-ghost_error_t ghost_tsmttsm__u_cuda_x_x_x_1_cm_rm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conjv) 
+ghost_error ghost_tsmttsm__u_cuda_x_x_x_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv) 
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL); 
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
     dim3 block, grid;
     grid.x = (int)ceil((double)x->traits.nrows/THREADSPERBLOCK);
     grid.y = 1;
@@ -44,18 +44,18 @@ ghost_error_t ghost_tsmttsm__u_cuda_x_x_x_1_cm_rm(ghost_densemat_t *x, ghost_den
 
     if (x->traits.datatype & GHOST_DT_COMPLEX) {
         if (x->traits.datatype & GHOST_DT_DOUBLE) {
-            ghost_tsmttsm_cu_cm_rm_fallback<cuDoubleComplex><<< grid,block >>>(
+            ghost_tsmttsm_cu_rm_fallback<cuDoubleComplex><<< grid,block >>>(
                     (cuDoubleComplex *)x->cu_val,(const cuDoubleComplex *)v->cu_val,(const cuDoubleComplex *)w->cu_val,*(cuDoubleComplex *)alpha,*(cuDoubleComplex *)beta,x->traits.nrows,x->stride,v->stride,w->stride,v->traits.ncols,x->traits.ncols,conjv);
         } else {
-            ghost_tsmttsm_cu_cm_rm_fallback<cuFloatComplex><<< grid,block >>>(
+            ghost_tsmttsm_cu_rm_fallback<cuFloatComplex><<< grid,block >>>(
                     (cuFloatComplex *)x->cu_val,(const cuFloatComplex *)v->cu_val,(const cuFloatComplex *)w->cu_val,*(cuFloatComplex *)alpha,*(cuFloatComplex *)beta,x->traits.nrows,x->stride,v->stride,w->stride,v->traits.ncols,x->traits.ncols,conjv);
         }
     } else {
         if (x->traits.datatype & GHOST_DT_DOUBLE) {
-            ghost_tsmttsm_cu_cm_rm_fallback<double><<< grid,block >>>(
+            ghost_tsmttsm_cu_rm_fallback<double><<< grid,block >>>(
                    (double *)x->cu_val,(const double *)v->cu_val,(const double *)w->cu_val,*(double *)alpha,*(double *)beta,x->traits.nrows,x->stride,v->stride,w->stride,v->traits.ncols,x->traits.ncols,conjv);
         } else {
-            ghost_tsmttsm_cu_cm_rm_fallback<float><<< grid,block >>>(
+            ghost_tsmttsm_cu_rm_fallback<float><<< grid,block >>>(
                    (float *)x->cu_val,(const float *)v->cu_val,(const float *)w->cu_val,*(float *)alpha,*(float *)beta,x->traits.nrows,x->stride,v->stride,w->stride,v->traits.ncols,x->traits.ncols,conjv);
         }
     }

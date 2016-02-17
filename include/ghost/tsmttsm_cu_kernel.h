@@ -81,12 +81,12 @@ static __global__ void blockProductKernel(const double* A, const double* B,
 }
 
 template <typename T, int M, int N, int conjv>
-static void ghost_tsmttsm_cu_cm_rm(T* const __restrict__ C,
+static void ghost_tsmttsm_cu_rm(T* const __restrict__ C,
                                    const T* const __restrict__ A,
                                    const T* const __restrict__ B, const T alpha,
-                                   const T beta, ghost_lidx_t K,
-                                   ghost_lidx_t ldc, ghost_lidx_t lda,
-                                   ghost_lidx_t ldb) {
+                                   const T beta, ghost_lidx K,
+                                   ghost_lidx ldc, ghost_lidx lda,
+                                   ghost_lidx ldb) {
   const int threadsPerBlock = 128;
   int deviceUsed;
   cudaGetDevice(&deviceUsed);
