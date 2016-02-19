@@ -398,20 +398,20 @@ struct ghost_densemat
     ghost_error (*entry) (ghost_densemat *vec, void *entry, ghost_lidx i, 
             ghost_lidx j);
     /**
-     * Documented in ghost_densemat_fill_func()
+     * Documented in ghost_densemat_init_func()
      */
     ghost_error (*fromFunc) (ghost_densemat *vec, ghost_densemat_srcfunc, void *arg);
     /**
-     * Documented in ghost_densemat_fill_densemat()
+     * Documented in ghost_densemat_init_densemat()
      */
     ghost_error (*fromVec) (ghost_densemat *vec, ghost_densemat *src, 
             ghost_lidx roffs, ghost_lidx coffs);
     /**
-     * Documented in ghost_densemat_fill_file)
+     * Documented in ghost_densemat_init_file)
      */
     ghost_error (*fromFile) (ghost_densemat *vec, char *filename, bool singleFile);
     /**
-     * Documented in ghost_densemat_fill_rand()
+     * Documented in ghost_densemat_init_rand()
      */
     ghost_error (*fromRand) (ghost_densemat *vec);
     /**
@@ -435,7 +435,7 @@ struct ghost_densemat
      */
     ghost_error (*reduce) (ghost_densemat *vec, ghost_mpi_comm comm, int dest);
     /**
-     * Documented in ghost_densemat_fill_val()
+     * Documented in ghost_densemat_init_val()
      */
     ghost_error (*fromScalar) (ghost_densemat *vec, void *val);
     /**
