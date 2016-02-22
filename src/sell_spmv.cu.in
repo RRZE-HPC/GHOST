@@ -675,7 +675,7 @@ extern "C" ghost_error ghost_cu_sell_spmv_selector(ghost_densemat *lhs, ghost_sp
 {
     ghost_error ret;
 
-    if (mat->traits.C == 1) {
+    if (mat->traits.C == 1 && rhs->traits.ncols == 1) {
         INFO_LOG("Calling CUBLAS CRS SpMV for SELL-1 matrix");
         return ghost_cu_sell1_spmv_selector(lhs,mat,rhs,traits);
     } 
