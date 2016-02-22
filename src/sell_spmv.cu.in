@@ -57,8 +57,8 @@ ${SELL_CU_SPMV_SWITCHCASCADE}\
 if (do_fallback) {\
     if (rhs->stride > 1 && rhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {\
         PERFWARNING_LOG("Executing row-major fallback kernel with grid %dx%d "\
-                "and block %dx%d",grid.x,grid.y,block.x,block.y);\
-        SELL_kernel_rm_fallback_tmpl<dt1,dt2,dt2_b><<<grid,block>>>(\
+                "and block %dx%d (nrows in block %d), smem %d",grid.x,grid.y,block.x,block.y,nrowsinblock,smem);\
+        SELL_kernel_rm_fallback_tmpl<dt1,dt2,dt2_b><<<grid,block,smem>>>(\
                 (dt2 *)lhsval,(int)(lhs->stride),(dt2 *)rhsval,\
                 (int)rhs->stride,traits.flags,mat->nrows,nrowsinblock,SELL(mat)->cumat->rowLen,\
                 SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,\
@@ -154,8 +154,11 @@ __global__ void SELL_kernel_rm_fallback_tmpl(v_t * const __restrict__ lhs, const
                 }
             } else {
                 dot1 = ghost_1dPartialBlockReduceSum(dot1,nrowsinblock/warpSize);
+                __syncthreads();
                 dot2 = ghost_1dPartialBlockReduceSum(dot2,nrowsinblock/warpSize);
+                __syncthreads();
                 dot3 = ghost_1dPartialBlockReduceSum(dot3,nrowsinblock/warpSize);
+                __syncthreads();
 
                 if ((threadIdx.x<blockDim.x/warpSize) && threadIdx.x%(nrowsinblock/warpSize) == 0) {
                     col=threadIdx.x/(blockDim.x/(warpSize*ncolsinblock));
