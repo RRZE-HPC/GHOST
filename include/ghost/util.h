@@ -48,6 +48,8 @@
 
 #define IS_ALIGNED(PTR,BYTES) (((uintptr_t)(const void *)(PTR)) % (BYTES) == 0)
 
+#define ISPOWEROFTWO(x) (((x) & ((x)-1)) == 0)
+
 /**
  * @brief Avoid unused variable/function warnings.
  */

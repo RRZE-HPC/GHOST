@@ -25,7 +25,7 @@
 #define complex_mul_asplit_bflip(are,aim,b,bflip) _mm256_addsub_pd(_mm256_mul_pd(are,b),_mm256_mul_pd(aim,bflip))
 #define complex_mul_aflip(a,aflip,b) _mm256_addsub_pd(_mm256_mul_pd(_mm256_shuffle_pd(b,b,0),a),_mm256_mul_pd(_mm256_shuffle_pd(b,b,0xF),aflip))
 
-ghost_error ghost_tsmm__a_avx_z_CFGK_CFGM_OUTERUNROLL_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
+ghost_error ghost_tsmm__a_avx_z_CFGK_CFGM_OUTERUNROLL_4_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
 {
 #ifdef GHOST_BUILD_AVX
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
@@ -660,7 +660,7 @@ ghost_error ghost_tsmm4__a_avx_d_CFGK_CFGM_rm_cm(ghost_densemat *x, ghost_densem
 #GHOST_FUNC_END
 #endif
 
-ghost_error ghost_tsmm__a_avx_d_CFGK_CFGM_OUTERUNROLL_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
+ghost_error ghost_tsmm__a_avx_d_CFGK_CFGM_OUTERUNROLL_4_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
 {
 #ifdef GHOST_BUILD_AVX
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
@@ -731,25 +731,6 @@ ghost_error ghost_tsmm__a_avx_d_CFGK_CFGM_OUTERUNROLL_rm(ghost_densemat *x, ghos
         INFO_LOG("Fast case: beta=0");
 #pragma omp parallel private(k,m)
         {
-#if 0
-            #GHOST_UNROLL#__m256d tmp@;#2
-            __m256d vrow0,vrow1,sum1,sum2,res;
-            __m128d sumh1,sumh2,result1,result2;
-#pragma omp for schedule(runtime)
-            for (i=0; i<n-1; i+=2) {
-                for (k=0; k<=CFGK-4; k+=4) {
-                    #GHOST_UNROLL#tmp@ = _mm256_setzero_pd();#2
-
-#pragma unroll(CFGM)
-                    for (m=0; m<CFGM; m++) {
-                        #GHOST_UNROLL#vrow@ = _mm256_broadcast_sd(&vval[(i+@)*ldv+m]);#2
-                        #GHOST_UNROLL#tmp@ = _mm256_add_pd(tmp@,_mm256_mul_pd(_mm256_load_pd(&wnonpad[m*CFGK+k]),vrow@));#2
-                    }
-                    #GHOST_UNROLL#_mm256_stream_pd(&xval[((i+@)*ldx)+k],tmp@);#2
-
-                }
-            }
-#endif
             #GHOST_UNROLL#__m256d tmp@;#4*OUTERUNROLL
             #GHOST_UNROLL#__m256d vrow@;#OUTERUNROLL
 #pragma omp for schedule(runtime)
@@ -868,7 +849,7 @@ ghost_error ghost_tsmm1__a_avx_d_CFGK_CFGM_1_rm_cm(ghost_densemat *x, ghost_dens
 #endif
 }
 
-ghost_error ghost_tsmm__u_avx_d_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
+ghost_error ghost_tsmm__u_avx_d_CFGK_CFGM_1_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
 {
 #ifdef GHOST_BUILD_AVX
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
