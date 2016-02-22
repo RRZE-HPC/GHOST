@@ -304,8 +304,11 @@ __global__ void SELL_kernel_CU_rm_tmpl(v_t * const __restrict__ lhs, const int l
                 }
             } else {
                 dot1 = ghost_1dPartialBlockReduceSum(dot1,nrowsinblock/warpSize);
+                __syncthreads();
                 dot2 = ghost_1dPartialBlockReduceSum(dot2,nrowsinblock/warpSize);
+                __syncthreads();
                 dot3 = ghost_1dPartialBlockReduceSum(dot3,nrowsinblock/warpSize);
+                __syncthreads();
 
                 if ((threadIdx.x<blockDim.x/warpSize) && threadIdx.x%(nrowsinblock/warpSize) == 0) {
                     col=threadIdx.x/(blockDim.x/(warpSize*ncolsinblock));
