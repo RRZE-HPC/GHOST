@@ -401,8 +401,8 @@ ghost_error ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_x(ghost_densemat *res, ghos
 
     if (traits.flags & GHOST_SPMV_SHIFT) {
         shift = _mm256_setzero_pd();
-        shift = _mm256_insertf128_pd(shift,_mm_load_pd((double *)&sshift[0]),0);
-        shift = _mm256_insertf128_pd(shift,_mm_load_pd((double *)&sshift[0]),1);
+        shift = _mm256_insertf128_pd(shift,_mm_loadu_pd((double *)&sshift[0]),0);
+        shift = _mm256_insertf128_pd(shift,_mm_loadu_pd((double *)&sshift[0]),1);
     } else if (traits.flags & GHOST_SPMV_VSHIFT) {
         for (donecols=0; donecols < ncolspadded; donecols+=4) {
             vshift[donecols/4] = _mm256_load_pd((double *)&(sshiftpadded[donecols]));
@@ -410,11 +410,11 @@ ghost_error ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_x(ghost_densemat *res, ghos
     }
     if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
         delta = _mm256_setzero_pd();
-        delta = _mm256_insertf128_pd(delta,_mm_load_pd((double *)&sdelta),0);
-        delta = _mm256_insertf128_pd(delta,_mm_load_pd((double *)&sdelta),1);
+        delta = _mm256_insertf128_pd(delta,_mm_loadu_pd((double *)&sdelta),0);
+        delta = _mm256_insertf128_pd(delta,_mm_loadu_pd((double *)&sdelta),1);
         eta = _mm256_setzero_pd();
-        eta = _mm256_insertf128_pd(eta,_mm_load_pd((double *)&seta),0);
-        eta = _mm256_insertf128_pd(eta,_mm_load_pd((double *)&seta),1);
+        eta = _mm256_insertf128_pd(eta,_mm_loadu_pd((double *)&seta),0);
+        eta = _mm256_insertf128_pd(eta,_mm_loadu_pd((double *)&seta),1);
     }
 
     
@@ -673,16 +673,16 @@ ghost_error ghost_sellspmv__a_avx_z_z_rm_CHUNKHEIGHT_x(ghost_densemat *res, ghos
     }
         
     scale = _mm256_setzero_pd();
-    scale = _mm256_insertf128_pd(scale,_mm_load_pd((double *)&sscale),0);
-    scale = _mm256_insertf128_pd(scale,_mm_load_pd((double *)&sscale),1);
+    scale = _mm256_insertf128_pd(scale,_mm_loadu_pd((double *)&sscale),0);
+    scale = _mm256_insertf128_pd(scale,_mm_loadu_pd((double *)&sscale),1);
     beta = _mm256_setzero_pd();
-    beta = _mm256_insertf128_pd(beta,_mm_load_pd((double *)&sbeta),0);
-    beta = _mm256_insertf128_pd(beta,_mm_load_pd((double *)&sbeta),1);
+    beta = _mm256_insertf128_pd(beta,_mm_loadu_pd((double *)&sbeta),0);
+    beta = _mm256_insertf128_pd(beta,_mm_loadu_pd((double *)&sbeta),1);
 
     if (traits.flags & GHOST_SPMV_SHIFT) {
         shift = _mm256_setzero_pd();
-        shift = _mm256_insertf128_pd(shift,_mm_load_pd((double *)&sshift[0]),0);
-        shift = _mm256_insertf128_pd(shift,_mm_load_pd((double *)&sshift[0]),1);
+        shift = _mm256_insertf128_pd(shift,_mm_loadu_pd((double *)&sshift[0]),0);
+        shift = _mm256_insertf128_pd(shift,_mm_loadu_pd((double *)&sshift[0]),1);
     } else if (traits.flags & GHOST_SPMV_VSHIFT) {
         for (donecols=0; donecols < ncolspadded; donecols+=2) {
             vshift[donecols/2] = _mm256_load_pd((double *)&(sshiftpadded[donecols]));
@@ -690,11 +690,11 @@ ghost_error ghost_sellspmv__a_avx_z_z_rm_CHUNKHEIGHT_x(ghost_densemat *res, ghos
     }
     if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
         delta = _mm256_setzero_pd();
-        delta = _mm256_insertf128_pd(delta,_mm_load_pd((double *)&sdelta),0);
-        delta = _mm256_insertf128_pd(delta,_mm_load_pd((double *)&sdelta),1);
+        delta = _mm256_insertf128_pd(delta,_mm_loadu_pd((double *)&sdelta),0);
+        delta = _mm256_insertf128_pd(delta,_mm_loadu_pd((double *)&sdelta),1);
         eta = _mm256_setzero_pd();
-        eta = _mm256_insertf128_pd(eta,_mm_load_pd((double *)&seta),0);
-        eta = _mm256_insertf128_pd(eta,_mm_load_pd((double *)&seta),1);
+        eta = _mm256_insertf128_pd(eta,_mm_loadu_pd((double *)&seta),0);
+        eta = _mm256_insertf128_pd(eta,_mm_loadu_pd((double *)&seta),1);
     }
 
     
