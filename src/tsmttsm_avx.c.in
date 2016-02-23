@@ -981,7 +981,7 @@ ghost_error ghost_tsmttsm__a_avx_c_CFGK_CFGM_4_rm(ghost_densemat *x, ghost_dense
         float complex * restrict x_priv;
         const ghost_lidx ldxpriv = PAD(CFGM,4);
         ghost_malloc_align((void **)&x_priv,ldxpriv*CFGK*sizeof(float complex),32);
-        memset(x_priv,0,CFGM*CFGK*sizeof(float complex));
+        memset(x_priv,0,ldxpriv*CFGK*sizeof(float complex));
 
 
         if (conjv) {
