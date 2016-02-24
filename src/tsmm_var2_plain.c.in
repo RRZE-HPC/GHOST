@@ -6,7 +6,7 @@
 #include "ghost/util.h"
 #include "ghost/omp.h"
 #include "ghost/locality.h"
-#include "ghost/tsmm_plain.h"
+#include "ghost/tsmm_var2_plain_gen.h"
 #include <math.h>
 #include <float.h>
 
