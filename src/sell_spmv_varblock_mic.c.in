@@ -175,7 +175,7 @@ ghost_error ghost_sellspmv__a_mic_d_d_rm_CHUNKHEIGHT_x(ghost_densemat *res, ghos
     beta = _mm512_set1_pd(sbeta);
     delta = _mm512_set1_pd(sdelta);
     eta = _mm512_set1_pd(seta);
-    int axpy = spmvmOptions & (GHOST_SPMV_AXPY | GHOST_SPMV_AXPBY);
+    int axpy = traits.flags & (GHOST_SPMV_AXPY | GHOST_SPMV_AXPBY);
     
     if (traits.flags & GHOST_SPMV_DOT) {
 
