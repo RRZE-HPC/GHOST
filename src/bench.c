@@ -8,6 +8,7 @@
 #include <immintrin.h>
 
 #define N PAD((ghost_lidx)1e8,16)
+#define NITER 40
 
 static void dummy(double *a) {
     if (a[(ghost_lidx)N>>1] < 0) {
@@ -20,7 +21,14 @@ static void ghost_copy_kernel(double * __restrict__ a, const double * __restrict
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_KERNEL|GHOST_FUNCTYPE_BENCH);
     ghost_lidx i;
 
-#ifdef GHOST_BUILD_AVX
+#ifdef GHOST_BUILD_MIC
+    __m512d bv;
+#pragma omp parallel for private(bv)
+    for (i=0; i<N; i+=8) {
+        bv = _mm512_load_pd(&b[i]);
+        _mm512_storenrngo_pd(&a[i],bv);
+    }
+#elif defined(GHOST_BUILD_AVX)
     __m256d bv;
 #pragma omp parallel for private(bv)
     for (i=0; i<N; i+=4) {
@@ -81,12 +89,17 @@ ghost_error ghost_bench_stream(ghost_bench_stream_test_t test, double *bw)
         a[i] = 0;
         b[i] = i;
     }
-    
-    ghost_timing_wc(&start);
+   
+    // warm up 
     ghost_copy_kernel(a,b);
+
+    ghost_timing_wc(&start);
+    for (i=0; i<NITER; i++) {
+        ghost_copy_kernel(a,b);
+    }
     ghost_timing_wc(&stop);
 
-    *bw = 2*N/1.e9*sizeof(double)/(stop-start);
+    *bw = 2*N/1.e9*NITER*sizeof(double)/(stop-start);
 
     dummy(a);
 

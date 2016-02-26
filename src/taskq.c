@@ -487,13 +487,20 @@ static void * thread_main(void *arg)
         pthread_mutex_lock(myTask->stateMutex);
         myTask->state = GHOST_TASK_RUNNING;    
         pthread_mutex_unlock(myTask->stateMutex);
-        
 
+#ifdef GHOST_BUILD_MIC
+        int blocktime = kmp_get_blocktime();
+        kmp_set_blocktime(1000); 
+#endif
         DEBUG_LOG(1,"Starting exeuction of task %p",(void *)myTask);
         pthread_setspecific(key,myTask);
         myTask->ret = myTask->func(myTask->arg);
         pthread_setspecific(key,NULL);
         DEBUG_LOG(1,"Task %p finished",(void *)myTask);
+
+#ifdef GHOST_BUILD_MIC
+        kmp_set_blocktime(blocktime); 
+#endif
         
         pthread_mutex_lock(&anyTaskFinishedMutex);
         num_pending_tasks--;

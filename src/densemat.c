@@ -181,8 +181,8 @@ static ghost_error getNrowsFromContext(ghost_densemat *vec)
         padding = ghost_densemat_row_padding(); 
 
 #ifdef GHOST_BUILD_MIC
-        WARNING_LOG("Extremely large row padding because the performance for TSMM and a large dimension power of two is very bad. This has to be fixed!");
-        padding=500000; 
+        //WARNING_LOG("Extremely large row padding because the performance for TSMM and a large dimension power of two is very bad. This has to be fixed!");
+       // padding=500000; 
 #endif
         
         vec->traits.nrowspadded = PAD(vec->traits.nrows,padding);

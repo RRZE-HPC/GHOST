@@ -85,6 +85,12 @@ ghost_error ghost_spmv(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat
         GHOST_INSTR_STOP("dot_reduce");
 #endif
     }
+
+    if (traits.flags & GHOST_SPMV_BARRIER) {
+        ghost_barrier();
+    }
+
+
 #ifdef GHOST_INSTR_TIMING
     ghost_gidx nnz;
     ghost_gidx nrow;
