@@ -88,11 +88,11 @@ ghost_error ghost_sellspmv__a_mic_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
                     #GHOST_UNROLL#tmp@ = _mm512_mul_pd(scale,tmp@);#CHUNKHEIGHT/8
                 }
                 if (traits.flags & GHOST_SPMV_AXPY) {
-                    #GHOST_UNROLL#_mm512_store_pd(&lval[c*SELL(mat)->chunkHeight+8*@],_mm512_add_pd(tmp@,_mm512_load_pd(&lval[c*SELL(mat)->chunkHeight+8*@])));#CHUNKHEIGHT/8
+                    #GHOST_UNROLL#_mm512_store_pd(&lval[c*CHUNKHEIGHT+8*@],_mm512_add_pd(tmp@,_mm512_load_pd(&lval[c*CHUNKHEIGHT+8*@])));#CHUNKHEIGHT/8
                 } else if (traits.flags & GHOST_SPMV_AXPBY) {
-                    #GHOST_UNROLL#_mm512_store_pd(&lval[c*SELL(mat)->chunkHeight+8*@],_mm512_add_pd(tmp@,_mm512_mul_pd(beta,_mm512_load_pd(&lval[c*SELL(mat)->chunkHeight+8*@]))));#CHUNKHEIGHT/8
+                    #GHOST_UNROLL#_mm512_store_pd(&lval[c*CHUNKHEIGHT+8*@],_mm512_add_pd(tmp@,_mm512_mul_pd(beta,_mm512_load_pd(&lval[c*CHUNKHEIGHT+8*@]))));#CHUNKHEIGHT/8
                 } else {
-                    #GHOST_UNROLL#_mm512_storenrngo_pd(&lval[c*SELL(mat)->chunkHeight+8*@],tmp@);#CHUNKHEIGHT/8
+                    #GHOST_UNROLL#_mm512_storenrngo_pd(&lval[c*CHUNKHEIGHT+8*@],tmp@);#CHUNKHEIGHT/8
                 }
                 if (traits.flags & GHOST_SPMV_DOT) {
                     if ((c+1)*CHUNKHEIGHT <= mat->nrows) {
