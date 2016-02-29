@@ -21,7 +21,7 @@ namespace std
         typedef std::size_t result_type;
         result_type operator()(argument_type const& a) const
         {
-            return ghost_hash(a.dt,a.blocksz,ghost_hash(a.impl,a.storage,0));
+            return ghost_hash(a.dt,a.blocksz,ghost_hash(a.impl,a.storage,a.alignment));
         }
     };
 }
@@ -29,7 +29,7 @@ namespace std
 
 static bool operator==(const ghost_dot_parameters& a, const ghost_dot_parameters& b)
 {
-    return a.dt == b.dt && a.blocksz == b.blocksz && a.impl == b.impl && a.storage == b.storage;
+    return a.dt == b.dt && a.blocksz == b.blocksz && a.impl == b.impl && a.storage == b.storage && a.alignment == b.alignment;
 }
 
 static unordered_map<ghost_dot_parameters, ghost_dot_kernel> ghost_dot_kernels;
@@ -109,8 +109,9 @@ ghost_error ghost_localdot(void *res, ghost_densemat *vec1, ghost_densemat *vec2
         p.alignment = GHOST_UNALIGNED;
     }
 
+    INFO_LOG("Initial try: storage=%s, blocksz=%d, alignment=%d, impl=%s",ghost_densemat_storage_string(vec1),p.blocksz,p.alignment,ghost_implementation_string(p.impl));
     kernel = ghost_dot_kernels[p];
-    if (!kernel) {
+    if (!kernel && p.alignment == GHOST_ALIGNED) {
         PERFWARNING_LOG("Try unaligned version");
         p.alignment = GHOST_UNALIGNED;
         kernel = ghost_dot_kernels[p];
