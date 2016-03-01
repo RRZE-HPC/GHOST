@@ -5,7 +5,7 @@
 
 #ifdef GHOST_HAVE_ZOLTAN
 #include <zoltan.h>
-#endif
+
 
 typedef struct
 {
@@ -80,6 +80,7 @@ static void get_hypergraph(void *data, int sizeGID, int num_vert, int num_nonzer
 
     return;
 }
+#endif
 
 ghost_error ghost_sparsemat_perm_zoltan(ghost_sparsemat *mat, void *matrixSource, ghost_sparsemat_src srcType)
 {
