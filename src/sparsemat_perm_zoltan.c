@@ -167,6 +167,8 @@ ghost_error ghost_sparsemat_perm_zoltan(ghost_sparsemat *mat, void *matrixSource
 
     IF_DEBUG(1) {
         ZOLTAN_CALL_GOTO(Zoltan_Set_Param(zz, "DEBUG_LEVEL", "1"),err,ret);
+    } else {
+        ZOLTAN_CALL_GOTO(Zoltan_Set_Param(zz, "DEBUG_LEVEL", "0"),err,ret);
     }
     ZOLTAN_CALL_GOTO(Zoltan_Set_Param(zz, "LB_METHOD", "HYPERGRAPH"),err,ret);
     ZOLTAN_CALL_GOTO(Zoltan_Set_Param(zz, "HYPERGRAPH_PACKAGE", "PHG"),err,ret);
