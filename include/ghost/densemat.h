@@ -9,7 +9,6 @@
 #include "config.h"
 #include "types.h"
 #include "context.h"
-#include "perm.h"
 #include "bitmap.h"
 #include "bindensemat.h"
 

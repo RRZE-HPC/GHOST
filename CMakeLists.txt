@@ -85,6 +85,7 @@ set (SOURCES
     src/matrixmarket.c
     src/mmio.c
     src/omp.c
+    src/perm.c
     src/pumap.c
     src/rand.c
     src/sparsemat.c
@@ -132,7 +133,6 @@ set (HEADERS
     include/ghost/math.h
     include/ghost/matrixmarket.h
     include/ghost/omp.h
-    include/ghost/perm.h
     include/ghost/pumap.h
     include/ghost/rand.h
     include/ghost/sparsemat.h

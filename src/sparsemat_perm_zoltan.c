@@ -13,20 +13,15 @@ typedef struct
     ghost_gidx *rpt;
     ghost_gidx nnz;
     ghost_gidx nrows;
-    ghost_gidx gncols;
-    ghost_gidx entoffs;
     ghost_gidx rowoffs;
-    ghost_lidx uniquecols;
-    ghost_gidx *colofvert;
 
 } zoltan_info;
-
 
 static int get_number_of_vertices(void *data, int *ierr)
 {
     zoltan_info *info = (zoltan_info *)data;
     *ierr = ZOLTAN_OK;
-    return info->uniquecols;
+    return info->nrows;
 }
 
 static void get_vertex_list(void *data, int sizeGID, int sizeLID,
@@ -43,8 +38,9 @@ static void get_vertex_list(void *data, int sizeGID, int sizeLID,
     *ierr = ZOLTAN_OK;
     ghost_lidx i;
 
-    for (i=0; i<info->uniquecols; i++){
-        globalID[i] = info->colofvert[i];
+    for (i=0; i<info->nrows; i++){
+        globalID[i] = info->rowoffs+i;
+        localID[i] = i;
     }
 }
 
@@ -56,14 +52,14 @@ static void get_hypergraph_size(void *data, int *num_lists, int *num_nonzeroes,
 
     *num_lists = info->nrows;
     *num_nonzeroes = info->nnz;
-    *format = ZOLTAN_COMPRESSED_EDGE;
+    *format = ZOLTAN_COMPRESSED_VERTEX;
 
     return;
 }
 
-static void get_hypergraph(void *data, int sizeGID, int num_edges, int num_nonzeroes,
-                           int format, ZOLTAN_ID_PTR edgeGID, int *vtxPtr,
-                           ZOLTAN_ID_PTR vtxGID, int *ierr)
+static void get_hypergraph(void *data, int sizeGID, int num_vert, int num_nonzeroes,
+                           int format, ZOLTAN_ID_PTR vtxGID, int *vtxPtr,
+                           ZOLTAN_ID_PTR edgeGID, int *ierr)
 {
     UNUSED(sizeGID);
     UNUSED(format);
@@ -73,21 +69,16 @@ static void get_hypergraph(void *data, int sizeGID, int num_edges, int num_nonze
 
     *ierr = ZOLTAN_OK;
 
-    for (i=0; i < num_edges; i++){
-        edgeGID[i] = info->rowoffs + i;
+    for (i=0; i < num_vert; i++){
+        vtxGID[i] = info->rowoffs + i;
         vtxPtr[i] = info->rpt[i];
     }
 
     for (i=0; i < num_nonzeroes; i++){
-        vtxGID[i] = info->col[i];
+        edgeGID[i] = info->col[i];
     }
 
     return;
-}
-
-static int cmp_gidx(const void *p1, const void *p2)
-{
-    return *(ghost_gidx *)p1 - *(ghost_gidx *)p2;
 }
 
 ghost_error ghost_sparsemat_perm_zoltan(ghost_sparsemat *mat, void *matrixSource, ghost_sparsemat_src srcType)
@@ -153,7 +144,6 @@ ghost_error ghost_sparsemat_perm_zoltan(ghost_sparsemat *mat, void *matrixSource
 
     info.nnz = nnz;
     ghost_malloc((void **)&(info.col),(info.nnz)*sizeof(ghost_gidx));
-    ghost_malloc((void **)&(info.colofvert),(info.nnz)*sizeof(ghost_gidx));
 
 #pragma omp parallel private (tmpval,tmpcol,i,rowlen)
     {
@@ -169,53 +159,8 @@ ghost_error ghost_sparsemat_perm_zoltan(ghost_sparsemat *mat, void *matrixSource
         free(tmpval); tmpval = NULL;
     }
     info.nrows = mat->context->lnrows[me];
-
-    ghost_gidx *sortcol;
-    ghost_malloc((void **)&sortcol,info.nnz*sizeof(ghost_gidx));
-    memcpy(sortcol,info.col,info.nnz*sizeof(ghost_gidx));
-    qsort(sortcol,info.nnz,sizeof(ghost_gidx),cmp_gidx);
-
-    info.uniquecols = 1;
-    info.colofvert[0] = sortcol[0];
-    for (i=1; i<info.nnz; i++) {
-        if (sortcol[i] != sortcol[i-1]) {
-            info.colofvert[info.uniquecols] = sortcol[i];
-            info.uniquecols++;
-        }
-    }
-    for (i=0; i<info.uniquecols; i++) {
-    //    INFO_LOG("colofvert[%d] = %"PRGIDX,i,info.colofvert[i]);
-    }
-
-    ghost_gidx neigh_nnz; // nnz of previous rank
-    ghost_gidx accu_nnz; // so-far accumulated nnz
-
     info.rowoffs = mat->context->lfRow[me];
-    info.gncols = mat->context->gncols;
-    info.entoffs = 0;
-    accu_nnz = info.nnz;
    
-    if (nprocs > 1) { 
-        if (me == 0) {
-            MPI_CALL_GOTO(MPI_Send(&info.nnz,1,ghost_mpi_dt_gidx,1,me,mat->context->mpicomm),err,ret);
-            MPI_CALL_GOTO(MPI_Recv(&neigh_nnz,1,ghost_mpi_dt_gidx,nprocs-1,nprocs-1,mat->context->mpicomm,MPI_STATUS_IGNORE),err,ret);
-        }
-
-        for (i=0; i<nprocs; i++) {
-            if (i == me && i != 0) {
-                MPI_CALL_GOTO(MPI_Recv(&neigh_nnz,1,ghost_mpi_dt_gidx,i-1,i-1,mat->context->mpicomm,MPI_STATUS_IGNORE),err,ret);
-                info.entoffs = neigh_nnz;
-                accu_nnz = neigh_nnz + info.nnz;
-                MPI_CALL_GOTO(MPI_Send(&accu_nnz,1,ghost_mpi_dt_gidx,(i+1)%nprocs,i,mat->context->mpicomm),err,ret);
-            }
-        }
-    }
-
-    for (i=0; i<mat->context->lnrows[me]; i++) {
-        mat->context->perm_global->perm[i] = mat->context->lfRow[me]+i;
-        mat->context->perm_global->invPerm[i] = mat->context->lfRow[me]+i;
-    }
-    
     zz = Zoltan_Create(mat->context->mpicomm);
 
     /* General parameters */
@@ -223,7 +168,7 @@ ghost_error ghost_sparsemat_perm_zoltan(ghost_sparsemat *mat, void *matrixSource
     ZOLTAN_CALL_GOTO(Zoltan_Set_Param(zz, "DEBUG_LEVEL", "1"),err,ret);
     ZOLTAN_CALL_GOTO(Zoltan_Set_Param(zz, "LB_METHOD", "HYPERGRAPH"),err,ret);
     ZOLTAN_CALL_GOTO(Zoltan_Set_Param(zz, "HYPERGRAPH_PACKAGE", "PHG"),err,ret);
-    ZOLTAN_CALL_GOTO(Zoltan_Set_Param(zz, "RETURN_LISTS", "PARTS"),err,ret);
+    ZOLTAN_CALL_GOTO(Zoltan_Set_Param(zz, "RETURN_LISTS", "ALL"),err,ret);
     ZOLTAN_CALL_GOTO(Zoltan_Set_Param(zz, "LB_APPROACH", "PARTITION"),err,ret);
       
     ZOLTAN_CALL_GOTO(Zoltan_Set_Num_Obj_Fn(zz, get_number_of_vertices, &info),err,ret);
@@ -246,49 +191,15 @@ ghost_error ghost_sparsemat_perm_zoltan(ghost_sparsemat *mat, void *matrixSource
         &exportProcs,    /* Process to which I send each of the vertices */
         &exportToPart),err,ret);  /* Partition to which each vertex will belong */
 
-    if (me == 0) {
-        printf("\n==================\n");
-        printf("At rank %d\n",me);
-        printf("==================\n\n");
-        printf("Number of vertices  : %d\n",info.uniquecols);
-        printf("Global vertex IDs   : ");
-        for (i=0; i<info.uniquecols; i++) {
-            printf("%"PRGIDX" ",info.colofvert[i]);
-        }
-        printf("\n");
-        printf("Number of lists     : %"PRGIDX"\n",info.nrows);
-        printf("Number of pins      : %"PRGIDX"\n",info.nnz);
-        printf("Global Hyperedge IDs: ");
-        for (i=0; i<info.nrows; i++) {
-            printf("%"PRGIDX" ",info.rowoffs+i);
-        }
-        printf("\n");
-        printf("HG vertex pointers  : ");
-        for (i=0; i<info.nrows; i++) {
-            printf("%"PRGIDX" ",info.rpt[i]);
-        }
-        printf("\n");
-        printf("HG vertex list      : ");
-        for (i=0; i<info.nnz; i++) {
-            printf("%"PRGIDX" ",info.col[i]);
-        }
-        printf("\n\n\n");
-
-        printf("Zoltan result\n");
-        printf("+++++++++++++\n\n");
-        printf("numExport: %d\n",numExport);
-        for (i=0; i<numExport; i++) {
-            printf("  %d export (GID -> Part): "ZOLTAN_ID_SPEC" -> %d\n",i,exportGlobalGids[i],exportToPart[i]);
-        }
+    for (i=0; i<mat->context->lnrows[me]; i++) {
+        mat->context->perm_global->perm[i] = mat->context->lfRow[me]+i;
+    }
+    for (i=0; i<numImport; i++) {
+        mat->context->perm_global->perm[exportLocalGids[i]] = importGlobalGids[i];
     }
 
-    /*
-    INFO_LOG("numExport: %d",numExport);
-    for (i=0; i<numExport; i++) {
-        INFO_LOG("%d export (GID -> Part): "ZOLTAN_ID_SPEC" -> %d",i,exportGlobalGids[i],exportToPart[i]);
-    }
-    */
-
+    ghost_global_invperm_create(mat->context);
+    
     goto out;
 err:
     free(mat->context->perm_global->perm); mat->context->perm_global->perm = NULL;
@@ -304,7 +215,6 @@ out:
     Zoltan_Destroy(&zz);
     free(info.rpt);
     free(info.col);
-    free(info.colofvert);
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_SETUP);
     return ret;
 
