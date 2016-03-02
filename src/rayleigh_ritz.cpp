@@ -118,7 +118,7 @@ static ghost_error ghost_rayleigh_ritz_tmpl (ghost_sparsemat * mat, void * void_
     
     T_b * eigs = (T_b *)void_eigs;
     T_b * res  = (T_b *)void_res;
-    T *  xval = (T *)x->val;
+    T *  xval = NULL;
     
     GHOST_CALL_GOTO(ghost_malloc((void **)&eigs_T, n*sizeof(T)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&res_T, n*sizeof(T)),err,ret);
@@ -134,6 +134,7 @@ static ghost_error ghost_rayleigh_ritz_tmpl (ghost_sparsemat * mat, void * void_
     }
     GHOST_CALL_GOTO(ghost_densemat_create(&x,NULL,xtraits),err,ret);
     GHOST_CALL_GOTO(x->fromScalar(x,&zero),err,ret);
+    xval = (T *)x->val;
     ldx = x->stride;
 
     

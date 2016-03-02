@@ -123,9 +123,9 @@ static ghost_error ghost_svqb_tmpl (ghost_densemat * v_ot , ghost_densemat * v)
     ghost_lidx n = v->traits.ncols;
     ghost_datatype DT = v->traits.datatype;
     ghost_densemat *x = NULL;
+    T *  xval = NULL;
     ghost_lidx ldx;
     T_b *eigs = NULL, *D = NULL;
-    T *  xval = (T *)x->val;
     ghost_densemat_traits xtraits = GHOST_DENSEMAT_TRAITS_INITIALIZER;
     
     GHOST_CALL_GOTO(ghost_malloc((void **)&eigs, n*sizeof(T_b)),err,ret);
@@ -143,6 +143,7 @@ static ghost_error ghost_svqb_tmpl (ghost_densemat * v_ot , ghost_densemat * v)
     }
     GHOST_CALL_GOTO(ghost_densemat_create(&x,NULL,xtraits),err,ret);
     GHOST_CALL_GOTO(x->fromScalar(x,&zero),err,ret);
+    xval = (T *)x->val;
     ldx = x->stride;
 
     
@@ -260,10 +261,10 @@ static ghost_error ghost_svd_deflation_tmpl ( ghost_lidx *svd_offset, ghost_dens
     ghost_lidx n = vec->traits.ncols;
     ghost_datatype DT = vec->traits.datatype;
     ghost_densemat *x = NULL;
+    T *  xval = NULL;
     ghost_lidx ldx;
     ghost_densemat_traits xtraits = GHOST_DENSEMAT_TRAITS_INITIALIZER;
     T_b * eigs = NULL;
-    T *  xval = (T *)x->val;
     
     GHOST_CALL_GOTO(ghost_malloc((void **)&eigs, n*sizeof(T_b)),err,ret);
     
@@ -278,8 +279,8 @@ static ghost_error ghost_svd_deflation_tmpl ( ghost_lidx *svd_offset, ghost_dens
     xtraits.datatype = DT;
     GHOST_CALL_GOTO(ghost_densemat_create(&x,NULL,xtraits),err,ret);
     GHOST_CALL_GOTO(x->fromScalar(x,&zero),err,ret);
+    xval = (T *)x->val;
     ldx = x->stride;
-
     
     
     //GHOST_CALL_GOTO(ghost_tsmttsm( x, vec, vec,&one,&zero,GHOST_GEMM_ALL_REDUCE,1),err,ret);
