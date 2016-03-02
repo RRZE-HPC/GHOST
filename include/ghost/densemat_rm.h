@@ -9,7 +9,6 @@
 #include "config.h"
 #include "types.h"
 #include "context.h"
-#include "perm.h"
 #include "densemat.h"
 #ifdef GHOST_HAVE_CUDA
 #include "cu_densemat_rm.h"

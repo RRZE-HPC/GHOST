@@ -32,6 +32,10 @@
 #include <cuda_runtime.h>
 #endif
 
+#ifdef GHOST_HAVE_ZOLTAN
+#include <zoltan.h>
+#endif
+
 #include <strings.h>
 
 static ghost_type mytype = GHOST_TYPE_INVALID;
@@ -143,7 +147,11 @@ ghost_error ghost_init(int argc, char **argv)
     } else {
         INFO_LOG("MPI was already initialized, not doing it!");
     }
-    
+  
+#ifdef GHOST_HAVE_ZOLTAN
+    float ver;
+    ZOLTAN_CALL_RETURN(Zoltan_Initialize(argc, argv, &ver));
+#endif
 
     ghost_instr_create();
     ghost_instr_prefix_set("");

@@ -235,6 +235,9 @@ ghost_error ghost_sparsemat_fromfunc_common(ghost_lidx *rl, ghost_lidx *rlp, gho
         if (mat->traits.flags & GHOST_SPARSEMAT_COLOR) {
             ghost_sparsemat_perm_color(mat,(void *)src,GHOST_SPARSEMAT_SRC_FUNC);
         } 
+        if (mat->traits.flags & GHOST_SPARSEMAT_ZOLTAN) {
+            ghost_sparsemat_perm_zoltan(mat,(void *)src,GHOST_SPARSEMAT_SRC_FUNC);
+        } 
         if (mat->traits.sortScope > 1) {
             ghost_sparsemat_perm_sort(mat,(void *)src,GHOST_SPARSEMAT_SRC_FUNC,mat->traits.sortScope);
         }
@@ -627,7 +630,7 @@ ghost_error ghost_sparsemat_perm_global_cols(ghost_gidx *col, ghost_lidx ncols, 
         if (i==me) {
             nels = ncols;
         }
-        MPI_Bcast(&nels,1,ghost_mpi_dt_gidx,i,context->mpicomm);
+        MPI_Bcast(&nels,1,ghost_mpi_dt_lidx,i,context->mpicomm);
 
         ghost_gidx *colsfromi;
         ghost_malloc((void **)&colsfromi,nels*sizeof(ghost_gidx));

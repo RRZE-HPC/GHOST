@@ -321,7 +321,11 @@ typedef enum {
      * @brief If the matrix comes from a matrix market file, transpose it on read-in.
      * If this is implemented for other rowfuncs, the _MM may get removed in the future.
      */
-    GHOST_SPARSEMAT_TRANSPOSE_MM = 1024
+    GHOST_SPARSEMAT_TRANSPOSE_MM = 1024,
+    /**
+     * @brief Re-order the matrix globally using Zoltan hypergraph partitioning.
+     */
+    GHOST_SPARSEMAT_ZOLTAN = 2048
 } ghost_sparsemat_flags;
 
 
@@ -706,6 +710,7 @@ extern "C" {
      */
     ghost_error ghost_sparsemat_perm_color(ghost_sparsemat *mat, 
             void *matrixSource, ghost_sparsemat_src srcType);
+    ghost_error ghost_sparsemat_perm_zoltan(ghost_sparsemat *mat, void *matrixSource, ghost_sparsemat_src srcType);
     /**
      * @brief Sort the entries in a given row physically to have increasing 
      * column indices.

@@ -21,6 +21,7 @@ option(GHOST_USE_OPENMP "Build with OpenMP" 1)
 option(GHOST_USE_CUDA "Build with CUDA" 0)
 option(GHOST_USE_SCOTCH "Use PT-Scotch for matrix re-ordering" 0)
 option(GHOST_USE_COLPACK "Use ColPack for matrix coloring" 0)
+option(GHOST_USE_ZOLTAN "Use Zoltan for matrix re-ordering" 0)
 option(GHOST_IDX64_LOCAL "Enable 64-bit indices for local quantities" 0)
 option(GHOST_IDX64_GLOBAL "Enable 64-bit indices for global quantities" 1)
 option(GHOST_OPTIMIZE_HOSTARCH "Create optimized code for the host's architecture" 1)
@@ -84,10 +85,12 @@ set (SOURCES
     src/matrixmarket.c
     src/mmio.c
     src/omp.c
+    src/perm.c
     src/pumap.c
     src/rand.c
     src/sparsemat.c
     src/sparsemat_perm_scotch.c
+    src/sparsemat_perm_zoltan.c
     src/spmv.c
     src/spmv_overlap.c 
     src/spmv_nompi.c 
@@ -130,7 +133,6 @@ set (HEADERS
     include/ghost/math.h
     include/ghost/matrixmarket.h
     include/ghost/omp.h
-    include/ghost/perm.h
     include/ghost/pumap.h
     include/ghost/rand.h
     include/ghost/sparsemat.h
@@ -464,6 +466,18 @@ if (GHOST_USE_SCOTCH)
         set(SCOTCH_LIBRARIES ${LIBSCOTCH} ${LIBSCOTCHERR})
     endif()
     mark_as_advanced(LIBPTSCOTCH LIBSCOTCH LIBPTSCOTCHERR LIBSCOTCHERR)
+endif()
+
+if (GHOST_USE_ZOLTAN)
+    set(GHOST_HAVE_ZOLTAN 1)
+    set(ZOLTAN_INCLUDE_DIR "${ZOLTAN_INCLUDE_DIR}" CACHE PATH "Location of Zoltan headers")
+    include_directories(${ZOLTAN_INCLUDE_DIR})
+    get_filename_component(ZOLTAN_LIBDIR ${ZOLTAN_INCLUDE_DIR}/../lib REALPATH)
+
+    find_library(ZOLTAN_LIBRARIES zoltan ${ZOLTAN_LIBDIR})
+    if (NOT ZOLTAN_LIBRARIES)
+        message(FATAL_ERROR "ZOLTAN_INCLUDE_DIR not set correctly!")
+    endif()
 endif()
 
 
