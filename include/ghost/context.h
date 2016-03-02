@@ -277,7 +277,7 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error ghost_global_invperm_create(ghost_context *context);
+ghost_error ghost_global_perm_inv(ghost_gidx *toPerm, ghost_gidx *fromPerm, ghost_context *context);
 
 #ifdef __cplusplus
 } //extern "C"

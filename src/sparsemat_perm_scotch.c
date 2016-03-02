@@ -227,7 +227,7 @@ ghost_error ghost_sparsemat_perm_scotch(ghost_sparsemat *mat, void *matrixSource
     
 
     GHOST_INSTR_START("scotch_combineperm")
-    ghost_global_invperm_create(mat->context);
+    ghost_global_perm_inv(mat->context->perm_global->invPerm,mat->context->perm_global->perm,mat->context);
     GHOST_INSTR_STOP("scotch_combineperm")
 
 #else

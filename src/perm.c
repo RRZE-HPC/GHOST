@@ -11,7 +11,7 @@ static int perm_ent_cmp(const void *a, const void *b)
     return ((ghost_permutation_ent_t *)a)->pidx - ((ghost_permutation_ent_t *)b)->pidx;
 }
 
-ghost_error ghost_global_invperm_create(ghost_context *context)
+ghost_error ghost_global_perm_inv(ghost_gidx *toPerm, ghost_gidx *fromPerm, ghost_context *context)
 {
     ghost_mpi_datatype ghost_mpi_dt_perm;
     MPI_CALL_RETURN(MPI_Type_contiguous(2,ghost_mpi_dt_gidx,&ghost_mpi_dt_perm));
@@ -28,7 +28,7 @@ ghost_error ghost_global_invperm_create(ghost_context *context)
 #pragma omp parallel for
     for (i=0; i<context->lnrows[me]; i++) {
         permclone[i].idx = context->lfRow[me]+i;
-        permclone[i].pidx = context->perm_global->perm[i];
+        permclone[i].pidx = fromPerm[i];
     }
     qsort(permclone,context->lnrows[me],sizeof(ghost_permutation_ent_t),perm_ent_cmp);
     // permclone is now sorted by ascending pidx
@@ -82,7 +82,7 @@ ghost_error ghost_global_invperm_create(ghost_context *context)
             // sort the indices and put them into the invPerm array
             qsort(recvbuf,context->lnrows[me],sizeof(ghost_permutation_ent_t),perm_ent_cmp);
             for (i=0; i<context->lnrows[me]; i++) {
-                context->perm_global->invPerm[i] = recvbuf[i].idx;
+                toPerm[i] = recvbuf[i].idx;
             }
         }
 
