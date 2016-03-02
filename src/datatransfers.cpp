@@ -46,7 +46,7 @@ ghost_error ghost_datatransfer_register(const char *tag, ghost_datatransfer_dire
     return GHOST_SUCCESS;
 }
 
-static size_t ghost_datatransfer_volume_get(const char *tag, ghost_datatransfer_direction_t dir, int rank)
+size_t ghost_datatransfer_volume_get(const char *tag, ghost_datatransfer_direction_t dir, int rank)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     size_t vol = 0;
