@@ -630,7 +630,7 @@ ghost_error ghost_sparsemat_perm_global_cols(ghost_gidx *col, ghost_lidx ncols, 
         if (i==me) {
             nels = ncols;
         }
-        MPI_Bcast(&nels,1,ghost_mpi_dt_gidx,i,context->mpicomm);
+        MPI_Bcast(&nels,1,ghost_mpi_dt_lidx,i,context->mpicomm);
 
         ghost_gidx *colsfromi;
         ghost_malloc((void **)&colsfromi,nels*sizeof(ghost_gidx));
