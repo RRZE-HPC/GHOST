@@ -175,6 +175,7 @@ ghost_error ghost_sparsemat_perm_zoltan(ghost_sparsemat *mat, void *matrixSource
     ZOLTAN_CALL_GOTO(Zoltan_Set_Param(zz, "HYPERGRAPH_PACKAGE", "PHG"),err,ret);
     ZOLTAN_CALL_GOTO(Zoltan_Set_Param(zz, "RETURN_LISTS", "ALL"),err,ret);
     ZOLTAN_CALL_GOTO(Zoltan_Set_Param(zz, "LB_APPROACH", "PARTITION"),err,ret);
+    ZOLTAN_CALL_GOTO(Zoltan_Set_Param(zz, "IMBALANCE_TOL", "1.0"),err,ret);
       
     ZOLTAN_CALL_GOTO(Zoltan_Set_Num_Obj_Fn(zz, get_number_of_vertices, &info),err,ret);
     ZOLTAN_CALL_GOTO(Zoltan_Set_Obj_List_Fn(zz, get_vertex_list, &info),err,ret);
