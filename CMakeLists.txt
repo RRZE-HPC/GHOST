@@ -90,6 +90,7 @@ set (SOURCES
     src/rand.c
     src/sparsemat.c
     src/sparsemat_perm_scotch.c
+    src/sparsemat_perm_sort.c
     src/sparsemat_perm_zoltan.c
     src/spmv.c
     src/spmv_overlap.c 
