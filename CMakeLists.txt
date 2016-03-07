@@ -286,7 +286,6 @@ configure_file (
 endforeach()
 
 add_custom_target(autogen DEPENDS ${GLOB_UNROLLED_FILES} ${GLOB_GENERATED_FILES} ${GLOB_GENERATED_HEADERS} ${GLOB_GENERATED_KERNELMAPS})
-add_library(ghost ${SOURCES})
 
 #set_source_files_properties(${PP_SRC_DIR}/tsmttsm_kahan.c PROPERTIES COMPILE_FLAGS "-fp-model strict")
 
@@ -388,7 +387,6 @@ else ()
 endif()
 
 
-
 if (GHOST_USE_CUDA)
     option(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
     find_package(CUDA)
@@ -431,6 +429,9 @@ if (GHOST_USE_CUDA)
         message(WARNING "Could not find CUDA! You might want to make CUDA available or set GHOST_USE_CUDA=OFF to suppress this warning.")
     endif()
 endif()
+
+add_library(ghost ${SOURCES})
+add_dependencies(ghost autogen)
 
 if (GHOST_USE_CUDA)
     set(CUDA_LIBRARIES ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${CUDA_cusparse_LIBRARY})
@@ -720,6 +721,7 @@ if (GHOST_USE_SPMP)
         #set(LIBSPMP ${PROJECT_SOURCE_DIR}/SpMP/src/SpMP/libspmp.a)
         target_link_libraries(ghost "${PROJECT_SOURCE_DIR}/SpMP/src/SpMP/libspmp.a")
         include_directories(${PROJECT_SOURCE_DIR}/SpMP/src)
+        add_dependencies(ghost SpMP)
     endif()
 endif()
 
@@ -774,10 +776,6 @@ configure_file (
 configure_file(${PROJECT_SOURCE_DIR}/ghost.pc.in ${PROJECT_BINARY_DIR}/ghost.pc @ONLY)
 configure_file(${PROJECT_SOURCE_DIR}/ghost-config.cmake.in ${PROJECT_BINARY_DIR}/ghost-config.cmake @ONLY)
 configure_file(${PROJECT_SOURCE_DIR}/ghost-config-version.cmake.in ${PROJECT_BINARY_DIR}/ghost-config-version.cmake @ONLY)
-
-add_dependencies(ghost autogen)
-add_dependencies(ghost SpMP)
-
 
 if (${BUILD_SHARED_LIBS})
     install(TARGETS ghost EXPORT ghost-targets LIBRARY DESTINATION lib/ghost)

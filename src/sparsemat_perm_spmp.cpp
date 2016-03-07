@@ -1,6 +1,7 @@
 #include "ghost/sparsemat.h"
 #include "ghost/util.h"
 #include "ghost/locality.h"
+#ifdef GHOST_HAVE_SPMP
 #include "SpMP/CSR.hpp"
 
 typedef struct
@@ -14,9 +15,17 @@ static int cmp_coo_ent(const void* a, const void* b)
     return  ((coo_ent *)a)->row - ((coo_ent *)b)->row;
 }
 
+#endif
 
 ghost_error ghost_sparsemat_perm_spmp(ghost_sparsemat *mat, void *matrixSource, ghost_sparsemat_src srcType)
 {
+#if !defined(GHOST_HAVE_SPMP)
+    UNUSED(mat);
+    UNUSED(matrixSource);
+    UNUSED(srcType);
+    WARNING_LOG("SpMP not available. Will not create matrix permutation!");
+    return GHOST_SUCCESS;
+#else
 
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_SETUP);
     ghost_error ret = GHOST_SUCCESS;
@@ -190,4 +199,5 @@ out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_SETUP);
 
     return ret;
+#endif
 }
