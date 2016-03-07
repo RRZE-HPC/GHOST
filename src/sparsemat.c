@@ -784,7 +784,7 @@ ghost_error ghost_sparsemat_info_string(char **str, ghost_sparsemat *mat)
     ghost_line_string(str,"Row length standard deviation",NULL,"%f",mat->deviation);
     ghost_line_string(str,"Row length coefficient of variation",NULL,"%f",mat->cv);
     ghost_line_string(str,"Chunk height (C)",NULL,"%d",mat->traits.C);
-    ghost_line_string(str,"Chunk occupancy (beta)",NULL,"%f",(double)(mat->nEnts)/(double)(mat->nnz));
+    ghost_line_string(str,"Chunk occupancy (beta)",NULL,"%f",(double)(mat->nnz)/(double)(mat->nEnts));
     ghost_line_string(str,"Threads per row (T)",NULL,"%d",mat->traits.T);
 
     ghost_footer_string(str);
