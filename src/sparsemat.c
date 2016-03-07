@@ -231,11 +231,14 @@ ghost_error ghost_sparsemat_fromfunc_common(ghost_lidx *rl, ghost_lidx *rlp, gho
         if (mat->traits.flags & GHOST_SPARSEMAT_SCOTCHIFY) {
             ghost_sparsemat_perm_scotch(mat,(void *)src,GHOST_SPARSEMAT_SRC_FUNC);
         } 
-        if (mat->traits.flags & GHOST_SPARSEMAT_COLOR) {
-            ghost_sparsemat_perm_color(mat,(void *)src,GHOST_SPARSEMAT_SRC_FUNC);
-        } 
         if (mat->traits.flags & GHOST_SPARSEMAT_ZOLTAN) {
             ghost_sparsemat_perm_zoltan(mat,(void *)src,GHOST_SPARSEMAT_SRC_FUNC);
+        } 
+        if (mat->traits.flags & GHOST_SPARSEMAT_RCM) {
+            ghost_sparsemat_perm_spmp(mat,(void *)src,GHOST_SPARSEMAT_SRC_FUNC);
+        } 
+        if (mat->traits.flags & GHOST_SPARSEMAT_COLOR) {
+            ghost_sparsemat_perm_color(mat,(void *)src,GHOST_SPARSEMAT_SRC_FUNC);
         } 
         if (mat->traits.sortScope > 1) {
             ghost_sparsemat_perm_sort(mat,(void *)src,GHOST_SPARSEMAT_SRC_FUNC,mat->traits.sortScope);
@@ -415,6 +418,7 @@ ghost_error ghost_sparsemat_fromfunc_common(ghost_lidx *rl, ghost_lidx *rlp, gho
         GHOST_CALL_GOTO(ghost_malloc_align((void **)col,sizeof(ghost_gidx)*(size_t)mat->nEnts,GHOST_DATA_ALIGNMENT),err,ret);
         readcols = 1;
     }
+
         
     if (src->func == ghost_sparsemat_rowfunc_crs && mat->context->perm_global) {
         ERROR_LOG("Global permutation does not work with local CRS source");

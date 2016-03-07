@@ -22,6 +22,7 @@ option(GHOST_USE_CUDA "Build with CUDA" 0)
 option(GHOST_USE_SCOTCH "Use PT-Scotch for matrix re-ordering" 0)
 option(GHOST_USE_COLPACK "Use ColPack for matrix coloring" 0)
 option(GHOST_USE_ZOLTAN "Use Zoltan for matrix re-ordering" 0)
+option(GHOST_USE_SPMP "Use SpMP for matrix preprocessing" 0)
 option(GHOST_IDX64_LOCAL "Enable 64-bit indices for local quantities" 0)
 option(GHOST_IDX64_GLOBAL "Enable 64-bit indices for global quantities" 1)
 option(GHOST_OPTIMIZE_HOSTARCH "Create optimized code for the host's architecture" 1)
@@ -59,6 +60,7 @@ set (SOURCES
     src/sell_spmv.cpp
     src/sparsemat.cpp
     src/sparsemat_perm_colpack.cpp
+    src/sparsemat_perm_spmp.cpp
     src/svqb.cpp
     src/rayleigh_ritz.cpp
     src/timing.cpp
@@ -284,6 +286,7 @@ configure_file (
 endforeach()
 
 add_custom_target(autogen DEPENDS ${GLOB_UNROLLED_FILES} ${GLOB_GENERATED_FILES} ${GLOB_GENERATED_HEADERS} ${GLOB_GENERATED_KERNELMAPS})
+add_library(ghost ${SOURCES})
 
 #set_source_files_properties(${PP_SRC_DIR}/tsmttsm_kahan.c PROPERTIES COMPILE_FLAGS "-fp-model strict")
 
@@ -428,10 +431,6 @@ if (GHOST_USE_CUDA)
         message(WARNING "Could not find CUDA! You might want to make CUDA available or set GHOST_USE_CUDA=OFF to suppress this warning.")
     endif()
 endif()
-
-add_library(ghost ${SOURCES})
-add_dependencies(ghost autogen)
-
 
 if (GHOST_USE_CUDA)
     set(CUDA_LIBRARIES ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${CUDA_cusparse_LIBRARY})
@@ -702,6 +701,27 @@ if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
 endif()
 
 
+if (GHOST_USE_SPMP)
+    if (NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
+        message(ERROR "SpMP can only be used with the Intel compiler currently! SpMP will be disabled!")
+        set(GHOST_HAVE_SPMP 0)
+    else()
+        set(GHOST_HAVE_SPMP 1)
+        include(ExternalProject)
+        set_property(DIRECTORY PROPERTY EP_STEP_TARGETS build)
+        ExternalProject_Add(SpMP
+            PREFIX ${PROJECT_SOURCE_DIR}/SpMP
+            GIT_REPOSITORY http://github.com/jspark1105/SpMP.git
+            CONFIGURE_COMMAND "" 
+            BUILD_COMMAND make
+            BUILD_IN_SOURCE 1
+            INSTALL_COMMAND ""
+            )
+        #set(LIBSPMP ${PROJECT_SOURCE_DIR}/SpMP/src/SpMP/libspmp.a)
+        target_link_libraries(ghost "${PROJECT_SOURCE_DIR}/SpMP/src/SpMP/libspmp.a")
+        include_directories(${PROJECT_SOURCE_DIR}/SpMP/src)
+    endif()
+endif()
 
 if (GHOST_BUILD_MIC)
     set(GHOST_BUILD_MIC 1 CACHE BOOL "Generate MIC kernels")
@@ -754,6 +774,10 @@ configure_file (
 configure_file(${PROJECT_SOURCE_DIR}/ghost.pc.in ${PROJECT_BINARY_DIR}/ghost.pc @ONLY)
 configure_file(${PROJECT_SOURCE_DIR}/ghost-config.cmake.in ${PROJECT_BINARY_DIR}/ghost-config.cmake @ONLY)
 configure_file(${PROJECT_SOURCE_DIR}/ghost-config-version.cmake.in ${PROJECT_BINARY_DIR}/ghost-config-version.cmake @ONLY)
+
+add_dependencies(ghost autogen)
+add_dependencies(ghost SpMP)
+
 
 if (${BUILD_SHARED_LIBS})
     install(TARGETS ghost EXPORT ghost-targets LIBRARY DESTINATION lib/ghost)

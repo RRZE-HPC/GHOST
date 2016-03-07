@@ -325,7 +325,11 @@ typedef enum {
     /**
      * @brief Re-order the matrix globally using Zoltan hypergraph partitioning.
      */
-    GHOST_SPARSEMAT_ZOLTAN = 2048
+    GHOST_SPARSEMAT_ZOLTAN = 2048,
+    /**
+     * @brief Re-order the local part of the matrix using parallel RCM re-ordering.
+     */
+    GHOST_SPARSEMAT_RCM = 4096
 } ghost_sparsemat_flags;
 
 
@@ -697,6 +701,8 @@ extern "C" {
      */
     ghost_error ghost_sparsemat_perm_sort(ghost_sparsemat *mat, 
             void *matrixSource, ghost_sparsemat_src srcType, ghost_gidx scope);
+
+    ghost_error ghost_sparsemat_perm_spmp(ghost_sparsemat *mat, void *matrixSource, ghost_sparsemat_src srcType);
 
     /**
      * @brief Create a matrix permutation based on 2-way coloring using ColPack.
