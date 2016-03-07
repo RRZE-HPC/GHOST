@@ -21,47 +21,145 @@
 #include "ghost/cu_complex.h"
 #include "ghost/complex.h"
 
-#define THREADSPERBLOCK 512
 
-template<typename T> __global__ static void ghost_tsmttsm_cu_rm_fallback(T * const __restrict__ x, const T * const __restrict__ v, const T * const __restrict__ w, const T alpha, const T beta, ghost_lidx nrows, ghost_lidx stridex, ghost_lidx stridev, ghost_lidx stridew, const int M, const int K, const int conjv)
-{
+namespace {
 
-    // TODO
+void *temp_storage = NULL;
+size_t temp_storage_bytes = 0;
 
+namespace GENV4 {
+template <typename T>
+__global__ void deviceReduce(T *blockResults, T *result, T alpha, T beta,
+                             int blockCount, size_t lda, size_t ldb, size_t ldc,
+                             int M, int N) {
+  size_t tidx = blockDim.x * blockIdx.x + threadIdx.x;
+
+  if (tidx >= M * N) return;
+
+  int n = tidx / M;
+  int m = tidx % M;
+
+  T sum = 0.0;
+  for (int i = 0; i < blockCount; i++) {
+    sum += blockResults[i * N * ldc + n * ldc + m];
+  }
+
+  result[n * ldc + m] = result[n * ldc + m] * beta + sum * alpha;
 }
 
-ghost_error ghost_tsmttsm__u_cuda_x_x_x_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv) 
-{
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL); 
-    ghost_error ret = GHOST_SUCCESS;
-    dim3 block, grid;
-    grid.x = (int)ceil((double)x->traits.nrows/THREADSPERBLOCK);
-    grid.y = 1;
-    grid.z = 1;
-    block.x = THREADSPERBLOCK;
-    block.y = 1;
-    block.z = 1;
+template <typename T, int BLOCKSIZE, bool TRANSPOSE>
+__global__ void varBlockProductKernel(const T *A, const T *B, T *out, size_t K,
+                                      size_t lda, size_t ldb, size_t ldc, int M,
+                                      int N) {
+  size_t tidx = blockDim.x * blockIdx.x + threadIdx.x;
 
-    if (x->traits.datatype & GHOST_DT_COMPLEX) {
-        if (x->traits.datatype & GHOST_DT_DOUBLE) {
-            ghost_tsmttsm_cu_rm_fallback<cuDoubleComplex><<< grid,block >>>(
-                    (cuDoubleComplex *)x->cu_val,(const cuDoubleComplex *)v->cu_val,(const cuDoubleComplex *)w->cu_val,*(cuDoubleComplex *)alpha,*(cuDoubleComplex *)beta,x->traits.nrows,x->stride,v->stride,w->stride,v->traits.ncols,x->traits.ncols,conjv);
-        } else {
-            ghost_tsmttsm_cu_rm_fallback<cuFloatComplex><<< grid,block >>>(
-                    (cuFloatComplex *)x->cu_val,(const cuFloatComplex *)v->cu_val,(const cuFloatComplex *)w->cu_val,*(cuFloatComplex *)alpha,*(cuFloatComplex *)beta,x->traits.nrows,x->stride,v->stride,w->stride,v->traits.ncols,x->traits.ncols,conjv);
-        }
-    } else {
-        if (x->traits.datatype & GHOST_DT_DOUBLE) {
-            ghost_tsmttsm_cu_rm_fallback<double><<< grid,block >>>(
-                   (double *)x->cu_val,(const double *)v->cu_val,(const double *)w->cu_val,*(double *)alpha,*(double *)beta,x->traits.nrows,x->stride,v->stride,w->stride,v->traits.ncols,x->traits.ncols,conjv);
-        } else {
-            ghost_tsmttsm_cu_rm_fallback<float><<< grid,block >>>(
-                   (float *)x->cu_val,(const float *)v->cu_val,(const float *)w->cu_val,*(float *)alpha,*(float *)beta,x->traits.nrows,x->stride,v->stride,w->stride,v->traits.ncols,x->traits.ncols,conjv);
-        }
+  __shared__ T blockStorage[BLOCKSIZE];
+
+  blockStorage[threadIdx.x] = 0.0;
+
+  int m = tidx % M;
+  int n = (tidx / M) % N;
+
+  if (blockDim.x * gridDim.x / M / N == tidx / M / N) return;
+
+  T threadSum;
+  threadSum = 0;
+
+  for (size_t idx = tidx / M / N; idx < K;
+       idx += blockDim.x * gridDim.x / M / N) {
+    threadSum += A[idx * lda + m] * B[idx * ldb + n];
+  }
+
+  __syncthreads();
+  blockStorage[threadIdx.x] = threadSum;
+  __syncthreads();
+
+  if (threadIdx.x < M * N) {
+    T blockSum = 0.0;
+    for (int i = threadIdx.x; i < BLOCKSIZE; i += M * N) {
+      blockSum += blockStorage[i];
     }
-
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL); 
-    CUDA_CALL_RETURN(cudaGetLastError());
-    return ret;
+    if (TRANSPOSE) {
+      out[blockIdx.x * M * ldc + m * ldc + n] = blockSum;
+    } else {
+      out[blockIdx.x * N * ldc + n * ldc + m] = blockSum;
+    }
+  }
+}
 }
 
+template <typename T>
+void ghost_tsmttsm_cu_rm_fallback(T *const __restrict__ C, const T *const __restrict__ A, const T *const __restrict__ B, const T alpha, const T beta, ghost_lidx K, ghost_lidx ldc, ghost_lidx lda, ghost_lidx ldb, const int M, const int N)
+{
+  const int threadsPerBlock = 128;
+  int deviceUsed;
+  cudaGetDevice(&deviceUsed);
+  cudaDeviceProp prop;
+  cudaGetDeviceProperties(&prop, deviceUsed);
+  int numBlocks;
+  cudaOccupancyMaxActiveBlocksPerMultiprocessor(
+      &numBlocks, GENV4::varBlockProductKernel<T, threadsPerBlock, true>,
+      threadsPerBlock, 0);
+  int blockCount = prop.multiProcessorCount * numBlocks;
+
+  if (temp_storage_bytes == 0 || temp_storage == NULL) {
+    temp_storage_bytes = blockCount * sizeof(T) * N * ldc;
+    ghost_cu_malloc(&temp_storage, temp_storage_bytes);
+    if (temp_storage == NULL) temp_storage_bytes = 0;
+  }
+  if (N > M) {
+    GENV4::varBlockProductKernel<T, threadsPerBlock,
+                                 true><<<blockCount, threadsPerBlock>>>(
+        B, A, (T *)temp_storage, K, ldb, lda, ldc, M, N);
+  } else {
+    GENV4::varBlockProductKernel<T, threadsPerBlock,
+                                 false><<<blockCount, threadsPerBlock>>>(
+        A, B, (T *)temp_storage, K, lda, ldb, ldc, M, N);
+  }
+  GENV4::deviceReduce<T><<<M * N / 256 + 1, 256>>>(
+      (T *)temp_storage, C, alpha, beta, blockCount, lda, ldb, ldc, M, N);
+}
+}
+
+
+
+ghost_error ghost_tsmttsm__u_cuda_x_x_x_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
+{
+  GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH | GHOST_FUNCTYPE_KERNEL);
+  ghost_error ret = GHOST_SUCCESS;
+
+  if (x->traits.datatype & GHOST_DT_COMPLEX) {
+    ret = GHOST_ERR_NOT_IMPLEMENTED;
+    /*    if (x->traits.datatype & GHOST_DT_DOUBLE) {
+      ghost_tsmttsm_cu_rm_fallback<cuDoubleComplex><<<grid, block>>>(
+          (cuDoubleComplex *)x->cu_val, (const cuDoubleComplex *)v->cu_val,
+          (const cuDoubleComplex *)w->cu_val, *(cuDoubleComplex *)alpha,
+          *(cuDoubleComplex *)beta, x->traits.nrows, x->stride, v->stride,
+          w->stride, v->traits.ncols, x->traits.ncols, conjv);
+    } else {
+      ghost_tsmttsm_cu_rm_fallback<cuFloatComplex><<<grid, block>>>(
+          (cuFloatComplex *)x->cu_val, (const cuFloatComplex *)v->cu_val,
+          (const cuFloatComplex *)w->cu_val, *(cuFloatComplex *)alpha,
+          *(cuFloatComplex *)beta, x->traits.nrows, x->stride, v->stride,
+          w->stride, v->traits.ncols, x->traits.ncols, conjv);
+          }*/
+  } else {
+    if (x->traits.datatype & GHOST_DT_DOUBLE) {
+      ghost_tsmttsm_cu_rm_fallback<double>(
+          (double *)x->cu_val, (const double *)v->cu_val,
+          (const double *)w->cu_val, *(double *)alpha, *(double *)beta,
+          v->traits.nrows, x->stride, v->stride, w->stride, v->traits.ncols,
+          x->traits.ncols);
+    } else {
+      ghost_tsmttsm_cu_rm_fallback<float>(
+          (float *)x->cu_val, (const float *)v->cu_val,
+          (const float *)w->cu_val, *(float *)alpha, *(float *)beta,
+          v->traits.nrows, x->stride, v->stride, w->stride, v->traits.ncols,
+          x->traits.ncols);
+    }
+  }
+
+  GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH | GHOST_FUNCTYPE_KERNEL);
+  CUDA_CALL_RETURN(cudaGetLastError());
+  return ret;
+}
