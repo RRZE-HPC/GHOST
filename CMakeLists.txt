@@ -3,7 +3,7 @@ project (GHOST)
 
 set(GHOST_VERSION_MAJOR 1)
 set(GHOST_VERSION_MINOR 0)
-set(GHOST_VERSION_REVISION 2)
+set(GHOST_VERSION_REVISION 3)
 set(GHOST_VERSION_IDENTIFIER)
 set(GHOST_VERSION "${GHOST_VERSION_MAJOR}.${GHOST_VERSION_MINOR}.${GHOST_VERSION_REVISION}")
 if (DEFINED GHOST_VERSION_IDENTIFIER)
@@ -21,6 +21,8 @@ option(GHOST_USE_OPENMP "Build with OpenMP" 1)
 option(GHOST_USE_CUDA "Build with CUDA" 0)
 option(GHOST_USE_SCOTCH "Use PT-Scotch for matrix re-ordering" 0)
 option(GHOST_USE_COLPACK "Use ColPack for matrix coloring" 0)
+option(GHOST_USE_ZOLTAN "Use Zoltan for matrix re-ordering" 0)
+option(GHOST_USE_SPMP "Use SpMP for matrix preprocessing" 0)
 option(GHOST_IDX64_LOCAL "Enable 64-bit indices for local quantities" 0)
 option(GHOST_IDX64_GLOBAL "Enable 64-bit indices for global quantities" 1)
 option(GHOST_OPTIMIZE_HOSTARCH "Create optimized code for the host's architecture" 1)
@@ -35,7 +37,7 @@ set(GHOST_GEN_SELL_C "1,32" CACHE STRING "The SELL chunk heights for which gener
 set(GHOST_GEN_CUSELLSPMV "true,true,true,true,true,true,true;true,false,false,false,false,false,false;false,false,false,false,false,false,false" CACHE STRING "The permutations of SELL SpMV CUDA kernels to instantiate (semicolon-separated list of comma-separated lists). AXP(B)Y,SCALE,(V)SHIFT,DOT_YY,DOT_XY,DOT_XX,CHAIN_AXPBY")
 set(GHOST_VERBOSITY 1 CACHE STRING "Level of verbosity information. Valid values: 0 (be totally silent), 1 (print warnings, errors and further important information), 2, 3, 4 (increasing level of verbosity)")
 set(GHOST_INSTRUMENT "" CACHE STRING "Type of instrumentation (semicolon separated list). Valid values: TIMING, LIKWID, IACA")
-set(GHOST_INSTRUMENT_FUNCTYPES "(functype) & GHOST_FUNCTYPE_ANY" CACHE STRING "Logical selection of function types to instrument defined in func_util.h.")
+set(GHOST_INSTRUMENT_FUNCTYPES "(functype) & GHOST_FUNCTYPE_ANY" CACHE STRING "Logical selection of function types to instrument. Possible values are defined in func_util.h and functype should be put in parentheses.")
 
 find_package(PkgConfig)
 
@@ -58,6 +60,7 @@ set (SOURCES
     src/sell_spmv.cpp
     src/sparsemat.cpp
     src/sparsemat_perm_colpack.cpp
+    src/sparsemat_perm_spmp.cpp
     src/svqb.cpp
     src/rayleigh_ritz.cpp
     src/timing.cpp
@@ -84,10 +87,13 @@ set (SOURCES
     src/matrixmarket.c
     src/mmio.c
     src/omp.c
+    src/perm.c
     src/pumap.c
     src/rand.c
     src/sparsemat.c
     src/sparsemat_perm_scotch.c
+    src/sparsemat_perm_sort.c
+    src/sparsemat_perm_zoltan.c
     src/spmv.c
     src/spmv_overlap.c 
     src/spmv_nompi.c 
@@ -130,7 +136,6 @@ set (HEADERS
     include/ghost/math.h
     include/ghost/matrixmarket.h
     include/ghost/omp.h
-    include/ghost/perm.h
     include/ghost/pumap.h
     include/ghost/rand.h
     include/ghost/sparsemat.h
@@ -159,7 +164,7 @@ foreach (SELL_CHUNKHEIGHT ${GHOST_GEN_SELL_C_LIST})
     foreach (SELL_NCOLS ${GHOST_GEN_DENSEMAT_DIM_LIST})
         set(SELL_CU_SPMV_SWITCHCASCADE "${SELL_CU_SPMV_SWITCHCASCADE}            case ${SELL_NCOLS}:\\\n")
         foreach(SELL_CUDA_VARIANT ${GHOST_GEN_CUSELLSPMV})
-            set(SELL_CU_SPMV_SWITCHCASCADE "${SELL_CU_SPMV_SWITCHCASCADE}                if(!(strcmp(boolstr,\"${SELL_CUDA_VARIANT}\"))) { kernel<dt1,dt2,dt2_b,${SELL_CHUNKHEIGHT},${SELL_NCOLS},${SELL_CUDA_VARIANT}><<<grid,block,smem>>>((dt2 *)lhsval,(int)(lhs->stride),(dt2 *)rhsval,(int)rhs->stride,traits.flags,mat->nrows,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,(dt2 *)cu_shift,(dt2)scale,(dt2)beta,(dt2 *)cu_localdot,(dt2 *)zval,zstride,(dt2)sdelta,(dt2)seta); } else \\\n")
+            set(SELL_CU_SPMV_SWITCHCASCADE "${SELL_CU_SPMV_SWITCHCASCADE}                if(!(strcmp(boolstr,\"${SELL_CUDA_VARIANT}\"))) { kernel<dt1,dt2,dt2_b,nrowsinblock,${SELL_CHUNKHEIGHT},${SELL_NCOLS},${SELL_CUDA_VARIANT}><<<grid,block,smem>>>((dt2 *)lhsval,(int)(lhs->stride),(dt2 *)rhsval,(int)rhs->stride,traits.flags,mat->nrows,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,(dt2 *)cu_shift,(dt2)scale,(dt2)beta,(dt2 *)cu_localdot,(dt2 *)zval,zstride,(dt2)sdelta,(dt2)seta); } else \\\n")
         endforeach()
         set(SELL_CU_SPMV_SWITCHCASCADE "${SELL_CU_SPMV_SWITCHCASCADE}                { PERFWARNING_LOG(\"Non-configured bool variant: %s\",boolstr);\\\n                do_fallback = true; }\\\n")
         set(SELL_CU_SPMV_SWITCHCASCADE "${SELL_CU_SPMV_SWITCHCASCADE}        break;\\\n")
@@ -382,7 +387,6 @@ else ()
 endif()
 
 
-
 if (GHOST_USE_CUDA)
     option(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
     find_package(CUDA)
@@ -429,7 +433,6 @@ endif()
 add_library(ghost ${SOURCES})
 add_dependencies(ghost autogen)
 
-
 if (GHOST_USE_CUDA)
     set(CUDA_LIBRARIES ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${CUDA_cusparse_LIBRARY})
 endif()
@@ -464,6 +467,18 @@ if (GHOST_USE_SCOTCH)
         set(SCOTCH_LIBRARIES ${LIBSCOTCH} ${LIBSCOTCHERR})
     endif()
     mark_as_advanced(LIBPTSCOTCH LIBSCOTCH LIBPTSCOTCHERR LIBSCOTCHERR)
+endif()
+
+if (GHOST_USE_ZOLTAN)
+    set(GHOST_HAVE_ZOLTAN 1)
+    set(ZOLTAN_INCLUDE_DIR "${ZOLTAN_INCLUDE_DIR}" CACHE PATH "Location of Zoltan headers")
+    include_directories(${ZOLTAN_INCLUDE_DIR})
+    get_filename_component(ZOLTAN_LIBDIR ${ZOLTAN_INCLUDE_DIR}/../lib REALPATH)
+
+    find_library(ZOLTAN_LIBRARIES zoltan ${ZOLTAN_LIBDIR})
+    if (NOT ZOLTAN_LIBRARIES)
+        message(FATAL_ERROR "ZOLTAN_INCLUDE_DIR not set correctly!")
+    endif()
 endif()
 
 
@@ -650,6 +665,24 @@ elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "PGI")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -c99")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -std=c++0x")
 else ()
+
+########################################################################
+# Try to find out, if compiler is Fujitsu
+########################################################################
+    include(CheckCSourceCompiles)
+    unset(CHECK_FUJITSU_DEFINES_C CACHE)
+    CHECK_C_SOURCE_COMPILES("
+        #if defined(__FUJITSU) || defined(__FCC_VERSION) || defined(__fcc_version)
+        int main(){ return 0; }
+        #endif
+    " CHECK_FUJITSU_DEFINES_C)
+
+    if(${CHECK_FUJITSU_DEFINES_C})
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DGHOST_FUJITSU")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DGHOST_FUJITSU")
+    endif()
+########################################################################
+
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -std=c99 -Wall -Wextra")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -std=c++0x -Wall -Wextra")
     if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
@@ -687,6 +720,28 @@ if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
 endif()
 
 
+if (GHOST_USE_SPMP)
+    if (NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
+        message(ERROR "SpMP can only be used with the Intel compiler currently! SpMP will be disabled!")
+        set(GHOST_HAVE_SPMP 0)
+    else()
+        set(GHOST_HAVE_SPMP 1)
+        include(ExternalProject)
+        set_property(DIRECTORY PROPERTY EP_STEP_TARGETS build)
+        ExternalProject_Add(SpMP
+            PREFIX ${PROJECT_SOURCE_DIR}/SpMP
+            GIT_REPOSITORY http://github.com/jspark1105/SpMP.git
+            CONFIGURE_COMMAND "" 
+            BUILD_COMMAND make
+            BUILD_IN_SOURCE 1
+            INSTALL_COMMAND ""
+            )
+        #set(LIBSPMP ${PROJECT_SOURCE_DIR}/SpMP/src/SpMP/libspmp.a)
+        target_link_libraries(ghost "${PROJECT_SOURCE_DIR}/SpMP/src/SpMP/libspmp.a")
+        include_directories(${PROJECT_SOURCE_DIR}/SpMP/src)
+        add_dependencies(ghost SpMP)
+    endif()
+endif()
 
 if (GHOST_BUILD_MIC)
     set(GHOST_BUILD_MIC 1 CACHE BOOL "Generate MIC kernels")

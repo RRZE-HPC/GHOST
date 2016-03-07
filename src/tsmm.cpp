@@ -31,14 +31,14 @@ namespace std
         typedef std::size_t result_type;
         result_type operator()(argument_type const& a) const
         {
-            return ghost_hash(a.dt,a.xcols,ghost_hash(a.vcols,a.impl,ghost_hash(a.xstor,a.alignment,a.unroll)));
+            return ghost_hash(a.dt,a.xcols,ghost_hash(a.vcols,a.impl,ghost_hash(a.xstor,a.alignment,ghost_hash(a.unroll,a.multipleof,1))));
         }
     };
 }
 
 static bool operator==(const ghost_tsmm_parameters& a, const ghost_tsmm_parameters& b)
 {
-    return a.dt == b.dt && a.xcols == b.xcols && a.vcols == b.vcols && a.impl == b.impl && a.xstor == b.xstor && a.alignment == b.alignment && a.unroll == b.unroll;
+    return a.dt == b.dt && a.xcols == b.xcols && a.vcols == b.vcols && a.impl == b.impl && a.xstor == b.xstor && a.alignment == b.alignment && a.unroll == b.unroll && a.multipleof == b.multipleof;
 }
 
 static unordered_map<ghost_tsmm_parameters, ghost_tsmm_kernel> ghost_tsmm_kernels;
@@ -140,6 +140,7 @@ ghost_error ghost_tsmm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w_i
     // fix properties    
     p.xstor = x->traits.storage;
 
+
     // possible implementations
     std::vector<ghost_implementation> try_impl;
 #ifdef GHOST_HAVE_CUDA
@@ -196,6 +197,17 @@ ghost_error ghost_tsmm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w_i
     }
 #endif
 
+    std::vector<ghost_lidx> try_multipleof;
+    if (ISPOWEROFTWO(x->traits.ncols) && ISPOWEROFTWO(v->traits.ncols)) {
+        ghost_lidx smallerdim = MIN(x->traits.ncols,v->traits.ncols);
+        while (smallerdim > 0) {
+            try_multipleof.push_back(smallerdim);
+            smallerdim /= 2;
+        }
+    } else {
+        try_multipleof.push_back(1);
+    }
+
     
     int n_xcols = sizeof(try_xcols)/sizeof(ghost_lidx); 
     int n_vcols = sizeof(try_vcols)/sizeof(ghost_lidx); 
@@ -207,18 +219,21 @@ ghost_error ghost_tsmm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w_i
         for (pos_vcols = 0; pos_vcols < n_vcols; pos_vcols++) {  
             for (std::vector<ghost_implementation>::iterator impl = try_impl.begin(); impl != try_impl.end(); impl++) {
                 for (p.alignment = opt_align; (int)p.alignment >= GHOST_UNALIGNED; p.alignment = (ghost_alignment)((int)p.alignment-1)) {
-                    for (p.unroll = opt_unroll; p.unroll > 0; p.unroll /= 2) {
-                        for (pos_dt = 0; pos_dt < n_dt; pos_dt++) {
-                            p.xcols = try_xcols[pos_xcols];
-                            p.vcols = try_vcols[pos_vcols];
-                            p.dt = try_dt[pos_dt];
-                            p.impl = *impl;
-                            INFO_LOG("Try xcols=%s, vcols=%s, impl=%s, %s, unroll=%d, dt=%s",
-                                    p.xcols==-1?"arbitrary":to_string((long long)p.xcols).c_str(),p.vcols==-1?"arbitrary":to_string((long long)p.vcols).c_str(),
-                                    ghost_implementation_string(p.impl),p.alignment==GHOST_UNALIGNED?"unaligned":"aligned",p.unroll,ghost_datatype_string(p.dt));
-                            kernel = ghost_tsmm_kernels[p];
-                            if (kernel) {
-                                goto end_of_loop;
+                    for (std::vector<ghost_lidx>::iterator mult = try_multipleof.begin(); mult != try_multipleof.end(); mult++) {
+                        for (p.unroll = opt_unroll; p.unroll > 0; p.unroll /= 2) {
+                            for (pos_dt = 0; pos_dt < n_dt; pos_dt++) {
+                                p.xcols = try_xcols[pos_xcols];
+                                p.vcols = try_vcols[pos_vcols];
+                                p.dt = try_dt[pos_dt];
+                                p.impl = *impl;
+                                p.multipleof = *mult;
+                                INFO_LOG("Try xcols=%s, vcols=%s, impl=%s, %s, unroll=%d, dt=%s, multipleof=%d",
+                                        p.xcols==-1?"arbitrary":to_string((long long)p.xcols).c_str(),p.vcols==-1?"arbitrary":to_string((long long)p.vcols).c_str(),
+                                        ghost_implementation_string(p.impl),p.alignment==GHOST_UNALIGNED?"unaligned":"aligned",p.unroll,ghost_datatype_string(p.dt),p.multipleof);
+                                kernel = ghost_tsmm_kernels[p];
+                                if (kernel) {
+                                    goto end_of_loop;
+                                }
                             }
                         }
                     }
@@ -232,9 +247,9 @@ end_of_loop:
 
     if (kernel) {
         if (optimal) {
-            INFO_LOG("Found kernel with highest specialization grade: dt=%d xcols=%d vcols=%d xstor=%d align=%d unroll=%d impl=%s",p.dt,p.xcols,p.vcols,p.xstor,p.alignment,p.unroll,ghost_implementation_string(p.impl));
+            INFO_LOG("Found kernel with highest specialization grade: dt=%d xcols=%d vcols=%d xstor=%d align=%d unroll=%d impl=%s multipleof=%d",p.dt,p.xcols,p.vcols,p.xstor,p.alignment,p.unroll,ghost_implementation_string(p.impl),p.multipleof);
         } else {
-            PERFWARNING_LOG("Using potentially non-optimal kernel: dt=%d xcols=%d vcols=%d xstor=%d align=%d unroll=%d impl=%s",p.dt,p.xcols,p.vcols,p.xstor,p.alignment,p.unroll,ghost_implementation_string(p.impl));
+            PERFWARNING_LOG("Using potentially non-optimal kernel: dt=%d xcols=%d vcols=%d xstor=%d align=%d unroll=%d impl=%s multipleof=%d",p.dt,p.xcols,p.vcols,p.xstor,p.alignment,p.unroll,ghost_implementation_string(p.impl),p.multipleof);
         }
 
         ret = kernel(x,v,w,alpha,beta);
@@ -253,8 +268,8 @@ end_of_loop:
         tsmm_perfargs.m = v->traits.nrows;
     }
     tsmm_perfargs.dt = x->traits.datatype;
-    tsmm_perfargs.betaiszero = ghost_iszero(beta,p.dt);
-    tsmm_perfargs.alphaisone = ghost_isone(alpha,p.dt);
+    tsmm_perfargs.betaiszero = ghost_iszero(beta,x->traits.datatype);
+    tsmm_perfargs.alphaisone = ghost_isone(alpha,x->traits.datatype);
     ghost_timing_set_perfFunc(NULL,__ghost_functag,ghost_gemm_perf_GBs,(void *)&tsmm_perfargs,sizeof(tsmm_perfargs),"GB/s");
     ghost_timing_set_perfFunc(NULL,__ghost_functag,ghost_gemm_perf_GFs,(void *)&tsmm_perfargs,sizeof(tsmm_perfargs),"GF/s");
 #endif

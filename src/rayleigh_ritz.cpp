@@ -114,14 +114,13 @@ static ghost_error ghost_rayleigh_ritz_tmpl (ghost_sparsemat * mat, void * void_
     ghost_densemat_traits xtraits = GHOST_DENSEMAT_TRAITS_INITIALIZER;
     ghost_spmv_opts spmvtraits = GHOST_SPMV_OPTS_INITIALIZER;
     spmvtraits.flags = spMVM_Options;
-    spmvtraits.gamma = eigs_T;
     
     T_b * eigs = (T_b *)void_eigs;
     T_b * res  = (T_b *)void_res;
-    T *  xval = (T *)x->val;
-    
+    T *  xval = NULL;
     GHOST_CALL_GOTO(ghost_malloc((void **)&eigs_T, n*sizeof(T)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&res_T, n*sizeof(T)),err,ret);
+    spmvtraits.gamma = eigs_T;
     
     xtraits.flags |= GHOST_DENSEMAT_NO_HALO; 
     xtraits.ncols = n;
@@ -134,6 +133,7 @@ static ghost_error ghost_rayleigh_ritz_tmpl (ghost_sparsemat * mat, void * void_
     }
     GHOST_CALL_GOTO(ghost_densemat_create(&x,NULL,xtraits),err,ret);
     GHOST_CALL_GOTO(x->fromScalar(x,&zero),err,ret);
+    xval = (T *)x->val;
     ldx = x->stride;
 
     
@@ -224,15 +224,15 @@ static ghost_error ghost_grayleigh_ritz_tmpl (ghost_sparsemat * mat, void * void
     ghost_densemat_traits xtraits = GHOST_DENSEMAT_TRAITS_INITIALIZER;
     ghost_spmv_opts spmvtraits = GHOST_SPMV_OPTS_INITIALIZER;
     spmvtraits.flags = spMVM_Options;
-    spmvtraits.gamma = eigs_T;
     
     T_b * eigs = (T_b *)void_eigs;
     T_b * res  = (T_b *)void_res;
-    T *  xval = (T *)x->val;
-    T *  bval = (T *)b->val;
+    T *  xval = NULL;
+    T *  bval = NULL;
     
     GHOST_CALL_GOTO(ghost_malloc((void **)&eigs_T, n*sizeof(T)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&res_T, n*sizeof(T)),err,ret);
+    spmvtraits.gamma = eigs_T;
     
     xtraits.flags |= GHOST_DENSEMAT_NO_HALO; 
     xtraits.ncols = n;
@@ -245,10 +245,12 @@ static ghost_error ghost_grayleigh_ritz_tmpl (ghost_sparsemat * mat, void * void
     }
     GHOST_CALL_GOTO(ghost_densemat_create(&x,NULL,xtraits),err,ret);
     GHOST_CALL_GOTO(x->fromScalar(x,&zero),err,ret);
+    xval = (T *)x->val;
     ldx = x->stride;
 
     GHOST_CALL_GOTO(ghost_densemat_create(&b,NULL,xtraits),err,ret);
     GHOST_CALL_GOTO(b->fromScalar(b,&zero),err,ret);
+    bval = (T *)b->val;
     ldb = b->stride;
 
 

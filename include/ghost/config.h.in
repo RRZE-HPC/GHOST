@@ -18,12 +18,14 @@
 #cmakedefine GHOST_HAVE_OPENMP
 #cmakedefine GHOST_HAVE_SCOTCH
 #cmakedefine GHOST_HAVE_COLPACK
+#cmakedefine GHOST_HAVE_ZOLTAN
 #cmakedefine GHOST_HAVE_CUDA
 #cmakedefine GHOST_HAVE_OPENCL
 #cmakedefine GHOST_HAVE_MKL
 #cmakedefine GHOST_HAVE_GSL
 #cmakedefine GHOST_HAVE_LIBSCI
 #cmakedefine GHOST_HAVE_LAPACK
+#cmakedefine GHOST_HAVE_SPMP
 
 /* hardware features */
 #cmakedefine GHOST_BUILD_MIC

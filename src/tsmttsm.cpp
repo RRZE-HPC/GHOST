@@ -299,8 +299,8 @@ end_of_loop:
         tsmttsm_perfargs.k = v->traits.nrows;
     }
     tsmttsm_perfargs.dt = x->traits.datatype;
-    tsmttsm_perfargs.betaiszero = ghost_iszero(beta,p.dt);
-    tsmttsm_perfargs.alphaisone = ghost_isone(alpha,p.dt);
+    tsmttsm_perfargs.betaiszero = ghost_iszero(beta,x->traits.datatype);
+    tsmttsm_perfargs.alphaisone = ghost_isone(alpha,x->traits.datatype);
     ghost_timing_set_perfFunc(NULL,__ghost_functag,ghost_gemm_perf_GBs,(void *)&tsmttsm_perfargs,sizeof(tsmttsm_perfargs),"GB/s");
     ghost_timing_set_perfFunc(NULL,__ghost_functag,ghost_gemm_perf_GFs,(void *)&tsmttsm_perfargs,sizeof(tsmttsm_perfargs),"GF/s");
 #endif

@@ -9,11 +9,51 @@
 #include "config.h"
 #include "types.h"
 #include "error.h"
-#include "perm.h"
 
 typedef struct ghost_context ghost_context;
 
 
+typedef enum
+{
+    /**
+     * @brief A local permutation only contains local indices in the range [0..perm->len-1].
+     */
+    GHOST_PERMUTATION_LOCAL,
+    /**
+     * @brief A global permutation contains global indices in the range [0..context->gnrows-1].
+     */
+    GHOST_PERMUTATION_GLOBAL
+}
+ghost_permutation_scope_t;
+
+typedef enum
+{
+    GHOST_PERMUTATION_ORIG2PERM,
+    GHOST_PERMUTATION_PERM2ORIG
+}
+ghost_permutation_direction;
+    
+typedef struct
+{
+    /**
+     * @brief Gets an original index and returns the corresponding permuted position.
+     *
+     * NULL if no permutation applied to the matrix.
+     */
+    ghost_gidx *perm;
+    /**
+     * @brief Gets an index in the permuted system and returns the original index.
+     *
+     * NULL if no permutation applied to the matrix.
+     */
+    ghost_gidx *invPerm;
+
+    ghost_gidx *cu_perm;
+
+    ghost_permutation_scope_t scope;
+    ghost_gidx len;
+}
+ghost_permutation;
 
 /**
  * @brief This struct holds all possible flags for a context.
@@ -230,6 +270,14 @@ extern "C" {
      * @return A string holding a sensible name of the work distribution scheme.
      */
     char * ghost_context_workdist_string(ghost_context_flags_t flags);
+    /**
+     * @brief Create a global inverse permutation from a present global permutation
+     *
+     * @param context A context with a valid global permutation
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+ghost_error ghost_global_perm_inv(ghost_gidx *toPerm, ghost_gidx *fromPerm, ghost_context *context);
 
 #ifdef __cplusplus
 } //extern "C"

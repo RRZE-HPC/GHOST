@@ -14,7 +14,7 @@
 #GHOST_SUBST CFGK ${BLOCKDIM1}
 #GHOST_SUBST CFGM ${BLOCKDIM2}
 
-ghost_error ghost_tsmm__a_sse_d_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
+ghost_error ghost_tsmm__a_sse_d_CFGK_CFGM_1_2_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
 {
 #ifdef GHOST_BUILD_SSE
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)

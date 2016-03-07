@@ -146,7 +146,8 @@ while (<>) {
                 print "pars.vcols = ".$funcpars[4].";\n";
             }
             print "pars.unroll = ".$funcpars[5].";\n";
-            print "pars.xstor = ".$storages{$funcpars[6]}.";\n";
+            print "pars.multipleof = ".$funcpars[6].";\n";
+            print "pars.xstor = ".$storages{$funcpars[7]}.";\n";
             print $funcname."_kernels[pars] = ".$funcname_full.";\n";
             if ($funcpars[3] ne "x" and $funcpars[4] ne "x" ) {
                 print "ghost_gemm_perf_args tsmm_perfargs;\n";

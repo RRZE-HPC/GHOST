@@ -29,6 +29,7 @@ typedef struct
     ghost_alignment alignment;
     ghost_densemat_storage xstor;
     int unroll;
+    int multipleof;
 } ghost_tsmm_parameters;
 
 /**

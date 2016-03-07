@@ -700,7 +700,7 @@ out:
 #endif
 }
 
-ghost_error ghost_tsmttsm__a_avx_z_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
+ghost_error ghost_tsmttsm__a_avx_z_CFGK_CFGM_2_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
 {
     UNUSED(conjv);
 #ifdef GHOST_BUILD_AVX
@@ -716,9 +716,9 @@ ghost_error ghost_tsmttsm__a_avx_z_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_dense
     ghost_lidx n = v->traits.nrows;
     INFO_LOG("In AVX TSMTTSM with two fixed block sizes [CFGK][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
 
-    if (n%4) {
-        n+=(4-n%4);
-        INFO_LOG("Padding large dimension to %d\n",n);
+    if (n%2) {
+        n+=(2-n%2);
+        INFO_LOG("Padding large dimension to %d",n);
     }
     
     const double complex * const restrict vval = (const double complex*) v->val;
@@ -757,8 +757,9 @@ ghost_error ghost_tsmttsm__a_avx_z_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_dense
         #GHOST_UNROLL#__m256d vvec@;#2
 
         double complex * restrict x_priv;
-        ghost_malloc_align((void **)&x_priv,CFGM*CFGK*sizeof(double complex),32);
-        memset(x_priv,0,CFGM*CFGK*sizeof(double complex));
+        const int ldxpriv = PAD(CFGM,2);
+        ghost_malloc_align((void **)&x_priv,ldxpriv*CFGK*sizeof(double complex),32);
+        memset(x_priv,0,ldxpriv*CFGK*sizeof(double complex));
 
 
         if (conjv) {
@@ -778,12 +779,12 @@ ghost_error ghost_tsmttsm__a_avx_z_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_dense
                         for (; m<=CFGM-2; m+=2) {
                             vvec0 = _mm256_load_pd((double *)&vval[(i+0)*ldv+m]);
                             vvec1 = _mm256_load_pd((double *)&vval[(i+1)*ldv+m]);
-                            _mm256_store_pd((double *)&x_priv[m+k*CFGM],_mm256_add_pd(_mm256_load_pd((double *)&x_priv[m+k*CFGM]),_mm256_add_pd(complex_mul_conj1(vvec0,wvec0),complex_mul_conj1(vvec1,wvec1))));
+                            _mm256_store_pd((double *)&x_priv[m+k*ldxpriv],_mm256_add_pd(_mm256_load_pd((double *)&x_priv[m+k*ldxpriv]),_mm256_add_pd(complex_mul_conj1(vvec0,wvec0),complex_mul_conj1(vvec1,wvec1))));
 
                         }
 #endif
                         for (; m<CFGM; m++) {
-                            x_priv[m+k*CFGM] += dalpha*(conj(vval[i*ldv+m])*wval[i*ldw+k] + conj(vval[(i+1)*ldv+m])*wval[(i+1)*ldw+k]);
+                            x_priv[m+k*ldxpriv] += dalpha*(conj(vval[i*ldv+m])*wval[i*ldw+k] + conj(vval[(i+1)*ldv+m])*wval[(i+1)*ldw+k]);
                         }
                     }
                 }
@@ -802,14 +803,14 @@ ghost_error ghost_tsmttsm__a_avx_z_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_dense
                         for (m=0; m<=CFGM-2; m+=2) {
                             vvec0 = _mm256_load_pd((double *)&vval[(i+0)*ldv+m]);
                             vvec1 = _mm256_load_pd((double *)&vval[(i+1)*ldv+m]);
-                            _mm256_store_pd((double *)&x_priv[m+k*CFGM],
-                                    _mm256_add_pd(_mm256_load_pd((double *)&x_priv[m+k*CFGM]),
+                            _mm256_store_pd((double *)&x_priv[m+k*ldxpriv],
+                                    _mm256_add_pd(_mm256_load_pd((double *)&x_priv[m+k*ldxpriv]),
                                             _mm256_add_pd(complex_mul_conj1(vvec0,wvec0),complex_mul_conj1(vvec1,wvec1))));
 
                         }
 #endif
                         for (; m<CFGM; m++) {
-                            x_priv[m+k*CFGM] += conj(vval[i*ldv+m])*wval[i*ldw+k] + conj(vval[(i+1)*ldv+m])*wval[(i+1)*ldw+k];
+                            x_priv[m+k*ldxpriv] += conj(vval[i*ldv+m])*wval[i*ldw+k] + conj(vval[(i+1)*ldv+m])*wval[(i+1)*ldw+k];
                         }
                     }
                     
@@ -897,7 +898,7 @@ ghost_error ghost_tsmttsm__a_avx_z_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_dense
         {
             for (k=0; k<CFGK; k++) {
                 for (m=0; m<CFGM; m++) {
-                    xval[k*ldx+m] += x_priv[m+k*CFGM];
+                    xval[k*ldx+m] += x_priv[m+k*ldxpriv];
                 }
             }
         }
@@ -921,7 +922,7 @@ out:
 #endif
 }
 
-ghost_error ghost_tsmttsm__a_avx_c_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
+ghost_error ghost_tsmttsm__a_avx_c_CFGK_CFGM_4_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
 {
     UNUSED(conjv);
 #ifdef GHOST_BUILD_AVX
@@ -978,8 +979,9 @@ ghost_error ghost_tsmttsm__a_avx_c_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_dense
         #GHOST_UNROLL#__m256 vvec@;#4
 
         float complex * restrict x_priv;
-        ghost_malloc_align((void **)&x_priv,CFGM*CFGK*sizeof(float complex),32);
-        memset(x_priv,0,CFGM*CFGK*sizeof(float complex));
+        const ghost_lidx ldxpriv = PAD(CFGM,4);
+        ghost_malloc_align((void **)&x_priv,ldxpriv*CFGK*sizeof(float complex),32);
+        memset(x_priv,0,ldxpriv*CFGK*sizeof(float complex));
 
 
         if (conjv) {
@@ -997,12 +999,12 @@ ghost_error ghost_tsmttsm__a_avx_c_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_dense
                         for (m=0; m<=CFGM-4; m+=4) {
                             vvec0 = _mm256_load_ps((float *)&vval[(i+0)*ldv+m]);
                             vvec1 = _mm256_load_ps((float *)&vval[(i+1)*ldv+m]);
-                            _mm256_store_ps((float *)&x_priv[m+k*CFGM],_mm256_add_ps(_mm256_load_ps((float *)&x_priv[m+k*CFGM]),_mm256_add_ps(complex_mulf_conj1(vvec0,wvec0),complex_mulf_conj1(vvec1,wvec1))));
+                            _mm256_store_ps((float *)&x_priv[m+k*ldxpriv],_mm256_add_ps(_mm256_load_ps((float *)&x_priv[m+k*ldxpriv]),_mm256_add_ps(complex_mulf_conj1(vvec0,wvec0),complex_mulf_conj1(vvec1,wvec1))));
 
                         }
 #if CFGM%4
                         for (; m<CFGM; m++) {
-                            x_priv[m+k*CFGM] += dalpha*(conjf(vval[i*ldv+m])*wval[i*ldw+k] + conjf(vval[(i+1)*ldv+m])*wval[(i+1)*ldw+k]);
+                            x_priv[m+k*ldxpriv] += dalpha*(conjf(vval[i*ldv+m])*wval[i*ldw+k] + conjf(vval[(i+1)*ldv+m])*wval[(i+1)*ldw+k]);
                         }
 #endif
                     }
@@ -1022,8 +1024,8 @@ ghost_error ghost_tsmttsm__a_avx_c_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_dense
                             vvec1 = _mm256_load_ps((float *)&vval[(i+1)*ldv+m]);
                             vvec2 = _mm256_load_ps((float *)&vval[(i+2)*ldv+m]);
                             vvec3 = _mm256_load_ps((float *)&vval[(i+3)*ldv+m]);
-                            _mm256_store_ps((float *)&x_priv[m+k*CFGM],
-                                    _mm256_add_ps(_mm256_load_ps((float *)&x_priv[m+k*CFGM]),
+                            _mm256_store_ps((float *)&x_priv[m+k*ldxpriv],
+                                    _mm256_add_ps(_mm256_load_ps((float *)&x_priv[m+k*ldxpriv]),
                                         _mm256_add_ps(
                                             _mm256_add_ps(complex_mulf_conj1(vvec0,wvec0),complex_mulf_conj1(vvec1,wvec1)),
                                             _mm256_add_ps(complex_mulf_conj1(vvec2,wvec2),complex_mulf_conj1(vvec3,wvec3)))));
@@ -1031,7 +1033,7 @@ ghost_error ghost_tsmttsm__a_avx_c_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_dense
                         }
 #if CFGM%4
                         for (; m<CFGM; m++) {
-                            x_priv[m+k*CFGM] += conjf(vval[i*ldv+m])*wval[i*ldw+k] + conjf(vval[(i+1)*ldv+m])*wval[(i+1)*ldw+k] + conjf(vval[(i+2)*ldv+m])*wval[(i+2)*ldw+k] + conjf(vval[(i+3)*ldv+m])*wval[(i+3)*ldw+k];
+                            x_priv[m+k*ldxpriv] += conjf(vval[i*ldv+m])*wval[i*ldw+k] + conjf(vval[(i+1)*ldv+m])*wval[(i+1)*ldw+k] + conjf(vval[(i+2)*ldv+m])*wval[(i+2)*ldw+k] + conjf(vval[(i+3)*ldv+m])*wval[(i+3)*ldw+k];
                         }
 #endif
                     }
@@ -1053,12 +1055,12 @@ ghost_error ghost_tsmttsm__a_avx_c_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_dense
                         for (m=0; m<=CFGM-4; m+=4) {
                             vvec0 = _mm256_load_ps((float *)&vval[(i+0)*ldv+m]);
                             vvec1 = _mm256_load_ps((float *)&vval[(i+1)*ldv+m]);
-                            _mm256_store_ps((float *)&x_priv[m+k*CFGM],_mm256_add_ps(_mm256_load_ps((float *)&x_priv[m+k*CFGM]),_mm256_add_ps(complex_mulf(vvec0,wvec0),complex_mulf(vvec1,wvec1))));
+                            _mm256_store_ps((float *)&x_priv[m+k*ldxpriv],_mm256_add_ps(_mm256_load_ps((float *)&x_priv[m+k*ldxpriv]),_mm256_add_ps(complex_mulf(vvec0,wvec0),complex_mulf(vvec1,wvec1))));
 
                         }
 #if CFGM%4
                         for (; m<CFGM; m++) {
-                            x_priv[m+k*CFGM] += dalpha*(vval[i*ldv+m]*wval[i*ldw+k] + vval[(i+1)*ldv+m]*wval[(i+1)*ldw+k]);
+                            x_priv[m+k*ldxpriv] += dalpha*(vval[i*ldv+m]*wval[i*ldw+k] + vval[(i+1)*ldv+m]*wval[(i+1)*ldw+k]);
                         }
 #endif
                     }
@@ -1078,12 +1080,12 @@ ghost_error ghost_tsmttsm__a_avx_c_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_dense
                         for (m=0; m<=CFGM-4; m+=4) {
                             vvec0 = _mm256_load_ps((float *)&vval[(i+0)*ldv+m]);
                             vvec1 = _mm256_load_ps((float *)&vval[(i+1)*ldv+m]);
-                            _mm256_store_ps((float *)&x_priv[m+k*CFGM],_mm256_add_ps(_mm256_load_ps((float *)&x_priv[m+k*CFGM]),_mm256_add_ps(complex_mulf(vvec0,wvec0),complex_mulf(vvec1,wvec1))));
+                            _mm256_store_ps((float *)&x_priv[m+k*ldxpriv],_mm256_add_ps(_mm256_load_ps((float *)&x_priv[m+k*ldxpriv]),_mm256_add_ps(complex_mulf(vvec0,wvec0),complex_mulf(vvec1,wvec1))));
 
                         }
 #if CFGM%4
                         for (; m<CFGM; m++) {
-                            x_priv[m+k*CFGM] += vval[i*ldv+m]*wval[i*ldw+k] + vval[(i+1)*ldv+m]*wval[(i+1)*ldw+k];
+                            x_priv[m+k*ldxpriv] += vval[i*ldv+m]*wval[i*ldw+k] + vval[(i+1)*ldv+m]*wval[(i+1)*ldw+k];
                         }
 #endif
                     }
@@ -1096,7 +1098,7 @@ ghost_error ghost_tsmttsm__a_avx_c_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_dense
         {
             for (k=0; k<CFGK; k++) {
                 for (m=0; m<CFGM; m++) {
-                    xval[k*ldx+m] += x_priv[m+k*CFGM];
+                    xval[k*ldx+m] += x_priv[m+k*ldxpriv];
                 }
             }
         }

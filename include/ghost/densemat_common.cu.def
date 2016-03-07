@@ -66,11 +66,11 @@ __global__ static void FUNCNAME(dot_kernel)(T *res, T *v1, T *v2, ghost_lidx nro
         }
 
 
-        dot = accu<T>(dot,ghost_shfl_down(dot, 16));
-        dot = accu<T>(dot,ghost_shfl_down(dot, 8));
-        dot = accu<T>(dot,ghost_shfl_down(dot, 4));
-        dot = accu<T>(dot,ghost_shfl_down(dot, 2));
-        dot = accu<T>(dot,ghost_shfl_down(dot, 1));
+        dot = accu<T>(dot,ghost_shfl_down(dot, 16, warpSize));
+        dot = accu<T>(dot,ghost_shfl_down(dot, 8, warpSize));
+        dot = accu<T>(dot,ghost_shfl_down(dot, 4, warpSize));
+        dot = accu<T>(dot,ghost_shfl_down(dot, 2, warpSize));
+        dot = accu<T>(dot,ghost_shfl_down(dot, 1, warpSize));
 
         if (threadIdx.x%warpSize == 0) {
             int wid = (threadIdx.x / warpSize) + ((blockDim.x / warpSize)*threadIdx.y);
@@ -88,11 +88,7 @@ __global__ static void FUNCNAME(dot_kernel)(T *res, T *v1, T *v2, ghost_lidx nro
         }
 
         if (threadIdx.x < warpSize) {
-            dot = accu<T>(dot,ghost_shfl_down(dot, 16));
-            dot = accu<T>(dot,ghost_shfl_down(dot, 8));
-            dot = accu<T>(dot,ghost_shfl_down(dot, 4));
-            dot = accu<T>(dot,ghost_shfl_down(dot, 2));
-            dot = accu<T>(dot,ghost_shfl_down(dot, 1));
+            dot = ghost_partialWarpReduceSum(dot,blockDim.x/warpSize,blockDim.x/warpSize);
             if (threadIdx.x == 0) {
                 res[col*gridDim.x+blockIdx.x] = dot;
             }

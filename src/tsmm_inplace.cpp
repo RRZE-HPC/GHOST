@@ -174,7 +174,7 @@ ghost_error ghost_tsmm_inplace(ghost_densemat *x, ghost_densemat *w, void *alpha
         opt_align = GHOST_UNALIGNED;
     }
     
-    ghost_lidx try_ncolsout[2] = {x->traits.ncols,-1};
+    ghost_lidx try_ncolsout[2] = {w->traits.ncols,-1};
     ghost_lidx try_ncolsin[2] = {w->traits.nrows,-1};
     ghost_datatype try_dt[2] = {x->traits.datatype,GHOST_DT_ANY};
 
@@ -240,8 +240,8 @@ end_of_loop:
         tsmm_inplace_perfargs.m = x->traits.nrows;
     }
     tsmm_inplace_perfargs.dt = x->traits.datatype;
-    tsmm_inplace_perfargs.betaiszero = ghost_iszero(beta,p.dt);
-    tsmm_inplace_perfargs.alphaisone = ghost_isone(alpha,p.dt);
+    tsmm_inplace_perfargs.betaiszero = ghost_iszero(beta,x->traits.datatype);
+    tsmm_inplace_perfargs.alphaisone = ghost_isone(alpha,x->traits.datatype);
     ghost_timing_set_perfFunc(NULL,__ghost_functag,ghost_gemm_perf_GBs,(void *)&tsmm_inplace_perfargs,sizeof(tsmm_inplace_perfargs),"GB/s");
     ghost_timing_set_perfFunc(NULL,__ghost_functag,ghost_gemm_perf_GFs,(void *)&tsmm_inplace_perfargs,sizeof(tsmm_inplace_perfargs),"GF/s");
 #endif

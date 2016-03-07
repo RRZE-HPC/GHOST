@@ -6,12 +6,12 @@
 #include "ghost/util.h"
 #include "ghost/omp.h"
 #include "ghost/locality.h"
-#include "ghost/tsmm_avx.h"
+#include "ghost/tsmm_var2_avx_gen.h"
 #include <math.h>
 #include <float.h>
 #include <immintrin.h>
 
-ghost_error ghost_tsmm__a_avx_d_x_x_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
+ghost_error ghost_tsmm__a_avx_d_x_x_1_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
 {
 #ifdef GHOST_BUILD_AVX
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
@@ -110,7 +110,7 @@ out:
 #endif
 }
 
-ghost_error ghost_tsmm__u_avx_d_x_x_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
+ghost_error ghost_tsmm__u_avx_d_x_x_1_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
 {
 #ifdef GHOST_BUILD_AVX
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)

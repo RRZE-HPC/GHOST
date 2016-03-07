@@ -9,7 +9,6 @@
 #include "config.h"
 #include "types.h"
 #include "error.h"
-#include "perm.h"
 #include "context.h"
 #include "sparsemat.h"
 
