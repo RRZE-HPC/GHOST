@@ -88,7 +88,8 @@ static void ghost_tsmttsm_cu_rm(T* const __restrict__ C,
                                    const T beta, ghost_lidx K,
                                    ghost_lidx ldc, ghost_lidx lda,
                                    ghost_lidx ldb) {
-  const int threadsPerBlock = 128;
+
+  const int threadsPerBlock = 256;
   int deviceUsed;
   cudaGetDevice(&deviceUsed);
   cudaDeviceProp prop;
@@ -113,9 +114,9 @@ static void ghost_tsmttsm_cu_rm(T* const __restrict__ C,
                               false><<<blockCount, threadsPerBlock>>>(
         A, B, (T *)temp_storage, K, lda, ldb, ldc);
   }
+
   GENV3::deviceReduce<T, M, N><<<M * N / 256 + 1, 256>>>(
       (T *)temp_storage, C, alpha, beta, blockCount, lda, ldb, ldc);
-  cudaDeviceSynchronize();
 }
 
 #endif
