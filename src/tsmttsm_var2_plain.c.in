@@ -113,8 +113,10 @@ ghost_error ghost_tsmttsm__u_plain_d_x_x_1_rm(ghost_densemat *x, ghost_densemat 
 
     ghost_lidx n = v->traits.nrows;
     ghost_lidx m = v->traits.ncols;
+    double dalpha = *(double *)alpha;
+    double dbeta = *(double *)beta;
     
-    INFO_LOG("In TSMTTSM with arbitrary block sizes %dx%d <- %dx%d * %dx%d",m,K,m,n,n,K);
+    INFO_LOG("In TSMTTSM with arbitrary block sizes %dx%d <- %f * (%dx%d * %dx%d) + %f * (%dx%d)",m,K,dalpha,m,n,n,K,dbeta,m,K);
     
     const double * const restrict vval = (const double *) v->val;
     const double * const restrict wval = (const double *) w->val;
@@ -124,8 +126,6 @@ ghost_error ghost_tsmttsm__u_plain_d_x_x_1_rm(ghost_densemat *x, ghost_densemat 
     const ghost_lidx ldw = w->stride;
     const ghost_lidx ldx = x->stride;
     
-    double dalpha = *(double *)alpha;
-    double dbeta = *(double *)beta;
     
     // make sure that the initial x only gets added up once
     if (myrank) {
