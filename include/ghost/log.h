@@ -6,6 +6,10 @@
 #ifndef GHOST_LOG_H
 #define GHOST_LOG_H
 
+#ifdef GHOST_FUJITSU
+#define __func__ "unknown"
+#endif
+
 #include "config.h"
 
 #ifdef GHOST_HAVE_MPI

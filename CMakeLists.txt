@@ -665,6 +665,24 @@ elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "PGI")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -c99")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -std=c++0x")
 else ()
+
+########################################################################
+# Try to find out, if compiler is Fujitsu
+########################################################################
+    include(CheckCSourceCompiles)
+    unset(CHECK_FUJITSU_DEFINES_C CACHE)
+    CHECK_C_SOURCE_COMPILES("
+        #if defined(__FUJITSU) || defined(__FCC_VERSION) || defined(__fcc_version)
+        int main(){ return 0; }
+        #endif
+    " CHECK_FUJITSU_DEFINES_C)
+
+    if(${CHECK_FUJITSU_DEFINES_C})
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DGHOST_FUJITSU")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DGHOST_FUJITSU")
+    endif()
+########################################################################
+
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -std=c99 -Wall -Wextra")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -std=c++0x -Wall -Wextra")
     if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
