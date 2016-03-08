@@ -21,7 +21,6 @@
 #include "ghost/cu_complex.h"
 #include "ghost/complex.h"
 
-
 namespace {
 
 void *temp_storage = NULL;
@@ -62,12 +61,14 @@ __global__ void varBlockProductKernel(const T *A, const T *B, T *out, size_t K,
 
   if (blockDim.x * gridDim.x / M / N == tidx / M / N) return;
 
-  T threadSum;
-  threadSum = 0;
 
+  T threadSum = 0;
+  
+
+  #pragma unroll 4
   for (size_t idx = tidx / M / N; idx < K;
        idx += blockDim.x * gridDim.x / M / N) {
-    threadSum += A[idx * lda + m] * B[idx * ldb + n];
+    threadSum +=  A[idx * lda + m] * __ldg( B + idx * ldb + n);
   }
 
   __syncthreads();
@@ -79,19 +80,19 @@ __global__ void varBlockProductKernel(const T *A, const T *B, T *out, size_t K,
     for (int i = threadIdx.x; i < BLOCKSIZE; i += M * N) {
       blockSum += blockStorage[i];
     }
-    if (TRANSPOSE) {
-      out[blockIdx.x * M * ldc + m * ldc + n] = blockSum;
-    } else {
-      out[blockIdx.x * N * ldc + n * ldc + m] = blockSum;
-    }
+    out[blockIdx.x * N * ldc + n * ldc + m] = blockSum;
   }
 }
 }
 
 template <typename T>
-void ghost_tsmttsm_cu_rm_fallback(T *const __restrict__ C, const T *const __restrict__ A, const T *const __restrict__ B, const T alpha, const T beta, ghost_lidx K, ghost_lidx ldc, ghost_lidx lda, ghost_lidx ldb, const int M, const int N)
-{
-  const int threadsPerBlock = 128;
+void ghost_tsmttsm_cu_rm_fallback(T *const __restrict__ C,
+                                  const T *const __restrict__ A,
+                                  const T *const __restrict__ B, const T alpha,
+                                  const T beta, ghost_lidx K, ghost_lidx ldc,
+                                  ghost_lidx lda, ghost_lidx ldb, const int M,
+                                  const int N) {
+  const int threadsPerBlock = 256;
   int deviceUsed;
   cudaGetDevice(&deviceUsed);
   cudaDeviceProp prop;
@@ -107,23 +108,20 @@ void ghost_tsmttsm_cu_rm_fallback(T *const __restrict__ C, const T *const __rest
     ghost_cu_malloc(&temp_storage, temp_storage_bytes);
     if (temp_storage == NULL) temp_storage_bytes = 0;
   }
-  if (N > M) {
-    GENV4::varBlockProductKernel<T, threadsPerBlock,
-                                 true><<<blockCount, threadsPerBlock>>>(
-        B, A, (T *)temp_storage, K, ldb, lda, ldc, M, N);
-  } else {
-    GENV4::varBlockProductKernel<T, threadsPerBlock,
-                                 false><<<blockCount, threadsPerBlock>>>(
-        A, B, (T *)temp_storage, K, lda, ldb, ldc, M, N);
-  }
+  ghost_error err;
+  CUDA_CALL(cudaMemset(temp_storage, 0, temp_storage_bytes), err);
+  if (err != GHOST_SUCCESS) return;
+
+  GENV4::varBlockProductKernel<T, threadsPerBlock,
+                               false><<<blockCount, threadsPerBlock>>>(
+      A, B, (T *)temp_storage, K, lda, ldb, ldc, M, N);
+
   GENV4::deviceReduce<T><<<M * N / 256 + 1, 256>>>(
       (T *)temp_storage, C, alpha, beta, blockCount, lda, ldb, ldc, M, N);
 }
 }
 
-
-
-ghost_error ghost_tsmttsm__u_cuda_x_x_x_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
+ghost_error ghost_tsmttsm__u_cuda_x_x_x_1_rm(ghost_densemat *x,ghost_densemat *v,ghost_densemat *w, void *alpha,void *beta, int conjv)
 {
   GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH | GHOST_FUNCTYPE_KERNEL);
   ghost_error ret = GHOST_SUCCESS;
