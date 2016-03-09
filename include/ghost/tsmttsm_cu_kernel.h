@@ -9,6 +9,7 @@
 
 #include "ghost/config.h"
 #include "ghost/types.h"
+#include "ghost/cu_complex.h"
 
 namespace {
 
@@ -28,22 +29,23 @@ __global__ void deviceReduce(T *blockResults, T *result, T alpha, T beta,
   int n = tidx / M;
   int m = tidx % M;
 
-  T sum = 0.0;
+  T sum;
+  zero(sum);
   for (int i = 0; i < blockCount; i++) {
-    sum += blockResults[i * N * ldc + n * ldc + m];
+    sum = accu(sum,blockResults[i * N * ldc + n * ldc + m]);
   }
 
-  result[n * ldc + m] = result[n * ldc + m] * beta + sum * alpha;
+  result[n * ldc + m] = axpby(sum, result[n * ldc + m], alpha, beta);
 }
 
-template <typename T, int M, int N, int BLOCKSIZE, bool TRANSPOSE>
+template <typename T, bool conjv, int M, int N, int BLOCKSIZE, bool TRANSPOSE>
 __global__ void blockProductKernel(const T *A, const T *B, T *out, size_t K,
                                    size_t lda, size_t ldb, size_t ldc) {
   size_t tidx = blockDim.x * blockIdx.x + threadIdx.x;
 
   __shared__ T blockStorage[BLOCKSIZE];
 
-  blockStorage[threadIdx.x] = 0.0;
+  zero(blockStorage[threadIdx.x]);
 
   int m = tidx % M;
 
@@ -51,13 +53,21 @@ __global__ void blockProductKernel(const T *A, const T *B, T *out, size_t K,
 
   T threadSum[N];
   for (int n = 0; n < N; n++) {
-    threadSum[n] = 0;
+    zero(threadSum[n]);
   }
 
-  for (size_t idx = tidx / M; idx < K; idx += blockDim.x * gridDim.x / M) {
-    for (int n = 0; n < N; n++) {
-      threadSum[n] += A[idx * lda + m] * B[idx * ldb + n];
-    }
+  if (conjv) {
+      for (size_t idx = tidx / M; idx < K; idx += blockDim.x * gridDim.x / M) {
+        for (int n = 0; n < N; n++) {
+          threadSum[n] = accu(threadSum[n], mulConj(A[idx * lda + m], B[idx * ldb + n]));
+        }
+      }
+  } else {
+      for (size_t idx = tidx / M; idx < K; idx += blockDim.x * gridDim.x / M) {
+        for (int n = 0; n < N; n++) {
+          threadSum[n] = axpy(threadSum[n], A[idx * lda + m], B[idx * ldb + n]);
+        }
+      }
   }
 
   for (int n = 0; n < N; n++) {
@@ -66,9 +76,10 @@ __global__ void blockProductKernel(const T *A, const T *B, T *out, size_t K,
     __syncthreads();
 
     if (threadIdx.x < M) {
-      T blockSum = 0.0;
+      T blockSum;
+      zero(blockSum);
       for (int i = threadIdx.x; i < BLOCKSIZE; i += M) {
-        blockSum += blockStorage[i];
+        blockSum = accu(blockSum,blockStorage[i]);
       }
       if (TRANSPOSE) {
         out[blockIdx.x * M * ldc + m * ldc + n] = blockSum;
@@ -96,7 +107,7 @@ static void ghost_tsmttsm_cu_rm(T* const __restrict__ C,
   cudaGetDeviceProperties(&prop, deviceUsed);
   int numBlocks;
   cudaOccupancyMaxActiveBlocksPerMultiprocessor(
-      &numBlocks, GENV3::blockProductKernel<T, N, M, threadsPerBlock, true>,
+      &numBlocks, GENV3::blockProductKernel<T, conjv, N, M, threadsPerBlock, true>,
       threadsPerBlock, 0);
   int blockCount = prop.multiProcessorCount * numBlocks;
 
@@ -106,17 +117,21 @@ static void ghost_tsmttsm_cu_rm(T* const __restrict__ C,
     if (temp_storage == NULL) temp_storage_bytes = 0;
   }
   if (N > M) {
-    GENV3::blockProductKernel<T, N, M, threadsPerBlock,
+    GENV3::blockProductKernel<T, conjv, N, M, threadsPerBlock,
                               true><<<blockCount, threadsPerBlock>>>(
         B, A, (T *)temp_storage, K, ldb, lda, ldc);
   } else {
-    GENV3::blockProductKernel<T, M, N, threadsPerBlock,
+    GENV3::blockProductKernel<T, conjv, M, N, threadsPerBlock,
                               false><<<blockCount, threadsPerBlock>>>(
         A, B, (T *)temp_storage, K, lda, ldb, ldc);
   }
 
   GENV3::deviceReduce<T, M, N><<<M * N / 256 + 1, 256>>>(
       (T *)temp_storage, C, alpha, beta, blockCount, lda, ldb, ldc);
+  
+  ghost_cu_free(temp_storage);
+  temp_storage = NULL;
+  temp_storage_bytes = 0;
 }
 
 #endif

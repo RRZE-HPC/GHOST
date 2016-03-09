@@ -466,7 +466,8 @@ ghost_densemat *w_in, const char *transw, void *alpha, void *beta, int reduce,gh
     } else {
         x = x_in;
     }
-        
+
+#if 0    
 #ifdef GHOST_HAVE_CUDA
     if (((v->traits.location & w->traits.location) & x->traits.location) & GHOST_LOCATION_DEVICE) {
         if (v_in->traits.storage == GHOST_DENSEMAT_ROWMAJOR && w_in->traits.storage == GHOST_DENSEMAT_ROWMAJOR &&
@@ -480,6 +481,7 @@ ghost_densemat *w_in, const char *transw, void *alpha, void *beta, int reduce,gh
             w = wc;
         }
     }
+#endif
 #endif
     if (v->traits.flags & GHOST_DENSEMAT_SCATTERED)
     {
