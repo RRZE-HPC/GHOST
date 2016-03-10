@@ -146,13 +146,13 @@ ghost_error ghost_tsmttsm__u_cuda_x_x_x_1_rm(ghost_densemat *x,ghost_densemat *v
           ghost_tsmttsm_cu_rm_fallback<cuDoubleComplex,true>(
               (cuDoubleComplex *)x->cu_val, (const cuDoubleComplex *)v->cu_val,
               (const cuDoubleComplex *)w->cu_val, *(cuDoubleComplex *)alpha,
-              *(cuDoubleComplex *)beta, x->traits.nrows, x->stride, v->stride,
+              *(cuDoubleComplex *)beta, v->traits.nrows, x->stride, v->stride,
               w->stride, v->traits.ncols, x->traits.ncols);
         } else {
           ghost_tsmttsm_cu_rm_fallback<cuFloatComplex,true>(
               (cuFloatComplex *)x->cu_val, (const cuFloatComplex *)v->cu_val,
               (const cuFloatComplex *)w->cu_val, *(cuFloatComplex *)alpha,
-              *(cuFloatComplex *)beta, x->traits.nrows, x->stride, v->stride,
+              *(cuFloatComplex *)beta, v->traits.nrows, x->stride, v->stride,
               w->stride, v->traits.ncols, x->traits.ncols);
         }
       } else {
@@ -160,13 +160,13 @@ ghost_error ghost_tsmttsm__u_cuda_x_x_x_1_rm(ghost_densemat *x,ghost_densemat *v
           ghost_tsmttsm_cu_rm_fallback<cuDoubleComplex,false>(
               (cuDoubleComplex *)x->cu_val, (const cuDoubleComplex *)v->cu_val,
               (const cuDoubleComplex *)w->cu_val, *(cuDoubleComplex *)alpha,
-              *(cuDoubleComplex *)beta, x->traits.nrows, x->stride, v->stride,
+              *(cuDoubleComplex *)beta, v->traits.nrows, x->stride, v->stride,
               w->stride, v->traits.ncols, x->traits.ncols);
         } else {
           ghost_tsmttsm_cu_rm_fallback<cuFloatComplex,false>(
               (cuFloatComplex *)x->cu_val, (const cuFloatComplex *)v->cu_val,
               (const cuFloatComplex *)w->cu_val, *(cuFloatComplex *)alpha,
-              *(cuFloatComplex *)beta, x->traits.nrows, x->stride, v->stride,
+              *(cuFloatComplex *)beta, v->traits.nrows, x->stride, v->stride,
               w->stride, v->traits.ncols, x->traits.ncols);
         }
       }
