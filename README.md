@@ -41,6 +41,7 @@ you can decide to enable (some of) the following optional dependencies:
 1. An OpenMP-3.1-capable C/C++ compiler
 1. MPI ([Tested versions](https://bitbucket.org/essex/ghost/wiki/Compatibility))
 1. [CUDA](http://www.nvidia.com/cuda) for employing GPU computation ([Tested versions](https://bitbucket.org/essex/ghost/wiki/Compatibility))
+1. [Zoltan](http://www.cs.sandia.gov/zoltan/) for sparse matrix re-ordering based on hypergraphs
 1. [SCOTCH](http://www.labri.fr/perso/pelegrin/scotch/) for sparse matrix re-ordering ([Tested versions](https://bitbucket.org/essex/ghost/wiki/Compatibility), [Install notes](https://bitbucket.org/essex/ghost/wiki/Dependencies))
 1. [ColPack](http://cscapes.cs.purdue.edu/coloringpage/software.htm) for sparse matrix coloring which is required for the CARP kernel.
 1. A LAPACKE library. If MKL is used as the BLAS lib, LAPACKE is present automatically.
