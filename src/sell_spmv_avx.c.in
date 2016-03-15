@@ -756,7 +756,7 @@ ghost_error ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
     
     double sscale = 1., sbeta = 1.;
     double *sshift = NULL;
-    __m256d scale, beta;
+    __m256d scale, beta,delta,eta;
     double sdelta = 0., seta = 0.;
     ghost_densemat *z = NULL;
 
@@ -772,6 +772,8 @@ ghost_error ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
     }
     scale = _mm256_broadcast_sd(&sscale);
     beta = _mm256_broadcast_sd(&sbeta);
+    delta = _mm256_broadcast_sd(&sdelta);
+    eta = _mm256_broadcast_sd(&seta);
     
     if (traits.flags & GHOST_SPMV_DOT) {
 
@@ -812,6 +814,10 @@ ghost_error ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
         { // loop over chunks
             lval = ((double *)(res->val))+res->stride*c;
             rval = &rptr[invec->stride*c];
+            double *zval = NULL;
+            if (z) {
+               zval = ((double *)(z->val))+z->stride*c;
+            }
             offs = SELL(mat)->chunkStart[c/CHUNKHEIGHT]+c%CHUNKHEIGHT;
 
             #GHOST_UNROLL#tmp@ = _mm256_setzero_pd();#(NVECS+3)/4
@@ -842,10 +848,21 @@ ghost_error ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
 #if NVECS%4
                 _mm256_maskstore_pd(lval+(~NVECS/4~)*4,mask,_mm256_add_pd(tmp~NVECS/4~,_mm256_mul_pd(_mm256_load_pd(lval+(~NVECS/4~)*4),beta)));
 #endif
+            } else if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
+                #GHOST_UNROLL#_mm256_store_pd(lval+@*4,tmp@);#NVECS/4
+#if NVECS%4
+                _mm256_maskstore_pd(lval+(~NVECS/4~)*4,mask,tmp~NVECS/4~);
+#endif
             } else {
                 #GHOST_UNROLL#_mm256_stream_pd(lval+@*4,tmp@);#NVECS/4
 #if NVECS%4
                 _mm256_maskstore_pd(lval+(~NVECS/4~)*4,mask,tmp~NVECS/4~);
+#endif
+            }
+            if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
+                #GHOST_UNROLL#_mm256_store_pd(zval+@*4,_mm256_add_pd(_mm256_mul_pd(_mm256_load_pd(zval+@*4),delta),_mm256_mul_pd(_mm256_load_pd(lval+@*4),eta)));#NVECS/4
+#if NVECS%4
+                _mm256_maskstore_pd(zval+(~NVECS/4~)*4,mask,_mm256_add_pd(_mm256_mul_pd(_mm256_maskload_pd(zval+(~NVECS/4~)*4,mask),delta),_mm256_mul_pd(_mm256_maskload_pd(lval+(~NVECS/4~)*4,mask),eta)));
 #endif
             }
 
@@ -886,10 +903,6 @@ ghost_error ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
             }
         }
         free(partsums);
-    }
-    if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
-        PERFWARNING_LOG("AXPBY will not be done on-the-fly!");
-        z->axpby(z,res,&seta,&sdelta);
     }
     if (sshiftcopied) {
         free(sshiftpadded);
