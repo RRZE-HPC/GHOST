@@ -9,6 +9,9 @@
 #ifndef GHOST_FUNCPTR_WRAPPERS_H
 #define GHOST_FUNCPTR_WRAPPERS_H
 
+#include "ghost/densemat.h"
+#include "ghost/sparsemat.h"
+
 /**
  * @ingroup locops
  * @brief Computes <em>y := a*x + y</em> with scalar a
