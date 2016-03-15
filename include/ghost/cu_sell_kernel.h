@@ -1,6 +1,8 @@
 #ifndef GHOST_CU_SELL_KERNEL_H
 #define GHOST_CU_SELL_KERNEL_H
 
+#include "ghost/cu_complex.h"
+
 extern __shared__ char shared[];
 
 template<typename v_t>
@@ -252,7 +254,7 @@ __global__ void ghost_deviceReduceSum(v_t *in, v_t *out, ghost_lidx N)
     zero<v_t>(sum);
 
     for (i=blockIdx.x*blockDim.x+threadIdx.x; i<N; i += blockDim.x*gridDim.x) {
-        sum = axpy<v_t>(sum,in[i],1.f);
+        sum = accu<v_t>(sum,in[i]);
     }
     sum = ghost_blockReduceSum(sum);
     if (threadIdx.x == 0) {
