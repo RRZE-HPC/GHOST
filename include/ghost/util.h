@@ -116,6 +116,15 @@ extern "C" {
      */
     int ghost_sell_max_cfg_chunkheight();
 
+    /**
+     * @brief Get the largest configured densemat dimension which is smaller or equal than a given dimension.
+     *
+     * @param dim The target dimension
+     *
+     * @return The closest configured densemat dimensions (must be smaller or equal than the given dimension).
+     */
+    int ghost_get_next_cfg_densemat_dim(int dim);
+
 
     /**
      * @brief Computes a hash from three integral input values.

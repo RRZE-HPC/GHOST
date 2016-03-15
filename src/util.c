@@ -240,6 +240,29 @@ int ghost_sell_max_cfg_chunkheight()
     return max;
 }
 
+int ghost_get_next_cfg_densemat_dim(int dim)
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+    
+    int d = 0;
+    int cur;
+    char *cfgd = strdup(GHOST_GEN_DENSEMAT_DIM);
+    char *curstr = strtok(cfgd,",");
+
+    while (curstr) {
+        cur = atoi(curstr);
+        if (cur <= dim && cur > d) {
+            d = cur;
+        }
+        curstr = strtok(NULL,",");
+    }
+
+    free(cfgd);
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
+    return d;
+}
+
 /*
 // make this inline for not wasting too much time hashing for kernel-map indexes
 int ghost_hash(int a, int b, int c)
