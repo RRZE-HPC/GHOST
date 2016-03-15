@@ -658,7 +658,8 @@ extern "C" ghost_error FUNCNAME(dotprod)(ghost_densemat *vec, void *res, ghost_d
             }
         }
 
-    } else { 
+    } else {
+        INFO_LOG("Calling CUBLAS DOT");
         cublasHandle_t ghost_cublas_handle;
         GHOST_CALL_GOTO(ghost_cu_cublas_handle(&ghost_cublas_handle),err,ret); 
         ghost_lidx v;
