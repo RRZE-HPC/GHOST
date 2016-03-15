@@ -8,7 +8,10 @@
 
 typedef enum
 {
-    GHOST_BENCH_STREAM_COPY
+    GHOST_BENCH_STREAM_COPY,
+    GHOST_BENCH_STREAM_TRIAD,
+    GHOST_BENCH_STREAM_LOAD,
+    GHOST_BENCH_STREAM_STORE
 } ghost_bench_stream_test_t;
 
 ghost_error ghost_bench_stream(ghost_bench_stream_test_t, double *bw);
