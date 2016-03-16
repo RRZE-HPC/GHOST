@@ -38,6 +38,10 @@ typedef struct {
     ghost_gidx m,n,k;
     bool alphaisone;
     bool betaiszero;
+    /**
+     * @brief True if A is equal to C.
+     */
+    bool aisc;
     ghost_datatype dt;
 }
 ghost_gemm_perf_args;

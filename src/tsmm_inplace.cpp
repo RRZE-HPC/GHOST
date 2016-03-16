@@ -232,8 +232,8 @@ end_of_loop:
 
 #ifdef GHOST_INSTR_TIMING
     ghost_gemm_perf_args tsmm_inplace_perfargs;
-    tsmm_inplace_perfargs.n = p.ncolsout;
-    tsmm_inplace_perfargs.k = p.ncolsin;
+    tsmm_inplace_perfargs.n = w->traits.ncols;
+    tsmm_inplace_perfargs.k = w->traits.nrows;
     if (x->context) {
         tsmm_inplace_perfargs.m = x->context->gnrows;
     } else {
@@ -242,6 +242,7 @@ end_of_loop:
     tsmm_inplace_perfargs.dt = x->traits.datatype;
     tsmm_inplace_perfargs.betaiszero = ghost_iszero(beta,x->traits.datatype);
     tsmm_inplace_perfargs.alphaisone = ghost_isone(alpha,x->traits.datatype);
+    tsmm_inplace_perfargs.aisc = true;
     ghost_timing_set_perfFunc(NULL,__ghost_functag,ghost_gemm_perf_GBs,(void *)&tsmm_inplace_perfargs,sizeof(tsmm_inplace_perfargs),"GB/s");
     ghost_timing_set_perfFunc(NULL,__ghost_functag,ghost_gemm_perf_GFs,(void *)&tsmm_inplace_perfargs,sizeof(tsmm_inplace_perfargs),"GF/s");
 #endif
