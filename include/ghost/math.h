@@ -40,7 +40,6 @@ typedef struct {
     bool betaiszero;
     /**
      * @brief True if A is equal to C.
-     * If not specified, it will be false (standard initializer for arithmetic types).
      */
     bool aisc;
     ghost_datatype dt;

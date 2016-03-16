@@ -270,6 +270,7 @@ end_of_loop:
     tsmm_perfargs.dt = x->traits.datatype;
     tsmm_perfargs.betaiszero = ghost_iszero(beta,x->traits.datatype);
     tsmm_perfargs.alphaisone = ghost_isone(alpha,x->traits.datatype);
+    tsmm_perfargs.aisc = false;
     ghost_timing_set_perfFunc(NULL,__ghost_functag,ghost_gemm_perf_GBs,(void *)&tsmm_perfargs,sizeof(tsmm_perfargs),"GB/s");
     ghost_timing_set_perfFunc(NULL,__ghost_functag,ghost_gemm_perf_GFs,(void *)&tsmm_perfargs,sizeof(tsmm_perfargs),"GF/s");
 #endif
