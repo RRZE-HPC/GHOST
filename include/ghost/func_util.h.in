@@ -90,7 +90,9 @@ typedef enum
 
 #define GHOST_FUNC_EXIT(functype)\
     if ((${GHOST_INSTRUMENT_FUNCTYPES}) && (${GHOST_INSTR_TIMING} || ${GHOST_INSTR_LIKWID})) {\
-        /*ghost_barrier();*/\
+        if (${GHOST_INSTR_BARRIER}) {\
+            ghost_barrier();\
+        }\
         ghost_instr_prefix_set(__prefixbackup);\
         GHOST_INSTR_STOP(__FUNCTION__+__funcnameoffset);\
         free(__ghost_functag);\
