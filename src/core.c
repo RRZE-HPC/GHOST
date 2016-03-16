@@ -622,14 +622,14 @@ ghost_error ghost_finalize()
     ghost_pumap_destroy();
     ghost_topology_destroy();
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TEARDOWN);
+    
+    ghost_instr_destroy();
 #ifdef GHOST_HAVE_MPI
     if (!MPIwasInitialized) {
         MPI_Finalize();
     }
 #endif
-
-    ghost_instr_destroy();
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TEARDOWN);
     return GHOST_SUCCESS;
 }
 
@@ -707,18 +707,12 @@ ghost_error ghost_string(char **str)
 
 ghost_error ghost_barrier()
 {
-//    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
 #ifdef GHOST_HAVE_MPI
     MPI_CALL_RETURN(MPI_Barrier(MPI_COMM_WORLD));
 #endif
 #ifdef GHOST_HAVE_CUDA
-    ghost_type type;
-    ghost_type_get(&type);
-    if (type == GHOST_TYPE_CUDA) {
-        GHOST_CALL_RETURN(ghost_cu_barrier());
-    }
+    GHOST_CALL_RETURN(ghost_cu_barrier());
 #endif
-//    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_COMMUNICATION);
 
     return GHOST_SUCCESS;
 }

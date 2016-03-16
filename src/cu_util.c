@@ -222,9 +222,7 @@ ghost_error ghost_cu_free(void * mem)
 ghost_error ghost_cu_barrier()
 {
 #ifdef GHOST_HAVE_CUDA
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_COMMUNICATION);
     CUDA_CALL_RETURN(cudaDeviceSynchronize());
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_COMMUNICATION);
 #endif
 
     return GHOST_SUCCESS;
