@@ -260,8 +260,8 @@ end_of_loop:
 
 #ifdef GHOST_INSTR_TIMING
     ghost_gemm_perf_args tsmm_perfargs;
-    tsmm_perfargs.n = p.xcols;
-    tsmm_perfargs.k = p.vcols;
+    tsmm_perfargs.n = x->traits.ncols;
+    tsmm_perfargs.k = v->traits.ncols;
     if (v->context) {
         tsmm_perfargs.m = v->context->gnrows;
     } else {

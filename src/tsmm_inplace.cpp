@@ -232,8 +232,8 @@ end_of_loop:
 
 #ifdef GHOST_INSTR_TIMING
     ghost_gemm_perf_args tsmm_inplace_perfargs;
-    tsmm_inplace_perfargs.n = p.ncolsout;
-    tsmm_inplace_perfargs.k = p.ncolsin;
+    tsmm_inplace_perfargs.n = w->traits.ncols;
+    tsmm_inplace_perfargs.k = w->traits.nrows;
     if (x->context) {
         tsmm_inplace_perfargs.m = x->context->gnrows;
     } else {
