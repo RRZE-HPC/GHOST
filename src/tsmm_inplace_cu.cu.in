@@ -25,7 +25,7 @@
 #GHOST_SUBST NCOLSIN ${BLOCKDIM1}
 #GHOST_SUBST NCOLSOUT ${BLOCKDIM2}
 
-#define THREADSPERBLOCK 512
+#define THREADSPERBLOCK 128
 
 ghost_error ghost_tsmm_inplace__u_cuda_x_NCOLSIN_NCOLSOUT(ghost_densemat *x, ghost_densemat *w, void *alpha, void *beta) 
 {
