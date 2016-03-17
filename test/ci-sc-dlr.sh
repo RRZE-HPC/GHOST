@@ -88,9 +88,9 @@ fi;
 # setup vector extension flags
 VECT_FLAGS=""
 if [ "${VECT_EXT}" = "CUDA" ]; then
-  VECT_FLAGS="${VECT_FLAGS} -DUSE_CUDA=On"
+  VECT_FLAGS="${VECT_FLAGS} -DGHOST_USE_CUDA=On"
 elif [ "${VECT_EXT}" != "native" ]; then
-  VECT_FLAGS="${VECT_FLAGS} -DUSE_CUDA=Off"
+  VECT_FLAGS="${VECT_FLAGS} -DGHOST_USE_CUDA=Off"
   if [[ "${VECT_EXT}" =~ SSE|AVX|AVX2 ]]; then
     VECT_FLAGS="${VECT_FLAGS} -DGHOST_BUILD_SSE=On"
   else
