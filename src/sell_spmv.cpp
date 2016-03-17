@@ -373,7 +373,7 @@ static bool operator==(const ghost_sellspmv_parameters& a, const ghost_sellspmv_
 {
     return a.mdt == b.mdt && a.blocksz == b.blocksz && a.storage == b.storage && 
            a.vdt == b.vdt && a.impl == b.impl && a.chunkheight == b.chunkheight &&
-           a.alignment && b.alignment;
+           a.alignment == b.alignment;
 }
 
 static unordered_map<ghost_sellspmv_parameters, ghost_spmv_kernel> 
