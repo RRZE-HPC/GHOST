@@ -143,6 +143,7 @@ extern "C" {
      */
     int ghost_machine_simd_width();
     ghost_implementation ghost_get_best_implementation_for_bytesize(int bytes);
+    int ghost_implementation_alignment(ghost_implementation impl);
 #ifdef __cplusplus
 }
 #endif
