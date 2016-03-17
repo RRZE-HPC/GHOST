@@ -80,7 +80,11 @@ typedef enum {
      * @brief By default, a densemat's location gets set to #GHOST_DENSEMAT_HOST|#GHOST_DENSEMAT_DEVICE automatically
      * when the first up-/download occurs and the GHOST type is CUDA. This behavior can be disabled by setting this flag.
      */
-    GHOST_DENSEMAT_NOT_RELOCATE = 512
+    GHOST_DENSEMAT_NOT_RELOCATE = 512,
+    /**
+     * @brief Set this flag if the number of columns should be padded according to the SIMD width.
+     */
+    GHOST_DENSEMAT_PAD_COLS = 1024
 } 
 ghost_densemat_flags;
 
