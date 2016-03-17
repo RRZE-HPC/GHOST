@@ -107,6 +107,8 @@ static ghost_error ghost_rayleigh_ritz_tmpl (ghost_sparsemat * mat, void * void_
     T zero = 0.0;
     ghost_lidx i;
     ghost_lidx n = v_res->traits.ncols;
+    ghost_densemat * view_v_eigs, * view_v_res;
+    int n_block;
     ghost_datatype DT = v_res->traits.datatype;
     ghost_densemat *x = NULL;
     ghost_lidx ldx;
@@ -140,7 +142,15 @@ static ghost_error ghost_rayleigh_ritz_tmpl (ghost_sparsemat * mat, void * void_
     //spMVM_Options &=  ~GHOST_SPMV_VSHIFT;
     //spMVM_Options &=  ~GHOST_SPMV_SHIFT;
     //spMVM_Options &=  ~GHOST_SPMV_SCALE;
-    ghost_spmv( v_eigs, mat, v_res, spmvtraits);
+    
+    n_block = ghost_get_next_cfg_densemat_dim( n );
+    if ( !n_block ) n_block = n;
+    for ( i=0; i<n; i+=n_block){
+       if( i+n_block > n ) n_block = n - i;
+       v_eigs->viewCols( v_eigs, &view_v_eigs, n_block, i);
+       v_res->viewCols(  v_res , &view_v_res , n_block, i);
+       ghost_spmv( view_v_eigs, mat, view_v_res, spmvtraits);
+    }
         
     //GHOST_CALL_GOTO(ghost_tsmttsm( x, v_eigs, v_res,&one,&zero,GHOST_GEMM_ALL_REDUCE,1),err,ret);
     GHOST_CALL_GOTO(ghost_tsmttsm( x, v_eigs, v_res,&one,&zero,GHOST_GEMM_ALL_REDUCE,1,GHOST_GEMM_KAHAN),err,ret);
@@ -169,7 +179,20 @@ static ghost_error ghost_rayleigh_ritz_tmpl (ghost_sparsemat * mat, void * void_
 
     if (obtion){
         spmvtraits.flags = spmvtraits.flags|GHOST_SPMV_VSHIFT;
-        ghost_spmv( v_res, mat, v_eigs, spmvtraits);
+        //spmvtraits.flags = spmvtraits.flags |  GHOST_SPMV_DOT_YY;
+        //spmvtraits.flags = (ghost_spmv_flags)(spmvtraits.flags & ~GHOST_SPMV_NOT_REDUCE);
+        
+        n_block = ghost_get_next_cfg_densemat_dim( n );
+        if ( !n_block ) n_block = n;
+        for ( i=0; i<n; i+=n_block){
+           if( i+n_block > n ) n_block = n - i;
+           v_eigs->viewCols( v_eigs, &view_v_eigs, n_block, i);
+           v_res->viewCols(  v_res , &view_v_res , n_block, i);
+           
+           //spmvtraits.dot = res_T + i;
+           ghost_spmv( view_v_res, mat, view_v_eigs, spmvtraits);
+           //ghost_dot( res_T + i, view_v_res, view_v_res);
+        }
         ghost_dot( res_T, v_res, v_res);
         for(i=0;i<n;i++) res[i] = std::sqrt(std::real(res_T[i]));
     }
@@ -217,6 +240,8 @@ static ghost_error ghost_grayleigh_ritz_tmpl (ghost_sparsemat * mat, void * void
     T zero = 0.0;
     ghost_lidx i;
     ghost_lidx n = v_res->traits.ncols;
+    ghost_densemat * view_v_eigs, * view_v_res;
+    int n_block;
     ghost_datatype DT = v_res->traits.datatype;
     ghost_densemat *x = NULL, *b = NULL;
     ghost_lidx ldx, ldb;
@@ -262,8 +287,15 @@ static ghost_error ghost_grayleigh_ritz_tmpl (ghost_sparsemat * mat, void * void
     //GHOST_CALL_GOTO(ghost_tsmttsm( b, v_res, v_res,&one,&zero,GHOST_GEMM_ALL_REDUCE,1),err,ret);
     GHOST_CALL_GOTO(ghost_tsmttsm( b, v_res, v_res,&one,&zero,GHOST_GEMM_ALL_REDUCE,1,GHOST_GEMM_KAHAN),err,ret);
     
-    ghost_spmv( v_eigs, mat, v_res, spmvtraits);
-        
+    n_block = ghost_get_next_cfg_densemat_dim( n );
+    if ( !n_block ) n_block = n;
+    for ( i=0; i<n; i+=n_block){
+       if( i+n_block > n ) n_block = n - i;
+       v_eigs->viewCols( v_eigs, &view_v_eigs, n_block, i);
+       v_res->viewCols(  v_res , &view_v_res , n_block, i);
+       ghost_spmv( view_v_eigs, mat, view_v_res, spmvtraits);
+    }
+    
     //GHOST_CALL_GOTO(ghost_tsmttsm( x, v_eigs, v_res,&one,&zero,GHOST_GEMM_ALL_REDUCE,1),err,ret);
     GHOST_CALL_GOTO(ghost_tsmttsm( x, v_eigs, v_res,&one,&zero,GHOST_GEMM_ALL_REDUCE,1,GHOST_GEMM_KAHAN),err,ret);
     
@@ -292,7 +324,21 @@ static ghost_error ghost_grayleigh_ritz_tmpl (ghost_sparsemat * mat, void * void
 
     if (obtion){
         spmvtraits.flags = spmvtraits.flags|GHOST_SPMV_VSHIFT;
-        ghost_spmv( v_res, mat, v_eigs, spmvtraits);
+        //spmvtraits.flags = spmvtraits.flags|GHOST_SPMV_DOT_YY;
+        //spmvtraits.flags = (ghost_spmv_flags)(spmvtraits.flags & ~GHOST_SPMV_NOT_REDUCE);
+        
+        n_block = ghost_get_next_cfg_densemat_dim( n );
+        if ( !n_block ) n_block = n;
+        for ( i=0; i<n; i+=n_block){
+           if( i+n_block > n ) n_block = n - i;
+           v_eigs->viewCols( v_eigs, &view_v_eigs, n_block, i);
+           v_res->viewCols(  v_res , &view_v_res , n_block, i);
+           
+           //spmvtraits.dot = res_T + i;
+           ghost_spmv( view_v_res, mat, view_v_eigs, spmvtraits);
+           //ghost_dot( res_T + i, view_v_res, view_v_res);
+        }
+        //ghost_spmv( v_res, mat, v_eigs, spmvtraits);
         ghost_dot( res_T, v_res, v_res);
         for(i=0;i<n;i++) res[i] = std::sqrt(std::real(res_T[i]));
     }
