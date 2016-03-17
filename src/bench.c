@@ -72,7 +72,7 @@ static void ghost_load_kernel(const double * __restrict__ a, double * s)
 #else
     PERFWARNING_LOG("Cannot guarantee streaming stores for triad benchmark!");
     double res;
-#pragma omp parallel for reduce(+:res)
+#pragma omp parallel for reduction(+:res)
     for (i=0; i<N; i++) {
         res += a[i];
     }
