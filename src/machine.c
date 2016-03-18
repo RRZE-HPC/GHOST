@@ -497,3 +497,28 @@ ghost_implementation ghost_get_best_implementation_for_bytesize(int bytes)
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return best_impl;
 }
+
+int ghost_implementation_alignment(ghost_implementation impl)
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+    int alignment;
+    switch (impl) {
+        case GHOST_IMPLEMENTATION_MIC:
+            alignment = 64;
+            break;
+        case GHOST_IMPLEMENTATION_AVX2:
+        case GHOST_IMPLEMENTATION_AVX:
+            alignment = 32;
+            break;
+        case GHOST_IMPLEMENTATION_SSE:
+            alignment = 16;
+            break;
+        case GHOST_IMPLEMENTATION_PLAIN:
+            alignment = ghost_machine_alignment(); // the compiler may use whatever kind of instructions
+            break;
+        default:
+            alignment = 1;
+    }
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
+    return alignment; 
+}

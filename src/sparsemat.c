@@ -766,22 +766,41 @@ ghost_error ghost_sparsemat_info_string(char **str, ghost_sparsemat *mat)
 
     ghost_line_string(str,"Full   matrix size","MB","%u",mat->byteSize(mat)/(1024*1024));
     
-    ghost_line_string(str,"Permuted",NULL,"%s",mat->traits.flags&GHOST_SPARSEMAT_PERMUTE?"Yes":"No");
-    if ((mat->traits.flags & GHOST_SPARSEMAT_PERMUTE) && mat->context->perm_global) {
-        if (mat->traits.flags & GHOST_SPARSEMAT_SCOTCHIFY) {
-            ghost_line_string(str,"Permutation strategy",NULL,"Scotch%s",mat->traits.sortScope>1?"+Sorting":"");
-            ghost_line_string(str,"Scotch ordering strategy",NULL,"%s",mat->traits.scotchStrat);
-        } else {
-            ghost_line_string(str,"Permutation strategy",NULL,"Sorting");
+    if (mat->traits.flags & GHOST_SPARSEMAT_PERMUTE) {
+        ghost_line_string(str,"Permuted",NULL,"Yes");
+        if (mat->context->perm_global) {
+            if (mat->context->perm_local) {
+                ghost_line_string(str,"Permutation scope",NULL,"Global+local");
+            } else {
+                ghost_line_string(str,"Permutation scope",NULL,"Global");
+            }
+            if (mat->traits.flags & GHOST_SPARSEMAT_SCOTCHIFY) {
+                ghost_line_string(str,"Global permutation strategy",NULL,"SCOTCH");
+                ghost_line_string(str,"SCOTCH ordering strategy",NULL,"%s",mat->traits.scotchStrat);
+            }
+            if (mat->traits.flags & GHOST_SPARSEMAT_ZOLTAN) {
+                ghost_line_string(str,"Global permutation strategy",NULL,"ZOLTAN");
+            }
+        } else if (mat->context->perm_local) {
+            ghost_line_string(str,"Permutation scope",NULL,"Local");
         }
-        if (mat->traits.sortScope > 1) {
-            ghost_line_string(str,"Sorting scope",NULL,"%d",mat->traits.sortScope);
+        if (mat->context->perm_local) {
+            if (mat->traits.sortScope > 1) {
+                if (mat->traits.flags & GHOST_SPARSEMAT_RCM) {
+                    ghost_line_string(str,"Local permutation strategy",NULL,"RCM+Sorting");
+                } else {
+                    ghost_line_string(str,"Local permutation strategy",NULL,"Sorting");
+                }
+                ghost_line_string(str,"Row length sorting scope (sigma)",NULL,"%d",mat->traits.sortScope);
+            } else if (mat->traits.flags & GHOST_SPARSEMAT_RCM) {
+                ghost_line_string(str,"Local permutation strategy",NULL,"RCM");
+            }
         }
-#ifdef GHOST_HAVE_MPI
-        ghost_line_string(str,"Permutation scope",NULL,"%s",mat->context->perm_global->scope==GHOST_PERMUTATION_GLOBAL?"Across processes":"Local to process");
-#endif
         ghost_line_string(str,"Permuted column indices",NULL,"%s",mat->traits.flags&GHOST_SPARSEMAT_NOT_PERMUTE_COLS?"No":"Yes");
+    } else {
+        ghost_line_string(str,"Permuted",NULL,"No");
     }
+
     ghost_line_string(str,"Ascending columns in row",NULL,"%s",mat->traits.flags&GHOST_SPARSEMAT_NOT_SORT_COLS?"Maybe":"Yes");
     ghost_line_string(str,"Max row length (# rows)",NULL,"%d (%d)",mat->maxRowLen,mat->nMaxRows);
     ghost_line_string(str,"Row length variance",NULL,"%f",mat->variance);

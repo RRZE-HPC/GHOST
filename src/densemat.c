@@ -154,31 +154,35 @@ static ghost_error getNrowsFromContext(ghost_densemat *vec)
         //vec->traits.nrowspadded = vec->traits.nrows;
         //vec->traits.ncolspadded = vec->traits.ncols;
     } else {
-        ghost_lidx padding = vec->elSize;
-        if (vec->traits.nrows > 1) {
+        if (vec->traits.flags & GHOST_DENSEMAT_PAD_COLS) {
+            ghost_lidx padding = vec->elSize;
+            if (vec->traits.nrows > 1) {
 #ifdef GHOST_BUILD_MIC
-            padding = 64; // 64 byte padding
+                padding = 64; // 64 byte padding
 #elif defined(GHOST_BUILD_AVX) || defined(GHOST_BUILD_AVX2)
-            padding = 32; // 32 byte padding
-            if (vec->traits.ncols == 2) {
-                padding = 16; // SSE in this case: only 16 byte alignment required
-            }
-            if (vec->traits.ncols == 1) {
-                padding = vec->elSize; // (pseudo-) row-major: no padding
-            }
+                padding = 32; // 32 byte padding
+                if (vec->traits.ncols == 2) {
+                    padding = 16; // SSE in this case: only 16 byte alignment required
+                }
+                if (vec->traits.ncols == 1) {
+                    padding = vec->elSize; // (pseudo-) row-major: no padding
+                }
 #elif defined (GHOST_BUILD_SSE)
-            padding = 16; // 16 byte padding
-            if (vec->traits.ncols == 1) {
-                padding = vec->elSize; // (pseudo-) row-major: no padding
-            }
+                padding = 16; // 16 byte padding
+                if (vec->traits.ncols == 1) {
+                    padding = vec->elSize; // (pseudo-) row-major: no padding
+                }
 #endif
+            }
+           
+            padding /= vec->elSize;
+            
+            vec->traits.ncolspadded = PAD(vec->traits.ncols,padding);
+        } else {
+            vec->traits.ncolspadded = vec->traits.ncols;
         }
-       
-        padding /= vec->elSize;
-        
-        vec->traits.ncolspadded = PAD(vec->traits.ncols,padding);
       
-        padding = ghost_densemat_row_padding(); 
+        ghost_lidx padding = ghost_densemat_row_padding(); 
 
 #ifdef GHOST_BUILD_MIC
         //WARNING_LOG("Extremely large row padding because the performance for TSMM and a large dimension power of two is very bad. This has to be fixed!");

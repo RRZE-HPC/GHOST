@@ -506,10 +506,10 @@ bool ghost_iszero(void *vnumber, ghost_datatype dt)
     } else {
         if (dt & GHOST_DT_FLOAT) {
             float number = *(float *)vnumber;
-            ret = number < FLT_MIN;
+            ret = fabsf(number) < FLT_MIN;
         } else {
             double number = *(double *)vnumber;
-            ret = number < DBL_MIN;
+            ret = fabs(number) < DBL_MIN;
         }
     }
 

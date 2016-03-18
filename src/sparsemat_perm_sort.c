@@ -15,10 +15,6 @@ static int ghost_cmp_entsperrow(const void* a, const void* b, void *arg)
 ghost_error ghost_sparsemat_perm_sort(ghost_sparsemat *mat, void *matrixSource, ghost_sparsemat_src srcType, ghost_gidx scope)
 {
     ghost_error ret = GHOST_SUCCESS;
-    if (mat->context->perm_local) {
-        WARNING_LOG("Will not re-create existing permutations!");
-        return ret;
-    }
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_SETUP);
     
     int me;    
@@ -30,23 +26,26 @@ ghost_error ghost_sparsemat_perm_sort(ghost_sparsemat *mat, void *matrixSource, 
 
     
 
-    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local,sizeof(ghost_permutation)),err,ret);
     if (mat->traits.sortScope > mat->nrows) {
         WARNING_LOG("Restricting the sorting scope to the number of matrix rows");
     }
     nrows = mat->nrows;
     rowOffset = mat->context->lfRow[me];
-    mat->context->perm_local->scope = GHOST_PERMUTATION_LOCAL;
-    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->perm,sizeof(ghost_gidx)*nrows),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->invPerm,sizeof(ghost_gidx)*nrows),err,ret);
+
+    if (!mat->context->perm_local) {
+        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local,sizeof(ghost_permutation)),err,ret);
+        mat->context->perm_local->scope = GHOST_PERMUTATION_LOCAL;
+        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->perm,sizeof(ghost_gidx)*nrows),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->invPerm,sizeof(ghost_gidx)*nrows),err,ret);
 #ifdef GHOST_HAVE_CUDA
-    GHOST_CALL_GOTO(ghost_cu_malloc((void **)&mat->context->perm_local->cu_perm,sizeof(ghost_gidx)*nrows),err,ret);
+        GHOST_CALL_GOTO(ghost_cu_malloc((void **)&mat->context->perm_local->cu_perm,sizeof(ghost_gidx)*nrows),err,ret);
 #endif
 
-    mat->context->perm_local->len = nrows;
+        mat->context->perm_local->len = nrows;
 
-    memset(mat->context->perm_local->perm,0,sizeof(ghost_gidx)*nrows);
-    memset(mat->context->perm_local->invPerm,0,sizeof(ghost_gidx)*nrows);
+        memset(mat->context->perm_local->perm,0,sizeof(ghost_gidx)*nrows);
+        memset(mat->context->perm_local->invPerm,0,sizeof(ghost_gidx)*nrows);
+    }
     
     GHOST_CALL_GOTO(ghost_malloc((void **)&rowSort,nrows * sizeof(ghost_sorting_helper)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,(nrows+1) * sizeof(ghost_gidx)),err,ret);
@@ -62,11 +61,23 @@ ghost_error ghost_sparsemat_perm_sort(ghost_sparsemat *mat, void *matrixSource, 
         { 
             GHOST_CALL(ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize),ret);
             GHOST_CALL(ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx)),ret);
-            if (mat->context->perm_global) {
+            if (mat->context->perm_global && mat->context->perm_local) {
+#pragma omp for schedule(runtime) reduction (+:funcerrs)
+                for (i=0; i<nrows; i++) {
+                    funcerrs += src->func(mat->context->perm_global->invPerm[mat->context->perm_local->invPerm[i]],&rowSort[i].nEntsInRow,tmpcol,tmpval,src->arg);
+                    rowSort[i].row = mat->context->perm_local->invPerm[i];
+                }
+            } else if (mat->context->perm_global) {
 #pragma omp for schedule(runtime) reduction (+:funcerrs)
                 for (i=0; i<nrows; i++) {
                     funcerrs += src->func(mat->context->perm_global->invPerm[i],&rowSort[i].nEntsInRow,tmpcol,tmpval,src->arg);
                     rowSort[i].row = i;
+                }
+            } else if (mat->context->perm_local) {
+#pragma omp for schedule(runtime) reduction (+:funcerrs)
+                for (i=0; i<nrows; i++) {
+                    funcerrs += src->func(rowOffset+mat->context->perm_local->invPerm[i],&rowSort[i].nEntsInRow,tmpcol,tmpval,src->arg);
+                    rowSort[i].row = mat->context->perm_local->invPerm[i];
                 }
             } else {
 #pragma omp for schedule(runtime) reduction (+:funcerrs)

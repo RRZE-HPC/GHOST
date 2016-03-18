@@ -373,7 +373,7 @@ static bool operator==(const ghost_sellspmv_parameters& a, const ghost_sellspmv_
 {
     return a.mdt == b.mdt && a.blocksz == b.blocksz && a.storage == b.storage && 
            a.vdt == b.vdt && a.impl == b.impl && a.chunkheight == b.chunkheight &&
-           a.alignment && b.alignment;
+           a.alignment == b.alignment;
 }
 
 static unordered_map<ghost_sellspmv_parameters, ghost_spmv_kernel> 
@@ -446,31 +446,16 @@ extern "C" ghost_error ghost_sell_spmv_selector(ghost_densemat *lhs,
         opt_impl = GHOST_IMPLEMENTATION_PLAIN;
     } else {
         if (rhs->stride > 1 && rhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
-            opt_impl = ghost_get_best_implementation_for_bytesize(PAD(rhs->traits.ncols*rhs->elSize,ghost_machine_simd_width()));
+            opt_impl = ghost_get_best_implementation_for_bytesize(rhs->traits.ncols*rhs->elSize);
+            if (opt_impl == GHOST_IMPLEMENTATION_PLAIN) {
+                // this branch is taken for odd numbers
+                // choose a version with remainder loops in this case!
+                opt_impl = ghost_get_best_implementation_for_bytesize(PAD(rhs->traits.ncols*rhs->elSize,ghost_machine_simd_width()));
+            }
         } else {
             opt_impl = ghost_get_best_implementation_for_bytesize(mat->traits.C*mat->elSize);
         }
     }
-    
-    int al = ghost_machine_alignment();
-    if (IS_ALIGNED(lhs->val,al) && IS_ALIGNED(rhs->val,al) && ((lhs->traits.ncols == 1 && lhs->stride == 1) || (!((lhs->stride*lhs->elSize) % al) && !((rhs->stride*rhs->elSize) % al)))) {
-        opt_align = GHOST_ALIGNED;
-    } else {
-        if (!IS_ALIGNED(lhs->val,al)) {
-            PERFWARNING_LOG("Using unaligned kernel because base address of result vector is not aligned");
-        }
-        if (!IS_ALIGNED(rhs->val,al)) {
-            PERFWARNING_LOG("Using unaligned kernel because base address of input vector is not aligned");
-        }
-        if (lhs->stride*lhs->elSize % al) {
-            PERFWARNING_LOG("Using unaligned kernel because stride of result vector does not yield aligned addresses");
-        }
-        if (rhs->stride*lhs->elSize % al) {
-            PERFWARNING_LOG("Using unaligned kernel because stride of input vector does not yield aligned addresses");
-        }
-        opt_align = GHOST_UNALIGNED;
-    }
-
     
     int try_chunkheight[2] = {mat->traits.C,-1}; 
     int try_blocksz[2] = {rhs->traits.ncols,-1}; 
@@ -484,14 +469,34 @@ extern "C" ghost_error ghost_sell_spmv_selector(ghost_densemat *lhs,
     for (pos_chunkheight = 0; pos_chunkheight < n_chunkheight; pos_chunkheight++) {  
         for (pos_blocksz = 0; pos_blocksz < n_blocksz; pos_blocksz++) {  
             for (p.impl = opt_impl; (int)p.impl >= GHOST_IMPLEMENTATION_PLAIN; p.impl  = (ghost_implementation)((int)p.impl-1)) {
-                if (p.impl == GHOST_IMPLEMENTATION_SSE && p.storage == GHOST_DENSEMAT_ROWMAJOR && try_blocksz[pos_blocksz] % 2) {
+                /*if (p.impl == GHOST_IMPLEMENTATION_SSE && p.storage == GHOST_DENSEMAT_ROWMAJOR && try_blocksz[pos_blocksz] % 2) {
                     PERFWARNING_LOG("Remainder loops not yet implemented for SSE, fallback to plain");
                     p.impl  = (ghost_implementation)((int)p.impl-1);
+                }*/
+
+                int al = ghost_implementation_alignment(p.impl);
+                if (IS_ALIGNED(lhs->val,al) && IS_ALIGNED(rhs->val,al) && ((lhs->traits.ncols == 1 && lhs->stride == 1) || (!((lhs->stride*lhs->elSize) % al) && !((rhs->stride*rhs->elSize) % al)))) {
+                    opt_align = GHOST_ALIGNED;
+                } else {
+                    if (!IS_ALIGNED(lhs->val,al)) {
+                        PERFWARNING_LOG("Using unaligned kernel because base address of result vector is not aligned");
+                    }
+                    if (!IS_ALIGNED(rhs->val,al)) {
+                        PERFWARNING_LOG("Using unaligned kernel because base address of input vector is not aligned");
+                    }
+                    if (lhs->stride*lhs->elSize % al) {
+                        PERFWARNING_LOG("Using unaligned kernel because stride of result vector does not yield aligned addresses");
+                    }
+                    if (rhs->stride*lhs->elSize % al) {
+                        PERFWARNING_LOG("Using unaligned kernel because stride of input vector does not yield aligned addresses");
+                    }
+                    opt_align = GHOST_UNALIGNED;
                 }
 
                 for (p.alignment = opt_align; (int)p.alignment >= GHOST_UNALIGNED; p.alignment = (ghost_alignment)((int)p.alignment-1)) {
                     p.chunkheight = try_chunkheight[pos_chunkheight];
                     p.blocksz = try_blocksz[pos_blocksz];
+
                     DEBUG_LOG(1,"Try chunkheight=%s, blocksz=%s, impl=%s, %s",
                             p.chunkheight==-1?"arbitrary":std::to_string((long long)p.chunkheight).c_str(),
                             p.blocksz==-1?"arbitrary":std::to_string((long long)p.blocksz).c_str(),

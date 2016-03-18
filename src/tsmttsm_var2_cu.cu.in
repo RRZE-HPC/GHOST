@@ -67,10 +67,18 @@ __global__ void varBlockProductKernel(const T *A, const T *B, T *out, size_t K,
   zero(threadSum);
 
   if (conjv) {
+      if (TRANSPOSE) {
 #pragma unroll 4
-      for (size_t idx = tidx / M / N; idx < K;
-           idx += blockDim.x * gridDim.x / M / N) {
-        threadSum  = accu(threadSum, mulConj(A[idx * lda + m], __ldg( B + idx * ldb + n)));
+          for (size_t idx = tidx / M / N; idx < K;
+               idx += blockDim.x * gridDim.x / M / N) {
+            threadSum  = accu(threadSum, mulConj(__ldg( B + idx * ldb + n),A[idx * lda + m]));
+          }
+      } else {
+#pragma unroll 4
+          for (size_t idx = tidx / M / N; idx < K;
+               idx += blockDim.x * gridDim.x / M / N) {
+            threadSum  = accu(threadSum, mulConj(A[idx * lda + m], __ldg( B + idx * ldb + n)));
+          }
       }
   } else {
 #pragma unroll 4
