@@ -282,7 +282,7 @@ ghost_error ghost_rayleigh_ritz(ghost_sparsemat * mat, void * eigs, void * res, 
     UNUSED(res);
     UNUSED(v_eigs);
     UNUSED(v_res);
-    UNUSED(obtion);
+    UNUSED(RR_Obtion);
     UNUSED(spMVM_Options);
     ERROR_LOG("LAPACKE not found!");
     
