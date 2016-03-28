@@ -284,6 +284,7 @@ err:
 out:
     free(a); a = NULL;
     free(b); b = NULL;
+    free(c); c = NULL;
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_BENCH);
     return ret;
