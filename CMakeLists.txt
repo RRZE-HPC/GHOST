@@ -733,11 +733,12 @@ if (GHOST_USE_SPMP)
         set(GHOST_HAVE_SPMP 0)
     else()
         set(GHOST_HAVE_SPMP 1)
+        set(GITHUB_GIT_URL "github.com" CACHE STRING "The github GIT URL. This has to be changed in certain situations if located behind a firewall.")
         include(ExternalProject)
         set_property(DIRECTORY PROPERTY EP_STEP_TARGETS build)
         ExternalProject_Add(SpMP
             PREFIX ${PROJECT_SOURCE_DIR}/SpMP
-            GIT_REPOSITORY http://github.com/jspark1105/SpMP.git
+            GIT_REPOSITORY git://${GITHUB_GIT_URL}/jspark1105/SpMP.git
             CONFIGURE_COMMAND "" 
             BUILD_COMMAND make
             BUILD_IN_SOURCE 1
