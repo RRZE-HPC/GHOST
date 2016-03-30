@@ -199,7 +199,7 @@ static void ghost_store_kernel(double * __restrict__ a, const double s)
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_KERNEL|GHOST_FUNCTYPE_BENCH);
 }
 
-ghost_error ghost_bench_stream(ghost_bench_stream_test_t test, double *bw)
+ghost_error ghost_bench_stream(ghost_bench_stream_test_t test, double *mean_bw, double *max_bw)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_BENCH);
     ghost_type mytype;
@@ -207,7 +207,9 @@ ghost_error ghost_bench_stream(ghost_bench_stream_test_t test, double *bw)
     
     if (mytype == GHOST_TYPE_CUDA) {
 #ifdef GHOST_HAVE_CUDA
-        return ghost_cu_bench_stream(test,bw);
+        ghost_error cuda_err = ghost_cu_bench_stream(test,mean_bw,max_bw);
+        *max_bw=*mean_bw; /* cuda kernel is executed only once? */
+        return cuda_err;
 #endif
     }
         
@@ -220,7 +222,7 @@ ghost_error ghost_bench_stream(ghost_bench_stream_test_t test, double *bw)
     ghost_error ret = GHOST_SUCCESS;
 
     int i;
-    double start,stop;
+    double start,stop,start1,stop1,tmin;
 
     double *a = NULL;
     double *b = NULL;
@@ -237,42 +239,60 @@ ghost_error ghost_bench_stream(ghost_bench_stream_test_t test, double *bw)
         c[i] = i+1;
     }
   
+    tmin=+1.e99;
+  
     switch (test) {
         case GHOST_BENCH_STREAM_COPY:
             ghost_copy_kernel(a,b); // warm up
             ghost_timing_wc(&start);
             for (i=0; i<NITER; i++) {
+                ghost_timing_wc(&start1);
                 ghost_copy_kernel(a,b);
+                ghost_timing_wc(&stop1);
+                tmin = MIN(tmin,stop1-start1);
             }
             ghost_timing_wc(&stop);
-            *bw = 2*N/1.e9*NITER*sizeof(double)/(stop-start);
+            *max_bw = 2*N/1.e9*sizeof(double)/tmin;
+            *mean_bw = 2*N/1.e9*NITER*sizeof(double)/(stop-start);
             break;
         case GHOST_BENCH_STREAM_TRIAD:
             ghost_triad_kernel(a,b,c,s); // warm up
             ghost_timing_wc(&start);
             for (i=0; i<NITER; i++) {
+                ghost_timing_wc(&start1);
                 ghost_triad_kernel(a,b,c,s);
+                ghost_timing_wc(&stop1);
+                tmin = MIN(tmin,stop1-start1);
             }
             ghost_timing_wc(&stop);
-            *bw = 3*N/1.e9*NITER*sizeof(double)/(stop-start);
+            *mean_bw = 3*N/1.e9*NITER*sizeof(double)/(stop-start);
+            *max_bw = 3*N/1.e9*sizeof(double)/tmin;
             break;
         case GHOST_BENCH_STREAM_LOAD:
             ghost_load_kernel(a,&s); // warm up
             ghost_timing_wc(&start);
             for (i=0; i<NITER; i++) {
+                ghost_timing_wc(&start1);
                 ghost_load_kernel(a,&s);
+                ghost_timing_wc(&stop1);
+                tmin = MIN(tmin,stop1-start1);
             }
             ghost_timing_wc(&stop);
-            *bw = N/1.e9*NITER*sizeof(double)/(stop-start);
+            *mean_bw = N/1.e9*NITER*sizeof(double)/(stop-start);
+            *max_bw = N/1.e9*sizeof(double)/tmin;
             break;
         case GHOST_BENCH_STREAM_STORE:
             ghost_store_kernel(a,s); // warm up
             ghost_timing_wc(&start);
             for (i=0; i<NITER; i++) {
+                ghost_timing_wc(&start1);
                 ghost_store_kernel(a,s);
+                ghost_timing_wc(&stop1);
+                tmin=MIN(tmin,stop1-start1);
             }
             ghost_timing_wc(&stop);
-            *bw = N/1.e9*NITER*sizeof(double)/(stop-start);
+            *mean_bw = N/1.e9*NITER*sizeof(double)/(stop-start);
+            *max_bw = N/1.e9*sizeof(double)/tmin;
             break;
     }
 

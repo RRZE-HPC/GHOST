@@ -18,7 +18,7 @@ typedef enum
 extern "C" {
 #endif
 
-ghost_error ghost_bench_stream(ghost_bench_stream_test_t, double *bw);
+ghost_error ghost_bench_stream(ghost_bench_stream_test_t, double *mean_bw, double *max_bw);
 ghost_error ghost_bench_pingpong(double *bw);
 ghost_error ghost_bench_peakperformance(double *gf);
 
