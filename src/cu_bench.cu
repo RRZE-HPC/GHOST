@@ -50,7 +50,7 @@ extern "C" ghost_error ghost_cu_bench_stream(ghost_bench_stream_test_t test, dou
 
     int i;
     double start,stop,start1,stop1,tmin;
-
+    tmin=1e99;
     double *a = NULL;
     double *b = NULL;
     double *c = NULL;
