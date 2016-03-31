@@ -22,7 +22,8 @@ ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, gho
         return GHOST_ERR_INVALID_ARG;
     }
     if (fabs(weight) < DBL_MIN) {
-        ghost_bench_stream(GHOST_BENCH_STREAM_COPY,&weight);
+        double max_bw=0.0;
+        ghost_bench_stream(GHOST_BENCH_STREAM_COPY,&weight,&max_bw);
         INFO_LOG("Automatically setting weight to %f according to STREAM copy bandwidth!",weight);
     }
           

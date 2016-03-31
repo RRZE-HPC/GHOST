@@ -7,7 +7,7 @@
 #include "ghost/funcptr_wrappers.h"
 #include "ghost/dot.h"
 
-
+#define NITER 20
 #define THREADSPERBLOCK 256
 #define N (ghost_lidx)1e8 
 
@@ -43,14 +43,14 @@ __global__ static void cu_store_kernel(double * __restrict__ a, const double s)
 } 
 #endif
 
-extern "C" ghost_error ghost_cu_bench_stream(ghost_bench_stream_test_t test, double *bw)
+extern "C" ghost_error ghost_cu_bench_stream(ghost_bench_stream_test_t test, double *mean_bw, double *max_bw)
 {
 
     ghost_error ret = GHOST_SUCCESS;
 
     int i;
-    double start,stop;
-
+    double start,stop,start1,stop1,tmin;
+    tmin=1e99;
     double *a = NULL;
     double *b = NULL;
     double *c = NULL;
@@ -83,6 +83,8 @@ extern "C" ghost_error ghost_cu_bench_stream(ghost_bench_stream_test_t test, dou
         ghost_cu_upload(dc,c,N*sizeof(double));
 
         ghost_timing_wc(&start);
+        for (int iter=0; iter<NITER; iter++) {
+        ghost_timing_wc(&start1);
         switch (test) {
             case GHOST_BENCH_STREAM_COPY:
                 cu_copy_kernel<<<CEILDIV(N,THREADSPERBLOCK),THREADSPERBLOCK>>> (da,db);
@@ -107,6 +109,9 @@ extern "C" ghost_error ghost_cu_bench_stream(ghost_bench_stream_test_t test, dou
                 break;
         }
         cudaDeviceSynchronize();
+        ghost_timing_wc(&stop1);
+        tmin=MIN(tmin,stop1-start1);
+        }
         ghost_timing_wc(&stop);
         GHOST_CALL_GOTO(ghost_cu_download(a,da,N*sizeof(double)),err,ret);
         ghost_cu_free(da);
@@ -117,16 +122,20 @@ extern "C" ghost_error ghost_cu_bench_stream(ghost_bench_stream_test_t test, dou
 
     switch (test) {
         case GHOST_BENCH_STREAM_COPY:
-            *bw = 2*N/1.e9*sizeof(double)/(stop-start);
+            *mean_bw = 2*N/1.e9*NITER*sizeof(double)/(stop-start);
+            *max_bw = 2*N/1.e9*sizeof(double)/tmin;
             break;
         case GHOST_BENCH_STREAM_TRIAD:
-            *bw = 3*N/1.e9*sizeof(double)/(stop-start);
+            *mean_bw = 3*N/1.e9*NITER*sizeof(double)/(stop-start);
+            *max_bw = 3*N/1.e9*sizeof(double)/tmin;
             break;
         case GHOST_BENCH_STREAM_STORE:
-            *bw = N/1.e9*sizeof(double)/(stop-start);
+            *mean_bw = N/1.e9*NITER*sizeof(double)/(stop-start);
+            *max_bw = N/1.e9*sizeof(double)/tmin;
             break;
         case GHOST_BENCH_STREAM_LOAD:
-            *bw = 2*N/1.e9*sizeof(double)/(stop-start);
+            *mean_bw = 2*N/1.e9*NITER*sizeof(double)/(stop-start);
+            *max_bw = 2*N/1.e9*sizeof(double)/tmin;
             break;
     }
 
