@@ -66,7 +66,7 @@ __global__ void blockProductKernel(const T *A, const T *B, T *out, size_t K,
       } else {
           for (size_t idx = tidx / M; idx < K; idx += blockDim.x * gridDim.x / M) {
             for (int n = 0; n < N; n++) {
-              threadSum[n] = accu(threadSum[n], mulConj(A[idx * ldb + n],B[idx * lda + m]));
+              threadSum[n] = accu(threadSum[n], mulConj(A[idx * lda + n],B[idx * ldb + m]));
             }
           }
       }
