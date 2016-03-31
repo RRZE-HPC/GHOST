@@ -130,6 +130,7 @@ static ghost_error FUNCNAME(viewPlain(ghost_densemat *vec, void *data, ghost_lid
         return GHOST_ERR_INVALID_ARG;
     }
 
+    vec->traits.flags|=(ghost_densemat_flags)GHOST_DENSEMAT_VIEW;
     FUNCNAME(malloc(vec,NULL));
 
     if (vec->traits.location & GHOST_LOCATION_DEVICE) {
