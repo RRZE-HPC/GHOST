@@ -118,7 +118,7 @@ void ghost_tsmttsm_cu_rm_fallback(T *const __restrict__ C,
     ghost_cu_malloc(&temp_storage, temp_storage_bytes);
     if (temp_storage == NULL) temp_storage_bytes = 0;
   }
-  ghost_error err;
+  ghost_error err = GHOST_SUCCESS;
   CUDA_CALL(cudaMemset(temp_storage, 0, temp_storage_bytes), err);
   if (err != GHOST_SUCCESS) return;
 
@@ -139,7 +139,7 @@ ghost_error ghost_tsmttsm__u_cuda_x_x_x_1_rm(ghost_densemat *x,ghost_densemat *v
 {
   GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH | GHOST_FUNCTYPE_KERNEL);
   ghost_error ret = GHOST_SUCCESS;
- 
+  
   if (x->traits.datatype & GHOST_DT_COMPLEX) {
       if (conjv) {
         if (x->traits.datatype & GHOST_DT_DOUBLE) {
