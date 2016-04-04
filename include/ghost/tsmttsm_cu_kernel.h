@@ -60,13 +60,13 @@ __global__ void blockProductKernel(const T *A, const T *B, T *out, size_t K,
       if (TRANSPOSE) {
           for (size_t idx = tidx / M; idx < K; idx += blockDim.x * gridDim.x / M) {
             for (int n = 0; n < N; n++) {
-              threadSum[n] = accu(threadSum[n], mulConj(B[idx * ldb + n],A[idx * lda + m]));
+              threadSum[n] = axpy(threadSum[n], A[idx * lda + m], conj(B[idx * ldb + n]));
             }
           }
       } else {
           for (size_t idx = tidx / M; idx < K; idx += blockDim.x * gridDim.x / M) {
             for (int n = 0; n < N; n++) {
-              threadSum[n] = accu(threadSum[n], mulConj(A[idx * lda + n],B[idx * ldb + m]));
+              threadSum[n] = axpy(threadSum[n], conj(A[idx * lda + m]), B[idx * ldb + n]);
             }
           }
       }
