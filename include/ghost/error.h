@@ -166,6 +166,8 @@ typedef enum {
             h((void *)&mpicallmacroerr);\
         }\
         __err = GHOST_ERR_MPI;\
+    } else {\
+        __err = GHOST_SUCCESS;\
     }\
 }\
 
@@ -193,6 +195,8 @@ typedef enum {
             h((void *)&__hwlocerr);\
         }\
         __err = GHOST_ERR_HWLOC;\
+    } else {\
+        __err = GHOST_SUCCESS;\
     }\
 }\
 
@@ -220,6 +224,8 @@ typedef enum {
             h((void *)&__cuerr);\
         }\
         __err = GHOST_ERR_CUDA;\
+    } else {\
+        __err = GHOST_SUCCESS;\
     }\
 }\
 
@@ -278,6 +284,8 @@ typedef enum {
             h((void *)&err);\
         }\
         __err = GHOST_ERR_CUBLAS;\
+    } else {\
+        __err = GHOST_SUCCESS;\
     }\
 }\
 
@@ -305,6 +313,8 @@ typedef enum {
             h((void *)&err);\
         }\
         __err = GHOST_ERR_CURAND;\
+    } else {\
+        __err = GHOST_SUCCESS;\
     }\
 }\
 
@@ -332,6 +342,8 @@ typedef enum {
             h((void *)&err);\
         }\
         __err = GHOST_ERR_CUSPARSE;\
+    } else {\
+        __err = GHOST_SUCCESS;\
     }\
 }\
 
@@ -359,6 +371,8 @@ typedef enum {
             h((void *)&err);\
         }\
         __err = GHOST_ERR_SCOTCH;\
+    } else {\
+        __err = GHOST_SUCCESS;\
     }\
 }\
 
@@ -386,6 +400,8 @@ typedef enum {
             h((void *)&err);\
         }\
         __err = GHOST_ERR_COLPACK;\
+    } else {\
+        __err = GHOST_SUCCESS;\
     }\
 }\
 
@@ -413,6 +429,8 @@ typedef enum {
             h((void *)&err);\
         }\
         __err = GHOST_ERR_ZOLTAN;\
+    } else {\
+        __err = GHOST_SUCCESS;\
     }\
 }\
 
@@ -441,6 +459,8 @@ typedef enum {
             h((void *)&err);\
         }\
         __err = GHOST_ERR_BLAS;\
+    } else {\
+        __err = GHOST_SUCCESS;\
     }\
 }\
 
