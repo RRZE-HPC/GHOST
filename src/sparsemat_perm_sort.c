@@ -31,22 +31,6 @@ ghost_error ghost_sparsemat_perm_sort(ghost_sparsemat *mat, void *matrixSource, 
     }
     nrows = mat->nrows;
     rowOffset = mat->context->lfRow[me];
-
-    if (!mat->context->perm_local) {
-        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local,sizeof(ghost_permutation)),err,ret);
-        mat->context->perm_local->scope = GHOST_PERMUTATION_LOCAL;
-        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->perm,sizeof(ghost_gidx)*nrows),err,ret);
-        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->invPerm,sizeof(ghost_gidx)*nrows),err,ret);
-#ifdef GHOST_HAVE_CUDA
-        GHOST_CALL_GOTO(ghost_cu_malloc((void **)&mat->context->perm_local->cu_perm,sizeof(ghost_gidx)*nrows),err,ret);
-#endif
-
-        mat->context->perm_local->len = nrows;
-
-        memset(mat->context->perm_local->perm,0,sizeof(ghost_gidx)*nrows);
-        memset(mat->context->perm_local->invPerm,0,sizeof(ghost_gidx)*nrows);
-    }
-    
     GHOST_CALL_GOTO(ghost_malloc((void **)&rowSort,nrows * sizeof(ghost_sorting_helper)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,(nrows+1) * sizeof(ghost_gidx)),err,ret);
 
@@ -96,6 +80,22 @@ ghost_error ghost_sparsemat_perm_sort(ghost_sparsemat *mat, void *matrixSource, 
         }
 
     } 
+    
+    if (!mat->context->perm_local) {
+        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local,sizeof(ghost_permutation)),err,ret);
+        mat->context->perm_local->scope = GHOST_PERMUTATION_LOCAL;
+        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->perm,sizeof(ghost_gidx)*nrows),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->invPerm,sizeof(ghost_gidx)*nrows),err,ret);
+#ifdef GHOST_HAVE_CUDA
+        GHOST_CALL_GOTO(ghost_cu_malloc((void **)&mat->context->perm_local->cu_perm,sizeof(ghost_gidx)*nrows),err,ret);
+#endif
+
+        mat->context->perm_local->len = nrows;
+
+        memset(mat->context->perm_local->perm,0,sizeof(ghost_gidx)*nrows);
+        memset(mat->context->perm_local->invPerm,0,sizeof(ghost_gidx)*nrows);
+    }
+    
 #if 0
     else {
         char *matrixPath = (char *)matrixSource;
