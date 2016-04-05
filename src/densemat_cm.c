@@ -28,7 +28,6 @@
 #include "ghost/densemat_iter_macros.h"
 #include "ghost/densemat_common.c.def"
 
-static ghost_error vec_cm_fromFunc(ghost_densemat *vec, int (*fp)(ghost_gidx, ghost_lidx, void *, void *), void *arg);
 static ghost_error ghost_distributeVector(ghost_densemat *vec, ghost_densemat *nodeVec);
 static ghost_error ghost_collectVectors(ghost_densemat *vec, ghost_densemat *totalVec); 
 static ghost_error ghost_cloneVector(ghost_densemat *src, ghost_densemat **new, ghost_lidx nr, ghost_lidx roffs, ghost_lidx nc, ghost_lidx coffs);
@@ -78,7 +77,7 @@ ghost_error ghost_densemat_cm_setfuncs(ghost_densemat *vec)
     vec->reduce = &ghost_densemat_cm_reduce;
     vec->compress = &vec_cm_compress;
     vec->string = &ghost_densemat_cm_string_selector;
-    vec->fromFunc = &vec_cm_fromFunc;
+    vec->fromFunc = &ghost_densemat_cm_fromFunc;
     vec->fromVec = &ghost_densemat_cm_fromVec_selector;
     vec->fromFile = &ghost_densemat_cm_fromFile;
     vec->toFile = &ghost_densemat_cm_toFile;
@@ -105,48 +104,6 @@ ghost_error ghost_densemat_cm_setfuncs(ghost_densemat *vec)
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_SETUP);
     return ret;
-}
-
-
-static ghost_error vec_cm_fromFunc(ghost_densemat *vec, int (*fp)(ghost_gidx, ghost_lidx, void *, void *), void *arg)
-{
-    int rank;
-    ghost_gidx offset;
-    if (vec->context) {
-        GHOST_CALL_RETURN(ghost_rank(&rank, vec->context->mpicomm));
-        offset = vec->context->lfRow[rank];
-    } else {
-        rank = 0;
-        offset = 0;
-    }
-    int needInit = 0;
-    GHOST_CALL_RETURN(ghost_densemat_cm_malloc(vec,&needInit));
-    DEBUG_LOG(1,"Filling vector via function");
-
-    if (vec->traits.location & GHOST_LOCATION_HOST) { // vector is stored on host
-        if( needInit ) {
-          DENSEMAT_ITER_INIT(vec,fp(offset+row,col,valptr,arg));
-        } else {
-          DENSEMAT_ITER(vec,fp(offset+row,col,valptr,arg));
-        }
-        
-        // host+device case: uploading will be done in fromVec()
-        if (vec->traits.location & GHOST_LOCATION_DEVICE) {
-            vec->upload(vec);
-        }
-    } else {
-        INFO_LOG("Need to create dummy HOST densemat!");
-        ghost_densemat *hostVec;
-        ghost_densemat_traits htraits = vec->traits;
-        htraits.location = GHOST_LOCATION_HOST;
-        htraits.flags &= (ghost_densemat_flags)~GHOST_DENSEMAT_VIEW;
-        GHOST_CALL_RETURN(ghost_densemat_create(&hostVec,vec->context,htraits));
-        GHOST_CALL_RETURN(hostVec->fromFunc(hostVec,fp,arg));
-        GHOST_CALL_RETURN(vec->fromVec(vec,hostVec,0,0));
-        ghost_densemat_destroy(hostVec);
-    }
-
-    return GHOST_SUCCESS;
 }
 
 static ghost_error ghost_distributeVector(ghost_densemat *vec, ghost_densemat *nodeVec)

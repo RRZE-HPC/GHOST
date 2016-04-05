@@ -821,3 +821,49 @@ static ghost_error FUNCNAME(fromFile(ghost_densemat *vec, char *path, bool singl
     return GHOST_SUCCESS;
 
 }
+
+static ghost_error FUNCNAME(fromFunc(ghost_densemat *vec, int (*fp)(ghost_gidx, ghost_lidx, void *, void *), void *arg))
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
+    int rank;
+    ghost_gidx offset;
+    if (vec->context) {
+        GHOST_CALL_RETURN(ghost_rank(&rank, vec->context->mpicomm));
+        offset = vec->context->lfRow[rank];
+    } else {
+        rank = 0;
+        offset = 0;
+    }
+    int needInit = 0;
+    GHOST_CALL_RETURN(ghost_densemat_rm_malloc(vec,&needInit));
+
+
+    if (vec->traits.location & GHOST_LOCATION_HOST) { // vector is stored on host
+        if( needInit ) {
+          DENSEMAT_ITER_INIT(vec,fp(offset+row,col,valptr,arg));
+        } else {
+          DENSEMAT_ITER(vec,fp(offset+row,col,valptr,arg));
+        }
+        
+        // host+device case: uploading will be done in fromVec()
+        if (vec->traits.location & GHOST_LOCATION_DEVICE) {
+            vec->upload(vec);
+        }
+    } else {
+        INFO_LOG("Need to create dummy HOST densemat!");
+        ghost_densemat *hostVec;
+        ghost_densemat_traits htraits = vec->traits;
+        htraits.location = GHOST_LOCATION_HOST;
+        htraits.flags &= (ghost_densemat_flags)~GHOST_DENSEMAT_VIEW;
+        GHOST_CALL_RETURN(ghost_densemat_create(&hostVec,vec->context,htraits));
+        GHOST_CALL_RETURN(hostVec->fromFunc(hostVec,fp,arg));
+        GHOST_CALL_RETURN(vec->fromVec(vec,hostVec,0,0));
+        ghost_densemat_destroy(hostVec);
+    }
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
+    return GHOST_SUCCESS;
+
+}
+
+
