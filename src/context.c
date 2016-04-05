@@ -331,6 +331,10 @@ ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, gho
         MPI_CALL_GOTO(MPI_Allreduce(&weight,&allweights,1,MPI_DOUBLE,MPI_SUM,(*context)->mpicomm),err,ret)
 
         ghost_lidx my_target_rows = (ghost_lidx)((*context)->gnrows*((double)weight/(double)allweights));
+        if (my_target_rows == 0) {
+            WARNING_LOG("This rank will have zero rows assigned!");
+        }
+
         GHOST_CALL_GOTO(ghost_malloc((void **)&target_rows,nranks*sizeof(ghost_lidx)),err,ret);
 
         MPI_CALL_GOTO(MPI_Allgather(&my_target_rows,1,ghost_mpi_dt_lidx,target_rows,1,ghost_mpi_dt_lidx,(*context)->mpicomm),err,ret);
