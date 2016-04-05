@@ -522,6 +522,7 @@ ghost_error ghost_cu_finalize()
     if (cu_rand_generator) {
         curandDestroyGenerator(cu_rand_generator);
     }
+    cudaDeviceReset();
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TEARDOWN);
 #endif
 
