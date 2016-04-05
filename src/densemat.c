@@ -71,6 +71,12 @@ ghost_error ghost_densemat_create(ghost_densemat **vec, ghost_context *ctx, ghos
     (*vec)->val = NULL;
     (*vec)->cu_val = NULL;
 
+    if ((*vec)->context) {
+        if ((*vec)->context->perm_global || (*vec)->context->perm_local) {
+            (*vec)->traits.flags |= (ghost_densemat_flags)GHOST_DENSEMAT_PERMUTED;
+        }
+    }
+
     if (!((*vec)->traits.flags & GHOST_DENSEMAT_VIEW)) {
         (*vec)->src = *vec;
     } else {
