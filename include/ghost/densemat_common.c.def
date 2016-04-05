@@ -142,7 +142,6 @@ static ghost_error FUNCNAME(viewPlain(ghost_densemat *vec, void *data, ghost_lid
     if (vec->traits.location & GHOST_LOCATION_HOST) {
         vec->val = data;
     }
-    vec->traits.flags |= (ghost_densemat_flags)GHOST_DENSEMAT_VIEW;
     vec->stride = lda;
     vec->traits.ncolsorig = vec->traits.ncols;
     vec->traits.nrowsorig = vec->traits.nrows;
