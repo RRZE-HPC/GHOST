@@ -50,27 +50,45 @@ ghost_error ghost_tsmm_inplace__u_cuda_x_x_x(ghost_densemat *x, ghost_densemat *
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL); 
     ghost_error ret = GHOST_SUCCESS;
     dim3 block, grid;
-    grid.x = CEILDIV(x->traits.nrows,THREADSPERBLOCK);
+
+    int threadsperblock = 128;
+    size_t dtsize;
+    ghost_cu_deviceprop prop;
+    GHOST_CALL_RETURN(ghost_datatype_size(&dtsize,x->traits.datatype));
+    GHOST_CALL_RETURN(ghost_cu_deviceprop_get(&prop));
+    
+    size_t reqSmem = threadsperblock*w->traits.ncols*dtsize;
+    while (prop.sharedMemPerBlock < reqSmem && threadsperblock > 1) {
+        threadsperblock /= 2;
+        reqSmem = threadsperblock*w->traits.ncols*dtsize;
+    }
+        
+    if (prop.sharedMemPerBlock < reqSmem) {
+        ERROR_LOG("Not enough shared memory available! CUDA kernel will not execute!");
+        return GHOST_ERR_CUDA;
+    }
+    
+    grid.x = CEILDIV(x->traits.nrows,threadsperblock);
     grid.y = 1;
     grid.z = 1;
-    block.x = THREADSPERBLOCK;
+    block.x = threadsperblock;
     block.y = 1;
     block.z = 1;
-
+    
     if (x->traits.datatype & GHOST_DT_COMPLEX) {
         if (x->traits.datatype & GHOST_DT_DOUBLE) {
-            ghost_tsmm_inplace_cu_rm_cm_fallback<cuDoubleComplex><<< grid,block,THREADSPERBLOCK*w->traits.ncols*sizeof(cuDoubleComplex) >>>(
+            ghost_tsmm_inplace_cu_rm_cm_fallback<cuDoubleComplex><<< grid,block,reqSmem >>>(
                     (cuDoubleComplex *)x->cu_val,(const cuDoubleComplex *)w->cu_val,*(cuDoubleComplex *)alpha,*(cuDoubleComplex *)beta,x->traits.nrows,x->stride,w->stride,w->traits.ncols,w->traits.nrows);
         } else {
-            ghost_tsmm_inplace_cu_rm_cm_fallback<cuFloatComplex><<< grid,block,THREADSPERBLOCK*w->traits.ncols*sizeof(cuFloatComplex) >>>(
+            ghost_tsmm_inplace_cu_rm_cm_fallback<cuFloatComplex><<< grid,block,reqSmem >>>(
                     (cuFloatComplex *)x->cu_val,(const cuFloatComplex *)w->cu_val,*(cuFloatComplex *)alpha,*(cuFloatComplex *)beta,x->traits.nrows,x->stride,w->stride,w->traits.ncols,w->traits.nrows);
         }
     } else {
         if (x->traits.datatype & GHOST_DT_DOUBLE) {
-            ghost_tsmm_inplace_cu_rm_cm_fallback<double><<< grid,block,THREADSPERBLOCK*w->traits.ncols*sizeof(double) >>>(
+            ghost_tsmm_inplace_cu_rm_cm_fallback<double><<< grid,block,reqSmem >>>(
                    (double *)x->cu_val,(const double *)w->cu_val,*(double *)alpha,*(double *)beta,x->traits.nrows,x->stride,w->stride,w->traits.ncols,w->traits.nrows);
         } else {
-            ghost_tsmm_inplace_cu_rm_cm_fallback<float><<< grid,block,THREADSPERBLOCK*w->traits.ncols*sizeof(float) >>>(
+            ghost_tsmm_inplace_cu_rm_cm_fallback<float><<< grid,block,reqSmem >>>(
                    (float *)x->cu_val,(const float *)w->cu_val,*(float *)alpha,*(float *)beta,x->traits.nrows,x->stride,w->stride,w->traits.ncols,w->traits.nrows);
         }
     }
