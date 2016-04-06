@@ -3,11 +3,45 @@
 #include "ghost/locality.h"
 #include "ghost/util.h"
 #include "ghost/timing.h"
+#include "ghost/machine.h"
 #include "ghost/sparsemat.h"
+#include "ghost/math.h"
+#include "ghost/sell_kacz_plain_gen.h"
 #include <complex>
+#include <unordered_map>
+
+using namespace std;
+
+const ghost_kacz_opts GHOST_KACZ_OPTS_INITIALIZER = {
+    .omega = NULL,
+    .direction = GHOST_KACZ_DIRECTION_UNDEFINED
+};
+
+// Hash function for unordered_map
+template<> struct hash<ghost_kacz_parameters>
+{
+    typedef ghost_kacz_parameters argument_type;
+    typedef std::size_t result_type;
+    result_type operator()(argument_type const& a) const
+    {
+        return ghost_hash(ghost_hash(a.mdt,a.blocksz,a.storage),
+                ghost_hash(a.vdt,a.impl,a.chunkheight),a.alignment);
+    }
+};
+
+static bool operator==(const ghost_kacz_parameters& a, const ghost_kacz_parameters& b)
+{
+    return a.mdt == b.mdt && a.blocksz == b.blocksz && a.storage == b.storage && 
+           a.vdt == b.vdt && a.impl == b.impl && a.chunkheight == b.chunkheight &&
+           a.alignment == b.alignment;
+}
+
+static unordered_map<ghost_kacz_parameters, ghost_kacz_kernel> 
+ghost_kacz_kernels = unordered_map<ghost_kacz_parameters,ghost_kacz_kernel>();
+
 
 template<typename m_t, typename v_t, bool forward>
-static ghost_error sell_kacz(ghost_sparsemat *mat, ghost_densemat *x, ghost_densemat *b, v_t *omega)
+static ghost_error kacz_fallback(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     
@@ -29,6 +63,7 @@ static ghost_error sell_kacz(ghost_sparsemat *mat, ghost_densemat *x, ghost_dens
     v_t *bval = (v_t *)(b->val);
     v_t *xval = (v_t *)(x->val);
     m_t *mval = (m_t *)sellmat->val;
+    v_t omega = *(v_t *)opts.omega;
 
 
     int rank;
@@ -73,7 +108,7 @@ static ghost_error sell_kacz(ghost_sparsemat *mat, ghost_densemat *x, ghost_dens
                     scal /= (v_t)rownorm[rowinchunk];
 
                     for (j=0; j<sellmat->rowLen[row]; j++) {
-                        xval[sellmat->col[idx]] = xval[sellmat->col[idx]] - (*omega) * scal * (v_t)mval[idx];
+                        xval[sellmat->col[idx]] = xval[sellmat->col[idx]] - omega * scal * (v_t)mval[idx];
                         idx += mat->traits.C;
                     }
                 }
@@ -87,42 +122,142 @@ static ghost_error sell_kacz(ghost_sparsemat *mat, ghost_densemat *x, ghost_dens
     return GHOST_SUCCESS;
 }
 
-ghost_error ghost_sell_kacz(ghost_sparsemat *mat, ghost_densemat *lhs, ghost_densemat *rhs, void *omega, int forward)
+ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
+    ghost_error ret = GHOST_SUCCESS;
     
-    if (mat->traits.datatype != lhs->traits.datatype || lhs->traits.datatype != rhs->traits.datatype) {
-        WARNING_LOG("Mixed data types not yet implemented!");
+    // if map is empty include generated code for map construction
+    if (ghost_kacz_kernels.empty()) {
+#include "sell_kacz_plain.def"
     }
-
-    if (rhs->traits.datatype & GHOST_DT_COMPLEX) {
-        if (rhs->traits.datatype & GHOST_DT_DOUBLE) {
-            if (forward) {
-                return sell_kacz<std::complex<double>, std::complex<double>, true>(mat,lhs,rhs,(std::complex<double> *)omega);
-            } else {
-                return sell_kacz<std::complex<double>, std::complex<double>, false>(mat,lhs,rhs,(std::complex<double> *)omega);
-            }
-        } else {
-            if (forward) {
-                return sell_kacz<std::complex<float>, std::complex<float>, true>(mat,lhs,rhs,(std::complex<float> *)omega);
-            } else {
-                return sell_kacz<std::complex<float>, std::complex<float>, false>(mat,lhs,rhs,(std::complex<float> *)omega);
-            }
-        }
+    
+    ghost_kacz_kernel kernel = NULL;
+    ghost_kacz_parameters p;
+    ghost_implementation opt_impl;
+    ghost_alignment opt_align;
+    
+    p.vdt = x->traits.datatype;
+    p.mdt = mat->traits.datatype;
+    p.storage = x->traits.storage;
+    if (p.storage == GHOST_DENSEMAT_ROWMAJOR && x->stride == 1 && b->stride == 1) {
+        INFO_LOG("Chose col-major kernel for row-major densemat with 1 column");
+        p.storage = GHOST_DENSEMAT_COLMAJOR;
+    }
+    if ((b->traits.flags & GHOST_DENSEMAT_SCATTERED) || 
+            (x->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
+        PERFWARNING_LOG("Use plain implementation for scattered views");
+        opt_impl = GHOST_IMPLEMENTATION_PLAIN;
     } else {
-        if (rhs->traits.datatype & GHOST_DT_DOUBLE) {
-            if (forward) {
-                return sell_kacz<double, double, true>(mat,lhs,rhs,(double *)omega);
-            } else {
-                return sell_kacz<double, double, false>(mat,lhs,rhs,(double *)omega);
+        if (x->stride > 1 && x->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
+            opt_impl = ghost_get_best_implementation_for_bytesize(x->traits.ncols*x->elSize);
+            if (opt_impl == GHOST_IMPLEMENTATION_PLAIN) {
+                // this branch is taken for odd numbers
+                // choose a version with remainder loops in this case!
+                opt_impl = ghost_get_best_implementation_for_bytesize(PAD(x->traits.ncols*x->elSize,ghost_machine_simd_width()));
             }
         } else {
-            if (forward) {
-                return sell_kacz<float, float, true>(mat,lhs,rhs,(float *)omega);
-            } else {
-                return sell_kacz<float, float, false>(mat,lhs,rhs,(float *)omega);
+            opt_impl = ghost_get_best_implementation_for_bytesize(mat->traits.C*mat->elSize);
+        }
+    }
+    
+    int try_chunkheight[2] = {mat->traits.C,-1}; 
+    int try_blocksz[2] = {x->traits.ncols,-1}; 
+
+    int n_chunkheight = sizeof(try_chunkheight)/sizeof(int);
+    int n_blocksz = sizeof(try_blocksz)/sizeof(int);
+    int pos_chunkheight, pos_blocksz;
+
+    bool optimal = true;
+    
+    for (pos_chunkheight = 0; pos_chunkheight < n_chunkheight; pos_chunkheight++) {  
+        for (pos_blocksz = 0; pos_blocksz < n_blocksz; pos_blocksz++) {  
+            for (p.impl = opt_impl; (int)p.impl >= GHOST_IMPLEMENTATION_PLAIN; p.impl  = (ghost_implementation)((int)p.impl-1)) {
+                /*if (p.impl == GHOST_IMPLEMENTATION_SSE && p.storage == GHOST_DENSEMAT_ROWMAJOR && try_blocksz[pos_blocksz] % 2) {
+                    PERFWARNING_LOG("Remainder loops not yet implemented for SSE, fallback to plain");
+                    p.impl  = (ghost_implementation)((int)p.impl-1);
+                }*/
+
+                int al = ghost_implementation_alignment(p.impl);
+                if (IS_ALIGNED(b->val,al) && IS_ALIGNED(x->val,al) && ((b->traits.ncols == 1 && b->stride == 1) || (!((b->stride*b->elSize) % al) && !((x->stride*x->elSize) % al)))) {
+                    opt_align = GHOST_ALIGNED;
+                } else {
+                    if (!IS_ALIGNED(b->val,al)) {
+                        PERFWARNING_LOG("Using unaligned kernel because base address of result vector is not aligned");
+                    }
+                    if (!IS_ALIGNED(x->val,al)) {
+                        PERFWARNING_LOG("Using unaligned kernel because base address of input vector is not aligned");
+                    }
+                    if (b->stride*b->elSize % al) {
+                        PERFWARNING_LOG("Using unaligned kernel because stride of result vector does not yield aligned addresses");
+                    }
+                    if (x->stride*b->elSize % al) {
+                        PERFWARNING_LOG("Using unaligned kernel because stride of input vector does not yield aligned addresses");
+                    }
+                    opt_align = GHOST_UNALIGNED;
+                }
+
+                for (p.alignment = opt_align; (int)p.alignment >= GHOST_UNALIGNED; p.alignment = (ghost_alignment)((int)p.alignment-1)) {
+                    p.chunkheight = try_chunkheight[pos_chunkheight];
+                    p.blocksz = try_blocksz[pos_blocksz];
+
+                    INFO_LOG("Try chunkheight=%s, blocksz=%s, impl=%s, %s",
+                            p.chunkheight==-1?"arbitrary":std::to_string((long long)p.chunkheight).c_str(),
+                            p.blocksz==-1?"arbitrary":std::to_string((long long)p.blocksz).c_str(),
+                            ghost_implementation_string(p.impl),p.alignment==GHOST_UNALIGNED?"unaligned":"aligned");
+                    kernel = ghost_kacz_kernels[p];
+                    if (kernel) {
+                        goto end_of_loop;
+                    }
+                    optimal = false;
+                }
             }
         }
     }
+end_of_loop:
+
+
+    if (kernel) {
+        if (optimal) {
+            INFO_LOG("Found kernel with highest specialization grade: C=%d blocksz=%d align=%d impl=%s",p.chunkheight,p.blocksz,p.alignment,ghost_implementation_string(p.impl));
+        } else {
+            PERFWARNING_LOG("Using potentially non-optimal kernel: C=%d blocksz=%d align=%d impl=%s",p.chunkheight,p.blocksz,p.alignment,ghost_implementation_string(p.impl));
+        }
+        ret = kernel(x,mat,b,opts);
+    } else { // execute plain kernel as fallback
+        PERFWARNING_LOG("Execute fallback Kaczmarz kernel which is potentially slow!");
+    
+        if (b->traits.datatype & GHOST_DT_COMPLEX) {
+            if (b->traits.datatype & GHOST_DT_DOUBLE) {
+                if (opts.direction == GHOST_KACZ_DIRECTION_FORWARD) {
+                    ret = kacz_fallback<std::complex<double>, std::complex<double>, true>(x,mat,b,opts);
+                } else {
+                    ret = kacz_fallback<std::complex<double>, std::complex<double>, false>(x,mat,b,opts);
+                }
+            } else {
+                if (opts.direction == GHOST_KACZ_DIRECTION_FORWARD) {
+                    ret = kacz_fallback<std::complex<float>, std::complex<float>, true>(x,mat,b,opts);
+                } else {
+                    ret = kacz_fallback<std::complex<float>, std::complex<float>, false>(x,mat,b,opts);
+                }
+            }
+        } else {
+            if (b->traits.datatype & GHOST_DT_DOUBLE) {
+                if (opts.direction == GHOST_KACZ_DIRECTION_FORWARD) {
+                    ret = kacz_fallback<double, double, true>(x,mat,b,opts);
+                } else {
+                    ret = kacz_fallback<double, double, false>(x,mat,b,opts);
+                }
+            } else {
+                if (opts.direction == GHOST_KACZ_DIRECTION_FORWARD) {
+                    ret = kacz_fallback<float, float, true>(x,mat,b,opts);
+                } else {
+                    ret = kacz_fallback<float, float, false>(x,mat,b,opts);
+                }
+            }
+        }
+    }
+   
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
+    return ret;
 }

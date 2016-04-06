@@ -54,6 +54,16 @@ typedef struct {
     ghost_lidx globalrows;
     ghost_gidx globalnnz;
     ghost_datatype dt;
+}
+ghost_kacz_perf_args;
+#define GHOST_KACZ_PERF_UNIT "GF/s"
+#define GHOST_KACZ_PERF_TAG "kacz"
+
+typedef struct {
+    ghost_lidx vecncols;
+    ghost_lidx globalrows;
+    ghost_gidx globalnnz;
+    ghost_datatype dt;
     ghost_spmv_flags flags;
 }
 ghost_spmv_perf_args;
@@ -179,6 +189,7 @@ extern "C" {
     
     ghost_error ghost_spmv_nflops(int *nFlops, ghost_datatype m_t, ghost_datatype v_t);
 
+    int ghost_kacz_perf(double *perf, double time, void *arg);
     int ghost_spmv_perf(double *perf, double time, void *arg);
     int ghost_axpy_perf(double *perf, double time, void *arg);
     int ghost_axpby_perf(double *perf, double time, void *arg);

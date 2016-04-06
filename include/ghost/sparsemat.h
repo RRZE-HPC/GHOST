@@ -93,6 +93,19 @@ typedef struct{
 } 
 ghost_spmv_opts;
 
+typedef enum {
+    GHOST_KACZ_DIRECTION_UNDEFINED,
+    GHOST_KACZ_DIRECTION_FORWARD,
+    GHOST_KACZ_DIRECTION_BACKWARD
+}
+ghost_kacz_direction;
+
+typedef struct {
+    void *omega;
+    ghost_kacz_direction direction;
+}
+ghost_kacz_opts;
+
 /**
  * @brief A CUDA SELL-C-sigma matrix.
  */
@@ -229,9 +242,13 @@ typedef struct
 }
 ghost_sellspmv_parameters;
 
+typedef ghost_sellspmv_parameters ghost_kacz_parameters;
+
 extern const ghost_spmv_opts GHOST_SPMV_OPTS_INITIALIZER;
+extern const ghost_kacz_opts GHOST_KACZ_OPTS_INITIALIZER;
 
 typedef ghost_error (*ghost_spmv_kernel)(ghost_densemat*, ghost_sparsemat *, ghost_densemat*, ghost_spmv_opts);
+typedef ghost_error (*ghost_kacz_kernel)(ghost_densemat*, ghost_sparsemat *, ghost_densemat*, ghost_kacz_opts);
 
 /**
  * @brief Flags to be passed to a row-wise matrix assembly function.
@@ -589,18 +606,6 @@ struct ghost_sparsemat
      * @param mat The matrix.
      */
     ghost_error       (*split)(ghost_sparsemat *mat);
-
-    /**
-     * @brief Perform a forward or backward Kaczmarz sweep on the system Ax=b.
-     *
-     * @param mat The matrix.
-     * @param lhs The vector b.
-     * @param rhs The vector x.
-     * @param omega The scaling factor omega.
-     * @param forward 1 if forward, 0 if backward sweep should be done.
-     */
-    ghost_error (*kacz) (ghost_sparsemat *mat, ghost_densemat *lhs, 
-            ghost_densemat *rhs, void *omega, int forward);
 };
 
 
@@ -847,16 +852,14 @@ extern "C" {
     /**
      * @brief Perform a Kaczmarz sweep with the SELL matrix. 
      *
+     * @param x Output densemat.
      * @param mat The matrix.
-     * @param lhs Output densemat.
-     * @param rhs Input densemat.
-     * @param omega The scaling factor omega.
-     * @param forward 1 if forward, 0 if backward sweep should be done.
+     * @param b Input densemat.
+     * @param opts Options.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error ghost_sell_kacz(ghost_sparsemat *mat, ghost_densemat *lhs, 
-            ghost_densemat *rhs, void *omega, int forward);
+    ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts);
 
 
     ghost_error ghost_sparsemat_from_bincrs(ghost_sparsemat *mat, char *path);

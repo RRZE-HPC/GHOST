@@ -66,6 +66,34 @@ while (<>) {
                 print "ghost_timing_set_perfFunc(__ghost_functag,\"".$funcname_noprefix."\",ghost_spmv_perf,(void *)&spmv_perfargs,sizeof(spmv_perfargs),GHOST_SPMV_PERF_UNIT);\n";
             }
             print "}\n";
+        } elsif ($funcname eq "ghost_kacz") {
+            print "{\n";
+            print $funcname."_parameters pars;\n";
+            print "pars.alignment = ".$alignments{$funcpars[0]}.";\n";
+            print "pars.impl = ".$implementations{$funcpars[1]}.";\n";
+            print "pars.mdt = ".$datatypes{$funcpars[2]}.";\n";
+            print "pars.vdt = ".$datatypes{$funcpars[3]}.";\n";
+            print "pars.storage = ".$storages{$funcpars[4]}.";\n";
+            print "pars.chunkheight = ".$funcpars[5].";\n";
+            if ($funcpars[6] eq "x") {
+                print "pars.blocksz = -1;\n";
+            } else {
+                print "pars.blocksz = ".$funcpars[6].";\n";
+            }
+            print $funcname."_kernels[pars] = ".$funcname_full.";\n"; 
+            if ($funcpars[6] ne "x") {
+                print "ghost_gidx nnz;\n";
+                print "ghost_gidx nrow;\n";
+                print "ghost_sparsemat_nnz(&nnz,mat);\n";
+                print "ghost_sparsemat_nrows(&nrow,mat);\n";
+                print "ghost_kacz_perf_args kacz_perfargs;\n";
+                print "kacz_perfargs.vecncols = x->traits.ncols;\n";
+                print "kacz_perfargs.globalnnz = nnz;\n";
+                print "kacz_perfargs.globalrows = nrow;\n";
+                print "kacz_perfargs.dt = x->traits.datatype;\n";
+                print "ghost_timing_set_perfFunc(__ghost_functag,\"".$funcname_noprefix."\",ghost_kacz_perf,(void *)&kacz_perfargs,sizeof(kacz_perfargs),GHOST_KACZ_PERF_UNIT);\n";
+            }
+            print "}\n";
         } elsif ($funcname eq "ghost_dot") {
             print "{\n";
             print $funcname."_parameters pars;\n";

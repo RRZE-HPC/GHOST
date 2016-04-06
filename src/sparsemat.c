@@ -135,13 +135,11 @@ ghost_error ghost_sparsemat_create(ghost_sparsemat ** mat, ghost_context *contex
     (*mat)->formatName = &SELL_formatName;
     (*mat)->byteSize   = &SELL_byteSize;
     (*mat)->spmv     = &ghost_sell_spmv_selector;
-    (*mat)->kacz   = &ghost_sell_kacz;
     (*mat)->string    = &ghost_sell_stringify_selector;
     (*mat)->split = &SELL_split;
 #ifdef GHOST_HAVE_CUDA
     if ((ghost_type == GHOST_TYPE_CUDA) && ((*mat)->traits.flags & GHOST_SPARSEMAT_DEVICE)) {
         (*mat)->spmv   = &ghost_cu_sell_spmv_selector;
-        (*mat)->kacz = NULL;
     }
 #endif
 

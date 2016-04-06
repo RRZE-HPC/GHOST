@@ -342,6 +342,18 @@ ghost_error ghost_spmv_nflops(int *nFlops, ghost_datatype m_t, ghost_datatype v_
     return GHOST_SUCCESS;
 }
 
+int ghost_kacz_perf(double *perf, double time, void *varg)
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_BENCH);
+    
+    ghost_kacz_perf_args arg = *(ghost_kacz_perf_args *)varg;
+    *perf = 0;
+    
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_BENCH);
+    return 0;
+
+}
+
 int ghost_spmv_perf(double *perf, double time, void *varg)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_BENCH);
