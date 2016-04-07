@@ -835,7 +835,7 @@ static ghost_error FUNCNAME(fromFunc(ghost_densemat *vec, int (*fp)(ghost_gidx, 
         offset = 0;
     }
     int needInit = 0;
-    GHOST_CALL_RETURN(ghost_densemat_rm_malloc(vec,&needInit));
+    GHOST_CALL_RETURN(FUNCNAME(malloc(vec,&needInit)));
 
     if (vec->traits.location & GHOST_LOCATION_HOST) { // vector is stored on host
         if (!vec->context->perm_local && !vec->context->perm_global) {
