@@ -114,9 +114,16 @@ static void ghost_tsmttsm_cu_rm(T* const __restrict__ C,
   cudaDeviceProp prop;
   cudaGetDeviceProperties(&prop, deviceUsed);
   int numBlocks;
-  cudaOccupancyMaxActiveBlocksPerMultiprocessor(
-      &numBlocks, GENV3::blockProductKernel<T, conjv, N, M, threadsPerBlock, true>,
-      threadsPerBlock, 0);
+  
+  if (N > M) {
+    cudaOccupancyMaxActiveBlocksPerMultiprocessor(
+        &numBlocks, GENV3::blockProductKernel<T, conjv, N, M, threadsPerBlock, true>,
+        threadsPerBlock, 0);
+  } else {
+    cudaOccupancyMaxActiveBlocksPerMultiprocessor(
+        &numBlocks, GENV3::blockProductKernel<T, conjv, M, N, threadsPerBlock, false>,
+        threadsPerBlock, 0);
+  }
   int blockCount = prop.multiProcessorCount * numBlocks;
 
   if (temp_storage_bytes == 0 || temp_storage == NULL) {
