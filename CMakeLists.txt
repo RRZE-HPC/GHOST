@@ -494,7 +494,7 @@ endif()
 if (GHOST_USE_COLPACK)
     set(GHOST_HAVE_COLPACK 1)
     set(COLPACK_INCLUDE_DIR "${COLPACK_INCLUDE_DIR}" CACHE PATH "Location of ColPack headers")
-    include_directories(${COLPACK_INCLUDE_DIR})
+    include_directories(SYSTEM ${COLPACK_INCLUDE_DIR})
     get_filename_component(COLPACK_LIBDIR ${COLPACK_INCLUDE_DIR}/../lib REALPATH)
 
     find_library(COLPACK_LIBRARIES ColPack ${COLPACK_LIBDIR})
