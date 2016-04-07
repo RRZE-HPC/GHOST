@@ -114,11 +114,11 @@ extern "C" ghost_error ghost_sparsemat_perm_color(ghost_sparsemat *mat, void *ma
 
     adolc_data = new uint32_t[nnzlocal+mat->nrows];
 
-    for (int i=0;i<mat->nrows;i++)
+    for (i=0;i<mat->nrows;i++)
     {
         adolc[i]=&(adolc_data[pos]);
         adolc_data[pos++]=rptlocal[i+1]-rptlocal[i];
-        for (int j=rptlocal[i];j<rptlocal[i+1];j++)
+        for (j=rptlocal[i];j<rptlocal[i+1];j++)
         {
             adolc_data[pos++]=collocal[j];
         }
@@ -153,24 +153,24 @@ extern "C" ghost_error ghost_sparsemat_perm_color(ghost_sparsemat *mat, void *ma
     
     colvec = GC->GetVertexColorsPtr();
 
-    for (int i=0;i<mat->ncolors+1;i++) {
+    for (i=0;i<mat->ncolors+1;i++) {
         mat->color_ptr[i] = 0;
     }
 
-    for (int i=0;i<mat->nrows;i++) {
+    for (i=0;i<mat->nrows;i++) {
         mat->color_ptr[(*colvec)[i]+1]++;
     }
 
-    for (int i=1;i<mat->ncolors+1;i++) {
+    for (i=1;i<mat->ncolors+1;i++) {
         mat->color_ptr[i] += mat->color_ptr[i-1];
     }
     
-    for (int i=0;i<mat->nrows;i++) {
+    for (i=0;i<mat->nrows;i++) {
         mat->context->perm_local->perm[i] = curcol[(*colvec)[i]] + mat->color_ptr[(*colvec)[i]];
         curcol[(*colvec)[i]]++;
     }
     
-    for (int i=0;i<mat->nrows;i++) {
+    for (i=0;i<mat->nrows;i++) {
         mat->context->perm_local->invPerm[mat->context->perm_local->perm[i]] = i;
     }
 
