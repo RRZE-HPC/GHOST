@@ -438,8 +438,9 @@ struct ghost_sparsemat
      */
     char *name;
     /**
-     * @brief Pointer to actual sparse matrix data which may be one of 
-     * ghost_crs_t ghost_sell.
+     * @brief Pointer to actual SELL sparse matrix data
+     * 
+     * This is a relict from times where we had CRS and SELL and may be removed in the future.
      */
     ghost_sell *sell;
     /**
