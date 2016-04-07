@@ -18,7 +18,7 @@ include(${PROJECT_SOURCE_DIR}/cmake/OptimizeForArchitecture.cmake)
 
 option(GHOST_USE_MPI "Build with MPI" 1)
 option(GHOST_USE_OPENMP "Build with OpenMP" 1)
-option(GHOST_USE_CUDA "Build with CUDA" 0)
+option(GHOST_USE_CUDA "Build with CUDA" 1)
 option(GHOST_USE_SCOTCH "Use PT-Scotch for matrix re-ordering" 0)
 option(GHOST_USE_COLPACK "Use ColPack for matrix coloring" 0)
 option(GHOST_USE_ZOLTAN "Use Zoltan for matrix re-ordering" 0)
@@ -394,10 +394,14 @@ else ()
 endif()
 
 
+
 if (GHOST_USE_CUDA)
     option(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
     find_package(CUDA)
-    if (CUDA_FOUND)
+    if (NOT CUDA_FOUND)
+        message(WARNING "Could not find CUDA!")
+        set(GHOST_USE_CUDA 0)
+    else ()
         set(GHOST_HAVE_CUDA 1)
         cuda_include_directories(${PROJECT_SOURCE_DIR}/include
             ${PROJECT_BINARY_DIR} ${PROJECT_BINARY_DIR}/ghost ${HWLOC_INCLUDE_DIR} ${LIKWID_INCLUE_DIR} ${MPI_INCLUDE_PATH})
@@ -432,8 +436,6 @@ if (GHOST_USE_CUDA)
             CUDA_SEPARABLE_COMPILATION
             CUDA_VERBOSE_BUILD
             )
-    else ()
-        message(WARNING "Could not find CUDA! You might want to make CUDA available or set GHOST_USE_CUDA=OFF to suppress this warning.")
     endif()
 endif()
 
