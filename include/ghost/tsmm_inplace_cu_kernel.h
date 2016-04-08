@@ -12,21 +12,17 @@
 
 template<typename T,int NCOLSOUT, int NCOLSIN> __global__ void ghost_tsmm_inplace_cu_rm_cm(T * x, const T * const __restrict__ w, const T alpha, const T beta, ghost_lidx nrows, ghost_lidx stridex, ghost_lidx stridew)
 {
-    int row = blockIdx.x*blockDim.x+threadIdx.x;
-    int k;
+    int row = blockIdx.x*blockDim.y+threadIdx.y;
     int m;
     T tmp[NCOLSOUT];
 
-    for (;row < nrows; row+=gridDim.x*blockDim.x) {
-        for (k=0; k<NCOLSOUT; k++) {
-            tmp[k] = scale<T>(x[row*stridex+k],beta);
-            for (m=0; m<NCOLSIN; m++) {
-                tmp[k] = axpy<T,T>(tmp[k],alpha,scale<T>(x[row*stridex+m],w[k*stridew+m]));
-            }
+    for (;row < nrows; row+=gridDim.x*blockDim.y) {
+        tmp[threadIdx.x] = scale<T>(x[row*stridex+threadIdx.x],beta);
+        for (m=0; m<NCOLSIN; m++) {
+            tmp[threadIdx.x] = axpy<T,T>(tmp[threadIdx.x],alpha,scale<T>(x[row*stridex+m],w[threadIdx.x*stridew+m]));
         }
-        for (k=0; k<NCOLSOUT; k++) {
-            x[row*stridex+k] = tmp[k];
-        }
+
+        x[row*stridex+threadIdx.x] = tmp[threadIdx.x];
     }
 }
 

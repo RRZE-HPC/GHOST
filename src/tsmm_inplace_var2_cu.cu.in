@@ -25,21 +25,16 @@ extern __shared__ char shmem[];
 
 template<typename T> __global__ static void ghost_tsmm_inplace_cu_rm_cm_fallback(T * x, const T * const __restrict__ w, const T alpha, const T beta, ghost_lidx nrows, ghost_lidx stridex, ghost_lidx stridew, int NCOLSOUT, int NCOLSIN)
 {
-    int row = blockIdx.x*blockDim.x+threadIdx.x;
-    int k;
+    int row = blockIdx.x*blockDim.y+threadIdx.y;
     int m;
     T *shared = (T *)shmem;
     
-    for (;row < nrows; row+=gridDim.x*blockDim.x) {
-        for (k=0; k<NCOLSOUT; k++) {
-            shared[threadIdx.x*NCOLSOUT+k] = scale<T>(x[row*stridex+k],beta);
-            for (m=0; m<NCOLSIN; m++) {
-                shared[threadIdx.x*NCOLSOUT+k] = axpy<T,T>(shared[threadIdx.x*NCOLSOUT+k],alpha,scale<T>(__ldg(&x[row*stridex+m]),__ldg(&w[k*stridew+m])));
-            }
+    for (;row < nrows; row+=gridDim.x*blockDim.y) {
+        shared[threadIdx.x] = scale<T>(x[row*stridex+threadIdx.x],beta);
+        for (m=0; m<NCOLSIN; m++) {
+            shared[threadIdx.x] = axpy<T,T>(shared[threadIdx.x],alpha,scale<T>(__ldg(&x[row*stridex+m]),__ldg(&w[threadIdx.x*stridew+m])));
         }
-        for (k=0; k<NCOLSOUT; k++) {
-            x[row*stridex+k] = shared[threadIdx.x*NCOLSOUT+k];
-        }
+        x[row*stridex+threadIdx.x] = shared[threadIdx.x];
     }
 }
 
@@ -47,7 +42,6 @@ ghost_error ghost_tsmm_inplace__u_cuda_x_x_x(ghost_densemat *x, ghost_densemat *
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL); 
     ghost_error ret = GHOST_SUCCESS;
-    dim3 block, grid;
 
     int threadsperblock = 128;
     size_t dtsize;
@@ -66,12 +60,13 @@ ghost_error ghost_tsmm_inplace__u_cuda_x_x_x(ghost_densemat *x, ghost_densemat *
         return GHOST_ERR_CUDA;
     }
     
-    grid.x = CEILDIV(x->traits.nrows,threadsperblock);
+    dim3 block, grid;
+    block.x = w->traits.ncols;
+    block.y = CEILDIV(threadsperblock,block.x);
+    block.z = 1;
+    grid.x = CEILDIV(x->traits.nrows,block.y);
     grid.y = 1;
     grid.z = 1;
-    block.x = threadsperblock;
-    block.y = 1;
-    block.z = 1;
     
     if (x->traits.datatype & GHOST_DT_COMPLEX) {
         if (x->traits.datatype & GHOST_DT_DOUBLE) {

@@ -32,12 +32,12 @@ ghost_error ghost_tsmm_inplace__u_cuda_x_NCOLSIN_NCOLSOUT(ghost_densemat *x, gho
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL); 
     ghost_error ret = GHOST_SUCCESS;
     dim3 block, grid;
-    grid.x = (int)ceil((double)x->traits.nrows/THREADSPERBLOCK);
+    block.x = NCOLSOUT;
+    block.y = CEILDIV(THREADSPERBLOCK,block.x);
+    block.z = 1;
+    grid.x = CEILDIV(x->traits.nrows,block.y);
     grid.y = 1;
     grid.z = 1;
-    block.x = THREADSPERBLOCK;
-    block.y = 1;
-    block.z = 1;
 
     if (x->traits.datatype & GHOST_DT_COMPLEX) {
         if (x->traits.datatype & GHOST_DT_DOUBLE) {
