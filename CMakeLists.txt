@@ -396,12 +396,13 @@ endif()
 
 
 if (GHOST_USE_CUDA)
-    option(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
     find_package(CUDA)
     if (NOT CUDA_FOUND)
-        message(WARNING "Could not find CUDA!")
+        message(STATUS "Could not find CUDA!")
         set(GHOST_USE_CUDA 0)
+        set(CUDA_LIBRARIES "")
     else ()
+        option(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
         set(GHOST_HAVE_CUDA 1)
         cuda_include_directories(${PROJECT_SOURCE_DIR}/include
             ${PROJECT_BINARY_DIR} ${PROJECT_BINARY_DIR}/ghost ${HWLOC_INCLUDE_DIR} ${LIKWID_INCLUE_DIR} ${MPI_INCLUDE_PATH})
@@ -436,15 +437,12 @@ if (GHOST_USE_CUDA)
             CUDA_SEPARABLE_COMPILATION
             CUDA_VERBOSE_BUILD
             )
+    set(CUDA_LIBRARIES ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${CUDA_cusparse_LIBRARY})
     endif()
 endif()
 
 add_library(ghost ${SOURCES})
 add_dependencies(ghost autogen)
-
-if (GHOST_USE_CUDA)
-    set(CUDA_LIBRARIES ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${CUDA_cusparse_LIBRARY})
-endif()
 
 if (GHOST_USE_SCOTCH)
     set(GHOST_HAVE_SCOTCH 1)
