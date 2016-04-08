@@ -155,6 +155,7 @@ ghost_densemat *w_in, const char *transw_in, void *alpha, void *beta, int reduce
     gemm_perfargs.alphaisone = ghost_isone(alpha,v->traits.datatype);
     gemm_perfargs.aisc = false;
     ghost_timing_set_perfFunc(NULL,__ghost_functag,ghost_gemm_perf_GFs,(void *)&gemm_perfargs,sizeof(gemm_perfargs),"GF/s");
+    ghost_timing_set_perfFunc(NULL,__ghost_functag,ghost_gemm_perf_GBs,(void *)&gemm_perfargs,sizeof(gemm_perfargs),"GB/s");
 #else
     UNUSED(nrVglob);
     UNUSED(ncVglob);
