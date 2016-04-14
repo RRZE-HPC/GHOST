@@ -20,26 +20,24 @@ ghost_error ghost_tsmm__u_cuda_x_CFGK_CFGM_1_1_rm(ghost_densemat *x, ghost_dense
     size_t smem;
 
     if (CFGM >= CFGK && !(CFGM%CFGK)) {
-        INFO_LOG("call kernel with smem");
-        const int THREADSPERBLOCK = 64;
+        const int THREADSPERBLOCK = 256;
         block.x = THREADSPERBLOCK; // = v->traits.ncols;
         block.y = CEILDIV(THREADSPERBLOCK,block.x);
         grid.x = CEILDIV(x->traits.nrows,block.x/CFGK);
         smem = THREADSPERBLOCK/CFGK*CFGM*x->elSize;//CFGK*CFGM*sizeof(double);
+        INFO_LOG("call kernel with smem. xcols %d vcols %d block %dx%d grid %dx%d smem %d",x->traits.ncols,v->traits.ncols,block.x,block.y,grid.x,grid.y,smem);
     } else {
-        INFO_LOG("call streaming kernel w/o smem");
         const int THREADSPERBLOCK = 256;
         block.x = CFGK; // = x->traits.ncols;
         block.y = CEILDIV(THREADSPERBLOCK,block.x);
         grid.x = CEILDIV(x->traits.nrows,block.y);
         smem = 0;
+        INFO_LOG("call streaming kernel w/o smem. xcols %d vcols %d block %dx%d grid %dx%d smem %d",x->traits.ncols,v->traits.ncols,block.x,block.y,grid.x,grid.y,smem);
     }
     block.z = 1;
     grid.y = 1;
     grid.z = 1;
 
-
-    DEBUG_LOG(1,"xcols %d vcols %d block %dx%d grid %dx%d smem %d",x->traits.ncols,v->traits.ncols,block.x,block.y,grid.x,grid.y,smem);
 
     if (ghost_iszero(beta,x->traits.datatype)) {
         if (x->traits.datatype & GHOST_DT_COMPLEX) {
