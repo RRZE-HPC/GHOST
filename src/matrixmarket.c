@@ -18,10 +18,21 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *c
         FILE *f;
         int ret_code;
         int M, N, nz;
+        MM_typecode matcode;
 
         if ((f = fopen(filename,"r")) == NULL) {
             ERROR_LOG("fopen with %s failed!",filename);
             return 1;
+        }
+
+        if (mm_read_banner(f, &matcode) != 0){
+            ERROR_LOG("Could not process Matrix Market banner!");
+            return 1;
+        }
+        
+        if (rowlen){
+            if (mm_is_complex(matcode)) *rowlen = (ghost_lidx)GHOST_DT_COMPLEX;
+            else *rowlen = (ghost_lidx)GHOST_DT_REAL;
         }
 
         if((ret_code = mm_read_mtx_crd_size(f, &M, &N, &nz)) != 0){
@@ -211,10 +222,21 @@ int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx row, ghost_lidx *rowlen, gho
         FILE *f;
         int ret_code;
         int M, N, nz;
+        MM_typecode matcode;
 
         if ((f = fopen(filename,"r")) == NULL) {
             ERROR_LOG("fopen with %s failed!",filename);
             return 1;
+        }
+
+        if (mm_read_banner(f, &matcode) != 0){
+            ERROR_LOG("Could not process Matrix Market banner!");
+            return 1;
+        }
+        
+        if (rowlen){
+            if (mm_is_complex(matcode)) *rowlen = (ghost_lidx)GHOST_DT_COMPLEX;
+            else *rowlen = (ghost_lidx)GHOST_DT_REAL;
         }
 
         if((ret_code = mm_read_mtx_crd_size(f, &N, &M, &nz)) != 0){

@@ -205,6 +205,7 @@ typedef enum {
 } ghost_datatype;
 
 #define GHOST_DT_ANY (ghost_datatype)-1
+#define GHOST_DT_NONE (ghost_datatype)0
 
 typedef enum {
     /**
