@@ -862,6 +862,8 @@ endif()
 add_subdirectory(${PROJECT_SOURCE_DIR}/test)
 enable_testing()
 add_test(NAME simple WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/test COMMAND simple)
+set_tests_properties(simple PROPERTIES TIMEOUT 60)
 add_test(NAME minimal WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/test COMMAND minimal)
+set_tests_properties(minimal PROPERTIES TIMEOUT 60)
 add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} --force-new-ctest-process --output-on-failure DEPENDS simple)
 
