@@ -2,11 +2,12 @@
 #define GHOST_CU_SELL_KERNEL_H
 
 #include "ghost/cu_complex.h"
+#include <cuda.h>
 
 extern __shared__ char shared[];
 
 // double precision version only present from CUDA 6.5 onwards
-#if __CUDA_API_VERSION < 6050
+#if CUDA_VERSION < 6050
 __device__ inline
 double __shfl_down(double var, unsigned int srcLane, int width=32) {
     int2 a = *reinterpret_cast<int2*>(&var);
