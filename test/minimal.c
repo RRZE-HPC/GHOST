@@ -21,6 +21,7 @@ int main(int argc, char **argv)
     char *Astr, *xstr, *ystr;
     
     ghost_sparsemat_traits mtraits = GHOST_SPARSEMAT_TRAITS_INITIALIZER;
+    mtraits.datatype = (ghost_datatype)(GHOST_DT_REAL|GHOST_DT_DOUBLE);
     ghost_densemat_traits vtraits = GHOST_DENSEMAT_TRAITS_INITIALIZER;
 
     ghost_init(argc,argv);
