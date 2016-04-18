@@ -396,13 +396,13 @@ endif()
 
 
 if (GHOST_USE_CUDA)
+    option(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
     find_package(CUDA)
     if (NOT CUDA_FOUND)
         message(STATUS "Could not find CUDA!")
         set(GHOST_USE_CUDA 0)
         set(CUDA_LIBRARIES "")
     else ()
-        option(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
         set(GHOST_HAVE_CUDA 1)
         cuda_include_directories(${PROJECT_SOURCE_DIR}/include
             ${PROJECT_BINARY_DIR} ${PROJECT_BINARY_DIR}/ghost ${HWLOC_INCLUDE_DIR} ${LIKWID_INCLUE_DIR} ${MPI_INCLUDE_PATH})
