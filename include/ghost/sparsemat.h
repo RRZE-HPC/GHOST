@@ -629,6 +629,9 @@ extern "C" {
      *
      * @note No memory will be allocated in this function. Before any operation with the densemat is done,
      * an initialization function (see @ref sparseinit) has to be called with the sparsemat.
+     * As such, @ref ghost_sparsemat_create does not check the matrix datatype stored in
+     * @c traits (@c GHOST_DT_NONE by default); this is done by the matrix initialization functions
+     * to allow for the datatype to be determined from an input file.
      */
     ghost_error ghost_sparsemat_create(ghost_sparsemat **mat, 
             ghost_context *ctx, ghost_sparsemat_traits *traits, 

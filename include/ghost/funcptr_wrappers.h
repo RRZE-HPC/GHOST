@@ -329,7 +329,7 @@ static inline ghost_error ghost_densemat_clone(ghost_densemat **x, ghost_densema
  * @param x The densemat.
  * @param str Where to store the string.
  * @return ::GHOST_SUCCESS on success or an error indicator.
- 
+ *
  * The string has to be freed by the caller.
  */
 static inline ghost_error ghost_densemat_string(char **str, ghost_densemat *x)
@@ -354,6 +354,8 @@ static inline ghost_error ghost_densemat_permute(ghost_densemat *x, ghost_permut
  * @param mat The matrix.
  * @param src The source.
  * @return ::GHOST_SUCCESS on success or an error indicator.
+ * 
+ * Requires the matrix to have a valid and compatible datatype.
  */
 static inline ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_src_rowfunc *src)
 {
@@ -366,6 +368,10 @@ static inline ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, gho
  * @param mat The matrix.
  * @param src The source file.
  * @return ::GHOST_SUCCESS on success or an error indicator.
+ * 
+ * Allows the matrix' datatype to be @c GHOST_DT_NONE. In this case the
+ * datatype for the matrix is read from file. Otherwise the matrix 
+ * datatype has to be valid and compatible.
  */
 static inline ghost_error ghost_sparsemat_init_bin(ghost_sparsemat *mat, char *path)
 {
@@ -378,6 +384,16 @@ static inline ghost_error ghost_sparsemat_init_bin(ghost_sparsemat *mat, char *p
  * @param mat The matrix.
  * @param src The source file.
  * @return ::GHOST_SUCCESS on success or an error indicator.
+ * 
+ * Allows the matrix' datatype to be @c GHOST_DT_NONE or one of the
+ * incomplete datatypes @c GHOST_DT_FLOAT and @c GHOST_DT_DOUBLE. 
+ * If the matrix' datatype on entry is @c GHOST_DT_FLOAT or @c GHOST_DT_DOUBLE,
+ * the file will be interpreted either in single or double precision, 
+ * respectively. In this case, the datatype will be completed with
+ * @c GHOST_DT_REAL or @c GHOST_DT_COMPLEX as specified in the input file.
+ * If the matrix' datatype on entry is @c GHOST_DT_NONE, @c GHOST_DT_DOUBLE
+ * is assumed.
+ * Otherwise the matrix datatype has to be valid and compatible.
  */
 static inline ghost_error ghost_sparsemat_init_mm(ghost_sparsemat *mat, char *path)
 {
@@ -394,6 +410,8 @@ static inline ghost_error ghost_sparsemat_init_mm(ghost_sparsemat *mat, char *pa
  * @param val The values.
  * @param rpt The row pointers.
  * @return ::GHOST_SUCCESS on success or an error indicator.
+ * 
+ * Requires the matrix to have a valid and compatible datatype.
  */
 static inline ghost_error ghost_sparsemat_init_crs(ghost_sparsemat *mat, ghost_gidx offs, ghost_lidx n, ghost_gidx *col, void *val, ghost_lidx *rpt)
 {
@@ -408,7 +426,7 @@ static inline ghost_error ghost_sparsemat_init_crs(ghost_sparsemat *mat, ghost_g
  * @param dense If 0, only the elements stored in the sparse matrix will 
  * be included. If 1, the matrix will be interpreted as a dense matrix.
  * @return ::GHOST_SUCCESS on success or an error indicator.
- 
+ *
  * The string has to be freed by the caller.
  */
 static inline ghost_error ghost_sparsemat_string(char **str, ghost_sparsemat *mat, int dense)
