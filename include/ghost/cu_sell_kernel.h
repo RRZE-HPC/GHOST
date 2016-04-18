@@ -5,6 +5,17 @@
 
 extern __shared__ char shared[];
 
+// double precision version only present from CUDA 6.5 onwards
+#if __CUDA_API_VERSION < 6050
+__device__ inline
+double __shfl_down(double var, unsigned int srcLane, int width=32) {
+    int2 a = *reinterpret_cast<int2*>(&var);
+    a.x = __shfl_down(a.x, srcLane, width);
+    a.y = __shfl_down(a.y, srcLane, width);
+    return *reinterpret_cast<double*>(&a);
+}
+#endif
+
 template<typename v_t>
 __device__ inline
 v_t ghost_shfl_down(v_t var, unsigned int srcLane, int width) {
