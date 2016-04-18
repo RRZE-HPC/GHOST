@@ -42,7 +42,7 @@ option(GHOST_INSTRUMENT_BARRIER "Place a barrier after each instrumented functio
 
 find_package(PkgConfig)
 
-add_definitions(-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE)
+add_definitions(-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -DMPICH_IGNORE_CXX_SEEK -DMPICH_SKIP_MPICXX)
 if (GHOST_IDX64_LOCAL)
     if (NOT GHOST_IDX64_GLOBAL)
         message(FATAL_ERROR "Having 64-bit indices locally and only 32-bit indices globally is not allowed (and not sensible)!")
