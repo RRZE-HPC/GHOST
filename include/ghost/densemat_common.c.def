@@ -296,7 +296,7 @@ static ghost_error FUNCNAME(viewScatteredVec(ghost_densemat *src, ghost_densemat
     return GHOST_SUCCESS;
 }
 
-static ghost_error FUNCNAME(axpy(ghost_densemat *vec, ghost_densemat *vec2, void *scale))
+ghost_error FUNCNAME(axpy(ghost_densemat *vec, ghost_densemat *vec2, void *scale))
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error ret = GHOST_SUCCESS;
@@ -320,7 +320,7 @@ out:
     return ret;
 }
 
-static ghost_error FUNCNAME(axpby(ghost_densemat *vec, ghost_densemat *vec2, void *scale, void *_b))
+ghost_error FUNCNAME(axpby(ghost_densemat *vec, ghost_densemat *vec2, void *scale, void *_b))
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error ret = GHOST_SUCCESS;
@@ -348,7 +348,7 @@ out:
     return ret;
 }
 
-static ghost_error FUNCNAME(axpbypcz(ghost_densemat *vec, ghost_densemat *vec2, void *scale, void *_b, ghost_densemat *vec3, void *_c))
+ghost_error FUNCNAME(axpbypcz(ghost_densemat *vec, ghost_densemat *vec2, void *scale, void *_b, ghost_densemat *vec3, void *_c))
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error ret = GHOST_SUCCESS;
@@ -379,7 +379,7 @@ out:
     return ret;
 }
 
-static ghost_error FUNCNAME(scale(ghost_densemat *vec, void *scale))
+ghost_error FUNCNAME(scale(ghost_densemat *vec, void *scale))
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error ret = GHOST_SUCCESS;
