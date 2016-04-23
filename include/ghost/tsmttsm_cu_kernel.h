@@ -111,46 +111,47 @@ __global__ void blockProductKernel(const T *A, const T *B, T *out, const int K,
   }
 }
 }
-
-
-cublasHandle_t handle;
 }
 
 template <typename T, int M, int N, int conjv>
-static void ghost_tsmttsm_cu_rm(T *const __restrict__ C,
-                                const T *const __restrict__ A,
-                                const T *const __restrict__ B, const T alpha,
-                                const T beta, ghost_lidx K, ghost_lidx ldc,
-                                ghost_lidx lda, ghost_lidx ldb) {
+static ghost_error ghost_tsmttsm_cu_rm(T *const __restrict__ C,
+                                       const T *const __restrict__ A,
+                                       const T *const __restrict__ B,
+                                       const T alpha, const T beta,
+                                       ghost_lidx K, ghost_lidx ldc,
+                                       ghost_lidx lda, ghost_lidx ldb) {
+  ghost_error ret = GHOST_SUCCESS;
   if (M > 32 || N > 32) {
-    if (temp_storage == NULL && temp_storage_bytes == 0) {
-      temp_storage_bytes = 8;
-      cublasCreate(&handle);
-    }
+    cublasHandle_t handle;
+    ghost_cu_cublas_handle(&handle);
 
-    cublasStatus_t status;
     cublasOperation_t op = (conjv == 1) ? CUBLAS_OP_C : CUBLAS_OP_T;
     if (typeid(T) == typeid(double)) {
-      status = cublasDgemm(handle, CUBLAS_OP_N, CUBLAS_OP_T, M, N, K,
-                           (double *)&alpha, (double *)A, lda, (double *)B, ldb,
-                           (double *)&beta, (double *)C, ldc);
+      CUBLAS_CALL(cublasDgemm(handle, CUBLAS_OP_N, CUBLAS_OP_T, M, N, K,
+                              (double *)&alpha, (double *)A, lda, (double *)B,
+                              ldb, (double *)&beta, (double *)C, ldc),
+                  ret);
     } else if (typeid(T) == typeid(float)) {
-      status = cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_T, M, N, K,
-                           (float *)&alpha, (float *)A, lda, (float *)B, ldb,
-                           (float *)&beta, (float *)C, ldc);
+      CUBLAS_CALL(cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_T, M, N, K,
+                              (float *)&alpha, (float *)A, lda, (float *)B, ldb,
+                              (float *)&beta, (float *)C, ldc),
+                  ret);
     } else if (typeid(T) == typeid(cuDoubleComplex)) {
-      status = cublasZgemm(handle, CUBLAS_OP_N, op, M, N, K,
-                           (cuDoubleComplex *)&alpha, (cuDoubleComplex *)A, lda,
-                           (cuDoubleComplex *)B, ldb, (cuDoubleComplex *)&beta,
-                           (cuDoubleComplex *)C, ldc);
+      CUBLAS_CALL(
+          cublasZgemm(handle, CUBLAS_OP_N, op, M, N, K,
+                      (cuDoubleComplex *)&alpha, (cuDoubleComplex *)A, lda,
+                      (cuDoubleComplex *)B, ldb, (cuDoubleComplex *)&beta,
+                      (cuDoubleComplex *)C, ldc),
+          ret);
     } else if (typeid(T) == typeid(cuFloatComplex)) {
-      status = cublasCgemm(handle, CUBLAS_OP_N, op, M, N, K,
-                           (cuFloatComplex *)&alpha, (cuFloatComplex *)A, lda,
-                           (cuFloatComplex *)B, ldb, (cuFloatComplex *)&beta,
-                           (cuFloatComplex *)C, ldc);
+      CUBLAS_CALL(
+          cublasCgemm(handle, CUBLAS_OP_N, op, M, N, K,
+                      (cuFloatComplex *)&alpha, (cuFloatComplex *)A, lda,
+                      (cuFloatComplex *)B, ldb, (cuFloatComplex *)&beta,
+                      (cuFloatComplex *)C, ldc),
+          ret);
     }
-    if (status != CUBLAS_STATUS_SUCCESS) std::cerr << "cublasXgemm error\n";
-    return;
+    return ret;
   }
 
   const int threadsPerBlock = 256;
@@ -160,22 +161,31 @@ static void ghost_tsmttsm_cu_rm(T *const __restrict__ C,
   cudaGetDeviceProperties(&prop, deviceUsed);
   int numBlocks;
 
-  const void *func = NULL;
-
   if (N > M) {
-    func = SPECSMALL::blockProductKernel<T, conjv, M, N, threadsPerBlock, true,
-                                         false>;
+    CUDA_CALL(cudaOccupancyMaxActiveBlocksPerMultiprocessor(
+                  &numBlocks,
+                  SPECSMALL::blockProductKernel<T, conjv, M, N, threadsPerBlock,
+                                                true, false>,
+                  threadsPerBlock, 0),
+              ret);
   } else {
     if (M == N && A == B) {
-      func = SPECSMALL::blockProductKernel<T, conjv, M, N, threadsPerBlock,
-                                           false, true>;
+      CUDA_CALL(cudaOccupancyMaxActiveBlocksPerMultiprocessor(
+                    &numBlocks,
+                    SPECSMALL::blockProductKernel<T, conjv, M, N,
+                                                  threadsPerBlock, false, true>,
+                    threadsPerBlock, 0),
+                ret);
     } else {
-      func = SPECSMALL::blockProductKernel<T, conjv, M, N, threadsPerBlock,
-                                           false, false>;
+      CUDA_CALL(
+          cudaOccupancyMaxActiveBlocksPerMultiprocessor(
+              &numBlocks,
+              SPECSMALL::blockProductKernel<T, conjv, M, N, threadsPerBlock,
+                                            false, false>,
+              threadsPerBlock, 0),
+          ret);
     }
   }
-  cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocks, func,
-                                                threadsPerBlock, 0);
 
   int blockCount = prop.multiProcessorCount * numBlocks;
 
@@ -203,9 +213,12 @@ static void ghost_tsmttsm_cu_rm(T *const __restrict__ C,
   SPECSMALL::deviceReduce<T, M, N><<<M * N / 256 + 1, 256>>>(
       (T *)temp_storage, C, alpha, beta, blockCount, lda, ldb, ldc);
 
+  CUDA_CALL(cudaGetLastError(), ret);
+
   ghost_cu_free(temp_storage);
   temp_storage = NULL;
   temp_storage_bytes = 0;
+  return ret;
 }
 
 #endif
