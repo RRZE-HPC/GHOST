@@ -293,9 +293,17 @@ int ghost_machine_alignment()
 #ifdef GHOST_BUILD_MIC
     int alignment = 64;
 #elif defined(GHOST_BUILD_AVX2)
+#ifdef __INTEL_COMPILER
+    int alignment = 16;
+#else
     int alignment = 32;
+#endif
 #elif defined(GHOST_BUILD_AVX)
+#ifdef __INTEL_COMPILER
+    int alignment = 16;
+#else
     int alignment = 32;
+#endif
 #elif defined(GHOST_BUILD_SSE)
     int alignment = 16;
 #else
