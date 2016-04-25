@@ -112,6 +112,7 @@ ghost_error ghost_tsmm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w_i
 #include "tsmm_var1_plain.def"
 #include "tsmm_sse.def"
 #include "tsmm_var2_sse.def"
+#include "tsmm_plain.def"
 #ifdef GHOST_HAVE_CUDA
 #include "tsmm_cu.def"
 #include "tsmm_var2_cu.def"
@@ -137,9 +138,12 @@ ghost_error ghost_tsmm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w_i
 
 
     
-    // fix properties    
-    p.xstor = x->traits.storage;
-
+    // fix properties
+    if (x->traits.ncols == 1 && x->stride == 1) {    
+        p.xstor = GHOST_DENSEMAT_COLMAJOR;
+    } else {
+        p.xstor = x->traits.storage;
+    }
 
     // possible implementations
     std::vector<ghost_implementation> try_impl;
@@ -174,7 +178,7 @@ ghost_error ghost_tsmm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w_i
     // alignment of large input data
     // the alignment of the result array does not matter because we can easily re-allocate it accordingly
     int al = ghost_machine_alignment();
-    if (IS_ALIGNED(x->val,al) && IS_ALIGNED(v->val,al) && !((x->stride*x->elSize) % al) && !((v->stride*v->elSize) % al)) {
+    if (IS_ALIGNED(x->val,al) && IS_ALIGNED(v->val,al) && ((p.xstor == GHOST_DENSEMAT_COLMAJOR) || (!((x->stride*x->elSize) % al) && !((v->stride*v->elSize) % al)))) {
         opt_align = GHOST_ALIGNED;
     } else {
         opt_align = GHOST_UNALIGNED;
