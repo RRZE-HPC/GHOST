@@ -78,6 +78,14 @@ typedef enum {
      */
     GHOST_ERR_COLPACK,
     /**
+     * @brief ERROR if the matrix is not colored.
+     */
+    GHOST_ERR_NOT_COLORED,
+    /**
+    * @brief An error in Red-Black splitting occured. 
+    */
+    GHOST_ERR_RED_BLACK,
+    /**
      * @brief An error in a LAPACK call occured.
      */
     GHOST_ERR_LAPACK,

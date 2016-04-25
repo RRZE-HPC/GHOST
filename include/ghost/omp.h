@@ -10,7 +10,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-    
     /**
      * @brief Set the number of threads.
      *
@@ -48,6 +47,12 @@ extern "C" {
      * @return 1 if in parallel region, 0 otherwise.
      */
     int ghost_omp_in_parallel();
+    /**
+    * @brief Indicates that the number of threads available in subsequent parallel region can be adjusted by the run time.
+    *
+    * @param dynamic_threads  0 implies no runtime adjustments, else runtime adjustments are enabled
+    */
+    void ghost_omp_set_dynamic(int dynamic_threads);
 
 #ifdef __cplusplus
 }

@@ -100,9 +100,16 @@ typedef enum {
 }
 ghost_kacz_direction;
 
+typedef enum{
+     yes,
+     no
+}
+ghost_kacz_normalize;
+
 typedef struct {
     void *omega;
     ghost_kacz_direction direction;
+    ghost_kacz_normalize normalize;
 }
 ghost_kacz_opts;
 
@@ -467,6 +474,16 @@ struct ghost_sparsemat
      * @brief The number of rows with each color (length: ncolors+1).
      */
     ghost_lidx *color_ptr;
+     /**
+     * @brief The number of total zones (odd+even)
+     **/
+    ghost_lidx nzones;
+    /**
+    * @brief Pointer to odd-even (Red-Black coloring) zones of a matrix (length: nzones+1)  
+    * Ordering [even_begin_1 odd_begin_1 even_begin_2 odd_begin_2 ..... nrows]
+    **/
+    ghost_lidx *zone_ptr;
+
     /**
      * @brief The number of rows.
      */
