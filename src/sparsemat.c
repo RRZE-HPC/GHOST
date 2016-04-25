@@ -101,6 +101,8 @@ ghost_error ghost_sparsemat_create(ghost_sparsemat ** mat, ghost_context *contex
     (*mat)->nnz = 0;
     (*mat)->ncolors = 0;
     (*mat)->color_ptr = NULL;
+    (*mat)->nzones = 0;
+    (*mat)->zone_ptr = NULL;
 
     if ((*mat)->traits.sortScope == GHOST_SPARSEMAT_SORT_GLOBAL) {
         (*mat)->traits.sortScope = (*mat)->context->gnrows;
@@ -484,7 +486,7 @@ ghost_error ghost_sparsemat_fromfunc_common(ghost_lidx *rl, ghost_lidx *rlp, gho
                             }
                         }
                     }
-                    for (; colidx < clp[chunk]; colidx++) {
+                     for (; colidx < clp[chunk]; colidx++) {
                         memset(&(*val)[((*chunkptr)[chunk]+colidx*C+i)*mat->elSize],0,mat->elSize);
                         (*col)[(*chunkptr)[chunk]+colidx*C+i] = mat->context->lfRow[me];
                     }
@@ -963,6 +965,14 @@ void ghost_sparsemat_destroy(ghost_sparsemat *mat)
 
     if (mat->remotePart) {
         ghost_sparsemat_destroy(mat->remotePart);
+    }
+    
+    if (mat->color_ptr)  {
+        free(mat->color_ptr);
+    }
+    
+     if (mat->zone_ptr)  {
+        free(mat->zone_ptr);
     }
 
     free(mat->sell); mat->sell = NULL;

@@ -39,6 +39,12 @@ char * ghost_error_string(ghost_error e)
         case GHOST_ERR_COLPACK:
             ret = "Error in ColPack";
             break;
+        case GHOST_ERR_NOT_COLORED:
+	    ret = "Matrix not Colored";
+            break;
+        case GHOST_ERR_RED_BLACK:
+            ret = "Error in Red-Black splitting of the matrix";
+            break;
         case GHOST_ERR_LAPACK:
             ret = "Error in LAPACK";
             break;

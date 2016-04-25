@@ -17,6 +17,7 @@ void ghost_omp_nthread_set(int nthreads)
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
 }
 
+
 int ghost_omp_nthread()
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
@@ -69,6 +70,17 @@ void ghost_omp_set_nested(int nested)
     omp_set_nested(nested);
 #else
     UNUSED(nested);
+#endif
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
+}
+
+void ghost_omp_set_dynamic(int dynamic_threads)
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+#ifdef GHOST_HAVE_OPENMP
+    omp_set_dynamic(dynamic_threads);
+#else
+    UNUSED(dynamic_threads);
 #endif
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
 }

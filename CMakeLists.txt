@@ -105,7 +105,13 @@ set (SOURCES
     src/thpool.c
     src/timing.c
     src/types.c
-    src/util.c 
+    src/util.c
+    src/test_spmv.c 
+    src/rcm_dissection.cpp
+    src/sell_kacz_rb.c
+    src/carp_rb.c
+    src/sell_kacz_blocked.c
+    src/sell_kacz_rb_versions.c 
     )
 
 set (HEADERS
@@ -153,6 +159,12 @@ set (HEADERS
     include/ghost/util.h
     include/ghost/svqb.h
     include/ghost/rayleigh_ritz.h
+    include/ghost/test_spmv.h
+    include/ghost/rcm_dissection.h
+    include/ghost/sell_kacz_rb.h
+    include/ghost/carp_rb.h
+    include/ghost/sell_kacz_blocked.h
+    include/ghost/sell_kacz_rb_versions.h 
     )
 
 string(REPLACE "," ";" GHOST_GEN_SELL_C_LIST ${GHOST_GEN_SELL_C})
