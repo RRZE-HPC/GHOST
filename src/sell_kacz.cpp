@@ -20,17 +20,19 @@ const ghost_kacz_opts GHOST_KACZ_OPTS_INITIALIZER = {
 };
 
 // Hash function for unordered_map
-template<> struct hash<ghost_kacz_parameters>
+namespace std
 {
-    typedef ghost_kacz_parameters argument_type;
-    typedef std::size_t result_type;
-    result_type operator()(argument_type const& a) const
+    template<> struct hash<ghost_kacz_parameters>
     {
-        return ghost_hash(ghost_hash(a.mdt,a.blocksz,a.storage),
-                ghost_hash(a.vdt,a.impl,a.chunkheight),a.alignment);
-    }
-};
-
+        typedef ghost_kacz_parameters argument_type;
+        typedef std::size_t result_type;
+        result_type operator()(argument_type const& a) const
+        {
+            return ghost_hash(ghost_hash(a.mdt,a.blocksz,a.storage),
+                   ghost_hash(a.vdt,a.impl,a.chunkheight),a.alignment);
+        }
+    };
+}
 static bool operator==(const ghost_kacz_parameters& a, const ghost_kacz_parameters& b)
 {
     return a.mdt == b.mdt && a.blocksz == b.blocksz && a.storage == b.storage && 
