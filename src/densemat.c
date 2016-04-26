@@ -37,6 +37,7 @@ const ghost_densemat_traits GHOST_DENSEMAT_TRAITS_INITIALIZER = {
     .flags = GHOST_DENSEMAT_DEFAULT,
     .storage = GHOST_DENSEMAT_STORAGE_DEFAULT,
     .location = GHOST_LOCATION_DEFAULT,
+    .compute = GHOST_LOCATION_DEFAULT,
     .datatype = (ghost_datatype)(GHOST_DT_DOUBLE|GHOST_DT_REAL)
 };
 
@@ -102,6 +103,11 @@ ghost_error ghost_densemat_create(ghost_densemat **vec, ghost_context *ctx, ghos
     } else {
         DEBUG_LOG(1,"Placement given: %s",ghost_location_string((*vec)->traits.location));
     }
+    if ((*vec)->traits.compute == GHOST_LOCATION_DEFAULT) { // no compute location specified
+        DEBUG_LOG(1,"Automatically setting the compute location equal to the storage location");
+        (*vec)->traits.compute = (*vec)->traits.location;
+    }
+
 
     if ((*vec)->traits.storage == GHOST_DENSEMAT_STORAGE_DEFAULT) {
         if ((*vec)->traits.ncols > 1) {

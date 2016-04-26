@@ -687,7 +687,7 @@ static ghost_error FUNCNAME(fromVec_tmpl(ghost_densemat *vec, ghost_densemat *ve
 
 
 
-extern "C" ghost_error FUNCNAME(string_selector(ghost_densemat *vec, char **str))
+extern "C" ghost_error FUNCNAME(string(ghost_densemat *vec, char **str))
 { 
     ghost_error ret = GHOST_SUCCESS;
 
@@ -696,7 +696,7 @@ extern "C" ghost_error FUNCNAME(string_selector(ghost_densemat *vec, char **str)
     return ret;
 }
 
-extern "C" ghost_error FUNCNAME(normalize_selector(ghost_densemat *vec))
+extern "C" ghost_error FUNCNAME(normalize(ghost_densemat *vec))
 { 
     ghost_error ret = GHOST_SUCCESS;
 
@@ -705,7 +705,7 @@ extern "C" ghost_error FUNCNAME(normalize_selector(ghost_densemat *vec))
     return ret;
 }
 
-extern "C" ghost_error FUNCNAME(dotprod_selector(ghost_densemat *vec, void *res, ghost_densemat *vec2)) 
+extern "C" ghost_error FUNCNAME(dotprod(ghost_densemat *vec, void *res, ghost_densemat *vec2)) 
 {
     ghost_error ret = GHOST_SUCCESS;
 
@@ -714,7 +714,7 @@ extern "C" ghost_error FUNCNAME(dotprod_selector(ghost_densemat *vec, void *res,
     return ret;
 }
 
-extern "C" ghost_error FUNCNAME(norm_selector(ghost_densemat *vec, void *res, void *p)) 
+extern "C" ghost_error FUNCNAME(norm(ghost_densemat *vec, void *res, void *p)) 
 {
     ghost_error ret = GHOST_SUCCESS;
 
@@ -723,7 +723,7 @@ extern "C" ghost_error FUNCNAME(norm_selector(ghost_densemat *vec, void *res, vo
     return ret;
 }
 
-extern "C" ghost_error FUNCNAME(vscale_selector(ghost_densemat *vec, void *scale)) 
+extern "C" ghost_error FUNCNAME(vscale(ghost_densemat *vec, void *scale)) 
 { 
     ghost_error ret = GHOST_SUCCESS;
 
@@ -732,7 +732,7 @@ extern "C" ghost_error FUNCNAME(vscale_selector(ghost_densemat *vec, void *scale
     return ret;
 }
 
-extern "C" ghost_error FUNCNAME(vaxpy_selector(ghost_densemat *vec, ghost_densemat *vec2, void *scale))
+extern "C" ghost_error FUNCNAME(vaxpy(ghost_densemat *vec, ghost_densemat *vec2, void *scale))
 { 
     ghost_error ret = GHOST_SUCCESS;
 
@@ -741,7 +741,7 @@ extern "C" ghost_error FUNCNAME(vaxpy_selector(ghost_densemat *vec, ghost_densem
     return ret;
 }
 
-extern "C" ghost_error FUNCNAME(vaxpby_selector(ghost_densemat *vec, ghost_densemat *vec2, void *scale, void *b))
+extern "C" ghost_error FUNCNAME(vaxpby(ghost_densemat *vec, ghost_densemat *vec2, void *scale, void *b))
 { 
     ghost_error ret = GHOST_SUCCESS;
 
@@ -750,7 +750,7 @@ extern "C" ghost_error FUNCNAME(vaxpby_selector(ghost_densemat *vec, ghost_dense
     return ret;
 }
 
-extern "C" ghost_error FUNCNAME(vaxpbypcz_selector(ghost_densemat *vec, ghost_densemat *vec2, void *scale, void *b, ghost_densemat *vec3, void *c))
+extern "C" ghost_error FUNCNAME(vaxpbypcz(ghost_densemat *vec, ghost_densemat *vec2, void *scale, void *b, ghost_densemat *vec3, void *c))
 {
     ghost_error ret = GHOST_SUCCESS;
 
@@ -759,7 +759,7 @@ extern "C" ghost_error FUNCNAME(vaxpbypcz_selector(ghost_densemat *vec, ghost_de
     return ret;
 }
 
-extern "C" ghost_error FUNCNAME(fromRand_selector(ghost_densemat *vec))
+extern "C" ghost_error FUNCNAME(fromRand(ghost_densemat *vec))
 { 
     ghost_error ret = GHOST_SUCCESS;
 
@@ -768,7 +768,7 @@ extern "C" ghost_error FUNCNAME(fromRand_selector(ghost_densemat *vec))
     return ret;
 }
 
-extern "C" ghost_error FUNCNAME(fromScalar_selector(ghost_densemat *vec, void *val))
+extern "C" ghost_error FUNCNAME(fromScalar(ghost_densemat *vec, void *val))
 { 
     ghost_error ret = GHOST_SUCCESS;
 
@@ -777,7 +777,7 @@ extern "C" ghost_error FUNCNAME(fromScalar_selector(ghost_densemat *vec, void *v
     return ret;
 }
 
-extern "C" ghost_error FUNCNAME(fromVec_selector(ghost_densemat *vec, ghost_densemat *vec2, ghost_lidx roffs, ghost_lidx coffs))
+extern "C" ghost_error FUNCNAME(fromVec(ghost_densemat *vec, ghost_densemat *vec2, ghost_lidx roffs, ghost_lidx coffs))
 { 
     ghost_error ret = GHOST_SUCCESS;
 
@@ -786,7 +786,7 @@ extern "C" ghost_error FUNCNAME(fromVec_selector(ghost_densemat *vec, ghost_dens
     return ret;
 }
 
-extern "C" ghost_error FUNCNAME(permute_selector(ghost_densemat *vec, ghost_permutation_direction dir))
+extern "C" ghost_error FUNCNAME(permute(ghost_densemat *vec, ghost_permutation_direction dir))
 { 
     ghost_error ret = GHOST_SUCCESS;
 
@@ -795,7 +795,7 @@ extern "C" ghost_error FUNCNAME(permute_selector(ghost_densemat *vec, ghost_perm
     return ret;
 }
 
-extern "C" ghost_error FUNCNAME(conj_selector(ghost_densemat *vec)) 
+extern "C" ghost_error FUNCNAME(conj(ghost_densemat *vec)) 
 {
     ghost_error ret = GHOST_SUCCESS;
 

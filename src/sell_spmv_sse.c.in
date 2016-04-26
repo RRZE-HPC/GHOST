@@ -83,7 +83,7 @@ ghost_error ghost_sellspmv__a_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
             double *rval = (double *)invec->val+c*invec->stride;
             offs = SELL(mat)->chunkStart[c/CHUNKHEIGHT]+c%CHUNKHEIGHT;
 
-            #GHOST_UNROLL#tmp@ = _mm_setzero_pd();#NVECS/2
+            #GHOST_UNROLL#tmp@ = _mm_setzero_pd();#(NVECS+1)/2
             for (j=0; j<SELL(mat)->rowLen[c]; j++) { // loop inside chunk
                     #GHOST_UNROLL#rhs = _mm_load_pd((double *)invec->val+SELL(mat)->col[offs+j*CHUNKHEIGHT]*invec->stride+@*2);tmp@ = _mm_add_pd(tmp@,_mm_mul_pd(_mm_load1_pd(&mval[offs+j*CHUNKHEIGHT]),rhs));#NVECS/2
 #if NVECS%2
@@ -245,7 +245,7 @@ ghost_error ghost_sellspmv__u_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
             double *rval = (double *)invec->val+c*invec->stride;
             offs = SELL(mat)->chunkStart[c/CHUNKHEIGHT]+c%CHUNKHEIGHT;
 
-            #GHOST_UNROLL#tmp@ = _mm_setzero_pd();#NVECS/2
+            #GHOST_UNROLL#tmp@ = _mm_setzero_pd();#(NVECS+1)/2
             for (j=0; j<SELL(mat)->rowLen[c]; j++) { // loop inside chunk
                     #GHOST_UNROLL#rhs = _mm_loadu_pd((double *)invec->val+SELL(mat)->col[offs+j*CHUNKHEIGHT]*invec->stride+@*2);tmp@ = _mm_add_pd(tmp@,_mm_mul_pd(_mm_load1_pd(&mval[offs+j*CHUNKHEIGHT]),rhs));#NVECS/2
 #if NVECS%2
