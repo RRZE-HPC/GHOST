@@ -91,73 +91,56 @@ ghost_error ghost_sparsemat_perm_scotch(ghost_sparsemat *mat, void *matrixSource
     GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,(mat->context->lnrows[me]+1) * sizeof(ghost_gidx)),err,ret);
     
     GHOST_INSTR_START("scotch_readin")
-#if 0
-    if (srcType == GHOST_SPARSEMAT_SRC_FILE) {
-        char *matrixPath = (char *)matrixSource;
-        GHOST_CALL_GOTO(ghost_bincrs_rpt_read(rpt, matrixPath, mat->context->lfRow[me], mat->context->lnrows[me]+1, NULL),err,ret);
-#pragma omp parallel for
-        for (i=1;i<mat->context->lnrows[me]+1;i++) {
-            rpt[i] -= rpt[0];
-        }
-        rpt[0] = 0;
+    ghost_sparsemat_src_rowfunc *src = (ghost_sparsemat_src_rowfunc *)matrixSource;
+    char * tmpval = NULL;
+    ghost_gidx * tmpcol = NULL;
 
-        nnz = rpt[mat->context->lnrows[me]];
-        GHOST_CALL_GOTO(ghost_malloc((void **)&col,nnz * sizeof(ghost_gidx)),err,ret);
-        GHOST_CALL_GOTO(ghost_bincrs_col_read(col, matrixPath, mat->context->lfRow[me], mat->context->lnrows[me], NULL,1),err,ret);
-
-#endif
-    if (srcType == GHOST_SPARSEMAT_SRC_FUNC || srcType == GHOST_SPARSEMAT_SRC_FILE) {
-        ghost_sparsemat_src_rowfunc *src = (ghost_sparsemat_src_rowfunc *)matrixSource;
-        char * tmpval = NULL;
-        ghost_gidx * tmpcol = NULL;
-
-        ghost_lidx rowlen;
-        rpt[0] = 0;
+    ghost_lidx rowlen;
+    rpt[0] = 0;
 #pragma omp parallel private (tmpval,tmpcol,i,rowlen) reduction(+:nnz)
-        {
-            ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize);
-            ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx));
-            
-#pragma omp for
-            for (i=0; i<mat->context->lnrows[me]; i++) {
-                src->func(mat->context->lfRow[me]+i,&rowlen,tmpcol,tmpval,NULL);
-                nnz += rowlen;
-            }
-            free(tmpval); tmpval = NULL;
-            free(tmpcol); tmpcol = NULL;
-        }
-        GHOST_CALL_GOTO(ghost_malloc((void **)&col,nnz * sizeof(ghost_gidx)),err,ret);
+    {
+        ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize);
+        ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx));
         
-#pragma omp parallel private (tmpval,tmpcol,i,j,rowlen) reduction(+:nnz)
-        {
-            ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize);
-            ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx));
-#pragma omp for ordered
-            for (i=0; i<mat->context->lnrows[me]; i++) {
-#pragma omp ordered
-                {
-                    src->func(mat->context->lfRow[me]+i,&rowlen,&col[rpt[i]],tmpval,NULL);
-                    /* remove the diagonal entry ("self-edge") */
-                    for (j=0;j<rowlen;j++)
-                    {
-                      if (col[rpt[i]+j]==mat->context->lfRow[me]+i)
-                      {
-                        for (k=j; k<rowlen-1;k++)
-                        {
-                          col[rpt[i]+k]=col[rpt[i]+k+1];
-                        }
-                        rowlen--;
-                        break;
-                      }
-                    }
-                    rpt[i+1] = rpt[i] + rowlen;
-                }
-            }
-            free(tmpval); tmpval = NULL;
-            free(tmpcol); tmpcol = NULL;
+#pragma omp for
+        for (i=0; i<mat->context->lnrows[me]; i++) {
+            src->func(mat->context->lfRow[me]+i,&rowlen,tmpcol,tmpval,NULL);
+            nnz += rowlen;
         }
-            
+        free(tmpval); tmpval = NULL;
+        free(tmpcol); tmpcol = NULL;
     }
+    GHOST_CALL_GOTO(ghost_malloc((void **)&col,nnz * sizeof(ghost_gidx)),err,ret);
+    
+#pragma omp parallel private (tmpval,tmpcol,i,j,rowlen) reduction(+:nnz)
+    {
+        ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize);
+        ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx));
+#pragma omp for ordered
+        for (i=0; i<mat->context->lnrows[me]; i++) {
+#pragma omp ordered
+            {
+                src->func(mat->context->lfRow[me]+i,&rowlen,&col[rpt[i]],tmpval,NULL);
+                /* remove the diagonal entry ("self-edge") */
+                for (j=0;j<rowlen;j++)
+                {
+                  if (col[rpt[i]+j]==mat->context->lfRow[me]+i)
+                  {
+                    for (k=j; k<rowlen-1;k++)
+                    {
+                      col[rpt[i]+k]=col[rpt[i]+k+1];
+                    }
+                    rowlen--;
+                    break;
+                  }
+                }
+                rpt[i+1] = rpt[i] + rowlen;
+            }
+        }
+        free(tmpval); tmpval = NULL;
+        free(tmpcol); tmpcol = NULL;
+    }
+            
     nnz=rpt[mat->context->lnrows[me]];
     GHOST_INSTR_STOP("scotch_readin")
 
