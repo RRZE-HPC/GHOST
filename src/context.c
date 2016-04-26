@@ -663,7 +663,7 @@ ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, gh
      * item_from = <{3,3,1},{3,2,1},{1,0,4}> equal to wishlist_counts
      */
 
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(ctx->mpicomm);
 
     GHOST_INSTR_START("wishes_and_dues");
     MPI_Win due_win,nduepartners_win;
