@@ -139,7 +139,7 @@ ghost_error ghost_tsmm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w_i
 
     
     // fix properties
-    if (x->traits.ncols == 1 && x->stride == 1) {    
+    if (x->traits.ncols == 1 && x->stride == 1 && v->traits.ncols == 1 && v->stride == 1) {    
         p.xstor = GHOST_DENSEMAT_COLMAJOR;
     } else {
         p.xstor = x->traits.storage;
