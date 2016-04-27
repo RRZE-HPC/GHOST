@@ -106,7 +106,7 @@ out:
 #endif
 }
 
-ghost_error ghost_densemat_cm_averagehalo(ghost_densemat *vec)
+ghost_error ghost_densemat_cm_averagehalo_selector(ghost_densemat *vec)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
     ghost_error ret = GHOST_SUCCESS;

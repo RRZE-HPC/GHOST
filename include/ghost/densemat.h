@@ -218,16 +218,9 @@ typedef struct
      */
     ghost_datatype datatype;
     /**
-     * @brief Storage location of the densemat.
+     * @brief Location of the densemat.
      */
     ghost_location location;
-    /**
-     * @brief Compute location of the densemat.
-     *
-     * In some cases, it may be desired to do a small dense matrix computation (for non-context densemats) on both host and device instead of down-/uploading the result.
-     * This is only possible for operations which involve _only_ dense matrices, as sparse matrices are always distributed inside a context.
-     */
-    ghost_location compute;
 }
 ghost_densemat_traits;
 

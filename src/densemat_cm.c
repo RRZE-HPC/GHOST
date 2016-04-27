@@ -40,7 +40,7 @@ ghost_error ghost_densemat_cm_setfuncs(ghost_densemat *vec)
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_SETUP);
     ghost_error ret = GHOST_SUCCESS;
 
-    if (vec->traits.compute & GHOST_LOCATION_DEVICE)
+    if (vec->traits.location & GHOST_LOCATION_DEVICE)
     {
 #ifdef GHOST_HAVE_CUDA
         vec->localdot_vanilla = &ghost_densemat_cu_cm_dotprod;
@@ -57,34 +57,34 @@ ghost_error ghost_densemat_cm_setfuncs(ghost_densemat *vec)
         vec->conj = &ghost_densemat_cu_cm_conj;
 #endif
     }
-    else if (vec->traits.compute == GHOST_LOCATION_HOST)
+    else 
     {
-        vec->norm = &ghost_densemat_cm_norm;
-        vec->localdot_vanilla = &ghost_densemat_cm_dotprod;
-        vec->vaxpy = &ghost_densemat_cm_vaxpy;
-        vec->vaxpby = &ghost_densemat_cm_vaxpby;
+        vec->norm = &ghost_densemat_cm_norm_selector;
+        vec->localdot_vanilla = &ghost_densemat_cm_dotprod_selector;
+        vec->vaxpy = &ghost_densemat_cm_vaxpy_selector;
+        vec->vaxpby = &ghost_densemat_cm_vaxpby_selector;
         vec->axpy = &ghost_densemat_cm_axpy;
         vec->axpby = &ghost_densemat_cm_axpby;
         vec->axpbypcz = &ghost_densemat_cm_axpbypcz;
-        vec->vaxpbypcz = &ghost_densemat_cm_vaxpbypcz;
+        vec->vaxpbypcz = &ghost_densemat_cm_vaxpbypcz_selector;
         vec->scale = &ghost_densemat_cm_scale;
-        vec->vscale = &ghost_densemat_cm_vscale;
-        vec->fromScalar = &ghost_densemat_cm_fromScalar;
-        vec->fromRand = &ghost_densemat_cm_fromRand;
-        vec->conj = &ghost_densemat_cm_conj;
+        vec->vscale = &ghost_densemat_cm_vscale_selector;
+        vec->fromScalar = &ghost_densemat_cm_fromScalar_selector;
+        vec->fromRand = &ghost_densemat_cm_fromRand_selector;
+        vec->conj = &ghost_densemat_cm_conj_selector;
     }
 
     vec->reduce = &ghost_densemat_cm_reduce;
     vec->compress = &vec_cm_compress;
-    vec->string = &ghost_densemat_cm_string;
+    vec->string = &ghost_densemat_cm_string_selector;
     vec->fromFunc = &ghost_densemat_cm_fromFunc;
-    vec->fromVec = &ghost_densemat_cm_fromVec;
+    vec->fromVec = &ghost_densemat_cm_fromVec_selector;
     vec->fromFile = &ghost_densemat_cm_fromFile;
     vec->toFile = &ghost_densemat_cm_toFile;
     vec->distribute = &ghost_distributeVector;
     vec->collect = &ghost_collectVectors;
-    vec->normalize = &ghost_densemat_cm_normalize;
-    vec->permute = &ghost_densemat_cm_permute;
+    vec->normalize = &ghost_densemat_cm_normalize_selector;
+    vec->permute = &ghost_densemat_cm_permute_selector;
     vec->clone = &ghost_cloneVector;
     vec->entry = &ghost_densemat_cm_entry;
     vec->viewVec = &ghost_densemat_cm_view;
@@ -97,7 +97,7 @@ ghost_error ghost_densemat_cm_setfuncs(ghost_densemat *vec)
     vec->halocommFinalize = &densemat_cm_halocommFinalize;
     vec->halocommStart = &ghost_densemat_halocommStart_common;
 
-    vec->averageHalo = &ghost_densemat_cm_averagehalo;
+    vec->averageHalo = &ghost_densemat_cm_averagehalo_selector;
 
     vec->upload = &ghost_densemat_cm_upload;
     vec->download = &ghost_densemat_cm_download;

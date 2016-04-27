@@ -15,7 +15,7 @@ static ghost_error ghost_densemat_rm_averagehalo_tmpl(ghost_densemat *vec)
     return GHOST_ERR_NOT_IMPLEMENTED;
 }
 
-ghost_error ghost_densemat_rm_averagehalo(ghost_densemat *vec)
+ghost_error ghost_densemat_rm_averagehalo_selector(ghost_densemat *vec)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
     
