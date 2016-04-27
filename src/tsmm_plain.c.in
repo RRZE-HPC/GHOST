@@ -190,7 +190,7 @@ ghost_error ghost_tsmm__a_plain_d_CFGK_CFGM_OUTERUNROLL_1_cm(ghost_densemat *x, 
     const double dbeta = *(double *)beta;
     ghost_lidx i,j,s,t;
     
-    double *wscale;
+    double *wscale = NULL;
     ghost_malloc_align((void **)&wscale,CFGM*CFGK*sizeof(double),64);
         
     for (s=0; s<CFGK; s++) {
@@ -278,6 +278,7 @@ ghost_error ghost_tsmm__a_plain_d_CFGK_CFGM_OUTERUNROLL_1_cm(ghost_densemat *x, 
         }
     }
 
+    free(wscale);
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
     return ret;
