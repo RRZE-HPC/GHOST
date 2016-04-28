@@ -27,6 +27,8 @@
 #include "ghost/tsmttsm.h"
 #include "ghost/tsmm.h"
 
+#include "ghost/rcm_dissection.h"
+
 #include <hwloc.h>
 
 #endif

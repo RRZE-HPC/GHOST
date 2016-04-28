@@ -50,7 +50,11 @@ ghost_error ghost_kacz_rb(ghost_densemat *x, ghost_sparsemat *mat, ghost_densema
     }
    
     ghost_sell *sellmat = SELL(mat); 
-    double *bval = (double *)(b->val);
+    double *bval = NULL;
+  
+   if(b!= NULL)
+     bval = (double *)(b->val);
+
     double *xval = (double *)(x->val);
     double *mval = (double *)sellmat->val;
     double omega = *(double *)opts.omega;
@@ -98,25 +102,28 @@ ghost_error ghost_kacz_rb(ghost_densemat *x, ghost_sparsemat *mat, ghost_densema
   
      //only for SELL-1-1 currently
      //even sweep
-     omp_set_lock(&execute[tid]);
+//     omp_set_lock(&execute[tid]);
      double rownorm = 0.;
     
       for (ghost_lidx row=even_start; row!=even_end; row+=stride){
     	 //printf("projecting to row ........ %d\n",row); 
          rownorm = 0.;
 	 ghost_lidx  idx = sellmat->chunkStart[row];
-      
-	 double scal  = -bval[row]; 
-         for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {
+
+	 double scal = 0;
+
+         if(bval != NULL)
+          scal  = -bval[row];
+        
+        for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {
                  scal += (double)mval[idx] * xval[sellmat->col[idx]];
                 if(opts.normalize==no)
                  rownorm += mval[idx]*mval[idx]; 
                  idx += 1;
           }
-             
-         if(opts.normalize==no) 
+        if(opts.normalize==no) 
           scal /= (double)rownorm;
-        //scal *= omega;
+         scal *= omega;
 
 	idx -= sellmat->rowLen[row];
 
@@ -128,19 +135,22 @@ ghost_error ghost_kacz_rb(ghost_densemat *x, ghost_sparsemat *mat, ghost_densema
        
       }
        
-    omp_unset_lock(&execute[tid]);
-  
+  //  omp_unset_lock(&execute[tid]);
+ #pragma omp barrier 
  //odd sweep
-    if(tid+1 < nthreads) {
+   /* if(tid+1 < nthreads) {
          omp_set_lock(&execute[tid+1]);
-    }
+    }*/
 
      for (ghost_lidx row=odd_start; row!=odd_end; row+=stride){
          //printf("projecting to row ........ %d\n",row);
          rownorm = 0.; 
          ghost_lidx idx = sellmat->chunkStart[row];
-
-         double scal = -bval[row];
+         double scal = 0;
+  
+         if(bval != NULL)
+          scal  = -bval[row];
+ 
          for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {
                  scal += (double)mval[idx] * xval[sellmat->col[idx]];
                 if(opts.normalize==no)
@@ -150,7 +160,7 @@ ghost_error ghost_kacz_rb(ghost_densemat *x, ghost_sparsemat *mat, ghost_densema
    
         if(opts.normalize==no) 
          scal /= (double)rownorm;
-        //scal *= omega;
+        scal *= omega;
 	
  	idx -= sellmat->rowLen[row];
 
@@ -162,10 +172,10 @@ ghost_error ghost_kacz_rb(ghost_densemat *x, ghost_sparsemat *mat, ghost_densema
          
       }
 
-    if(tid+1 < nthreads) {
+/*    if(tid+1 < nthreads) {
          omp_unset_lock(&execute[tid+1]);
-    }
-      
+    }*/
+  #pragma omp barrier    
 #ifdef GHOST_HAVE_OPENMP
   }
 #endif
