@@ -19,7 +19,7 @@ ghost_error ghost_tsmm__u_cuda_x_CFGK_CFGM_1_1_rm(ghost_densemat *x, ghost_dense
     dim3 block, grid;
     size_t smem;
 
-    if (CFGM >= CFGK && !(CFGM%CFGK)) {
+    if (0) {//CFGM >= CFGK && !(CFGM%CFGK)) {
         const int THREADSPERBLOCK = 256;
         block.x = THREADSPERBLOCK; // = v->traits.ncols;
         block.y = CEILDIV(THREADSPERBLOCK,block.x);

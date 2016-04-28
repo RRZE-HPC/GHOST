@@ -16,7 +16,7 @@ extern __shared__ char shared[];
 template<typename T,int M, int K, bool betaiszero> 
 static __global__ void ghost_tsmm_cu_rm_cm(T * const __restrict__ x, const T * const __restrict__ v, const T * const __restrict__ w, const T alpha, const T beta, ghost_lidx nrows, ghost_lidx stridex, ghost_lidx stridev, ghost_lidx stridew)
 {
-    if (M >= K && !(M%K)) {
+    if (0) {//M >= K && !(M%K)) {
         const int xheight = blockDim.x/K;
         T * shmem = (T *)shared;
         const int firstrowofblock = blockIdx.x*xheight;
