@@ -274,11 +274,11 @@ ghost_error ghost_densemat_uniformstorage(bool *uniform, ghost_densemat *vec)
     return GHOST_SUCCESS;;
 }
 
-char * ghost_densemat_storage_string(ghost_densemat *densemat)
+char * ghost_densemat_storage_string(ghost_densemat_storage storage)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     char *ret;
-    switch(densemat->traits.storage) {
+    switch(storage) {
         case GHOST_DENSEMAT_ROWMAJOR:
             ret = "Row-major";
             break;
@@ -344,7 +344,7 @@ ghost_error ghost_densemat_info_string(char **str, ghost_densemat *densemat)
     }
    
     ghost_line_string(str,"Location",NULL,"%s",ghost_location_string(densemat->traits.location));
-    ghost_line_string(str,"Storage order",NULL,"%s",ghost_densemat_storage_string(densemat));
+    ghost_line_string(str,"Storage order",NULL,"%s",ghost_densemat_storage_string(densemat->traits.storage));
     ghost_footer_string(str);
     
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);

@@ -644,7 +644,7 @@ extern "C" {
      *
      * @brief Get a string about the storage order.
      */
-    char * ghost_densemat_storage_string(ghost_densemat *densemat);
+    char * ghost_densemat_storage_string(ghost_densemat_storage storage);
     
     /**
      * @ingroup stringification
