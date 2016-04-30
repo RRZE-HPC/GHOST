@@ -26,15 +26,17 @@ extern __shared__ char shmem[];
 template<typename T> __global__ static void ghost_tsmm_inplace_cu_rm_cm_fallback(T * x, const T * const __restrict__ w, const T alpha, const T beta, ghost_lidx nrows, ghost_lidx stridex, ghost_lidx stridew, int NCOLSOUT, int NCOLSIN)
 {
     int row = blockIdx.x*blockDim.y+threadIdx.y;
+    int row_in_shared = blockDim.x*threadIdx.y;
     int m;
     T *shared = (T *)shmem;
     
     for (;row < nrows; row+=gridDim.x*blockDim.y) {
-        shared[threadIdx.x] = scale<T>(x[row*stridex+threadIdx.x],beta);
+        shared[threadIdx.x+row_in_shared] = scale<T>(x[row*stridex+threadIdx.x],beta);
         for (m=0; m<NCOLSIN; m++) {
-            shared[threadIdx.x] = axpy<T,T>(shared[threadIdx.x],alpha,scale<T>(__ldg(&x[row*stridex+m]),__ldg(&w[threadIdx.x*stridew+m])));
+            shared[threadIdx.x+row_in_shared] = axpy<T,T>(shared[threadIdx.x+row_in_shared],alpha,scale<T>(__ldg(&x[row*stridex+m]),__ldg(&w[threadIdx.x*stridew+m])));
         }
-        x[row*stridex+threadIdx.x] = shared[threadIdx.x];
+        __syncthreads();
+        x[row*stridex+threadIdx.x] = shared[threadIdx.x+row_in_shared];
     }
 }
 
@@ -49,10 +51,10 @@ ghost_error ghost_tsmm_inplace__u_cuda_x_x_x(ghost_densemat *x, ghost_densemat *
     GHOST_CALL_RETURN(ghost_datatype_size(&dtsize,x->traits.datatype));
     GHOST_CALL_RETURN(ghost_cu_deviceprop_get(&prop));
     
-    size_t reqSmem = threadsperblock*w->traits.ncols*dtsize;
+    size_t reqSmem = threadsperblock*x->traits.ncols*dtsize;
     while (prop.sharedMemPerBlock < reqSmem && threadsperblock > 1) {
         threadsperblock /= 2;
-        reqSmem = threadsperblock*w->traits.ncols*dtsize;
+        reqSmem = threadsperblock*x->traits.ncols*dtsize;
     }
         
     if (prop.sharedMemPerBlock < reqSmem) {
@@ -61,7 +63,7 @@ ghost_error ghost_tsmm_inplace__u_cuda_x_x_x(ghost_densemat *x, ghost_densemat *
     }
     
     dim3 block, grid;
-    block.x = w->traits.ncols;
+    block.x = x->traits.ncols;
     block.y = CEILDIV(threadsperblock,block.x);
     block.z = 1;
     grid.x = CEILDIV(x->traits.nrows,block.y);
