@@ -878,8 +878,17 @@ extern "C" {
      */
     ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts);
     ghost_error ghost_kacz_rb(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts);
+    ghost_error ghost_kacz_rb_with_shift(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, double *shift_r,  ghost_kacz_opts opts);
     ghost_error ghost_carp_rb(ghost_sparsemat *mat, ghost_densemat *x, ghost_densemat *b, void *omega, int flag_rb);
 
+    
+    /**
+    * @brief Writes a matrix to file 
+    *
+    *@param A sparse matrix to write
+    *@param name Name of file 
+   */                
+    ghost_error sparsemat_write(ghost_sparsemat *A, char *name);
 
     ghost_error ghost_sparsemat_from_bincrs(ghost_sparsemat *mat, char *path);
     ghost_error ghost_sparsemat_from_mm(ghost_sparsemat *mat, char *path);
