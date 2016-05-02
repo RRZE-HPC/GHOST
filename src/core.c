@@ -120,7 +120,6 @@ static void *likwidThreadInitTask(void *arg)
 
 ghost_error ghost_init(int argc, char **argv)
 {
-
     if (initialized) {
         return GHOST_SUCCESS;
     } else {

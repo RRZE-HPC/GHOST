@@ -6,7 +6,11 @@
 #ifndef GHOST_ERROR_H
 #define GHOST_ERROR_H
 
+#ifdef __cplusplus
+#include <cstring>
+#else
 #include <string.h>
+#endif
 #include "log.h"
 
 #ifndef GHOST_HAVE_ZOLTAN
