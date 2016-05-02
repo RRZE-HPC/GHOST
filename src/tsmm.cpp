@@ -137,13 +137,13 @@ ghost_error ghost_tsmm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w_i
     }
 
 
+    std::vector<ghost_densemat_storage> try_xstor;
     
     // fix properties
     if (x->traits.ncols == 1 && x->stride == 1 && v->traits.ncols == 1 && v->stride == 1) {    
-        p.xstor = GHOST_DENSEMAT_COLMAJOR;
-    } else {
-        p.xstor = x->traits.storage;
+        try_xstor.push_back(GHOST_DENSEMAT_COLMAJOR);
     }
+    try_xstor.push_back(x->traits.storage);
 
     // possible implementations
     std::vector<ghost_implementation> try_impl;
@@ -178,7 +178,7 @@ ghost_error ghost_tsmm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w_i
     // alignment of large input data
     // the alignment of the result array does not matter because we can easily re-allocate it accordingly
     int al = ghost_machine_alignment();
-    if (IS_ALIGNED(x->val,al) && IS_ALIGNED(v->val,al) && ((p.xstor == GHOST_DENSEMAT_COLMAJOR) || (!((x->stride*x->elSize) % al) && !((v->stride*v->elSize) % al)))) {
+    if (IS_ALIGNED(x->val,al) && IS_ALIGNED(v->val,al) && ((x->traits.storage == GHOST_DENSEMAT_COLMAJOR || (x->traits.ncols == 1 && x->stride == 1)) || (!((x->stride*x->elSize) % al) && !((v->stride*v->elSize) % al)))) {
         opt_align = GHOST_ALIGNED;
     } else {
         opt_align = GHOST_UNALIGNED;
@@ -226,17 +226,20 @@ ghost_error ghost_tsmm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w_i
                     for (std::vector<ghost_lidx>::iterator mult = try_multipleof.begin(); mult != try_multipleof.end(); mult++) {
                         for (p.unroll = opt_unroll; p.unroll > 0; p.unroll /= 2) {
                             for (pos_dt = 0; pos_dt < n_dt; pos_dt++) {
-                                p.xcols = try_xcols[pos_xcols];
-                                p.vcols = try_vcols[pos_vcols];
-                                p.dt = try_dt[pos_dt];
-                                p.impl = *impl;
-                                p.multipleof = *mult;
-                                INFO_LOG("Try xcols=%s, vcols=%s, impl=%s, %s, unroll=%d, dt=%s, multipleof=%d",
-                                        p.xcols==-1?"arbitrary":to_string((long long)p.xcols).c_str(),p.vcols==-1?"arbitrary":to_string((long long)p.vcols).c_str(),
-                                        ghost_implementation_string(p.impl),p.alignment==GHOST_UNALIGNED?"unaligned":"aligned",p.unroll,ghost_datatype_string(p.dt),p.multipleof);
-                                kernel = ghost_tsmm_kernels[p];
-                                if (kernel) {
-                                    goto end_of_loop;
+                                for (std::vector<ghost_densemat_storage>::iterator xstor = try_xstor.begin(); xstor != try_xstor.end(); xstor++) {
+                                    p.xstor = *xstor;
+                                    p.xcols = try_xcols[pos_xcols];
+                                    p.vcols = try_vcols[pos_vcols];
+                                    p.dt = try_dt[pos_dt];
+                                    p.impl = *impl;
+                                    p.multipleof = *mult;
+                                    INFO_LOG("Try xcols=%s, vcols=%s, impl=%s, %s, unroll=%d, dt=%s, multipleof=%d, storage=%s",
+                                            p.xcols==-1?"arbitrary":to_string((long long)p.xcols).c_str(),p.vcols==-1?"arbitrary":to_string((long long)p.vcols).c_str(),
+                                            ghost_implementation_string(p.impl),p.alignment==GHOST_UNALIGNED?"unaligned":"aligned",p.unroll,ghost_datatype_string(p.dt),p.multipleof,ghost_densemat_storage_string(*xstor));
+                                    kernel = ghost_tsmm_kernels[p];
+                                    if (kernel) {
+                                        goto end_of_loop;
+                                    }
                                 }
                             }
                         }
