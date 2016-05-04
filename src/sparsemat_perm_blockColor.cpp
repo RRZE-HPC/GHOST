@@ -26,7 +26,6 @@ extern "C" ghost_error ghost_sparsemat_blockColor(ghost_sparsemat *mat, void *ma
  
    int me;
 
-printf("1\n");
 
    GHOST_CALL_GOTO(ghost_rank(&me,mat->context->mpicomm),err,ret);
 
@@ -55,7 +54,6 @@ printf("1\n");
         zone[i] = -(n_zones+1) ; //an invalid number
     }
 
-printf("2\n");
    
    if (srcType == GHOST_SPARSEMAT_SRC_FUNC || srcType == GHOST_SPARSEMAT_SRC_FILE) {
        ghost_sparsemat_src_rowfunc *src = (ghost_sparsemat_src_rowfunc *)matrixSource;
@@ -87,8 +85,7 @@ printf("2\n");
       free(tmpval);
      }
    }
-
-printf("3\n");             
+            
 /*       for(int i=0; i<nrows; ++i){
     	    for(int k=0; k<n_zones; ++k){
         	    //pure zone
@@ -118,7 +115,6 @@ if (!mat->context->perm_local) {
     memset(curcol,0,(mat->nzones+1)*sizeof(ghost_lidx));
 
 
-printf("4\n");
 
     for (int i=0;i<mat->nzones+1;i++) {
         mat->zone_ptr[i] = 0;
@@ -134,7 +130,7 @@ printf("4\n");
 
 if(mat->context->perm_local)
     for (int i=0;i<mat->nrows;i++) {
-        mat->context->perm_local->perm[i] = mat->context->perm_local->invPerm[zone[i]] + mat->zone_ptr[zone[i]];
+        mat->context->perm_local->perm[mat->context->perm_local->invPerm[i]] = curcol[zone[i]] + mat->zone_ptr[zone[i]];
         curcol[zone[i]]++;
     }
 
@@ -148,7 +144,7 @@ else
     for (int i=0;i<mat->nrows;i++) {
         mat->context->perm_local->invPerm[mat->context->perm_local->perm[i]] = i;
     }
-printf("5\n");  
+ 
    goto out;
 
 err:

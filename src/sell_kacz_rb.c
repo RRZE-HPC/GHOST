@@ -142,7 +142,7 @@ ghost_error ghost_kacz_rb(ghost_densemat *x, ghost_sparsemat *mat, ghost_densema
       }
  
     flag[tid+1] = 1;
-    printf("thread %d here \n",tid);
+    //printf("thread %d here \n",tid);
 
     #pragma omp flush      
    //omp_unset_lock(&execute[tid+1]);
