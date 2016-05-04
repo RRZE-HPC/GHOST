@@ -29,10 +29,11 @@ namespace std
         result_type operator()(argument_type const& a) const
         {
             return ghost_hash(ghost_hash(a.mdt,a.blocksz,a.storage),
-                   ghost_hash(a.vdt,a.impl,a.chunkheight),a.alignment);
+                    ghost_hash(a.vdt,a.impl,a.chunkheight),a.alignment);
         }
     };
 }
+
 static bool operator==(const ghost_kacz_parameters& a, const ghost_kacz_parameters& b)
 {
     return a.mdt == b.mdt && a.blocksz == b.blocksz && a.storage == b.storage && 

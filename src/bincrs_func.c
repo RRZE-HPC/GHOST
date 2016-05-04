@@ -47,6 +47,8 @@ int ghost_sparsemat_rowfunc_bincrs(ghost_gidx row, ghost_lidx *rowlen, ghost_gid
 
         col[0] = header.nrows;
         col[1] = header.ncols;
+
+        if(rowlen) *rowlen = header.datatype;
     } else if ((row == GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_GETRPT) || (row == GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_INIT)) {
 
         ghost_sparsemat_rowfunc_bincrs_initargs args = 

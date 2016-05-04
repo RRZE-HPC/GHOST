@@ -18,7 +18,7 @@ include(${PROJECT_SOURCE_DIR}/cmake/OptimizeForArchitecture.cmake)
 
 option(GHOST_USE_MPI "Build with MPI" 1)
 option(GHOST_USE_OPENMP "Build with OpenMP" 1)
-option(GHOST_USE_CUDA "Build with CUDA" 0)
+option(GHOST_USE_CUDA "Build with CUDA" 1)
 option(GHOST_USE_SCOTCH "Use PT-Scotch for matrix re-ordering" 0)
 option(GHOST_USE_COLPACK "Use ColPack for matrix coloring" 0)
 option(GHOST_USE_ZOLTAN "Use Zoltan for matrix re-ordering" 0)
@@ -42,7 +42,7 @@ option(GHOST_INSTRUMENT_BARRIER "Place a barrier after each instrumented functio
 
 find_package(PkgConfig)
 
-add_definitions(-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE)
+add_definitions(-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -DMPICH_IGNORE_CXX_SEEK -DMPICH_SKIP_MPICXX)
 if (GHOST_IDX64_LOCAL)
     if (NOT GHOST_IDX64_GLOBAL)
         message(FATAL_ERROR "Having 64-bit indices locally and only 32-bit indices globally is not allowed (and not sensible)!")
@@ -408,10 +408,15 @@ else ()
 endif()
 
 
+
 if (GHOST_USE_CUDA)
     option(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
     find_package(CUDA)
-    if (CUDA_FOUND)
+    if (NOT CUDA_FOUND)
+        message(STATUS "Could not find CUDA!")
+        set(GHOST_USE_CUDA 0)
+        set(CUDA_LIBRARIES "")
+    else ()
         set(GHOST_HAVE_CUDA 1)
         cuda_include_directories(${PROJECT_SOURCE_DIR}/include
             ${PROJECT_BINARY_DIR} ${PROJECT_BINARY_DIR}/ghost ${HWLOC_INCLUDE_DIR} ${LIKWID_INCLUE_DIR} ${MPI_INCLUDE_PATH})
@@ -446,17 +451,12 @@ if (GHOST_USE_CUDA)
             CUDA_SEPARABLE_COMPILATION
             CUDA_VERBOSE_BUILD
             )
-    else ()
-        message(WARNING "Could not find CUDA! You might want to make CUDA available or set GHOST_USE_CUDA=OFF to suppress this warning.")
+    set(CUDA_LIBRARIES ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${CUDA_cusparse_LIBRARY})
     endif()
 endif()
 
 add_library(ghost ${SOURCES})
 add_dependencies(ghost autogen)
-
-if (GHOST_USE_CUDA)
-    set(CUDA_LIBRARIES ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${CUDA_cusparse_LIBRARY})
-endif()
 
 if (GHOST_USE_SCOTCH)
     set(GHOST_HAVE_SCOTCH 1)
@@ -506,7 +506,7 @@ endif()
 if (GHOST_USE_COLPACK)
     set(GHOST_HAVE_COLPACK 1)
     set(COLPACK_INCLUDE_DIR "${COLPACK_INCLUDE_DIR}" CACHE PATH "Location of ColPack headers")
-    include_directories(${COLPACK_INCLUDE_DIR})
+    include_directories(SYSTEM ${COLPACK_INCLUDE_DIR})
     get_filename_component(COLPACK_LIBDIR ${COLPACK_INCLUDE_DIR}/../lib REALPATH)
 
     find_library(COLPACK_LIBRARIES ColPack ${COLPACK_LIBDIR})
@@ -876,6 +876,8 @@ endif()
 add_subdirectory(${PROJECT_SOURCE_DIR}/test)
 enable_testing()
 add_test(NAME simple WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/test COMMAND simple)
+set_tests_properties(simple PROPERTIES TIMEOUT 60)
 add_test(NAME minimal WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/test COMMAND minimal)
+set_tests_properties(minimal PROPERTIES TIMEOUT 60)
 add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} --force-new-ctest-process --output-on-failure DEPENDS simple)
 

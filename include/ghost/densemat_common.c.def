@@ -835,31 +835,28 @@ static ghost_error FUNCNAME(fromFunc(ghost_densemat *vec, int (*fp)(ghost_gidx, 
         offset = 0;
     }
     int needInit = 0;
-    GHOST_CALL_RETURN(ghost_densemat_rm_malloc(vec,&needInit));
+    GHOST_CALL_RETURN(FUNCNAME(malloc(vec,&needInit)));
 
     if (vec->traits.location & GHOST_LOCATION_HOST) { // vector is stored on host
-        if (!vec->context->perm_local && !vec->context->perm_global) {
+        if (!vec->context || (!vec->context->perm_local && !vec->context->perm_global)) {
             if( needInit ) {
               DENSEMAT_ITER_INIT(vec,fp(offset+row,col,valptr,arg));
             } else {
               DENSEMAT_ITER(vec,fp(offset+row,col,valptr,arg));
             }
-        }
-        if (vec->context->perm_local && !vec->context->perm_global) {
+        } else if (vec->context->perm_local && !vec->context->perm_global) {
             if( needInit ) {
               DENSEMAT_ITER_INIT(vec,fp(offset+vec->context->perm_local->invPerm[row],col,valptr,arg));
             } else {
               DENSEMAT_ITER(vec,fp(offset+vec->context->perm_local->invPerm[row],col,valptr,arg));
             }
-        }
-        if (!vec->context->perm_local && vec->context->perm_global) {
+        } else if (!vec->context->perm_local && vec->context->perm_global) {
             if( needInit ) {
               DENSEMAT_ITER_INIT(vec,fp(vec->context->perm_global->invPerm[row],col,valptr,arg));
             } else {
               DENSEMAT_ITER(vec,fp(vec->context->perm_global->invPerm[row],col,valptr,arg));
             }
-        }
-        if (vec->context->perm_local && vec->context->perm_global) {
+        } else if (vec->context->perm_local && vec->context->perm_global) {
             if( needInit ) {
               DENSEMAT_ITER_INIT(vec,fp(vec->context->perm_global->invPerm[vec->context->perm_local->invPerm[row]],col,valptr,arg));
             } else {

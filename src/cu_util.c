@@ -237,7 +237,9 @@ ghost_error ghost_cu_ndevice(int *devcount)
 {
 #ifdef GHOST_HAVE_CUDA
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
-    CUDA_CALL_RETURN(cudaGetDeviceCount(devcount));
+    if (cudaGetDeviceCount(devcount) == cudaErrorNoDevice) {
+        *devcount = 0;
+    }
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
 #else
     *devcount = 0;
@@ -457,7 +459,13 @@ ghost_error ghost_cu_version(int *ver)
 {
 #ifdef GHOST_HAVE_CUDA
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
-    CUDA_CALL_RETURN(cudaRuntimeGetVersion(ver));
+    int ndev;
+    GHOST_CALL_RETURN(ghost_cu_ndevice(&ndev));
+    if (ndev == 0) {
+        *ver = 0;
+    } else {
+        CUDA_CALL_RETURN(cudaRuntimeGetVersion(ver));
+    }
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
 #else
     UNUSED(ver);

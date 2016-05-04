@@ -71,7 +71,7 @@ ghost_error ghost_densemat_rm_setfuncs(ghost_densemat *vec)
         vec->vscale = &ghost_densemat_rm_vscale_selector;
         vec->fromScalar = &ghost_densemat_rm_fromScalar_selector;
         vec->fromRand = &ghost_densemat_rm_fromRand_selector;
-        vec->conj = &ghost_densemat_cm_conj_selector;
+        vec->conj = &ghost_densemat_rm_conj_selector;
     }
 
     vec->reduce = &ghost_densemat_rm_reduce;

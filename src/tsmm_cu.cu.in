@@ -11,57 +11,106 @@
 #GHOST_SUBST CFGK ${BLOCKDIM1}
 #GHOST_SUBST CFGM ${BLOCKDIM2}
 
-#define THREADSPERBLOCK 512
-
 ghost_error ghost_tsmm__u_cuda_x_CFGK_CFGM_1_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta) 
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL); 
     ghost_error ret = GHOST_SUCCESS;
+
     dim3 block, grid;
-    grid.x = (int)ceil((double)x->traits.nrows/THREADSPERBLOCK);
+    size_t smem;
+
+    if (0) {//CFGM >= CFGK && !(CFGM%CFGK)) {
+        const int THREADSPERBLOCK = 256;
+        block.x = THREADSPERBLOCK; // = v->traits.ncols;
+        block.y = CEILDIV(THREADSPERBLOCK,block.x);
+        grid.x = CEILDIV(x->traits.nrows,block.x/CFGK);
+        smem = THREADSPERBLOCK/CFGK*CFGM*x->elSize;//CFGK*CFGM*sizeof(double);
+        INFO_LOG("call kernel with smem. xcols %d vcols %d block %dx%d grid %dx%d smem %zu",x->traits.ncols,v->traits.ncols,block.x,block.y,grid.x,grid.y,smem);
+    } else {
+        const int THREADSPERBLOCK = 256;
+        block.x = CFGK; // = x->traits.ncols;
+        block.y = CEILDIV(THREADSPERBLOCK,block.x);
+        grid.x = CEILDIV(x->traits.nrows,block.y);
+        smem = 0;
+        INFO_LOG("call streaming kernel w/o smem. xcols %d vcols %d block %dx%d grid %dx%d smem %zu",x->traits.ncols,v->traits.ncols,block.x,block.y,grid.x,grid.y,smem);
+    }
+    block.z = 1;
     grid.y = 1;
     grid.z = 1;
-    block.x = THREADSPERBLOCK;
-    block.y = 1;
-    block.z = 1;
+
 
     if (ghost_iszero(beta,x->traits.datatype)) {
         if (x->traits.datatype & GHOST_DT_COMPLEX) {
             if (x->traits.datatype & GHOST_DT_DOUBLE) {
-                ghost_tsmm_cu_rm_cm<cuDoubleComplex,CFGM,CFGK,true><<< grid,block >>>(
+                ghost_tsmm_cu_rm_cm<cuDoubleComplex,CFGM,CFGK,true><<< grid,block,smem >>>(
                         (cuDoubleComplex *)x->cu_val,(const cuDoubleComplex *)v->cu_val,(const cuDoubleComplex *)w->cu_val,*(cuDoubleComplex *)alpha,*(cuDoubleComplex *)beta,x->traits.nrows,x->stride,v->stride,w->stride);
             } else {
-                ghost_tsmm_cu_rm_cm<cuFloatComplex,CFGM,CFGK,true><<< grid,block >>>(
+                ghost_tsmm_cu_rm_cm<cuFloatComplex,CFGM,CFGK,true><<< grid,block,smem >>>(
                         (cuFloatComplex *)x->cu_val,(const cuFloatComplex *)v->cu_val,(const cuFloatComplex *)w->cu_val,*(cuFloatComplex *)alpha,*(cuFloatComplex *)beta,x->traits.nrows,x->stride,v->stride,w->stride);
             }
         } else {
             if (x->traits.datatype & GHOST_DT_DOUBLE) {
-                ghost_tsmm_cu_rm_cm<double,CFGM,CFGK,true><<< grid,block >>>(
+                cudaThreadSetCacheConfig(cudaFuncCachePreferShared);
+                ghost_tsmm_cu_rm_cm<double,CFGM,CFGK,true><<< grid,block,smem >>>(
                        (double *)x->cu_val,(const double *)v->cu_val,(const double *)w->cu_val,*(double *)alpha,*(double *)beta,x->traits.nrows,x->stride,v->stride,w->stride);
             } else {
-                ghost_tsmm_cu_rm_cm<float,CFGM,CFGK,true><<< grid,block >>>(
+                ghost_tsmm_cu_rm_cm<float,CFGM,CFGK,true><<< grid,block,smem >>>(
                        (float *)x->cu_val,(const float *)v->cu_val,(const float *)w->cu_val,*(float *)alpha,*(float *)beta,x->traits.nrows,x->stride,v->stride,w->stride);
             }
         }
     } else {
         if (x->traits.datatype & GHOST_DT_COMPLEX) {
             if (x->traits.datatype & GHOST_DT_DOUBLE) {
-                ghost_tsmm_cu_rm_cm<cuDoubleComplex,CFGM,CFGK,false><<< grid,block >>>(
+                ghost_tsmm_cu_rm_cm<cuDoubleComplex,CFGM,CFGK,false><<< grid,block,smem >>>(
                         (cuDoubleComplex *)x->cu_val,(const cuDoubleComplex *)v->cu_val,(const cuDoubleComplex *)w->cu_val,*(cuDoubleComplex *)alpha,*(cuDoubleComplex *)beta,x->traits.nrows,x->stride,v->stride,w->stride);
             } else {
-                ghost_tsmm_cu_rm_cm<cuFloatComplex,CFGM,CFGK,false><<< grid,block >>>(
+                ghost_tsmm_cu_rm_cm<cuFloatComplex,CFGM,CFGK,false><<< grid,block,smem >>>(
                         (cuFloatComplex *)x->cu_val,(const cuFloatComplex *)v->cu_val,(const cuFloatComplex *)w->cu_val,*(cuFloatComplex *)alpha,*(cuFloatComplex *)beta,x->traits.nrows,x->stride,v->stride,w->stride);
             }
         } else {
             if (x->traits.datatype & GHOST_DT_DOUBLE) {
-                ghost_tsmm_cu_rm_cm<double,CFGM,CFGK,false><<< grid,block >>>(
+                ghost_tsmm_cu_rm_cm<double,CFGM,CFGK,false><<< grid,block,smem >>>(
                        (double *)x->cu_val,(const double *)v->cu_val,(const double *)w->cu_val,*(double *)alpha,*(double *)beta,x->traits.nrows,x->stride,v->stride,w->stride);
             } else {
-                ghost_tsmm_cu_rm_cm<float,CFGM,CFGK,false><<< grid,block >>>(
+                ghost_tsmm_cu_rm_cm<float,CFGM,CFGK,false><<< grid,block,smem >>>(
                        (float *)x->cu_val,(const float *)v->cu_val,(const float *)w->cu_val,*(float *)alpha,*(float *)beta,x->traits.nrows,x->stride,v->stride,w->stride);
             }
         }
     }
+
+#if 0
+    ghost_densemat *wtrans;
+    ghost_densemat_traits wtranstraits = w->traits;
+    wtranstraits.storage = GHOST_DENSEMAT_ROWMAJOR;
+    ghost_densemat_create(&wtrans,NULL,wtranstraits);
+    ghost_densemat_init_densemat(wtrans,w,0,0);
+
+    cublasHandle_t ghost_cublas_handle;
+    
+    int batchCount = x->traits.nrows/CFGM;
+    double **wbatch_h, **vbatch_h, **xbatch_h;
+    double **wbatch, **vbatch, **xbatch;
+    ghost_malloc((void **)&wbatch_h,sizeof(double *)*batchCount);
+    ghost_malloc((void **)&vbatch_h,sizeof(double *)*batchCount);
+    ghost_malloc((void **)&xbatch_h,sizeof(double *)*batchCount);
+    ghost_cu_malloc((void **)&wbatch,sizeof(double *)*batchCount);
+    ghost_cu_malloc((void **)&vbatch,sizeof(double *)*batchCount);
+    ghost_cu_malloc((void **)&xbatch,sizeof(double *)*batchCount);
+
+    for (int b = 0; b<batchCount; b++) {
+        wbatch_h[b] = (double *)wtrans->cu_val;
+        vbatch_h[b] = ((double *)v->cu_val)+b*CFGM*v->stride;
+        xbatch_h[b] = ((double *)x->cu_val)+b*CFGM*x->stride;
+    }
+    ghost_cu_upload(wbatch,wbatch_h,batchCount*sizeof(double *));
+    ghost_cu_upload(vbatch,vbatch_h,batchCount*sizeof(double *));
+    ghost_cu_upload(xbatch,xbatch_h,batchCount*sizeof(double *));
+
+    ERROR_LOG("call batched GEMM (batchCount = %d)",batchCount);
+    ghost_cu_cublas_handle(&ghost_cublas_handle); 
+    CUBLAS_CALL_RETURN(cublasDgemmBatched(ghost_cublas_handle,CUBLAS_OP_N,CUBLAS_OP_N,CFGK,CFGM,CFGM,(double *)alpha,(const double **)wbatch,wtrans->stride,(const double **)vbatch,v->stride,(double *)beta,xbatch,x->stride,batchCount));
+    ghost_cu_cublas_handle(&ghost_cublas_handle);
+#endif
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL); 
     CUDA_CALL_RETURN(cudaGetLastError());

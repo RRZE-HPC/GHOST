@@ -2,8 +2,20 @@
 #define GHOST_CU_SELL_KERNEL_H
 
 #include "ghost/cu_complex.h"
+#include <cuda.h>
 
 extern __shared__ char shared[];
+
+// double precision version only present from CUDA 6.5 onwards
+#if CUDA_VERSION < 6050
+__device__ inline
+double __shfl_down(double var, unsigned int srcLane, int width=32) {
+    int2 a = *reinterpret_cast<int2*>(&var);
+    a.x = __shfl_down(a.x, srcLane, width);
+    a.y = __shfl_down(a.y, srcLane, width);
+    return *reinterpret_cast<double*>(&a);
+}
+#endif
 
 template<typename v_t>
 __device__ inline
@@ -29,11 +41,14 @@ cuDoubleComplex ghost_shfl_down<cuDoubleComplex>(cuDoubleComplex var, unsigned i
     return *reinterpret_cast<cuDoubleComplex*>(&a);
 }
 
+// This assumes that the warpSize is 32.
+// Hard-coding this enhances the performance significantly due to unrolling
 template<typename v_t>
 __inline__ __device__
 v_t ghost_warpReduceSum(v_t val) {
-    for (int offset = warpSize/2; offset > 0; offset /= 2) { 
-        val = axpy<v_t>(val,ghost_shfl_down(val, offset, warpSize),1.f);
+#pragma unroll
+    for (int offset = 32/2; offset > 0; offset /= 2) { 
+        val = accu<v_t>(val,ghost_shfl_down(val, offset, 32));
     }
     return val;
 }
@@ -42,7 +57,7 @@ template<typename v_t>
 __inline__ __device__
 v_t ghost_partialWarpReduceSum(v_t val,int size, int width) {
     for (int offset = size/2; offset > 0; offset /= 2) { 
-        val = axpy<v_t>(val,ghost_shfl_down(val, offset, width),1.f);
+        val = accu<v_t>(val,ghost_shfl_down(val, offset, width));
     }
     return val;
 }

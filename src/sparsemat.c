@@ -29,7 +29,7 @@ const ghost_sparsemat_traits GHOST_SPARSEMAT_TRAITS_INITIALIZER = {
     .C = 32,
     .scotchStrat = (char*)GHOST_SCOTCH_STRAT_DEFAULT,
     .sortScope = 1,
-    .datatype = (ghost_datatype) (GHOST_DT_DOUBLE|GHOST_DT_REAL),
+    .datatype = GHOST_DT_NONE,
     .opt_blockvec_width = 0
 };
 
@@ -77,7 +77,6 @@ ghost_error ghost_sparsemat_create(ghost_sparsemat ** mat, ghost_context *contex
     (*mat)->col_orig = NULL;
     (*mat)->sell = NULL;
     (*mat)->nzDist = NULL;
-    (*mat)->fromFile = NULL;
     (*mat)->fromFile = &ghost_sparsemat_from_bincrs;
     (*mat)->fromMM = &ghost_sparsemat_from_mm;
     (*mat)->fromCRS = &ghost_sparsemat_from_crs;
@@ -113,7 +112,10 @@ ghost_error ghost_sparsemat_create(ghost_sparsemat ** mat, ghost_context *contex
 #ifdef GHOST_SPARSEMAT_GLOBALSTATS
     GHOST_CALL_GOTO(ghost_malloc((void **)&((*mat)->nzDist),sizeof(ghost_gidx)*(2*context->gnrows-1)),err,ret);
 #endif
-    GHOST_CALL_GOTO(ghost_datatype_size(&(*mat)->elSize,(*mat)->traits.datatype),err,ret);
+
+    // Note: Datatpye check and elSize computation moved to creation
+    // functions ghost_sparsemat_from_* and SELL_fromRowFunc.
+    (*mat)->elSize = 0;
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&(*mat)->sell,sizeof(ghost_sell)),err,ret);
     DEBUG_LOG(1,"Setting functions for SELL matrix");
@@ -995,16 +997,23 @@ ghost_error ghost_sparsemat_from_bincrs(ghost_sparsemat *mat, char *path)
     ghost_error ret = GHOST_SUCCESS;
     ghost_sparsemat_rowfunc_bincrs_initargs args;
     ghost_gidx dim[2];
+    ghost_lidx bincrs_dt = 0; // or use args.dt directly...
     ghost_sparsemat_src_rowfunc src = GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER;
     
     src.func = &ghost_sparsemat_rowfunc_bincrs;
     args.filename = path;
-    args.dt = mat->traits.datatype;
-    if (src.func(GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_GETDIM,NULL,dim,&args,src.arg)) {
+    if (src.func(GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_GETDIM,&bincrs_dt,dim,&args,src.arg)) {
         ERROR_LOG("Error in matrix creation function");
         ret = GHOST_ERR_UNKNOWN;
         goto err;
     }
+    
+    // Apply file datatype only if still unspecified.
+    if(mat->traits.datatype == GHOST_DT_NONE) mat->traits.datatype = (ghost_datatype)bincrs_dt;
+    // Require valid datatype here.
+    GHOST_CALL_GOTO(ghost_datatype_size(&mat->elSize,mat->traits.datatype),err,ret);   
+    args.dt = mat->traits.datatype;
+
     if (src.func(GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_INIT,NULL,NULL,&args,src.arg)) {
         ERROR_LOG("Error in matrix creation function");
         ret = GHOST_ERR_UNKNOWN;
@@ -1036,6 +1045,7 @@ ghost_error ghost_sparsemat_from_mm(ghost_sparsemat *mat, char *path)
     ghost_error ret = GHOST_SUCCESS;
     ghost_sparsemat_rowfunc_mm_initargs args;
     ghost_gidx dim[2];
+    ghost_lidx bincrs_dt = 0;
     ghost_sparsemat_src_rowfunc src = GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER;
   
     int symmetric = 0;
@@ -1047,12 +1057,19 @@ ghost_error ghost_sparsemat_from_mm(ghost_sparsemat *mat, char *path)
         src.func = &ghost_sparsemat_rowfunc_mm;
     }
     args.filename = path;
-    args.dt = mat->traits.datatype;
-    if (src.func(GHOST_SPARSEMAT_ROWFUNC_MM_ROW_GETDIM,NULL,dim,&args,src.arg)) {
+    if (src.func(GHOST_SPARSEMAT_ROWFUNC_MM_ROW_GETDIM,&bincrs_dt,dim,&args,src.arg)) {
         ERROR_LOG("Error in matrix creation function");
         ret = GHOST_ERR_UNKNOWN;
         goto err;
     }
+    
+    // Construct final datatype.
+    if(mat->traits.datatype == GHOST_DT_NONE) mat->traits.datatype = GHOST_DT_DOUBLE;
+    if((mat->traits.datatype == GHOST_DT_DOUBLE) || (mat->traits.datatype == GHOST_DT_FLOAT))
+        mat->traits.datatype |= (ghost_datatype)bincrs_dt;
+    GHOST_CALL_GOTO(ghost_datatype_size(&mat->elSize,mat->traits.datatype),err,ret);   
+    args.dt = mat->traits.datatype;
+    
     if (src.func(GHOST_SPARSEMAT_ROWFUNC_MM_ROW_INIT,NULL,NULL,&args,src.arg)) {
         ERROR_LOG("Error in matrix creation function");
         ret = GHOST_ERR_UNKNOWN;
@@ -1089,8 +1106,11 @@ ghost_error ghost_sparsemat_from_crs(ghost_sparsemat *mat, ghost_gidx offs, ghos
     
     ghost_error ret = GHOST_SUCCESS;
     ghost_sparsemat_rowfunc_crs_arg args;
-    ghost_datatype_size(&args.dtsize,mat->traits.datatype);
-    args.dtsize = mat->traits.datatype;
+
+    // Require valid datatpye here.
+    GHOST_CALL_GOTO(ghost_datatype_size(&mat->elSize,mat->traits.datatype),err,ret);
+
+    args.dtsize = mat->elSize;
     args.col = col;
     args.val = val;
     args.rpt = rpt;
@@ -1140,6 +1160,8 @@ static ghost_error SELL_fromRowFunc(ghost_sparsemat *mat, ghost_sparsemat_src_ro
 
     ghost_lidx nChunks = mat->nrowsPadded/mat->traits.C;
    
+    // Require valid datatpye here.
+    GHOST_CALL_GOTO(ghost_datatype_size(&mat->elSize,mat->traits.datatype),err,ret);
 
     if (!SELL(mat)->chunkMin) GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->chunkMin, (nChunks)*sizeof(ghost_lidx)),err,ret);
     if (!SELL(mat)->chunkLen) GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->chunkLen, (nChunks)*sizeof(ghost_lidx)),err,ret);

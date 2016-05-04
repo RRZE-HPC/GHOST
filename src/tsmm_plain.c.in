@@ -88,6 +88,80 @@ ghost_error ghost_tsmm__a_plain_d_CFGK_CFGM_1_1_rm(ghost_densemat *x, ghost_dens
     return ret;
 }
 
+ghost_error ghost_tsmm__u_plain_d_CFGK_CFGM_1_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
+    ghost_error ret = GHOST_SUCCESS;
+
+    ghost_lidx k = w->traits.ncols;
+    ghost_lidx m = v->traits.ncols;
+    ghost_lidx n = v->traits.nrows;
+
+    INFO_LOG("In TSMM with two fixed block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
+
+    const double * const restrict vval = (const double *) v->val;
+    const double * const restrict wval = (const double *) w->val;
+    double * const restrict xval = (double *) x->val;
+
+    const ghost_lidx ldv = v->stride;
+    const ghost_lidx ldw = w->stride;
+    const ghost_lidx ldx = x->stride;
+
+    const double dalpha = *(double *)alpha;
+    const double dbeta = *(double *)beta;
+    ghost_lidx i,j,s;
+
+    double tmp;
+    
+    if (fabs(dalpha-1.) > DBL_MIN || fabs(dbeta) > DBL_MIN) { // general case: X = b*X + a*V*W
+#pragma omp parallel for private(j,s,tmp) schedule(runtime)
+        for (i=0; i<n; i++) {
+#if CFGK > 1
+#pragma simd
+#endif
+            for (s=0; s<CFGK; s++) {
+                tmp = dbeta*xval[i*ldx+s];
+#if CFGK > 1
+#pragma unroll_and_jam
+#else
+#if CFGM > 1
+#pragma simd
+#endif
+#endif
+                for (j=0; j<CFGM; j++) {
+                    tmp += dalpha*vval[i*ldv+j]*wval[s*ldw+j];
+                }
+                xval[i*ldx+s] = tmp;
+            }
+        }
+    } else { // common case: X = V*W
+#pragma omp parallel for private(j,s,tmp) schedule(runtime)
+        for (i=0; i<n; i++) {
+#if CFGK > 1
+#pragma simd
+#endif
+#pragma vector unaligned nontemporal
+            for (s=0; s<CFGK; s++) {
+                tmp = 0.;
+#if CFGK > 1
+#pragma unroll_and_jam
+#else
+#if CFGM > 1
+#pragma simd
+#endif
+#endif
+                for (j=0; j<CFGM; j++) {
+                    tmp += vval[i*ldv+j]*wval[s*ldw+j];
+                }
+                xval[i*ldx+s] = tmp;
+            }
+        }
+    }
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
+    return ret;
+}
+
 ghost_error ghost_tsmm__a_plain_d_CFGK_CFGM_OUTERUNROLL_1_cm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
@@ -116,7 +190,7 @@ ghost_error ghost_tsmm__a_plain_d_CFGK_CFGM_OUTERUNROLL_1_cm(ghost_densemat *x, 
     const double dbeta = *(double *)beta;
     ghost_lidx i,j,s,t;
     
-    double *wscale;
+    double *wscale = NULL;
     ghost_malloc_align((void **)&wscale,CFGM*CFGK*sizeof(double),64);
         
     for (s=0; s<CFGK; s++) {
@@ -192,6 +266,7 @@ ghost_error ghost_tsmm__a_plain_d_CFGK_CFGM_OUTERUNROLL_1_cm(ghost_densemat *x, 
                         }
                     }
 
+#pragma vector aligned
 #pragma vector nontemporal
 #pragma simd
                     for (t=0; t<OUTERUNROLL; t++) {
@@ -203,6 +278,7 @@ ghost_error ghost_tsmm__a_plain_d_CFGK_CFGM_OUTERUNROLL_1_cm(ghost_densemat *x, 
         }
     }
 
+    free(wscale);
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
     return ret;
@@ -250,39 +326,77 @@ ghost_error ghost_tsmm__u_plain_d_CFGK_CFGM_OUTERUNROLL_1_cm(ghost_densemat *x, 
     double *tmp;
     ghost_malloc_align((void **)&tmp,OUTERUNROLL*sizeof(double),64);
     
+    if (fabs(dbeta) > DBL_MIN) { 
 #pragma omp for private(j,s,t) schedule(runtime)
-    for (i=0; i<=n-OUTERUNROLL; i+=OUTERUNROLL) {
+        for (i=0; i<=n-OUTERUNROLL; i+=OUTERUNROLL) {
 
 #pragma unroll_and_jam(MIN(16,CFGK))
-        for (s=0; s<CFGK; s++) {
+            for (s=0; s<CFGK; s++) {
 
 #pragma vector unaligned
 #pragma simd
-            for (t=0; t<OUTERUNROLL; t++) {
-                tmp[t] = dbeta*xval[s*ldx+i+t];
-            }
+                for (t=0; t<OUTERUNROLL; t++) {
+                    tmp[t] = dbeta*xval[s*ldx+i+t];
+                }
 
 #pragma unroll_and_jam(MIN(16,CFGM))
-            for (j=0; j<CFGM; j++) {
+                for (j=0; j<CFGM; j++) {
+
+#pragma vector always
+#pragma ivdep
+#pragma vector unaligned
+#pragma simd
+                    for (t=0; t<OUTERUNROLL; t++) {
+                        tmp[t] += vval[j*ldv+i+t]*wscale[s*CFGM+j];
+                    }
+                }
 
 #pragma vector always
 #pragma ivdep
 #pragma vector unaligned
 #pragma simd
                 for (t=0; t<OUTERUNROLL; t++) {
-                    tmp[t] += vval[j*ldv+i+t]*wscale[s*CFGM+j];
+                    xval[s*ldx+i+t] = tmp[t];
                 }
             }
+        }
+    } else {
+#pragma omp for private(j,s,t) schedule(runtime)
+        for (i=0; i<=n-OUTERUNROLL; i+=OUTERUNROLL) {
+
+#pragma unroll_and_jam(MIN(16,CFGK))
+            for (s=0; s<CFGK; s++) {
+
+#pragma vector unaligned
+#pragma simd
+                for (t=0; t<OUTERUNROLL; t++) {
+                    tmp[t] = 0.;
+                }
+
+#pragma unroll_and_jam(MIN(16,CFGM))
+                for (j=0; j<CFGM; j++) {
 
 #pragma vector always
 #pragma ivdep
 #pragma vector unaligned
 #pragma simd
-            for (t=0; t<OUTERUNROLL; t++) {
-                xval[s*ldx+i+t] = tmp[t];
+                    for (t=0; t<OUTERUNROLL; t++) {
+                        tmp[t] += vval[j*ldv+i+t]*wscale[s*CFGM+j];
+                    }
+                }
+
+#pragma vector always
+#pragma ivdep
+#pragma vector unaligned
+#pragma vector nontemporal
+#pragma simd
+                for (t=0; t<OUTERUNROLL; t++) {
+                    xval[s*ldx+i+t] = tmp[t];
+                }
             }
         }
     }
+
     free(tmp);
     }
     free(wscale);
