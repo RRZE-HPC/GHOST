@@ -94,7 +94,7 @@ extern "C" ghost_error ghost_sparsemat_perm_color(ghost_sparsemat *mat, void *ma
         
     GHOST_CALL_GOTO(ghost_malloc((void **)&collocal,nnzlocal * sizeof(ghost_lidx)),err,ret);
 
-    for (i=0; i<mat->context->lnrows[me]; i++) {
+    for (i=0; i<mat->context->lnrows[me]; i++) {  
         rptlocal[i+1] = rptlocal[i];
         for (j=rpt[i]; j<rpt[i+1]; j++) {
 
@@ -115,7 +115,7 @@ extern "C" ghost_error ghost_sparsemat_perm_color(ghost_sparsemat *mat, void *ma
     adolc_data = new uint32_t[nnzlocal+mat->nrows];
 
     for (i=0;i<mat->nrows;i++)
-    {
+    {   
         adolc[i]=&(adolc_data[pos]);
         adolc_data[pos++]=rptlocal[i+1]-rptlocal[i];
         for (j=rptlocal[i];j<rptlocal[i+1];j++)
@@ -173,8 +173,10 @@ extern "C" ghost_error ghost_sparsemat_perm_color(ghost_sparsemat *mat, void *ma
     
     if (oldperm) {
         for (i=0;i<mat->nrows;i++) {
-            mat->context->perm_local->perm[i] = mat->context->perm_local->invPerm[curcol[(*colvec)[i]] + mat->color_ptr[(*colvec)[i]]];
-            curcol[(*colvec)[i]]++;
+             int idx =  mat->context->perm_local->invPerm[i];
+             mat->context->perm_local->perm[idx] = curcol[(*colvec)[i]] + mat->color_ptr[(*colvec)[i]];
+            //mat->context->perm_local->perm[i] = mat->context->perm_local->invPerm[curcol[(*colvec)[i]] + mat->color_ptr[(*colvec)[i]]];
+             curcol[(*colvec)[i]]++;
         }
     } else {
         for (i=0;i<mat->nrows;i++) {
