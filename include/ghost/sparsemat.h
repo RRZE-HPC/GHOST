@@ -353,7 +353,13 @@ typedef enum {
     /**
      * @brief Re-order the local part of the matrix using parallel RCM re-ordering.
      */
-    GHOST_SPARSEMAT_RCM = 4096
+    GHOST_SPARSEMAT_RCM = 4096,
+    /**
+    * @brief Re-order the local part of the matrix using a block coloring.
+    */
+    GHOST_SPARSEMAT_BLOCKCOLOR = 8192,
+
+
 } ghost_sparsemat_flags;
 
 
@@ -738,6 +744,9 @@ extern "C" {
      */
     ghost_error ghost_sparsemat_perm_color(ghost_sparsemat *mat, 
             void *matrixSource, ghost_sparsemat_src srcType);
+
+    ghost_error ghost_sparsemat_blockColor(ghost_sparsemat *mat, void *matrixSource, ghost_sparsemat_src srcType);
+ 
     ghost_error ghost_sparsemat_perm_zoltan(ghost_sparsemat *mat, void *matrixSource, ghost_sparsemat_src srcType);
     /**
      * @brief Sort the entries in a given row physically to have increasing 

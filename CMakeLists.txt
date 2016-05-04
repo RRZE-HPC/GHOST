@@ -111,6 +111,9 @@ set (SOURCES
     src/carp_rb.c
     src/sell_kacz_rb_versions.c 
     src/sparsemat_write.cpp
+    src/test_spmv.c
+    src/sparsemat_perm_blockColor.cpp 
+    src/hybrid_splitting.c
     )
 
 set (HEADERS
@@ -162,6 +165,8 @@ set (HEADERS
     include/ghost/sell_kacz_rb.h
     include/ghost/carp_rb.h
     include/ghost/sell_kacz_rb_versions.h 
+    include/ghost/test_spmv.h
+    include/ghost/hybrid_splitting.h
     )
 
 string(REPLACE "," ";" GHOST_GEN_SELL_C_LIST ${GHOST_GEN_SELL_C})

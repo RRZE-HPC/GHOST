@@ -82,6 +82,10 @@ typedef enum {
      */
     GHOST_ERR_COLPACK,
     /**
+     * @brief An error in Block coloring occured.
+     */
+    GHOST_ERR_BLOCKCOLOR,
+    /**
      * @brief ERROR if the matrix is not colored.
      */
     GHOST_ERR_NOT_COLORED,
