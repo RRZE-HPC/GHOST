@@ -183,8 +183,8 @@ static ghost_error ghost_rayleigh_ritz_tmpl (ghost_sparsemat * mat, void * void_
         ghost_mpi_datatype dt, dt_b;
         ghost_mpi_datatype_get(&dt,DT);
         ghost_mpi_datatype_get(&dt_b,(ghost_datatype)(GHOST_DT_REAL | (DT&(GHOST_DT_FLOAT|GHOST_DT_DOUBLE))));
-        MPI_Bcast( xval, ldx*n, dt  , 0, MPI_COMM_WORLD);
-        MPI_Bcast( eigs,     n, dt_b, 0, MPI_COMM_WORLD);
+        MPI_Bcast( xval, ldx*n, dt  , 0, v_res->context->mpicomm);
+        MPI_Bcast( eigs,     n, dt_b, 0, v_res->context->mpicomm);
 #endif
 
   if( !mat ){

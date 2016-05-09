@@ -175,8 +175,8 @@ static ghost_error ghost_svqb_tmpl (ghost_densemat * v_ot , ghost_densemat * v)
         ghost_mpi_datatype dt, dt_b;
         ghost_mpi_datatype_get(&dt,DT);
         ghost_mpi_datatype_get(&dt_b,(ghost_datatype)(GHOST_DT_REAL | (DT&(GHOST_DT_FLOAT|GHOST_DT_DOUBLE))));
-        MPI_Bcast( xval, ldx*n, dt  , 0, MPI_COMM_WORLD);
-        MPI_Bcast( eigs,     n, dt_b, 0, MPI_COMM_WORLD);
+        MPI_Bcast( xval, ldx*n, dt  , 0, v->context->mpicomm);
+        MPI_Bcast( eigs,     n, dt_b, 0, v->context->mpicomm);
 #endif
     
     
@@ -203,8 +203,8 @@ static ghost_error ghost_svqb_tmpl (ghost_densemat * v_ot , ghost_densemat * v)
     GHOST_CALL_GOTO(ghost_tsmm( v_ot, v, x, &one, &zero),err,ret);
 
 #ifdef GHOST_HAVE_MPI   
-    MPI_Bcast( &n_set_rand, 1, ghost_mpi_dt_lidx , 0, MPI_COMM_WORLD);
-    MPI_Bcast( set_rand,    n, ghost_mpi_dt_lidx , 0, MPI_COMM_WORLD);
+    MPI_Bcast( &n_set_rand, 1, ghost_mpi_dt_lidx , 0, v->context->mpicomm);
+    MPI_Bcast( set_rand,    n, ghost_mpi_dt_lidx , 0, v->context->mpicomm);
 #endif
    
    if( n_set_rand > 0 ){
@@ -298,8 +298,8 @@ static ghost_error ghost_svd_deflation_tmpl ( ghost_lidx *svd_offset, ghost_dens
         ghost_mpi_datatype dt, dt_b;
         ghost_mpi_datatype_get(&dt,DT);
         ghost_mpi_datatype_get(&dt_b,(ghost_datatype)(GHOST_DT_REAL | (DT&(GHOST_DT_FLOAT|GHOST_DT_DOUBLE))));
-        MPI_Bcast( xval, ldx*n, dt  , 0, MPI_COMM_WORLD);
-        MPI_Bcast( eigs,     n, dt_b, 0, MPI_COMM_WORLD);
+        MPI_Bcast( xval, ldx*n, dt  , 0, vec->context->mpicomm);
+        MPI_Bcast( eigs,     n, dt_b, 0, vec->context->mpicomm);
 #endif
     
     
@@ -319,7 +319,7 @@ static ghost_error ghost_svd_deflation_tmpl ( ghost_lidx *svd_offset, ghost_dens
     }
     
 #ifdef GHOST_HAVE_MPI 
-    MPI_Bcast( svd_offset, 1, ghost_mpi_dt_lidx , 0, MPI_COMM_WORLD);
+    MPI_Bcast( svd_offset, 1, ghost_mpi_dt_lidx , 0, vec->context->mpicomm);
 #endif
 
     x->upload(x);
