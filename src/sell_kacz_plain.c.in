@@ -16,7 +16,7 @@ ghost_error ghost_kacz__u_plain_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *x, ghos
         WARNING_LOG("Matrix has not been colored!");
     }
 
-    if (NVECS > 1) {
+    if (x->traits.ncols > 1) {
         ERROR_LOG("Multi-vec not implemented!");
         return GHOST_ERR_NOT_IMPLEMENTED;
     }

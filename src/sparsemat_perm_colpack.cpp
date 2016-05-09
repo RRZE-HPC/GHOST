@@ -8,6 +8,7 @@
 
 extern "C" ghost_error ghost_sparsemat_perm_color(ghost_sparsemat *mat, void *matrixSource, ghost_sparsemat_src srcType)
 {
+    UNUSED(srcType);
 #ifdef GHOST_HAVE_COLPACK
     INFO_LOG("Create permutation from coloring");
     ghost_error ret = GHOST_SUCCESS;
@@ -25,6 +26,10 @@ extern "C" ghost_error ghost_sparsemat_perm_color(ghost_sparsemat *mat, void *ma
     ghost_lidx *collocal = NULL;
     ghost_lidx nnz = 0, nnzlocal = 0;
     int64_t pos=0;
+    
+    ghost_sparsemat_src_rowfunc *src = (ghost_sparsemat_src_rowfunc *)matrixSource;
+    char * tmpval = NULL;
+    ghost_gidx * tmpcol = NULL;
 
     GHOST_CALL_GOTO(ghost_rank(&me,mat->context->mpicomm),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,(mat->context->lnrows[me]+1) * sizeof(ghost_gidx)),err,ret);
@@ -34,9 +39,6 @@ extern "C" ghost_error ghost_sparsemat_perm_color(ghost_sparsemat *mat, void *ma
     rpt[0] = 0;
     rptlocal[0] = 0;
     
-    ghost_sparsemat_src_rowfunc *src = (ghost_sparsemat_src_rowfunc *)matrixSource;
-    char * tmpval = NULL;
-    ghost_gidx * tmpcol = NULL;
 
     ghost_lidx rowlen;
 
