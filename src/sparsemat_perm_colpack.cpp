@@ -173,7 +173,9 @@ extern "C" ghost_error ghost_sparsemat_perm_color(ghost_sparsemat *mat, void *ma
     
     if (oldperm) {
         for (i=0;i<mat->nrows;i++) {
-            mat->context->perm_local->perm[i] = mat->context->perm_local->invPerm[curcol[(*colvec)[i]] + mat->color_ptr[(*colvec)[i]]];
+            int idx = mat->context->perm_local->invPerm[i];
+            mat->context->perm_local->perm[idx]  = curcol[(*colvec)[i]] + mat->color_ptr[(*colvec)[i]];
+            //mat->context->perm_local->perm[i] = mat->context->perm_local->invPerm[curcol[(*colvec)[i]] + mat->color_ptr[(*colvec)[i]]];
             curcol[(*colvec)[i]]++;
         }
     } else {

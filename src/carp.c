@@ -13,17 +13,21 @@ ghost_error ghost_carp(ghost_sparsemat *mat, ghost_densemat *x, ghost_densemat *
 
     ghost_densemat_halo_comm comm = GHOST_DENSEMAT_HALO_COMM_INITIALIZER;
     GHOST_CALL_RETURN(x->halocommInit(x,&comm));
-    GHOST_CALL_RETURN(x->halocommStart(x,&comm));
-    GHOST_CALL_RETURN(x->halocommFinalize(x,&comm));
-   
+  
     ghost_kacz_opts opts = GHOST_KACZ_OPTS_INITIALIZER;
     opts.omega = omega;
-    opts.direction = GHOST_KACZ_DIRECTION_FORWARD;
 
+    opts.direction = GHOST_KACZ_DIRECTION_FORWARD;
+    GHOST_CALL_RETURN(x->halocommStart(x,&comm));
+    GHOST_CALL_RETURN(x->halocommFinalize(x,&comm));
     GHOST_CALL_RETURN(ghost_kacz(x,mat,b,opts));
     GHOST_CALL_RETURN(x->averageHalo(x));
+ 
     opts.direction = GHOST_KACZ_DIRECTION_BACKWARD;
+    GHOST_CALL_RETURN(x->halocommStart(x,&comm));
+    GHOST_CALL_RETURN(x->halocommFinalize(x,&comm));
     GHOST_CALL_RETURN(ghost_kacz(x,mat,b,opts));
+    GHOST_CALL_RETURN(x->averageHalo(x));
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_SOLVER);
     return GHOST_SUCCESS;
