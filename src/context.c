@@ -37,6 +37,7 @@ ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, gho
     GHOST_CALL_GOTO(ghost_malloc((void **)context,sizeof(ghost_context)),err,ret);
     (*context)->flags = context_flags;
     (*context)->mpicomm = comm;
+    (*context)->mpicomm_parent = MPI_COMM_NULL;
     (*context)->perm_local = NULL;
     (*context)->perm_global = NULL;
     (*context)->wishes   = NULL;

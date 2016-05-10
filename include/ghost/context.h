@@ -114,6 +114,13 @@ struct ghost_context
      */
     ghost_mpi_comm mpicomm;
     /**
+     * @brief The context's parent MPI communicator.
+     *
+     * This is only used for two-level MPI parallelism and MPI_COMM_NULL otherwise.
+     *
+     */
+    ghost_mpi_comm mpicomm_parent;
+    /**
      * @brief The matrix' global permutation.
      */
     ghost_permutation *perm_global;
