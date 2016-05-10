@@ -63,8 +63,6 @@ set (SOURCES
     src/sparsemat.cpp
     src/sparsemat_perm_colpack.cpp
     src/sparsemat_perm_spmp.cpp
-    src/svqb.cpp
-    src/rayleigh_ritz.cpp
     src/timing.cpp
     src/tsmm.cpp
     src/tsmm_inplace.cpp
@@ -152,8 +150,6 @@ set (HEADERS
     include/ghost/tsmttsm.h
     include/ghost/types.h
     include/ghost/util.h
-    include/ghost/svqb.h
-    include/ghost/rayleigh_ritz.h
     )
 
 string(REPLACE "," ";" GHOST_GEN_SELL_C_LIST ${GHOST_GEN_SELL_C})
