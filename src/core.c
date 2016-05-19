@@ -689,9 +689,9 @@ ghost_error ghost_string(char **str)
 #endif
 #endif
 #ifdef GHOST_IDX64_GLOBAL
-    ghost_line_string(str,"Gobal index size","bits","64");
+    ghost_line_string(str,"Global index size","bits","64");
 #else
-    ghost_line_string(str,"Gobal index size","bits","32");
+    ghost_line_string(str,"Global index size","bits","32");
 #endif
 #ifdef GHOST_IDX64_LOCAL
     ghost_line_string(str,"Local index size","bits","64");
