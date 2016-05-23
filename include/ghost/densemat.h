@@ -275,8 +275,8 @@ struct ghost_densemat
     /**
      * @brief The leading dimensions of the densemat in memory.
      *
-     * Points to ncolspadded if the densemat has row-major storage and 
-     * nrowspadded if it has col-major storage.
+     * Equal to ncolspadded if the densemat has row-major storage and 
+     * nrowshalopadded if it has col-major storage.
      */
     ghost_lidx stride;
     /**
