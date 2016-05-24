@@ -32,6 +32,13 @@ typedef enum
     GHOST_PERMUTATION_PERM2ORIG
 }
 ghost_permutation_direction;
+
+typedef enum
+{
+    GHOST_PERMUTATION_SYMMETRIC,
+    GHOST_PERMUTATION_UNSYMMETRIC
+}
+ghost_permutation_method;
     
 typedef struct
 {
@@ -47,6 +54,28 @@ typedef struct
      * NULL if no permutation applied to the matrix.
      */
     ghost_gidx *invPerm;
+    /**
+     * @brief Gets an original index and returns the corresponding permuted position of columns.
+     *
+     * NULL if no permutation applied to the matrix, or if the perm=colPerm.
+     */
+    ghost_gidx *colPerm;
+    /**
+     * @brief Gets an index in the permuted system and returns the original index of columns.
+     *
+     * NULL if no permutation applied to the matrix, or if the invPerm=invColPerm.
+     */
+    ghost_gidx *colInvPerm;
+    /**
+    * @brief A flag to indicate whether symmetric or unsymmetric permutation is carried out
+    * 	     (internal) Its necessary for destruction of permutations, since we need to know whether 
+    * 	     both perm and colPerm point to same array. 
+    *
+    * GHOST_PERMUTATION_SYMMETRIC - if symmetric (both point to same array)
+    * GHOST_PERMUTATION_UNSYMMETRIC - if unsymmetric (points to different array) 
+    */
+    ghost_permutation_method method;   
+
 
     ghost_gidx *cu_perm;
 

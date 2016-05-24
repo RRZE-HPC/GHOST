@@ -102,6 +102,8 @@ ghost_error ghost_sparsemat_create(ghost_sparsemat ** mat, ghost_context *contex
     (*mat)->color_ptr = NULL;
     (*mat)->nzones = 0;
     (*mat)->zone_ptr = NULL;
+    (*mat)->kacz_setting.kacz_method = MC;//fallback
+    (*mat)->kacz_setting.active_threads = 0;
 
     if ((*mat)->traits.sortScope == GHOST_SPARSEMAT_SORT_GLOBAL) {
         (*mat)->traits.sortScope = (*mat)->context->gnrows;
@@ -236,7 +238,7 @@ ghost_error ghost_sparsemat_fromfunc_common(ghost_lidx *rl, ghost_lidx *rlp, gho
         if (mat->traits.flags & GHOST_SPARSEMAT_ZOLTAN) {
             ghost_sparsemat_perm_zoltan(mat,(void *)src,GHOST_SPARSEMAT_SRC_FUNC);
         } 
-        if (mat->traits.flags & GHOST_SPARSEMAT_RCM) {
+        if (mat->traits.flags & GHOST_SPARSEMAT_RCM) { 
             ghost_sparsemat_perm_spmp(mat,(void *)src,GHOST_SPARSEMAT_SRC_FUNC);
         } 
         if (mat->traits.flags & GHOST_SPARSEMAT_COLOR) {
@@ -247,6 +249,14 @@ ghost_error ghost_sparsemat_fromfunc_common(ghost_lidx *rl, ghost_lidx *rlp, gho
         }
         if (mat->traits.sortScope > 1) {
             ghost_sparsemat_perm_sort(mat,(void *)src,GHOST_SPARSEMAT_SRC_FUNC,mat->traits.sortScope);
+        }
+        if ( mat->context->perm_local && mat->context->perm_local->colPerm == NULL) {
+            mat->context->perm_local->colPerm = mat->context->perm_local->perm;
+            mat->context->perm_local->colInvPerm = mat->context->perm_local->invPerm;
+        }
+        if (mat->context->perm_global && mat->context->perm_global->colPerm == NULL) {
+            mat->context->perm_global->colPerm = mat->context->perm_global->perm;
+            mat->context->perm_global->colInvPerm = mat->context->perm_global->invPerm;
         }
         if (mat->traits.flags & GHOST_SPARSEMAT_NOT_SORT_COLS) {
             PERFWARNING_LOG("Unsorted columns inside a row may yield to bad performance! However, matrix construnction will be faster.");
@@ -477,11 +487,11 @@ ghost_error ghost_sparsemat_fromfunc_common(ghost_lidx *rl, ghost_lidx *rlp, gho
                             crscol = &((ghost_sparsemat_rowfunc_crs_arg *)src->arg)->col[crsrpt[actualrow]];
                             if (mat->traits.flags & GHOST_SPARSEMAT_PERMUTE) {
                                 // local permutation: distinction between global and local entries
-                                if ((crscol[colidx] >= mat->context->lfRow[me]) && (crscol[colidx] < (mat->context->lfRow[me]+mat->nrows))) { // local entry: copy with permutation
+                                if ((crscol[colidx] >= mat->context->lfRow[me]) && (crscol[colidx] < (mat->context->lfRow[me]+mat->ncols))) { // local entry: copy with permutation
                                     if (mat->traits.flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS) {
                                         (*col)[(*chunkptr)[chunk]+colidx*C+i] = crscol[colidx];
                                     } else {
-                                        (*col)[(*chunkptr)[chunk]+colidx*C+i] = mat->context->perm_local->perm[crscol[colidx]-mat->context->lfRow[me]]+mat->context->lfRow[me];
+                                        (*col)[(*chunkptr)[chunk]+colidx*C+i] = mat->context->perm_local->colPerm[crscol[colidx]-mat->context->lfRow[me]]+mat->context->lfRow[me];
                                     }
                                 } else { // remote entry: copy without permutation
                                     (*col)[(*chunkptr)[chunk]+colidx*C+i] = crscol[colidx];
@@ -533,12 +543,12 @@ ghost_error ghost_sparsemat_fromfunc_common(ghost_lidx *rl, ghost_lidx *rlp, gho
                                 // global permutation will be done after all rows are read
                                 (*col)[(*chunkptr)[chunk]+colidx*C+i] = tmpcol[i*src->maxrowlen+colidx];
                             } else { 
-                                // local permutation: distinction between global and local entries
-                                if ((tmpcol[i*src->maxrowlen+colidx] >= mat->context->lfRow[me]) && (tmpcol[i*src->maxrowlen+colidx] < (mat->context->lfRow[me]+mat->nrows))) { // local entry: copy with permutation
+                                // local permutation: distinction between global and local entries, if GHOST_SPARSEMAT_NO_DISTINCTION is not set 
+                                if (GHOST_SPARSEMAT_PERM_NO_DISTINCTION ||(tmpcol[i*src->maxrowlen+colidx] >= mat->context->lfRow[me]) && (tmpcol[i*src->maxrowlen+colidx] < (mat->context->lfRow[me]+mat->ncols))) { // local entry: copy with permutation
                                     if (mat->traits.flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS) {
                                         (*col)[(*chunkptr)[chunk]+colidx*C+i] = tmpcol[i*src->maxrowlen+colidx];
                                     } else {
-                                        (*col)[(*chunkptr)[chunk]+colidx*C+i] = mat->context->perm_local->perm[tmpcol[i*src->maxrowlen+colidx]-mat->context->lfRow[me]]+mat->context->lfRow[me];
+                                        (*col)[(*chunkptr)[chunk]+colidx*C+i] = mat->context->perm_local->colPerm[tmpcol[i*src->maxrowlen+colidx]-mat->context->lfRow[me]]+mat->context->lfRow[me];
                                     }
                                 } else { // remote entry: copy without permutation
                                     (*col)[(*chunkptr)[chunk]+colidx*C+i] = tmpcol[i*src->maxrowlen+colidx];

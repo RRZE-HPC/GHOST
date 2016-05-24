@@ -114,6 +114,29 @@ typedef struct {
 ghost_kacz_opts;
 
 /**
+ * @brief internal to differentiate between different KACZ sweep methods
+ * MC - Multicolored
+ * BMC_RB - Block Multicolored with RCM ( condition : nrows/(2*(total_bw+1)) > threads)
+ * BMC_one_trans_sweep - Block Multicolored with RCM ( condition : nrows/(total_bw+1) > threads, and transition does not overlap)
+ * BMC_two_trans_sweep - Block Multicolored with RCM ( condition : nrows/(total_bw+1) > threads, and transition can overlap)
+ */
+typedef enum{
+      MC,
+      BMC_RB,
+      BMC_one_sweep,
+      BMC_two_sweep
+}
+ghost_kacz_method;
+
+//TODO zone ptr can be moved here 
+typedef struct {
+      
+      ghost_kacz_method kacz_method;
+      ghost_lidx active_threads;
+}
+ghost_kacz_setting;
+    
+/**
  * @brief A CUDA SELL-C-sigma matrix.
  */
 typedef struct 
@@ -358,6 +381,11 @@ typedef enum {
     * @brief Re-order the local part of the matrix using a block coloring.
     */
     GHOST_SPARSEMAT_BLOCKCOLOR = 8192,
+    /**
+    * @brief No distinction between remote and local entries while permuting columns
+    *        This might lead to high communication time.
+    */
+    GHOST_SPARSEMAT_PERM_NO_DISTINCTION = 16384,
 
 
 } ghost_sparsemat_flags;
@@ -490,7 +518,10 @@ struct ghost_sparsemat
     * Ordering [even_begin_1 odd_begin_1 even_begin_2 odd_begin_2 ..... nrows]
     **/
     ghost_lidx *zone_ptr;
-
+    /**
+    * @brief details regarding kacz is stored here
+    */ 
+    ghost_kacz_setting kacz_setting;
     /**
      * @brief The number of rows.
      */
@@ -889,11 +920,14 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts);
+    ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts); 
+    ghost_error ghost_kacz_mc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts);
     ghost_error ghost_kacz_rb(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts);
+    ghost_error ghost_kacz_bmc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts);
     ghost_error ghost_kacz_rb_with_shift(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, double *shift_r,  ghost_kacz_opts opts);
     ghost_error ghost_carp_rb(ghost_sparsemat *mat, ghost_densemat *x, ghost_densemat *b, void *omega, int flag_rb);
-
+    ghost_error checker(ghost_sparsemat *mat);
+    ghost_error split_transition(ghost_sparsemat *mat);
     
     /**
     * @brief Writes a matrix to file 

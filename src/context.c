@@ -454,7 +454,15 @@ void ghost_context_destroy(ghost_context *context)
         {
           free(context->perm_local->perm); context->perm_local->perm = NULL;
           free(context->perm_local->invPerm); context->perm_local->invPerm = NULL;
-          free(context->perm_local); context->perm_local = NULL;
+
+          if(context->perm_local->method == GHOST_PERMUTATION_UNSYMMETRIC) {
+          	free(context->perm_local->colPerm);
+                context->perm_local->colPerm = NULL;
+		free(context->perm_local->colInvPerm);
+		context->perm_local->colInvPerm = NULL;
+	}
+        
+	  free(context->perm_local); context->perm_local = NULL;
         }
     }
 
