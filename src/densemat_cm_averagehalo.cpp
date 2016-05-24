@@ -65,7 +65,7 @@ static ghost_error ghost_densemat_cm_averagehalo_tmpl(ghost_densemat *vec)
     }
     
     for (i=0; i<vec->context->lnrows[rank]; i++) {
-        sum[i] = vec->context->entsInCol[i]*((T *)vec->val)[i];
+        sum[i] = (T)(vec->context->entsInCol[i]) * ((T *)vec->val)[i];
         nrankspresent[i] = vec->context->entsInCol[i];
     }
     
