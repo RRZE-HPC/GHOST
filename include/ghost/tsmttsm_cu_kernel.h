@@ -7,12 +7,13 @@
 #ifndef GHOST_TSMTTSM_CU_KERNEL_H
 #define GHOST_TSMTTSM_CU_KERNEL_H
 
-#include "ghost/config.h"
-#include "ghost/types.h"
-#include "ghost/cu_complex.h"
 #include <cublas_v2.h>
-#include <typeinfo>
 #include <iostream>
+#include <typeinfo>
+#include "ghost/config.h"
+#include "ghost/cu_complex.h"
+#include "ghost/cu_util.h"
+#include "ghost/types.h"
 
 namespace {
 

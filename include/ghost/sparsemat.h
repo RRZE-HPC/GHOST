@@ -937,6 +937,20 @@ extern "C" {
    */                
     ghost_error sparsemat_write(ghost_sparsemat *A, char *name);
 
+    /**
+     * @brief Assemble communication information in the given context.
+     * @param[inout] ctx The context.
+     * @param[in] col_orig The original column indices of the sparse matrix which is bound to the context.
+     * @param[out] col The compressed column indices of the sparse matrix which is bound to the context.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     * 
+     * The following fields of ghost_context are being filled in this function:
+     * wishes, wishlist, dues, duelist, hput_pos, wishpartners, nwishpartners, duepartners, nduepartners.
+     * Additionally, the columns in col_orig are being compressed and stored in col.
+     */
+    ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, ghost_sparsemat *mat, ghost_lidx *col);
+
     ghost_error ghost_sparsemat_from_bincrs(ghost_sparsemat *mat, char *path);
     ghost_error ghost_sparsemat_from_mm(ghost_sparsemat *mat, char *path);
     ghost_error ghost_sparsemat_from_crs(ghost_sparsemat *mat, ghost_gidx offs, ghost_lidx n, ghost_gidx *col, void *val, ghost_lidx *rpt);

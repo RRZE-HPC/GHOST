@@ -14,6 +14,7 @@ static int ghost_cmp_entsperrow(const void* a, const void* b, void *arg)
 
 ghost_error ghost_sparsemat_perm_sort(ghost_sparsemat *mat, void *matrixSource, ghost_sparsemat_src srcType, ghost_gidx scope)
 {
+    UNUSED(srcType);
     ghost_error ret = GHOST_SUCCESS;
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_SETUP);
     

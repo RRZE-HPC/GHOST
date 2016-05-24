@@ -31,7 +31,7 @@ namespace std
         typedef std::size_t result_type;
         result_type operator()(argument_type const& a) const
         {
-            return ghost_hash(a.dt,a.xcols,ghost_hash(a.vcols,a.impl,ghost_hash(a.xstor,a.alignment,ghost_hash(a.unroll,a.multipleof,1))));
+            return ghost_hash(a.dt,a.xcols,ghost_hash(a.vcols,a.impl,ghost_hash(a.xstor,a.alignment,ghost_hash(a.unroll,a.multipleof,999))));
         }
     };
 }
@@ -137,13 +137,13 @@ ghost_error ghost_tsmm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w_i
     }
 
 
+    std::vector<ghost_densemat_storage> try_xstor;
     
     // fix properties
     if (x->traits.ncols == 1 && x->stride == 1 && v->traits.ncols == 1 && v->stride == 1) {    
-        p.xstor = GHOST_DENSEMAT_COLMAJOR;
-    } else {
-        p.xstor = x->traits.storage;
+        try_xstor.push_back(GHOST_DENSEMAT_COLMAJOR);
     }
+    try_xstor.push_back(x->traits.storage);
 
     // possible implementations
     std::vector<ghost_implementation> try_impl;
@@ -178,7 +178,7 @@ ghost_error ghost_tsmm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w_i
     // alignment of large input data
     // the alignment of the result array does not matter because we can easily re-allocate it accordingly
     int al = ghost_machine_alignment();
-    if (IS_ALIGNED(x->val,al) && IS_ALIGNED(v->val,al) && ((p.xstor == GHOST_DENSEMAT_COLMAJOR) || (!((x->stride*x->elSize) % al) && !((v->stride*v->elSize) % al)))) {
+    if (IS_ALIGNED(x->val,al) && IS_ALIGNED(v->val,al) && ((x->traits.storage == GHOST_DENSEMAT_COLMAJOR || (x->traits.ncols == 1 && x->stride == 1)) || (!((x->stride*x->elSize) % al) && !((v->stride*v->elSize) % al)))) {
         opt_align = GHOST_ALIGNED;
     } else {
         opt_align = GHOST_UNALIGNED;
@@ -191,7 +191,7 @@ ghost_error ghost_tsmm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w_i
     if (w->traits.flags & GHOST_DENSEMAT_VIEW || v->traits.flags & GHOST_DENSEMAT_VIEW) {
         opt_unroll = 1;
     } else {
-        opt_unroll = GHOST_MAX_ROWS_UNROLL;
+        opt_unroll = 2;
     }
 
 #ifdef GHOST_HAVE_CUDA
@@ -221,22 +221,25 @@ ghost_error ghost_tsmm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w_i
 
     for (pos_xcols = 0; pos_xcols < n_xcols; pos_xcols++) {  
         for (pos_vcols = 0; pos_vcols < n_vcols; pos_vcols++) {  
-            for (std::vector<ghost_implementation>::iterator impl = try_impl.begin(); impl != try_impl.end(); impl++) {
-                for (p.alignment = opt_align; (int)p.alignment >= GHOST_UNALIGNED; p.alignment = (ghost_alignment)((int)p.alignment-1)) {
-                    for (std::vector<ghost_lidx>::iterator mult = try_multipleof.begin(); mult != try_multipleof.end(); mult++) {
-                        for (p.unroll = opt_unroll; p.unroll > 0; p.unroll /= 2) {
-                            for (pos_dt = 0; pos_dt < n_dt; pos_dt++) {
-                                p.xcols = try_xcols[pos_xcols];
-                                p.vcols = try_vcols[pos_vcols];
-                                p.dt = try_dt[pos_dt];
-                                p.impl = *impl;
-                                p.multipleof = *mult;
-                                INFO_LOG("Try xcols=%s, vcols=%s, impl=%s, %s, unroll=%d, dt=%s, multipleof=%d",
-                                        p.xcols==-1?"arbitrary":to_string((long long)p.xcols).c_str(),p.vcols==-1?"arbitrary":to_string((long long)p.vcols).c_str(),
-                                        ghost_implementation_string(p.impl),p.alignment==GHOST_UNALIGNED?"unaligned":"aligned",p.unroll,ghost_datatype_string(p.dt),p.multipleof);
-                                kernel = ghost_tsmm_kernels[p];
-                                if (kernel) {
-                                    goto end_of_loop;
+            for (std::vector<ghost_densemat_storage>::iterator xstor = try_xstor.begin(); xstor != try_xstor.end(); xstor++) {
+                for (std::vector<ghost_implementation>::iterator impl = try_impl.begin(); impl != try_impl.end(); impl++) {
+                    for (p.alignment = opt_align; (int)p.alignment >= GHOST_UNALIGNED; p.alignment = (ghost_alignment)((int)p.alignment-1)) {
+                        for (std::vector<ghost_lidx>::iterator mult = try_multipleof.begin(); mult != try_multipleof.end(); mult++) {
+                            for (p.unroll = opt_unroll; p.unroll > 0; p.unroll /= 2) {
+                                for (pos_dt = 0; pos_dt < n_dt; pos_dt++) {
+                                    p.xstor = *xstor;
+                                    p.xcols = try_xcols[pos_xcols];
+                                    p.vcols = try_vcols[pos_vcols];
+                                    p.dt = try_dt[pos_dt];
+                                    p.impl = *impl;
+                                    p.multipleof = *mult;
+                                    INFO_LOG("Try xcols=%s, vcols=%s, impl=%s, %s, unroll=%d, dt=%s, multipleof=%d, storage=%s",
+                                            p.xcols==-1?"arbitrary":to_string((long long)p.xcols).c_str(),p.vcols==-1?"arbitrary":to_string((long long)p.vcols).c_str(),
+                                            ghost_implementation_string(p.impl),p.alignment==GHOST_UNALIGNED?"unaligned":"aligned",p.unroll,ghost_datatype_string(p.dt),p.multipleof,ghost_densemat_storage_string(*xstor));
+                                    kernel = ghost_tsmm_kernels[p];
+                                    if (kernel) {
+                                        goto end_of_loop;
+                                    }
                                 }
                             }
                         }
@@ -251,9 +254,9 @@ end_of_loop:
 
     if (kernel) {
         if (optimal) {
-            INFO_LOG("Found kernel with highest specialization grade: dt=%d xcols=%d vcols=%d xstor=%d align=%d unroll=%d impl=%s multipleof=%d",p.dt,p.xcols,p.vcols,p.xstor,p.alignment,p.unroll,ghost_implementation_string(p.impl),p.multipleof);
+            INFO_LOG("Found kernel with highest specialization grade: dt=%d xcols=%d vcols=%d xstor=%s align=%d unroll=%d impl=%s multipleof=%d",p.dt,p.xcols,p.vcols,ghost_densemat_storage_string(p.xstor),p.alignment,p.unroll,ghost_implementation_string(p.impl),p.multipleof);
         } else {
-            PERFWARNING_LOG("Using potentially non-optimal kernel: dt=%d xcols=%d vcols=%d xstor=%d align=%d unroll=%d impl=%s multipleof=%d",p.dt,p.xcols,p.vcols,p.xstor,p.alignment,p.unroll,ghost_implementation_string(p.impl),p.multipleof);
+            PERFWARNING_LOG("Using potentially non-optimal kernel: dt=%d xcols=%d vcols=%d xstor=%s align=%d unroll=%d impl=%s multipleof=%d",p.dt,p.xcols,p.vcols,ghost_densemat_storage_string(p.xstor),p.alignment,p.unroll,ghost_implementation_string(p.impl),p.multipleof);
         }
 
         ret = kernel(x,v,w,alpha,beta);
