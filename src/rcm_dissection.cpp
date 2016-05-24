@@ -16,7 +16,7 @@
 // ghost_error adaptor_vec_ptr(int* ptr, std::vector<int> vec);
 ghost_error mat_bandwidth(ghost_sparsemat *mat, int *lower_bw, int *upper_bw);
 ghost_error find_transition_zone(ghost_sparsemat *mat, int n_threads);
-ghost_error checker(ghost_sparsemat *mat);
+ghost_error checker_rcm(ghost_sparsemat *mat);
 
 //this is currently used version and it relies on the maximum bandwidth of the matrix
 
@@ -157,7 +157,7 @@ else{
 }
 
 //checks whether the partitioning was correct, its just for debugging
-ghost_error checker(ghost_sparsemat *mat)
+ghost_error checker_rcm(ghost_sparsemat *mat)
 {
   int* row_ptr = mat->sell->chunkStart;
   int* col_ptr = mat->sell->col;
@@ -212,7 +212,7 @@ extern "C" ghost_error ghost_rcm_dissect(ghost_sparsemat *mat){
         	std::cout<<zone_ptr[i]<<"\n";
 	}*/
 //        std::cout<<"CHECKING whether splitting is corrext"<<std::endl;
-        checker(mat);
+        checker_rcm(mat);
  //       std::cout<<"CHECKING Finished"<<std::endl;      
         
  //       std::cout<<"No. of threads to be used = "<< n_zones/2<<std::endl;

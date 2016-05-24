@@ -31,6 +31,7 @@ option(GHOST_LOG_ONLYFIRST "Print all errors, warnings and info only once for ea
 option(GHOST_TRACK_DATATRANSFERS "Track MPI and CUDA data transfers" 0)
 option(GHOST_SPARSEMAT_GLOBALSTATS "Gather some global statistics on sparse matrices (should be disabled for large-scale runs)" 0)
 option(GHOST_SPARSEMAT_STATS "Gather statistics about sparse matrices (slows down matrix construction)" 0)
+option(GHOST_KACZ_ANALYZE "Gather data about load balancing for KACZ method (might slow down initial splitting)" 0)  
 set(GHOST_LOG_RANK "-1" CACHE STRING "The MPI rank for which the log messages will be printed. -1 for full verbosity.")
 set(GHOST_GEN_DENSEMAT_DIM "1,2,4,8" CACHE STRING "The block vector sizes for which generated kernels are being created (comma-separated list)")
 set(GHOST_GEN_SELL_C "1,32" CACHE STRING "The SELL chunk heights for which generated kernels are being created (comma-separated list)")
@@ -114,6 +115,8 @@ set (SOURCES
     src/test_spmv.c
     src/sparsemat_perm_blockColor.cpp 
     src/hybrid_splitting.c
+    src/sell_kacz_bmc.c 
+    src/sell_kacz_mc.c
     )
 
 set (HEADERS
@@ -167,6 +170,8 @@ set (HEADERS
     include/ghost/sell_kacz_rb_versions.h 
     include/ghost/test_spmv.h
     include/ghost/hybrid_splitting.h
+    include/ghost/sell_kacz_bmc.h 
+    include/ghost/sell_kacz_mc.h
     )
 
 string(REPLACE "," ";" GHOST_GEN_SELL_C_LIST ${GHOST_GEN_SELL_C})

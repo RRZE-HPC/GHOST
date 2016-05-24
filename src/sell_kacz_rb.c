@@ -21,11 +21,15 @@ ghost_error ghost_initialize_kacz(ghost_sparsemat *mat, ghost_densemat *b, ghost
            idx =  sellmat->chunkStart[row];
            for (int j=0; j<sellmat->rowLen[row]; ++j) {
              rownorm += mval[idx]*mval[idx];
+	     idx += 1;
            }
            
            bval[row] = (double)(bval[row])/rownorm;
+
+          idx =  sellmat->chunkStart[row];
           for (int j=0; j<sellmat->rowLen[row]; ++j) {
-             mval[idx] = (double)(mval[idx])/rownorm;
+             mval[idx] = (double)(mval[idx])/sqrt(rownorm);
+	     idx += 1;
            }
         }
     }      

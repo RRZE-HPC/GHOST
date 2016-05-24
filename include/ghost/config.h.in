@@ -58,6 +58,9 @@
 #cmakedefine GHOST_SPARSEMAT_STATS
 #cmakedefine GHOST_SPARSEMAT_GLOBALSTATS
 
+/*kacz analytics*/
+#cmakedefine GHOST_KACZ_ANALYZE
+
 #endif
 
 
