@@ -10,10 +10,9 @@ static ghost_error ghost_densemat_cm_averagehalo_tmpl(ghost_densemat *vec)
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
     ghost_error ret = GHOST_SUCCESS;
 
-    int rank, nrank, i, acc_dues = 0;
+    int rank, nrank, i, d, acc_dues = 0;
     T *work = NULL, *curwork = NULL;
     MPI_Request *req = NULL;
-    ghost_lidx *curdue = NULL;
     T *sum = NULL;
     int *nrankspresent = NULL;
     
@@ -56,13 +55,9 @@ static ghost_error ghost_densemat_cm_averagehalo_tmpl(ghost_densemat *vec)
 
     MPI_CALL_GOTO(MPI_Waitall(2*nrank,req,MPI_STATUSES_IGNORE),err,ret);
     
-    GHOST_CALL_GOTO(ghost_malloc((void **)&curdue, nrank*sizeof(ghost_lidx)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&sum, vec->context->lnrows[rank]*sizeof(T)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&nrankspresent, vec->context->lnrows[rank]*sizeof(int)),err,ret);
 
-    for (i=0; i<nrank; i++) {
-        curdue[i] = 0;
-    }
     
     for (i=0; i<vec->context->lnrows[rank]; i++) {
         sum[i] = ((T *)vec->val)[i];
@@ -72,12 +67,15 @@ static ghost_error ghost_densemat_cm_averagehalo_tmpl(ghost_densemat *vec)
     ghost_lidx currow;
     curwork = work;
     for (i=0; i<nrank; i++) {
-        for (;curdue[i] < vec->context->dues[i]; curdue[i]++) {
-            sum[vec->context->duelist[i][curdue[i]]] += curwork[curdue[i]];
-            nrankspresent[vec->context->duelist[i][curdue[i]]]++;
+        for (d=0 ;d < vec->context->dues[i]; d++) {
+            sum[vec->context->duelist[i][d]] += curwork[d];
+            nrankspresent[vec->context->duelist[i][d]]++;
         }
 
         curwork += vec->context->dues[i];
+    }
+    for (i=0; i<vec->context->lnrows[rank]; i++) {
+        printf("<%d> ranks of row[%d] = %d\n",rank,i,nrankspresent[i]);
     }
         
     for (currow=0; currow<vec->context->lnrows[rank]; currow++) {
@@ -88,7 +86,6 @@ static ghost_error ghost_densemat_cm_averagehalo_tmpl(ghost_densemat *vec)
 err:
 
 out:
-    free(curdue);
     free(sum);
     free(nrankspresent);
     free(work);
