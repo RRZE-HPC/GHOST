@@ -161,8 +161,6 @@ set (HEADERS
     include/ghost/tsmttsm.h
     include/ghost/types.h
     include/ghost/util.h
-    include/ghost/svqb.h
-    include/ghost/rayleigh_ritz.h
     include/ghost/rcm_dissection.h
     include/ghost/sell_kacz_rb.h
     include/ghost/carp_rb.h
