@@ -51,6 +51,7 @@ ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, gho
     (*context)->nduepartners = 0;
     (*context)->wishpartners = NULL;
     (*context)->nwishpartners = 0;
+    (*context)->entsInCol = NULL;
    
 
     GHOST_CALL_GOTO(ghost_nrank(&nranks, (*context)->mpicomm),err,ret);

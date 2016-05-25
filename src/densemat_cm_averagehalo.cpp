@@ -65,23 +65,18 @@ static ghost_error ghost_densemat_cm_averagehalo_tmpl(ghost_densemat *vec)
     }
     
     for (i=0; i<vec->context->lnrows[rank]; i++) {
-        sum[i] = (T)(vec->context->entsInCol[i]) * ((T *)vec->val)[i];
-        nrankspresent[i] = vec->context->entsInCol[i];
+        sum[i] = ((T *)vec->val)[i];
+        nrankspresent[i] = vec->context->entsInCol[i]?1:0;
     }
     
     ghost_lidx currow;
     curwork = work;
     for (i=0; i<nrank; i++) {
-        if (i == rank) {
-            continue;
+        for (;curdue[i] < vec->context->dues[i]; curdue[i]++) {
+            sum[vec->context->duelist[i][curdue[i]]] += curwork[curdue[i]];
+            nrankspresent[vec->context->duelist[i][curdue[i]]]++;
         }
-        for (currow=0; currow<vec->context->lnrows[rank] && curdue[i] < vec->context->dues[i]; currow++) {
-            if (vec->context->duelist[i][curdue[i]] == currow) {
-                sum[currow] += curwork[curdue[i]];
-                curdue[i]++;
-                nrankspresent[currow]++;
-            }
-        }
+
         curwork += vec->context->dues[i];
     }
         
