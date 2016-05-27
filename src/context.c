@@ -3,7 +3,6 @@
 #include "ghost/types.h"
 #include "ghost/util.h"
 #include "ghost/context.h"
-#include "ghost/sparsemat.h"
 #include "ghost/locality.h"
 #include "ghost/bincrs.h"
 #include "ghost/matrixmarket.h"
@@ -52,6 +51,7 @@ ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, gho
     (*context)->nduepartners = 0;
     (*context)->wishpartners = NULL;
     (*context)->nwishpartners = 0;
+    (*context)->entsInCol = NULL;
    
 
     GHOST_CALL_GOTO(ghost_nrank(&nranks, (*context)->mpicomm),err,ret);
@@ -451,6 +451,7 @@ void ghost_context_destroy(ghost_context *context)
         free(context->lfEnt); context->lfEnt = NULL;
         free(context->duepartners); context->duepartners = NULL;
         free(context->wishpartners); context->wishpartners = NULL;
+        free(context->entsInCol); context->entsInCol = NULL;
         if( context->perm_local )
         {
           free(context->perm_local->perm); context->perm_local->perm = NULL;
@@ -463,7 +464,7 @@ void ghost_context_destroy(ghost_context *context)
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TEARDOWN);
 }
 
-ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, ghost_lidx *col)
+ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, ghost_sparsemat *mat, ghost_lidx *col)
 {
     if (ctx->wishlist != NULL) {
         INFO_LOG("The context already has communication information. This will not be done again! Destroy the context in case the matrix has changed!");
@@ -514,10 +515,29 @@ ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, gh
     MPI_Status stat[2*nprocs];
 #endif
 
+    GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->entsInCol,ctx->lnrows[me]*sizeof(ghost_lidx)),err,ret); 
     GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->wishlist,nprocs*sizeof(ghost_lidx *)),err,ret); 
     GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->duelist,nprocs*sizeof(ghost_lidx *)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->wishes,nprocs*sizeof(ghost_lidx)),err,ret); 
-    GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->dues,nprocs*sizeof(ghost_lidx)),err,ret); 
+    GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->dues,nprocs*sizeof(ghost_lidx)),err,ret);
+
+    memset(ctx->entsInCol,0,ctx->lnrows[me]*sizeof(ghost_lidx));
+       
+    ghost_lidx chunk,rowinchunk,entinrow,globalent,globalrow;
+    for(chunk = 0; chunk < mat->nrowsPadded/mat->traits.C; chunk++) {
+        for (rowinchunk=0; rowinchunk<mat->traits.C; rowinchunk++) {
+            globalrow = chunk*mat->traits.C+rowinchunk;
+            if (globalrow < ctx->lnrows[me]) {
+                for (entinrow=0; entinrow<SELL(mat)->rowLen[globalrow]; entinrow++) {
+                    globalent = SELL(mat)->chunkStart[chunk] + entinrow*mat->traits.C + rowinchunk;
+                    if (col_orig[globalent] >= ctx->lfRow[me] && col_orig[globalent]<(ctx->lfRow[me]+ctx->lnrows[me])) {
+                        ctx->entsInCol[col_orig[globalent]-ctx->lfRow[me]]++;
+                    }
+                }
+            }
+        }
+    }
+
     ghost_type type;
     ghost_type_get(&type);
 #ifdef GHOST_HAVE_CUDA
@@ -907,6 +927,7 @@ err:
     free(ctx->dues); ctx->dues = NULL;
     free(ctx->duepartners); ctx->duepartners = NULL;
     free(ctx->wishpartners); ctx->wishpartners = NULL;
+    free(ctx->entsInCol); ctx->entsInCol = NULL;
 
 out:
     for (i=0; i<nprocs; i++) {

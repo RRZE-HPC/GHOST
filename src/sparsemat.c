@@ -1233,7 +1233,7 @@ static ghost_error SELL_split(ghost_sparsemat *mat)
     }
     GHOST_INSTR_STOP("init_compressed_cols");
    
-    GHOST_CALL_GOTO(ghost_context_comm_init(mat->context,mat->col_orig,fullSELL->col),err,ret);
+    GHOST_CALL_GOTO(ghost_context_comm_init(mat->context,mat->col_orig,mat,fullSELL->col),err,ret);
 
 #ifndef GHOST_IDX_UNIFORM
     if (!(mat->traits.flags & GHOST_SPARSEMAT_SAVE_ORIG_COLS)) {
