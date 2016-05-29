@@ -126,6 +126,17 @@ int main(int argc, char **argv) {
             ghost_datatype_size(&vecdtsize,vtraits_it->datatype);
             char yent[16], yent_ref[16], xent[16];
 
+#ifdef GHOST_HAVE_CUDA
+            ghost_type ghost_type;
+            GHOST_TEST_CALL(ghost_type_get(&ghost_type));
+            if (ghost_type == GHOST_TYPE_CUDA)
+            {
+               GHOST_TEST_CALL(x->download(x));
+               GHOST_TEST_CALL(y->download(y));
+            }
+#endif
+
+
             ghost_lidx i;
 
             for (i=0; i<y->traits.nrows; i++) {
