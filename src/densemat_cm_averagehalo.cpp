@@ -10,10 +10,9 @@ static ghost_error ghost_densemat_cm_averagehalo_tmpl(ghost_densemat *vec)
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
     ghost_error ret = GHOST_SUCCESS;
 
-    int rank, nrank, i, acc_dues = 0;
+    int rank, nrank, i, d, acc_dues = 0;
     T *work = NULL, *curwork = NULL;
     MPI_Request *req = NULL;
-    ghost_lidx *curdue = NULL;
     T *sum = NULL;
     int *nrankspresent = NULL;
     
@@ -52,36 +51,31 @@ static ghost_error ghost_densemat_cm_averagehalo_tmpl(ghost_densemat *vec)
         MPI_CALL_GOTO(MPI_Irecv(curwork,vec->context->dues[i]*vec->traits.ncols,vec->mpidt,i,i,vec->context->mpicomm,&req[nrank+i]),err,ret);
         curwork += vec->context->dues[i];
     }
+    
 
     MPI_CALL_GOTO(MPI_Waitall(2*nrank,req,MPI_STATUSES_IGNORE),err,ret);
     
-    GHOST_CALL_GOTO(ghost_malloc((void **)&curdue, nrank*sizeof(ghost_lidx)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&sum, vec->context->lnrows[rank]*sizeof(T)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&nrankspresent, vec->context->lnrows[rank]*sizeof(int)),err,ret);
 
-    for (i=0; i<nrank; i++) {
-        curdue[i] = 0;
-    }
     
     for (i=0; i<vec->context->lnrows[rank]; i++) {
         sum[i] = ((T *)vec->val)[i];
-        nrankspresent[i] = 1;
+        nrankspresent[i] = vec->context->entsInCol[i]?1:0;
     }
     
     ghost_lidx currow;
     curwork = work;
     for (i=0; i<nrank; i++) {
-        if (i == rank) {
-            continue;
+        for (d=0 ;d < vec->context->dues[i]; d++) {
+            sum[vec->context->duelist[i][d]] += curwork[d];
+            nrankspresent[vec->context->duelist[i][d]]++;
         }
-        for (currow=0; currow<vec->context->lnrows[rank] && curdue[i] < vec->context->dues[i]; currow++) {
-            if (vec->context->duelist[i][curdue[i]] == currow) {
-                sum[currow] += curwork[curdue[i]];
-                curdue[i]++;
-                nrankspresent[currow]++;
-            }
-        }
+
         curwork += vec->context->dues[i];
+    }
+    for (i=0; i<vec->context->lnrows[rank]; i++) {
+        printf("<%d> ranks of row[%d] = %d\n",rank,i,nrankspresent[i]);
     }
         
     for (currow=0; currow<vec->context->lnrows[rank]; currow++) {
@@ -92,7 +86,6 @@ static ghost_error ghost_densemat_cm_averagehalo_tmpl(ghost_densemat *vec)
 err:
 
 out:
-    free(curdue);
     free(sum);
     free(nrankspresent);
     free(work);
@@ -106,7 +99,7 @@ out:
 #endif
 }
 
-ghost_error ghost_densemat_cm_averagehalo(ghost_densemat *vec)
+ghost_error ghost_densemat_cm_averagehalo_selector(ghost_densemat *vec)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
     ghost_error ret = GHOST_SUCCESS;

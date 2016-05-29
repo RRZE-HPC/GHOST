@@ -218,16 +218,9 @@ typedef struct
      */
     ghost_datatype datatype;
     /**
-     * @brief Storage location of the densemat.
+     * @brief Location of the densemat.
      */
     ghost_location location;
-    /**
-     * @brief Compute location of the densemat.
-     *
-     * In some cases, it may be desired to do a small dense matrix computation (for non-context densemats) on both host and device instead of down-/uploading the result.
-     * This is only possible for operations which involve _only_ dense matrices, as sparse matrices are always distributed inside a context.
-     */
-    ghost_location compute;
 }
 ghost_densemat_traits;
 
@@ -282,8 +275,8 @@ struct ghost_densemat
     /**
      * @brief The leading dimensions of the densemat in memory.
      *
-     * Points to ncolspadded if the densemat has row-major storage and 
-     * nrowspadded if it has col-major storage.
+     * Equal to ncolspadded if the densemat has row-major storage and 
+     * nrowshalopadded if it has col-major storage.
      */
     ghost_lidx stride;
     /**
@@ -651,7 +644,7 @@ extern "C" {
      *
      * @brief Get a string about the storage order.
      */
-    char * ghost_densemat_storage_string(ghost_densemat *densemat);
+    char * ghost_densemat_storage_string(ghost_densemat_storage storage);
     
     /**
      * @ingroup stringification

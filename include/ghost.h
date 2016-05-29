@@ -22,8 +22,6 @@
 #include "ghost/machine.h"
 #include "ghost/pumap.h"
 #include "ghost/datatransfers.h"
-#include "ghost/svqb.h"
-#include "ghost/rayleigh_ritz.h"
 #include "ghost/tsmttsm.h"
 #include "ghost/tsmm.h"
 

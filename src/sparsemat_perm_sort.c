@@ -14,6 +14,7 @@ static int ghost_cmp_entsperrow(const void* a, const void* b, void *arg)
 
 ghost_error ghost_sparsemat_perm_sort(ghost_sparsemat *mat, void *matrixSource, ghost_sparsemat_src srcType, ghost_gidx scope)
 {
+    UNUSED(srcType);
     ghost_error ret = GHOST_SUCCESS;
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_SETUP);
     
@@ -34,52 +35,50 @@ ghost_error ghost_sparsemat_perm_sort(ghost_sparsemat *mat, void *matrixSource, 
     GHOST_CALL_GOTO(ghost_malloc((void **)&rowSort,nrows * sizeof(ghost_sorting_helper)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,(nrows+1) * sizeof(ghost_gidx)),err,ret);
 
-    if (srcType == GHOST_SPARSEMAT_SRC_FUNC || srcType == GHOST_SPARSEMAT_SRC_FILE) {
-        ghost_sparsemat_src_rowfunc *src = (ghost_sparsemat_src_rowfunc *)matrixSource;
-        char *tmpval = NULL;
-        ghost_gidx *tmpcol = NULL;
-        rpt[0] = 0;
-        int funcerrs = 0;
+    ghost_sparsemat_src_rowfunc *src = (ghost_sparsemat_src_rowfunc *)matrixSource;
+    char *tmpval = NULL;
+    ghost_gidx *tmpcol = NULL;
+    rpt[0] = 0;
+    int funcerrs = 0;
 
 #pragma omp parallel private(i,tmpval,tmpcol)
-        { 
-            GHOST_CALL(ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize),ret);
-            GHOST_CALL(ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx)),ret);
-            if (mat->context->perm_global && mat->context->perm_local) {
+    { 
+        GHOST_CALL(ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize),ret);
+        GHOST_CALL(ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx)),ret);
+        if (mat->context->perm_global && mat->context->perm_local) {
 #pragma omp for schedule(runtime) reduction (+:funcerrs)
-                for (i=0; i<nrows; i++) {
-                    funcerrs += src->func(mat->context->perm_global->invPerm[mat->context->perm_local->invPerm[i]],&rowSort[i].nEntsInRow,tmpcol,tmpval,src->arg);
-                    rowSort[i].row = mat->context->perm_local->invPerm[i];
-                }
-            } else if (mat->context->perm_global) {
-#pragma omp for schedule(runtime) reduction (+:funcerrs)
-                for (i=0; i<nrows; i++) {
-                    funcerrs += src->func(mat->context->perm_global->invPerm[i],&rowSort[i].nEntsInRow,tmpcol,tmpval,src->arg);
-                    rowSort[i].row = i;
-                }
-            } else if (mat->context->perm_local) {
-#pragma omp for schedule(runtime) reduction (+:funcerrs)
-                for (i=0; i<nrows; i++) {
-                    funcerrs += src->func(rowOffset+mat->context->perm_local->invPerm[i],&rowSort[i].nEntsInRow,tmpcol,tmpval,src->arg);
-                    rowSort[i].row = mat->context->perm_local->invPerm[i];
-                }
-            } else {
-#pragma omp for schedule(runtime) reduction (+:funcerrs)
-                for (i=0; i<nrows; i++) {
-                    funcerrs += src->func(rowOffset+i,&rowSort[i].nEntsInRow,tmpcol,tmpval,src->arg);
-                    rowSort[i].row = i;
-                }
+            for (i=0; i<nrows; i++) {
+                funcerrs += src->func(mat->context->perm_global->invPerm[mat->context->perm_local->invPerm[i]],&rowSort[i].nEntsInRow,tmpcol,tmpval,src->arg);
+                rowSort[i].row = mat->context->perm_local->invPerm[i];
             }
-            free(tmpval);
-            free(tmpcol);
+        } else if (mat->context->perm_global) {
+#pragma omp for schedule(runtime) reduction (+:funcerrs)
+            for (i=0; i<nrows; i++) {
+                funcerrs += src->func(mat->context->perm_global->invPerm[i],&rowSort[i].nEntsInRow,tmpcol,tmpval,src->arg);
+                rowSort[i].row = i;
+            }
+        } else if (mat->context->perm_local) {
+#pragma omp for schedule(runtime) reduction (+:funcerrs)
+            for (i=0; i<nrows; i++) {
+                funcerrs += src->func(rowOffset+mat->context->perm_local->invPerm[i],&rowSort[i].nEntsInRow,tmpcol,tmpval,src->arg);
+                rowSort[i].row = mat->context->perm_local->invPerm[i];
+            }
+        } else {
+#pragma omp for schedule(runtime) reduction (+:funcerrs)
+            for (i=0; i<nrows; i++) {
+                funcerrs += src->func(rowOffset+i,&rowSort[i].nEntsInRow,tmpcol,tmpval,src->arg);
+                rowSort[i].row = i;
+            }
         }
-        if (funcerrs) {
-            ERROR_LOG("Matrix construction function returned error");
-            ret = GHOST_ERR_UNKNOWN;
-            goto err;
-        }
+        free(tmpval);
+        free(tmpcol);
+    }
+    if (funcerrs) {
+        ERROR_LOG("Matrix construction function returned error");
+        ret = GHOST_ERR_UNKNOWN;
+        goto err;
+    }
 
-    } 
     
     if (!mat->context->perm_local) {
         GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local,sizeof(ghost_permutation)),err,ret);

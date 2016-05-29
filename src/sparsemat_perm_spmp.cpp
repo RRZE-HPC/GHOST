@@ -194,13 +194,14 @@ ghost_error ghost_sparsemat_perm_spmp(ghost_sparsemat *mat, void *matrixSource, 
         useinvperm = intinvperm;
 
 #else
+        INFO_LOG("Doing BFS Bipartite instead of RCM as the matrix is not symmetric.");
         csrT = csr->transpose();
         
         GHOST_CALL_GOTO(ghost_malloc((void **)&intcolperm,sizeof(int)*mat->nrows),err,ret);
         GHOST_CALL_GOTO(ghost_malloc((void **)&intcolinvperm,sizeof(int)*mat->nrows),err,ret);
         
         bfsBipartite(*csr, *csrT, intperm, intinvperm, intcolperm, intcolinvperm);
-        useperm = intcolperm;
+        useperm = intperm;
         useinvperm = intinvperm;
 #endif
 

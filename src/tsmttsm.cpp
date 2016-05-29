@@ -252,7 +252,7 @@ ghost_error ghost_tsmttsm(ghost_densemat *x_in, ghost_densemat *v, ghost_densema
                             p.dt = try_dt[pos_dt];
                             p.impl = *impl;
                             INFO_LOG("Try wstor=%s, wcols=%s, vcols=%s, impl=%s, %s, unroll=%d, dt=%s",
-                                    ghost_densemat_storage_string(w), p.wcols==-1?"arbitrary":to_string((long long)p.wcols).c_str(),p.vcols==-1?"arbitrary":to_string((long long)p.vcols).c_str(),
+                                    ghost_densemat_storage_string(w->traits.storage), p.wcols==-1?"arbitrary":to_string((long long)p.wcols).c_str(),p.vcols==-1?"arbitrary":to_string((long long)p.vcols).c_str(),
                                     ghost_implementation_string(p.impl),p.alignment==GHOST_UNALIGNED?"unaligned":"aligned",p.unroll,ghost_datatype_string(p.dt));
                             kernel = kernels[p];
                             if (kernel) {

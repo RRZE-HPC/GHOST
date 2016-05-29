@@ -37,7 +37,6 @@ const ghost_densemat_traits GHOST_DENSEMAT_TRAITS_INITIALIZER = {
     .flags = GHOST_DENSEMAT_DEFAULT,
     .storage = GHOST_DENSEMAT_STORAGE_DEFAULT,
     .location = GHOST_LOCATION_DEFAULT,
-    .compute = GHOST_LOCATION_DEFAULT,
     .datatype = (ghost_datatype)(GHOST_DT_DOUBLE|GHOST_DT_REAL)
 };
 
@@ -103,11 +102,6 @@ ghost_error ghost_densemat_create(ghost_densemat **vec, ghost_context *ctx, ghos
     } else {
         DEBUG_LOG(1,"Placement given: %s",ghost_location_string((*vec)->traits.location));
     }
-    if ((*vec)->traits.compute == GHOST_LOCATION_DEFAULT) { // no compute location specified
-        DEBUG_LOG(1,"Automatically setting the compute location equal to the storage location");
-        (*vec)->traits.compute = (*vec)->traits.location;
-    }
-
 
     if ((*vec)->traits.storage == GHOST_DENSEMAT_STORAGE_DEFAULT) {
         if ((*vec)->traits.ncols > 1) {
@@ -280,11 +274,11 @@ ghost_error ghost_densemat_uniformstorage(bool *uniform, ghost_densemat *vec)
     return GHOST_SUCCESS;;
 }
 
-char * ghost_densemat_storage_string(ghost_densemat *densemat)
+char * ghost_densemat_storage_string(ghost_densemat_storage storage)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     char *ret;
-    switch(densemat->traits.storage) {
+    switch(storage) {
         case GHOST_DENSEMAT_ROWMAJOR:
             ret = "Row-major";
             break;
@@ -317,10 +311,10 @@ ghost_error ghost_densemat_info_string(char **str, ghost_densemat *densemat)
     int myrank;
     int mynoderank;
     ghost_mpi_comm nodecomm;
-    
     GHOST_CALL_RETURN(ghost_nodecomm_get(&nodecomm));
-    GHOST_CALL_RETURN(ghost_rank(&myrank, MPI_COMM_WORLD));
     GHOST_CALL_RETURN(ghost_rank(&mynoderank, nodecomm));
+    GHOST_CALL_RETURN(ghost_rank(&myrank, MPI_COMM_WORLD));
+
     GHOST_CALL_RETURN(ghost_malloc((void **)str,1));
     memset(*str,'\0',1);
     
@@ -328,6 +322,7 @@ ghost_error ghost_densemat_info_string(char **str, ghost_densemat *densemat)
     ghost_line_string(str,"Dimension",NULL,"%"PRLIDX"x%"PRLIDX,densemat->traits.nrows,densemat->traits.ncols);
     ghost_line_string(str,"Dimension w/ halo",NULL,"%"PRLIDX"x%"PRLIDX,densemat->traits.nrowshalo,densemat->traits.ncols);
     ghost_line_string(str,"Padded dimension",NULL,"%"PRLIDX"x%"PRLIDX,densemat->traits.nrowspadded,densemat->traits.ncolspadded);
+    ghost_line_string(str,"Distribution",NULL,"%s",densemat->context?"Distributed":"Redundant");
     ghost_line_string(str,"Number of blocks",NULL,"%"PRLIDX,densemat->nblock);
     ghost_line_string(str,"Stride between blocks",NULL,"%"PRLIDX,densemat->stride);
     ghost_line_string(str,"View",NULL,"%s",densemat->traits.flags&GHOST_DENSEMAT_VIEW?"Yes":"No");
@@ -350,7 +345,7 @@ ghost_error ghost_densemat_info_string(char **str, ghost_densemat *densemat)
     }
    
     ghost_line_string(str,"Location",NULL,"%s",ghost_location_string(densemat->traits.location));
-    ghost_line_string(str,"Storage order",NULL,"%s",ghost_densemat_storage_string(densemat));
+    ghost_line_string(str,"Storage order",NULL,"%s",ghost_densemat_storage_string(densemat->traits.storage));
     ghost_footer_string(str);
     
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);

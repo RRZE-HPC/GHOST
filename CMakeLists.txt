@@ -34,6 +34,7 @@ option(GHOST_SPARSEMAT_STATS "Gather statistics about sparse matrices (slows dow
 set(GHOST_LOG_RANK "-1" CACHE STRING "The MPI rank for which the log messages will be printed. -1 for full verbosity.")
 set(GHOST_GEN_DENSEMAT_DIM "1,2,4,8" CACHE STRING "The block vector sizes for which generated kernels are being created (comma-separated list)")
 set(GHOST_GEN_SELL_C "1,32" CACHE STRING "The SELL chunk heights for which generated kernels are being created (comma-separated list)")
+set(GHOST_GEN_TSM_UNROLL "2" CACHE STRING "Outer loop unrolling dimensions to be generated for tall&skinny GEMM kernels")
 set(GHOST_GEN_CUSELLSPMV "true,true,true,true,true,true,true;true,false,false,false,false,false,false;false,false,false,false,false,false,false" CACHE STRING "The permutations of SELL SpMV CUDA kernels to instantiate (semicolon-separated list of comma-separated lists). AXP(B)Y,SCALE,(V)SHIFT,DOT_YY,DOT_XY,DOT_XX,CHAIN_AXPBY")
 set(GHOST_VERBOSITY 1 CACHE STRING "Level of verbosity information. Valid values: 0 (be totally silent), 1 (print warnings, errors and further important information), 2, 3, 4 (increasing level of verbosity)")
 set(GHOST_INSTRUMENT "" CACHE STRING "Type of instrumentation (semicolon separated list). Valid values: TIMING, LIKWID, IACA")
@@ -62,8 +63,6 @@ set (SOURCES
     src/sparsemat.cpp
     src/sparsemat_perm_colpack.cpp
     src/sparsemat_perm_spmp.cpp
-    src/svqb.cpp
-    src/rayleigh_ritz.cpp
     src/timing.cpp
     src/tsmm.cpp
     src/tsmm_inplace.cpp
@@ -151,12 +150,11 @@ set (HEADERS
     include/ghost/tsmttsm.h
     include/ghost/types.h
     include/ghost/util.h
-    include/ghost/svqb.h
-    include/ghost/rayleigh_ritz.h
     )
 
 string(REPLACE "," ";" GHOST_GEN_SELL_C_LIST ${GHOST_GEN_SELL_C})
 string(REPLACE "," ";" GHOST_GEN_DENSEMAT_DIM_LIST ${GHOST_GEN_DENSEMAT_DIM})
+string(REPLACE "," ";" GHOST_GEN_UNROLL_LIST ${GHOST_GEN_TSM_UNROLL})
 
 set(SELL_CU_SPMV_SWITCHCASCADE "bool do_fallback = false;\\\nswitch \(mat->traits.C) {\\\n")
 foreach (SELL_CHUNKHEIGHT ${GHOST_GEN_SELL_C_LIST})
@@ -237,6 +235,18 @@ configure_file (
                     ${PROJECT_BINARY_DIR}/src_generated/${AUTOGEN_FUNCTION}__${BLOCKDIM1}_${BLOCKDIM2}${TEMPLATE_SRCFILE_EXT}
                     )
                 list(APPEND GENERATED_FILES ${PROJECT_BINARY_DIR}/src_generated/${AUTOGEN_FUNCTION}__${BLOCKDIM1}_${BLOCKDIM2}${TEMPLATE_SRCFILE_EXT})
+            endforeach()
+        endforeach()
+    elseif(TEMPLATE_DEPS_LIST MATCHES "^BLOCKDIM1;BLOCKDIM2;UNROLL$")
+        foreach(BLOCKDIM1 ${GHOST_GEN_DENSEMAT_DIM_LIST})
+            foreach(BLOCKDIM2 ${GHOST_GEN_DENSEMAT_DIM_LIST})
+                foreach(UNROLL ${GHOST_GEN_UNROLL_LIST})
+                    configure_file (
+                        ${TEMPLATE_SRCFILE}
+                        ${PROJECT_BINARY_DIR}/src_generated/${AUTOGEN_FUNCTION}__${BLOCKDIM1}_${BLOCKDIM2}_${UNROLL}${TEMPLATE_SRCFILE_EXT}
+                        )
+                    list(APPEND GENERATED_FILES ${PROJECT_BINARY_DIR}/src_generated/${AUTOGEN_FUNCTION}__${BLOCKDIM1}_${BLOCKDIM2}_${UNROLL}${TEMPLATE_SRCFILE_EXT})
+                endforeach()
             endforeach()
         endforeach()
     elseif(TEMPLATE_DEPS_LIST MATCHES "")
@@ -538,7 +548,6 @@ get_filename_component(CBLAS_H ${CBLAS_H_FULL} NAME)
 if (${CBLAS_H} STREQUAL "mkl_cblas.h")
     message(STATUS "MKL BLAS found")
     set(GHOST_HAVE_MKL 1)
-    set(GHOST_HAVE_LAPACK 1)
     if (GHOST_BUILD_MIC)
         get_filename_component(MKL_LIBDIR ${CBLAS_INCLUDE_DIR}/../lib/mic REALPATH)
     else ()
@@ -583,81 +592,6 @@ else () #generic BLAS
     set (BLAS_LIBRARIES "" CACHE STRING "BLAS libraries")
     message(STATUS "Generic BLAS. BLAS_LIBRARIES has to be set manually before linking.")
 endif()
-
-set(LAPACK_INCLUDE_DIR CACHE PATH "Location of lapacke.h")
-
-if (${CBLAS_H} STREQUAL "mkl_cblas.h")
-    message(STATUS "MKL LAPACK is used")
-    set(GHOST_HAVE_LAPACK 1)
-    set(LAPACK_FOUND 1)
-    set(LAPACK_LIBRARIES ${BLAS_LIBRARIES})
-    find_path(LAPACK_INCLUDE_DIR mkl_lapacke.h ${CBLAS_INCLUDE_DIR})
-else()
-    find_package(LAPACK)
-    if (LAPACK_FOUND)
-        message(STATUS "Found LAPACK")
-        if (NOT EXISTS "${LAPACK_INCLUDE_DIR}/../lib/liblapacke.so")
-            message(STATUS "We need LAPACKe (the C wrappers of LAPACK) but only found LAPACK.")
-            set(LAPACK_FOUND 0)
-        else ()
-            message(STATUS "Try to find LAPACK_INCLUDE_DIR")
-            find_path(LAPACK_INCLUDE_DIR lapacke.h)
-            if (NOT EXISTS "${LAPACK_INCLUDE_DIR}/lapacke.h")
-                message(STATUS "Use lapacke.h shipped with GHOST")
-                add_definitions(-DGHOST_USE_OWN_LAPACKE_H)
-                set(LAPACK_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include/lapack)
-            endif()
-            message(STATUS "LAPACK found: ${LAPACK_INCLUDE_DIR} ${LAPACK_LIBRARIES}")
-            set(GHOST_HAVE_LAPACK 1)
-            include_directories(SYSTEM ${LAPACK_INCLUDE_DIR})
-
-            string(REPLACE "lapack.so" "lapacke.so" LAPACK_LIBRARIES "${LAPACK_LIBRARIES}")
-        endif()
-    endif()
-
-    if (NOT LAPACK_INCLUDE_DIR)
-        message(STATUS "Determine LAPACK...")
-
-        message(STATUS "Try to find LAPACK")
-        find_package(LAPACK)
-        if (LAPACK_FOUND)
-            message(STATUS "Found LAPACK")
-            if (NOT EXISTS "${LAPACK_INCLUDE_DIR}/../lib/liblapacke.so")
-                message(STATUS "We need LAPACKe (the C wrappers of LAPACK) but only found LAPACK.")
-                set(LAPACK_FOUND 0)
-            else ()
-                message(STATUS "Try to find LAPACK_INCLUDE_DIR")
-                find_path(LAPACK_INCLUDE_DIR lapacke.h)
-                if (NOT EXISTS "${LAPACK_INCLUDE_DIR}/lapacke.h")
-                    message(STATUS "Use lapacke.h shipped with GHOST")
-                    add_definitions(-DGHOST_USE_OWN_LAPACKE_H)
-                    set(LAPACK_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include/lapack)
-                endif()
-                message(STATUS "LAPACK found: ${LAPACK_INCLUDE_DIR} ${LAPACK_LIBRARIES}")
-                set(GHOST_HAVE_LAPACK 1)
-                include_directories(SYSTEM ${LAPACK_INCLUDE_DIR})
-
-                string(REPLACE "lapack.so" "lapacke.so" LAPACK_LIBRARIES "${LAPACK_LIBRARIES}")
-            endif()
-        endif()
-    endif()
-endif()
-    
-if (NOT LAPACK_FOUND)
-    message(WARNING "LAPACKe not found! Some functionality will not work!")
-    set(LAPACK_LIBRARIES "")
-endif()
-
-if (NOT LAPACK_LIBRARIES AND LAPACK_INCLUDE_DIR)
-    message(STATUS "LAPACK include dir has been set. Automatically setting LAPACK libraries...")
-    get_filename_component(LAPACK_LIBRARIES ${LAPACK_INCLUDE_DIR}/../lib/liblapacke.so REALPATH)
-    message(STATUS "LAPACK libraries set to: ${LAPACK_LIBRARIES}")
-    set(GHOST_HAVE_LAPACK 1)
-endif()
-
-include_directories(SYSTEM ${LAPACK_INCLUDE_DIR})    
-mark_as_advanced(CLEAR LAPACK_INCLUDE_DIR)
-mark_as_advanced(CLEAR LAPACK_LIBRARIES)
 
 if (NOT EXISTS "${HWLOC_INCLUDE_DIR}/hwloc.h")
     message(FATAL_ERROR "Could not find hwloc.h neither via pkg-config nor in the defined HWLOC_INCLUDEDIR!")

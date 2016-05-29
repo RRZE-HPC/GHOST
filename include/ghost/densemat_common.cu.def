@@ -1,6 +1,7 @@
 #include "ghost/config.h"
 #include "ghost/types.h"
 #include "ghost/util.h"
+#include "ghost/densemat_rm.h"
 #include "ghost/log.h"
 #include "ghost/timing.h"
 #include "ghost/locality.h"
@@ -25,11 +26,9 @@
 #ifdef COLMAJOR
 #error "Only one of ROWMAJOR or COLMAJOR must be defined!"
 #endif
-#include "densemat_rm.h"
 #define PREFIX rm
 #define IDX(row,col,ld) ((row)*(ld)+(col))
 #elif defined (COLMAJOR)
-#include "densemat_cm.h"
 #define PREFIX cm
 #define IDX(row,col,ld) ((col)*(ld)+(row))
 #else
@@ -46,8 +45,6 @@
 #define PASTER(x,y) x ## _ ## y
 #define EVALUATOR(x,y) PASTER(x,y)
 #define FUNCNAME(fun) EVALUATOR(ghost_densemat_cu,EVALUATOR(PREFIX,fun))
-#define FUNCNAME_HOST(fun) EVALUATOR(ghost_densemat,EVALUATOR(PREFIX,fun))
-
 
 extern __shared__ char shared[];
 
@@ -347,9 +344,6 @@ extern "C" ghost_error FUNCNAME(vaxpy)(ghost_densemat *v1, ghost_densemat *v2, v
             ret =  FUNCNAME(vaxpby)(v1,v2,a,one);
         }
     }
-    if (v1->traits.compute & GHOST_LOCATION_HOST && v2->traits.compute & GHOST_LOCATION_HOST) {
-        FUNCNAME_HOST(vaxpy(v1,v2,a));
-    }
     
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
 
@@ -431,9 +425,6 @@ extern "C" ghost_error FUNCNAME(vaxpby)(ghost_densemat *v1, ghost_densemat *v2, 
                 (float *)v1val, (float *)v2val,(float *)d_a,(float *)d_b,
                  v1->traits.nrows,v1->traits.ncols,v1->stride,v2->stride);
         }
-    }
-    if (v1->traits.compute & GHOST_LOCATION_HOST && v2->traits.compute & GHOST_LOCATION_HOST) {
-        FUNCNAME_HOST(vaxpby(v1,v2,a,b));
     }
     if (v1compact != v1) {
         GHOST_CALL_GOTO(v1->fromVec(v1,v1compact,0,0),err,ret);
@@ -538,9 +529,6 @@ extern "C" ghost_error FUNCNAME(vaxpbypcz)(ghost_densemat *v1, ghost_densemat *v
                 (float *)v1val, (float *)v2val, (float *)v3val, (float *)d_a,(float *)d_b,
                 (float *)d_c, v1->traits.nrows,v1->traits.ncols,v1->stride,v2->stride, v3->stride);
         }
-    }
-    if (v1->traits.compute & GHOST_LOCATION_HOST && v2->traits.compute & GHOST_LOCATION_HOST && v3->traits.compute & GHOST_LOCATION_HOST) {
-        FUNCNAME_HOST(vaxpbypcz(v1,v2,a,b,v3,c));
     }
     if (v1compact != v1) {
         GHOST_CALL_GOTO(v1->fromVec(v1,v1compact,0,0),err,ret);
@@ -707,9 +695,6 @@ extern "C" ghost_error FUNCNAME(dotprod)(ghost_densemat *vec, void *res, ghost_d
             }
         }
     }
-    if (vec->traits.compute & GHOST_LOCATION_HOST && vec2->traits.compute & GHOST_LOCATION_HOST) {
-        FUNCNAME_HOST(dotprod(vec,res,vec2));
-    }
     
     if (veccompact != vec) {
         ghost_densemat_destroy(veccompact);
@@ -756,9 +741,6 @@ extern "C" ghost_error FUNCNAME(axpy)(ghost_densemat *v1, ghost_densemat *v2, vo
             const float one = 1.f;
             ret = FUNCNAME(axpby)(v1,v2,a,(void *)&one);
         }
-    }
-    if (v1->traits.compute & GHOST_LOCATION_HOST && v2->traits.compute & GHOST_LOCATION_HOST) {
-        FUNCNAME_HOST(axpy(v1,v2,a));
     }
     
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
@@ -819,9 +801,6 @@ extern "C" ghost_error FUNCNAME(axpby)(ghost_densemat *v1, ghost_densemat *v2, v
             FUNCNAME(axpby_kernel)<float><<< (int)ceil((double)v1->traits.nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>
                 ((float *)v1val, (float *)v2val,*((float *)a),*((float *)b),v1->traits.nrows,v1->traits.ncols,v1->stride,v2->stride);
         }
-    }
-    if (v1->traits.compute & GHOST_LOCATION_HOST && v2->traits.compute & GHOST_LOCATION_HOST) {
-        FUNCNAME_HOST(axpby(v1,v2,a,b));
     }
     if (v1compact != v1) {
         GHOST_CALL_GOTO(v1->fromVec(v1,v1compact,0,0),err,ret);
@@ -911,9 +890,6 @@ extern "C" ghost_error FUNCNAME(axpbypcz)(ghost_densemat *v1, ghost_densemat *v2
                 *(float *)c, v1->traits.nrows,v1->traits.ncols,v1->stride,v2->stride, v3->stride);
         }
     }
-    if (v1->traits.compute & GHOST_LOCATION_HOST && v2->traits.compute & GHOST_LOCATION_HOST && v3->traits.compute & GHOST_LOCATION_HOST) {
-        FUNCNAME_HOST(axpbypcz(v1,v2,a,b,v3,c));
-    }
     if (v1compact != v1) {
         GHOST_CALL_GOTO(v1->fromVec(v1,v1compact,0,0),err,ret);
         ghost_densemat_destroy(v1compact);
@@ -979,9 +955,6 @@ extern "C" ghost_error FUNCNAME(scale)(ghost_densemat *vec, void *a)
                     (float *)vecval, *(float *)a,
                     vec->traits.nrows,vec->traits.ncols,veccompact->stride);
         }
-    }
-    if (vec->traits.compute & GHOST_LOCATION_HOST) {
-        FUNCNAME_HOST(scale(vec,a));
     }
     if (veccompact != vec) {
         INFO_LOG("Transform back");
@@ -1055,9 +1028,6 @@ extern "C" ghost_error FUNCNAME(vscale)(ghost_densemat *vec, void *a)
                     vec->traits.nrows,vec->traits.ncols,veccompact->stride);
         }
     }
-    if (vec->traits.compute & GHOST_LOCATION_HOST) {
-        FUNCNAME_HOST(vscale(vec,a));
-    }
     if (veccompact != vec) {
         INFO_LOG("Transform back");
         GHOST_CALL_GOTO(vec->fromVec(vec,veccompact,0,0),err,ret);
@@ -1078,7 +1048,7 @@ extern "C" ghost_error FUNCNAME(fromScalar)(ghost_densemat *vec, void *a)
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     ghost_error ret = GHOST_SUCCESS;
     int needInit = 0;
-    FUNCNAME_HOST(malloc(vec,&needInit));
+    ghost_densemat_rm_malloc(vec,&needInit);
     
     void *vecval;
     ghost_densemat *veccompact;
@@ -1121,9 +1091,6 @@ extern "C" ghost_error FUNCNAME(fromScalar)(ghost_densemat *vec, void *a)
                     vec->traits.nrows,vec->traits.ncols,veccompact->stride);
         }
     }
-    if (vec->traits.compute & GHOST_LOCATION_HOST) {
-        FUNCNAME_HOST(fromScalar(vec,a));
-    }
     if (veccompact != vec) {
         INFO_LOG("Transform back");
         GHOST_CALL_GOTO(vec->fromVec(vec,veccompact,0,0),err,ret);
@@ -1153,7 +1120,7 @@ extern "C" ghost_error FUNCNAME(fromRand)(ghost_densemat *vec)
     
     ghost_timing_wcmilli(&time);
     int needInit = 0;
-    FUNCNAME_HOST(malloc(vec,&needInit));
+    ghost_densemat_rm_malloc(vec,&needInit);
     curandGenerator_t gen;
     GHOST_CALL_GOTO(ghost_cu_rand_generator_get(&gen),err,ret);
 
@@ -1183,9 +1150,6 @@ extern "C" ghost_error FUNCNAME(fromRand)(ghost_densemat *vec)
         } else {
             CURAND_CALL_GOTO(curandGenerateUniform(gen,(float *)raw,vec->traits.nrows*vec->traits.ncols),err,ret);
         }
-    }
-    if (vec->traits.compute & GHOST_LOCATION_HOST) {
-        FUNCNAME_HOST(fromRand(vec));
     }
 
     ghost_cu_memcpy2d(compactvec->cu_val,compactvec->traits.ncolspadded*vec->elSize,raw,vec->traits.ncols*vec->elSize,compactvec->traits.ncols*vec->elSize,compactvec->traits.nrows);
@@ -1239,9 +1203,6 @@ extern "C" ghost_error FUNCNAME(conj)(ghost_densemat *vec)
         FUNCNAME(conj_kernel)<cuFloatComplex><<< (int)ceil((double)vec->traits.nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>(
                 (cuFloatComplex *)vecval,
                 vec->traits.nrows,vec->traits.ncols,veccompact->stride);
-    }
-    if (vec->traits.compute & GHOST_LOCATION_HOST) {
-        FUNCNAME_HOST(conj(vec));
     }
     if (veccompact != vec) {
         INFO_LOG("Transform back");

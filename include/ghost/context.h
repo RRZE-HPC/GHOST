@@ -114,6 +114,13 @@ struct ghost_context
      */
     ghost_mpi_comm mpicomm;
     /**
+     * @brief The context's parent MPI communicator.
+     *
+     * This is only used for two-level MPI parallelism and MPI_COMM_NULL otherwise.
+     *
+     */
+    ghost_mpi_comm mpicomm_parent;
+    /**
      * @brief The matrix' global permutation.
      */
     ghost_permutation *perm_global;
@@ -169,6 +176,10 @@ struct ghost_context
     int nduepartners;
     int *wishpartners;
     int nwishpartners;
+    /**
+     * @brief Number of matrix entries in each local column.
+     */
+    ghost_lidx *entsInCol;
 };
 
 
@@ -247,20 +258,6 @@ extern "C" {
      * If the context is NULL it will be ignored.
      */
     void ghost_context_destroy(ghost_context *ctx);
-
-    /**
-     * @brief Assemble communication information in the given context.
-     * @param[inout] ctx The context.
-     * @param[in] col_orig The original column indices of the sparse matrix which is bound to the context.
-     * @param[out] col The compressed column indices of the sparse matrix which is bound to the context.
-     *
-     * @return ::GHOST_SUCCESS on success or an error indicator.
-     * 
-     * The following fields of ghost_context are being filled in this function:
-     * wishes, wishlist, dues, duelist, hput_pos, wishpartners, nwishpartners, duepartners, nduepartners.
-     * Additionally, the columns in col_orig are being compressed and stored in col.
-     */
-    ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, ghost_lidx *col);
     
     /**
      * @brief Get the name of the work distribution scheme.

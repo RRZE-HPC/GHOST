@@ -8,6 +8,7 @@
 
 extern "C" ghost_error ghost_sparsemat_perm_color(ghost_sparsemat *mat, void *matrixSource, ghost_sparsemat_src srcType)
 {
+    UNUSED(srcType);
 #ifdef GHOST_HAVE_COLPACK
     INFO_LOG("Create permutation from coloring");
     ghost_error ret = GHOST_SUCCESS;
@@ -16,6 +17,7 @@ extern "C" ghost_error ghost_sparsemat_perm_color(ghost_sparsemat *mat, void *ma
     std::vector<int>* colvec = NULL;
     uint32_t *adolc_data = NULL;
     ColPack::GraphColoring *GC=new ColPack::GraphColoring();
+    ghost_permutation *oldperm = NULL;
 
     int me, i, j;
     ghost_gidx *rpt = NULL;
@@ -24,6 +26,10 @@ extern "C" ghost_error ghost_sparsemat_perm_color(ghost_sparsemat *mat, void *ma
     ghost_lidx *collocal = NULL;
     ghost_lidx nnz = 0, nnzlocal = 0;
     int64_t pos=0;
+    
+    ghost_sparsemat_src_rowfunc *src = (ghost_sparsemat_src_rowfunc *)matrixSource;
+    char * tmpval = NULL;
+    ghost_gidx * tmpcol = NULL;
 
     GHOST_CALL_GOTO(ghost_rank(&me,mat->context->mpicomm),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,(mat->context->lnrows[me]+1) * sizeof(ghost_gidx)),err,ret);
@@ -32,72 +38,60 @@ extern "C" ghost_error ghost_sparsemat_perm_color(ghost_sparsemat *mat, void *ma
         
     rpt[0] = 0;
     rptlocal[0] = 0;
-#if 0
-    if (srcType == GHOST_SPARSEMAT_SRC_FILE) {
-        char *matrixPath = (char *)matrixSource;
-        GHOST_CALL_GOTO(ghost_bincrs_rpt_read(rpt, matrixPath, mat->context->lfRow[me], mat->context->lnrows[me]+1, NULL),err,ret);
-#pragma omp parallel for
-        for (i=1;i<mat->context->lnrows[me]+1;i++) {
-            rpt[i] -= rpt[0];
-        }
-        rpt[0] = 0;
-        nnz = rpt[mat->context->lnrows[me]];
-        GHOST_CALL_GOTO(ghost_malloc((void **)&col,nnz * sizeof(ghost_lidx)),err,ret);
-        GHOST_CALL_GOTO(ghost_bincrs_col_read(col, matrixPath, mat->context->lfRow[me], mat->context->lnrows[me], NULL,1),err,ret);
-       
-#pragma omp parallel for private(j) reduction(+:nnzlocal) 
-        for (i=0;i<mat->context->lnrows[me]+1;i++) {
-            for (j=rpt[i]; j<rpt[i+1]; j++) {
-                if (col[j] >= mat->context->lfRow[me] && col[j] < mat->context->lfRow[me]+mat->context->lnrows[me]) {
+    
+
+    ghost_lidx rowlen;
+
+#pragma omp parallel private (tmpval,tmpcol,i,rowlen,j) reduction(+:nnz) reduction(+:nnzlocal)
+    {
+        ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize);
+        ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx));
+        
+#pragma omp for
+        for (i=0; i<mat->context->lnrows[me]; i++) {
+            if (mat->context->perm_global && mat->context->perm_local) {
+                src->func(mat->context->perm_global->invPerm[mat->context->perm_local->invPerm[i]],&rowlen,tmpcol,tmpval,NULL);
+            } else if (mat->context->perm_global) {
+                src->func(mat->context->perm_global->invPerm[i],&rowlen,tmpcol,tmpval,NULL);
+            } else if (mat->context->perm_local) {
+                src->func(mat->context->lfRow[me]+mat->context->perm_local->invPerm[i],&rowlen,tmpcol,tmpval,NULL);
+            } else {
+                src->func(mat->context->lfRow[me]+i,&rowlen,tmpcol,tmpval,NULL);
+            }
+            nnz += rowlen;
+            for (j=0; j<rowlen; j++) {
+                if (tmpcol[j] >= mat->context->lfRow[me] && tmpcol[j] < mat->context->lnrows[me]) {
                     nnzlocal++;
                 }
             }
         }
-
-    } else if (srcType == GHOST_SPARSEMAT_SRC_FUNC) {
-#endif
-    if (srcType == GHOST_SPARSEMAT_SRC_FUNC || srcType == GHOST_SPARSEMAT_SRC_FILE) {
-        ghost_sparsemat_src_rowfunc *src = (ghost_sparsemat_src_rowfunc *)matrixSource;
-        char * tmpval = NULL;
-        ghost_gidx * tmpcol = NULL;
-
-        ghost_lidx rowlen;
-
-#pragma omp parallel private (tmpval,tmpcol,i,rowlen,j) reduction(+:nnz) reduction(+:nnzlocal)
-        {
-            ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize);
-            ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx));
-            
-#pragma omp for
-            for (i=0; i<mat->context->lnrows[me]; i++) {
-                src->func(mat->context->lfRow[me]+i,&rowlen,tmpcol,tmpval,NULL);
-                nnz += rowlen;
-                for (j=0; j<rowlen; j++) {
-                    if (tmpcol[j] >= mat->context->lfRow[me] && tmpcol[j] < mat->context->lnrows[me]) {
-                        nnzlocal++;
-                    }
-                }
-            }
-            free(tmpval); tmpval = NULL;
-            free(tmpcol); tmpcol = NULL;
-        }
-        GHOST_CALL_GOTO(ghost_malloc((void **)&col,nnz * sizeof(ghost_gidx)),err,ret);
-        
+        free(tmpval); tmpval = NULL;
+        free(tmpcol); tmpcol = NULL;
+    }
+    GHOST_CALL_GOTO(ghost_malloc((void **)&col,nnz * sizeof(ghost_gidx)),err,ret);
+    
 #pragma omp parallel private (tmpval,tmpcol,i,rowlen) reduction(+:nnz)
-        {
-            ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize);
-            ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx));
+    {
+        ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize);
+        ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx));
 #pragma omp for ordered
-            for (i=0; i<mat->context->lnrows[me]; i++) {
+        for (i=0; i<mat->context->lnrows[me]; i++) {
 #pragma omp ordered
-                {
+            {
+                if (mat->context->perm_global && mat->context->perm_local) {
+                    src->func(mat->context->perm_global->invPerm[mat->context->perm_local->invPerm[i]],&rowlen,&col[rpt[i]],tmpval,NULL);
+                } else if (mat->context->perm_global) {
+                    src->func(mat->context->perm_global->invPerm[i],&rowlen,&col[rpt[i]],tmpval,NULL);
+                } else if (mat->context->perm_local) {
+                    src->func(mat->context->lfRow[me]+mat->context->perm_local->invPerm[i],&rowlen,&col[rpt[i]],tmpval,NULL);
+                } else {
                     src->func(mat->context->lfRow[me]+i,&rowlen,&col[rpt[i]],tmpval,NULL);
-                    rpt[i+1] = rpt[i] + rowlen;
                 }
+                rpt[i+1] = rpt[i] + rowlen;
             }
-            free(tmpval); tmpval = NULL;
-            free(tmpcol); tmpcol = NULL;
         }
+        free(tmpval); tmpval = NULL;
+        free(tmpcol); tmpcol = NULL;
     }
         
     GHOST_CALL_GOTO(ghost_malloc((void **)&collocal,nnzlocal * sizeof(ghost_lidx)),err,ret);
@@ -105,9 +99,17 @@ extern "C" ghost_error ghost_sparsemat_perm_color(ghost_sparsemat *mat, void *ma
     for (i=0; i<mat->context->lnrows[me]; i++) {
         rptlocal[i+1] = rptlocal[i];
         for (j=rpt[i]; j<rpt[i+1]; j++) {
-            if (col[j] >= mat->context->lfRow[me] && col[j] < mat->context->lfRow[me]+mat->context->lnrows[me]) {
-                collocal[rptlocal[i+1]] = col[j] - mat->context->lfRow[me];
-                rptlocal[i+1]++;
+
+            if (!mat->context->perm_local) {
+                if (col[j] >= mat->context->lfRow[me] && col[j] < mat->context->lfRow[me]+mat->context->lnrows[me]) {
+                    collocal[rptlocal[i+1]] = col[j] - mat->context->lfRow[me];
+                    rptlocal[i+1]++;
+                }
+            } else {
+                if (col[j] >= mat->context->lfRow[me] && col[j] < mat->context->lfRow[me]+mat->context->lnrows[me]) {
+                    collocal[rptlocal[i+1]] = mat->context->perm_local->perm[col[j] - mat->context->lfRow[me]];
+                    rptlocal[i+1]++;
+                }
             }
         }
     }
@@ -136,15 +138,20 @@ extern "C" ghost_error ghost_sparsemat_perm_color(ghost_sparsemat *mat, void *ma
 
     mat->ncolors = GC->GetVertexColorCount();
     
-    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local,sizeof(ghost_permutation)),err,ret);
-    mat->context->perm_local->scope = GHOST_PERMUTATION_LOCAL;
-    mat->context->perm_local->len = mat->nrows;
-    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->perm,sizeof(ghost_gidx)*mat->nrows),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->invPerm,sizeof(ghost_gidx)*mat->nrows),err,ret);
+
+    if (!mat->context->perm_local) {
+        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local,sizeof(ghost_permutation)),err,ret);
+        mat->context->perm_local->scope = GHOST_PERMUTATION_LOCAL;
+        mat->context->perm_local->len = mat->nrows;
+        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->perm,sizeof(ghost_gidx)*mat->nrows),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->invPerm,sizeof(ghost_gidx)*mat->nrows),err,ret);
 
 #ifdef GHOST_HAVE_CUDA
-    GHOST_CALL_GOTO(ghost_cu_malloc((void **)&mat->context->perm_local->cu_perm,sizeof(ghost_gidx)*mat->nrows),err,ret);
+        GHOST_CALL_GOTO(ghost_cu_malloc((void **)&mat->context->perm_local->cu_perm,sizeof(ghost_gidx)*mat->nrows),err,ret);
 #endif
+    } else {
+        oldperm = mat->context->perm_local;
+    }
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->color_ptr,(mat->ncolors+1)*sizeof(ghost_lidx)),err,ret);
 
@@ -152,6 +159,7 @@ extern "C" ghost_error ghost_sparsemat_perm_color(ghost_sparsemat *mat, void *ma
     memset(curcol,0,mat->ncolors*sizeof(ghost_lidx));
     
     colvec = GC->GetVertexColorsPtr();
+
 
     for (i=0;i<mat->ncolors+1;i++) {
         mat->color_ptr[i] = 0;
@@ -165,15 +173,23 @@ extern "C" ghost_error ghost_sparsemat_perm_color(ghost_sparsemat *mat, void *ma
         mat->color_ptr[i] += mat->color_ptr[i-1];
     }
     
-    for (i=0;i<mat->nrows;i++) {
-        mat->context->perm_local->perm[i] = curcol[(*colvec)[i]] + mat->color_ptr[(*colvec)[i]];
-        curcol[(*colvec)[i]]++;
+    if (oldperm) {
+        for (i=0;i<mat->nrows;i++) {
+            int idx = mat->context->perm_local->invPerm[i];
+            mat->context->perm_local->perm[idx]  = curcol[(*colvec)[i]] + mat->color_ptr[(*colvec)[i]];
+            //mat->context->perm_local->perm[i] = mat->context->perm_local->invPerm[curcol[(*colvec)[i]] + mat->color_ptr[(*colvec)[i]]];
+            curcol[(*colvec)[i]]++;
+        }
+    } else {
+        for (i=0;i<mat->nrows;i++) {
+            mat->context->perm_local->perm[i] = curcol[(*colvec)[i]] + mat->color_ptr[(*colvec)[i]];
+            curcol[(*colvec)[i]]++;
+        }
     }
     
     for (i=0;i<mat->nrows;i++) {
         mat->context->perm_local->invPerm[mat->context->perm_local->perm[i]] = i;
     }
-
 
     goto out;
 err:
