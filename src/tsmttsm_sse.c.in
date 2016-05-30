@@ -33,7 +33,7 @@ ghost_error ghost_tsmttsm__a_sse_d_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_dense
 
     const ghost_lidx ldv = v->stride;
     const ghost_lidx ldw = w->stride;
-    const ghost_lidx ldx = x->stride;
+    ghost_lidx ldx = x->stride;
 
     __m128d betavec, alphavec;
     
@@ -50,6 +50,11 @@ ghost_error ghost_tsmttsm__a_sse_d_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_dense
     }
 
     ghost_lidx i,m;
+    if (!IS_ALIGNED(xval,16) || ((x->stride*x->elSize) % 16)) {
+        ghost_malloc_align((void **)xval,PAD(x->stride,2)*x->traits.ncols*sizeof(double),16);
+        ldx = PAD(x->stride,2);
+    }
+
 
     ghost_lidx k;
     for (k=0; k<CFGK; k++) {
@@ -161,6 +166,9 @@ ghost_error ghost_tsmttsm__a_sse_d_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_dense
 err:
 
 out:
+    if (xval != (double *)x->val) {
+        free(xval);
+    }
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 #else
