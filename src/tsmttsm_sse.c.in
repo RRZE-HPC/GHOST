@@ -53,8 +53,8 @@ ghost_error ghost_tsmttsm__a_sse_d_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_dense
 
     ghost_lidx i,m;
     if (!IS_ALIGNED(xval,16) || ((x->stride*x->elSize) % 16)) {
-        ghost_malloc_align((void **)xpad,PAD(x->stride,2)*x->traits.ncols*sizeof(double),16);
         ldxpad = PAD(x->stride,2);
+        ghost_malloc_align((void **)&xpad,ldxpad*x->traits.ncols*sizeof(double),16);
     } else {
         xpad = xval;
     }
@@ -174,7 +174,7 @@ out:
     if (xpad != xval) {
         for (k=0; k<CFGK; k++) {
             for (m=0; m<CFGM; m++) {
-                xval[k*ldx] = xpad[k*ldxpad+m];
+                xval[k*ldx+m] = xpad[k*ldxpad+m];
             }
         }
         free(xpad);
