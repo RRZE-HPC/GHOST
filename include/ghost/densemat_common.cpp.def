@@ -539,7 +539,7 @@ static ghost_error FUNCNAME(fromRand_tmpl(ghost_densemat *vec))
     int omp_sched_mod;
     omp_get_schedule(&omp_sched,&omp_sched_mod);
     if (ghost_rand_customseed() && (omp_sched != omp_sched_static)) {
-        WARNING_LOG("A custon random seed has been set but the OpenMP scheduling is not STATIC. This may lead to unexpected results!");
+        WARNING_LOG("A custom random seed has been set but the OpenMP scheduling is not STATIC. This may lead to unexpected results!");
     }
 #endif
 
