@@ -78,7 +78,7 @@ fi
 INSTALL_DIR=$INSTALL_PREFIX/install-${PRGENV}-${BUILD_TYPE}-${VECT_EXT}
 
 if [ "${FLAGS}" = "optional-libs" ]; then
-  module load trilinos
+  module load trilinos/trilinos-12.6.1
   module load ColPack
   ADD_CMAKE_FLAGS="${ADD_CMAKE_FLAGS} -DGHOST_USE_ZOLTAN:BOOL=ON -DGHOST_USE_COLPACK:BOOL=ON"
   INSTALL_DIR=${INSTALL_DIR}_optional-libs

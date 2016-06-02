@@ -10,7 +10,6 @@
 
 typedef enum
 {
-    GHOST_RAND_SEED_NONE = 0,
     GHOST_RAND_SEED_PU = 1,
     GHOST_RAND_SEED_RANK = 2,
     GHOST_RAND_SEED_TIME = 4,
