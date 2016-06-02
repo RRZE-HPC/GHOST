@@ -7,28 +7,18 @@ PRGENV="gcc-4.9.2-openmpi" # intel-13.0.1-mpich gcc-4.8.2-openmpi
 BUILD_TYPE=Release
 INSTALL_PREFIX=../../
 VECT_EXT="native" # none SSE AVX AVX2 CUDA
-FLAGS="default" # "optional-libs"
 
 # list of modules to load
 MODULES_BASIC="cmake ccache cppcheck lapack gsl"
 
-ADD_CMAKE_FLAGS=""
-
 ## parse command line arguments
-usage() { echo "Usage: $0 [-e <PrgEnv/module-string>] [-b <Release|Debug|...>] [-v <native|none|SSE|AVX|AVX2|CUDA>]"
-          echo "       [-f default|optional-libs] [-p <install-prefix>] [-c <add cmake flags>]" 1>&2; 
+usage() { echo "Usage: $0 [-e <PrgEnv/module-string>] [-b <Release|Debug|...>] [-v <native|none|SSE|AVX|AVX2|CUDA>]" 1>&2; 
 exit 1; }
 
-while getopts "e:b:v:f:p:c:h" o; do
+while getopts "e:b:v:p:h" o; do
     case "${o}" in
-        c)
-            ADD_CMAKE_FLAGS=${OPTARG}
-            ;;
         e)
             PRGENV=${OPTARG}
-            ;;
-        f)
-            FLAGS=${OPTARG}
             ;;
         b)
             BUILD_TYPE=${OPTARG}
@@ -49,7 +39,7 @@ while getopts "e:b:v:f:p:c:h" o; do
 done
 shift $((OPTIND-1))
 
-echo "Options: PRGENV=${PRGENV}, BUILD_TYPE=${BUILD_TYPE}, VECT_EXT=${VECT_EXT}, FLAGS=${FLAGS}, ADD_CMAKE_FLAGS=${ADD_CMAKE_FLAGS}"
+echo "Options: PRGENV=${PRGENV}, BUILD_TYPE=${BUILD_TYPE}"
 
 ## prepare system for compilation
 # configure modulesystem
@@ -73,15 +63,6 @@ if [ "${VECT_EXT}" = "CUDA" ]; then
   module load cuda
   echo "check if any GPU is found..."
   nvidia-smi -q|grep "Product Name"
-fi
-
-INSTALL_DIR=$INSTALL_PREFIX/install-${PRGENV}-${BUILD_TYPE}-${VECT_EXT}
-
-if [ "${FLAGS}" = "optional-libs" ]; then
-  module load trilinos
-  module load ColPack
-  ADD_CMAKE_FLAGS="${ADD_CMAKE_FLAGS} -DGHOST_USE_ZOLTAN:BOOL=ON -DGHOST_USE_COLPACK:BOOL=ON"
-  INSTALL_DIR=${INSTALL_DIR}_optional-libs
 fi
 
 module list
@@ -131,12 +112,11 @@ fi
 
 error=0
 # build and install
-mkdir build_${PRGENV}_${BUILD_TYPE}_${VECT_EXT}_${FLAGS}       || exit 1
-cd build_${PRGENV}_${BUILD_TYPE}_${VECT_EXT}_${FLAGS}          || exit 1
-cmake -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} \
+mkdir build_${PRGENV}_${BUILD_TYPE}_${VECT_EXT}       || exit 1
+cd build_${PRGENV}_${BUILD_TYPE}_${VECT_EXT}          || exit 1
+cmake -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX/install-${PRGENV}-${BUILD_TYPE}-${VECT_EXT} \
 -DGHOST_GEN_DENSEMAT_DIM=${BLOCKSZ} -DGHOST_GEN_SELL_C=${SELL_CS} \
--DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DBUILD_SHARED_LIBS=ON ${VECT_FLAGS} ${ADD_CMAKE_FLAGS} \
-..              || error=1
+-DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DBUILD_SHARED_LIBS=ON ${VECT_FLAGS} ..              || error=1
 
 if [[ "${BUILD_TYPE}" =~ *Rel* ]]; then
   make doc                                  || error=1
