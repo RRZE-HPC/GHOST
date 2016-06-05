@@ -11,7 +11,6 @@ ghost_error ghost_carp_rb(ghost_sparsemat *mat, ghost_densemat *x, ghost_densema
     // 2. perform kacz on full matrix
     // 3. communicate remote halo x entries to local
     //    if column is present on more procs: average!
-
     ghost_densemat_halo_comm comm = GHOST_DENSEMAT_HALO_COMM_INITIALIZER;
   
     ghost_kacz_opts opts = GHOST_KACZ_OPTS_INITIALIZER;
@@ -19,15 +18,18 @@ ghost_error ghost_carp_rb(ghost_sparsemat *mat, ghost_densemat *x, ghost_densema
 
     opts.direction = GHOST_KACZ_DIRECTION_FORWARD;
 
+
     GHOST_CALL_RETURN(x->halocommInit(x,&comm));
     GHOST_CALL_RETURN(x->halocommStart(x,&comm));
     GHOST_CALL_RETURN(x->halocommFinalize(x,&comm));
     
-    if(flag_rb!=0){
+    if(flag_rb!= 0){
  	GHOST_CALL_RETURN(ghost_kacz_rb(x,mat,b,opts));
      } else {
-       	GHOST_CALL_RETURN(ghost_kacz(x,mat,b,opts)); 
-     }    
+       	GHOST_CALL_RETURN(ghost_kacz_mc(x,mat,b,opts)); 
+     } 
+     MPI_Barrier(x->context->mpicomm);
+    
      GHOST_CALL_RETURN(x->averageHalo(x));
 
      opts.direction = GHOST_KACZ_DIRECTION_BACKWARD;
@@ -35,12 +37,14 @@ ghost_error ghost_carp_rb(ghost_sparsemat *mat, ghost_densemat *x, ghost_densema
      GHOST_CALL_RETURN(x->halocommInit(x,&comm));
      GHOST_CALL_RETURN(x->halocommStart(x,&comm));
      GHOST_CALL_RETURN(x->halocommFinalize(x,&comm));
-     
+
+    
      if(flag_rb!=0){
        	GHOST_CALL_RETURN(ghost_kacz_rb(x,mat,b,opts));
      } else {
-       	GHOST_CALL_RETURN(ghost_kacz(x,mat,b,opts));   
+       	GHOST_CALL_RETURN(ghost_kacz_mc(x,mat,b,opts));   
      }
+
     GHOST_CALL_RETURN(x->averageHalo(x));
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_SOLVER);

@@ -381,12 +381,6 @@ typedef enum {
     * @brief Re-order the local part of the matrix using a block coloring.
     */
     GHOST_SPARSEMAT_BLOCKCOLOR = 8192,
-    /**
-    * @brief No distinction between remote and local entries while permuting columns
-    *        This might lead to high communication time.
-    */
-    GHOST_SPARSEMAT_PERM_NO_DISTINCTION = 16384,
-
 
 } ghost_sparsemat_flags;
 
@@ -959,7 +953,7 @@ extern "C" {
 
     ghost_error ghost_sparsemat_fromfunc_common(ghost_lidx *rl, ghost_lidx *rlp, ghost_lidx *cl, ghost_lidx *clp, ghost_lidx **chunkptr, char **val, ghost_gidx **col, ghost_sparsemat_src_rowfunc *src, ghost_sparsemat *mat, ghost_lidx C, ghost_lidx P);
 
-    static inline int ghost_sparsemat_rowfunc_crs(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *col, void *val, void *crsdata)
+  static inline int ghost_sparsemat_rowfunc_crs(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *col, void *val, void *crsdata)
 {
     ghost_gidx *crscol = ((ghost_sparsemat_rowfunc_crs_arg *)crsdata)->col;
     ghost_lidx *crsrpt = ((ghost_sparsemat_rowfunc_crs_arg *)crsdata)->rpt;
@@ -973,7 +967,6 @@ extern "C" {
 
     return 0;
 }
-
         
 
 #ifdef __cplusplus

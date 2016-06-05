@@ -538,7 +538,7 @@ ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, gh
             if (globalrow < ctx->lnrows[me]) {
                 for (entinrow=0; entinrow<SELL(mat)->rowLen[globalrow]; entinrow++) {
                     globalent = SELL(mat)->chunkStart[chunk] + entinrow*mat->traits.C + rowinchunk;
-                    if (col_orig[globalent] >= ctx->lfRow[me] && col_orig[globalent]<(ctx->lfRow[me]+ctx->lnrows[me])) {
+		    if (col_orig[globalent] >= ctx->lfRow[me] && col_orig[globalent]<(ctx->lfRow[me]+ctx->lnrows[me])) {
                         ctx->entsInCol[col_orig[globalent]-ctx->lfRow[me]]++;
                     }
                 }
@@ -630,9 +630,9 @@ ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, gh
 #pragma omp for private(j)
         for (i=0;i<ctx->lnEnts[me];i++){
             for (j=nprocs-1;j>=0; j--){
-                if (ctx->lfRow[j]<col_orig[i]+1) {
-                    comm_remotePE[i] = j;
-                    comm_remoteEl[i] = col_orig[i] -ctx->lfRow[j];
+                if (ctx->lfRow[j]<col_orig[i]+1) {//is col_orig unpermuted(probably)
+                    comm_remotePE[i] = j;//comm_remotePE[colPerm[i]]=j
+                    comm_remoteEl[i] = col_orig[i] -ctx->lfRow[j]; //comm_remoteEl[colPerm[i]] = col_orig[i] -ctx->lfRow[j];
                     partial_wishlist_counts[(padding+nprocs)*thread+j]++;
                     break;
                 }
@@ -772,7 +772,28 @@ ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, gh
     ghost_lidx tt = 0;
     i = me;
     int meHandled = 0;
-    ghost_lidx rowpaddingoffset = PAD(ctx->lnrows[me],rowpadding)-ctx->lnrows[me];
+
+ 
+    ghost_lidx rowpaddingoffset = 0;
+     
+     if(mat->context->flags & GHOST_PERM_NO_DISTINCTION) {
+                ghost_lidx halo_ctr = 0;
+		//we need to know number of halo elements now
+ 		for(int k=0;k<nprocs;++k) {
+		    if (k != me){ 
+        		    for (int j=0;j<ctx->wishes[k];j++){
+				++halo_ctr;
+ 			    }
+		    }
+		}
+  			
+		ctx->nrowspadded   =  PAD(ctx->lnrows[me]+halo_ctr+1,rowpadding);
+		rowpaddingoffset   =  ctx->nrowspadded-ctx->lnrows[me];
+    } else {
+	 ctx->nrowspadded = PAD(ctx->lnrows[me],rowpadding);
+	 rowpaddingoffset = PAD(ctx->lnrows[me],rowpadding)-ctx->lnrows[me];
+    }
+
     GHOST_INSTR_START("compress_cols")
 
     /*
@@ -879,7 +900,12 @@ ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, gh
         }
 #endif
         ctx->wishlist[i]   = &(wishl_mem[acc_wishes]);
-        ctx->hput_pos[i]   = PAD(ctx->lnrows[me],rowpadding)+acc_wishes;
+
+        if(mat->context->flags & GHOST_PERM_NO_DISTINCTION) {	
+		ctx->hput_pos[i]   = ctx->nrowspadded + acc_wishes;
+	} else {
+        	ctx->hput_pos[i]   = PAD(ctx->lnrows[me],rowpadding)+acc_wishes;
+	}
 
         if  ( (me != i) && !( (i == nprocs-2) && (me == nprocs-1) ) ){
             acc_dues   += ctx->dues[i];

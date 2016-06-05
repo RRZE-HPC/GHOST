@@ -39,7 +39,32 @@ typedef enum
     GHOST_PERMUTATION_UNSYMMETRIC
 }
 ghost_permutation_method;
-    
+
+/*typedef enum
+{
+    GHOST_PERM_NO_DISTINCTION=1, 
+}
+ghost_permutation_flags;
+  
+#ifdef __cplusplus
+inline ghost_permutation_flags operator|(const ghost_permutation_flags &a,
+        const ghost_permutation_flags &b)
+{
+    return static_cast<ghost_permutation_flags>(
+            static_cast<int>(a) | static_cast<int>(b));
+}
+
+inline ghost_permutation_flags operator&(const ghost_permutation_flags &a,
+        const ghost_permutation_flags &b)
+{
+    return static_cast<ghost_permutation_flags>(
+            static_cast<int>(a) & static_cast<int>(b));
+}
+#endif
+*/
+
+
+ 
 typedef struct
 {
     /**
@@ -76,7 +101,6 @@ typedef struct
     */
     ghost_permutation_method method;   
 
-
     ghost_gidx *cu_perm;
 
     ghost_permutation_scope_t scope;
@@ -96,9 +120,29 @@ typedef enum {
     /**
      * @brief Distribute work among the ranks by number of rows.
      */
-    GHOST_CONTEXT_DIST_ROWS = 8
+    GHOST_CONTEXT_DIST_ROWS = 8,
+    /**
+    * @brief Does not make a distinction between local and remote entries if set; this might lead to higher communication time
+    */
+    GHOST_PERM_NO_DISTINCTION=16,
+
 } ghost_context_flags_t;
 
+#ifdef __cplusplus
+inline ghost_context_flags_t operator|(const ghost_context_flags_t &a,
+        const ghost_context_flags_t &b)
+{
+    return static_cast<ghost_context_flags_t>(
+            static_cast<int>(a) | static_cast<int>(b));
+}
+
+inline ghost_context_flags_t operator&(const ghost_context_flags_t &a,
+        const ghost_context_flags_t &b)
+{
+    return static_cast<ghost_context_flags_t>(
+            static_cast<int>(a) & static_cast<int>(b));
+}
+#endif
 /**
  * @brief The GHOST context.
  *
@@ -178,6 +222,11 @@ struct ghost_context
      */
     ghost_gidx* lfRow; // TODO rename firstLclRow
     /**
+     * @brief Number of densemat rows (or sparsemat columns) with padding 
+     * Required if GHOST_PERM_NO_DISTINCTION is set
+     */
+    ghost_lidx nrowspadded;
+     /**
      * @brief Number of wishes (= unique RHS elements to get) from each rank
      */
     ghost_lidx * wishes; // TODO rename nWishes

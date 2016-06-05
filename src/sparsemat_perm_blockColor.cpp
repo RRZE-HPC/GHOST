@@ -7,11 +7,14 @@
  
 extern "C" ghost_error ghost_sparsemat_blockColor(ghost_sparsemat *mat, void *matrixSource, ghost_sparsemat_src srcType) 
 {
-   INFO_LOG("Create partition and permute (Block coloring)");
+    INFO_LOG("Create partition and permute (Block coloring)");
     ghost_error ret = GHOST_SUCCESS;
     ghost_lidx *curcol = NULL; 
+
+    bool old_perm = true;
  
     int *nthread = new int[1];  
+
 #ifdef GHOST_HAVE_OPENMP
  #pragma omp parallel
    {
@@ -57,33 +60,40 @@ extern "C" ghost_error ghost_sparsemat_blockColor(ghost_sparsemat *mat, void *ma
   {
        ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx));
        ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize); 
-int ctr = 0;
+       int ctr = 0;
   #pragma omp parallel for reduction(max:lower_bw) reduction(max:upper_bw) reduction(+:ctr)
        for (int i=0; i<mat->context->lnrows[me]; i++) {
         	if (mat->context->perm_global && mat->context->perm_local) {
-                 	src->func(mat->context->perm_global->invPerm[mat->context->perm_local->invPerm[i]],&rowlen,tmpcol,tmpval,NULL);
+                 	src->func(mat->context->perm_global->invPerm[mat->context->perm_local->invPerm[i]],&rowlen,tmpcol,tmpval,src->arg);
               	} else if (mat->context->perm_global) {
-                	src->func(mat->context->perm_global->invPerm[i],&rowlen,tmpcol,tmpval,NULL);
+                	src->func(mat->context->perm_global->invPerm[i],&rowlen,tmpcol,tmpval,src->arg);
             	} else if (mat->context->perm_local) {
-                 	src->func(mat->context->lfRow[me]+mat->context->perm_local->invPerm[i],&rowlen,tmpcol,tmpval,NULL);
+                 	src->func(mat->context->lfRow[me]+mat->context->perm_local->invPerm[i],&rowlen,tmpcol,tmpval,src->arg);
                 } else {
-                	src->func(mat->context->lfRow[me]+i,&rowlen,tmpcol,tmpval,NULL);
+                	src->func(mat->context->lfRow[me]+i,&rowlen,tmpcol,tmpval,src->arg);
                 }
 
                 int start_col = mat->ncols + mat->nrows;
                 int end_col   = 0;
 
-               if(mat->context->perm_local->colPerm == NULL) {
-                        for(int j=0; j<rowlen; ++j) {
-                                start_col = MIN(start_col, mat->context->perm_local->perm[tmpcol[j]]);
-                                end_col   = MAX(end_col, mat->context->perm_local->perm[tmpcol[j]]);
-                       }
-                } else {
-                        for(int j=0; j<rowlen; ++j) {
-                                start_col = MIN(start_col, mat->context->perm_local->colPerm[tmpcol[j]]);
-                                end_col   = MAX(end_col, mat->context->perm_local->colPerm[tmpcol[j]]);
-			}
-                }
+                if(mat->context->perm_local){
+			if(mat->context->perm_local->colPerm == NULL) {
+   	                     	for(int j=0; j<rowlen; ++j) {
+                                	start_col = MIN(start_col, mat->context->perm_local->perm[tmpcol[j]]);
+                                	end_col   = MAX(end_col, mat->context->perm_local->perm[tmpcol[j]]);
+                       		}
+                	} else {
+                        	for(int j=0; j<rowlen; ++j) {
+                                	start_col = MIN(start_col, mat->context->perm_local->colPerm[tmpcol[j]]);
+                                	end_col   = MAX(end_col, mat->context->perm_local->colPerm[tmpcol[j]]);
+				}
+                	}
+		} else {
+		                for(int j=0; j<rowlen; ++j) {
+                                	start_col = MIN(start_col, tmpcol[j]);
+                                	end_col   = MAX(end_col, tmpcol[j]);
+                       		}
+        	}
 
                 lower_bw = MAX(lower_bw, i-start_col);
                 upper_bw = MAX(upper_bw , end_col - i);
@@ -96,10 +106,12 @@ int ctr = 0;
   //std::cout<<"check"<<row_ptr[mat->nrows-1]<<std::endl;
 
     int total_bw = lower_bw + upper_bw;
-    printf("bw lower =%d, upper=%d, total=%d\n",lower_bw,upper_bw,total_bw);
+    INFO_LOG("RANK<%d>:  LOWER BANDWIDTH =%d, UPPER BANDWIDTH =%d, TOTAL BANDWIDTH =%d\n",me,lower_bw,upper_bw,total_bw);
 
     //approximate
-    ghost_lidx local_size = static_cast<int>( ((max_col_idx+1)-0.2*total_bw) / n_zones); //will have to find a method to balance the load for the last thread
+    ghost_lidx local_size = static_cast<int>( ((max_col_idx+1)-0.2*total_bw) / n_zones); //will have to find a method to balance the load for the last thread, 	
+											 // even if the last thread gets a bit less load its fine since the excess load 
+											 // is evenly spread among rest of the threads
 
 
     int *rhs_split;
@@ -137,32 +149,39 @@ int ctr = 0;
        ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx));
        ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize);
     
-     #pragma omp for
+     #pragma omp for reduction (+:ctr_MC)
        for (int i=0; i<mat->context->lnrows[me]; i++) {
         	if (mat->context->perm_global && mat->context->perm_local) {
-                 	src->func(mat->context->perm_global->invPerm[mat->context->perm_local->invPerm[i]],&rowlen,tmpcol,tmpval,NULL);
+                 	src->func(mat->context->perm_global->invPerm[mat->context->perm_local->invPerm[i]],&rowlen,tmpcol,tmpval,src->arg);
               	} else if (mat->context->perm_global) {
-                	src->func(mat->context->perm_global->invPerm[i],&rowlen,tmpcol,tmpval,NULL);
+                	src->func(mat->context->perm_global->invPerm[i],&rowlen,tmpcol,tmpval,src->arg);
             	} else if (mat->context->perm_local) {
-                 	src->func(mat->context->lfRow[me]+mat->context->perm_local->invPerm[i],&rowlen,tmpcol,tmpval,NULL);
+                 	src->func(mat->context->lfRow[me]+mat->context->perm_local->invPerm[i],&rowlen,tmpcol,tmpval,src->arg);
                 } else {
-                	src->func(mat->context->lfRow[me]+i,&rowlen,tmpcol,tmpval,NULL);
+                	src->func(mat->context->lfRow[me]+i,&rowlen,tmpcol,tmpval,src->arg);
                 }
 
                 int start_col = mat->ncols + mat->nrows;
                 int end_col   = 0;
     
-                if(mat->context->perm_local->colPerm == NULL) {
-                	for(int j=0; j<rowlen; ++j) {
-                		start_col = MIN(start_col, mat->context->perm_local->perm[tmpcol[j]]);
-                        	end_col   = MAX(end_col, mat->context->perm_local->perm[tmpcol[j]]);
-                	} 
- 		} else {
-                        for(int j=0; j<rowlen; ++j) {
-                                start_col = MIN(start_col, mat->context->perm_local->colPerm[tmpcol[j]]);
-                                end_col   = MAX(end_col, mat->context->perm_local->colPerm[tmpcol[j]]);
-                        }
-		}
+		if(mat->context->perm_local) {
+                	if(mat->context->perm_local->colPerm == NULL) {
+                		for(int j=0; j<rowlen; ++j) {
+                			start_col = MIN(start_col, mat->context->perm_local->perm[tmpcol[j]]);
+                        		end_col   = MAX(end_col, mat->context->perm_local->perm[tmpcol[j]]);
+                		} 
+ 			} else {
+                        	for(int j=0; j<rowlen; ++j) {
+                                	start_col = MIN(start_col, mat->context->perm_local->colPerm[tmpcol[j]]);
+                                	end_col   = MAX(end_col, mat->context->perm_local->colPerm[tmpcol[j]]);
+                        	}
+			}
+		} else {
+		                for(int j=0; j<rowlen; ++j) {
+                                	start_col = MIN(start_col, tmpcol[j]);
+                                	end_col   = MAX(end_col, tmpcol[j]);
+                       		}
+        	}
 
 
                for(int k=0; k<n_zones; ++k) {
@@ -176,16 +195,18 @@ int ctr = 0;
                    }
                    //else one can also add the rest of them for Multicoloring
                    else if(k==n_zones-1 && zone[i]<0) {
-                  //   printf("check %d and %d on row %d\n", tmpcol[0],tmpcol[rowlen-1],i);
                      zone[i] = 2*n_zones;      //put Multicolor as last segment, but for time being we do this zone using single thread          
                      ctr_MC+=1;
-//TODO  - increase zone by 1                   zone[i] = 2*n_zones + 1;
+		    //TODO  - increase zone by 1        zone[i] = 2*n_zones + 1;
                    }
                }
         }
 
-printf("zones to color = %d",ctr_MC);
-
+      #pragma omp single
+	{
+		INFO_LOG("NO. of Rows Multicolored = %d\n",ctr_MC);
+	}
+	
       free(tmpcol);
       free(tmpval);
      }
@@ -209,27 +230,30 @@ printf("zones to color = %d",ctr_MC);
    	//this branch if no local permutations are carried out before
     	WARNING_LOG("The matrix has not been RCM permuted, BLOCK coloring works better for matrix with small bandwidths\n");
     	GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local,sizeof(ghost_permutation)), err, ret);
+	old_perm = false;
     	mat->context->perm_local->scope = GHOST_PERMUTATION_LOCAL;
     	mat->context->perm_local->len = mat->nrows;
     	GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->perm,sizeof(ghost_gidx)*mat->nrows), err, ret);
     	GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->invPerm,sizeof(ghost_gidx)*mat->nrows), err, ret);
+  
         mat->context->perm_local->method = GHOST_PERMUTATION_UNSYMMETRIC;
 
         //anyway separate both permutations 
    	GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->colPerm,sizeof(ghost_gidx)*mat->ncols), err, ret);
         GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->colInvPerm,sizeof(ghost_gidx)*mat->ncols), err, ret);
 
-        	#pragma omp parallel for         
-        	for(int i=0; i<mat->ncols; ++i) {
-        		mat->context->perm_local->colPerm[i] = i;
-			mat->context->perm_local->colInvPerm[i] = i;
-         	} 
+       	#pragma omp parallel for         
+       	for(int i=0; i<mat->ncols; ++i) { 
+       		mat->context->perm_local->colPerm[i] = i;
+		mat->context->perm_local->colInvPerm[i] = i;
+       	} 
+
      } else if(mat->context->perm_local->method == GHOST_PERMUTATION_SYMMETRIC) {
-        	//this branch if no unsymmetric permutations have been carried out before
-                   
-        	if(mat->nrows != mat->ncols) {
-			ERROR_LOG("Trying to do symmetric permutation on non-squared matrix\n");
-        	}
+       	//this branch if no unsymmetric permutations have been carried out before
+                 
+       	if(mat->nrows != mat->context->nrowspadded) {
+		ERROR_LOG("Trying to do symmetric permutation on non-squared matrix\n");
+       	}
 
         //now make it unsymmetric
         mat->context->perm_local->method = GHOST_PERMUTATION_UNSYMMETRIC;
@@ -265,31 +289,29 @@ printf("zones to color = %d",ctr_MC);
 
     mat->zone_ptr[mat->nzones+1] = nrows;
 
-if(mat->context->perm_local)
-    for (int i=0;i<mat->nrows;i++) {
-        mat->context->perm_local->perm[mat->context->perm_local->invPerm[i]] = curcol[zone[i]] + mat->zone_ptr[zone[i]];
-        curcol[zone[i]]++;
+    if(old_perm){
+    	for (int i=0;i<mat->nrows;i++) {
+        	mat->context->perm_local->perm[mat->context->perm_local->invPerm[i]] = curcol[zone[i]] + mat->zone_ptr[zone[i]];
+       		curcol[zone[i]]++;
+    	}
+    } else {  
+    	for (int i=0;i<mat->nrows;i++) {
+        	mat->context->perm_local->perm[i] = curcol[zone[i]] + mat->zone_ptr[zone[i]];
+        	curcol[zone[i]]++;
+    	}
     }
 
-else   
-    for (int i=0;i<mat->nrows;i++) {
-        mat->context->perm_local->perm[i] = curcol[zone[i]] + mat->zone_ptr[zone[i]];
-        curcol[zone[i]]++;
-    }
- 
     for (int i=0;i<mat->nrows;i++) {
         mat->context->perm_local->invPerm[mat->context->perm_local->perm[i]] = i;
     }
 
-  //TODO previous permutation only to rows, of A and b
- 
-  //now copy multicoloring, TODO : multicolor this but now  doing as single thread
-  mat->ncolors = 1;//mat->zone_ptr[mat->nzones+1] - mat->zone_ptr[mat->nzones];
-  ghost_malloc((void **)&mat->color_ptr,(mat->ncolors+1)*sizeof(ghost_lidx)); 
+    //now copy multicoloring, TODO : multicolor this but now  doing as single thread
+    mat->ncolors = 1;//mat->zone_ptr[mat->nzones+1] - mat->zone_ptr[mat->nzones];
+    ghost_malloc((void **)&mat->color_ptr,(mat->ncolors+1)*sizeof(ghost_lidx)); 
   
-  for(int i=0; i<mat->ncolors+1; ++i) {
+    for(int i=0; i<mat->ncolors+1; ++i) {
   	mat->color_ptr[i] = mat->zone_ptr[mat->nzones+i];
-  }
+    }
  
   double MC_percent;
   MC_percent = ((double)ctr_MC/mat->context->lnrows[me])*100.;

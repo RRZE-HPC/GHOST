@@ -19,14 +19,27 @@ ghost_error ghost_carp(ghost_sparsemat *mat, ghost_densemat *x, ghost_densemat *
     GHOST_CALL_RETURN(x->halocommInit(x,&comm));
     GHOST_CALL_RETURN(x->halocommStart(x,&comm));
     GHOST_CALL_RETURN(x->halocommFinalize(x,&comm));
-    GHOST_CALL_RETURN(ghost_kacz(x,mat,b,opts));
+    
+    if(mat->traits.flags & GHOST_SPARSEMAT_BLOCKCOLOR) {
+        INFO_LOG("KACZ_BMC\n");
+	GHOST_CALL_RETURN(ghost_kacz_bmc(x,mat,b,opts));
+    } else  {
+    	GHOST_CALL_RETURN(ghost_kacz(x,mat,b,opts));
+    }
+    
     GHOST_CALL_RETURN(x->averageHalo(x));
 
     opts.direction = GHOST_KACZ_DIRECTION_BACKWARD;
     GHOST_CALL_RETURN(x->halocommInit(x,&comm));
     GHOST_CALL_RETURN(x->halocommStart(x,&comm));
     GHOST_CALL_RETURN(x->halocommFinalize(x,&comm));
-    GHOST_CALL_RETURN(ghost_kacz(x,mat,b,opts));
+    
+    if(mat->traits.flags & GHOST_SPARSEMAT_BLOCKCOLOR) {
+	GHOST_CALL_RETURN(ghost_kacz_bmc(x,mat,b,opts));
+    } else  { 
+    	GHOST_CALL_RETURN(ghost_kacz(x,mat,b,opts));
+    }
+  
     GHOST_CALL_RETURN(x->averageHalo(x));
  
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_SOLVER);

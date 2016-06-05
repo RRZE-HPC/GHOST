@@ -5,12 +5,17 @@
   #include <fstream>
   #include <string>
   #include <sstream>
-  
+  #include "ghost/locality.h"
+ 
   ghost_error sparsemat_write(ghost_sparsemat *A,char* name)
   {
         GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+        int me;
+        ghost_rank(&me, A->context->mpicomm);
+
+   
         std::string base_name(name);
-        std::stringstream fileName;
+        std::stringstream fileName;  
         fileName<<base_name <<".mtx";
         std::fstream file;
         file.open( fileName.str().c_str() ,std::fstream::out);

@@ -13,11 +13,17 @@ typedef enum {
  MAX_UPPER = 3
 }zone_extrema;
 
+//returns the virtual column index; ie takes into account the permutation of halo elements also
+#define virtual_col(col_idx)\
+   (mat->context->flags & GHOST_PERM_NO_DISTINCTION)?( (col_ptr[col_idx]<mat->context->nrowspadded)?col_ptr[col_idx]:mat->context->perm_local->colPerm[col_ptr[col_idx]] ):col_ptr[col_idx]\
+
+
+
 ghost_error find_zone_extrema(ghost_sparsemat *mat, int **extrema, ghost_lidx a, ghost_lidx b) 
 {
  //for SELL-1-1
  ghost_lidx *row_ptr = mat->sell->chunkStart;
- ghost_lidx *col_ptr = mat->sell->col;
+ ghost_lidx *col_ptr = mat->sell->col;//virtual_col would be used
  ghost_error ret = GHOST_SUCCESS;
 
  GHOST_CALL_GOTO(ghost_malloc((void **)extrema,sizeof(int)*4),err,ret);
@@ -26,12 +32,18 @@ ghost_error find_zone_extrema(ghost_sparsemat *mat, int **extrema, ghost_lidx a,
  int max_upper = 0;
  int min_lower = mat->ncols;
  int min_upper = mat->ncols;
- 
+
+ //TODO work on virtual columns 
  for(int i=a; i< b; ++i) {
- 	min_lower = MIN( min_lower, col_ptr[row_ptr[i]] );
-        max_lower = MAX( max_lower, col_ptr[row_ptr[i]] );
-        min_upper = MIN( min_upper, col_ptr[row_ptr[i+1]-1] );
-        max_upper = MAX( max_upper, col_ptr[row_ptr[i+1]-1] );
+ 	min_lower = MIN( min_lower, virtual_col(row_ptr[i]) );
+        max_lower = MAX( max_lower, virtual_col(row_ptr[i]) );
+        min_upper = MIN( min_upper, virtual_col(row_ptr[i+1]-1) );
+int me;
+ghost_rank(&me,mat->context->mpicomm);
+if(col_ptr[row_ptr[i+1]-1] > mat->context->nrowspadded){
+	printf("<%d> col changed from %d to %d\n", me,col_ptr[row_ptr[i+1]-1], virtual_col(row_ptr[i+1]-1));
+}
+        max_upper = MAX( max_upper, virtual_col(row_ptr[i+1]-1) );
  }
 
  (*extrema)[MIN_LOWER] = min_lower;
@@ -55,6 +67,8 @@ ghost_error checker(ghost_sparsemat *mat)
 
      //for SELL-1-1
      ghost_lidx *row_ptr = mat->sell->chunkStart;
+
+     //TODO give virtual columns
      ghost_lidx *col_ptr = mat->sell->col;
   
      int *extrema_pure, *extrema_red, *extrema_black, *extrema_trans;
@@ -102,7 +116,7 @@ ghost_error checker(ghost_sparsemat *mat)
 
 		//check black color in transition zones
         if( (zones[4*i+3] != zones[4*i+4]) &&(zones[4*(i-1)+3] != zones[4*(i-1)+4]) && black_min <= black_max) {//col_ptr[row_ptr[zones[4*i+3]]] <= col_ptr[row_ptr[zones[4*i]]-1] ) {
-printf("check  lower = %d, upper = %d\n",col_ptr[row_ptr[zones[4*i+3]]],col_ptr[row_ptr[zones[4*i]]-1] );
+printf("check  lower = %d, upper = %d\n",virtual_col(row_ptr[zones[4*i+3]]),virtual_col(row_ptr[zones[4*i]]-1) );
             ret = GHOST_ERR_BLOCKCOLOR;
 	    printf("ERR 3\n");
 //	    break;
@@ -144,15 +158,16 @@ ghost_error mat_bandwidth(ghost_sparsemat *mat, int *lower_bw, int *upper_bw)
 {
   int lower = 0;
   int upper = 0;
-  int* row_ptr = mat->sell->chunkStart;
-  int* col_ptr = mat->sell->col;
+  ghost_lidx* row_ptr = mat->sell->chunkStart; 
+  ghost_lidx* col_ptr = mat->sell->col;//TODO give virtual colums
   
   //std::cout<<"nrows ="<<mat->nrows<<std::endl;
   //std::cout<<"check"<<row_ptr[mat->nrows-1]<<std::endl;
 
+//TODO replace redundant bw calculations
    for(int i=0; i<mat->nrows; ++i){
-            lower = MAX(lower,i - col_ptr[row_ptr[i]]);
-            upper = MAX(upper,col_ptr[row_ptr[i+1]-1] - i);
+            lower = MAX(lower,i - virtual_col(row_ptr[i]));
+            upper = MAX(upper, virtual_col(row_ptr[i+1]-1) - i);
    }
 
   *lower_bw = lower;
@@ -255,8 +270,8 @@ ghost_error split_transition(ghost_sparsemat *mat)
    mat->kacz_setting.kacz_method = BMC_one_sweep;
  
    for(int i=1; i<n_zones; ++i) {
-       if(col_ptr[row_ptr[new_zone_ptr[4*i+2]]] <= col_ptr[row_ptr[new_zone_ptr[4*i-1]]-1]) {
-           printf("check lower = %d and upper =%d\n",col_ptr[row_ptr[new_zone_ptr[4*i+2]]] , col_ptr[row_ptr[new_zone_ptr[4*i-1]]-1]);
+       if(virtual_col(row_ptr[new_zone_ptr[4*i+2]]) <= virtual_col(row_ptr[new_zone_ptr[4*i-1]]-1)) {
+           printf("check lower = %d and upper =%d\n",virtual_col(row_ptr[new_zone_ptr[4*i+2]]) , virtual_col(row_ptr[new_zone_ptr[4*i-1]]-1));
            mat->kacz_setting.kacz_method = BMC_two_sweep;	
            WARNING_LOG("ONLY half the available threads would be used for transitional sweep\n");
            break;

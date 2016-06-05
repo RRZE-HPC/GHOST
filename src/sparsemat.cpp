@@ -146,6 +146,10 @@ static ghost_error SELL_stringify_tmpl(ghost_sparsemat *mat, char **str, int den
         dense = 1;
     }
 
+    if(mat->context->flags & GHOST_PERM_NO_DISTINCTION) {
+	INFO_LOG("Original matrix without permutation is printed, since GHOST_PERM_NO_DISTINCTION is on");
+    }
+
     ghost_lidx chunk,i,j,row=0,col;
     m_t *val = (m_t *)SELL(mat)->val;
 
