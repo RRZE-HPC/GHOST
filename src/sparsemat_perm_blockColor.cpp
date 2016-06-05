@@ -10,9 +10,16 @@ extern "C" ghost_error ghost_sparsemat_blockColor(ghost_sparsemat *mat, void *ma
     INFO_LOG("Create partition and permute (Block coloring)");
     ghost_error ret = GHOST_SUCCESS;
     ghost_lidx *curcol = NULL; 
-
     bool old_perm = true;
- 
+    //a counter for number of rows to be multicolored
+    ghost_lidx ctr_MC = 0;
+    int lower_bw=0, upper_bw =0, total_bw =0;
+    int max_col_idx = 0;
+    ghost_lidx local_size;
+    ghost_lidx *rhs_split = NULL;
+    ghost_lidx *zone;
+    ghost_lidx nrows =0;
+
     int *nthread = new int[1];  
 
 #ifdef GHOST_HAVE_OPENMP
@@ -34,7 +41,7 @@ extern "C" ghost_error ghost_sparsemat_blockColor(ghost_sparsemat *mat, void *ma
 
    GHOST_CALL_GOTO(ghost_rank(&me,mat->context->mpicomm),err,ret);
 
-   ghost_lidx nrows = mat->context->lnrows[me];
+   nrows = mat->context->lnrows[me];
 
 
   //  ghost_lidx *row_ptr = mat->sell->chunkStart;
@@ -44,10 +51,6 @@ extern "C" ghost_error ghost_sparsemat_blockColor(ghost_sparsemat *mat, void *ma
 
   //  ghost_lidx n_t_zones = n_zones-1; 
   //
-    int lower_bw = 0;
-    int upper_bw = 0;
-    int max_col_idx = 0;
-
     if (srcType == GHOST_SPARSEMAT_SRC_FUNC || srcType == GHOST_SPARSEMAT_SRC_FILE) {
        ghost_sparsemat_src_rowfunc *src = (ghost_sparsemat_src_rowfunc *)matrixSource;
        ghost_gidx * tmpcol = NULL;
@@ -105,16 +108,14 @@ extern "C" ghost_error ghost_sparsemat_blockColor(ghost_sparsemat *mat, void *ma
   //std::cout<<"nrows ="<<mat->nrows<<std::endl;
   //std::cout<<"check"<<row_ptr[mat->nrows-1]<<std::endl;
 
-    int total_bw = lower_bw + upper_bw;
+    total_bw = lower_bw + upper_bw;
     INFO_LOG("RANK<%d>:  LOWER BANDWIDTH =%d, UPPER BANDWIDTH =%d, TOTAL BANDWIDTH =%d\n",me,lower_bw,upper_bw,total_bw);
 
     //approximate
-    ghost_lidx local_size = static_cast<int>( ((max_col_idx+1)-0.2*total_bw) / n_zones); //will have to find a method to balance the load for the last thread, 	
-											 // even if the last thread gets a bit less load its fine since the excess load 
-											 // is evenly spread among rest of the threads
+    local_size = static_cast<int>( ((max_col_idx+1)-0.2*total_bw) / n_zones); //will have to find a method to balance the load for the last thread, 	
+				                 			      // even if the last thread gets a bit less load its fine since the excess load 
+									      // is evenly spread among rest of the threads
 
-
-    int *rhs_split;
     rhs_split = new int[n_zones+2];
    
     for(int i=0; i<n_zones+1; ++i) {
@@ -127,16 +128,13 @@ extern "C" ghost_error ghost_sparsemat_blockColor(ghost_sparsemat *mat, void *ma
 
      
 
-    ghost_lidx *zone = new ghost_lidx[nrows]; 
+    zone = new ghost_lidx[nrows]; 
  
     for(int i=0; i<nrows; ++i) {
         zone[i] = -(n_zones+1) ; //an invalid number
     }
 
- 
-   //a counter for number of rows to be multicolored
-   ghost_lidx ctr_MC = 0;
-   
+  
    if (srcType == GHOST_SPARSEMAT_SRC_FUNC || srcType == GHOST_SPARSEMAT_SRC_FILE) {
        ghost_sparsemat_src_rowfunc *src = (ghost_sparsemat_src_rowfunc *)matrixSource;
        ghost_gidx * tmpcol = NULL;
