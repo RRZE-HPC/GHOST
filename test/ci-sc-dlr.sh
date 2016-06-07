@@ -61,6 +61,8 @@ echo "compilers: CC=$CC, CXX=$CXX, FC=$FC"
 for m in $MODULES_BASIC; do module load $m; done
 if [ "${VECT_EXT}" = "CUDA" ]; then
   module load cuda
+  echo "check if any GPU is found..."
+  nvidia-smi -q|grep "Product Name"
 fi
 
 module list
