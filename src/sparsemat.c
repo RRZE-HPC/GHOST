@@ -977,7 +977,7 @@ void ghost_sparsemat_destroy(ghost_sparsemat *mat)
 ghost_error ghost_sparsemat_from_bincrs(ghost_sparsemat *mat, char *path)
 {
     PERFWARNING_LOG("The current implementation of binCRS read-in is "
-            "unefficient in terms of memory consumption!");
+            "inefficient in terms of memory consumption!");
     
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION|GHOST_FUNCTYPE_IO);
     
