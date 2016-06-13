@@ -15,9 +15,6 @@
 ghost_error ghost_sellspmv__a_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat* invec, ghost_spmv_opts traits)
 {
 #if defined(GHOST_BUILD_SSE)
-#if NVECS%2
-    __m128i mask = _mm_set_epi64x(0,~0);
-#endif
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
 
     double *mval = (double *)SELL(mat)->val;
@@ -87,7 +84,7 @@ ghost_error ghost_sellspmv__a_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
             for (j=0; j<SELL(mat)->rowLen[c]; j++) { // loop inside chunk
                     #GHOST_UNROLL#rhs = _mm_load_pd((double *)invec->val+SELL(mat)->col[offs+j*CHUNKHEIGHT]*invec->stride+@*2);tmp@ = _mm_add_pd(tmp@,_mm_mul_pd(_mm_load1_pd(&mval[offs+j*CHUNKHEIGHT]),rhs));#NVECS/2
 #if NVECS%2
-                    rhs = _mm_maskload_pd((double *)invec->val+SELL(mat)->col[offs+j*CHUNKHEIGHT]*invec->stride+~NVECS/2~*2,mask);tmp~NVECS/2~ = _mm_add_pd(tmp~NVECS/2~,_mm_mul_pd(_mm_load1_pd(&mval[offs+j*CHUNKHEIGHT]),rhs));
+                    rhs = _mm_set_pd(0.,*((double *)invec->val+SELL(mat)->col[offs+j*CHUNKHEIGHT]*invec->stride+~NVECS/2~*2));tmp~NVECS/2~ = _mm_add_pd(tmp~NVECS/2~,_mm_mul_pd(_mm_load1_pd(&mval[offs+j*CHUNKHEIGHT]),rhs));
 #endif
             }
             if (traits.flags & GHOST_SPMV_SHIFT) {
@@ -101,17 +98,17 @@ ghost_error ghost_sellspmv__a_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
             if (traits.flags & GHOST_SPMV_AXPY) {
                 #GHOST_UNROLL#_mm_store_pd(lval+@*2,_mm_add_pd(tmp@,_mm_load_pd(lval+@*2)));#NVECS/2
 #if NVECS%2
-                _mm_maskstore_pd(lval+~NVECS/2~*2,mask,_mm_add_pd(tmp~NVECS/2~,_mm_load_pd(lval+~NVECS/2~*2)));
+                _mm_storel_pd(lval+~NVECS/2~*2,_mm_add_pd(tmp~NVECS/2~,_mm_load_pd(lval+~NVECS/2~*2)));
 #endif
             } else if (traits.flags & GHOST_SPMV_AXPBY) {
                 #GHOST_UNROLL#_mm_store_pd(lval+@*2,_mm_add_pd(tmp@,_mm_mul_pd(_mm_load_pd(lval+@*2),beta)));#NVECS/2
 #if NVECS%2
-                _mm_maskstore_pd(lval+~NVECS/2~*2,mask,_mm_add_pd(tmp~NVECS/2~,_mm_mul_pd(_mm_load_pd(lval+~NVECS/2~*2),beta)));
+                _mm_storel_pd(lval+~NVECS/2~*2,_mm_add_pd(tmp~NVECS/2~,_mm_mul_pd(_mm_load_pd(lval+~NVECS/2~*2),beta)));
 #endif
             } else {
                 #GHOST_UNROLL#_mm_store_pd(lval+@*2,tmp@);#NVECS/2
 #if NVECS%2
-                _mm_maskstore_pd(lval+~NVECS/2~*2,mask,tmp~NVECS/2~);
+                _mm_storel_pd(lval+~NVECS/2~*2,tmp~NVECS/2~);
 #endif
             }
 
@@ -120,8 +117,8 @@ ghost_error ghost_sellspmv__a_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
                 #GHOST_UNROLL#dot2_@ = _mm_add_pd(dot2_@,_mm_mul_pd(_mm_load_pd(rval+@*2),_mm_load_pd(lval+@*2)));#NVECS/2
                 #GHOST_UNROLL#dot3_@ = _mm_add_pd(dot3_@,_mm_mul_pd(_mm_load_pd(rval+@*2),_mm_load_pd(rval+@*2)));#NVECS/2
 #if NVECS%2
-                __m128d maskedrhs = _mm_maskload_pd(rval+(~NVECS/2~)*2,mask);
-                __m128d maskedlhs = _mm_maskload_pd(lval+(~NVECS/2~)*2,mask);
+                __m128d maskedrhs = _mm_set_pd(0.,*(rval+(~NVECS/2~)*2));
+                __m128d maskedlhs = _mm_set_pd(0.,*(lval+(~NVECS/2~)*2));
                 dot1_~NVECS/2~ = _mm_add_pd(dot1_~NVECS/2~,_mm_mul_pd(maskedlhs,maskedlhs));
                 dot2_~NVECS/2~ = _mm_add_pd(dot2_~NVECS/2~,_mm_mul_pd(maskedrhs,maskedlhs));
                 dot3_~NVECS/2~ = _mm_add_pd(dot3_~NVECS/2~,_mm_mul_pd(maskedrhs,maskedrhs));
@@ -177,9 +174,6 @@ ghost_error ghost_sellspmv__a_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
 ghost_error ghost_sellspmv__u_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat* invec, ghost_spmv_opts traits)
 {
 #if defined(GHOST_BUILD_SSE)
-#if NVECS%2
-    __m128i mask = _mm_set_epi64x(0,~0);
-#endif
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
 
     double *mval = (double *)SELL(mat)->val;
@@ -249,7 +243,7 @@ ghost_error ghost_sellspmv__u_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
             for (j=0; j<SELL(mat)->rowLen[c]; j++) { // loop inside chunk
                     #GHOST_UNROLL#rhs = _mm_loadu_pd((double *)invec->val+SELL(mat)->col[offs+j*CHUNKHEIGHT]*invec->stride+@*2);tmp@ = _mm_add_pd(tmp@,_mm_mul_pd(_mm_load1_pd(&mval[offs+j*CHUNKHEIGHT]),rhs));#NVECS/2
 #if NVECS%2
-                    rhs = _mm_maskload_pd((double *)invec->val+SELL(mat)->col[offs+j*CHUNKHEIGHT]*invec->stride+~NVECS/2~*2,mask);tmp~NVECS/2~ = _mm_add_pd(tmp~NVECS/2~,_mm_mul_pd(_mm_load1_pd(&mval[offs+j*CHUNKHEIGHT]),rhs));
+                    rhs = _mm_set_pd(0.,*((double *)invec->val+SELL(mat)->col[offs+j*CHUNKHEIGHT]*invec->stride+~NVECS/2~*2));tmp~NVECS/2~ = _mm_add_pd(tmp~NVECS/2~,_mm_mul_pd(_mm_load1_pd(&mval[offs+j*CHUNKHEIGHT]),rhs));
 #endif
             }
             if (traits.flags & GHOST_SPMV_SHIFT) {
@@ -263,17 +257,17 @@ ghost_error ghost_sellspmv__u_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
             if (traits.flags & GHOST_SPMV_AXPY) {
                 #GHOST_UNROLL#_mm_storeu_pd(lval+@*2,_mm_add_pd(tmp@,_mm_loadu_pd(lval+@*2)));#NVECS/2
 #if NVECS%2
-                _mm_maskstore_pd(lval+~NVECS/2~*2,mask,_mm_add_pd(tmp~NVECS/2~,_mm_loadu_pd(lval+~NVECS/2~*2)));
+                _mm_storel_pd(lval+~NVECS/2~*2,_mm_add_pd(tmp~NVECS/2~,_mm_loadu_pd(lval+~NVECS/2~*2)));
 #endif
             } else if (traits.flags & GHOST_SPMV_AXPBY) {
                 #GHOST_UNROLL#_mm_storeu_pd(lval+@*2,_mm_add_pd(tmp@,_mm_mul_pd(_mm_loadu_pd(lval+@*2),beta)));#NVECS/2
 #if NVECS%2
-                _mm_maskstore_pd(lval+~NVECS/2~*2,mask,_mm_add_pd(tmp~NVECS/2~,_mm_mul_pd(_mm_loadu_pd(lval+~NVECS/2~*2),beta)));
+                _mm_storel_pd(lval+~NVECS/2~*2,_mm_add_pd(tmp~NVECS/2~,_mm_mul_pd(_mm_loadu_pd(lval+~NVECS/2~*2),beta)));
 #endif
             } else {
                 #GHOST_UNROLL#_mm_storeu_pd(lval+@*2,tmp@);#NVECS/2
 #if NVECS%2
-                _mm_maskstore_pd(lval+~NVECS/2~*2,mask,tmp~NVECS/2~);
+                _mm_storel_pd(lval+~NVECS/2~*2,tmp~NVECS/2~);
 #endif
             }
 
@@ -282,8 +276,8 @@ ghost_error ghost_sellspmv__u_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
                 #GHOST_UNROLL#dot2_@ = _mm_add_pd(dot2_@,_mm_mul_pd(_mm_loadu_pd(rval+@*2),_mm_loadu_pd(lval+@*2)));#NVECS/2
                 #GHOST_UNROLL#dot3_@ = _mm_add_pd(dot3_@,_mm_mul_pd(_mm_loadu_pd(rval+@*2),_mm_loadu_pd(rval+@*2)));#NVECS/2
 #if NVECS%2
-                __m128d maskedrhs = _mm_maskload_pd(rval+(~NVECS/2~)*2,mask);
-                __m128d maskedlhs = _mm_maskload_pd(lval+(~NVECS/2~)*2,mask);
+                __m128d maskedrhs = _mm_set_pd(0.,*(rval+(~NVECS/2~)*2));
+                __m128d maskedlhs = _mm_set_pd(0.,*(lval+(~NVECS/2~)*2));
                 dot1_~NVECS/2~ = _mm_add_pd(dot1_~NVECS/2~,_mm_mul_pd(maskedlhs,maskedlhs));
                 dot2_~NVECS/2~ = _mm_add_pd(dot2_~NVECS/2~,_mm_mul_pd(maskedrhs,maskedlhs));
                 dot3_~NVECS/2~ = _mm_add_pd(dot3_~NVECS/2~,_mm_mul_pd(maskedrhs,maskedrhs));
