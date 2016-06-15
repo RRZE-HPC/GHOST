@@ -966,3 +966,17 @@ char * ghost_context_workdist_string(ghost_context_flags_t flags)
 
     return ret;
 }
+
+int ghost_rank_of_row(ghost_context *ctx, ghost_gidx row)
+{
+    int i,nprocs;
+    GHOST_CALL_RETURN(ghost_nrank(&nprocs,ctx->mpicomm));
+
+    for (i=0; i<nprocs; i++) {
+        if (ctx->lfRow[i] <= row && ctx->lfRow[i]+ctx->lnrows[i] > row) {
+            return i;
+        }
+    }
+
+    return -1;
+}
