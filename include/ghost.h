@@ -24,6 +24,7 @@
 #include "ghost/datatransfers.h"
 #include "ghost/tsmttsm.h"
 #include "ghost/tsmm.h"
+#include "ghost/matrixmarket.h"
 
 #include <hwloc.h>
 
