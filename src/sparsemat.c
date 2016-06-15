@@ -523,7 +523,7 @@ ghost_error ghost_sparsemat_fromfunc_common(ghost_lidx *rl, ghost_lidx *rlp, gho
                     for (colidx = 0; colidx<clp[chunk]; colidx++) {
                         memcpy(*val+mat->elSize*((*chunkptr)[chunk]+colidx*C+i),&tmpval[mat->elSize*(i*src->maxrowlen+colidx)],mat->elSize);
                         if (mat->traits.flags & GHOST_SPARSEMAT_PERMUTE) {
-                            if (mat->context->perm_global && !mat->context->perm_local) {
+                            if (mat->context->perm_global) {
                                 // no distinction between global and local entries
                                 // global permutation will be done after all rows are read
                                 (*col)[(*chunkptr)[chunk]+colidx*C+i] = tmpcol[i*src->maxrowlen+colidx];
