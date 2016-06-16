@@ -416,7 +416,6 @@ static ghost_error densemat_cm_halocommFinalize(ghost_densemat *vec, ghost_dense
         for (partner=0; partner<vec->context->nwishpartners; partner++){
             from_PE = vec->context->wishpartners[partner];
             for (i=0; i<vec->traits.ncols; i++){
-                printf("copy %d bytes to %d\n",vec->elSize*vec->context->wishes[from_PE],vec->context->hput_pos[from_PE]);
                 memcpy(DENSEMAT_VALPTR(vec,vec->context->hput_pos[from_PE],i),&comm->tmprecv[from_PE][(i*vec->context->wishes[from_PE])*vec->elSize],vec->elSize*vec->context->wishes[from_PE]);
             }
         }
