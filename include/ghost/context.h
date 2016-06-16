@@ -353,6 +353,7 @@ extern "C" {
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
 ghost_error ghost_global_perm_inv(ghost_gidx *toPerm, ghost_gidx *fromPerm, ghost_context *context);
+    int ghost_rank_of_row(ghost_context *ctx, ghost_gidx row);
 
 #ifdef __cplusplus
 } //extern "C"

@@ -77,7 +77,7 @@ void ghost_timing_set_perfFunc(const char *prefix, const char *tag, ghost_comput
   
     if (!tag) {
         WARNING_LOG("Empty tag! This should not have happened... Prefix is %s",prefix);
-        return;
+        goto out;
     }
 
     ghost_timing_perfFunc pf;
@@ -96,7 +96,7 @@ void ghost_timing_set_perfFunc(const char *prefix, const char *tag, ghost_comput
     for (std::vector<ghost_timing_perfFunc>::iterator it = regionaccu->perfFuncs.begin();
             it !=regionaccu->perfFuncs.end(); ++it) {
         if (it->perfFunc == func && !strcmp(it->perfUnit,unit)) {
-            return;
+            goto out;
         }
     }
 
@@ -104,6 +104,7 @@ void ghost_timing_set_perfFunc(const char *prefix, const char *tag, ghost_comput
     memcpy(pf.perfFuncArg,arg,sizeofarg);
     regionaccu->perfFuncs.push_back(pf);
     
+out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
 }
 

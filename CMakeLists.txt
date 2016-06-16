@@ -816,13 +816,16 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/test)
 enable_testing()
 add_test(NAME simple WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/test COMMAND simple)
 add_test(NAME minimal WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/test COMMAND minimal)
+set_tests_properties(minimal PROPERTIES TIMEOUT 60)
 
 # run tests on GPU if CUDA
 if (GHOST_USE_CUDA)
   add_test(NAME simple_GPU WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/test COMMAND simple)
   set_tests_properties(simple_GPU PROPERTIES ENVIRONMENT GHOST_TYPE=cuda)
+  set_tests_properties(simple_GPU PROPERTIES TIMEOUT 60)
   add_test(NAME minimal_GPU WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/test COMMAND minimal)
   set_tests_properties(minimal_GPU PROPERTIES ENVIRONMENT GHOST_TYPE=cuda)
+  set_tests_properties(minimal_GPU PROPERTIES TIMEOUT 60)
 endif()
-add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} --force-new-ctest-process --output-on-failure DEPENDS simple)
 
+add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} --force-new-ctest-process --output-on-failure DEPENDS simple)

@@ -15,7 +15,7 @@ ghost_error ghost_tsmttsm_kahan__a_plain_d_x_x_1_rm(ghost_densemat *x, ghost_den
     ghost_lidx K = w->traits.ncols;
     ghost_lidx n = v->traits.nrows;
     ghost_lidx m = v->traits.ncols;
-    double finalc[m*K];
+    double *finalc;
 
     int myrank=0;
 
@@ -44,7 +44,8 @@ ghost_error ghost_tsmttsm_kahan__a_plain_d_x_x_1_rm(ghost_densemat *x, ghost_den
 
     ghost_lidx i,j;
         
-    memset(finalc,0,sizeof(finalc));
+    ghost_malloc((void **)&finalc,m*K*sizeof(double));
+    memset(finalc,0,m*K*sizeof(double));
     
     if (x->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
         ghost_lidx k;
@@ -149,6 +150,7 @@ ghost_error ghost_tsmttsm_kahan__a_plain_d_x_x_1_rm(ghost_densemat *x, ghost_den
 err:
 
 out:
+    free(finalc);
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 }
@@ -161,7 +163,7 @@ ghost_error ghost_tsmttsm_kahan__a_plain_z_x_x_1_rm(ghost_densemat *x, ghost_den
     ghost_lidx K = w->traits.ncols;
     ghost_lidx n = v->traits.nrows;
     ghost_lidx m = v->traits.ncols;
-    complex double finalc[m*K];
+    complex double *finalc;
 
     int myrank=0;
 
@@ -195,7 +197,8 @@ ghost_error ghost_tsmttsm_kahan__a_plain_z_x_x_1_rm(ghost_densemat *x, ghost_den
 
     ghost_lidx i,j;
         
-    memset(finalc,0,sizeof(finalc));
+    ghost_malloc((void **)&finalc,m*K*sizeof(complex double));
+    memset(finalc,0,m*K*sizeof(complex double));
     
     if (x->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
         ghost_lidx k;
@@ -340,6 +343,7 @@ ghost_error ghost_tsmttsm_kahan__a_plain_z_x_x_1_rm(ghost_densemat *x, ghost_den
 err:
 
 out:
+    free(finalc);
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 }

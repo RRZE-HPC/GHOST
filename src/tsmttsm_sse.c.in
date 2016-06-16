@@ -33,12 +33,14 @@ ghost_error ghost_tsmttsm__a_sse_d_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_dense
 
     const ghost_lidx ldv = v->stride;
     const ghost_lidx ldw = w->stride;
-    const ghost_lidx ldx = x->stride;
+    ghost_lidx ldx = x->stride;
+    ghost_lidx ldxpad = ldx;
 
     __m128d betavec, alphavec;
     
     double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
+    double *xpad = NULL;
    
     betavec = _mm_set1_pd(dbeta);
     alphavec = _mm_set1_pd(dalpha);
@@ -50,14 +52,22 @@ ghost_error ghost_tsmttsm__a_sse_d_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_dense
     }
 
     ghost_lidx i,m;
+    if (!IS_ALIGNED(xval,16) || ((x->stride*x->elSize) % 16)) {
+        ldxpad = PAD(x->stride,2);
+        ghost_malloc_align((void **)&xpad,ldxpad*x->traits.ncols*sizeof(double),16);
+    } else {
+        xpad = xval;
+    }
+
+
 
     ghost_lidx k;
     for (k=0; k<CFGK; k++) {
         for (m=0; m+2<=CFGM; m+=2) {
-            _mm_store_pd(&xval[k*ldx+m],_mm_mul_pd(_mm_load_pd(&xval[k*ldx+m]),betavec));
+            _mm_store_pd(&xpad[k*ldxpad+m],_mm_mul_pd(_mm_load_pd(&xval[k*ldx+m]),betavec));
         }
         for (; m<CFGM; m++) {
-            xval[k*ldx+m] = dbeta*xval[k*ldx+m];
+            xpad[k*ldxpad+m] = dbeta*xval[k*ldx+m];
         }
     }
 #pragma omp parallel private(m,k)
@@ -138,19 +148,19 @@ ghost_error ghost_tsmttsm__a_sse_d_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_dense
             m=0;
             for (k=0; k+2<=CFGK; k+=2) {
                 for (m=0; m+2<=CFGM; m+=2) {
-                    #GHOST_UNROLL#_mm_store_pd(&xval[(k+@)*ldx+m],_mm_add_pd(_mm_load_pd(&xval[(k+@)*ldx+m]),_mm_load_pd(&x_priv[(k+@)*ldxpriv+m])));#2
+                    #GHOST_UNROLL#_mm_store_pd(&xpad[(k+@)*ldxpad+m],_mm_add_pd(_mm_load_pd(&xpad[(k+@)*ldxpad+m]),_mm_load_pd(&x_priv[(k+@)*ldxpriv+m])));#2
                 }
                 for (; m<CFGM; m++) {
-                    xval[(k+0)*ldx+m] += x_priv[(k+0)*ldxpriv+m];
-                    xval[(k+1)*ldx+m] += x_priv[(k+1)*ldxpriv+m];
+                    xpad[(k+0)*ldxpad+m] += x_priv[(k+0)*ldxpriv+m];
+                    xpad[(k+1)*ldxpad+m] += x_priv[(k+1)*ldxpriv+m];
                 }
             }
             for (; k<CFGK; k++) {
                 for (m=0; m+2<=CFGM; m+=2) {
-                    _mm_store_pd(&xval[(k+0)*ldx+m],_mm_add_pd(_mm_load_pd(&xval[(k+0)*ldx+m]),_mm_load_pd(&x_priv[(k+0)*ldxpriv+m])));
+                    _mm_store_pd(&xpad[(k+0)*ldxpad+m],_mm_add_pd(_mm_load_pd(&xpad[(k+0)*ldxpad+m]),_mm_load_pd(&x_priv[(k+0)*ldxpriv+m])));
                 }
                 for (; m<CFGM; m++) {
-                    xval[k*ldx+m] += x_priv[k*ldxpriv+m];
+                    xpad[k*ldxpad+m] += x_priv[k*ldxpriv+m];
                 }
             }
         }
@@ -161,6 +171,14 @@ ghost_error ghost_tsmttsm__a_sse_d_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_dense
 err:
 
 out:
+    if (xpad != xval) {
+        for (k=0; k<CFGK; k++) {
+            for (m=0; m<CFGM; m++) {
+                xval[k*ldx+m] = xpad[k*ldxpad+m];
+            }
+        }
+        free(xpad);
+    }
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 #else

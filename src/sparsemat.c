@@ -1097,7 +1097,7 @@ ghost_error ghost_sparsemat_fromfunc_common(ghost_lidx *rl, ghost_lidx *rlp, gho
                     for (colidx = 0; colidx<clp[chunk]; colidx++) {
                         memcpy(*val+mat->elSize*((*chunkptr)[chunk]+colidx*C+i),&tmpval[mat->elSize*(i*src->maxrowlen+colidx)],mat->elSize);
                         if (mat->traits.flags & GHOST_SPARSEMAT_PERMUTE) {
-                            if (mat->context->perm_global && !mat->context->perm_local) {
+                            if (mat->context->perm_global) {
                                 // no distinction between global and local entries
                                 // global permutation will be done after all rows are read
                                 (*col)[(*chunkptr)[chunk]+colidx*C+i] = tmpcol[i*src->maxrowlen+colidx];
@@ -1575,7 +1575,7 @@ void ghost_sparsemat_destroy(ghost_sparsemat *mat)
 ghost_error ghost_sparsemat_from_bincrs(ghost_sparsemat *mat, char *path)
 {
     PERFWARNING_LOG("The current implementation of binCRS read-in is "
-            "unefficient in terms of memory consumption!");
+            "inefficient in terms of memory consumption!");
     
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION|GHOST_FUNCTYPE_IO);
     
@@ -1586,6 +1586,7 @@ ghost_error ghost_sparsemat_from_bincrs(ghost_sparsemat *mat, char *path)
     ghost_sparsemat_src_rowfunc src = GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER;
     
     src.func = &ghost_sparsemat_rowfunc_bincrs;
+    src.arg = mat;
     args.filename = path;
     if (src.func(GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_GETDIM,&bincrs_dt,dim,&args,src.arg)) {
         ERROR_LOG("Error in matrix creation function");
@@ -1608,6 +1609,7 @@ ghost_error ghost_sparsemat_from_bincrs(ghost_sparsemat *mat, char *path)
     src.maxrowlen = dim[1];
     
     GHOST_CALL_GOTO(mat->fromRowFunc(mat,&src),err,ret);
+    
     if (src.func(GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_FINALIZE,NULL,NULL,NULL,src.arg)) {
         ERROR_LOG("Error in matrix creation function");
         ret = GHOST_ERR_UNKNOWN;

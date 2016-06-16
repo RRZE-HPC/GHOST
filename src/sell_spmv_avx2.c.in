@@ -53,24 +53,24 @@ ghost_error ghost_sellspmv__a_avx2_z_z_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res,
     }
         
     scale = _mm256_setzero_pd();
-    scale = _mm256_insertf128_pd(scale,_mm_load_pd((double *)&sscale),0);
-    scale = _mm256_insertf128_pd(scale,_mm_load_pd((double *)&sscale),1);
+    scale = _mm256_insertf128_pd(scale,_mm_loadu_pd((double *)&sscale),0);
+    scale = _mm256_insertf128_pd(scale,_mm_loadu_pd((double *)&sscale),1);
     beta = _mm256_setzero_pd();
-    beta = _mm256_insertf128_pd(beta,_mm_load_pd((double *)&sbeta),0);
-    beta = _mm256_insertf128_pd(beta,_mm_load_pd((double *)&sbeta),1);
+    beta = _mm256_insertf128_pd(beta,_mm_loadu_pd((double *)&sbeta),0);
+    beta = _mm256_insertf128_pd(beta,_mm_loadu_pd((double *)&sbeta),1);
 
     if (traits.flags & GHOST_SPMV_SHIFT) {
         shift = _mm256_setzero_pd();
-        shift = _mm256_insertf128_pd(shift,_mm_load_pd((double *)&sshift[0]),0);
-        shift = _mm256_insertf128_pd(shift,_mm_load_pd((double *)&sshift[0]),1);
+        shift = _mm256_insertf128_pd(shift,_mm_loadu_pd((double *)&sshift[0]),0);
+        shift = _mm256_insertf128_pd(shift,_mm_loadu_pd((double *)&sshift[0]),1);
     }
     if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
         delta = _mm256_setzero_pd();
-        delta = _mm256_insertf128_pd(delta,_mm_load_pd((double *)&sdelta),0);
-        delta = _mm256_insertf128_pd(delta,_mm_load_pd((double *)&sdelta),1);
+        delta = _mm256_insertf128_pd(delta,_mm_loadu_pd((double *)&sdelta),0);
+        delta = _mm256_insertf128_pd(delta,_mm_loadu_pd((double *)&sdelta),1);
         eta = _mm256_setzero_pd();
-        eta = _mm256_insertf128_pd(eta,_mm_load_pd((double *)&seta),0);
-        eta = _mm256_insertf128_pd(eta,_mm_load_pd((double *)&seta),1);
+        eta = _mm256_insertf128_pd(eta,_mm_loadu_pd((double *)&seta),0);
+        eta = _mm256_insertf128_pd(eta,_mm_loadu_pd((double *)&seta),1);
     }
 
     
@@ -262,11 +262,11 @@ ghost_error ghost_sellspmv__a_avx2_z_z_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res,
     beta = _mm256_insertf128_pd(beta,_mm_loadu_pd((double *)&sbeta),1);
     if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
         delta = _mm256_setzero_pd();
-        delta = _mm256_insertf128_pd(delta,_mm_load_pd((double *)&sdelta),0);
-        delta = _mm256_insertf128_pd(delta,_mm_load_pd((double *)&sdelta),1);
+        delta = _mm256_insertf128_pd(delta,_mm_loadu_pd((double *)&sdelta),0);
+        delta = _mm256_insertf128_pd(delta,_mm_loadu_pd((double *)&sdelta),1);
         eta = _mm256_setzero_pd();
-        eta = _mm256_insertf128_pd(eta,_mm_load_pd((double *)&seta),0);
-        eta = _mm256_insertf128_pd(eta,_mm_load_pd((double *)&seta),1);
+        eta = _mm256_insertf128_pd(eta,_mm_loadu_pd((double *)&seta),0);
+        eta = _mm256_insertf128_pd(eta,_mm_loadu_pd((double *)&seta),1);
     }
 
     int nthreads = 1;
@@ -328,11 +328,11 @@ ghost_error ghost_sellspmv__a_avx2_z_z_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res,
 
                 if (traits.flags & (GHOST_SPMV_SHIFT | GHOST_SPMV_VSHIFT)) {
                     if (traits.flags & GHOST_SPMV_SHIFT) {
-                        shift = _mm256_insertf128_pd(shift,_mm_load_pd((double *)&sshift[0]),0);
-                        shift = _mm256_insertf128_pd(shift,_mm_load_pd((double *)&sshift[0]),1);
+                        shift = _mm256_insertf128_pd(shift,_mm_loadu_pd((double *)&sshift[0]),0);
+                        shift = _mm256_insertf128_pd(shift,_mm_loadu_pd((double *)&sshift[0]),1);
                     } else {
-                        shift = _mm256_insertf128_pd(shift,_mm_load_pd((double *)&sshift[v]),0);
-                        shift = _mm256_insertf128_pd(shift,_mm_load_pd((double *)&sshift[v]),1);
+                        shift = _mm256_insertf128_pd(shift,_mm_loadu_pd((double *)&sshift[v]),0);
+                        shift = _mm256_insertf128_pd(shift,_mm_loadu_pd((double *)&sshift[v]),1);
                     }
                     #GHOST_UNROLL#tmp@ = _mm256_sub_pd(tmp@,complex_mul(shift,_mm256_load_pd((double *)&rval[c*CHUNKHEIGHT+(2*@)])));#CHUNKHEIGHT/2
                 }
