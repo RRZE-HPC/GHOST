@@ -421,14 +421,14 @@ static ghost_error FUNCNAME(permute_tmpl(ghost_densemat *vec, ghost_permutation_
         GHOST_CALL_RETURN(ghost_nrank(&nprocs,vec->context->mpicomm));
         GHOST_CALL_RETURN(vec->download(vec));
         MPI_Request *req;
-        ghost_malloc((void **)&req,vec->context->perm_global->len*2*sizeof(MPI_Request));
+        ghost_malloc((void **)&req,vec->traits.nrows*2*sizeof(MPI_Request));
 
         ghost_densemat *vecclone;
         ghost_densemat_clone(&vecclone,vec,vec->traits.nrows,0,vec->traits.ncols,0);
         int dstrank,srcrank;
         ghost_lidx rowindst;
         for (c=0; c<vec->traits.ncols; c++) {
-            for (i=0; i<vec->context->perm_global->len; i++) {
+            for (i=0; i<vec->traits.nrows; i++) {
                 if (dir == GHOST_PERMUTATION_ORIG2PERM) {
                     dstrank = ghost_rank_of_row(vec->context,vec->context->perm_global->perm[i]);
                     srcrank = ghost_rank_of_row(vec->context,vec->context->perm_global->invPerm[i]);
@@ -440,9 +440,9 @@ static ghost_error FUNCNAME(permute_tmpl(ghost_densemat *vec, ghost_permutation_
                 }
 
                 MPI_Isend(DENSEMAT_VALPTR(vecclone,i,c),1,vec->mpidt,dstrank,rowindst,vec->context->mpicomm,&req[i]);
-                MPI_Irecv(DENSEMAT_VALPTR(vec,i,c),1,vec->mpidt,srcrank,i,vec->context->mpicomm,&req[vec->context->perm_global->len+i]);
+                MPI_Irecv(DENSEMAT_VALPTR(vec,i,c),1,vec->mpidt,srcrank,i,vec->context->mpicomm,&req[vec->traits.nrows+i]);
             }
-            MPI_Waitall(2*vec->context->perm_global->len,req,MPI_STATUS_IGNORE);
+            MPI_Waitall(2*vec->traits.nrows,req,MPI_STATUS_IGNORE);
         }
         ghost_densemat_destroy(vecclone);
 #else
