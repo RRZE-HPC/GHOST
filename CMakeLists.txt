@@ -31,6 +31,7 @@ option(GHOST_LOG_ONLYFIRST "Print all errors, warnings and info only once for ea
 option(GHOST_TRACK_DATATRANSFERS "Track MPI and CUDA data transfers" 0)
 option(GHOST_SPARSEMAT_GLOBALSTATS "Gather some global statistics on sparse matrices (should be disabled for large-scale runs)" 0)
 option(GHOST_SPARSEMAT_STATS "Gather statistics about sparse matrices (slows down matrix construction)" 0)
+option(GHOST_KACZ_ANALYZE "Gather data about load balancing for KACZ method (might slow down initial splitting)" 0)  
 set(GHOST_LOG_RANK "-1" CACHE STRING "The MPI rank for which the log messages will be printed. -1 for full verbosity.")
 set(GHOST_GEN_DENSEMAT_DIM "1,2,4,8" CACHE STRING "The block vector sizes for which generated kernels are being created (comma-separated list)")
 set(GHOST_GEN_SELL_C "1,32" CACHE STRING "The SELL chunk heights for which generated kernels are being created (comma-separated list)")
@@ -104,7 +105,17 @@ set (SOURCES
     src/thpool.c
     src/timing.c
     src/types.c
-    src/util.c 
+    src/util.c
+    src/rcm_dissection.cpp
+    src/sell_kacz_rb.c
+    src/carp_rb.c
+    src/sell_kacz_rb_versions.c 
+    src/sparsemat_write.cpp
+    src/sparsemat_perm_blockColor.cpp 
+    src/kacz_hybrid_split.c
+    src/kacz_split_analytical.c
+    src/sell_kacz_bmc.c 
+    src/sell_kacz_mc.c
     )
 
 set (HEADERS
@@ -150,6 +161,14 @@ set (HEADERS
     include/ghost/tsmttsm.h
     include/ghost/types.h
     include/ghost/util.h
+    include/ghost/rcm_dissection.h
+    include/ghost/sell_kacz_rb.h
+    include/ghost/carp_rb.h
+    include/ghost/sell_kacz_rb_versions.h 
+    include/ghost/kacz_hybrid_split.h
+    include/ghost/kacz_split_analytical.h
+    include/ghost/sell_kacz_bmc.h 
+    include/ghost/sell_kacz_mc.h
     )
 
 string(REPLACE "," ";" GHOST_GEN_SELL_C_LIST ${GHOST_GEN_SELL_C})
@@ -796,7 +815,6 @@ endif()
 add_subdirectory(${PROJECT_SOURCE_DIR}/test)
 enable_testing()
 add_test(NAME simple WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/test COMMAND simple)
-set_tests_properties(simple PROPERTIES TIMEOUT 60)
 add_test(NAME minimal WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/test COMMAND minimal)
 set_tests_properties(minimal PROPERTIES TIMEOUT 60)
 

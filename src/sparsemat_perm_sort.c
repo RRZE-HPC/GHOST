@@ -84,6 +84,10 @@ ghost_error ghost_sparsemat_perm_sort(ghost_sparsemat *mat, void *matrixSource, 
         GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local,sizeof(ghost_permutation)),err,ret);
         GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->perm,sizeof(ghost_gidx)*nrows),err,ret);
         GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->invPerm,sizeof(ghost_gidx)*nrows),err,ret);
+        mat->context->perm_local->colPerm = NULL;
+        mat->context->perm_local->colInvPerm = NULL;
+        mat->context->perm_local->method = GHOST_PERMUTATION_SYMMETRIC;
+
 #ifdef GHOST_HAVE_CUDA
         GHOST_CALL_GOTO(ghost_cu_malloc((void **)&mat->context->perm_local->cu_perm,sizeof(ghost_gidx)*nrows),err,ret);
 #endif

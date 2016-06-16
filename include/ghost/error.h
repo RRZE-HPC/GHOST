@@ -6,7 +6,11 @@
 #ifndef GHOST_ERROR_H
 #define GHOST_ERROR_H
 
+#ifdef __cplusplus
+#include <cstring>
+#else
 #include <string.h>
+#endif
 #include "log.h"
 
 #ifndef GHOST_HAVE_ZOLTAN
@@ -77,6 +81,18 @@ typedef enum {
      * @brief An error in a ColPack call occured.
      */
     GHOST_ERR_COLPACK,
+    /**
+     * @brief An error in Block coloring occured.
+     */
+    GHOST_ERR_BLOCKCOLOR,
+    /**
+     * @brief ERROR if the matrix is not colored.
+     */
+    GHOST_ERR_NOT_COLORED,
+    /**
+    * @brief An error in Red-Black splitting occured. 
+    */
+    GHOST_ERR_RED_BLACK,
     /**
      * @brief An error in a LAPACK call occured.
      */

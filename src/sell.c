@@ -1,4 +1,3 @@
-#define _XOPEN_SOURCE 500
 #include "ghost/core.h"
 #include "ghost/util.h"
 #include "ghost/locality.h"

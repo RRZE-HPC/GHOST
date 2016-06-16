@@ -347,7 +347,7 @@ static ghost_error densemat_cm_halocommInit(ghost_densemat *vec, ghost_densemat_
                     for (i=0; i<vec->context->dues[to_PE]; i++){
                         for (c=0; c<vec->traits.ncols; c++) {
                             memcpy(comm->work + (c*vec->context->dues[to_PE]+comm->dueptr[to_PE]*vec->traits.ncols+i)*vec->elSize,
-                                    DENSEMAT_VALPTR(vec,vec->context->perm_local->perm[vec->context->duelist[to_PE][i]],c),vec->elSize);
+                                    DENSEMAT_VALPTR(vec,vec->context->perm_local->colPerm[vec->context->duelist[to_PE][i]],c),vec->elSize);//change to colPerm
                         }
                     }
                 }
@@ -372,6 +372,7 @@ static ghost_error densemat_cm_halocommInit(ghost_densemat *vec, ghost_densemat_
                 }
             }
     }
+      
 #ifdef GHOST_HAVE_CUDA
     if (vec->traits.location & GHOST_LOCATION_DEVICE) {
         GHOST_INSTR_START("downloadcomm->work");
@@ -406,19 +407,36 @@ static ghost_error densemat_cm_halocommFinalize(ghost_densemat *vec, ghost_dense
     ghost_error ret = GHOST_SUCCESS;
     
     int nprocs;
+<<<<<<< HEAD
     int i, from_PE, partner;
+=======
+    int i, c, partner, from_PE;
+>>>>>>> b4e6a633afb75909f9a8c52cf9cf94b1ae9ccbd8
     
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, vec->context->mpicomm),err,ret);
 
+                
     ghost_densemat_halocommFinalize_common(comm);
+        
     if (vec->traits.location & GHOST_LOCATION_HOST) {
         GHOST_INSTR_START("Assemble row-major view");
         for (partner=0; partner<vec->context->nwishpartners; partner++){
             from_PE = vec->context->wishpartners[partner];
-            for (i=0; i<vec->traits.ncols; i++){
-                memcpy(DENSEMAT_VALPTR(vec,vec->context->hput_pos[from_PE],i),&comm->tmprecv[from_PE][(i*vec->context->wishes[from_PE])*vec->elSize],vec->elSize*vec->context->wishes[from_PE]);
+    /*        if( (vec->context->perm_local) && (vec->context->flags & GHOST_PERM_NO_DISTINCTION) ){
+	        //copy to permuted position
+             	for (i=0; i<vec->context->wishes[from_PE]; i++){
+                    for (c=0; c<vec->traits.ncols; c++) {
+                           memcpy(DENSEMAT_VALPTR(vec,vec->context->perm_local->colPerm[vec->context->hput_pos[from_PE]+i],c),
+                                    &comm->tmprecv[from_PE][(c*vec->context->wishes[from_PE]+i)*vec->elSize],vec->elSize);
+                    }
+                }
+            } else { */
+		 for (i=0; i<vec->traits.ncols; i++){
+                	memcpy(DENSEMAT_VALPTR(vec,vec->context->hput_pos[from_PE],i),&comm->tmprecv[from_PE][(i*vec->context->wishes[from_PE])*vec->elSize],vec->elSize*vec->context->wishes[from_PE]);
+     //           }
             }
         }
+       
         GHOST_INSTR_STOP("Assemble row-major view");
     }
 

@@ -1,4 +1,3 @@
-/*!GHOST_AUTOGEN CHUNKHEIGHT;BLOCKDIM1 */
 #include "ghost/config.h"
 #include "ghost/types.h"
 #include "ghost/util.h"
@@ -7,8 +6,8 @@
 #include <omp.h>
 #include "iaca/iacaMarks.h"
 
-#GHOST_SUBST NVECS ${BLOCKDIM1}
-#GHOST_SUBST CHUNKHEIGHT ${CHUNKHEIGHT}
+//#GHOST_SUBST NVECS ${BLOCKDIM1}
+//#GHOST_SUBST CHUNKHEIGHT ${CHUNKHEIGHT}
 
 #define LOOPINCHUNK(start, end) \
   for (int rowinchunk = start; rowinchunk < end; rowinchunk++) { \
@@ -32,8 +31,12 @@
          }\
     }\
 
-ghost_error ghost_kacz__u_plain_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts)
+ghost_error ghost_kacz_mc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts)
 {
+
+    int CHUNKHEIGHT = 1;
+    int NVECS = 1;
+
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
    
     if (!mat->color_ptr || mat->ncolors == 0 ) {
@@ -62,7 +65,7 @@ ghost_error ghost_kacz__u_plain_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *x, ghos
   } 
  } 
 
-    if (x->traits.ncols > 1) {
+    if (NVECS > 1) {
         ERROR_LOG("Multi-vec not implemented!");
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
@@ -143,7 +146,8 @@ ghost_error ghost_kacz__u_plain_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *x, ghos
                         idx += CHUNKHEIGHT;
                     }
                 }
-#pragma omp for private(j,row,rowinchunk) 
+
+#pragma omp for private(j,row,rowinchunk)   
             for (c=fchunk+1; c<lchunk-1; c++){
                     for (rowinchunk = 0; rowinchunk < CHUNKHEIGHT; rowinchunk++) {
                     row = rowinchunk + c*CHUNKHEIGHT;
@@ -168,8 +172,7 @@ ghost_error ghost_kacz__u_plain_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *x, ghos
                     for (j=0; j<sellmat->rowLen[row]; j++) {
                         xval[sellmat->col[idx]] = xval[sellmat->col[idx]] -  scal * (double)mval[idx];
                         idx += CHUNKHEIGHT;
-                    }
-                
+                    } 
                 }
             }         
             //now handle last chunk
@@ -232,9 +235,9 @@ ghost_error ghost_kacz__u_plain_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *x, ghos
                     }
                 }
 
-#pragma omp for private(j,row,rowinchunk)
+#pragma omp for private(j,row,rowinchunk)  
             for (c=fchunk-1; c>lchunk+1; --c) {
-                for (rowinchunk = CHUNKHEIGHT-1; rowinchunk > -1 ; rowinchunk--) {
+                  for (rowinchunk = CHUNKHEIGHT-1; rowinchunk > -1 ; rowinchunk--) {
                     row = rowinchunk + c*CHUNKHEIGHT;
                     //printf("projecting to row ........ %d\n",row);
                     rownorm = 0.;

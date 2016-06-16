@@ -16,8 +16,13 @@
 #include <mpi.h>
 #endif
 
+#ifdef __cplusplus
+#include <cstdio>
+#include <cstring>
+#else
 #include <stdio.h>
 #include <string.h>
+#endif
 
 #define ANSI_COLOR_RED     "\x1b[31m"
 #define ANSI_COLOR_GREEN   "\x1b[32m"

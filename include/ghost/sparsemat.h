@@ -100,12 +100,42 @@ typedef enum {
 }
 ghost_kacz_direction;
 
+typedef enum{
+     yes,
+     no
+}
+ghost_kacz_normalize;
+
 typedef struct {
     void *omega;
     ghost_kacz_direction direction;
+    ghost_kacz_normalize normalize;
 }
 ghost_kacz_opts;
 
+/**
+ * @brief internal to differentiate between different KACZ sweep methods
+ * MC - Multicolored
+ * BMC_RB - Block Multicolored with RCM ( condition : nrows/(2*(total_bw+1)) > threads)
+ * BMC_one_trans_sweep - Block Multicolored with RCM ( condition : nrows/(total_bw+1) > threads, and transition does not overlap)
+ * BMC_two_trans_sweep - Block Multicolored with RCM ( condition : nrows/(total_bw+1) > threads, and transition can overlap)
+ */
+typedef enum{
+      MC,
+      BMC_RB,
+      BMC_one_sweep,
+      BMC_two_sweep
+}
+ghost_kacz_method;
+
+//TODO zone ptr can be moved here 
+typedef struct {
+      
+      ghost_kacz_method kacz_method;
+      ghost_lidx active_threads;
+}
+ghost_kacz_setting;
+    
 /**
  * @brief A CUDA SELL-C-sigma matrix.
  */
@@ -346,7 +376,17 @@ typedef enum {
     /**
      * @brief Re-order the local part of the matrix using parallel RCM re-ordering.
      */
-    GHOST_SPARSEMAT_RCM = 4096
+    GHOST_SPARSEMAT_RCM = 4096,
+    /**
+    * @brief Re-order the local part of the matrix using a block coloring.
+    */
+    GHOST_SPARSEMAT_BLOCKCOLOR = 8192,
+    /**
+    * @brief SETS the sparsematrix permutation as needed by the KACZ solver
+    * depending on the bandwidth of the matrix
+    */
+    GHOST_SOLVER_KACZ = 16384,
+
 } ghost_sparsemat_flags;
 
 
@@ -468,6 +508,19 @@ struct ghost_sparsemat
      * @brief The number of rows with each color (length: ncolors+1).
      */
     ghost_lidx *color_ptr;
+     /**
+     * @brief The number of total zones (odd+even)
+     **/
+    ghost_lidx nzones;
+    /**
+    * @brief Pointer to odd-even (Red-Black coloring) zones of a matrix (length: nzones+1)  
+    * Ordering [even_begin_1 odd_begin_1 even_begin_2 odd_begin_2 ..... nrows]
+    **/
+    ghost_lidx *zone_ptr;
+    /**
+    * @brief details regarding kacz is stored here
+    */ 
+    ghost_kacz_setting kacz_setting;
     /**
      * @brief The number of rows.
      */
@@ -504,6 +557,15 @@ struct ghost_sparsemat
      * @brief The bandwidth of the matrix.
      */
     ghost_gidx bandwidth;
+    /**
+     * @brief The maximum column index in the matrix
+     * (Required for example if we permute the (local + remote) part of matrix
+     */
+    ghost_gidx maxColRange; 
+    /**
+     * @brief Store the ratio between nrows and bandwidth
+     */ 	
+    double kaczRatio;
     /**
      * @brief The average width of the rows wrt. the diagonal.
      */
@@ -725,6 +787,9 @@ extern "C" {
      */
     ghost_error ghost_sparsemat_perm_color(ghost_sparsemat *mat, 
             void *matrixSource, ghost_sparsemat_src srcType);
+
+    ghost_error ghost_sparsemat_blockColor(ghost_sparsemat *mat, void *matrixSource, ghost_sparsemat_src srcType);
+ 
     ghost_error ghost_sparsemat_perm_zoltan(ghost_sparsemat *mat, void *matrixSource, ghost_sparsemat_src srcType);
     /**
      * @brief Sort the entries in a given row physically to have increasing 
@@ -863,8 +928,22 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts);
-
+    ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts); 
+    ghost_error ghost_kacz_mc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts);
+    ghost_error ghost_kacz_rb(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts);
+    ghost_error ghost_kacz_bmc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts);
+    ghost_error ghost_kacz_rb_with_shift(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, double *shift_r,  ghost_kacz_opts opts);
+    ghost_error ghost_carp_rb(ghost_sparsemat *mat, ghost_densemat *x, ghost_densemat *b, void *omega, int flag_rb);
+    ghost_error checker(ghost_sparsemat *mat);
+    ghost_error split_transition(ghost_sparsemat *mat);
+    
+    /**
+    * @brief Writes a matrix to file 
+    *
+    *@param A sparse matrix to write
+    *@param name Name of file 
+   */                
+    ghost_error sparsemat_write(ghost_sparsemat *A, char *name);
 
     /**
      * @brief Assemble communication information in the given context.
@@ -889,7 +968,7 @@ extern "C" {
 
     ghost_error ghost_sparsemat_fromfunc_common(ghost_lidx *rl, ghost_lidx *rlp, ghost_lidx *cl, ghost_lidx *clp, ghost_lidx **chunkptr, char **val, ghost_gidx **col, ghost_sparsemat_src_rowfunc *src, ghost_sparsemat *mat, ghost_lidx C, ghost_lidx P);
 
-    static inline int ghost_sparsemat_rowfunc_crs(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *col, void *val, void *crsdata)
+  static inline int ghost_sparsemat_rowfunc_crs(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *col, void *val, void *crsdata)
 {
     ghost_gidx *crscol = ((ghost_sparsemat_rowfunc_crs_arg *)crsdata)->col;
     ghost_lidx *crsrpt = ((ghost_sparsemat_rowfunc_crs_arg *)crsdata)->rpt;
@@ -904,8 +983,9 @@ extern "C" {
     return 0;
 }
 
-        
-
+//To calculate Bandwidth        
+ghost_error calculate_bw(ghost_sparsemat *mat, void *matrixSource, ghost_sparsemat_src srcType);
+ 
 #ifdef __cplusplus
 } 
 #endif

@@ -151,7 +151,11 @@ static ghost_error getNrowsFromContext(ghost_densemat *vec)
     if (vec->context != NULL) {
         int rank;
         GHOST_CALL_RETURN(ghost_rank(&rank, vec->context->mpicomm));
-        vec->traits.nrows = vec->context->lnrows[rank];
+        if(vec->context->flags & GHOST_PERM_NO_DISTINCTION) {
+		vec->traits.nrows = vec->context->nrowspadded;
+	} else {
+        	vec->traits.nrows = vec->context->lnrows[rank];
+	}
     }
 
     if (vec->traits.flags & GHOST_DENSEMAT_VIEW) {
@@ -183,6 +187,7 @@ static ghost_error getNrowsFromContext(ghost_densemat *vec)
            
             padding /= vec->elSize;
             
+
             vec->traits.ncolspadded = PAD(vec->traits.ncols,padding);
         } else {
             vec->traits.ncolspadded = vec->traits.ncols;
@@ -194,10 +199,10 @@ static ghost_error getNrowsFromContext(ghost_densemat *vec)
         //WARNING_LOG("Extremely large row padding because the performance for TSMM and a large dimension power of two is very bad. This has to be fixed!");
        // padding=500000; 
 #endif
-        
+ 
         vec->traits.nrowspadded = PAD(vec->traits.nrows,padding);
     }
-        
+      
     if (vec->traits.ncolsorig == 0) {
         vec->traits.ncolsorig = vec->traits.ncols;
     }
@@ -207,9 +212,14 @@ static ghost_error getNrowsFromContext(ghost_densemat *vec)
 
     if (vec->context != NULL) {
         int rank;
-        GHOST_CALL_RETURN(ghost_rank(&rank, vec->context->mpicomm));
-        vec->traits.nrows = vec->context->lnrows[rank];
-        if (!(vec->traits.flags & GHOST_DENSEMAT_NO_HALO)) {
+        GHOST_CALL_RETURN(ghost_rank(&rank, vec->context->mpicomm)); 
+        if(vec->context->flags & GHOST_PERM_NO_DISTINCTION) {
+		vec->traits.nrows = vec->context->nrowspadded;
+	} else {
+        	vec->traits.nrows = vec->context->lnrows[rank];
+	}
+
+	 if (!(vec->traits.flags & GHOST_DENSEMAT_NO_HALO)) {
             if (vec->context->halo_elements == -1) {
                 ERROR_LOG("You have to make sure to read in the matrix _before_ creating the right hand side vector in a distributed context! This is because we have to know the number of halo elements of the vector.");
                 return GHOST_ERR_UNKNOWN;
@@ -223,6 +233,7 @@ static ghost_error getNrowsFromContext(ghost_densemat *vec)
         // context->hput_pos[0] = nrows if only one process, so we need a dummy element 
         vec->traits.nrowshalo = vec->traits.nrowspadded; 
     }
+ 
     vec->traits.nrowshalopadded = PAD(vec->traits.nrowshalo,ghost_machine_simd_width()/4);
     
     DEBUG_LOG(1,"The vector has %"PRLIDX" w/ %"PRLIDX" halo elements (padded: %"PRLIDX") rows",
@@ -568,7 +579,6 @@ ghost_lidx ghost_densemat_row_padding()
     ghost_lidx padding = ghost_sell_max_cfg_chunkheight();  
     // pad for unrolled densemat kernels, assume worst case: SP data with 4 bytes
     padding = MAX(padding,ghost_machine_simd_width()/4 * GHOST_MAX_ROWS_UNROLL);
-
     return padding;
 }
 

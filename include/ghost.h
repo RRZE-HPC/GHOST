@@ -26,6 +26,8 @@
 #include "ghost/tsmm.h"
 #include "ghost/matrixmarket.h"
 
+#include "ghost/rcm_dissection.h"
+
 #include <hwloc.h>
 
 #endif

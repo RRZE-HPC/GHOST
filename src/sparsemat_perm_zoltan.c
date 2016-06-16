@@ -125,6 +125,10 @@ ghost_error ghost_sparsemat_perm_zoltan(ghost_sparsemat *mat, void *matrixSource
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_global,sizeof(ghost_permutation)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_global->perm,sizeof(ghost_gidx)*mat->context->lnrows[me]),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_global->invPerm,sizeof(ghost_gidx)*mat->context->lnrows[me]),err,ret);
+    mat->context->perm_global->colPerm = NULL;
+    mat->context->perm_global->colInvPerm = NULL;
+    mat->context->perm_global->method = GHOST_PERMUTATION_SYMMETRIC;
+
     memset(mat->context->perm_global->perm,0,sizeof(ghost_gidx)*mat->context->lnrows[me]);
     memset(mat->context->perm_global->invPerm,0,sizeof(ghost_gidx)*mat->context->lnrows[me]);
     mat->context->perm_global->scope = GHOST_PERMUTATION_GLOBAL;

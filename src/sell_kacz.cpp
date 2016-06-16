@@ -7,6 +7,7 @@
 #include "ghost/sparsemat.h"
 #include "ghost/math.h"
 #include "ghost/sell_kacz_plain_gen.h"
+//#include "ghost/sell_kacz_avx_gen.h"
 #include <complex>
 #include <unordered_map>
 
@@ -14,7 +15,8 @@ using namespace std;
 
 const ghost_kacz_opts GHOST_KACZ_OPTS_INITIALIZER = {
     .omega = NULL,
-    .direction = GHOST_KACZ_DIRECTION_UNDEFINED
+    .direction = GHOST_KACZ_DIRECTION_UNDEFINED,
+    .normalize = no
 };
 
 // Hash function for unordered_map
@@ -133,6 +135,9 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
     // if map is empty include generated code for map construction
     if (ghost_kacz_kernels.empty()) {
 #include "sell_kacz_plain.def"
+//#include "sell_kacz_avx.def"
+ 
+        
     }
     
     ghost_kacz_kernel kernel = NULL;
