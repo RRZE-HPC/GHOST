@@ -322,7 +322,7 @@ MPI_Barrier(mat->context->mpicomm);
     }
 
 #ifdef GHOST_HAVE_CUDA
-    ghost_cu_upload(mat->context->perm_local->cu_perm,mat->context->perm_local->perm,mat->traits.nrows*sizeof(ghost_gidx));
+    ghost_cu_upload(mat->context->perm_local->cu_perm,mat->context->perm_local->perm,mat->nrows*sizeof(ghost_gidx));
 #endif
 
 
