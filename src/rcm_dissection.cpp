@@ -161,7 +161,6 @@ ghost_error checker_rcm(ghost_sparsemat *mat)
 {
   int* row_ptr = mat->sell->chunkStart;
   int* col_ptr = mat->sell->col;
-  int nrows    = mat->nrows;
 
   int *upper_col_ptr = new int[mat->nzones];
   int *lower_col_ptr = new int[mat->nzones];
@@ -191,7 +190,7 @@ extern "C" ghost_error ghost_rcm_dissect(ghost_sparsemat *mat){
     	
         int n_threads = 0;
 
-        int *zone_ptr;
+//        int *zone_ptr;
 
 #pragma omp parallel
  {
@@ -202,7 +201,7 @@ extern "C" ghost_error ghost_rcm_dissect(ghost_sparsemat *mat){
 //	std::cout<<"Trying for "<<n_threads<<std::endl;
 
 	find_transition_zone(mat, n_threads);
-        zone_ptr = mat->zone_ptr;
+//        zone_ptr = mat->zone_ptr;
        
         int n_zones = mat->nzones;
 
@@ -220,7 +219,9 @@ extern "C" ghost_error ghost_rcm_dissect(ghost_sparsemat *mat){
             WARNING_LOG("RED BLACK splitting: Can't use all the threads , Usable threads = %d",n_zones/2);
           }
         }    
-    }   
+    }  
+
+   return GHOST_SUCCESS; 
 }
 
 

@@ -131,8 +131,6 @@ ghost_error ghost_sparsemat_perm_zoltan(ghost_sparsemat *mat, void *matrixSource
 
     memset(mat->context->perm_global->perm,0,sizeof(ghost_gidx)*mat->context->lnrows[me]);
     memset(mat->context->perm_global->invPerm,0,sizeof(ghost_gidx)*mat->context->lnrows[me]);
-    mat->context->perm_global->scope = GHOST_PERMUTATION_GLOBAL;
-    mat->context->perm_global->len = mat->context->lnrows[me];
            
     ghost_malloc((void **)&(info.rpt),(mat->context->lnrows[me]+1)*sizeof(ghost_gidx));
 

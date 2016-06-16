@@ -5,6 +5,7 @@
 #include "ghost/omp.h"
 #include "ghost/sell_kacz_rb.h"
 #include <omp.h>
+#include <math.h>
 
 ghost_error ghost_initialize_kacz(ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts)
 {
@@ -32,15 +33,16 @@ ghost_error ghost_initialize_kacz(ghost_sparsemat *mat, ghost_densemat *b, ghost
 	     idx += 1;
            }
         }
-    }      
+    }   
+    return GHOST_SUCCESS;   
 }
 
 ghost_error ghost_kacz_rb(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
-    int flag_err = 0;
+    //int flag_err = 0;
     //currently only implementation for SELL-1-1
-    const int CHUNKHEIGHT = 1;  
+    //const int CHUNKHEIGHT = 1;  
     const int NVECS = 1;
 
     //TODO check for RCM and give a Warning
@@ -225,7 +227,7 @@ ghost_error ghost_kacz_rb_with_shift(ghost_densemat *x, ghost_sparsemat *mat, gh
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
    
     //currently only implementation for SELL-1-1
-    const int CHUNKHEIGHT = 1;  
+    //const int CHUNKHEIGHT = 1;  
     const int NVECS = 1;
 
     //TODO check for RCM and give a Warning

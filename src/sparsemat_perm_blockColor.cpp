@@ -19,20 +19,23 @@ extern "C" ghost_error ghost_sparsemat_blockColor(ghost_sparsemat *mat, void *ma
     //a counter for number of rows to be multicolored
     ghost_lidx ctr_nrows_MC = 0;
     ghost_lidx ctr_nnz_MC = 0;
-    ghost_lidx offs = 0;
     int total_bw =0;
     int max_col_idx = 0;
     ghost_lidx local_size;
     ghost_lidx *rhs_split = NULL;
     ghost_lidx *zone;
     ghost_lidx nrows =0;
-    ghost_lidx pos = 0;
     ghost_lidx nnz = 0;
     ghost_gidx *rpt = NULL;
     ghost_gidx *col = NULL;
     std::vector<int>  colvec;   
+    
+#ifdef GHOST_HAVE_COLPACK
+    ghost_lidx offs = 0;
+    ghost_lidx pos = 0;
     uint32_t** adolc; 
     uint32_t *adolc_data = NULL;
+#endif
  
     ghost_gidx ncols_halo_padded = mat->ncols;
 
@@ -298,8 +301,6 @@ extern "C" ghost_error ghost_sparsemat_blockColor(ghost_sparsemat *mat, void *ma
     	WARNING_LOG("The matrix has not been RCM permuted, BLOCK coloring works better for matrix with small bandwidths\n");
     	GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local,sizeof(ghost_permutation)), err, ret);
 	old_perm = false;
-    	mat->context->perm_local->scope = GHOST_PERMUTATION_LOCAL;
-    	mat->context->perm_local->len = mat->nrows;
     	GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->perm,sizeof(ghost_gidx)*mat->nrows), err, ret);
     	GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->invPerm,sizeof(ghost_gidx)*mat->nrows), err, ret);
   
@@ -468,7 +469,7 @@ free(tmpval);
   MC_percent = ((double)ctr_nrows_MC/mat->context->lnrows[me])*100.;
 //TODO : quantify this and give a break point
   if( MC_percent > 5  ) {
-          WARNING_LOG("%3.2f % rows would be Multicolored, try reducing number of threads\n", MC_percent);
+          WARNING_LOG("%3.2f %% rows would be Multicolored, try reducing number of threads", MC_percent);
   }
 
 

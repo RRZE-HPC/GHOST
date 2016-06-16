@@ -3,7 +3,7 @@
 #include "ghost/util.h"
 #include "ghost/math.h"
 #include "ghost/sell_kacz_plain_gen.h"
-#include <omp.h>
+#include "ghost/omp.h"
 #include "iaca/iacaMarks.h"
 
 //#GHOST_SUBST NVECS ${BLOCKDIM1}

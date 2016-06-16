@@ -268,7 +268,7 @@ ghost_error calculate_bw(ghost_sparsemat *mat, void *matrixSource, ghost_sparsem
     mat->maxColRange    = max_col;
  
     mat->bandwidth = mat->lowerBandwidth + mat->upperBandwidth;
-    INFO_LOG("RANK<%d>:  LOWER BANDWIDTH =%d, UPPER BANDWIDTH =%d, TOTAL BANDWIDTH =%d",me,mat->lowerBandwidth,mat->upperBandwidth,mat->bandwidth);
+    INFO_LOG("RANK<%d>:  LOWER BANDWIDTH =%"PRGIDX", UPPER BANDWIDTH =%"PRGIDX", TOTAL BANDWIDTH =%"PRGIDX,me,mat->lowerBandwidth,mat->upperBandwidth,mat->bandwidth);
     GHOST_INSTR_STOP("calculate bandwidth");
     goto out;
   } else {
@@ -1103,7 +1103,7 @@ ghost_error ghost_sparsemat_fromfunc_common(ghost_lidx *rl, ghost_lidx *rlp, gho
                                 (*col)[(*chunkptr)[chunk]+colidx*C+i] = tmpcol[i*src->maxrowlen+colidx];
                             } else { 
                                 // local permutation: distinction between global and local entries, if GHOST_PERM_NO_DISTINCTION is not set 
-                                if ((mat->context->flags & GHOST_PERM_NO_DISTINCTION) ||(tmpcol[i*src->maxrowlen+colidx] >= mat->context->lfRow[me]) && (tmpcol[i*src->maxrowlen+colidx] < (mat->context->lfRow[me]+mat->ncols))) { // local entry: copy with permutation
+                                if ((mat->context->flags & GHOST_PERM_NO_DISTINCTION) || ((tmpcol[i*src->maxrowlen+colidx] >= mat->context->lfRow[me]) && (tmpcol[i*src->maxrowlen+colidx] < (mat->context->lfRow[me]+mat->ncols)))) { // local entry: copy with permutation
                                     if (mat->traits.flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS) {
                                         (*col)[(*chunkptr)[chunk]+colidx*C+i] = tmpcol[i*src->maxrowlen+colidx];
                                     }else if(mat->context->flags & GHOST_PERM_NO_DISTINCTION) {
@@ -1830,7 +1830,8 @@ if(nprocs>1 && (mat->traits.flags & GHOST_SPARSEMAT_PERMUTE && (mat->traits.flag
  	char *sell_val;
  	GHOST_CALL_GOTO(ghost_malloc((void **)&sell_val, mat->nnz*mat->elSize*sizeof(char)),err,ret);
 
- 	for(int i=0;i<mat->nnz*mat->elSize;++i) {
+    ghost_lidx i;
+ 	for(i=0;i<(ghost_lidx)(mat->nnz*mat->elSize);++i) {
         	sell_val[i] = (char)SELL(mat)->val[i];
  	}
 

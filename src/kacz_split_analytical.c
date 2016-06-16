@@ -179,8 +179,9 @@ ghost_error split_analytical(ghost_sparsemat *mat)
      //int separation = (int)ceil(diagonal_slope*mat->bandwidth);
      int possible_threads = (int) ((double)height/mat->bandwidth); //height/separation
 
+     ghost_error ret = GHOST_SUCCESS;
      int *nthread ;
-     ghost_malloc((void **)&nthread, 1*sizeof(int));
+     GHOST_CALL_GOTO(ghost_malloc((void **)&nthread, 1*sizeof(int)),err,ret);
 
       #ifdef GHOST_HAVE_OPENMP
 	 #pragma omp parallel
@@ -205,7 +206,6 @@ ghost_error split_analytical(ghost_sparsemat *mat)
 
      mat->kacz_setting.active_threads = current_threads;
 
-     ghost_error ret = GHOST_SUCCESS;
 
      ghost_lidx *row_ptr = mat->sell->chunkStart;
      ghost_lidx *col_ptr = mat->sell->col;
@@ -454,7 +454,7 @@ ghost_error split_analytical(ghost_sparsemat *mat)
  
  err:
 
- out :
+ out:
 
  return ret;
 }

@@ -11,7 +11,7 @@ ghost_error ghost_kacz_rb_v1(ghost_densemat *x, ghost_sparsemat *mat, ghost_dens
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
    
     //currently only implementation for SELL-1-1
-    const int CHUNKHEIGHT = 1;  
+    //const int CHUNKHEIGHT = 1;  
     const int NVECS = 1;
 
     //TODO check for RCM and give a Warning
@@ -28,7 +28,7 @@ ghost_error ghost_kacz_rb_v1(ghost_densemat *x, ghost_sparsemat *mat, ghost_dens
     double *bval = (double *)(b->val);
     double *xval = (double *)(x->val);
     double *mval = (double *)sellmat->val;
-    double omega = *(double *)opts.omega;
+    //double omega = *(double *)opts.omega;
     ghost_lidx *zone_ptr = mat->zone_ptr;
     ghost_lidx nzones    = mat->nzones;
     ghost_lidx nthreads  = nzones/2;
@@ -142,7 +142,7 @@ ghost_error ghost_kacz_rb_v2(ghost_densemat *x, ghost_sparsemat *mat, ghost_dens
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
    
     //currently only implementation for SELL-1-1
-    const int CHUNKHEIGHT = 1;  
+    //const int CHUNKHEIGHT = 1;  
     const int NVECS = 1;
 
     //TODO check for RCM and give a Warning
@@ -159,7 +159,7 @@ ghost_error ghost_kacz_rb_v2(ghost_densemat *x, ghost_sparsemat *mat, ghost_dens
     double *bval = (double *)(b->val);
     double *xval = (double *)(x->val);
     double *mval = (double *)sellmat->val;
-    double omega = *(double *)opts.omega;
+    //double omega = *(double *)opts.omega;
     ghost_lidx *zone_ptr = mat->zone_ptr;
     ghost_lidx nzones    = mat->nzones;
     ghost_lidx nthreads  = nzones/2;
@@ -274,7 +274,7 @@ ghost_error ghost_kacz_rb_v3(ghost_densemat *x, ghost_sparsemat *mat, ghost_dens
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
    
     //currently only implementation for SELL-1-1
-    const int CHUNKHEIGHT = 1;  
+    //const int CHUNKHEIGHT = 1;  
     const int NVECS = 1;
 
     //TODO check for RCM and give a Warning
@@ -291,7 +291,7 @@ ghost_error ghost_kacz_rb_v3(ghost_densemat *x, ghost_sparsemat *mat, ghost_dens
     double *bval = (double *)(b->val);
     double *xval = (double *)(x->val);
     double *mval = (double *)sellmat->val;
-    double omega = *(double *)opts.omega;
+    //double omega = *(double *)opts.omega;
     ghost_lidx *zone_ptr = mat->zone_ptr;
     ghost_lidx nzones    = mat->nzones;
     ghost_lidx nthreads  = nzones/2;
@@ -446,7 +446,7 @@ ghost_error ghost_kacz_rb_v4(ghost_densemat *x, ghost_sparsemat *mat, ghost_dens
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
    
     //currently only implementation for SELL-1-1
-    const int CHUNKHEIGHT = 1;  
+    //const int CHUNKHEIGHT = 1;  
     const int NVECS = 1;
 
     //TODO check for RCM and give a Warning
@@ -463,7 +463,7 @@ ghost_error ghost_kacz_rb_v4(ghost_densemat *x, ghost_sparsemat *mat, ghost_dens
     double *bval = (double *)(b->val);
     double *xval = (double *)(x->val);
     double *mval = (double *)sellmat->val;
-    double omega = *(double *)opts.omega;
+    //double omega = *(double *)opts.omega;
     ghost_lidx *zone_ptr = mat->zone_ptr;
     ghost_lidx nzones    = mat->nzones;
     ghost_lidx nthreads  = nzones/2;
@@ -594,9 +594,9 @@ ghost_error ghost_kacz_rb_v4(ghost_densemat *x, ghost_sparsemat *mat, ghost_dens
 ghost_error ghost_kacz_rb_v5(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
-    int flag_err = 0;
+    //int flag_err = 0;
     //currently only implementation for SELL-1-1
-    const int CHUNKHEIGHT = 1;  
+    //const int CHUNKHEIGHT = 1;  
     const int NVECS = 1;
 
     //TODO check for RCM and give a Warning

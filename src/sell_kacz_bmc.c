@@ -5,6 +5,7 @@
 #include "ghost/omp.h"
 #include "ghost/sell_kacz_rb.h"
 #include <omp.h>
+#include <math.h>
 
 //this is necessary since #pragma omp for doesn't understand !=
 #define FORWARD_LOOP(start,end)                                         \
@@ -135,15 +136,16 @@ ghost_error ghost_initialize_kacz_bmc(ghost_sparsemat *mat, ghost_densemat *b, g
 	     idx += 1;
            }
         }
-    }      
+    }     
+  return GHOST_SUCCESS; 
 }
 
 ghost_error ghost_kacz_bmc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
-    int flag_err = 0;
+    //int flag_err = 0;
     //currently only implementation for SELL-1-1
-    const int CHUNKHEIGHT = 1;  
+    //const int CHUNKHEIGHT = 1;  
     const int NVECS = 1;
 
     //TODO check for RCM and give a Warning
@@ -166,9 +168,9 @@ ghost_error ghost_kacz_bmc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densem
     double *mval = (double *)sellmat->val;
     double omega = *(double *)opts.omega;
     ghost_lidx *zone_ptr = (ghost_lidx*) mat->zone_ptr;
-    ghost_lidx nzones    = mat->nzones;
+    //ghost_lidx nzones    = mat->nzones;
     ghost_lidx *color_ptr= (ghost_lidx*) mat->color_ptr;
-    ghost_lidx ncolors   = mat->ncolors;
+    //ghost_lidx ncolors   = mat->ncolors;
     ghost_lidx nthreads  = mat->kacz_setting.active_threads;
 
    // disables dynamic thread adjustments 
@@ -240,7 +242,7 @@ ghost_error ghost_kacz_bmc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densem
             stride    = 1;
     }
 
-    double rownorm = 0.;
+    //double rownorm = 0.;
 
  if(mat->kacz_setting.kacz_method == BMC_one_sweep) { 
     for(ghost_lidx zone = 0; zone<4; ++zone) { 
@@ -343,7 +345,7 @@ ghost_error ghost_kacz_bmc_with_shift(ghost_densemat *x, ghost_sparsemat *mat, g
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
    
     //currently only implementation for SELL-1-1
-    const int CHUNKHEIGHT = 1;  
+    //const int CHUNKHEIGHT = 1;  
     const int NVECS = 1;
 
     //TODO check for RCM and give a Warning

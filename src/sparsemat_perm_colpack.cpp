@@ -141,8 +141,6 @@ extern "C" ghost_error ghost_sparsemat_perm_color(ghost_sparsemat *mat, void *ma
 
     if (!mat->context->perm_local) {
         GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local,sizeof(ghost_permutation)),err,ret);
-        mat->context->perm_local->scope = GHOST_PERMUTATION_LOCAL;
-        mat->context->perm_local->len = mat->nrows;
         mat->context->perm_local->method = GHOST_PERMUTATION_UNSYMMETRIC; //you can also make it symmetric
         GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->perm,sizeof(ghost_gidx)*mat->nrows),err,ret);
         GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->invPerm,sizeof(ghost_gidx)*mat->nrows),err,ret);   
