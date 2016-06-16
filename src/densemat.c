@@ -214,13 +214,14 @@ static ghost_error getNrowsFromContext(ghost_densemat *vec)
                 ERROR_LOG("You have to make sure to read in the matrix _before_ creating the right hand side vector in a distributed context! This is because we have to know the number of halo elements of the vector.");
                 return GHOST_ERR_UNKNOWN;
             }
-            vec->traits.nrowshalo = vec->traits.nrowspadded+vec->context->halo_elements+1;
+            vec->traits.nrowshalo = vec->traits.nrowspadded+vec->context->halo_elements;
+            ERROR_LOG("set nrowshalo to %d (nrowspadded %d halo_els %d)",vec->traits.nrowshalo,vec->traits.nrowspadded,vec->context->halo_elements);
         } else {
             vec->traits.nrowshalo = vec->traits.nrowspadded;
         }
     } else {
         // context->hput_pos[0] = nrows if only one process, so we need a dummy element 
-        vec->traits.nrowshalo = vec->traits.nrowspadded+1; 
+        vec->traits.nrowshalo = vec->traits.nrowspadded; 
     }
     vec->traits.nrowshalopadded = PAD(vec->traits.nrowshalo,ghost_machine_simd_width()/4);
     
