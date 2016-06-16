@@ -406,15 +406,17 @@ static ghost_error densemat_cm_halocommFinalize(ghost_densemat *vec, ghost_dense
     ghost_error ret = GHOST_SUCCESS;
     
     int nprocs;
-    int i, from_PE;
+    int i, from_PE, partner;
     
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, vec->context->mpicomm),err,ret);
 
     ghost_densemat_halocommFinalize_common(comm);
     if (vec->traits.location & GHOST_LOCATION_HOST) {
         GHOST_INSTR_START("Assemble row-major view");
-        for (from_PE=0; from_PE<nprocs; from_PE++){
+        for (partner=0; partner<vec->context->nwishpartners; partner++){
+            from_PE = vec->context->wishpartners[partner];
             for (i=0; i<vec->traits.ncols; i++){
+                printf("copy %d bytes to %d\n",vec->elSize*vec->context->wishes[from_PE],vec->context->hput_pos[from_PE]);
                 memcpy(DENSEMAT_VALPTR(vec,vec->context->hput_pos[from_PE],i),&comm->tmprecv[from_PE][(i*vec->context->wishes[from_PE])*vec->elSize],vec->elSize*vec->context->wishes[from_PE]);
             }
         }
