@@ -77,8 +77,8 @@ ghost_error ghost_sparsemat_perm_spmp(ghost_sparsemat *mat, void *matrixSource, 
     GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,(mat->nrows+1)*sizeof(int)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&localrpt,(mat->nrows+1)*sizeof(int)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local,sizeof(ghost_permutation)),err,ret);
-    mat->context->perm_local->scope = GHOST_PERMUTATION_LOCAL;
-    mat->context->perm_local->len = mat->nrows;
+    //mat->context->perm_local->scope = GHOST_PERMUTATION_LOCAL;
+    //mat->context->perm_local->len = mat->nrows;
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->perm,sizeof(ghost_gidx)*mat->nrows),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->invPerm,sizeof(ghost_gidx)*mat->nrows),err,ret);
     mat->context->perm_local->colPerm = NULL;
@@ -324,7 +324,7 @@ MPI_Barrier(mat->context->mpicomm);
     }
 
 #ifdef GHOST_HAVE_CUDA
-    ghost_cu_upload(mat->context->perm_local->cu_perm,mat->context->perm_local->perm,mat->context->perm_local->len*sizeof(ghost_gidx));
+    ghost_cu_upload(mat->context->perm_local->cu_perm,mat->context->perm_local->perm,mat->nrows*sizeof(ghost_gidx));
 #endif
 
 
