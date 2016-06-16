@@ -112,7 +112,8 @@ set (SOURCES
     src/sell_kacz_rb_versions.c 
     src/sparsemat_write.cpp
     src/sparsemat_perm_blockColor.cpp 
-    src/hybrid_splitting.c
+    src/kacz_hybrid_split.c
+    src/kacz_split_analytical.c
     src/sell_kacz_bmc.c 
     src/sell_kacz_mc.c
     )
@@ -164,7 +165,8 @@ set (HEADERS
     include/ghost/sell_kacz_rb.h
     include/ghost/carp_rb.h
     include/ghost/sell_kacz_rb_versions.h 
-    include/ghost/hybrid_splitting.h
+    include/ghost/kacz_hybrid_split.h
+    include/ghost/kacz_split_analytical.h
     include/ghost/sell_kacz_bmc.h 
     include/ghost/sell_kacz_mc.h
     )

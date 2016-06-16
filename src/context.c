@@ -790,7 +790,7 @@ ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, gh
 		ctx->nrowspadded   =  PAD(ctx->lnrows[me]+halo_ctr+1,rowpadding);
 		rowpaddingoffset   =  ctx->nrowspadded-ctx->lnrows[me];
     } else {
-	 ctx->nrowspadded = PAD(ctx->lnrows[me],rowpadding);
+	 //ctx->nrowspadded = PAD(ctx->lnrows[me],rowpadding);// this is set already
 	 rowpaddingoffset = PAD(ctx->lnrows[me],rowpadding)-ctx->lnrows[me];
     }
 

@@ -381,6 +381,11 @@ typedef enum {
     * @brief Re-order the local part of the matrix using a block coloring.
     */
     GHOST_SPARSEMAT_BLOCKCOLOR = 8192,
+    /**
+    * @brief SETS the sparsematrix permutation as needed by the KACZ solver
+    * depending on the bandwidth of the matrix
+    */
+    GHOST_SOLVER_KACZ = 16384,
 
 } ghost_sparsemat_flags;
 
@@ -552,6 +557,15 @@ struct ghost_sparsemat
      * @brief The bandwidth of the matrix.
      */
     ghost_gidx bandwidth;
+    /**
+     * @brief The maximum column index in the matrix
+     * (Required for example if we permute the (local + remote) part of matrix
+     */
+    ghost_gidx maxColRange; 
+    /**
+     * @brief Store the ratio between nrows and bandwidth
+     */ 	
+    double kaczRatio;
     /**
      * @brief The average width of the rows wrt. the diagonal.
      */
@@ -967,8 +981,10 @@ extern "C" {
 
     return 0;
 }
-        
 
+//To calculate Bandwidth        
+ghost_error calculate_bw(ghost_sparsemat *mat, void *matrixSource, ghost_sparsemat_src srcType);
+ 
 #ifdef __cplusplus
 } 
 #endif

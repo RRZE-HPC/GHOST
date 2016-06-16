@@ -6,6 +6,62 @@
 #include "ghost/sell_kacz_rb.h"
 #include <omp.h>
 
+//this is necessary since #pragma omp for doesn't understand !=
+#define FORWARD_LOOP(start,end)                                         \
+  for (ghost_lidx row=start; row<end; ++row){                   \
+         double rownorm = 0.;                                          \
+         double scal = 0;                                              \
+	 ghost_lidx  idx = sellmat->chunkStart[row];                   \
+                                                                       \
+         if(bval != NULL)                                              \
+          scal  = -bval[row];                                          \
+        for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            \
+                 scal += (double)mval[idx] * xval[sellmat->col[idx]];  \
+                if(opts.normalize==no)                                 \
+                 rownorm += mval[idx]*mval[idx];                       \
+                 idx += 1;                                             \
+          }                                                            \
+        if(opts.normalize==no){                                        \
+         scal /= (double)rownorm;                                      \
+        }                                                              \
+        scal *= omega;                                                 \
+	idx -= sellmat->rowLen[row];                                   \
+                                                                       \
+ 	_Pragma("simd vectorlength(4)")                                \
+         for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {           \
+		xval[sellmat->col[idx]] = xval[sellmat->col[idx]] - scal * (double)mval[idx];\
+                idx += 1;                                              \
+          }                                                            \
+      }                                                                \
+
+#define BACKWARD_LOOP(start,end)                                         \
+  for (ghost_lidx row=start; row>end; --row){                   \
+         double rownorm = 0.;                                          \
+         double scal = 0;                                              \
+	 ghost_lidx  idx = sellmat->chunkStart[row];                   \
+                                                                       \
+         if(bval != NULL)                                              \
+          scal  = -bval[row];                                          \
+        for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            \
+                 scal += (double)mval[idx] * xval[sellmat->col[idx]];  \
+                if(opts.normalize==no)                                 \
+                 rownorm += mval[idx]*mval[idx];                       \
+                 idx += 1;                                             \
+          }                                                            \
+        if(opts.normalize==no){                                        \
+         scal /= (double)rownorm;                                      \
+        }                                                              \
+        scal *= omega;                                                 \
+	idx -= sellmat->rowLen[row];                                   \
+                                                                       \
+ 	_Pragma("simd vectorlength(4)")                                \
+         for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {           \
+		xval[sellmat->col[idx]] = xval[sellmat->col[idx]] - scal * (double)mval[idx];\
+                idx += 1;                                              \
+          }                                                            \
+      }                                                                \
+
+
 #define LOOP(start,end,stride)                                         \
   for (ghost_lidx row=start; row!=end; row+=stride){                   \
          double rownorm = 0.;                                          \
@@ -32,6 +88,26 @@
                 idx += 1;                                              \
           }                                                            \
       }                                                                \
+
+#define LOCK_NEIGHBOUR(tid)						       \
+	if(tid == 0)						       \
+        	flag[0] = zone+1;        			       \
+        if(tid == nthreads-1)					       \
+        	flag[nthreads+1] = zone+1;			       \
+        							       \
+   	flag[tid+1] = zone+1;   				       \
+ 	_Pragma("omp flush")       				       \
+								       \
+    	if(opts.direction == GHOST_KACZ_DIRECTION_FORWARD) {	       \
+		while(flag[tid+2]<zone+1){			       \
+       			_Pragma("omp flush")       		       \
+        	}						       \
+     	} else {						       \
+        	 while(flag[tid]<zone+1 ){			       \
+                        _Pragma("omp flush")     		       \
+      	       	 } 						       \
+     	}    
+
 
 ghost_error ghost_initialize_kacz_bmc(ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts)
 {
@@ -118,10 +194,16 @@ ghost_error ghost_kacz_bmc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densem
 
     if (opts.direction == GHOST_KACZ_DIRECTION_BACKWARD) {
             //for time being single thread
-            mc_start  = color_ptr[1]-1;
-            mc_end    = color_ptr[0]-1;
+	for(int i=mat->ncolors; i>0; --i) {
+            mc_start  = color_ptr[i]-1;
+            mc_end    = color_ptr[i-1]-1;
             stride   = -1;
-            LOOP(mc_start,mc_end,stride);
+
+#ifdef GHOST_HAVE_OPENMP  
+	#pragma omp parallel for 
+#endif
+            BACKWARD_LOOP(mc_start,mc_end)
+	}
     } 
    
 #ifdef GHOST_HAVE_OPENMP  
@@ -165,9 +247,12 @@ ghost_error ghost_kacz_bmc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densem
 
             LOOP(start[zone],end[zone],stride)   
                    
-   	    //  #pragma omp barrier                           
-
-              if(tid == 0)
+   	      #pragma omp barrier                           
+ 
+	      //TODO A more efficient way of locking is necessary, normal locks makes problem if the matrix size is small
+	      //but this explicit flush method is expensive than barrier
+	
+/*              if(tid == 0)
                   flag[0] = zone+1;
          
                if(tid == nthreads-1)
@@ -190,9 +275,13 @@ ghost_error ghost_kacz_bmc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densem
           	 	 #pragma omp flush
       	       	         } 
      		}    
-     }
+  
+*/
+  	//	LOCK_NEIGHBOUR(tid)
+   }
  } else if (mat->kacz_setting.kacz_method == BMC_two_sweep) {
-      LOOP(start[0],end[0],stride)
+//TODO remove barriers its for testing 
+     LOOP(start[0],end[0],stride)
       #pragma omp barrier 
       
       if(opts.direction == GHOST_KACZ_DIRECTION_BACKWARD) {
@@ -230,12 +319,17 @@ ghost_error ghost_kacz_bmc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densem
 //do multicoloring if in FORWARD direction
    if (opts.direction == GHOST_KACZ_DIRECTION_FORWARD) {
 
+	for(int i=0; i<mat->ncolors; ++i) {
            //for time being single thread
-            mc_start  = color_ptr[0];
-            mc_end    = color_ptr[1];
-            stride   = 1;
-            LOOP(mc_start,mc_end,stride);
+            mc_start  = color_ptr[i];
+            mc_end    = color_ptr[i+1];
+            stride    = 1;
 
+#ifdef GHOST_HAVE_OPENMP
+	#pragma omp parallel for
+#endif
+            FORWARD_LOOP(mc_start,mc_end)
+	}
     }
 
     free(flag);	    

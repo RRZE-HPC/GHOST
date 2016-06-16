@@ -20,7 +20,7 @@ ghost_error ghost_carp(ghost_sparsemat *mat, ghost_densemat *x, ghost_densemat *
     GHOST_CALL_RETURN(x->halocommStart(x,&comm));
     GHOST_CALL_RETURN(x->halocommFinalize(x,&comm));
     
-    if(mat->traits.flags & GHOST_SPARSEMAT_BLOCKCOLOR) {
+    if(!(mat->traits.flags & GHOST_SPARSEMAT_COLOR)) {
         INFO_LOG("KACZ_BMC\n");
 	GHOST_CALL_RETURN(ghost_kacz_bmc(x,mat,b,opts));
     } else  {
@@ -34,7 +34,7 @@ ghost_error ghost_carp(ghost_sparsemat *mat, ghost_densemat *x, ghost_densemat *
     GHOST_CALL_RETURN(x->halocommStart(x,&comm));
     GHOST_CALL_RETURN(x->halocommFinalize(x,&comm));
     
-    if(mat->traits.flags & GHOST_SPARSEMAT_BLOCKCOLOR) {
+    if(!(mat->traits.flags & GHOST_SPARSEMAT_COLOR)) {
 	GHOST_CALL_RETURN(ghost_kacz_bmc(x,mat,b,opts));
     } else  { 
     	GHOST_CALL_RETURN(ghost_kacz(x,mat,b,opts));
