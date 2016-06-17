@@ -77,8 +77,6 @@ ghost_error ghost_sparsemat_perm_spmp(ghost_sparsemat *mat, void *matrixSource, 
     GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,(mat->nrows+1)*sizeof(int)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&localrpt,(mat->nrows+1)*sizeof(int)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local,sizeof(ghost_permutation)),err,ret);
-    //mat->context->perm_local->scope = GHOST_PERMUTATION_LOCAL;
-    //mat->context->perm_local->len = mat->nrows;
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->perm,sizeof(ghost_gidx)*mat->nrows),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->invPerm,sizeof(ghost_gidx)*mat->nrows),err,ret);
     mat->context->perm_local->colPerm = NULL;

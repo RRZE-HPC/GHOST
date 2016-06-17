@@ -140,8 +140,9 @@ extern "C" ghost_error ghost_sparsemat_blockColor(ghost_sparsemat *mat, void *ma
     total_bw = mat->bandwidth;
     max_col_idx = mat->maxColRange;
 
-    //approximate
-    local_size = static_cast<int>( ((max_col_idx+1)-0.1*total_bw) / n_zones); //will have to find a method to balance the load for the last thread, 	
+    //approximate, currently last thread is set to not have anything is transitional sweeps;
+    //since large bandwidths might create problems (TODO optimise this value)
+    local_size = static_cast<int>( ((max_col_idx+1)-0*total_bw) / n_zones); //will have to find a method to balance the load for the last thread, 	
 				                 			      // even if the last thread gets a bit less load its fine since the excess load 
 									      // is evenly spread among rest of the threads
 
@@ -152,7 +153,7 @@ extern "C" ghost_error ghost_sparsemat_blockColor(ghost_sparsemat *mat, void *ma
     }
  
     rhs_split[n_zones+1] = max_col_idx+1;
-    printf("%d\n",(int)rhs_split[n_zones+1]);
+    //printf("%d\n",(int)rhs_split[n_zones+1]);
 
      
 

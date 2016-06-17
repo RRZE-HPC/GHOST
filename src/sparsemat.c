@@ -767,7 +767,7 @@ ghost_error ghost_sparsemat_fromfunc_common(ghost_lidx *rl, ghost_lidx *rlp, gho
         mat->traits.flags |= (ghost_sparsemat_flags)GHOST_SPARSEMAT_PERMUTE;
     }
 
-    //check whether BLOCKCOLOR is necessary
+    //check whether BLOCKCOLOR is necessary, it is avoided if user explicitly request Multicoloring method
     if( (mat->traits.flags & GHOST_SOLVER_KACZ && mat->traits.flags) && !(mat->traits.flags & GHOST_SPARSEMAT_PERMUTE) ) {
            set_kacz_ratio(mat, (void *)src, GHOST_SPARSEMAT_SRC_FUNC);
 	   if(mat->kaczRatio < mat->kacz_setting.active_threads) {
@@ -790,7 +790,7 @@ ghost_error ghost_sparsemat_fromfunc_common(ghost_lidx *rl, ghost_lidx *rlp, gho
             ghost_sparsemat_perm_color(mat,(void *)src,GHOST_SPARSEMAT_SRC_FUNC);
         }
 	//blockcoloring needs to know bandwidth
-	if(mat->traits.flags & GHOST_SOLVER_KACZ) {
+	if( (mat->traits.flags & GHOST_SOLVER_KACZ) && !(mat->traits.flags & GHOST_SPARSEMAT_COLOR)) {
 	     	   set_kacz_ratio(mat, (void *)src, GHOST_SPARSEMAT_SRC_FUNC);
 		   if(mat->kaczRatio < mat->kacz_setting.active_threads) {
   			mat->traits.flags |= (ghost_sparsemat_flags)GHOST_SPARSEMAT_BLOCKCOLOR; 
@@ -1794,7 +1794,7 @@ static ghost_error SELL_fromRowFunc(ghost_sparsemat *mat, ghost_sparsemat_src_ro
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, mat->context->mpicomm),err,ret);
  
 
-//set NO_DISTINCTION when block multicolor and RCM is on and more than 2 processors
+//set NO_DISTINCTION when block multicolor and RCM is on and more than 2 processors, TODO pure MC and MPI
 if(nprocs>1 && (mat->traits.flags & GHOST_SPARSEMAT_PERMUTE && (mat->traits.flags & GHOST_SPARSEMAT_RCM && mat->traits.flags & GHOST_SOLVER_KACZ))) {
      INFO_LOG("NO DISTINCTION is set\n");
      mat->context->flags |=   (ghost_context_flags_t) GHOST_PERM_NO_DISTINCTION; 
@@ -1876,7 +1876,7 @@ if(nprocs>1 && (mat->traits.flags & GHOST_SPARSEMAT_PERMUTE && (mat->traits.flag
 
     	GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->col, mat->nnz*sizeof(ghost_lidx)),err,ret);
 
-     	for(int i=0;i<mat->nnz;++i) {
+     	for(i=0;i<mat->nnz;++i) {
 		SELL(mat)->col[i] = (ghost_lidx) new_col[i];
      	}
 
@@ -1895,13 +1895,15 @@ if(nprocs>1 && (mat->traits.flags & GHOST_SPARSEMAT_PERMUTE && (mat->traits.flag
     	GHOST_CALL_GOTO(mat->split(mat),err,ret);
    }
 
-//split transition zones 
-if(mat->traits.flags & GHOST_SPARSEMAT_BLOCKCOLOR) {
-    split_transition(mat);
-} 
-//split if no splitting was done before
-else {
-    split_analytical(mat);
+if(mat->traits.flags & GHOST_SOLVER_KACZ) {
+	//split transition zones 
+	if(mat->traits.flags & GHOST_SPARSEMAT_BLOCKCOLOR) {
+   		 split_transition(mat);
+	} 
+	//split if no splitting was done before and MC is off
+	else if(!(mat->traits.flags & GHOST_SPARSEMAT_COLOR)) {
+    		split_analytical(mat);
+	}
 }
  
 

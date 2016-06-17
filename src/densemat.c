@@ -225,7 +225,6 @@ static ghost_error getNrowsFromContext(ghost_densemat *vec)
                 return GHOST_ERR_UNKNOWN;
             }
             vec->traits.nrowshalo = vec->traits.nrowspadded+vec->context->halo_elements;
-            ERROR_LOG("set nrowshalo to %d (nrowspadded %d halo_els %d)",vec->traits.nrowshalo,vec->traits.nrowspadded,vec->context->halo_elements);
         } else {
             vec->traits.nrowshalo = vec->traits.nrowspadded;
         }

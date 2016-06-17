@@ -968,6 +968,9 @@ extern "C" {
 
     ghost_error ghost_sparsemat_fromfunc_common(ghost_lidx *rl, ghost_lidx *rlp, ghost_lidx *cl, ghost_lidx *clp, ghost_lidx **chunkptr, char **val, ghost_gidx **col, ghost_sparsemat_src_rowfunc *src, ghost_sparsemat *mat, ghost_lidx C, ghost_lidx P);
 
+    ghost_error ghost_sparsemat_fromfunc_common_dummy(ghost_lidx *rl, ghost_lidx *rlp, ghost_lidx *cl, ghost_lidx *clp, ghost_lidx **chunkptr, char **val, ghost_gidx **col, ghost_sparsemat_src_rowfunc *src, ghost_sparsemat *mat, ghost_lidx C, ghost_lidx P);
+
+
   static inline int ghost_sparsemat_rowfunc_crs(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *col, void *val, void *crsdata)
 {
     ghost_gidx *crscol = ((ghost_sparsemat_rowfunc_crs_arg *)crsdata)->col;
@@ -985,7 +988,8 @@ extern "C" {
 
 //To calculate Bandwidth        
 ghost_error calculate_bw(ghost_sparsemat *mat, void *matrixSource, ghost_sparsemat_src srcType);
- 
+ghost_error set_kacz_ratio(ghost_sparsemat *mat, void *matrixSource, ghost_sparsemat_src srcType); 
+
 #ifdef __cplusplus
 } 
 #endif
