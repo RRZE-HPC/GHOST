@@ -8,6 +8,7 @@
 #include "ghost/math.h"
 #include "ghost/sell_kacz_plain_gen.h"
 //#include "ghost/sell_kacz_avx_gen.h"
+//#include "ghost/sell_kacz_bmc_gen.h"
 #include <complex>
 #include <unordered_map>
 
@@ -136,8 +137,8 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
     if (ghost_kacz_kernels.empty()) {
 #include "sell_kacz_plain.def"
 //#include "sell_kacz_avx.def"
- 
-        
+//#include "ghost/sell_kacz_bmc.def"
+       
     }
     
     ghost_kacz_kernel kernel = NULL;

@@ -176,6 +176,13 @@ ghost_error split_transition(ghost_sparsemat *mat)
 {
     ghost_error ret = GHOST_SUCCESS;
 
+    //for KACZ_ANALYZE
+    ghost_lidx line_size, n_lines, rem_lines;
+    int start=0 , end=0;
+    ghost_lidx *rows;
+    ghost_lidx *nnz;
+
+
     ghost_lidx *row_ptr = mat->sell->chunkStart;
     ghost_lidx *col_ptr = mat->sell->col;
 
@@ -272,10 +279,11 @@ ghost_error split_transition(ghost_sparsemat *mat)
 
 #ifdef GHOST_KACZ_ANALYZE 
 
- ghost_lidx line_size = 12;
- ghost_lidx n_lines = mat->kacz_setting.active_threads / line_size;
- ghost_lidx rem_lines =  mat->kacz_setting.active_threads % line_size;
- int start=0 , end=0;
+ line_size = 12;
+ n_lines = mat->kacz_setting.active_threads / line_size;
+ rem_lines =  mat->kacz_setting.active_threads % line_size;
+ start=0 ;
+ end=0;
  
  printf("%10s:","THREADS");
                           
@@ -305,8 +313,8 @@ ghost_error split_transition(ghost_sparsemat *mat)
  zone_name[2] = "TRANS IN TRANS ZONE";
  zone_name[3] = "BLACK TRANS ZONE";
 
- ghost_lidx rows[mat->kacz_setting.active_threads];
- ghost_lidx nnz[mat->kacz_setting.active_threads];
+ rows = malloc(mat->kacz_setting.active_threads*sizeof(ghost_lidx));
+ nnz  = malloc(mat->kacz_setting.active_threads*sizeof(ghost_lidx));
 
  #ifdef GHOST_HAVE_OPENMP
 	#pragma omp parallel shared(line_size)

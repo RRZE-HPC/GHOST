@@ -9,52 +9,23 @@
 #include <vector>
 #include <iostream>
 
-//function definitions
-// std::vector<int> find_transition_zone_not_used(ghost_sparsemat *mat, int n_zones);
-// bool check_transition_overlap(int* lower_col_ptr, int* upper_col_ptr, int n_t_zones);
-// std::vector<int> compress_vec(std::vector<int> transition_zone);
-// ghost_error adaptor_vec_ptr(int* ptr, std::vector<int> vec);
-ghost_error mat_bandwidth(ghost_sparsemat *mat, int *lower_bw, int *upper_bw);
-ghost_error find_transition_zone(ghost_sparsemat *mat, int n_threads);
-ghost_error checker_rcm(ghost_sparsemat *mat);
+//returns the virtual column index; ie takes into account the permutation of halo elements also
+#define virtual_col(col_idx)\
+   (mat->context->flags & GHOST_PERM_NO_DISTINCTION)?( (col_ptr[col_idx]<mat->context->nrowspadded)?col_ptr[col_idx]:mat->context->perm_local->colPerm[col_ptr[col_idx]] ):col_ptr[col_idx]\
 
-//this is currently used version and it relies on the maximum bandwidth of the matrix
 
-//finds lower and upper bandwidth of the matrix
-ghost_error mat_bandwidth(ghost_sparsemat *mat, int *lower_bw, int *upper_bw)
-{
-  int lower = 0;
-  int upper = 0;
-  int* row_ptr = mat->sell->chunkStart;
-  int* col_ptr = mat->sell->col;
-  
-  //std::cout<<"nrows ="<<mat->nrows<<std::endl;
-  //std::cout<<"check"<<row_ptr[mat->nrows-1]<<std::endl;
-
-   for(int i=0; i<mat->nrows; ++i){
-            lower = std::max(lower,i - col_ptr[row_ptr[i]]);
-            upper = std::max(upper,col_ptr[row_ptr[i+1]-1] - i);
-   }
-
-  *lower_bw = lower;
-  *upper_bw = upper;
-
-  return GHOST_SUCCESS;
-}
-   
 ghost_error find_transition_zone(ghost_sparsemat *mat, int n_threads)
 { 
 if(n_threads>1)
 {
    int lower_bw = 0;
    int upper_bw = 0;
-   mat_bandwidth(mat, &lower_bw, &upper_bw);
-
    int nrows    = mat->nrows;
+   int ncols    = mat->maxColRange+1;
    int n_zones  = 2* n_threads;//odd zone = even zone
-   int total_bw = lower_bw + upper_bw + 1;
-   double diagonal_slope = static_cast<double>(nrows)/mat->ncols;
-   int min_local_height  = static_cast<int>((diagonal_slope*total_bw)) + 1 ;//min. required height by transition zone
+   int total_bw = mat->bandwidth;
+   double diagonal_slope = static_cast<double>(nrows)/ncols;
+   int min_local_height  = static_cast<int>((diagonal_slope*total_bw));// + 1 ;//min. required height by transition zone
    int max_local_height  = static_cast<int>(static_cast<double>(nrows)/n_zones);
    int height            = std::max(min_local_height,max_local_height);
 
@@ -64,7 +35,7 @@ if(n_threads>1)
    mat->zone_ptr         = new int[n_zones+1]; 
    int* zone_ptr         = mat->zone_ptr; 
  
-   bool flag_level = true; //flag for recursive call in cast current thread does not fit
+   bool flag_level = true; //flag for recursive call in current thread does not fit
    bool flag_lb    = true; //flag for load balancing
    
    //if overlap occurs restart with less threads
@@ -159,21 +130,23 @@ else{
 //checks whether the partitioning was correct, its just for debugging
 ghost_error checker_rcm(ghost_sparsemat *mat)
 {
-  int* row_ptr = mat->sell->chunkStart;
-  int* col_ptr = mat->sell->col;
+  ghost_lidx *row_ptr = mat->sell->chunkStart;
+  ghost_lidx *col_ptr = mat->sell->col;
 
-  int *upper_col_ptr = new int[mat->nzones];
-  int *lower_col_ptr = new int[mat->nzones];
+  ghost_lidx *upper_col_ptr = new ghost_lidx[mat->nzones];
+  ghost_lidx *lower_col_ptr = new ghost_lidx[mat->nzones];
 
   for(int i=0; i<mat->nzones; ++i){
-    upper_col_ptr[i] = -1;
-    lower_col_ptr[i] = -1;
+    upper_col_ptr[i] = 0;
+    lower_col_ptr[i] = 0;
   }
 
   for(int i=0; i<mat->nzones;++i){
    for(int j=mat->zone_ptr[i]; j<mat->zone_ptr[i+1] ; ++j){
-       upper_col_ptr[i] = std::max(col_ptr[row_ptr[j+1]-1], upper_col_ptr[i]);
-       lower_col_ptr[i] = std::max(col_ptr[row_ptr[j]]    , lower_col_ptr[i]);
+       ghost_lidx upper_virtual_col = virtual_col(row_ptr[j+1]-1);
+       ghost_lidx lower_virtual_col = virtual_col(row_ptr[j]); 
+       upper_col_ptr[i] = std::max(upper_virtual_col , upper_col_ptr[i]);
+       lower_col_ptr[i] = std::max(lower_virtual_col , lower_col_ptr[i]);
    }
   }
 
@@ -198,28 +171,22 @@ extern "C" ghost_error ghost_rcm_dissect(ghost_sparsemat *mat){
     {
         n_threads = ghost_omp_nthread();
 
-//	std::cout<<"Trying for "<<n_threads<<std::endl;
-
 	find_transition_zone(mat, n_threads);
-//        zone_ptr = mat->zone_ptr;
-       
+ 
         int n_zones = mat->nzones;
 
-/*	std::cout<<"........Final....... \n";
-       if(zone_ptr!=NULL){
-	for(int i=0; i<n_zones+1; ++i){
-        	std::cout<<zone_ptr[i]<<"\n";
-	}*/
-//        std::cout<<"CHECKING whether splitting is corrext"<<std::endl;
+	//TODO remove it only for debug phase
+        std::cout<<"CHECKING whether splitting is corrext"<<std::endl;
         checker_rcm(mat);
- //       std::cout<<"CHECKING Finished"<<std::endl;      
+        std::cout<<"CHECKING Finished"<<std::endl;      
         
- //       std::cout<<"No. of threads to be used = "<< n_zones/2<<std::endl;
-          if(n_threads > n_zones/2){
+         if(n_threads > n_zones/2){
             WARNING_LOG("RED BLACK splitting: Can't use all the threads , Usable threads = %d",n_zones/2);
-          }
-        }    
-    }  
+         }
+
+	mat->kacz_setting.active_threads = int( (double)(n_zones)/2);
+     }    
+  }  
 
    return GHOST_SUCCESS; 
 }

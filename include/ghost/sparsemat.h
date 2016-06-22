@@ -279,6 +279,8 @@ extern const ghost_kacz_opts GHOST_KACZ_OPTS_INITIALIZER;
 
 typedef ghost_error (*ghost_spmv_kernel)(ghost_densemat*, ghost_sparsemat *, ghost_densemat*, ghost_spmv_opts);
 typedef ghost_error (*ghost_kacz_kernel)(ghost_densemat*, ghost_sparsemat *, ghost_densemat*, ghost_kacz_opts);
+typedef ghost_error (*ghost_kacz_shift_kernel)(ghost_densemat*, ghost_densemat*, ghost_sparsemat *, ghost_densemat*, double, double, ghost_kacz_opts);
+
 
 /**
  * @brief Flags to be passed to a row-wise matrix assembly function.
@@ -611,6 +613,16 @@ struct ghost_sparsemat
      */
     ghost_spmv_kernel spmv;
     /**
+     * Solve using Kacz kernel.
+     * This function should not be called directly, see ghost_carp().
+     */
+    ghost_kacz_kernel kacz;
+    /**
+     * Solve using Kacz kernel with shift.
+     * This function should not be called directly, see ghost_carp_shift().
+     */
+    ghost_kacz_shift_kernel kacz_shift;
+     /**
      * Documented in ghost_sparsemat_string()
      */
     ghost_error (*string) (ghost_sparsemat *mat, char **str, int dense);
@@ -918,6 +930,33 @@ extern "C" {
     ghost_error ghost_cu_sell1_spmv_selector(ghost_densemat * lhs_in, 
             ghost_sparsemat *mat, ghost_densemat * rhs_in, ghost_spmv_opts traits);
 
+   /**
+     * @brief Select and call the right SELL KACZ kernel. 
+     *
+     * @param mat The matrix.
+     * @param x The result densemat.
+     * @param b The input densemat.
+     * @param opts The kacz Options.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+     ghost_error ghost_sell_kacz_selector(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts);
+
+   /**
+     * @brief Select and call the right SELL KACZ kernel with complex shifts. 
+     *
+     * @param mat The matrix.
+     * @param x_real (densemat) The real part of result.
+     * @param x_imag (densemat) The imaginary part of result.
+     * @param b The input densemat.
+     * @param sigma_r The real part of shift
+     * @param sigma_i The imaginary part of shift
+     * @param opts The kacz Options.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+     ghost_error ghost_sell_kacz_shift_selector(ghost_densemat *x_real, ghost_densemat *x_imag, ghost_sparsemat *mat, ghost_densemat *b, double sigma_r, double sigma_i, ghost_kacz_opts opts);
+
     /**
      * @brief Perform a Kaczmarz sweep with the SELL matrix. 
      *
@@ -933,7 +972,8 @@ extern "C" {
     ghost_error ghost_kacz_rb(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts);
     ghost_error ghost_kacz_bmc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts);
     ghost_error ghost_kacz_rb_with_shift(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, double *shift_r,  ghost_kacz_opts opts);
-    ghost_error ghost_carp_rb(ghost_sparsemat *mat, ghost_densemat *x, ghost_densemat *b, void *omega, int flag_rb);
+    ghost_error ghost_carp(ghost_sparsemat *mat, ghost_densemat *x, ghost_densemat *b, void *omega);
+    ghost_error ghost_carp_shift(ghost_sparsemat *mat, ghost_densemat *x_real, ghost_densemat *x_imag, ghost_densemat *b, double sigma_r, double sigma_i, void *omega);
     ghost_error checker(ghost_sparsemat *mat);
     ghost_error split_transition(ghost_sparsemat *mat);
     

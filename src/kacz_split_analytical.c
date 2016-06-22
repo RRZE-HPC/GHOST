@@ -173,6 +173,13 @@ printf("check  lower = %d, upper = %d\n",virtual_col(row_ptr[zones[4*i+3]]),virt
 */ 
 ghost_error split_analytical(ghost_sparsemat *mat) 
 {
+     //for KACZ_ANALYZE
+     ghost_lidx line_size, n_lines, rem_lines;
+     int start=0 , end=0;
+     ghost_lidx *rows;
+     ghost_lidx *nnz;
+
+
      int height = mat->nrows;
      int width  = mat->maxColRange+1;
      double diagonal_slope = (double)(height)/width;
@@ -281,10 +288,11 @@ ghost_error split_analytical(ghost_sparsemat *mat)
 
 #ifdef GHOST_KACZ_ANALYZE 
 
- ghost_lidx line_size = 12;
- ghost_lidx n_lines = mat->kacz_setting.active_threads / line_size;
- ghost_lidx rem_lines =  mat->kacz_setting.active_threads % line_size;
- int start=0 , end=0;
+ line_size = 12;
+ n_lines = mat->kacz_setting.active_threads / line_size;
+ rem_lines =  mat->kacz_setting.active_threads % line_size;
+ start=0 ;
+ end=0;
  
  printf("%10s:","THREADS");
                           
@@ -314,22 +322,21 @@ ghost_error split_analytical(ghost_sparsemat *mat)
  zone_name[2] = "TRANS IN TRANS ZONE";
  zone_name[3] = "BLACK TRANS ZONE";
 
- ghost_lidx rows[mat->kacz_setting.active_threads];
- ghost_lidx nnz[mat->kacz_setting.active_threads];
+ rows = malloc(mat->kacz_setting.active_threads*sizeof(ghost_lidx));
+ nnz  = malloc(mat->kacz_setting.active_threads*sizeof(ghost_lidx));
 
  #ifdef GHOST_HAVE_OPENMP
 	#pragma omp parallel shared(line_size)
 	 {
  #endif
-
          ghost_lidx tid = ghost_omp_threadnum();
 
          for(ghost_lidx zone=0; zone<4; ++zone) {
-         	rows[tid] = zone_ptr[4*tid+zone+1] - zone_ptr[4*tid+zone];
+         	rows[tid] = mat->zone_ptr[4*tid+zone+1] - mat->zone_ptr[4*tid+zone];
                 nnz[tid]  = 0;
         
                 if(rows[tid]!=0) {
-			for(int j=zone_ptr[4*tid+zone]; j<zone_ptr[4*tid+zone+1]; ++j) {
+			for(int j=mat->zone_ptr[4*tid+zone]; j<mat->zone_ptr[4*tid+zone+1]; ++j) {
                 		nnz[tid] += row_ptr[j+1] - row_ptr[j] ;   
         		}
                 }
@@ -449,7 +456,8 @@ ghost_error split_analytical(ghost_sparsemat *mat)
   #endif
   printf("\n\n");
  #endif
- 
+
+
  goto out;
  
  err:

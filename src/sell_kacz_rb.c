@@ -169,7 +169,7 @@ ghost_error ghost_kacz_rb(ghost_densemat *x, ghost_sparsemat *mat, ghost_densema
         // omp_set_lock(&execute[tid]);
      }
 
-   
+  
      for (ghost_lidx row=odd_start; row!=odd_end; row+=stride){
          //printf("projecting to row ........ %d\n",row);
          rownorm = 0.; 

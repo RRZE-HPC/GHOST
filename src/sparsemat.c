@@ -12,6 +12,7 @@
 #include "ghost/constants.h"
 #include "ghost/kacz_hybrid_split.h"
 #include "ghost/kacz_split_analytical.h"
+#include "ghost/rcm_dissection.h"
 #include <libgen.h>
 #include <math.h>
 
@@ -142,6 +143,8 @@ ghost_error ghost_sparsemat_create(ghost_sparsemat ** mat, ghost_context *contex
     (*mat)->formatName = &SELL_formatName;
     (*mat)->byteSize   = &SELL_byteSize;
     (*mat)->spmv     = &ghost_sell_spmv_selector;
+    (*mat)->kacz     = &ghost_sell_kacz_selector;
+    (*mat)->kacz_shift   = &ghost_sell_kacz_shift_selector;
     (*mat)->string    = &ghost_sell_stringify_selector;
     (*mat)->split = &SELL_split;
 #ifdef GHOST_HAVE_CUDA
@@ -284,7 +287,7 @@ out:
 
 ghost_error set_kacz_ratio(ghost_sparsemat *mat, void *matrixSource, ghost_sparsemat_src srcType) 
 {
-	int *nthread = (int*) malloc(sizeof(int));  
+   int *nthread = (int*) malloc(sizeof(int));  
 
 #ifdef GHOST_HAVE_OPENMP
 #pragma omp parallel
@@ -794,7 +797,7 @@ ghost_error ghost_sparsemat_fromfunc_common(ghost_lidx *rl, ghost_lidx *rlp, gho
 	     	   set_kacz_ratio(mat, (void *)src, GHOST_SPARSEMAT_SRC_FUNC);
 		   if(mat->kaczRatio < mat->kacz_setting.active_threads) {
   			mat->traits.flags |= (ghost_sparsemat_flags)GHOST_SPARSEMAT_BLOCKCOLOR; 
-    	    }
+    	    	   }
 	}    
   	//take this branch only if the matrix cannot be bandwidth bound, 
  	//else normal splitting with just RCM permutation would do the work
@@ -1110,7 +1113,6 @@ ghost_error ghost_sparsemat_fromfunc_common(ghost_lidx *rl, ghost_lidx *rlp, gho
                                        // (*col)[(*chunkptr)[chunk]+colidx*C+i] = mat->context->perm_local->colPerm[tmpcol[i*src->maxrowlen+colidx]]	
                                        // do not permute remote and do not allow local to go to remote
                                        if(tmpcol[i*src->maxrowlen+colidx] < mat->context->nrowspadded ){
-						//TODO add padding for check
 						if( mat->context->perm_local->colPerm[tmpcol[i*src->maxrowlen+colidx]]>mat->context->nrowspadded ){
 							ERROR_LOG("Ensure you have halo number of paddings, since GHOST_PERM_NO_DISTINCTION is switched on\n");
 							exit(0);
@@ -1902,7 +1904,11 @@ if(mat->traits.flags & GHOST_SOLVER_KACZ) {
 	} 
 	//split if no splitting was done before and MC is off
 	else if(!(mat->traits.flags & GHOST_SPARSEMAT_COLOR)) {
-    		split_analytical(mat);
+            if( (mat->kaczRatio >= 2*mat->kacz_setting.active_threads) ) {
+    		ghost_rcm_dissect(mat);
+	    } else {
+		split_analytical(mat);
+            }
 	}
 }
  
