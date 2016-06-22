@@ -322,12 +322,7 @@
 	      idx += CHUNKHEIGHT;                                                				\
          }                                                            						\
   }														\
-	
-#define LOOP(start,end,stride)   			       					                \
- if(stride>0)													\
-	FORWARD_LOOP(start,end)											\
- else														\
-	BACKWARD_LOOP(start,end)										\
+
 
 #endif
 
@@ -521,7 +516,7 @@ ghost_error ghost_kacz_bmc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densem
             stride   = -1;
 
 #ifdef GHOST_HAVE_OPENMP  
-	#pragma omp parallel for 
+//	#pragma omp parallel for 
 #endif
            BACKWARD_LOOP(mc_start,mc_end)
 
@@ -567,8 +562,13 @@ ghost_error ghost_kacz_bmc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densem
  if(mat->kacz_setting.kacz_method == BMC_one_sweep) { 
     for(ghost_lidx zone = 0; zone<4; ++zone) { 
 
-            LOOP(start[zone],end[zone],stride)   
-                   
+  	if (opts.direction == GHOST_KACZ_DIRECTION_FORWARD) {
+               FORWARD_LOOP(start[zone],end[zone])   
+ 	 }
+        else{
+	       BACKWARD_LOOP(start[zone],end[zone]) 
+	}
+
    	      #pragma omp barrier                           
  
 	      //TODO A more efficient way of locking is necessary, normal locks makes problem if the matrix size is small
@@ -603,37 +603,48 @@ ghost_error ghost_kacz_bmc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densem
    }
  } else if (mat->kacz_setting.kacz_method == BMC_two_sweep) {
 //TODO remove barriers its for testing 
-     LOOP(start[0],end[0],stride)
-      #pragma omp barrier 
-      
+ 	if (opts.direction == GHOST_KACZ_DIRECTION_FORWARD){ 
+               FORWARD_LOOP(start[0],end[0])   
+	 }
+         else{
+	       BACKWARD_LOOP(start[0],end[0]) 
+	 }
+
+      #pragma omp barrier  
       if(opts.direction == GHOST_KACZ_DIRECTION_BACKWARD) {
       	if(tid%2 != 0) {
-            LOOP(start[1],end[1],stride)
+            BACKWARD_LOOP(start[1],end[1])
         } 
        #pragma omp barrier
        if(tid%2 == 0) {
-            LOOP(start[1],end[1],stride)
+            BACKWARD_LOOP(start[1],end[1])
         }
       } else {
-      LOOP(start[1],end[1],stride) 
+      FORWARD_LOOP(start[1],end[1]) 
       }
       #pragma omp barrier
      
       if(opts.direction == GHOST_KACZ_DIRECTION_FORWARD) {
       	if(tid%2 == 0) {
-            LOOP(start[2],end[2],stride)
+            FORWARD_LOOP(start[2],end[2])
         } 
        #pragma omp barrier 
        if(tid%2 != 0) {
-            LOOP(start[2],end[2],stride)
+            FORWARD_LOOP(start[2],end[2])
         }
       } else {
-      LOOP(start[2],end[2],stride)
+      BACKWARD_LOOP(start[2],end[2])
       }
 
      #pragma omp barrier 
-     LOOP(start[3],end[3],stride)               
-  }      
+     if (opts.direction == GHOST_KACZ_DIRECTION_FORWARD){ 
+               FORWARD_LOOP(start[0],end[0])   
+     }
+     else {
+	       BACKWARD_LOOP(start[0],end[0]) 
+     }
+
+ }      
 #ifdef GHOST_HAVE_OPENMP
   }
 #endif
@@ -648,7 +659,7 @@ ghost_error ghost_kacz_bmc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densem
             stride    = 1;
 
 #ifdef GHOST_HAVE_OPENMP
-	#pragma omp parallel for
+//	#pragma omp parallel for
 #endif
             FORWARD_LOOP(mc_start,mc_end)
 	}

@@ -41,7 +41,7 @@ ghost_error ghost_kacz__u_plain_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *x, ghos
     ghost_lidx threads[1] ;
 
    #pragma omp parallel      
-    {  
+     {      
        #pragma omp master  
        {
         threads[0] = ghost_omp_nthread();
