@@ -6,9 +6,9 @@
 #include "ghost/machine.h"
 #include "ghost/sparsemat.h"
 #include "ghost/math.h"
-#include "ghost/sell_kacz_plain_gen.h"
+//#include "ghost/sell_kacz_plain_gen.h"
 //#include "ghost/sell_kacz_avx_gen.h"
-//#include "ghost/sell_kacz_bmc_gen.h"
+#include "ghost/sell_kacz_bmc_gen.h"
 #include <complex>
 #include <unordered_map>
 
@@ -132,17 +132,30 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error ret = GHOST_SUCCESS;
+    ghost_kacz_parameters p;
     
+    if(!(mat->traits.flags & GHOST_SPARSEMAT_COLOR)) {
+    	if(!(mat->traits.flags & GHOST_SPARSEMAT_BLOCKCOLOR) && (mat->kaczRatio >= 2*mat->kacz_setting.active_threads)) {
+		INFO_LOG("BMC KACZ without transition called");
+		p.method = BMC_RB;
+    	}
+    	else {
+		INFO_LOG("BMC KACZ with transition called");
+		p.method = BMC;
+    	}
+    } else {
+        INFO_LOG("Using unoptimal kernel KACZ with MC");
+		p.method = MC;
+    }
     // if map is empty include generated code for map construction
     if (ghost_kacz_kernels.empty()) {
-#include "sell_kacz_plain.def"
+#include "sell_kacz_bmc.def"
 //#include "sell_kacz_avx.def"
 //#include "ghost/sell_kacz_bmc.def"
        
     }
     
     ghost_kacz_kernel kernel = NULL;
-    ghost_kacz_parameters p;
     ghost_implementation opt_impl;
     ghost_alignment opt_align;
     

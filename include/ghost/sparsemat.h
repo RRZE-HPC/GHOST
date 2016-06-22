@@ -124,7 +124,8 @@ typedef enum{
       MC,
       BMC_RB,
       BMC_one_sweep,
-      BMC_two_sweep
+      BMC_two_sweep,
+      BMC
 }
 ghost_kacz_method;
 
@@ -272,7 +273,49 @@ typedef struct
 }
 ghost_sellspmv_parameters;
 
-typedef ghost_sellspmv_parameters ghost_kacz_parameters;
+
+
+/**
+ * @brief The parameters to identify a SELL Kaczmarz kernel.
+ *
+ * On kernel execution, GHOST will try to find an auto-generated kernel which
+ * matches all of these parameters.
+ */
+typedef struct 
+{
+    /**
+     * @brief The data access alignment.
+     */
+    ghost_alignment alignment;
+    /**
+     * @brief The implementation.
+     */
+    ghost_implementation impl;
+    /**
+     * @brief The matrix data type.
+     */
+    ghost_datatype mdt;
+    /**
+     * @brief The densemat data type.
+     */
+    ghost_datatype vdt;
+    /**
+     * @brief The densemat width.
+     */
+    int blocksz;
+    /**
+     * @brief The SELL matrix chunk height.
+     */
+    int chunkheight;
+    /**
+     * @brief The densemat storage order.
+     */
+    ghost_densemat_storage storage;
+
+    ghost_kacz_method method;
+
+}
+ghost_kacz_parameters;
 
 extern const ghost_spmv_opts GHOST_SPMV_OPTS_INITIALIZER;
 extern const ghost_kacz_opts GHOST_KACZ_OPTS_INITIALIZER;

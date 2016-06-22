@@ -69,19 +69,20 @@ while (<>) {
         } elsif ($funcname eq "ghost_kacz") {
             print "{\n";
             print $funcname."_parameters pars;\n";
-            print "pars.alignment = ".$alignments{$funcpars[0]}.";\n";
-            print "pars.impl = ".$implementations{$funcpars[1]}.";\n";
-            print "pars.mdt = ".$datatypes{$funcpars[2]}.";\n";
-            print "pars.vdt = ".$datatypes{$funcpars[3]}.";\n";
-            print "pars.storage = ".$storages{$funcpars[4]}.";\n";
-            print "pars.chunkheight = ".$funcpars[5].";\n";
-            if ($funcpars[6] eq "x") {
+            print "pars.method = ".$funcpars[0].";\n";
+            print "pars.alignment = ".$alignments{$funcpars[1]}.";\n";
+            print "pars.impl = ".$implementations{$funcpars[2]}.";\n";
+            print "pars.mdt = ".$datatypes{$funcpars[3]}.";\n";
+            print "pars.vdt = ".$datatypes{$funcpars[4]}.";\n";
+            print "pars.storage = ".$storages{$funcpars[5]}.";\n";
+            print "pars.chunkheight = ".$funcpars[6].";\n";
+            if ($funcpars[7] eq "x") {
                 print "pars.blocksz = -1;\n";
             } else {
-                print "pars.blocksz = ".$funcpars[6].";\n";
+                print "pars.blocksz = ".$funcpars[7].";\n";
             }
             print $funcname."_kernels[pars] = ".$funcname_full.";\n"; 
-            if ($funcpars[6] ne "x") {
+            if ($funcpars[7] ne "x") {
                 print "ghost_gidx nnz;\n";
                 print "ghost_gidx nrow;\n";
                 print "ghost_sparsemat_nnz(&nnz,mat);\n";
