@@ -224,10 +224,10 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
                     p.chunkheight = try_chunkheight[pos_chunkheight];
                     p.blocksz = try_blocksz[pos_blocksz];
 
-                    INFO_LOG("Try chunkheight=%s, blocksz=%s, impl=%s, %s",
+                    INFO_LOG("Try chunkheight=%s, blocksz=%s, impl=%s, %s, method %s",
                             p.chunkheight==-1?"arbitrary":std::to_string((long long)p.chunkheight).c_str(),
                             p.blocksz==-1?"arbitrary":std::to_string((long long)p.blocksz).c_str(),
-                            ghost_implementation_string(p.impl),p.alignment==GHOST_UNALIGNED?"unaligned":"aligned");
+                            ghost_implementation_string(p.impl),p.alignment==GHOST_UNALIGNED?"unaligned":"aligned",p.method==BMC?"BMC":p.method==MC?"MC":"BMC_RB");
                     kernel = ghost_kacz_kernels[p];
                     if (kernel) {
 	                goto end_of_loop;
