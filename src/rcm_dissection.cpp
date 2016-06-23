@@ -177,7 +177,7 @@ extern "C" ghost_error ghost_rcm_dissect(ghost_sparsemat *mat){
 
 	//TODO remove it only for debug phase
         std::cout<<"CHECKING whether splitting is corrext"<<std::endl;
-        checker_rcm(mat);
+//        checker_rcm(mat);
         std::cout<<"CHECKING Finished"<<std::endl;      
         
          if(n_threads > n_zones/2){

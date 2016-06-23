@@ -165,15 +165,16 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
     
     p.vdt = x->traits.datatype;
     p.mdt = mat->traits.datatype;
-    
-    
-    if (p.storage == GHOST_DENSEMAT_ROWMAJOR && x->stride == 1 && b->stride == 1) {
-        INFO_LOG("Chose col-major kernel for row-major densemat with 1 column");
+   
+    if (x->traits.ncols == 1 && b->traits.ncols == 1 && 
+            (x->traits.storage == GHOST_DENSEMAT_COLMAJOR || x->stride == 1) && 
+            (b->traits.storage == GHOST_DENSEMAT_COLMAJOR || b->stride == 1)) {
+        INFO_LOG("Try both col- and row-major for 1-column densemat with stride 1");
         n_storage = 2;
         first_storage = 0;
     } else {
         n_storage = 1;
-        if (p.storage == GHOST_DENSEMAT_ROWMAJOR) {
+        if (x->traits.storage == GHOST_DENSEMAT_ROWMAJOR && b->traits.storage == x->traits.storage) {
             first_storage = 1;
         } else {
             first_storage = 0;
@@ -234,15 +235,16 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
                         p.blocksz = try_blocksz[pos_blocksz];
                         p.storage = try_storage[pos_storage];
 
-                        INFO_LOG("Try chunkheight=%s, blocksz=%s, impl=%s, %s",
-                                p.chunkheight==-1?"arbitrary":std::to_string((long long)p.chunkheight).c_str(),
-                                p.blocksz==-1?"arbitrary":std::to_string((long long)p.blocksz).c_str(),
-                                ghost_implementation_string(p.impl),p.alignment==GHOST_UNALIGNED?"unaligned":"aligned");
-                        kernel = ghost_kacz_kernels[p];
-                        if (kernel) {
-                            goto end_of_loop;
-                        }
-                    }
+
+                    INFO_LOG("Try chunkheight=%s, blocksz=%s, impl=%s, %s, method %s",
+                            p.chunkheight==-1?"arbitrary":std::to_string((long long)p.chunkheight).c_str(),
+                            p.blocksz==-1?"arbitrary":std::to_string((long long)p.blocksz).c_str(),
+                            ghost_implementation_string(p.impl),p.alignment==GHOST_UNALIGNED?"unaligned":"aligned",p.method==BMC?"BMC":p.method==MC?"MC":"BMC_RB");
+                    kernel = ghost_kacz_kernels[p];
+                    if (kernel) {
+	                goto end_of_loop;
+                       }
+                   }
                     optimal = false;
                 }
             }
