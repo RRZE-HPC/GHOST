@@ -6,7 +6,7 @@
 #include "ghost/machine.h"
 #include "ghost/sparsemat.h"
 #include "ghost/math.h"
-//#include "ghost/sell_kacz_plain_gen.h"
+//#include "ghost/sell_kacz_mc_gen.h"
 //#include "ghost/sell_kacz_avx_gen.h"
 #include "ghost/sell_kacz_bmc_gen.h"
 #include <complex>
@@ -150,7 +150,7 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
     // if map is empty include generated code for map construction
     if (ghost_kacz_kernels.empty()) {
 #include "sell_kacz_bmc.def"
-//#include "sell_kacz_plain.def"
+//#include "sell_kacz_mc.def"
 
 //#include "sell_kacz_avx.def"
       
@@ -189,11 +189,11 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
 
     int n_chunkheight = sizeof(try_chunkheight)/sizeof(int);
     int n_blocksz = sizeof(try_blocksz)/sizeof(int);
-    int pos_chunkheight, pos_blocksz;
+    int pos_chunkheight, pos_blocksz, method;
 
     bool optimal = true;
     
-    for (pos_chunkheight = 0; pos_chunkheight < n_chunkheight; pos_chunkheight++) {  
+   for (pos_chunkheight = 0; pos_chunkheight < n_chunkheight; pos_chunkheight++) {  
         for (pos_blocksz = 0; pos_blocksz < n_blocksz; pos_blocksz++) {  
             for (p.impl = opt_impl; (int)p.impl >= GHOST_IMPLEMENTATION_PLAIN; p.impl  = (ghost_implementation)((int)p.impl-1)) {
                 /*if (p.impl == GHOST_IMPLEMENTATION_SSE && p.storage == GHOST_DENSEMAT_ROWMAJOR && try_blocksz[pos_blocksz] % 2) {
@@ -230,7 +230,7 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
                             ghost_implementation_string(p.impl),p.alignment==GHOST_UNALIGNED?"unaligned":"aligned");
                     kernel = ghost_kacz_kernels[p];
                     if (kernel) {
-                        goto end_of_loop;
+	                goto end_of_loop;
                     }
                     optimal = false;
                 }

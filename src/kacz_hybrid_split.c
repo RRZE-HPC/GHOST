@@ -60,7 +60,7 @@ ghost_error checker(ghost_sparsemat *mat)
      //TODO give virtual columns
      ghost_lidx *col_ptr = mat->sell->col;
   
-     int *extrema_pure, *extrema_red, *extrema_black, *extrema_trans;
+     int *extrema_pure, *extrema_red, *extrema_black, *extrema_trans, *extrema_trans_1, *extrema_trans_2;
      int pure_min, pure_max, red_min, red_max, black_min, black_max, trans_min, trans_max;
 
      find_zone_extrema(mat, &extrema_pure, zones[0], zones[1]);
@@ -123,7 +123,23 @@ ghost_error checker(ghost_sparsemat *mat)
 
  		//	break;
 		}
-	}
+	} else if(i <mat->kacz_setting.active_threads-1) {
+        	find_zone_extrema(mat, &extrema_trans_1, zones[4*(i-1)+2], zones[4*(i-1)+3]);
+	        trans_max = extrema_trans_1[MAX_UPPER];
+        	free(extrema_trans_1);
+        	find_zone_extrema(mat, &extrema_trans_2, zones[4*i+6], zones[4*i+7]);
+        	trans_min = extrema_trans_2[MIN_LOWER];
+                free(extrema_trans_2);
+
+               	if( (zones[4*i+6] != zones[4*i+7]) &&(zones[4*(i-1)+2] != zones[4*(i-1)+3]) && trans_min <= trans_max) {//col_ptr[row_ptr[zones[4*i+2]]] <= col_ptr[row_ptr[zones[4*i-1]]-1] ) {
+                	printf("check between %d-%d and %d-%d zoneptr",4*i-2,4*i-1,4*i+6,4*i+7);	
+		        ret = GHOST_ERR_BLOCKCOLOR;
+	        	printf("ERR 5\n");
+
+ 		//	break;
+		}
+	
+ 	}
      }
 
  if(extrema_pure != NULL)
@@ -275,7 +291,6 @@ ghost_error split_transition(ghost_sparsemat *mat)
            break;
        }
   }
-
 
 #ifdef GHOST_KACZ_ANALYZE 
 
@@ -450,6 +465,11 @@ ghost_error split_transition(ghost_sparsemat *mat)
  
  mat->zone_ptr = new_zone_ptr;
  
+ INFO_LOG("CHECKING BLOCK COLORING")
+ checker(mat);
+ INFO_LOG("BLOCK COLORING SUCCESSFUL")
+
+
  return ret;
 }
 

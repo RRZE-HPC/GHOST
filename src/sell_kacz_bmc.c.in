@@ -16,13 +16,12 @@
 #if (NVECS==1 && CHUNKHEIGHT==1)
 //this is necessary since #pragma omp for doesn't understand !=
 #define FORWARD_LOOP(start,end)                                        \
-	 _Pragma("omp parallel for") 				       \
- for (ghost_lidx row=start; row<end; ++row){                          \
+/* _Pragma("omp parallel for") */				    	       \
+ for (ghost_lidx row=start; row<end; ++row){                           \
          double rownorm = 0.;                                          \
          double scal = 0;                                              \
 	 ghost_lidx  idx = sellmat->chunkStart[row];                   \
-                                                                       \
-         if(bval != NULL)                                              \
+        if(bval != NULL)                                               \
           scal  = -bval[row];                                          \
         for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            \
                  scal += (double)mval[idx] * xval[sellmat->col[idx]];  \
@@ -44,7 +43,7 @@
       }                                                                \
 
 #define BACKWARD_LOOP(start,end)                                       \
-	 _Pragma("omp parallel for") 				       \
+/* _Pragma("omp parallel for") 	*/			       	       \
  for (ghost_lidx row=start; row>end; --row){                           \
          double rownorm = 0.;                                          \
          double scal = 0;                                              \
@@ -138,8 +137,8 @@
           }                                                            \
       }                                                                \
 
-#define BACKWARD_LOOP(start,end)                                       \
-	 _Pragma("omp parallel for") 				       \
+#define BACKWARD_LOOP(start,end)           			       \
+ _Pragma("omp parallel for") 				       \
  for (ghost_lidx row=start; row>end; --row){                           \
          double rownorm = 0.;                                          \
          double scal[NVECS] = {0};                                     \
@@ -221,7 +220,7 @@
  chunk       = 0;												\
  rowinchunk  = 0; 												\
  idx=0, row=0;   												\
-  for(rowinchunk=start_rem; rowinchunk<CHUNKHEIGHT; ++rowinchunk) {						\
+ for(rowinchunk=start_rem; rowinchunk<CHUNKHEIGHT; ++rowinchunk) {						\
      	double rownorm = 0.;                                          						\
        	double scal[NVECS] = {0};                                     						\
  	idx = sellmat->chunkStart[start_chunk-1] + rowinchunk;                 					\
@@ -539,22 +538,22 @@ ghost_error ghost_kacz__BMC_u_plain_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *x, 
 
 //    ghost_lidx stride = 0;
 
- 
-   ghost_lidx tid = ghost_omp_threadnum();
-
   
    if (opts.direction == GHOST_KACZ_DIRECTION_BACKWARD) {
 	for(int i=mat->ncolors; i>0; --i) {
             mc_start  = color_ptr[i]-1;
             mc_end    = color_ptr[i-1]-1;
 //            stride   = -1;
-
             BACKWARD_LOOP(mc_start,mc_end)
           }
+
 #ifdef GHOST_HAVE_OPENMP  
 #pragma omp parallel 
 	{
-#endif
+#endif 
+        ghost_lidx tid = ghost_omp_threadnum();
+printf("tid = %d\n",tid);
+
     	ghost_lidx start[4];
     	ghost_lidx end[4];
 
@@ -566,11 +565,11 @@ ghost_error ghost_kacz__BMC_u_plain_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *x, 
         end[2]    = zone_ptr[4*tid+1]-1;
         start[3]  = zone_ptr[4*tid+1]-1;
         end[3]    = zone_ptr[4*tid]  -1;
-//        stride    = -1;
+//      stride    = -1;
 
       	if(mat->kacz_setting.kacz_method == BMC_one_sweep) { 
     		for(ghost_lidx zone = 0; zone<4; ++zone) { 
-            		BACKWARD_LOOP(start[zone],end[zone])   
+           		BACKWARD_LOOP(start[zone],end[zone])   
      
    	  	        #pragma omp barrier                           
  
@@ -605,7 +604,7 @@ ghost_error ghost_kacz__BMC_u_plain_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *x, 
   	//	LOCK_NEIGHBOUR(tid)
        		}
  	} else if (mat->kacz_setting.kacz_method == BMC_two_sweep) {
-	    	BACKWARD_LOOP(start[0],end[0])
+		BACKWARD_LOOP(start[0],end[0])
      		#pragma omp barrier 
    
      		if(tid%2 != 0) {
@@ -632,9 +631,11 @@ ghost_error ghost_kacz__BMC_u_plain_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *x, 
 #pragma omp parallel 
 	{
 #endif
+ 
+        ghost_lidx tid = ghost_omp_threadnum();
+
 	ghost_lidx start[4];
     	ghost_lidx end[4];
-
 
         start[0]  = zone_ptr[4*tid];
     	end[0]    = zone_ptr[4*tid+1];
@@ -656,11 +657,11 @@ ghost_error ghost_kacz__BMC_u_plain_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *x, 
      		#pragma omp barrier 
        		FORWARD_LOOP(start[1],end[1])
    		#pragma omp barrier
-     		if(tid%2 != 0) {
+     		if(tid%2 == 0) {
             		FORWARD_LOOP(start[2],end[2])
         	}	 
        		#pragma omp barrier
-       		if(tid%2 == 0) {
+       		if(tid%2 != 0) {
             		FORWARD_LOOP(start[2],end[2])
         	}
     		#pragma omp barrier 
