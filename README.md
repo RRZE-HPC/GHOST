@@ -97,6 +97,27 @@ If the detected Cblas is neither MKL or GSL, the variable `BLAS_LIBRARIES` has t
 
 The same applies for hwloc and the variables `HWLOC_INCLUDE_DIR` and `HWLOC_LIBRARIES`.
 
+
+---
+# Further reading #
+---
+
+1. **An overview paper of GHOST**  
+*GHOST: Building blocks for high performance sparse linear algebra on heterogeneous systems*  
+Moritz Kreutzer, Jonas Thies, Melven Röhrig-Zöllner, Andreas Pieper, Faisal Shahzad, Martin Galgon, Achim Basermann, Holger Fehske, Georg Hager, and Gerhard Wellein  
+Preprint  
+http://arxiv.org/abs/1507.08101
+
+2. **An overview poster of GHOST**  
+http://isc-hpc.com/isc16_ap/presentationdetails.htm?t=presentation&o=999&a=select
+
+3. **More on the SELL-C-σ sparse matrix storage format**  
+*A Unified Sparse Matrix Data Format for Efficient General Sparse Matrix-Vector Multiplication on Modern Processors with Wide SIMD Units*  
+Moritz Kreutzer, Georg Hager, Gerhard Wellein, Holger Fehske, and Alan R. Bishop  
+SIAM Journal on Scientific Computing 2014 36:5, C401-C423  
+http://epubs.siam.org/doi/abs/10.1137/130930352 / http://arxiv.org/abs/1307.6209
+
+
 ---
 # Citing GHOST #
 ---
