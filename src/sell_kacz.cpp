@@ -165,15 +165,16 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
     
     p.vdt = x->traits.datatype;
     p.mdt = mat->traits.datatype;
-    
-    
-    if (p.storage == GHOST_DENSEMAT_ROWMAJOR && x->stride == 1 && b->stride == 1) {
-        INFO_LOG("Chose col-major kernel for row-major densemat with 1 column");
+   
+    if (x->traits.ncols == 1 && b->traits.ncols == 1 && 
+            (x->traits.storage == GHOST_DENSEMAT_COLMAJOR || x->stride == 1) && 
+            (b->traits.storage == GHOST_DENSEMAT_COLMAJOR || b->stride == 1)) {
+        INFO_LOG("Try both col- and row-major for 1-column densemat with stride 1");
         n_storage = 2;
         first_storage = 0;
     } else {
         n_storage = 1;
-        if (p.storage == GHOST_DENSEMAT_ROWMAJOR) {
+        if (x->traits.storage == GHOST_DENSEMAT_ROWMAJOR && b->traits.storage == x->traits.storage) {
             first_storage = 1;
         } else {
             first_storage = 0;
