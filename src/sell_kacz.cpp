@@ -30,7 +30,7 @@ namespace std
         result_type operator()(argument_type const& a) const
         {
             return ghost_hash(ghost_hash(a.mdt,a.blocksz,a.storage),
-                    ghost_hash(a.vdt,a.impl,a.chunkheight),a.alignment);
+                    ghost_hash(a.vdt,a.impl,a.chunkheight),ghost_hash(a.alignment,a.method,0));
         }
     };
 }
@@ -39,7 +39,7 @@ static bool operator==(const ghost_kacz_parameters& a, const ghost_kacz_paramete
 {
     return a.mdt == b.mdt && a.blocksz == b.blocksz && a.storage == b.storage && 
            a.vdt == b.vdt && a.impl == b.impl && a.chunkheight == b.chunkheight &&
-           a.alignment == b.alignment;
+           a.alignment == b.alignment && a.method == b.method;
 }
 
 static unordered_map<ghost_kacz_parameters, ghost_kacz_kernel> 
