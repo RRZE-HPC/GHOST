@@ -160,12 +160,24 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
     ghost_implementation opt_impl;
     ghost_alignment opt_align;
     
+    ghost_densemat_storage try_storage[2] = {GHOST_DENSEMAT_COLMAJOR,GHOST_DENSEMAT_ROWMAJOR};
+    int n_storage, pos_storage, first_storage;
+    
     p.vdt = x->traits.datatype;
     p.mdt = mat->traits.datatype;
-    p.storage = x->traits.storage;
+    
+    
     if (p.storage == GHOST_DENSEMAT_ROWMAJOR && x->stride == 1 && b->stride == 1) {
         INFO_LOG("Chose col-major kernel for row-major densemat with 1 column");
-        p.storage = GHOST_DENSEMAT_COLMAJOR;
+        n_storage = 2;
+        first_storage = 0;
+    } else {
+        n_storage = 1;
+        if (p.storage == GHOST_DENSEMAT_ROWMAJOR) {
+            first_storage = 1;
+        } else {
+            first_storage = 0;
+        }
     }
     if ((b->traits.flags & GHOST_DENSEMAT_SCATTERED) || 
             (x->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
@@ -196,10 +208,6 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
    for (pos_chunkheight = 0; pos_chunkheight < n_chunkheight; pos_chunkheight++) {  
         for (pos_blocksz = 0; pos_blocksz < n_blocksz; pos_blocksz++) {  
             for (p.impl = opt_impl; (int)p.impl >= GHOST_IMPLEMENTATION_PLAIN; p.impl  = (ghost_implementation)((int)p.impl-1)) {
-                /*if (p.impl == GHOST_IMPLEMENTATION_SSE && p.storage == GHOST_DENSEMAT_ROWMAJOR && try_blocksz[pos_blocksz] % 2) {
-                    PERFWARNING_LOG("Remainder loops not yet implemented for SSE, fallback to plain");
-                    p.impl  = (ghost_implementation)((int)p.impl-1);
-                }*/
 
                 int al = ghost_implementation_alignment(p.impl);
                 if (IS_ALIGNED(b->val,al) && IS_ALIGNED(x->val,al) && ((b->traits.ncols == 1 && b->stride == 1) || (!((b->stride*b->elSize) % al) && !((x->stride*x->elSize) % al)))) {
@@ -221,16 +229,19 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
                 }
 
                 for (p.alignment = opt_align; (int)p.alignment >= GHOST_UNALIGNED; p.alignment = (ghost_alignment)((int)p.alignment-1)) {
-                    p.chunkheight = try_chunkheight[pos_chunkheight];
-                    p.blocksz = try_blocksz[pos_blocksz];
+                    for (pos_storage = first_storage; pos_storage < n_storage+first_storage; pos_storage++) {  
+                        p.chunkheight = try_chunkheight[pos_chunkheight];
+                        p.blocksz = try_blocksz[pos_blocksz];
+                        p.storage = try_storage[pos_storage];
 
-                    INFO_LOG("Try chunkheight=%s, blocksz=%s, impl=%s, %s",
-                            p.chunkheight==-1?"arbitrary":std::to_string((long long)p.chunkheight).c_str(),
-                            p.blocksz==-1?"arbitrary":std::to_string((long long)p.blocksz).c_str(),
-                            ghost_implementation_string(p.impl),p.alignment==GHOST_UNALIGNED?"unaligned":"aligned");
-                    kernel = ghost_kacz_kernels[p];
-                    if (kernel) {
-	                goto end_of_loop;
+                        INFO_LOG("Try chunkheight=%s, blocksz=%s, impl=%s, %s",
+                                p.chunkheight==-1?"arbitrary":std::to_string((long long)p.chunkheight).c_str(),
+                                p.blocksz==-1?"arbitrary":std::to_string((long long)p.blocksz).c_str(),
+                                ghost_implementation_string(p.impl),p.alignment==GHOST_UNALIGNED?"unaligned":"aligned");
+                        kernel = ghost_kacz_kernels[p];
+                        if (kernel) {
+                            goto end_of_loop;
+                        }
                     }
                     optimal = false;
                 }
