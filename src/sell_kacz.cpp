@@ -189,7 +189,7 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
 
     int n_chunkheight = sizeof(try_chunkheight)/sizeof(int);
     int n_blocksz = sizeof(try_blocksz)/sizeof(int);
-    int pos_chunkheight, pos_blocksz, method;
+    int pos_chunkheight, pos_blocksz;
 
     bool optimal = true;
     
