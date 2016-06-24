@@ -117,6 +117,7 @@ set (SOURCES
     src/sell_kacz_bmc.c 
     src/sell_kacz_mc.c
     src/sell_kacz_selector.c
+    src/kacz_analyze_print.c
     )
 
 set (HEADERS

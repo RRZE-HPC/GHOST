@@ -1,9 +1,7 @@
-/*!GHOST_AUTOGEN CHUNKHEIGHT;BLOCKDIM1 */
 #include "ghost/config.h"
 #include "ghost/types.h"
 #include "ghost/util.h"
 #include "ghost/math.h"
-//#include "ghost/sell_kacz_plain_rcm_gen.h"
 #include "ghost/omp.h"
 #include "ghost/rcm_dissection.h"
 #include <vector>
@@ -18,8 +16,6 @@ ghost_error find_transition_zone(ghost_sparsemat *mat, int n_threads)
 { 
 if(n_threads>1)
 {
-   int lower_bw = 0;
-   int upper_bw = 0;
    int nrows    = mat->nrows;
    int ncols    = mat->maxColRange+1;
    int n_zones  = 2* n_threads;//odd zone = even zone
@@ -32,7 +28,7 @@ if(n_threads>1)
    int total_odd_rows    = n_threads*height;
    int total_even_rows   = nrows - total_odd_rows;
  
-   mat->zone_ptr         = new int[n_zones+1]; 
+   mat->zone_ptr         = new ghost_lidx[n_zones+1]; 
    int* zone_ptr         = mat->zone_ptr; 
  
    bool flag_level = true; //flag for recursive call in current thread does not fit
@@ -67,7 +63,6 @@ if(n_threads>1)
 	} else {
        
             int nnz = mat->nnz;
-            ghost_lidx *row_ptr = mat->sell->chunkStart;//for SELL-1-1
             int* load;
             load  =  new int[n_zones];
  
@@ -78,7 +73,7 @@ if(n_threads>1)
             for(int i=0; i<n_zones; ++i){
                     int ctr_nnz = 0;
                     for(int row=zone_ptr[i]; row<zone_ptr[i+1]; ++row){
-                        ctr_nnz += ( row_ptr[row+1] - row_ptr[row] );
+                        ctr_nnz += mat->sell->rowLen[row];
                     }
             load[i] = static_cast<int>( static_cast<double>(uniform_nnz)/ctr_nnz * (zone_ptr[i+1] - zone_ptr[i]) );
 
@@ -124,7 +119,33 @@ else{
   mat->zone_ptr[2] = mat->nrows;
 }
 
-   return GHOST_SUCCESS;
+//make it compatible for bmc kernel, so only one kernel is enough
+  ghost_lidx new_nzones = 2*mat->nzones; //double the zones
+  ghost_lidx *new_zone_ptr = new ghost_lidx[new_nzones+1];
+//  ghost_malloc((void **)&new_zone_ptr,(new_nzones+1)*sizeof(ghost_lidx)); 
+ 
+  for(int i=0; i< mat->nzones; i+=2) {
+	new_zone_ptr[2*i] = mat->zone_ptr[i];
+	new_zone_ptr[2*i+1] = mat->zone_ptr[i+1];
+	new_zone_ptr[2*i+2] = mat->zone_ptr[i+1];
+ 	new_zone_ptr[2*i+3] = mat->zone_ptr[i+1];
+   }
+  new_zone_ptr[new_nzones] = mat->zone_ptr[mat->nzones];
+//  new_zone_ptr[new_nzones+1] = mat->zone_ptr[mat->nzones];
+ 
+  delete[] mat->zone_ptr;
+  mat->zone_ptr = new_zone_ptr;
+  mat->nzones   = new_nzones;
+  mat->kacz_setting.kacz_method = BMC_one_sweep;
+
+  mat->ncolors = 1;//mat->zone_ptr[mat->nzones+1] - mat->zone_ptr[mat->nzones];
+  ghost_malloc((void **)&mat->color_ptr,(mat->ncolors+1)*sizeof(ghost_lidx)); 
+  
+  for(int i=0; i<mat->ncolors+1; ++i) {
+	mat->color_ptr[i] = mat->zone_ptr[mat->nzones];
+  }
+ 
+  return GHOST_SUCCESS;
 }
 
 //checks whether the partitioning was correct, its just for debugging
@@ -170,23 +191,27 @@ extern "C" ghost_error ghost_rcm_dissect(ghost_sparsemat *mat){
     #pragma omp single
     {
         n_threads = ghost_omp_nthread();
-
 	find_transition_zone(mat, n_threads);
  
         int n_zones = mat->nzones;
 
-	//TODO remove it only for debug phase
-        std::cout<<"CHECKING whether splitting is corrext"<<std::endl;
-//        checker_rcm(mat);
-        std::cout<<"CHECKING Finished"<<std::endl;      
-        
+	if(mat->traits.C == 1) {
+        	INFO_LOG("CHECKING BLOCK COLORING")
+        	checker_rcm(mat);
+        	INFO_LOG("CHECKING FINISHED");     
+        }
+
          if(n_threads > n_zones/2){
             WARNING_LOG("RED BLACK splitting: Can't use all the threads , Usable threads = %d",n_zones/2);
          }
 
-	mat->kacz_setting.active_threads = int( (double)(n_zones)/2);
+	mat->kacz_setting.active_threads = int( (double)(n_zones)/4);
      }    
   }  
+
+#ifdef GHOST_KACZ_ANALYZE 
+ kacz_analyze_print(mat);
+#endif
 
    return GHOST_SUCCESS; 
 }

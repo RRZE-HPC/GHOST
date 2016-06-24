@@ -1019,6 +1019,13 @@ extern "C" {
     ghost_error ghost_carp_shift(ghost_sparsemat *mat, ghost_densemat *x_real, ghost_densemat *x_imag, ghost_densemat *b, double sigma_r, double sigma_i, void *omega);
     ghost_error checker(ghost_sparsemat *mat);
     ghost_error split_transition(ghost_sparsemat *mat);
+
+    /**
+     * @brief Prints the row distribution details of KACZ. 
+     *
+     * @param[in] mat: The sparsematrix
+     */ 
+    ghost_error kacz_analyze_print(ghost_sparsemat *mat);
     
     /**
     * @brief Writes a matrix to file 
@@ -1053,8 +1060,7 @@ extern "C" {
 
     ghost_error ghost_sparsemat_fromfunc_common_dummy(ghost_lidx *rl, ghost_lidx *rlp, ghost_lidx *cl, ghost_lidx *clp, ghost_lidx **chunkptr, char **val, ghost_gidx **col, ghost_sparsemat_src_rowfunc *src, ghost_sparsemat *mat, ghost_lidx C, ghost_lidx P);
 
-
-  static inline int ghost_sparsemat_rowfunc_crs(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *col, void *val, void *crsdata)
+ static inline int ghost_sparsemat_rowfunc_crs(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *col, void *val, void *crsdata)
 {
     ghost_gidx *crscol = ((ghost_sparsemat_rowfunc_crs_arg *)crsdata)->col;
     ghost_lidx *crsrpt = ((ghost_sparsemat_rowfunc_crs_arg *)crsdata)->rpt;

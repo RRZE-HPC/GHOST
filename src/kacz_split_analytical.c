@@ -281,11 +281,11 @@ ghost_error split_analytical(ghost_sparsemat *mat)
    for(int i=1; i<current_threads; ++i) {	 
         ghost_lidx chunk_lower      = zone_ptr[4*i+2]/chunkheight;
         ghost_lidx rowinchunk_lower = zone_ptr[4*i+2]%chunkheight;
-        ghost_lidx chunk_upper 	    = zone_ptr[4*i-1]/chunkheight;     
-        ghost_lidx rowinchunk_upper = zone_ptr[4*i-1]%chunkheight;
+        ghost_lidx chunk_upper 	    = (zone_ptr[4*i-1]-1)/chunkheight;     
+        ghost_lidx rowinchunk_upper = (zone_ptr[4*i-1]-1)%chunkheight;
 
 	ghost_lidx lower = virtual_col(chunk_ptr[chunk_lower]+rowinchunk_lower); 		
-	ghost_lidx upper = virtual_col(chunk_ptr[chunk_upper]+rowinchunk_upper+(chunkheight-1)*mat->sell->chunkLen[chunk_upper]-1);
+	ghost_lidx upper = virtual_col(chunk_ptr[chunk_upper]+rowinchunk_upper+chunkheight*(mat->sell->chunkLen[chunk_upper]-1));
 
        	if(lower <= upper) {
            //printf("check lower = %d and upper =%d\n",virtual_col(row_ptr[zone_ptr[4*i+2]]) , virtual_col(row_ptr[zone_ptr[4*i-1]]-1));
@@ -294,178 +294,9 @@ ghost_error split_analytical(ghost_sparsemat *mat)
            break;
        }
   }
-
 #ifdef GHOST_KACZ_ANALYZE 
-
- line_size = 12;
- n_lines = mat->kacz_setting.active_threads / line_size;
- rem_lines =  mat->kacz_setting.active_threads % line_size;
- start=0 ;
- end=0;
- 
- printf("%10s:","THREADS");
-                          
- for(int line=0; line<n_lines; ++line) {
- 	start = line*line_size;
-        end   = (line+1)*line_size;
-
-	for(int i=start ; i<end; ++i){
-  		printf("|%10d",i+1);	
-   	}
-        printf("\n");
-        printf("%10s:","");
-  }
- 
-  start = mat->kacz_setting.active_threads - rem_lines;
-  end   = mat->kacz_setting.active_threads;
-
-  for(int i=start ; i<end; ++i){
-         printf("|%10d",i+1);
-  }
-
- printf("|%10s","TOTAL");
-
- const char *zone_name[4];
- zone_name[0] = "PURE ZONE";
- zone_name[1] = "RED TRANS ZONE";
- zone_name[2] = "TRANS IN TRANS ZONE";
- zone_name[3] = "BLACK TRANS ZONE";
-
- rows = malloc(mat->kacz_setting.active_threads*sizeof(ghost_lidx));
- nnz  = malloc(mat->kacz_setting.active_threads*sizeof(ghost_lidx));
-
- #ifdef GHOST_HAVE_OPENMP
-	#pragma omp parallel shared(line_size)
-	 {
- #endif
-         ghost_lidx tid = ghost_omp_threadnum();
-
-         for(ghost_lidx zone=0; zone<4; ++zone) {
-         	rows[tid] = mat->zone_ptr[4*tid+zone+1] - mat->zone_ptr[4*tid+zone];
-                nnz[tid]  = 0;
-        
-                if(rows[tid]!=0) {
-			for(int j=mat->zone_ptr[4*tid+zone]; j<mat->zone_ptr[4*tid+zone+1]; ++j) {
-                		nnz[tid] += row_ptr[j+1] - row_ptr[j] ;   
-        		}
-                }
-
-          	#pragma omp barrier
-      
-          	#pragma omp single
-          	{
-                	 printf("\n\n%s\n",zone_name[zone]);
-			 printf("%10s:","ROWS");
-  			 ghost_lidx ctr = 0;
-                         ghost_lidx n_lines = mat->kacz_setting.active_threads / line_size;
-                         ghost_lidx rem_lines =  mat->kacz_setting.active_threads % line_size;
-                         int start=0 , end=0;
-                         
-                         for(int line=0; line<n_lines; ++line) {
-                                start = line*line_size;
-                                end   = (line+1)*line_size;
-
-				for(int i=start ; i<end; ++i){
-  					printf("|%10d",rows[i]);
-   					ctr += rows[i];
-   				}
-                         printf("\n");
-                         printf("%10s:","");
-                        }
- 
-			start = mat->kacz_setting.active_threads - rem_lines;
-  			end   = mat->kacz_setting.active_threads;
-
-                          for(int i=start ; i<end; ++i){
-                                  printf("|%10d",rows[i]);
-                                  ctr += rows[i];
-                         }
-
-  			printf("|%10d",ctr);
-  			printf("\n%10s:","%");
- 	
-			if(ctr!=0) {
-
-	                         for(int line=0; line<n_lines; ++line) {
-        	                        start = line*line_size;
-                	                end   = (line+1)*line_size;
-
-                        	        for(int i=start ; i<end; ++i){
-                                	        printf("|%10d",(int)(((double)rows[i]/ctr)*100));
-                                	}
-                         	 printf("\n");
-                         	 printf("%10s:","");
-                        	}
-			
-				start = mat->kacz_setting.active_threads - rem_lines;
-  				end   = mat->kacz_setting.active_threads;
-
-
-		                for(int i=start ; i<end; ++i){
-                                	printf("|%10d",(int)(((double)rows[i]/ctr)*100));          
-                                } 
- 				printf("|%10d",100);
-  			}
-
- 		
-			printf("\n%10s:","NNZ");
- 			ctr = 0;
-                       
-			for(int line=0; line<n_lines; ++line) {
-                                start = line*line_size;
-                                end   = (line+1)*line_size;
-
-				for(int i=start ; i<end; ++i){
-  					printf("|%10d",nnz[i]);
-   					ctr += nnz[i];
-   				}
-                         printf("\n");
-                         printf("%10s:","");
-
-                         }
- 	         	 
-		  	 start = mat->kacz_setting.active_threads - rem_lines;
-  			 end   = mat->kacz_setting.active_threads;
-
-                        for(int i=start ; i<end; ++i){
-                                  printf("|%10d",nnz[i]);
-                                  ctr += nnz[i];
-                         }
-
-        		printf("|%10d",ctr);
-			printf("\n%10s:","%");
-
-			if(ctr!=0) {
- 
-	                         for(int line=0; line<n_lines; ++line) {
-        	                        start = line*line_size;
-                	                end   = (line+1)*line_size;
-
-                        	        for(int i=start ; i<end; ++i){
-                                	        printf("|%10d",(int)(((double)nnz[i]/ctr)*100));
-                                	}
-                         	 printf("\n");
-                         	 printf("%10s:","");
-                        	}
-
-				start = mat->kacz_setting.active_threads - rem_lines;
-  				end   = mat->kacz_setting.active_threads;
-
-                        	for(int i=start ; i<end; ++i){
-                                	printf("|%10d",(int)(((double)nnz[i]/ctr)*100));          
-                                } 
-				printf("|%10d",100);
-			 }
-
-
-          	}
-          }
-  #ifdef GHOST_HAVE_OPENMP
-   	  }
-  #endif
-  printf("\n\n");
- #endif
-
+ kacz_analyze_print(mat);
+#endif
 
  goto out;
  

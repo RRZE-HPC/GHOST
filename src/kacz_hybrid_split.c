@@ -16,23 +16,30 @@ typedef enum {
 ghost_error find_zone_extrema(ghost_sparsemat *mat, int **extrema, ghost_lidx a, ghost_lidx b) 
 {
  //for SELL-1-1
- ghost_lidx *row_ptr = mat->sell->chunkStart;
+ ghost_lidx *chunk_ptr = mat->sell->chunkStart;
  ghost_lidx *col_ptr = mat->sell->col;//virtual_col would be used
  ghost_error ret = GHOST_SUCCESS;
 
  GHOST_CALL_GOTO(ghost_malloc((void **)extrema,sizeof(int)*4),err,ret);
  
- int max_lower = 0;
- int max_upper = 0;
- int min_lower = mat->ncols;
- int min_upper = mat->ncols;
+ ghost_lidx max_lower = 0;
+ ghost_lidx max_upper = 0;
+ ghost_lidx min_lower = mat->ncols;
+ ghost_lidx min_upper = mat->ncols;
+ ghost_lidx chunk = 0;
+ ghost_lidx rowinchunk = 0;
+ ghost_lidx chunkheight = mat->traits.C;
 
  //TODO work on virtual columns 
  for(int i=a; i< b; ++i) {
- 	min_lower = MIN( min_lower, virtual_col(row_ptr[i]) );
-        max_lower = MAX( max_lower, virtual_col(row_ptr[i]) );
-        min_upper = MIN( min_upper, virtual_col(row_ptr[i+1]-1) );
-        max_upper = MAX( max_upper, virtual_col(row_ptr[i+1]-1) );
+	chunk = i/chunkheight;			
+        rowinchunk = i%chunkheight;
+        
+	min_lower = MIN( min_lower, virtual_col(chunk_ptr[chunk])+rowinchunk);
+        max_lower = MAX( max_lower, virtual_col(chunk_ptr[chunk])+rowinchunk);
+        min_upper = MIN( min_upper, virtual_col(chunk_ptr[chunk]+rowinchunk+chunkheight*(mat->sell->chunkLen[chunk]-1)) );
+        max_upper = MAX( max_upper, virtual_col(chunk_ptr[chunk]+rowinchunk+chunkheight*(mat->sell->chunkLen[chunk]-1)) );
+
  }
 
  (*extrema)[MIN_LOWER] = min_lower;
@@ -103,14 +110,14 @@ ghost_error checker(ghost_sparsemat *mat)
         find_zone_extrema(mat, &extrema_black, zones[4*i+3], zones[4*i+4]);
         black_min = extrema_black[MIN_LOWER];
 
-		//check black color in transition zones
+	//check black color in transition zones
         if( (zones[4*i+3] != zones[4*i+4]) &&(zones[4*(i-1)+3] != zones[4*(i-1)+4]) && black_min <= black_max) {//col_ptr[row_ptr[zones[4*i+3]]] <= col_ptr[row_ptr[zones[4*i]]-1] ) {
 	    printf("check  lower = %"PRGIDX", upper = %"PRGIDX"\n",virtual_col(row_ptr[zones[4*i+3]]),virtual_col(row_ptr[zones[4*i]]-1) );
             ret = GHOST_ERR_BLOCKCOLOR;
 	    printf("ERR 3\n");
 //	    break;
 	}
-		//check transition in transition zones, if we are using one sweep method, 
+	//check transition in transition zones, if we are using one sweep method, 
 	if(mat->kacz_setting.kacz_method == BMC_one_sweep) {
 	        trans_max = extrema_trans[MAX_UPPER];
         	free(extrema_trans);
@@ -132,7 +139,7 @@ ghost_error checker(ghost_sparsemat *mat)
                 free(extrema_trans_2);
 
                	if( (zones[4*i+6] != zones[4*i+7]) &&(zones[4*(i-1)+2] != zones[4*(i-1)+3]) && trans_min <= trans_max) {//col_ptr[row_ptr[zones[4*i+2]]] <= col_ptr[row_ptr[zones[4*i-1]]-1] ) {
-                	printf("check between %d-%d and %d-%d zoneptr",4*i-2,4*i-1,4*i+6,4*i+7);	
+                	printf("check between %d-%d and %d-%d zoneptr\n",4*i-2,4*i-1,4*i+6,4*i+7);	
 		        ret = GHOST_ERR_BLOCKCOLOR;
 	        	printf("ERR 5\n");
 
@@ -163,23 +170,46 @@ ghost_error mat_bandwidth(ghost_sparsemat *mat, int *lower_bw, int *upper_bw, in
 {
   int lower = 0;
   int upper = 0;
-  ghost_lidx* row_ptr = mat->sell->chunkStart; 
+  ghost_lidx* chunk_ptr = mat->sell->chunkStart; 
   ghost_lidx* col_ptr = mat->sell->col;//TODO give virtual colums
   int start_col, end_col;
-
-  //std::cout<<"nrows ="<<mat->nrows<<std::endl;
-  //std::cout<<"check"<<row_ptr[mat->nrows-1]<<std::endl;
-
-   for(int i=a; i<b; ++i){
+  ghost_lidx chunk;
+  ghost_lidx rowinchunk;
+  ghost_lidx chunkheight = mat->traits.C;
+  ghost_lidx idx = 0;
+ 
+/*   for(int i=a; i<b; ++i){
 	   start_col = mat->nrows + mat->context->nrowspadded;
 	   end_col   = 0;
-	for(int j=row_ptr[i]; j<row_ptr[i+1]; ++j) {
+	for(int j=chunk_ptr[i]; j<chunk_ptr[i+1]; ++j) {
            start_col = MIN(start_col, virtual_col(j));
-           end_col = MAX(end_col, virtual_col(j));
+           end_col   = MAX(end_col, virtual_col(j));
 	}
 
    lower = MAX(lower,i-start_col);
    upper = MAX(upper,end_col-i);
+   }
+printf("Bandwidth from calculation crs = %d\n", lower+upper);
+   lower = 0;
+   upper = 0;
+ */
+   for(int i=a; i<b; ++i){
+	   chunk = i/chunkheight;   //can avoid this by doing reminder loops
+	   rowinchunk = i%chunkheight;
+	   start_col = mat->nrows + mat->context->nrowspadded;
+	   end_col   = 0;
+           idx = chunk_ptr[chunk]+rowinchunk;
+	
+	   for(int j=0; j<mat->sell->chunkLen[chunk]; ++j) {
+		if(j==0 || virtual_col(idx)!=0) { //TODO somehow fix it, since filling dummy columns with 0
+           	start_col = MIN(start_col, virtual_col(idx));
+           	end_col   = MAX(end_col,   virtual_col(idx));
+		}
+	   	idx+=chunkheight;
+ 	   }	
+
+   	   lower = MAX(lower,i-start_col);
+   	   upper = MAX(upper,end_col-i);
    }
 
   *lower_bw = lower;
@@ -192,15 +222,8 @@ ghost_error split_transition(ghost_sparsemat *mat)
 {
     ghost_error ret = GHOST_SUCCESS;
 
-    //for KACZ_ANALYZE
-    ghost_lidx line_size, n_lines, rem_lines;
-    int start=0 , end=0;
-    ghost_lidx *rows;
-    ghost_lidx *nnz;
-
-
-    ghost_lidx *row_ptr = mat->sell->chunkStart;
-    ghost_lidx *col_ptr = mat->sell->col;
+    //ghost_lidx *row_ptr = mat->sell->chunkStart;
+    //ghost_lidx *col_ptr = mat->sell->col;
 
 
    //height might vary from nrows if we have multicoloring
@@ -269,206 +292,49 @@ ghost_error split_transition(ghost_sparsemat *mat)
        }
   }
 
-   //now for last zone we have only black-start
-   /*ghost_lidx black_start = new_zone_ptr[4*(n_zones-1)] + total_bw;
-   ghost_lidx red_end     = mat->nrows+1 - total_bw;
 
-   new_zone_ptr[4*(n_zones-1)+2] = black_start;  //no transition
-   new_zone_ptr[4*(n_zones-1)+3] = black_start;  //no transition
-   */
- 
    //now check whether the transition in transition is overlapping- if one region overlaps we use 2 sweep method (with threads/2) , else one sweep method 
    mat->kacz_setting.kacz_method = BMC_one_sweep;
  
    for(int i=1; i<n_zones; ++i) {
-	ghost_gidx lower = virtual_col(row_ptr[new_zone_ptr[4*i+2]]);
-	ghost_gidx upper = virtual_col(row_ptr[new_zone_ptr[4*i-1]]-1);
-
+     //	ghost_gidx lower = virtual_col(row_ptr[new_zone_ptr[4*i+2]]); //This might not work if the matrix is not RCM permuted
+     //	ghost_gidx upper = virtual_col(row_ptr[new_zone_ptr[4*i-1]]-1);
+      int *extrema_lower_trans = NULL, *extrema_upper_trans = NULL;
+      find_zone_extrema(mat, &extrema_lower_trans, new_zone_ptr[4*i+2], new_zone_ptr[4*i+3]);
+      ghost_lidx lower = extrema_lower_trans[MIN_LOWER]; 
+    
+      find_zone_extrema(mat, &extrema_upper_trans, new_zone_ptr[4*i-2], new_zone_ptr[4*i-1]);
+      ghost_lidx upper = extrema_lower_trans[MAX_UPPER]; 
+ 
+        
        if(lower <= upper) {
            //printf("check lower = %d and upper =%d\n",virtual_col(row_ptr[new_zone_ptr[4*i+2]]) , virtual_col(row_ptr[new_zone_ptr[4*i-1]]-1));
            mat->kacz_setting.kacz_method = BMC_two_sweep;	
            WARNING_LOG("ONLY half the available threads would be used for transitional sweep\n");
            break;
        }
+ 
+  if(extrema_lower_trans != NULL)
+     free(extrema_lower_trans);
+ 
+  if(extrema_upper_trans != NULL)
+     free(extrema_upper_trans);
   }
+
+ 
+mat->zone_ptr = new_zone_ptr;
 
 #ifdef GHOST_KACZ_ANALYZE 
-
- line_size = 12;
- n_lines = mat->kacz_setting.active_threads / line_size;
- rem_lines =  mat->kacz_setting.active_threads % line_size;
- start=0 ;
- end=0;
+ kacz_analyze_print(mat);
+#endif
  
- printf("%10s:","THREADS");
-                          
- for(int line=0; line<n_lines; ++line) {
- 	start = line*line_size;
-        end   = (line+1)*line_size;
-
-	for(int i=start ; i<end; ++i){
-  		printf("|%10d",i+1);	
-   	}
-        printf("\n");
-        printf("%10s:","");
-  }
- 
-  start = mat->kacz_setting.active_threads - rem_lines;
-  end   = mat->kacz_setting.active_threads;
-
-  for(int i=start ; i<end; ++i){
-         printf("|%10d",i+1);
-  }
-
- printf("|%10s","TOTAL");
-
- const char *zone_name[4];
- zone_name[0] = "PURE ZONE";
- zone_name[1] = "RED TRANS ZONE";
- zone_name[2] = "TRANS IN TRANS ZONE";
- zone_name[3] = "BLACK TRANS ZONE";
-
- rows = malloc(mat->kacz_setting.active_threads*sizeof(ghost_lidx));
- nnz  = malloc(mat->kacz_setting.active_threads*sizeof(ghost_lidx));
-
- #ifdef GHOST_HAVE_OPENMP
-	#pragma omp parallel shared(line_size)
-	 {
- #endif
-         ghost_lidx tid = ghost_omp_threadnum();
-
-         for(ghost_lidx zone=0; zone<4; ++zone) {
-         	rows[tid] = new_zone_ptr[4*tid+zone+1] - new_zone_ptr[4*tid+zone];
-                nnz[tid]  = 0;
-        
-                if(rows[tid]!=0) {
-			for(int j=new_zone_ptr[4*tid+zone]; j<new_zone_ptr[4*tid+zone+1]; ++j) {
-                		nnz[tid] += row_ptr[j+1] - row_ptr[j] ;   
-        		}
-                }
-
-          	#pragma omp barrier
-      
-          	#pragma omp single
-          	{
-                	 printf("\n\n%s\n",zone_name[zone]);
-			 printf("%10s:","ROWS");
-  			 ghost_lidx ctr = 0;
-                         ghost_lidx n_lines = mat->kacz_setting.active_threads / line_size;
-                         ghost_lidx rem_lines =  mat->kacz_setting.active_threads % line_size;
-                         int start=0 , end=0;
-                         
-                         for(int line=0; line<n_lines; ++line) {
-                                start = line*line_size;
-                                end   = (line+1)*line_size;
-
-				for(int i=start ; i<end; ++i){
-  					printf("|%10d",rows[i]);
-   					ctr += rows[i];
-   				}
-                         printf("\n");
-                         printf("%10s:","");
-                        }
- 
-			start = mat->kacz_setting.active_threads - rem_lines;
-  			end   = mat->kacz_setting.active_threads;
-
-                          for(int i=start ; i<end; ++i){
-                                  printf("|%10d",rows[i]);
-                                  ctr += rows[i];
-                         }
-
-  			printf("|%10d",ctr);
-  			printf("\n%10s:","%");
- 	
-			if(ctr!=0) {
-
-	                         for(int line=0; line<n_lines; ++line) {
-        	                        start = line*line_size;
-                	                end   = (line+1)*line_size;
-
-                        	        for(int i=start ; i<end; ++i){
-                                	        printf("|%10d",(int)(((double)rows[i]/ctr)*100));
-                                	}
-                         	 printf("\n");
-                         	 printf("%10s:","");
-                        	}
-			
-				start = mat->kacz_setting.active_threads - rem_lines;
-  				end   = mat->kacz_setting.active_threads;
-
-
-		                for(int i=start ; i<end; ++i){
-                                	printf("|%10d",(int)(((double)rows[i]/ctr)*100));          
-                                } 
- 				printf("|%10d",100);
-  			}
-
- 		
-			printf("\n%10s:","NNZ");
- 			ctr = 0;
-                       
-			for(int line=0; line<n_lines; ++line) {
-                                start = line*line_size;
-                                end   = (line+1)*line_size;
-
-				for(int i=start ; i<end; ++i){
-  					printf("|%10d",nnz[i]);
-   					ctr += nnz[i];
-   				}
-                         printf("\n");
-                         printf("%10s:","");
-
-                         }
- 	         	 
-		  	 start = mat->kacz_setting.active_threads - rem_lines;
-  			 end   = mat->kacz_setting.active_threads;
-
-                        for(int i=start ; i<end; ++i){
-                                  printf("|%10d",nnz[i]);
-                                  ctr += nnz[i];
-                         }
-
-        		printf("|%10d",ctr);
-			printf("\n%10s:","%");
-
-			if(ctr!=0) {
- 
-	                         for(int line=0; line<n_lines; ++line) {
-        	                        start = line*line_size;
-                	                end   = (line+1)*line_size;
-
-                        	        for(int i=start ; i<end; ++i){
-                                	        printf("|%10d",(int)(((double)nnz[i]/ctr)*100));
-                                	}
-                         	 printf("\n");
-                         	 printf("%10s:","");
-                        	}
-
-				start = mat->kacz_setting.active_threads - rem_lines;
-  				end   = mat->kacz_setting.active_threads;
-
-                        	for(int i=start ; i<end; ++i){
-                                	printf("|%10d",(int)(((double)nnz[i]/ctr)*100));          
-                                } 
-				printf("|%10d",100);
-			 }
-
-
-          	}
-          }
-  #ifdef GHOST_HAVE_OPENMP
-   	  }
-  #endif
-  printf("\n\n");
- #endif
- 
- mat->zone_ptr = new_zone_ptr;
- 
- INFO_LOG("CHECKING BLOCK COLORING")
- checker(mat);
- INFO_LOG("BLOCK COLORING SUCCESSFUL")
-
+ //currently be done only if CHUNKHEIGHT==1 
+ if(mat->traits.C == 1) 
+ {
+ 	INFO_LOG("CHECKING BLOCK COLORING")
+ 	checker(mat);
+ 	INFO_LOG("CHECKING FINISHED")
+ }
 
  return ret;
 }
