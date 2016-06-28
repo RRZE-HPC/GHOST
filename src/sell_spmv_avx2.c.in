@@ -18,7 +18,7 @@
 
 ghost_error ghost_sellspmv__a_avx2_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat* invec, ghost_spmv_opts traits)
 {
-#if defined(GHOST_BUILD_AVX) && CHUNKHEIGHT>=4
+#if defined(GHOST_BUILD_AVX2) && CHUNKHEIGHT>=4
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     ghost_lidx i;
     double *mval = (double *)SELL(mat)->val;
@@ -179,7 +179,7 @@ ghost_error ghost_sellspmv__a_avx2_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res,
 #if CHUNKHEIGHT < 4
     ERROR_LOG("Invalid chunk height!");
 #else
-    ERROR_LOG("No AVX available");
+    ERROR_LOG("No AVX2 available");
 #endif
     return GHOST_ERR_UNKNOWN;
 #endif
