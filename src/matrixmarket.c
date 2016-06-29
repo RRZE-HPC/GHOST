@@ -416,76 +416,108 @@ int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx row, ghost_lidx *rowlen, gho
 ghost_error ghost_sparsemat_to_mm(char *path, ghost_sparsemat *mat)
 {
     MM_typecode matcode;
-    ghost_lidx row,entinrow;
+    ghost_lidx row,entinrow,globrow;
     ghost_lidx sellidx;
-    int nrank;
-    FILE *fp = fopen(path,"w");
-
-    if (!fp) {
-        ERROR_LOG("Unable to open file %s!",path);
+    int nrank,rank;
+    FILE *fp;
+    
+    if (mat->context->gnrows > INT_MAX) {
+        ERROR_LOG("The number of matrix rows exceeds INT_MAX and I cannot write a MatrixMarket file!");
+        return GHOST_ERR_INVALID_ARG;
+    }
+    
+    if (mat->context->gncols > INT_MAX) {
+        ERROR_LOG("The number of matrix columns exceeds INT_MAX and I cannot write a MatrixMarket file!");
+        return GHOST_ERR_INVALID_ARG;
+    }
+    
+    if (mat->context->gnnz > INT_MAX) {
+        ERROR_LOG("The number of matrix entries exceeds INT_MAX and I cannot write a MatrixMarket file!");
         return GHOST_ERR_INVALID_ARG;
     }
     
     ghost_nrank(&nrank,mat->context->mpicomm);
+    ghost_rank(&rank,mat->context->mpicomm);
     
     if (nrank > 1 && !(mat->traits.flags & GHOST_SPARSEMAT_SAVE_ORIG_COLS)) {
         WARNING_LOG("The matrix is distributed and the non-compressed columns are not saved. The output will probably be useless!");
     }
-    
-    mm_initialize_typecode(&matcode);
-    mm_set_matrix(&matcode);
-    mm_set_coordinate(&matcode);
-    if (mat->traits.datatype & GHOST_DT_REAL) {
-        mm_set_real(&matcode);
-    } else {
-        mm_set_complex(&matcode);
+   
+    if (rank == 0) { 
+        fp = fopen(path,"w");
+        if (!fp) {
+            ERROR_LOG("Unable to open file %s!",path);
+            return GHOST_ERR_INVALID_ARG;
+        }
+        mm_initialize_typecode(&matcode);
+        mm_set_matrix(&matcode);
+        mm_set_coordinate(&matcode);
+        if (mat->traits.datatype & GHOST_DT_REAL) {
+            mm_set_real(&matcode);
+        } else {
+            mm_set_complex(&matcode);
+        }
+        
+        mm_write_banner(fp,matcode);
+        mm_write_mtx_crd_size(fp,(int)mat->context->gnrows,(int)mat->context->gncols,(int)mat->context->gnnz);
+        
+        fclose(fp);
     }
 
-    mm_write_banner(fp,matcode);
-    mm_write_mtx_crd_size(fp,mat->nrows,mat->ncols,mat->nnz);
+    int i;
+    for (i=0; i<nrank; i++) {
+#ifdef GHOST_HAVE_MPI
+        MPI_Barrier(mat->context->mpicomm);
+#endif
+        if (i == rank) {
+            fp = fopen(path,"a");
+            if (!fp) {
+                ERROR_LOG("Unable to open file %s!",path);
+                return GHOST_ERR_INVALID_ARG;
+            }
 
-    for (row=1; row<=mat->nrows; row++) {
-        for (entinrow=0; entinrow<SELL(mat)->rowLen[row-1]; entinrow++) {
-            sellidx = SELL(mat)->chunkStart[(row-1)/mat->traits.C] + entinrow*mat->traits.C + (row-1)%mat->traits.C;
-            if (mat->traits.flags & GHOST_SPARSEMAT_SAVE_ORIG_COLS) {
-                ghost_gidx col = mat->col_orig[sellidx]+1;
-                if (mat->traits.datatype & GHOST_DT_REAL) {
-                    if (mat->traits.datatype & GHOST_DT_DOUBLE) {
-                        fprintf(fp,"%"PRLIDX" %"PRGIDX" %10.3g\n",row,col,((double *)SELL(mat)->val)[sellidx]);
+            globrow = mat->context->lfRow[rank]+1;
+
+            for (row=1; row<=mat->nrows; row++, globrow++) {
+                for (entinrow=0; entinrow<SELL(mat)->rowLen[row-1]; entinrow++) {
+                    sellidx = SELL(mat)->chunkStart[(row-1)/mat->traits.C] + entinrow*mat->traits.C + (row-1)%mat->traits.C;
+                    if (mat->traits.flags & GHOST_SPARSEMAT_SAVE_ORIG_COLS) {
+                        int col = (int)mat->col_orig[sellidx]+1;
+                        if (mat->traits.datatype & GHOST_DT_REAL) {
+                            if (mat->traits.datatype & GHOST_DT_DOUBLE) {
+                                fprintf(fp,"%d %d %10.3g\n",globrow,col,((double *)SELL(mat)->val)[sellidx]);
+                            } else {
+                                fprintf(fp,"%d %d %10.3g\n",globrow,col,((float *)SELL(mat)->val)[sellidx]);
+                            }
+                        } else {
+                            if (mat->traits.datatype & GHOST_DT_DOUBLE) {
+                                fprintf(fp,"%d %d %10.3g %10.3g\n",globrow,col,creal(((complex double *)SELL(mat)->val)[sellidx]),cimag(((complex double *)SELL(mat)->val)[sellidx]));
+                            } else {
+                                fprintf(fp,"%d %d %10.3g %10.3g\n",globrow,col,crealf(((complex float *)SELL(mat)->val)[sellidx]),cimagf(((complex float *)SELL(mat)->val)[sellidx]));
+                            }
+                        }
                     } else {
-                        fprintf(fp,"%"PRLIDX" %"PRGIDX" %10.3g\n",row,col,((float *)SELL(mat)->val)[sellidx]);
+                        ghost_lidx col = SELL(mat)->col[sellidx]+1;
+                        if (mat->traits.datatype & GHOST_DT_REAL) {
+                            if (mat->traits.datatype & GHOST_DT_DOUBLE) {
+                                fprintf(fp,"%d %d %10.3g\n",globrow,col,((double *)SELL(mat)->val)[sellidx]);
+                            } else {
+                                fprintf(fp,"%d %d %10.3g\n",globrow,col,((float *)SELL(mat)->val)[sellidx]);
+                            }
+                        } else {
+                            if (mat->traits.datatype & GHOST_DT_DOUBLE) {
+                                fprintf(fp,"%d %d %10.3g %10.3g\n",globrow,col,creal(((complex double *)SELL(mat)->val)[sellidx]),cimag(((complex double *)SELL(mat)->val)[sellidx]));
+                            } else {
+                                fprintf(fp,"%d %d %10.3g %10.3g\n",globrow,col,crealf(((complex float *)SELL(mat)->val)[sellidx]),cimagf(((complex float *)SELL(mat)->val)[sellidx]));
+                            }
+                        }
                     }
-                } else {
-                    if (mat->traits.datatype & GHOST_DT_DOUBLE) {
-                        fprintf(fp,"%"PRLIDX" %"PRGIDX" %10.3g %10.3g\n",row,col,creal(((complex double *)SELL(mat)->val)[sellidx]),cimag(((complex double *)SELL(mat)->val)[sellidx]));
-                    } else {
-                        fprintf(fp,"%"PRLIDX" %"PRGIDX" %10.3g %10.3g\n",row,col,crealf(((complex float *)SELL(mat)->val)[sellidx]),cimagf(((complex float *)SELL(mat)->val)[sellidx]));
-                    }
-                }
-            } else {
-                ghost_lidx col = SELL(mat)->col[sellidx]+1;
-                if (mat->traits.datatype & GHOST_DT_REAL) {
-                    if (mat->traits.datatype & GHOST_DT_DOUBLE) {
-                        fprintf(fp,"%"PRLIDX" %"PRLIDX" %10.3g\n",row,col,((double *)SELL(mat)->val)[sellidx]);
-                    } else {
-                        fprintf(fp,"%"PRLIDX" %"PRLIDX" %10.3g\n",row,col,((float *)SELL(mat)->val)[sellidx]);
-                    }
-                } else {
-                    if (mat->traits.datatype & GHOST_DT_DOUBLE) {
-                        fprintf(fp,"%"PRLIDX" %"PRLIDX" %10.3g %10.3g\n",row,col,creal(((complex double *)SELL(mat)->val)[sellidx]),cimag(((complex double *)SELL(mat)->val)[sellidx]));
-                    } else {
-                        fprintf(fp,"%"PRLIDX" %"PRLIDX" %10.3g %10.3g\n",row,col,crealf(((complex float *)SELL(mat)->val)[sellidx]),cimagf(((complex float *)SELL(mat)->val)[sellidx]));
-                    }
+                    
                 }
             }
-            
+            fclose(fp);
         }
     }
 
-    fclose(fp);
-
-
     return GHOST_SUCCESS;
-        
-
 }
