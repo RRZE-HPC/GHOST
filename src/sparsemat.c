@@ -638,6 +638,8 @@ ghost_error_t ghost_sparsemat_perm_sort(ghost_sparsemat_t *mat, void *matrixSour
     ghost_gidx_t i,c,nrows,rowOffset;
     ghost_sorting_helper_t *rowSort = NULL;
     ghost_gidx_t *rpt = NULL;
+    ghost_type_t mytype;
+    ghost_type_get(&mytype);
 
     GHOST_CALL_GOTO(ghost_rank(&me, mat->context->mpicomm),err,ret);
 
@@ -653,7 +655,9 @@ ghost_error_t ghost_sparsemat_perm_sort(ghost_sparsemat_t *mat, void *matrixSour
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->perm,sizeof(ghost_gidx_t)*nrows),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->invPerm,sizeof(ghost_gidx_t)*nrows),err,ret);
 #ifdef GHOST_HAVE_CUDA
-    GHOST_CALL_GOTO(ghost_cu_malloc((void **)&mat->context->perm_local->cu_perm,sizeof(ghost_gidx_t)*nrows),err,ret);
+    if (mytype == GHOST_TYPE_CUDA) {
+        GHOST_CALL_GOTO(ghost_cu_malloc((void **)&mat->context->perm_local->cu_perm,sizeof(ghost_gidx_t)*nrows),err,ret);
+    }
 #endif
 
     mat->context->perm_local->len = nrows;
@@ -723,7 +727,9 @@ ghost_error_t ghost_sparsemat_perm_sort(ghost_sparsemat_t *mat, void *matrixSour
     }
 
 #ifdef GHOST_HAVE_CUDA
-    ghost_cu_upload(mat->context->perm_local->cu_perm,mat->context->perm_local->perm,mat->context->perm_local->len*sizeof(ghost_gidx_t));
+    if (mytype == GHOST_TYPE_CUDA) {
+        ghost_cu_upload(mat->context->perm_local->cu_perm,mat->context->perm_local->perm,mat->context->perm_local->len*sizeof(ghost_gidx_t));
+    }
 #endif
     
     goto out;
@@ -734,7 +740,9 @@ err:
         free(mat->context->perm_local->perm); mat->context->perm_local->perm = NULL;
         free(mat->context->perm_local->invPerm); mat->context->perm_local->invPerm = NULL;
 #ifdef GHOST_HAVE_CUDA
-        ghost_cu_free(mat->context->perm_local->cu_perm); mat->context->perm_local->cu_perm = NULL;
+        if (mytype == GHOST_TYPE_CUDA) {
+           ghost_cu_free(mat->context->perm_local->cu_perm); mat->context->perm_local->cu_perm = NULL;
+        }
 #endif
     }
     free(mat->context->perm_local); mat->context->perm_local = NULL;
