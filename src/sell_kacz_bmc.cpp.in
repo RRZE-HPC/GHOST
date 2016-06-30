@@ -15,96 +15,96 @@
 
 #if (NVECS==1 && CHUNKHEIGHT==1)
 //this is necessary since #pragma omp for doesn't understand !=
-#define FORWARD_LOOP(start,end,type)                                        \
+#define FORWARD_LOOP(start,end,MT,VT)                                        \
  _Pragma("omp parallel for") 				    	       \
  for (ghost_lidx row=start; row<end; ++row){                           \
-         type rownorm = 0.;                                          \
-         type scal = 0;                                              \
+         MT rownorm = 0.;                                          \
+         MT scal = 0;                                              \
 	 ghost_lidx  idx = sellmat->chunkStart[row];                   \
         if(bval != NULL)                                               \
           scal  = -bval[row];                                          \
         for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            \
-                 scal += (type)mval[idx] * xval[sellmat->col[idx]];  \
+                 scal += (MT)mval[idx] * xval[sellmat->col[idx]];  \
                 if(opts.normalize==no)                                 \
                  rownorm += mval[idx]*mval[idx];                       \
                  idx += 1;                                             \
           }                                                            \
         if(opts.normalize==no){                                        \
-         scal /= (type)rownorm;                                      \
+         scal /= (MT)rownorm;                                      \
         }                                                              \
         scal *= omega;                                                 \
 	idx -= sellmat->rowLen[row];                                   \
                                                                        \
  	_Pragma("simd vectorlength(4)")                                \
          for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {           \
-		xval[sellmat->col[idx]] = xval[sellmat->col[idx]] - scal * (type)mval[idx];\
+		xval[sellmat->col[idx]] = xval[sellmat->col[idx]] - scal * (MT)mval[idx];\
                 idx += 1;                                              \
           }                                                            \
       }                                                                \
 
-#define BACKWARD_LOOP(start,end,type)                                       \
+#define BACKWARD_LOOP(start,end,MT,VT)                                       \
  _Pragma("omp parallel for") 				       	       \
  for (ghost_lidx row=start; row>end; --row){                           \
-         type rownorm = 0.;                                          \
-         type scal = 0;                                              \
+         MT rownorm = 0.;                                          \
+         MT scal = 0;                                              \
 	 ghost_lidx  idx = sellmat->chunkStart[row];                   \
                                                                        \
          if(bval != NULL)                                              \
           scal  = -bval[row];                                          \
         for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            \
-                 scal += (type)mval[idx] * xval[sellmat->col[idx]];  \
+                 scal += (MT)mval[idx] * xval[sellmat->col[idx]];  \
                 if(opts.normalize==no)                                 \
                  rownorm += mval[idx]*mval[idx];                       \
                  idx += 1;                                             \
           }                                                            \
         if(opts.normalize==no){                                        \
-         scal /= (type)rownorm;                                      \
+         scal /= (MT)rownorm;                                      \
         }                                                              \
         scal *= omega;                                                 \
 	idx -= sellmat->rowLen[row];                                   \
                                                                        \
  	_Pragma("simd vectorlength(4)")                                \
          for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {           \
-		xval[sellmat->col[idx]] = xval[sellmat->col[idx]] - scal * (type)mval[idx];\
+		xval[sellmat->col[idx]] = xval[sellmat->col[idx]] - scal * (MT)mval[idx];\
                 idx += 1;                                              \
           }                                                            \
       }                                                                \
 
 
-#define LOOP(start,end,stride,type)                                         \
+#define LOOP(start,end,stride,MT,VT)                                         \
   for (ghost_lidx row=start; row!=end; row+=stride){                   \
-         type rownorm = 0.;                                          \
-         type scal = 0;                                              \
+         MT rownorm = 0.;                                          \
+         MT scal = 0;                                              \
 	 ghost_lidx  idx = sellmat->chunkStart[row];                   \
                                                                        \
          if(bval != NULL)                                              \
           scal  = -bval[row];                                          \
         for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            \
-                 scal += (type)mval[idx] * xval[sellmat->col[idx]];  \
+                 scal += (MT)mval[idx] * xval[sellmat->col[idx]];  \
                 if(opts.normalize==no)                                 \
                  rownorm += mval[idx]*mval[idx];                       \
                  idx += 1;                                             \
           }                                                            \
         if(opts.normalize==no){                                        \
-         scal /= (type)rownorm;                                      \
+         scal /= (MT)rownorm;                                      \
         }                                                              \
         scal *= omega;                                                 \
 	idx -= sellmat->rowLen[row];                                   \
                                                                        \
  	_Pragma("simd vectorlength(4)")                                \
          for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {           \
-		xval[sellmat->col[idx]] = xval[sellmat->col[idx]] - scal * (type)mval[idx];\
+		xval[sellmat->col[idx]] = xval[sellmat->col[idx]] - scal * (MT)mval[idx];\
                 idx += 1;                                              \
           }                                                            \
       }         
 		                                                       
 #elif CHUNKHEIGHT == 1
 
- #define FORWARD_LOOP(start,end,type)                                       \
+ #define FORWARD_LOOP(start,end,MT,VT)                                       \
 	 _Pragma("omp parallel for") 				       \
  for (ghost_lidx row=start; row<end; ++row){                           \
-         type rownorm = 0.;                                          \
-         type scal[NVECS] = {0};                                     \
+         MT rownorm = 0.;                                          \
+         MT scal[NVECS] = {0};                                     \
 	 ghost_lidx  idx = sellmat->chunkStart[row];                   \
                                                                        \
          if(bval != NULL) {                                            \
@@ -114,7 +114,7 @@
 	}							       \
         for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            \
 		for(int block=0; block<NVECS; ++block) {	       \
-                 	scal[block] += (type)mval[idx] * xval[NVECS*sellmat->col[idx]+block];  \
+                 	scal[block] += (MT)mval[idx] * xval[NVECS*sellmat->col[idx]+block];  \
 		}						       \
                 if(opts.normalize==no)                         	       \
                		rownorm += mval[idx]*mval[idx];        	       \
@@ -122,7 +122,7 @@
        }                                                               \
         if(opts.normalize==no){ 				       \
 	 for(int block=0; block<NVECS; ++block){                       \
-         	scal[block] /= (type)rownorm;                        \
+         	scal[block] /= (MT)rownorm;                        \
                 scal[block] *= omega;                                  \
 	 }						               \
         }                                                              \
@@ -131,17 +131,17 @@
  	_Pragma("simd vectorlength(4)")                                \
          for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {           \
 		for(int block=0; block<NVECS; ++block) {	       \
-        		xval[NVECS*sellmat->col[idx]+block] = xval[NVECS*sellmat->col[idx]+block] - scal[block] * (type)mval[idx];\
+        		xval[NVECS*sellmat->col[idx]+block] = xval[NVECS*sellmat->col[idx]+block] - scal[block] * (MT)mval[idx];\
         	}						       \
 	      idx += 1;                                                \
           }                                                            \
       }                                                                \
 
-#define BACKWARD_LOOP(start,end,type)           			       \
+#define BACKWARD_LOOP(start,end,MT,VT)           			       \
  _Pragma("omp parallel for") 				       \
  for (ghost_lidx row=start; row>end; --row){                           \
-         type rownorm = 0.;                                          \
-         type scal[NVECS] = {0};                                     \
+         MT rownorm = 0.;                                          \
+         MT scal[NVECS] = {0};                                     \
 	 ghost_lidx  idx = sellmat->chunkStart[row];                   \
                                                                        \
          if(bval != NULL) {                                            \
@@ -151,7 +151,7 @@
 	}							       \
         for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            \
 		for(int block=0; block<NVECS; ++block) {	       \
-                 	scal[block] += (type)mval[idx] * xval[NVECS*sellmat->col[idx]+block];  \
+                 	scal[block] += (MT)mval[idx] * xval[NVECS*sellmat->col[idx]+block];  \
 		}						       \
                 if(opts.normalize==no)                         	       \
                		rownorm += mval[idx]*mval[idx];        	       \
@@ -159,7 +159,7 @@
        }                                                               \
         if(opts.normalize==no){ 				       \
 	 for(int block=0; block<NVECS; ++block){                       \
-         	scal[block] /= (type)rownorm;                        \
+         	scal[block] /= (MT)rownorm;                        \
                 scal[block] *= omega;                                  \
 	 }						               \
         }                                                              \
@@ -168,16 +168,16 @@
  	_Pragma("simd vectorlength(4)")                                \
          for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {           \
 		for(int block=0; block<NVECS; ++block) {	       \
-        		xval[NVECS*sellmat->col[idx]+block] = xval[NVECS*sellmat->col[idx]+block] - scal[block] * (type)mval[idx];\
+        		xval[NVECS*sellmat->col[idx]+block] = xval[NVECS*sellmat->col[idx]+block] - scal[block] * (MT)mval[idx];\
         	}						       \
 	      idx += 1;                                                \
           }                                                            \
       }                                                                \
 
-#define LOOP(start,end,stride,type)                                         \
+#define LOOP(start,end,stride,MT,VT)                                         \
   for (ghost_lidx row=start; row!=end; row+=stride){                   \
-         type rownorm = 0.;                                          \
-         type scal[NVECS] = {0};                                     \
+         MT rownorm = 0.;                                          \
+         MT scal[NVECS] = {0};                                     \
 	 ghost_lidx  idx = sellmat->chunkStart[row];                   \
                                                                        \
          if(bval != NULL) {                                            \
@@ -187,7 +187,7 @@
 	}							       \
         for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            \
 		for(int block=0; block<NVECS; ++block) {	       \
-                 	scal[block] += (type)mval[idx] * xval[NVECS*sellmat->col[idx]+block];  \
+                 	scal[block] += (MT)mval[idx] * xval[NVECS*sellmat->col[idx]+block];  \
 		}						       \
                 if(opts.normalize==no)                         	       \
                		rownorm += mval[idx]*mval[idx];        	       \
@@ -195,7 +195,7 @@
        }                                                               \
         if(opts.normalize==no){ 				       \
 	 for(int block=0; block<NVECS; ++block){                       \
-         	scal[block] /= (type)rownorm;                        \
+         	scal[block] /= (MT)rownorm;                        \
                 scal[block] *= omega;                                  \
 	 }						               \
         }                                                              \
@@ -204,7 +204,7 @@
  	_Pragma("simd vectorlength(4)")                                \
          for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {           \
 		for(int block=0; block<NVECS; ++block) {	       \
-        		xval[NVECS*sellmat->col[idx]+block] = xval[NVECS*sellmat->col[idx]+block] - scal[block] * (type)mval[idx];\
+        		xval[NVECS*sellmat->col[idx]+block] = xval[NVECS*sellmat->col[idx]+block] - scal[block] * (MT)mval[idx];\
         	}						       \
 	      idx += 1;                                                \
           }                                                            \
@@ -212,7 +212,7 @@
 
 #else 
 
-#define FORWARD_LOOP(start,end,type)           		            						\
+#define FORWARD_LOOP(start,end,MT,VT)           		            						\
  start_rem   = start%CHUNKHEIGHT;										\
  start_chunk = start/CHUNKHEIGHT;										\
  end_chunk   = end/CHUNKHEIGHT;											\
@@ -221,8 +221,8 @@
  rowinchunk  = 0; 												\
  idx=0, row=0;   												\
 for(rowinchunk=start_rem; rowinchunk<MIN(CHUNKHEIGHT,(end_chunk-start_chunk)*CHUNKHEIGHT+end_rem); ++rowinchunk) {						\
-     	type rownorm = 0.;                                          						\
-       	type scal[NVECS] = {0};                                     						\
+     	MT rownorm = 0.;                                          						\
+       	MT scal[NVECS] = {0};                                     						\
  	idx = sellmat->chunkStart[start_chunk] + rowinchunk;                 					\
 	row = rowinchunk + (start_chunk)*CHUNKHEIGHT;								\
      	if(bval != NULL) {                                            						\
@@ -232,7 +232,7 @@ for(rowinchunk=start_rem; rowinchunk<MIN(CHUNKHEIGHT,(end_chunk-start_chunk)*CHU
 	}							       						\
         for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            						\
 		for(int block=0; block<NVECS; ++block) {	       						\
-               		scal[block] += (type)mval[idx] * xval[NVECS*sellmat->col[idx]+block];  		\
+               		scal[block] += (MT)mval[idx] * xval[NVECS*sellmat->col[idx]+block];  		\
 		}						       						\
                	if(opts.normalize==no)                         	       						\
       			rownorm += mval[idx]*mval[idx];        	       						\
@@ -240,7 +240,7 @@ for(rowinchunk=start_rem; rowinchunk<MIN(CHUNKHEIGHT,(end_chunk-start_chunk)*CHU
        	}                                                               					\
         if(opts.normalize==no){ 				       						\
 		for(int block=0; block<NVECS; ++block){                       					\
-         		scal[block] /= (type)rownorm;                        					\
+         		scal[block] /= (MT)rownorm;                        					\
                 	scal[block] *= omega;                                  					\
 	 	}						               					\
         }                                                              						\
@@ -249,7 +249,7 @@ for(rowinchunk=start_rem; rowinchunk<MIN(CHUNKHEIGHT,(end_chunk-start_chunk)*CHU
  	_Pragma("simd vectorlength(4)")                                						\
          for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {           						\
 		for(int block=0; block<NVECS; ++block) {	       						\
-        		xval[NVECS*sellmat->col[idx]+block] = xval[NVECS*sellmat->col[idx]+block] - scal[block] * (type)mval[idx];\
+        		xval[NVECS*sellmat->col[idx]+block] = xval[NVECS*sellmat->col[idx]+block] - scal[block] * (MT)mval[idx];\
         	}						       						\
 	      idx += CHUNKHEIGHT;                                                				\
          }                                                            						\
@@ -257,8 +257,8 @@ for(rowinchunk=start_rem; rowinchunk<MIN(CHUNKHEIGHT,(end_chunk-start_chunk)*CHU
 _Pragma("omp parallel for private(chunk, rowinchunk, idx, row)") 						\
   for (chunk=start_chunk+1; chunk<end_chunk; ++chunk){        							\
 	for(rowinchunk=0; rowinchunk<CHUNKHEIGHT; ++rowinchunk) { 						\
-         	type rownorm = 0.;                                          					\
-         	type scal[NVECS] = {0};                                     					\
+         	MT rownorm = 0.;                                          					\
+         	MT scal[NVECS] = {0};                                     					\
 	 	idx = sellmat->chunkStart[chunk] + rowinchunk;                 					\
 		row = rowinchunk + chunk*CHUNKHEIGHT;								\
        	if(bval != NULL) {                                            					\
@@ -268,7 +268,7 @@ _Pragma("omp parallel for private(chunk, rowinchunk, idx, row)") 						\
 		}							       					\
         	for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            					\
 			for(int block=0; block<NVECS; ++block) {	       					\
-                 		scal[block] += (type)mval[idx] * xval[NVECS*sellmat->col[idx]+block];  	\
+                 		scal[block] += (MT)mval[idx] * xval[NVECS*sellmat->col[idx]+block];  	\
 			}						       					\
                 	if(opts.normalize==no)                         	       					\
                			rownorm += mval[idx]*mval[idx];        	       					\
@@ -276,7 +276,7 @@ _Pragma("omp parallel for private(chunk, rowinchunk, idx, row)") 						\
        		}                                                               				\
         	if(opts.normalize==no){ 				       					\
 	 		for(int block=0; block<NVECS; ++block){                       				\
-         			scal[block] /= (type)rownorm;                        				\
+         			scal[block] /= (MT)rownorm;                        				\
                 		scal[block] *= omega;                                  				\
 	 		}						               				\
         	}                                                              					\
@@ -285,7 +285,7 @@ _Pragma("omp parallel for private(chunk, rowinchunk, idx, row)") 						\
  		_Pragma("simd vectorlength(4)")                                					\
          	for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {           					\
 			for(int block=0; block<NVECS; ++block) {	       					\
-        			xval[NVECS*sellmat->col[idx]+block] = xval[NVECS*sellmat->col[idx]+block] - scal[block] * (type)mval[idx];\
+        			xval[NVECS*sellmat->col[idx]+block] = xval[NVECS*sellmat->col[idx]+block] - scal[block] * (MT)mval[idx];\
         		}							       				\
 	      	idx += CHUNKHEIGHT;                                                				\
           	}                                                            					\
@@ -293,8 +293,8 @@ _Pragma("omp parallel for private(chunk, rowinchunk, idx, row)") 						\
   }      													\
 if(start_chunk<end_chunk) {                                                    					\
  for(rowinchunk=0; rowinchunk<end_rem; ++rowinchunk) {								\
-     	type rownorm = 0.;                                          						\
-       	type scal[NVECS] = {0};                                     						\
+     	MT rownorm = 0.;                                          						\
+       	MT scal[NVECS] = {0};                                     						\
  	idx = sellmat->chunkStart[end_chunk] + rowinchunk;                 					\
 	row = rowinchunk + (end_chunk)*CHUNKHEIGHT;								\
 if(bval != NULL) {         	                                   						\
@@ -304,7 +304,7 @@ if(bval != NULL) {         	                                   						\
 	}							       						\
         for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            						\
 		for(int block=0; block<NVECS; ++block) {	       						\
-               		scal[block] += (type)mval[idx] * xval[NVECS*sellmat->col[idx]+block];  		\
+               		scal[block] += (MT)mval[idx] * xval[NVECS*sellmat->col[idx]+block];  		\
 		}						       						\
                	if(opts.normalize==no)                         	       						\
       			rownorm += mval[idx]*mval[idx];        	       						\
@@ -312,7 +312,7 @@ if(bval != NULL) {         	                                   						\
        	}                                                               					\
         if(opts.normalize==no){ 				       						\
 		for(int block=0; block<NVECS; ++block){                       					\
-         		scal[block] /= (type)rownorm;                        					\
+         		scal[block] /= (MT)rownorm;                        					\
                 	scal[block] *= omega;                                  					\
 	 	}						               					\
         }                                                              						\
@@ -321,14 +321,14 @@ if(bval != NULL) {         	                                   						\
  	_Pragma("simd vectorlength(4)")                                						\
          for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {           						\
 		for(int block=0; block<NVECS; ++block) {	       						\
-        		xval[NVECS*sellmat->col[idx]+block] = xval[NVECS*sellmat->col[idx]+block] - scal[block] * (type)mval[idx];\
+        		xval[NVECS*sellmat->col[idx]+block] = xval[NVECS*sellmat->col[idx]+block] - scal[block] * (MT)mval[idx];\
         	}						       						\
 	      idx += CHUNKHEIGHT;                                                				\
          }                                                            						\
   }														\
 }
 
-#define BACKWARD_LOOP(start,end,type)    			                               	                        \
+#define BACKWARD_LOOP(start,end,MT,VT)    			                               	                        \
  start_rem   = start%CHUNKHEIGHT;										\
  start_chunk = start/CHUNKHEIGHT;										\
  end_chunk   = end/CHUNKHEIGHT;											\
@@ -337,8 +337,8 @@ if(bval != NULL) {         	                                   						\
  rowinchunk  = 0; 												\
  idx=0, row=0;   												\
 for(rowinchunk=start_rem; rowinchunk>=MAX(0,(end_chunk-start_chunk)*CHUNKHEIGHT+end_rem+1); --rowinchunk) {	\
-     	type rownorm = 0.;                                          						\
-       	type scal[NVECS] = {0};                                     						\
+     	MT rownorm = 0.;                                          						\
+       	MT scal[NVECS] = {0};                                     						\
  	idx = sellmat->chunkStart[start_chunk] + rowinchunk;                 					\
 	row = rowinchunk + (start_chunk)*CHUNKHEIGHT;								\
       	if(bval != NULL) {                                            						\
@@ -348,7 +348,7 @@ for(rowinchunk=start_rem; rowinchunk>=MAX(0,(end_chunk-start_chunk)*CHUNKHEIGHT+
 	}							       						\
         for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            						\
 		for(int block=0; block<NVECS; ++block) {	       						\
-               		scal[block] += (type)mval[idx] * xval[NVECS*sellmat->col[idx]+block];  		\
+               		scal[block] += (MT)mval[idx] * xval[NVECS*sellmat->col[idx]+block];  		\
 		}						       						\
                	if(opts.normalize==no)                         	       						\
       			rownorm += mval[idx]*mval[idx];        	       						\
@@ -356,7 +356,7 @@ for(rowinchunk=start_rem; rowinchunk>=MAX(0,(end_chunk-start_chunk)*CHUNKHEIGHT+
        	}                                                               					\
         if(opts.normalize==no){ 				       						\
 		for(int block=0; block<NVECS; ++block){                       					\
-         		scal[block] /= (type)rownorm;                        					\
+         		scal[block] /= (MT)rownorm;                        					\
                 	scal[block] *= omega;                                  					\
 	 	}						               					\
         }                                                              						\
@@ -365,7 +365,7 @@ for(rowinchunk=start_rem; rowinchunk>=MAX(0,(end_chunk-start_chunk)*CHUNKHEIGHT+
  	_Pragma("simd vectorlength(4)")                                						\
          for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {           						\
 		for(int block=0; block<NVECS; ++block) {	       						\
-        		xval[NVECS*sellmat->col[idx]+block] = xval[NVECS*sellmat->col[idx]+block] - scal[block] * (type)mval[idx];\
+        		xval[NVECS*sellmat->col[idx]+block] = xval[NVECS*sellmat->col[idx]+block] - scal[block] * (MT)mval[idx];\
         	}						       						\
 	      idx += CHUNKHEIGHT;                                                				\
          }                                                            						\
@@ -373,8 +373,8 @@ for(rowinchunk=start_rem; rowinchunk>=MAX(0,(end_chunk-start_chunk)*CHUNKHEIGHT+
  _Pragma("omp parallel for private(chunk, rowinchunk, idx, row)") 						\
   for (chunk=start_chunk-1; chunk>end_chunk; --chunk){        							\
 	for(rowinchunk=CHUNKHEIGHT-1; rowinchunk>=0; --rowinchunk) { 						\
-         	type rownorm = 0.;                                          					\
-         	type scal[NVECS] = {0};                                     					\
+         	MT rownorm = 0.;                                          					\
+         	MT scal[NVECS] = {0};                                     					\
 	 	idx = sellmat->chunkStart[chunk] + rowinchunk;                 					\
 		row = rowinchunk + chunk*CHUNKHEIGHT;								\
         	if(bval != NULL) {                                            					\
@@ -384,7 +384,7 @@ for(rowinchunk=start_rem; rowinchunk>=MAX(0,(end_chunk-start_chunk)*CHUNKHEIGHT+
 		}							       					\
         	for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            					\
 			for(int block=0; block<NVECS; ++block) {	       					\
-                 		scal[block] += (type)mval[idx] * xval[NVECS*sellmat->col[idx]+block];  	\
+                 		scal[block] += (MT)mval[idx] * xval[NVECS*sellmat->col[idx]+block];  	\
 			}						       					\
                 	if(opts.normalize==no)                         	       					\
                			rownorm += mval[idx]*mval[idx];        	       					\
@@ -392,7 +392,7 @@ for(rowinchunk=start_rem; rowinchunk>=MAX(0,(end_chunk-start_chunk)*CHUNKHEIGHT+
        		}                                                               				\
         	if(opts.normalize==no){ 				       					\
 	 		for(int block=0; block<NVECS; ++block){                       				\
-         			scal[block] /= (type)rownorm;                        				\
+         			scal[block] /= (MT)rownorm;                        				\
                 		scal[block] *= omega;                                  				\
 	 		}						               				\
         	}                                                              					\
@@ -401,7 +401,7 @@ for(rowinchunk=start_rem; rowinchunk>=MAX(0,(end_chunk-start_chunk)*CHUNKHEIGHT+
  		_Pragma("simd vectorlength(4)")                                					\
          	for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {           					\
 			for(int block=0; block<NVECS; ++block) {	       					\
-        			xval[NVECS*sellmat->col[idx]+block] = xval[NVECS*sellmat->col[idx]+block] - scal[block] * (type)mval[idx];\
+        			xval[NVECS*sellmat->col[idx]+block] = xval[NVECS*sellmat->col[idx]+block] - scal[block] * (MT)mval[idx];\
         		}							       				\
 	      	idx += CHUNKHEIGHT;                                                				\
           	}                                                            					\
@@ -409,8 +409,8 @@ for(rowinchunk=start_rem; rowinchunk>=MAX(0,(end_chunk-start_chunk)*CHUNKHEIGHT+
   }                     											\
 if(start_chunk>end_chunk) {       										\
   for(rowinchunk=CHUNKHEIGHT-1; rowinchunk>end_rem; --rowinchunk) {						\
-     	type rownorm = 0.;                                          						\
-       	type scal[NVECS] = {0};                                     						\
+     	MT rownorm = 0.;                                          						\
+       	MT scal[NVECS] = {0};                                     						\
  	idx = sellmat->chunkStart[end_chunk] + rowinchunk;                 					\
 	row = rowinchunk + (end_chunk)*CHUNKHEIGHT;								\
       	if(bval != NULL) {                                            						\
@@ -420,7 +420,7 @@ if(start_chunk>end_chunk) {       										\
 	}							       						\
         for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            						\
 		for(int block=0; block<NVECS; ++block) {	       						\
-               		scal[block] += (type)mval[idx] * xval[NVECS*sellmat->col[idx]+block];  		\
+               		scal[block] += (MT)mval[idx] * xval[NVECS*sellmat->col[idx]+block];  		\
 		}						       						\
                	if(opts.normalize==no)                         	       						\
       			rownorm += mval[idx]*mval[idx];        	       						\
@@ -428,7 +428,7 @@ if(start_chunk>end_chunk) {       										\
        	}                                                               					\
         if(opts.normalize==no){ 				       						\
 		for(int block=0; block<NVECS; ++block){                       					\
-         		scal[block] /= (type)rownorm;                        					\
+         		scal[block] /= (MT)rownorm;                        					\
                 	scal[block] *= omega;                                  					\
 	 	}						               					\
         }                                                              						\
@@ -437,18 +437,18 @@ if(start_chunk>end_chunk) {       										\
  	_Pragma("simd vectorlength(4)")                                						\
          for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {           						\
 		for(int block=0; block<NVECS; ++block) {	       						\
-        		xval[NVECS*sellmat->col[idx]+block] = xval[NVECS*sellmat->col[idx]+block] - scal[block] * (type)mval[idx];\
+        		xval[NVECS*sellmat->col[idx]+block] = xval[NVECS*sellmat->col[idx]+block] - scal[block] * (MT)mval[idx];\
         	}						       						\
 	      idx += CHUNKHEIGHT;                                                				\
          }                                                            						\
   }														\
 }														\
 	
-#define LOOP(start,end,stride,type)   			       					                \
+#define LOOP(start,end,stride,MT,VT)   			       					                \
  if(stride>0)													\
-	FORWARD_LOOP(start,end,type)											\
+	FORWARD_LOOP(start,end,MT,VT)											\
  else														\
-	BACKWARD_LOOP(start,end)										\
+	BACKWARD_LOOP(start,end,MT,VT)										\
 
 #endif
 
@@ -471,8 +471,8 @@ if(start_chunk>end_chunk) {       										\
       	       	 } 						       \
      	}    
 
-
-ghost_error ghost_kacz__BMC_u_plain_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts)
+template <typename MT> // TODO, typename VT>
+ghost_error ghost_kacz_BMC_u_plain_cm_CHUNKHEIGHT_NVECS_tmpl(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     //int flag_err = 0;
@@ -497,14 +497,14 @@ ghost_error ghost_kacz__BMC_u_plain_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *x, 
     }
 */   
     ghost_sell *sellmat = SELL(mat); 
-    double *bval = NULL;
+    MT *bval = NULL;
   
    if(b!= NULL)
-     bval = (double *)(b->val);
+     bval = (MT *)(b->val);
 
-    double *xval = (double *)(x->val);
-    double *mval = (double *)sellmat->val;
-    double omega = *(double *)opts.omega;
+    MT *xval = (MT *)(x->val);
+    MT *mval = (MT *)sellmat->val;
+    MT omega = *(MT *)opts.omega;
     ghost_lidx *zone_ptr = (ghost_lidx*) mat->zone_ptr;
     //ghost_lidx nzones    = mat->nzones;
     ghost_lidx *color_ptr= (ghost_lidx*) mat->color_ptr;
@@ -541,7 +541,7 @@ ghost_error ghost_kacz__BMC_u_plain_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *x, 
             mc_start  = color_ptr[i]-1;
             mc_end    = color_ptr[i-1]-1;
 //            stride   = -1;
-            BACKWARD_LOOP(mc_start,mc_end,double)
+            BACKWARD_LOOP(mc_start,mc_end,MT,MT)
           }
 
 #ifdef GHOST_HAVE_OPENMP  
@@ -567,7 +567,7 @@ ghost_error ghost_kacz__BMC_u_plain_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *x, 
 //      stride    = -1;
     	if(mat->kacz_setting.kacz_method == BMC_one_sweep) { 
     		for(ghost_lidx zone = 0; zone<4; ++zone) { 
-           		BACKWARD_LOOP(start[zone],end[zone],double)   
+           		BACKWARD_LOOP(start[zone],end[zone],MT,MT)   
      
    	  	        #pragma omp barrier                           
  
@@ -602,21 +602,21 @@ ghost_error ghost_kacz__BMC_u_plain_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *x, 
   	//	LOCK_NEIGHBOUR(tid)
        		}
  	} else if (mat->kacz_setting.kacz_method == BMC_two_sweep) {
-		BACKWARD_LOOP(start[0],end[0],double)
+		BACKWARD_LOOP(start[0],end[0],MT,MT)
      		#pragma omp barrier 
    
      		if(tid%2 != 0) {
-            		BACKWARD_LOOP(start[1],end[1],double)
+            		BACKWARD_LOOP(start[1],end[1],MT,MT)
         	}	 
        		#pragma omp barrier
        		if(tid%2 == 0) {
-            		BACKWARD_LOOP(start[1],end[1],double)
+            		BACKWARD_LOOP(start[1],end[1],MT,MT)
         	}
 
       		#pragma omp barrier
-       		BACKWARD_LOOP(start[2],end[2],double)
+       		BACKWARD_LOOP(start[2],end[2],MT,MT)
      		#pragma omp barrier 
-       		BACKWARD_LOOP(start[3],end[3],double)               
+       		BACKWARD_LOOP(start[3],end[3],MT,MT)               
   	}      
 
 #ifdef GHOST_HAVE_OPENMP
@@ -648,23 +648,23 @@ ghost_error ghost_kacz__BMC_u_plain_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *x, 
 
       	if(mat->kacz_setting.kacz_method == BMC_one_sweep) { 
     		for(ghost_lidx zone = 0; zone<4; ++zone) { 
-            		FORWARD_LOOP(start[zone],end[zone],double)        
+            		FORWARD_LOOP(start[zone],end[zone],MT,MT)        
    		   	#pragma omp barrier                           
       		}
  	} else if (mat->kacz_setting.kacz_method == BMC_two_sweep) {
-	    	FORWARD_LOOP(start[0],end[0],double)
+	    	FORWARD_LOOP(start[0],end[0],MT,MT)
      		#pragma omp barrier 
-       		FORWARD_LOOP(start[1],end[1],double)
+       		FORWARD_LOOP(start[1],end[1],MT,MT)
    		#pragma omp barrier
      		if(tid%2 == 0) {
-            		FORWARD_LOOP(start[2],end[2],double)
+            		FORWARD_LOOP(start[2],end[2],MT,MT)
         	}	 
        		#pragma omp barrier
        		if(tid%2 != 0) {
-            		FORWARD_LOOP(start[2],end[2],double)
+            		FORWARD_LOOP(start[2],end[2],MT,MT)
         	}
     		#pragma omp barrier 
-       		FORWARD_LOOP(start[3],end[3],double)               
+       		FORWARD_LOOP(start[3],end[3],MT,MT)               
   	}      
 
 #ifdef GHOST_HAVE_OPENMP
@@ -675,7 +675,7 @@ ghost_error ghost_kacz__BMC_u_plain_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *x, 
             	mc_end    = color_ptr[i+1];
 //            	stride    = 1;
 
-           	FORWARD_LOOP(mc_start,mc_end,double)
+           	FORWARD_LOOP(mc_start,mc_end,MT,MT)
 	}
 }
 
@@ -690,20 +690,34 @@ ghost_error ghost_kacz__BMC_u_plain_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *x, 
     return GHOST_SUCCESS;
 }
 
-//this is necessary since #pragma omp for doesn't understand !=
-#define FORWARD_SHIFT_LOOP(start,end,type)                                  \
+ghost_error ghost_kacz__BMC_u_plain_x_x_cm_CHUNKHEIGHT_NVECS(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts)
+{
+    ghost_error ret = GHOST_SUCCESS;
+
+    SELECT_TMPL_1DATATYPE(mat->traits.datatype,ghost_complex,ret,ghost_kacz_BMC_u_plain_cm_CHUNKHEIGHT_NVECS_tmpl,x,mat,b,opts);
+    // TODO mixed datatypes
+//    SELECT_TMPL_2DATATYPES(mat->traits.datatype,x->traits.datatype,ghost_complex,ret,ghost_kacz_BMC_u_plain_cm_CHUNKHEIGHT_NVECS_tmpl,x,mat,b,opts);
+
+    return ret;
+
+}
+
+    
+    
+    //this is necessary since #pragma omp for doesn't understand !=
+#define FORWARD_SHIFT_LOOP(start,end,MT,VT)                                  \
   for (ghost_lidx row=start; row<end; ++row){                          \
-	 type inv_rownorm;					       \
-         type rownorm = sigma_r*sigma_r + sigma_i*sigma_i;           \
-         type scal_r = sigma_r*x_r[row] - sigma_i*x_i[row];          \
-	 type scal_i = sigma_r*x_i[row] + sigma_i*x_r[row];          \
+	 MT inv_rownorm;					       \
+         MT rownorm = sigma_r*sigma_r + sigma_i*sigma_i;           \
+         MT scal_r = sigma_r*x_r[row] - sigma_i*x_i[row];          \
+	 MT scal_i = sigma_r*x_i[row] + sigma_i*x_r[row];          \
 	 ghost_lidx  idx = sellmat->chunkStart[row];                   \
                                                                        \
         if(bval != NULL)                                               \
           scal_r  += bval[row];                                        \
         for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            \
-                 scal_r -= (type)mval[idx] * x_r[sellmat->col[idx]]; \
-		 scal_i -= (type)mval[idx] * x_i[sellmat->col[idx]]; \
+                 scal_r -= (MT)mval[idx] * x_r[sellmat->col[idx]]; \
+		 scal_i -= (MT)mval[idx] * x_i[sellmat->col[idx]]; \
                  if(opts.normalize==no)                                \
            	       rownorm += mval[idx]*mval[idx];                 \
                  idx += 1;                                             \
@@ -721,25 +735,25 @@ ghost_error ghost_kacz__BMC_u_plain_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *x, 
 	x_i[row] = x_i[row] - scal_r*sigma_i - scal_i*sigma_r;         \
  	_Pragma("simd vectorlength(4)")                                \
          for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {           \
-		x_r[sellmat->col[idx]] = x_r[sellmat->col[idx]] + scal_r * (type)mval[idx];\
-		x_i[sellmat->col[idx]] = x_i[sellmat->col[idx]] + scal_i * (type)mval[idx];\
+		x_r[sellmat->col[idx]] = x_r[sellmat->col[idx]] + scal_r * (MT)mval[idx];\
+		x_i[sellmat->col[idx]] = x_i[sellmat->col[idx]] + scal_i * (MT)mval[idx];\
                 idx += 1;                                              \
          }                                                             \
       } 
 
-#define BACKWARD_SHIFT_LOOP(start,end,type)                                 \
+#define BACKWARD_SHIFT_LOOP(start,end,MT,VT)                                 \
   for (ghost_lidx row=start; row>end; --row){                          \
-	 type inv_rownorm;					       \
-         type rownorm = sigma_r*sigma_r + sigma_i*sigma_i;           \
-         type scal_r = sigma_r*x_r[row] - sigma_i*x_i[row];          \
-	 type scal_i = sigma_r*x_i[row] + sigma_i*x_r[row];          \
+	 MT inv_rownorm;					       \
+         MT rownorm = sigma_r*sigma_r + sigma_i*sigma_i;           \
+         MT scal_r = sigma_r*x_r[row] - sigma_i*x_i[row];          \
+	 MT scal_i = sigma_r*x_i[row] + sigma_i*x_r[row];          \
 	 ghost_lidx  idx = sellmat->chunkStart[row];                   \
                                                                        \
         if(bval != NULL)                                               \
           scal_r  += bval[row];                                        \
         for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            \
-                 scal_r -= (type)mval[idx] * x_r[sellmat->col[idx]]; \
-		 scal_i -= (type)mval[idx] * x_i[sellmat->col[idx]]; \
+                 scal_r -= (MT)mval[idx] * x_r[sellmat->col[idx]]; \
+		 scal_i -= (MT)mval[idx] * x_i[sellmat->col[idx]]; \
                  if(opts.normalize==no)                                \
            	       rownorm += mval[idx]*mval[idx];                 \
                  idx += 1;                                             \
@@ -757,25 +771,25 @@ ghost_error ghost_kacz__BMC_u_plain_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *x, 
 	x_i[row] = x_i[row] - scal_r*sigma_i - scal_i*sigma_r;         \
  	_Pragma("simd vectorlength(4)")                                \
          for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {           \
-		x_r[sellmat->col[idx]] = x_r[sellmat->col[idx]] + scal_r * (type)mval[idx];\
-		x_i[sellmat->col[idx]] = x_i[sellmat->col[idx]] + scal_i * (type)mval[idx];\
+		x_r[sellmat->col[idx]] = x_r[sellmat->col[idx]] + scal_r * (MT)mval[idx];\
+		x_i[sellmat->col[idx]] = x_i[sellmat->col[idx]] + scal_i * (MT)mval[idx];\
                 idx += 1;                                              \
          }                                                             \
       } 
 
-#define SHIFT_LOOP(start,end,stride,type)                                   \
+#define SHIFT_LOOP(start,end,stride,MT,VT)                                   \
   for (ghost_lidx row=start; row!=end; row+=stride){                   \
-	 type inv_rownorm;					       \
-         type rownorm = sigma_r*sigma_r + sigma_i*sigma_i;           \
-         type scal_r = sigma_r*x_r[row] - sigma_i*x_i[row];          \
-	 type scal_i = sigma_r*x_i[row] + sigma_i*x_r[row];          \
+	 MT inv_rownorm;					       \
+         MT rownorm = sigma_r*sigma_r + sigma_i*sigma_i;           \
+         MT scal_r = sigma_r*x_r[row] - sigma_i*x_i[row];          \
+	 MT scal_i = sigma_r*x_i[row] + sigma_i*x_r[row];          \
 	 ghost_lidx  idx = sellmat->chunkStart[row];                   \
                                                                        \
         if(bval != NULL)                                               \
           scal_r  += bval[row];                                        \
         for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            \
-                 scal_r -= (type)mval[idx] * x_r[sellmat->col[idx]]; \
-		 scal_i -= (type)mval[idx] * x_i[sellmat->col[idx]]; \
+                 scal_r -= (MT)mval[idx] * x_r[sellmat->col[idx]]; \
+		 scal_i -= (MT)mval[idx] * x_i[sellmat->col[idx]]; \
                  if(opts.normalize==no)                                \
            	       rownorm += mval[idx]*mval[idx];                 \
                  idx += 1;                                             \
@@ -793,8 +807,8 @@ ghost_error ghost_kacz__BMC_u_plain_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *x, 
 	x_i[row] = x_i[row] - scal_r*sigma_i - scal_i*sigma_r;         \
  	_Pragma("simd vectorlength(4)")                                \
          for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {           \
-		x_r[sellmat->col[idx]] = x_r[sellmat->col[idx]] + scal_r * (type)mval[idx];\
-		x_i[sellmat->col[idx]] = x_i[sellmat->col[idx]] + scal_i * (type)mval[idx];\
+		x_r[sellmat->col[idx]] = x_r[sellmat->col[idx]] + scal_r * (MT)mval[idx];\
+		x_i[sellmat->col[idx]] = x_i[sellmat->col[idx]] + scal_i * (MT)mval[idx];\
                 idx += 1;                                              \
          }                                                             \
       }                                                                \
