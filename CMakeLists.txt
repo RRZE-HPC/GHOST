@@ -137,6 +137,7 @@ set (HEADERS
     include/ghost/core.h
     include/ghost/crs.h
     include/ghost/cu_util.h
+    include/ghost/datatransfers.h
     include/ghost/densemat.h
     include/ghost/densemat_cm.h
     include/ghost/densemat_iter_macros.h

@@ -2,6 +2,7 @@
 #include "ghost/config.h"
 #include "ghost/types.h"
 #include "ghost/core.h"
+#include "ghost/datatransfers.h"
 #include "ghost/densemat_rm.h"
 #include "ghost/util.h"
 #include "ghost/locality.h"
