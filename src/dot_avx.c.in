@@ -1,3 +1,4 @@
+/*!GHOST_AUTOGEN BLOCKDIM1 */
 #include "ghost/config.h"
 #include "ghost/types.h"
 #include "ghost/densemat.h"
@@ -7,27 +8,14 @@
 #include "ghost/dot_avx_gen.h"
 #include <immintrin.h>
 
-#GHOST_FUNC_BEGIN#NVECS=${CFG_BLOCKVECTOR_SIZES}
-ghost_error_t ghost_dot__u_avx_d_rm_NVECS(void *res, ghost_densemat_t *vec1, ghost_densemat_t *vec2)
-{
-#if defined(GHOST_HAVE_AVX)
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
-#if NVECS%4
-    __m256i mask;
-#if NVECS%4 == 1
-    mask = _mm256_set_epi64x(0,0,0,~0);
-#endif
-#if NVECS%4 == 2
-    mask = _mm256_set_epi64x(0,0,~0,~0);
-#endif
-#if NVECS%4 == 3
-    mask = _mm256_set_epi64x(0,~0,~0,~0);
-#endif
-#endif
+#GHOST_SUBST NVECS ${BLOCKDIM1}
 
-    int t;
-    ghost_lidx_t row;
-    #GHOST_UNROLL#__m256d combres@ = _mm256_setzero_pd();#(NVECS+3)/4
+ghost_error ghost_dot__u_avx_d_rm_NVECS(void *res, ghost_densemat *vec1, ghost_densemat *vec2)
+{
+#if defined(GHOST_BUILD_AVX)
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+
+    ghost_lidx row;
 
     #GHOST_UNROLL#double colsum@ = 0;#((NVECS+3)/4)*4
     double *r = (double *)res;
@@ -36,14 +24,13 @@ ghost_error_t ghost_dot__u_avx_d_rm_NVECS(void *res, ghost_densemat_t *vec1, gho
 #GHOST_UNROLL#colsum~1+@~,\#NVECS-1
         colsum0)
     {
-        int tid = ghost_omp_threadnum(); 
         #GHOST_UNROLL#__m256d partres@ = _mm256_setzero_pd();#(NVECS+3)/4
         double *v1 = (double *)vec1->val;
         double *v2 = (double *)vec2->val;
 
 #pragma omp for schedule(runtime)
         for (row=0; row<vec1->traits.nrows; row++) {
-            #GHOST_UNROLL#partres@ = _mm256_add_pd(partres@,_mm256_mul_pd(_mm256_load_pd(&v1[vec1->stride*row+@*4]),_mm256_loadu_pd(&v2[vec2->stride*row+@*4])));#(NVECS+3)/4
+            #GHOST_UNROLL#partres@ = _mm256_add_pd(partres@,_mm256_mul_pd(_mm256_loadu_pd(&v1[vec1->stride*row+@*4]),_mm256_loadu_pd(&v2[vec2->stride*row+@*4])));#(NVECS+3)/4
         }
 
         __m128d l,h;
@@ -62,5 +49,43 @@ ghost_error_t ghost_dot__u_avx_d_rm_NVECS(void *res, ghost_densemat_t *vec1, gho
     return GHOST_ERR_UNKNOWN;
 #endif
 }
-#GHOST_FUNC_END
 
+ghost_error ghost_dot__a_avx_d_rm_NVECS(void *res, ghost_densemat *vec1, ghost_densemat *vec2)
+{
+#if defined(GHOST_BUILD_AVX)
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+
+    ghost_lidx row;
+
+    #GHOST_UNROLL#double colsum@ = 0;#((NVECS+3)/4)*4
+    double *r = (double *)res;
+
+#pragma omp parallel default(shared) reduction(+:\
+#GHOST_UNROLL#colsum~1+@~,\#NVECS-1
+        colsum0)
+    {
+        #GHOST_UNROLL#__m256d partres@ = _mm256_setzero_pd();#(NVECS+3)/4
+        double *v1 = (double *)vec1->val;
+        double *v2 = (double *)vec2->val;
+
+#pragma omp for schedule(runtime)
+        for (row=0; row<vec1->traits.nrows; row++) {
+            #GHOST_UNROLL#partres@ = _mm256_add_pd(partres@,_mm256_mul_pd(_mm256_load_pd(&v1[vec1->stride*row+@*4]),_mm256_load_pd(&v2[vec2->stride*row+@*4])));#(NVECS+3)/4
+        }
+
+        __m128d l,h;
+        #GHOST_UNROLL#l = _mm256_extractf128_pd(partres@,0); h = _mm256_extractf128_pd(partres@,1); _mm_storel_pd(&colsum~@*4+0~,l); _mm_storeh_pd(&colsum~@*4+1~,l); _mm_storel_pd(&colsum~@*4+2~,h); _mm_storeh_pd(&colsum~@*4+3~,h);#(NVECS+3)/4
+    }
+
+    #GHOST_UNROLL#r[@] = colsum@;#NVECS
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
+    return GHOST_SUCCESS;
+#else
+    UNUSED(res);
+    UNUSED(vec1);
+    UNUSED(vec2);
+    ERROR_LOG("No AVX available");
+    return GHOST_ERR_UNKNOWN;
+#endif
+}

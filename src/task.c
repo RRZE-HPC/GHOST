@@ -22,10 +22,11 @@
 #endif
 
 
-ghost_error_t ghost_task_unpin(ghost_task_t *task)
+ghost_error ghost_task_unpin(ghost_task *task)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING);
     unsigned int pu;
-    ghost_thpool_t *ghost_thpool = NULL;
+    ghost_thpool *ghost_thpool = NULL;
     ghost_thpool_get(&ghost_thpool);
     if (!(task->flags & GHOST_TASK_NOT_PIN)) {
         hwloc_bitmap_foreach_begin(pu,task->coremap);
@@ -40,11 +41,13 @@ ghost_error_t ghost_task_unpin(ghost_task_t *task)
         hwloc_bitmap_foreach_end();
     }
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING);
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_task_string(char **str, ghost_task_t *t) 
+ghost_error ghost_task_string(char **str, ghost_task *t) 
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING|GHOST_FUNCTYPE_UTIL);
     GHOST_CALL_RETURN(ghost_malloc((void **)str,1));
     memset(*str,'\0',1);
 
@@ -53,11 +56,13 @@ ghost_error_t ghost_task_string(char **str, ghost_task_t *t)
     ghost_line_string(str,"NUMA node",NULL,"%d",t->LD);
     ghost_footer_string(str);
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING|GHOST_FUNCTYPE_UTIL);
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_task_enqueue(ghost_task_t *t)
+ghost_error ghost_task_enqueue(ghost_task *t)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING);
     pthread_mutex_lock(t->stateMutex);
     t->state = GHOST_TASK_INVALID;
     pthread_mutex_unlock(t->stateMutex);
@@ -81,34 +86,38 @@ ghost_error_t ghost_task_enqueue(ghost_task_t *t)
 
     DEBUG_LOG(1,"Task added successfully");
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING);
     return GHOST_SUCCESS;
 }
 
-ghost_task_state_t ghost_task_test(ghost_task_t * t)
+ghost_task_state ghost_taskest(ghost_task * t)
 {
     if (!t) {
         return GHOST_TASK_INVALID;
     }
-    ghost_task_state_t state;
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING);
+    ghost_task_state state;
     pthread_mutex_lock(t->stateMutex);
     state = t->state;
     pthread_mutex_unlock(t->stateMutex);
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING);
     return state;
 }
 
-ghost_error_t ghost_task_wait(ghost_task_t * task)
+ghost_error ghost_task_wait(ghost_task * task)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING);
     DEBUG_LOG(1,"Waiting for task %p whose state is %s",(void *)task,ghost_task_state_string(task->state));
 
 
-    //    ghost_task_t *parent = (ghost_task_t *)pthread_getspecific(ghost_thread_key);
+    //    ghost_task *parent = (ghost_task *)pthread_getspecific(ghost_thread_key);
     //    if (parent != NULL) {
     //    WARNING_LOG("Waiting on a task from within a task ===> free'ing the parent task's resources, idle PUs: %d",NIDLECORES);
     //    ghost_task_unpin(parent);
     //    WARNING_LOG("Now idle PUs: %d",NIDLECORES);
     //    }
-    ghost_task_t *cur;
+    ghost_task *cur;
     ghost_task_cur(&cur);
     if (cur == task) {
         WARNING_LOG("Should wait on myself. Bad idea!");
@@ -122,12 +131,15 @@ ghost_error_t ghost_task_wait(ghost_task_t * task)
     pthread_mutex_unlock(task->stateMutex);
     DEBUG_LOG(1,"Finished waitung for task %p!",(void *)task);
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING);
     return GHOST_SUCCESS;
 
 }
 
-char *ghost_task_state_string(ghost_task_state_t state)
+const char *ghost_task_state_string(ghost_task_state state)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING|GHOST_FUNCTYPE_UTIL);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING|GHOST_FUNCTYPE_UTIL);
     switch (state) {
         case GHOST_TASK_INVALID: 
             return "Invalid";
@@ -150,8 +162,9 @@ char *ghost_task_state_string(ghost_task_state_t state)
     }
 }
 
-void ghost_task_destroy(ghost_task_t *t)
+void ghost_task_destroy(ghost_task *t)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING|GHOST_FUNCTYPE_TEARDOWN);
     if (t) {
         if (t->state != GHOST_TASK_FINISHED) {
             WARNING_LOG("The task is not finished but should be destroyed!");
@@ -170,13 +183,15 @@ void ghost_task_destroy(ghost_task_t *t)
         free(t->finishedMutex);
         free(t);
     }
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING|GHOST_FUNCTYPE_TEARDOWN);
 }
 
-ghost_error_t ghost_task_create(ghost_task_t **t, int nThreads, int LD, void *(*func)(void *), void *arg, ghost_task_flags_t flags, ghost_task_t **depends, int ndepends)
+ghost_error ghost_task_create(ghost_task **t, int nThreads, int LD, void *(*func)(void *), void *arg, ghost_task_flags flags, ghost_task **depends, int ndepends)
 {
-    ghost_error_t ret = GHOST_SUCCESS;
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING|GHOST_FUNCTYPE_SETUP);
+    ghost_error ret = GHOST_SUCCESS;
 
-    GHOST_CALL_GOTO(ghost_malloc((void **)t,sizeof(ghost_task_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)t,sizeof(ghost_task)),err,ret);
     
     if (nThreads == GHOST_TASK_FILL_LD) {
         if (LD < 0) {
@@ -241,15 +256,19 @@ err:
     free(*t); *t = NULL;
 out:
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING|GHOST_FUNCTYPE_SETUP);
     return ret;
 }
 
-ghost_error_t ghost_task_cur(ghost_task_t **task)
+ghost_error ghost_task_cur(ghost_task **task)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING);
+    
     pthread_key_t key;
     GHOST_CALL_RETURN(ghost_thpool_key(&key));
-    *task = (ghost_task_t *)pthread_getspecific(key);
+    *task = (ghost_task *)pthread_getspecific(key);
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING);
     return GHOST_SUCCESS;
 
 }

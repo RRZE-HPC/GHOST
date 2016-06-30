@@ -27,7 +27,7 @@ typedef enum {
      * @brief This GHOST instance talks to a CUDA GPU.
      */
     GHOST_TYPE_CUDA
-} ghost_type_t;
+} ghost_type;
 
 #ifdef __cplusplus
 extern "C" {
@@ -43,7 +43,7 @@ extern "C" {
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_init(int argc, char **argv);
+    ghost_error ghost_init(int argc, char **argv);
     /**
      * @ingroup core
      *
@@ -69,10 +69,10 @@ extern "C" {
      * - Destroy the random number states
      * - Destroy the MPI operations and data types
      */
-    ghost_error_t ghost_finalize();
-    ghost_error_t ghost_type_set(ghost_type_t t);
-    ghost_error_t ghost_type_get(ghost_type_t *t);
-    char * ghost_type_string(ghost_type_t t);
+    ghost_error ghost_finalize();
+    ghost_error ghost_type_set(ghost_type t);
+    ghost_error ghost_type_get(ghost_type *t);
+    char * ghost_type_string(ghost_type t);
     
     /**
      * @ingroup stringification
@@ -83,9 +83,9 @@ extern "C" {
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_string(char **str);
+    ghost_error ghost_string(char **str);
 
-    ghost_error_t ghost_barrier();
+    ghost_error ghost_barrier();
 
     /**
      * @brief Get a communicator containing only processes with GHOST_HAVE_CUDA enabled.
@@ -94,7 +94,7 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_cuda_comm_get(ghost_mpi_comm_t *comm);
+    ghost_error ghost_cuda_comm_get(ghost_mpi_comm *comm);
 
 #ifdef __cplusplus
 }

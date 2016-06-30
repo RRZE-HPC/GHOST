@@ -16,7 +16,7 @@ typedef struct
     /**
      * @brief The data type of the densemats.
      */
-    ghost_datatype_t dt;
+    ghost_datatype dt;
     /**
      * @brief The first configured block size K.
      */
@@ -25,17 +25,17 @@ typedef struct
      * @brief The second configure block size M.
      */
     int vcols;
-    ghost_implementation_t impl;
-    ghost_alignment_t alignment;
-    ghost_densemat_storage_t xstor;
-    ghost_densemat_storage_t wstor;
+    ghost_implementation impl;
+    ghost_alignment alignment;
+    ghost_densemat_storage xstor;
     int unroll;
-} ghost_tsmm_parameters_t;
+    int multipleof;
+} ghost_tsmm_parameters;
 
 /**
  * @brief A tsmm kernel function. 
  */
-typedef ghost_error_t (*ghost_tsmm_kernel_t)(ghost_densemat_t *, ghost_densemat_t *, ghost_densemat_t *, void *, void *);
+typedef ghost_error (*ghost_tsmm_kernel)(ghost_densemat *, ghost_densemat *, ghost_densemat *, void *, void *);
 
 
 #ifdef __cplusplus
@@ -68,7 +68,7 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta);
+    ghost_error ghost_tsmm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta);
 
     /**
      * @brief Check whether TSMM can be applied instead of GEMM with the given arguments.
@@ -85,8 +85,8 @@ extern "C" {
      *
      * @return 
      */
-    ghost_error_t ghost_tsmm_valid(ghost_densemat_t *x, ghost_densemat_t *v, const char * transv, 
-        ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce, int printerror);
+    ghost_error ghost_tsmm_valid(ghost_densemat *x, ghost_densemat *v, const char * transv, 
+        ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce, int printerror);
 
     int ghost_tsmm_perf_GBs(double *perf, double time, void *varg);
     int ghost_tsmm_perf_GFs(double *perf, double time, void *varg);

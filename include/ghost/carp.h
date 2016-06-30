@@ -10,6 +10,8 @@
 #include "sparsemat.h"
 #include "densemat.h"
 
-ghost_error_t ghost_carp(ghost_sparsemat_t *mat, ghost_densemat_t *x, ghost_densemat_t *b, void *omega);
+ghost_error ghost_carp(ghost_sparsemat *mat, ghost_densemat *x, ghost_densemat *b, void *omega);
+
+ghost_error ghost_carp_shift(ghost_sparsemat *mat, ghost_densemat *x_real, ghost_densemat *x_imag, ghost_densemat *b, double sigma_r, double sigma_i, void *omega);
 
 #endif

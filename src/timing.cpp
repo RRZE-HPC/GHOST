@@ -16,7 +16,7 @@ typedef struct
     /**
      * @brief User-defined callback function to compute a region's performance.
      */
-    ghost_compute_performance_func_t perfFunc;
+    ghost_compute_performance_func perfFunc;
     /**
      * @brief Argument to perfFunc.
      */
@@ -26,7 +26,7 @@ typedef struct
      */
     const char *perfUnit;
 }
-ghost_timing_perfFunc_t;
+ghost_timing_perfFunc;
 
 
 /**
@@ -43,71 +43,82 @@ typedef struct
      */
     double start;
 
-    vector<ghost_timing_perfFunc_t> perfFuncs;
+    vector<ghost_timing_perfFunc> perfFuncs;
 } 
-ghost_timing_region_accu_t;
+ghost_timing_region_accu;
 
-static map<string,ghost_timing_region_accu_t> timings;
+static map<string,ghost_timing_region_accu> timings;
+static pthread_mutex_t timingsMutex = PTHREAD_MUTEX_INITIALIZER;
 
 void ghost_timing_tick(const char *tag) 
 {
+    pthread_mutex_lock(&timingsMutex);
+
     double start = 0.;
     ghost_timing_wc(&start);
-  
     timings[tag].start = start;
+    
+    pthread_mutex_unlock(&timingsMutex);
 }
 
 void ghost_timing_tock(const char *tag) 
 {
+    pthread_mutex_lock(&timingsMutex);
     double end;
     ghost_timing_wc(&end);
-    ghost_timing_region_accu_t *ti = &timings[string(tag)];
+    ghost_timing_region_accu *ti = &timings[string(tag)];
     ti->times.push_back(end-ti->start);
+    pthread_mutex_unlock(&timingsMutex);
 }
 
-void ghost_timing_set_perfFunc(const char *prefix, const char *tag, ghost_compute_performance_func_t func, void *arg, size_t sizeofarg, const char *unit)
+void ghost_timing_set_perfFunc(const char *prefix, const char *tag, ghost_compute_performance_func func, void *arg, size_t sizeofarg, const char *unit)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+  
     if (!tag) {
         WARNING_LOG("Empty tag! This should not have happened... Prefix is %s",prefix);
-        return;
+        goto out;
     }
 
-    ghost_timing_perfFunc_t pf;
+    ghost_timing_perfFunc pf;
     pf.perfFunc = func;
     pf.perfUnit = unit;
 
     
-    ghost_timing_region_accu_t *region;
+    ghost_timing_region_accu *regionaccu;
     if (prefix) {
         string fulltag = (string(prefix)+"->"+string(tag));
-        region = &timings[fulltag];
+        regionaccu = &timings[fulltag];
     } else {
-        region = &timings[string(tag)];
+        regionaccu = &timings[string(tag)];
     }
 
-    for (std::vector<ghost_timing_perfFunc_t>::iterator it = region->perfFuncs.begin();
-            it !=region->perfFuncs.end(); ++it) {
+    for (std::vector<ghost_timing_perfFunc>::iterator it = regionaccu->perfFuncs.begin();
+            it !=regionaccu->perfFuncs.end(); ++it) {
         if (it->perfFunc == func && !strcmp(it->perfUnit,unit)) {
-            return;
+            goto out;
         }
     }
 
     ghost_malloc((void **)&(pf.perfFuncArg),sizeofarg);
     memcpy(pf.perfFuncArg,arg,sizeofarg);
-    region->perfFuncs.push_back(pf);
+    regionaccu->perfFuncs.push_back(pf);
+    
+out:
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
 }
 
 
-ghost_error_t ghost_timing_region_create(ghost_timing_region_t ** ri, const char *tag)
+ghost_error ghost_timing_region_create(ghost_timing_region ** ri, const char *tag)
 {
-    ghost_timing_region_accu_t ti = timings[string(tag)];
+    ghost_timing_region_accu ti = timings[string(tag)];
     if (!ti.times.size()) {
         *ri = NULL;
         return GHOST_SUCCESS;
     }
 
-    ghost_error_t ret = GHOST_SUCCESS;
-    GHOST_CALL_GOTO(ghost_malloc((void **)ri,sizeof(ghost_timing_region_t)),err,ret);
+    ghost_error ret = GHOST_SUCCESS;
+    GHOST_CALL_GOTO(ghost_malloc((void **)ri,sizeof(ghost_timing_region)),err,ret);
     (*ri)->nCalls =  ti.times.size();
     (*ri)->minTime = *min_element(ti.times.begin(),ti.times.end());
     (*ri)->maxTime = *max_element(ti.times.begin(),ti.times.end());
@@ -136,20 +147,26 @@ out:
     return ret;
 }
 
-void ghost_timing_region_destroy(ghost_timing_region_t * ri)
+void ghost_timing_region_destroy(ghost_timing_region * ri)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+    
     if (ri) {
         free(ri->times); ri->times = NULL;
     }
     free(ri);
+    
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
 }
 
 
-ghost_error_t ghost_timing_summarystring(char **str)
+ghost_error ghost_timing_summarystring(char **str)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+    
     stringstream buffer;
-    map<string,ghost_timing_region_accu_t>::iterator iter;
-    vector<ghost_timing_perfFunc_t>::iterator pf_iter;
+    map<string,ghost_timing_region_accu>::iterator iter;
+    vector<ghost_timing_perfFunc>::iterator pf_iter;
 
    
     size_t maxRegionLen = 0;
@@ -192,7 +209,7 @@ ghost_error_t ghost_timing_summarystring(char **str)
 
     buffer.precision(2);
     for (iter = timings.begin(); iter != timings.end(); ++iter) {
-        ghost_timing_region_t *region = NULL;
+        ghost_timing_region *region = NULL;
         ghost_timing_region_create(&region,iter->first.c_str());
 
         if (region) {
@@ -222,12 +239,12 @@ ghost_error_t ghost_timing_summarystring(char **str)
         }
         printed = 1;
 
-        ghost_timing_region_t *region = NULL;
+        ghost_timing_region *region = NULL;
         ghost_timing_region_create(&region,iter->first.c_str());
         
         if (region) {
             for (pf_iter = iter->second.perfFuncs.begin(); pf_iter != iter->second.perfFuncs.end(); ++pf_iter) {
-                ghost_compute_performance_func_t pf = pf_iter->perfFunc;
+                ghost_compute_performance_func pf = pf_iter->perfFunc;
                 void *pfa = pf_iter->perfFuncArg;
 
                 double P_min = 0., P_max = 0., P_avg = 0., P_skip10 = 0.;
@@ -275,5 +292,6 @@ ghost_error_t ghost_timing_summarystring(char **str)
     GHOST_CALL_RETURN(ghost_malloc((void **)str,buffer.str().length()+1));
     strcpy(*str,buffer.str().c_str());
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return GHOST_SUCCESS;
 }

@@ -1,3 +1,4 @@
+/*!GHOST_AUTOGEN BLOCKDIM1 */
 #include "ghost/config.h"
 #include "ghost/types.h"
 #include "ghost/densemat.h"
@@ -6,17 +7,18 @@
 #include "ghost/omp.h"
 #include "ghost/dot_plain_gen.h"
 
-#GHOST_FUNC_BEGIN#NVECS=${CFG_BLOCKVECTOR_SIZES}
-ghost_error_t ghost_dot__u_plain_d_cm_NVECS(void *res, ghost_densemat_t *vec1, ghost_densemat_t *vec2)
+#GHOST_SUBST NVECS ${BLOCKDIM1}
+
+ghost_error ghost_dot__u_plain_d_cm_NVECS(void *res, ghost_densemat *vec1, ghost_densemat *vec2)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
 
-    ghost_lidx_t row, col;
+    ghost_lidx row, col;
     double *r = (double *)res;
-    double sum = 0;
 
 #pragma omp parallel private(col)
     {
+        double sum = 0;
         double *v1, *v2;
 
         for (col=0; col<NVECS; col++) {
@@ -24,18 +26,81 @@ ghost_error_t ghost_dot__u_plain_d_cm_NVECS(void *res, ghost_densemat_t *vec1, g
             v1 = (double *)vec1->val+vec1->stride*col;
             v2 = (double *)vec2->val+vec2->stride*col;
 
-#pragma omp for schedule(runtime) reduction (+:sum)
+#pragma omp for schedule(runtime)
             for (row=0; row<vec1->traits.nrows; row++) {
                 sum += v1[row]*v2[row];
             }
 
-#pragma omp single
-            r[col] = sum;
+            double *rcol = r+col;
+#pragma omp atomic update
+            *rcol += sum;
         }
     }
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     return GHOST_SUCCESS;
 }
-#GHOST_FUNC_END
 
+ghost_error ghost_dot__u_plain_z_cm_NVECS(void *res, ghost_densemat *vec1, ghost_densemat *vec2)
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+
+    ghost_lidx row, col;
+    double *r = (double *)res;
+
+#pragma omp parallel private(col)
+    {
+        complex double sum = 0;
+        complex double *v1, *v2;
+
+        for (col=0; col<NVECS; col++) {
+            sum = 0;
+            v1 = (complex double *)vec1->val+vec1->stride*col;
+            v2 = (complex double *)vec2->val+vec2->stride*col;
+
+#pragma omp for schedule(runtime)
+            for (row=0; row<vec1->traits.nrows; row++) {
+                sum += conj(v1[row])*v2[row];
+            }
+
+            double *rcol_r = r+2*col;
+            double *rcol_i = r+2*col+1;
+#pragma omp atomic update
+            *rcol_r += creal(sum);
+#pragma omp atomic update
+            *rcol_i += cimag(sum);
+        }
+    }
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+    return GHOST_SUCCESS;
+}
+
+ghost_error ghost_dot__u_plain_z_rm_NVECS(void *res, ghost_densemat *vec1, ghost_densemat *vec2)
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+
+    ghost_lidx row;
+    double *r = (double *)res;
+
+#pragma omp parallel
+    {
+        #GHOST_UNROLL#complex double sum@ = 0;#NVECS
+        complex double *v1, *v2;
+
+        #GHOST_UNROLL#sum@ = 0;#NVECS
+        v1 = (complex double *)vec1->val;
+        v2 = (complex double *)vec2->val;
+
+#pragma omp for schedule(runtime)
+        for (row=0; row<vec1->traits.nrows; row++) {
+            #GHOST_UNROLL#sum@ += conj(v1[row*vec1->stride+@])*v2[row*vec2->stride+@];#NVECS
+        }
+
+        #GHOST_UNROLL#_Pragma("omp atomic update") r[2*@] += creal(sum@);#NVECS
+        #GHOST_UNROLL#_Pragma("omp atomic update") r[2*@+1] += cimag(sum@);#NVECS
+    }
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+    return GHOST_SUCCESS;
+}

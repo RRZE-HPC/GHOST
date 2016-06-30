@@ -13,17 +13,16 @@
 
 typedef struct
 {
-    ghost_alignment_t alignment;
-    ghost_datatype_t dt;
+    ghost_alignment alignment;
+    ghost_datatype dt;
     int wcols;
     int vcols;
-    ghost_implementation_t impl;
-    ghost_densemat_storage_t xstor;
-    ghost_densemat_storage_t wstor;
+    ghost_implementation impl;
+    ghost_densemat_storage wstor;
     int unroll;
-} ghost_tsmttsm_parameters_t;
+} ghost_tsmttsm_parameters;
 
-typedef ghost_error_t (*ghost_tsmttsm_kernel_t)(ghost_densemat_t *, ghost_densemat_t *, ghost_densemat_t *, void *, void *, int);
+typedef ghost_error (*ghost_tsmttsm_kernel)(ghost_densemat *, ghost_densemat *, ghost_densemat *, void *, void *, int);
 
 
 #ifdef __cplusplus
@@ -59,7 +58,7 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int reduce, int conjv,ghost_gemm_flags_t flags);
+    ghost_error ghost_tsmttsm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int reduce, int conjv,ghost_gemm_flags flags);
     
     /**
      * @brief Check whether TSMTTSM can be applied instead of GEMM with the given arguments.
@@ -77,8 +76,8 @@ extern "C" {
      *
      * @return 
      */
-    ghost_error_t ghost_tsmttsm_valid(ghost_densemat_t *x, ghost_densemat_t *v, const char * transv, 
-        ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce, ghost_gemm_flags_t flags, int printerror);
+    ghost_error ghost_tsmttsm_valid(ghost_densemat *x, ghost_densemat *v, const char * transv, 
+        ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce, ghost_gemm_flags flags, int printerror);
 
 #ifdef __cplusplus
 }

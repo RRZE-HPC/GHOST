@@ -1,0 +1,94 @@
+/*!GHOST_AUTOGEN  */
+#include "ghost/config.h"
+#include "ghost/types.h"
+#include "ghost/util.h"
+#include "ghost/densemat.h"
+#include "ghost/log.h"
+#include "ghost/timing.h"
+#include "ghost/locality.h"
+#include "ghost/instr.h"
+#include "ghost/rand.h"
+#include "ghost/tsmm_inplace_var2_cu_gen.h"
+
+#include <cuda_runtime.h>
+#include <stdio.h>
+#include <cublas_v2.h>
+#include <curand.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <complex.h>
+
+#include "ghost/cu_complex.h"
+#include "ghost/complex.h"
+
+extern __shared__ char shmem[];
+
+template<typename T> __global__ static void ghost_tsmm_inplace_cu_rm_cm_fallback(T * x, const T * const __restrict__ w, const T alpha, const T beta, ghost_lidx nrows, ghost_lidx stridex, ghost_lidx stridew, int NCOLSOUT, int NCOLSIN)
+{
+    int row = blockIdx.x*blockDim.y+threadIdx.y;
+    int row_in_shared = blockDim.x*threadIdx.y;
+    int m;
+    T *shared = (T *)shmem;
+    
+    for (;row < nrows; row+=gridDim.x*blockDim.y) {
+        shared[threadIdx.x+row_in_shared] = scale<T>(x[row*stridex+threadIdx.x],beta);
+        for (m=0; m<NCOLSIN; m++) {
+            shared[threadIdx.x+row_in_shared] = axpy<T,T>(shared[threadIdx.x+row_in_shared],alpha,scale<T>(__ldg(&x[row*stridex+m]),__ldg(&w[threadIdx.x*stridew+m])));
+        }
+        __syncthreads();
+        x[row*stridex+threadIdx.x] = shared[threadIdx.x+row_in_shared];
+    }
+}
+
+ghost_error ghost_tsmm_inplace__u_cuda_x_x_x(ghost_densemat *x, ghost_densemat *w, void *alpha, void *beta) 
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL); 
+    ghost_error ret = GHOST_SUCCESS;
+
+    int threadsperblock = 128;
+    size_t dtsize;
+    ghost_cu_deviceprop prop;
+    GHOST_CALL_RETURN(ghost_datatype_size(&dtsize,x->traits.datatype));
+    GHOST_CALL_RETURN(ghost_cu_deviceprop_get(&prop));
+    
+    size_t reqSmem = threadsperblock*x->traits.ncols*dtsize;
+    while (prop.sharedMemPerBlock < reqSmem && threadsperblock > 1) {
+        threadsperblock /= 2;
+        reqSmem = threadsperblock*x->traits.ncols*dtsize;
+    }
+        
+    if (prop.sharedMemPerBlock < reqSmem) {
+        ERROR_LOG("Not enough shared memory available! CUDA kernel will not execute!");
+        return GHOST_ERR_CUDA;
+    }
+    
+    dim3 block, grid;
+    block.x = x->traits.ncols;
+    block.y = CEILDIV(threadsperblock,block.x);
+    block.z = 1;
+    grid.x = CEILDIV(x->traits.nrows,block.y);
+    grid.y = 1;
+    grid.z = 1;
+    
+    if (x->traits.datatype & GHOST_DT_COMPLEX) {
+        if (x->traits.datatype & GHOST_DT_DOUBLE) {
+            ghost_tsmm_inplace_cu_rm_cm_fallback<cuDoubleComplex><<< grid,block,reqSmem >>>(
+                    (cuDoubleComplex *)x->cu_val,(const cuDoubleComplex *)w->cu_val,*(cuDoubleComplex *)alpha,*(cuDoubleComplex *)beta,x->traits.nrows,x->stride,w->stride,w->traits.ncols,w->traits.nrows);
+        } else {
+            ghost_tsmm_inplace_cu_rm_cm_fallback<cuFloatComplex><<< grid,block,reqSmem >>>(
+                    (cuFloatComplex *)x->cu_val,(const cuFloatComplex *)w->cu_val,*(cuFloatComplex *)alpha,*(cuFloatComplex *)beta,x->traits.nrows,x->stride,w->stride,w->traits.ncols,w->traits.nrows);
+        }
+    } else {
+        if (x->traits.datatype & GHOST_DT_DOUBLE) {
+            ghost_tsmm_inplace_cu_rm_cm_fallback<double><<< grid,block,reqSmem >>>(
+                   (double *)x->cu_val,(const double *)w->cu_val,*(double *)alpha,*(double *)beta,x->traits.nrows,x->stride,w->stride,w->traits.ncols,w->traits.nrows);
+        } else {
+            ghost_tsmm_inplace_cu_rm_cm_fallback<float><<< grid,block,reqSmem >>>(
+                   (float *)x->cu_val,(const float *)w->cu_val,*(float *)alpha,*(float *)beta,x->traits.nrows,x->stride,w->stride,w->traits.ncols,w->traits.nrows);
+        }
+    }
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL); 
+    CUDA_CALL_RETURN(cudaGetLastError());
+    return ret;
+}

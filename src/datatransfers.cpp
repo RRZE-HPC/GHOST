@@ -19,11 +19,11 @@ typedef struct
     /**
      * @brief The sent bytes.
      */
-    map<int,vector<size_t>> sendbytes;
+    map<int,vector<size_t> > sendbytes;
     /**
      * @brief The sent bytes.
      */
-    map<int,vector<size_t>> recvbytes;
+    map<int,vector<size_t> > recvbytes;
     /**
      * @brief The last start time of this region.
      */
@@ -33,23 +33,26 @@ ghost_datatransfer_region_accu_t;
 
 static map<string,ghost_datatransfer_region_accu_t> datatransfers;
 
-ghost_error_t ghost_datatransfer_register(const char *tag, ghost_datatransfer_direction_t dir, int rank, size_t volume)
+ghost_error ghost_datatransfer_register(const char *tag, ghost_datatransfer_direction_t dir, int rank, size_t volume)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     if (dir == GHOST_DATATRANSFER_OUT) {
         datatransfers[tag].sendbytes[rank].push_back(volume);
     } else {
         datatransfers[tag].recvbytes[rank].push_back(volume);
     }
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return GHOST_SUCCESS;
 }
 
-static size_t ghost_datatransfer_volume_get(const char *tag, ghost_datatransfer_direction_t dir, int rank)
+size_t ghost_datatransfer_volume_get(const char *tag, ghost_datatransfer_direction_t dir, int rank)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     size_t vol = 0;
 
     if (rank == GHOST_DATATRANSFER_RANK_ALL || rank == GHOST_DATATRANSFER_RANK_ALL_W_GPU) {
-        map<int,vector<size_t>>::iterator senditer, recviter;
+        map<int,vector<size_t> >::iterator senditer, recviter;
         
         if (dir == GHOST_DATATRANSFER_OUT || dir == GHOST_DATATRANSFER_ANY) {
             for (senditer = datatransfers[tag].sendbytes.begin(); senditer != datatransfers[tag].sendbytes.end(); senditer++) {
@@ -74,33 +77,39 @@ static size_t ghost_datatransfer_volume_get(const char *tag, ghost_datatransfer_
         }
     }
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return vol;
 }
 
 static int ghost_datatransfer_nneigh_get(const char *tag, ghost_datatransfer_direction_t dir)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
 
     if (dir == GHOST_DATATRANSFER_OUT) {
-        map<int,vector<size_t>> tmp = datatransfers[tag].sendbytes;
+        map<int,vector<size_t> > tmp = datatransfers[tag].sendbytes;
         tmp.erase(GHOST_DATATRANSFER_RANK_GPU);
         return tmp.size();
     } 
     if (dir == GHOST_DATATRANSFER_IN) {
-        map<int,vector<size_t>> tmp = datatransfers[tag].recvbytes;
+        map<int,vector<size_t> > tmp = datatransfers[tag].recvbytes;
         tmp.erase(GHOST_DATATRANSFER_RANK_GPU);
         return tmp.size();
     }
     if (dir == GHOST_DATATRANSFER_ANY) {
-        map<int,vector<size_t>> tmp = datatransfers[tag].sendbytes;
+        map<int,vector<size_t> > tmp = datatransfers[tag].sendbytes;
         tmp.insert(datatransfers[tag].recvbytes.begin(),datatransfers[tag].recvbytes.end());
         tmp.erase(GHOST_DATATRANSFER_RANK_GPU);
         return tmp.size();
     }
+    
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return 0;
 } 
 
-ghost_error_t ghost_datatransfer_summarystring(char **str)
+ghost_error ghost_datatransfer_summarystring(char **str)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+
     stringstream buffer;
     map<string,ghost_datatransfer_region_accu_t>::iterator iter;
     
@@ -114,7 +123,7 @@ ghost_error_t ghost_datatransfer_summarystring(char **str)
         tmp.str("");
 
         int ncalls_out = 0, ncalls_in = 0;
-        map<int,vector<size_t>>::iterator tmpiter;
+        map<int,vector<size_t> >::iterator tmpiter;
         for (tmpiter = iter->second.sendbytes.begin(); tmpiter != iter->second.sendbytes.end(); ++tmpiter) {
             if (tmpiter->first != GHOST_DATATRANSFER_RANK_GPU) {
                 ncalls_out += tmpiter->second.size();
@@ -150,7 +159,7 @@ ghost_error_t ghost_datatransfer_summarystring(char **str)
     buffer.precision(2);
     for (iter = datatransfers.begin(); iter != datatransfers.end(); ++iter) {
         int ncalls_out = 0, ncalls_in = 0;
-        map<int,vector<size_t>>::iterator tmpiter;
+        map<int,vector<size_t> >::iterator tmpiter;
         for (tmpiter = iter->second.sendbytes.begin(); tmpiter != iter->second.sendbytes.end(); ++tmpiter) {
             if (tmpiter->first != GHOST_DATATRANSFER_RANK_GPU) {
                 ncalls_out += tmpiter->second.size();
@@ -185,5 +194,6 @@ ghost_error_t ghost_datatransfer_summarystring(char **str)
     GHOST_CALL_RETURN(ghost_malloc((void **)str,buffer.str().length()+1));
     strcpy(*str,buffer.str().c_str());
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return GHOST_SUCCESS;
 }

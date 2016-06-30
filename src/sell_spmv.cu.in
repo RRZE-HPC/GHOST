@@ -1,7 +1,7 @@
+/*!GHOST_AUTOGEN  */
 #include "ghost/config.h"
 //#undef GHOST_HAVE_MPI
 #include "ghost/types.h"
-#include "ghost/sell.h"
 #include "ghost/complex.h"
 #include "ghost/instr.h"
 #include "ghost/log.h"
@@ -17,7 +17,8 @@
 #include "ghost/cu_complex.h"
 #include "ghost/cu_sell_kernel.h"
 
-#define MAX_COLS_PER_BLOCK 32
+#define MAX_COLS_PER_BLOCK 16
+#define MAX_COLS_PER_BLOCK_COLMAJOR 16
 #define SELL_CUDA_THREADSPERBLOCK 512
 
 /*
@@ -51,26 +52,23 @@ static char boolstr[256];
  * @param block The CUDA block.
  * @param smem Amount of shared mem.
  */
-#define SELL_CU_SPMV_SELECTOR(kernel,dt1,dt2,dt2_b,grid,block,smem)\
+#define SELL_CU_SPMV_SELECTOR(kernel,dt1,dt2,dt2_b,nrowsinblock,grid,block,smem)\
 ${SELL_CU_SPMV_SWITCHCASCADE}\
 if (do_fallback) {\
-    if (rhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {\
-        ghost_cu_free(cu_localdot);\
-        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(dt2)\
-                    *rhs->traits.ncols*3*grid.x));\
+    if (rhs->stride > 1 && rhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {\
         PERFWARNING_LOG("Executing row-major fallback kernel with grid %dx%d "\
-                "and block %dx%d smem %zu",grid.x,grid.y,block.x,block.y,smem);\
+                "and block %dx%d (nrows in block %d), smem %d",grid.x,grid.y,block.x,block.y,nrowsinblock,smem);\
         SELL_kernel_rm_fallback_tmpl<dt1,dt2,dt2_b><<<grid,block,smem>>>(\
                 (dt2 *)lhsval,(int)(lhs->stride),(dt2 *)rhsval,\
-                (int)rhs->stride,flags,mat->nrows,SELL(mat)->cumat->rowLen,\
+                (int)rhs->stride,traits.flags,mat->nrows,nrowsinblock,SELL(mat)->cumat->rowLen,\
                 SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,\
                 SELL(mat)->cumat->chunkStart,(dt2 *)cu_shift,(dt2)scale,\
-                (dt2)beta,(dt2 *)cu_localdot,SELL(mat)->chunkHeight,\
-                rhs->traits.ncols,(dt2 *)zval,zstride,sdelta,seta,flags&(GHOST_SPMV_AXPBY|GHOST_SPMV_AXPY),\
-                flags&GHOST_SPMV_SCALE,\
-                flags&(GHOST_SPMV_VSHIFT|GHOST_SPMV_SHIFT),\
-                flags&GHOST_SPMV_DOT_ANY,\
-                flags&GHOST_SPMV_CHAIN_AXPBY);\
+                (dt2)beta,(dt2 *)cu_localdot,mat->traits.C,\
+                rhs->traits.ncols,(dt2 *)zval,zstride,sdelta,seta,traits.flags&(GHOST_SPMV_AXPBY|GHOST_SPMV_AXPY),\
+                traits.flags&GHOST_SPMV_SCALE,\
+                traits.flags&(GHOST_SPMV_VSHIFT|GHOST_SPMV_SHIFT),\
+                traits.flags&GHOST_SPMV_DOT,\
+                traits.flags&GHOST_SPMV_CHAIN_AXPBY);\
     } else {\
         ghost_cu_free(cu_localdot);\
         GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(dt2)\
@@ -79,86 +77,26 @@ if (do_fallback) {\
                 "and block %dx%d smem %zu",grid.x,grid.y,block.x,block.y,smem);\
         SELL_kernel_cm_fallback_tmpl<dt1,dt2,dt2_b><<<grid,block,smem>>>(\
                 (dt2 *)lhsval,(int)(lhs->stride),(dt2 *)rhsval,\
-                (int)rhs->stride,flags,mat->nrows,SELL(mat)->cumat->rowLen,\
+                (int)rhs->stride,traits.flags,mat->nrows,SELL(mat)->cumat->rowLen,\
                 SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,\
                 SELL(mat)->cumat->chunkStart,(dt2 *)cu_shift,(dt2)scale,\
-                (dt2)beta,(dt2 *)cu_localdot,SELL(mat)->chunkHeight,\
-                rhs->traits.ncols,(dt2 *)zval,zstride,sdelta,seta,flags&(GHOST_SPMV_AXPBY|GHOST_SPMV_AXPY),\
-                flags&GHOST_SPMV_SCALE,\
-                flags&(GHOST_SPMV_VSHIFT|GHOST_SPMV_SHIFT),\
-                flags&GHOST_SPMV_DOT_ANY,\
-                flags&GHOST_SPMV_CHAIN_AXPBY);\
+                (dt2)beta,(dt2 *)cu_localdot,mat->traits.C,\
+                rhs->traits.ncols,(dt2 *)zval,zstride,sdelta,seta,traits.flags&(GHOST_SPMV_AXPBY|GHOST_SPMV_AXPY),\
+                traits.flags&GHOST_SPMV_SCALE,\
+                traits.flags&(GHOST_SPMV_VSHIFT|GHOST_SPMV_SHIFT),\
+                traits.flags&GHOST_SPMV_DOT,\
+                traits.flags&GHOST_SPMV_CHAIN_AXPBY);\
     }\
 }
 
-# if 0
-    template<typename m_t, typename v_t, typename v_t_b, int C, int ncols, bool do_axpby, bool do_scale, bool do_vshift, bool do_localdot>  
-__global__ void SELL_kernel_CU_rm_tmpl_v2(v_t * const __restrict__ lhs, const int lhs_lda, const v_t * const __restrict__ rhs, const int rhs_lda, const ghost_spmv_flags_t flags, const int nrows, const ghost_lidx_t * const __restrict__ rowlen, const ghost_lidx_t * const __restrict__ mcol, const m_t * const __restrict__ val, const ghost_lidx_t * const __restrict__ chunkstart, const v_t * const __restrict__ shift, const v_t alpha, const v_t beta, v_t * const __restrict__ localdot)
-{
-    int row = blockDim.x*blockIdx.x+threadIdx.x;
-    int col = threadIdx.y;
-
-    if (row<nrows) {
-        int cs, ric; // chunkstart and row in chunk
-        cs = chunkstart[row/C];
-        ric = row%C;
-        int j;
-        v_t tmp;
-
-        zero<v_t>(tmp);
-
-        for (j=0; j<rowlen[row]; j++) {
-            tmp = axpy<v_t,m_t>(tmp, rhs[rhs_lda*mcol[cs + ric + j*C]+col], val[cs+ric+j*C]);
-        }
-
-        if (do_vshift) {
-            tmp = axpy<v_t,v_t>(tmp,rhs[rhs_lda*row+col],scale2<v_t,float>(shift[col],-1.f));
-        }
-        if (do_scale) {
-            tmp = scale<v_t>(alpha,tmp);
-        }
-        if (do_axpby) {
-            lhs[lhs_lda*row+col] = axpy<v_t,v_t>(tmp,lhs[lhs_lda*row+col],beta);
-        } else {
-            lhs[lhs_lda*row+col] = tmp;
-        }
-    }
-
-}
-    template<>  
-__global__ void SELL_kernel_CU_rm_tmpl_v2<double,double,double,32,32,false,false,false,false>(double * const __restrict__ lhs, const int lhs_lda, const double * const __restrict__ rhs, const int rhs_lda, const ghost_spmv_flags_t flags, const int nrows, const ghost_lidx_t * const __restrict__ rowlen, const ghost_lidx_t * const __restrict__ mcol, const double * const __restrict__ val, const ghost_lidx_t * const __restrict__ chunkstart, const double * const __restrict__ shift, const double alpha, const double beta, double * const __restrict__ localdot)
-{
-    int row = blockDim.x*blockIdx.x+threadIdx.x;
-    int col = threadIdx.y;
-
-    if (row<nrows) {
-        int cs, ric; // chunkstart and row in chunk
-        cs = chunkstart[row/32];
-        ric = row%32;
-        int j;
-        double tmp;
-
-        zero<double>(tmp);
-
-        for (j=0; j<rowlen[row]; j++) {
-            tmp += rhs[rhs_lda*mcol[cs + ric + j*32]+col] * val[cs+ric+j*32];
-        }
-
-        lhs[lhs_lda*row+col] = tmp;
-    }
-
-}
-#endif
-    
     template<typename m_t, typename v_t, typename v_t_b>  
-__global__ void SELL_kernel_rm_fallback_tmpl(v_t * const __restrict__ lhs, const int lhs_lda, const v_t * const __restrict__ rhs, const int rhs_lda, const ghost_spmv_flags_t flags, const int nrows, const ghost_lidx_t * const __restrict__ rowlen, const ghost_lidx_t * const __restrict__ mcol, const m_t * const __restrict__ val, const ghost_lidx_t * const __restrict__ chunkstart, const v_t * const __restrict__ shift, const v_t alpha, const v_t beta, v_t * const __restrict__ localdot, int C, int ncols, v_t * const __restrict__ z, const int z_lda, const v_t delta, const v_t eta, bool do_axpby, bool do_scale, bool do_vshift, bool do_dot, bool do_chain_axpby)
+__global__ void SELL_kernel_rm_fallback_tmpl(v_t * const __restrict__ lhs, const int lhs_lda, const v_t * const __restrict__ rhs, const int rhs_lda, const ghost_spmv_flags flags, const int nrows, const int nrowsinblock, const ghost_lidx * const __restrict__ rowlen, const ghost_lidx * const __restrict__ mcol, const m_t * const __restrict__ val, const ghost_lidx * const __restrict__ chunkstart, const v_t * const __restrict__ shift, const v_t alpha, const v_t beta, v_t * const __restrict__ localdot, int C, int ncols, v_t * const __restrict__ z, const int z_lda, const v_t delta, const v_t eta, bool do_axpby, bool do_scale, bool do_vshift, bool do_dot, bool do_chain_axpby)
 {
-    int tid = blockDim.x*blockIdx.x+threadIdx.x;
-    int row = tid/ncols;
-    int col = tid%ncols;
+    int ncolsinblock = blockDim.x/nrowsinblock;
+    int row = blockIdx.x*nrowsinblock+threadIdx.x/ncolsinblock;
+    int col = blockIdx.y*ncolsinblock+threadIdx.x%ncolsinblock;
 
-
-    if (row<nrows) {
+    if (row<nrows && col<ncols) {
         int cs, ric; // chunkstart and row in chunk
         cs = chunkstart[row/C];
         ric = row%C;
@@ -186,74 +124,69 @@ __global__ void SELL_kernel_rm_fallback_tmpl(v_t * const __restrict__ lhs, const
             z[z_lda*row+col] = axpby<v_t>(lhs[lhs_lda*row+col],z[z_lda*row+col],eta,delta);
         }
     }
-#ifdef LOCALDOT_ONTHEFLY 
-    if (do_dot) {
-        v_t_b dot1, dot3;
-        v_t dot2;
-        zero<v_t_b>(dot1);
-        zero<v_t>(dot2);
-        zero<v_t_b>(dot3);
-    
-        row = blockDim.x/ncols*blockIdx.x+threadIdx.x%(blockDim.x/ncols);
-        col = threadIdx.x/(blockDim.x/ncols);
-    
-
-        __syncthreads();
-        if (row<nrows) {
-            dot1 = mulConjSame<v_t,v_t_b>(lhs[lhs_lda*row+col]);
-            dot2 = mulConj<v_t>(rhs[rhs_lda*row+col],lhs[lhs_lda*row+col]);
-            dot3 = mulConjSame<v_t,v_t_b>(rhs[rhs_lda*row+col]);
-        }
-
-
-        if (blockDim.x/ncols <= 32) {
-            dot1 = ghost_partialWarpReduceSum(dot1,blockDim.x/ncols);
+#ifdef LOCALDOT_ONTHEFLY
+    row = blockIdx.x*nrowsinblock+threadIdx.x%nrowsinblock;
+    col = blockIdx.y*ncolsinblock+threadIdx.x/nrowsinblock;
+    if (col < ncols) {
+        if (do_dot) {
+            v_t_b dot1, dot3;
+            v_t dot2;
+      
             __syncthreads();
-            dot2 = ghost_partialWarpReduceSum(dot2,blockDim.x/ncols);
-            __syncthreads();
-            dot3 = ghost_partialWarpReduceSum(dot3,blockDim.x/ncols);
-            __syncthreads();
-            
-            if (!(threadIdx.x%(blockDim.x/ncols))) {
-                fromReal<v_t,v_t_b>(localdot[0*ncols*gridDim.x + gridDim.x*col + blockIdx.x],dot1);
-                localdot[1*ncols*gridDim.x + gridDim.x*col + blockIdx.x] = dot2;
-                fromReal<v_t,v_t_b>(localdot[2*ncols*gridDim.x + gridDim.x*col + blockIdx.x],dot3);
+            if (row<nrows) {
+                dot1 = mulConjSame<v_t,v_t_b>(lhs[lhs_lda*row+col]);
+                dot2 = mulConj<v_t>(rhs[rhs_lda*row+col],lhs[lhs_lda*row+col]);
+                dot3 = mulConjSame<v_t,v_t_b>(rhs[rhs_lda*row+col]);
+            } else {
+                zero<v_t_b>(dot1);
+                zero<v_t>(dot2);
+                zero<v_t_b>(dot3);
             }
-        } else {
-            dot1 = ghost_partialBlockReduceSum(dot1,blockDim.x/ncols/warpSize);
-            __syncthreads();
-            dot2 = ghost_partialBlockReduceSum(dot2,blockDim.x/ncols/warpSize);
-            __syncthreads();
-            dot3 = ghost_partialBlockReduceSum(dot3,blockDim.x/ncols/warpSize);
-            __syncthreads();
-                
-            
-            col = threadIdx.x/(blockDim.x/ncols/warpSize);
-            if (!(threadIdx.x%(blockDim.x/ncols/warpSize)) && col<ncols) {
-                fromReal<v_t,v_t_b>(localdot[0*ncols*gridDim.x + gridDim.x*col + blockIdx.x],dot1);
-                localdot[1*ncols*gridDim.x + gridDim.x*col + blockIdx.x] = dot2;
-                fromReal<v_t,v_t_b>(localdot[2*ncols*gridDim.x + gridDim.x*col + blockIdx.x],dot3);
+
+            if (nrowsinblock <= 32) {
+                dot1 = ghost_partialWarpReduceSum(dot1,nrowsinblock,warpSize);
+                dot2 = ghost_partialWarpReduceSum(dot2,nrowsinblock,warpSize);
+                dot3 = ghost_partialWarpReduceSum(dot3,nrowsinblock,warpSize);
+                if (threadIdx.x%nrowsinblock == 0) {
+                    fromReal<v_t,v_t_b>(localdot[0*ncols*gridDim.x + gridDim.x*col + blockIdx.x],dot1);
+                    localdot[1*ncols*gridDim.x + gridDim.x*col + blockIdx.x] = dot2;
+                    fromReal<v_t,v_t_b>(localdot[2*ncols*gridDim.x + gridDim.x*col + blockIdx.x],dot3);
+                }
+            } else {
+                dot1 = ghost_1dPartialBlockReduceSum(dot1,nrowsinblock/warpSize);
+                __syncthreads();
+                dot2 = ghost_1dPartialBlockReduceSum(dot2,nrowsinblock/warpSize);
+                __syncthreads();
+                dot3 = ghost_1dPartialBlockReduceSum(dot3,nrowsinblock/warpSize);
+                __syncthreads();
+
+                if ((threadIdx.x<blockDim.x/warpSize) && threadIdx.x%(nrowsinblock/warpSize) == 0) {
+                    col=threadIdx.x/(blockDim.x/(warpSize*ncolsinblock));
+                    fromReal<v_t,v_t_b>(localdot[0*ncols*gridDim.x + gridDim.x*col + blockIdx.x],dot1);
+                    localdot[1*ncols*gridDim.x + gridDim.x*col + blockIdx.x] = dot2;
+                    fromReal<v_t,v_t_b>(localdot[2*ncols*gridDim.x + gridDim.x*col + blockIdx.x],dot3);
+                }
             }
+            
         }
     }
-
 #endif
 }
 
     template<typename m_t, typename v_t, typename v_t_b>  
-__global__ void SELL_kernel_cm_fallback_tmpl(v_t * const __restrict__ lhs, const int lhs_lda, const v_t * const __restrict__ rhs, const int rhs_lda, const ghost_spmv_flags_t flags, const int nrows, const ghost_lidx_t * const __restrict__ rowlen, const ghost_lidx_t * const __restrict__ mcol, const m_t * const __restrict__ val, const ghost_lidx_t * const __restrict__ chunkstart, const v_t * const __restrict__ shift, const v_t alpha, const v_t beta, v_t * const __restrict__ localdot, int C, int ncols, v_t * const __restrict__ z, const int z_lda, const v_t delta, const v_t eta, bool do_axpby, bool do_scale, bool do_vshift, bool do_dot, bool do_chain_axpby)
+__global__ void SELL_kernel_cm_fallback_tmpl(v_t * const __restrict__ lhs, const int lhs_lda, const v_t * const __restrict__ rhs, const int rhs_lda, const ghost_spmv_flags flags, const int nrows, const ghost_lidx * const __restrict__ rowlen, const ghost_lidx * const __restrict__ mcol, const m_t * const __restrict__ val, const ghost_lidx * const __restrict__ chunkstart, const v_t * const __restrict__ shift, const v_t alpha, const v_t beta, v_t * const __restrict__ localdot, int C, int ncols, v_t * const __restrict__ z, const int z_lda, const v_t delta, const v_t eta, bool do_axpby, bool do_scale, bool do_vshift, bool do_dot, bool do_chain_axpby)
 {
     int i = threadIdx.x+blockIdx.x*blockDim.x;
     int col = blockDim.y*blockIdx.y+threadIdx.y;
 
-    if (i<nrows) {
+    if (i<nrows && col<ncols) {
         int cs, tid;
         if (C == blockDim.x) {
             cs = chunkstart[blockIdx.x];
             tid = threadIdx.x;
         } else {
             cs = chunkstart[i/C];
-            tid = threadIdx.x%C;
+            tid = i%C;
         }
         int j;
         v_t tmp;
@@ -298,27 +231,25 @@ __global__ void SELL_kernel_cm_fallback_tmpl(v_t * const __restrict__ lhs, const
         dot2 = ghost_blockReduceSum(dot2);
         __syncthreads();
         dot3 = ghost_blockReduceSum(dot3);
-        __syncthreads();
 
         if (threadIdx.x==0) {
-            fromReal<v_t,v_t_b>(localdot[0*gridDim.y*blockDim.y*gridDim.x + 3*col + blockIdx.x],dot1);
-            localdot[1*gridDim.y*blockDim.y*gridDim.x + 3*col + blockIdx.x] = dot2;
-            fromReal<v_t,v_t_b>(localdot[2*gridDim.y*blockDim.y*gridDim.x + 3*col + blockIdx.x],dot3);
+            fromReal<v_t,v_t_b>(localdot[0*ncols*gridDim.x + gridDim.x*col + blockIdx.x],dot1);
+            localdot[1*ncols*gridDim.x + gridDim.x*col + blockIdx.x] = dot2;
+            fromReal<v_t,v_t_b>(localdot[2*ncols*gridDim.x + gridDim.x*col + blockIdx.x],dot3);
         }
     }
 
 #endif
 }
     
-    template<typename m_t, typename v_t, typename v_t_b, int C, int ncols, bool do_axpby, bool do_scale, bool do_vshift, bool do_dot_yy, bool do_dot_xy, bool do_dot_xx, bool do_chain_axpby>  
-__global__ void SELL_kernel_CU_rm_1dblock_tmpl(v_t * const __restrict__ lhs, const int lhs_lda, const v_t * const __restrict__ rhs, const int rhs_lda, const ghost_spmv_flags_t flags, const int nrows, const ghost_lidx_t * const __restrict__ rowlen, const ghost_lidx_t * const __restrict__ mcol, const m_t * const __restrict__ val, const ghost_lidx_t * const __restrict__ chunkstart, const v_t * const __restrict__ shift, const v_t alpha, const v_t beta, v_t * const __restrict__ localdot, v_t * const __restrict__ z, const int z_lda, const v_t delta, const v_t eta)
+    template<typename m_t, typename v_t, typename v_t_b, int nrowsinblock, int C, int ncols, bool do_axpby, bool do_scale, bool do_vshift, bool do_dot_yy, bool do_dot_xy, bool do_dot_xx, bool do_chain_axpby>  
+__global__ void SELL_kernel_CU_rm_tmpl(v_t * const __restrict__ lhs, const int lhs_lda, const v_t * const __restrict__ rhs, const int rhs_lda, const ghost_spmv_flags flags, const int nrows, const ghost_lidx * const __restrict__ rowlen, const ghost_lidx * const __restrict__ mcol, const m_t * const __restrict__ val, const ghost_lidx * const __restrict__ chunkstart, const v_t * const __restrict__ shift, const v_t alpha, const v_t beta, v_t * const __restrict__ localdot, v_t * const __restrict__ z, const int z_lda, const v_t delta, const v_t eta)
 {
-    int tid = blockDim.x*blockIdx.x+threadIdx.x;
-    int row = tid/ncols;
-    int col = tid%ncols;
+    int ncolsinblock = blockDim.x/nrowsinblock;
+    int row = blockIdx.x*nrowsinblock+threadIdx.x/ncolsinblock;
+    int col = blockIdx.y*ncolsinblock+threadIdx.x%ncolsinblock;
 
-
-    if (row<nrows) {
+    if (row<nrows && col<ncols) {
         int cs, ric; // chunkstart and row in chunk
         cs = chunkstart[row/C];
         ric = row%C;
@@ -346,347 +277,65 @@ __global__ void SELL_kernel_CU_rm_1dblock_tmpl(v_t * const __restrict__ lhs, con
             z[z_lda*row+col] = axpby<v_t>(lhs[lhs_lda*row+col],z[z_lda*row+col],eta,delta);
         }
     }
-#ifdef LOCALDOT_ONTHEFLY 
-    if (do_dot_yy && do_dot_xy && do_dot_xx) {
-        v_t_b dot1, dot3;
-        v_t dot2;
-        zero<v_t_b>(dot1);
-        zero<v_t>(dot2);
-        zero<v_t_b>(dot3);
-    
-        row = blockDim.x/ncols*blockIdx.x+threadIdx.x%(SELL_CUDA_THREADSPERBLOCK/ncols);
-        col = threadIdx.x/(SELL_CUDA_THREADSPERBLOCK/ncols);
-    
-
-        __syncthreads();
-        if (row<nrows) {
-            dot1 = mulConjSame<v_t,v_t_b>(lhs[lhs_lda*row+col]);
-            dot2 = mulConj<v_t>(rhs[rhs_lda*row+col],lhs[lhs_lda*row+col]);
-            dot3 = mulConjSame<v_t,v_t_b>(rhs[rhs_lda*row+col]);
-        }
-
-
-        if (SELL_CUDA_THREADSPERBLOCK/ncols <= 32) {
-            dot1 = ghost_partialWarpReduceSum(dot1,SELL_CUDA_THREADSPERBLOCK/ncols);
-            __syncthreads();
-            dot2 = ghost_partialWarpReduceSum(dot2,SELL_CUDA_THREADSPERBLOCK/ncols);
-            __syncthreads();
-            dot3 = ghost_partialWarpReduceSum(dot3,SELL_CUDA_THREADSPERBLOCK/ncols);
-            __syncthreads();
-            
-            if (!(threadIdx.x%(SELL_CUDA_THREADSPERBLOCK/ncols))) {
-                fromReal<v_t,v_t_b>(localdot[0*ncols*gridDim.x + gridDim.x*col + blockIdx.x],dot1);
-                localdot[1*ncols*gridDim.x + gridDim.x*col + blockIdx.x] = dot2;
-                fromReal<v_t,v_t_b>(localdot[2*ncols*gridDim.x + gridDim.x*col + blockIdx.x],dot3);
-            }
-        } else {
-            dot1 = ghost_partialBlockReduceSum(dot1,SELL_CUDA_THREADSPERBLOCK/ncols/warpSize);
-            __syncthreads();
-            dot2 = ghost_partialBlockReduceSum(dot2,SELL_CUDA_THREADSPERBLOCK/ncols/warpSize);
-            __syncthreads();
-            dot3 = ghost_partialBlockReduceSum(dot3,SELL_CUDA_THREADSPERBLOCK/ncols/warpSize);
-            __syncthreads();
-                
-            
-            col = threadIdx.x/(SELL_CUDA_THREADSPERBLOCK/ncols/warpSize);
-            if (!(threadIdx.x%(SELL_CUDA_THREADSPERBLOCK/ncols/warpSize)) && col<ncols) {
-                fromReal<v_t,v_t_b>(localdot[0*ncols*gridDim.x + gridDim.x*col + blockIdx.x],dot1);
-                localdot[1*ncols*gridDim.x + gridDim.x*col + blockIdx.x] = dot2;
-                fromReal<v_t,v_t_b>(localdot[2*ncols*gridDim.x + gridDim.x*col + blockIdx.x],dot3);
-            }
-        }
-    } else if (do_dot_xy && do_dot_xx) {
-        v_t_b dot3;
-        v_t dot2;
-        zero<v_t>(dot2);
-        zero<v_t_b>(dot3);
-    
-        row = blockDim.x/ncols*blockIdx.x+threadIdx.x%(SELL_CUDA_THREADSPERBLOCK/ncols);
-        col = threadIdx.x/(SELL_CUDA_THREADSPERBLOCK/ncols);
-    
-
-        __syncthreads();
-        if (row<nrows) {
-            dot2 = mulConj<v_t>(rhs[rhs_lda*row+col],lhs[lhs_lda*row+col]);
-            dot3 = mulConjSame<v_t,v_t_b>(rhs[rhs_lda*row+col]);
-        }
-
-
-        if (SELL_CUDA_THREADSPERBLOCK/ncols <= 32) {
-            dot2 = ghost_partialWarpReduceSum(dot2,SELL_CUDA_THREADSPERBLOCK/ncols);
-            __syncthreads();
-            dot3 = ghost_partialWarpReduceSum(dot3,SELL_CUDA_THREADSPERBLOCK/ncols);
-            __syncthreads();
-            
-            if (!(threadIdx.x%(SELL_CUDA_THREADSPERBLOCK/ncols))) {
-                localdot[1*ncols*gridDim.x + gridDim.x*col + blockIdx.x] = dot2;
-                fromReal<v_t,v_t_b>(localdot[2*ncols*gridDim.x + gridDim.x*col + blockIdx.x],dot3);
-            }
-        } else {
-            dot2 = ghost_partialBlockReduceSum(dot2,SELL_CUDA_THREADSPERBLOCK/ncols/warpSize);
-            __syncthreads();
-            dot3 = ghost_partialBlockReduceSum(dot3,SELL_CUDA_THREADSPERBLOCK/ncols/warpSize);
-            __syncthreads();
-                
-            
-            col = threadIdx.x/(SELL_CUDA_THREADSPERBLOCK/ncols/warpSize);
-            if (!(threadIdx.x%(SELL_CUDA_THREADSPERBLOCK/ncols/warpSize)) && col<ncols) {
-                localdot[1*ncols*gridDim.x + gridDim.x*col + blockIdx.x] = dot2;
-                fromReal<v_t,v_t_b>(localdot[2*ncols*gridDim.x + gridDim.x*col + blockIdx.x],dot3);
-            }
-        }
-    } else {
-        if (do_dot_yy) {
-            v_t_b dot;
-            zero<v_t_b>(dot);
-        
-            row = blockDim.x/ncols*blockIdx.x+threadIdx.x%(SELL_CUDA_THREADSPERBLOCK/ncols);
-            col = threadIdx.x/(SELL_CUDA_THREADSPERBLOCK/ncols);
-        
-
+#ifdef LOCALDOT_ONTHEFLY
+    row = blockIdx.x*nrowsinblock+threadIdx.x%nrowsinblock;
+    col = blockIdx.y*ncolsinblock+threadIdx.x/nrowsinblock;
+    if (col < ncols) {
+        if (do_dot_yy || do_dot_xy || do_dot_xx) {
+            v_t_b dot1, dot3;
+            v_t dot2;
+      
             __syncthreads();
             if (row<nrows) {
-                dot = mulConjSame<v_t,v_t_b>(lhs[lhs_lda*row+col]);
+                dot1 = mulConjSame<v_t,v_t_b>(lhs[lhs_lda*row+col]);
+                dot2 = mulConj<v_t>(rhs[rhs_lda*row+col],lhs[lhs_lda*row+col]);
+                dot3 = mulConjSame<v_t,v_t_b>(rhs[rhs_lda*row+col]);
+            } else {
+                zero<v_t_b>(dot1);
+                zero<v_t>(dot2);
+                zero<v_t_b>(dot3);
             }
 
-
-            if (SELL_CUDA_THREADSPERBLOCK/ncols <= 32) {
-                dot = ghost_partialWarpReduceSum(dot,SELL_CUDA_THREADSPERBLOCK/ncols);
-                __syncthreads();
-                
-                if (!(threadIdx.x%(SELL_CUDA_THREADSPERBLOCK/ncols))) {
-                    fromReal<v_t,v_t_b>(localdot[0*ncols*gridDim.x + gridDim.x*col + blockIdx.x],dot);
+            if (nrowsinblock <= 32) {
+                dot1 = ghost_partialWarpReduceSum(dot1,nrowsinblock,warpSize);
+                dot2 = ghost_partialWarpReduceSum(dot2,nrowsinblock,warpSize);
+                dot3 = ghost_partialWarpReduceSum(dot3,nrowsinblock,warpSize);
+                if (threadIdx.x%nrowsinblock == 0) {
+                    fromReal<v_t,v_t_b>(localdot[0*ncols*gridDim.x + gridDim.x*col + blockIdx.x],dot1);
+                    localdot[1*ncols*gridDim.x + gridDim.x*col + blockIdx.x] = dot2;
+                    fromReal<v_t,v_t_b>(localdot[2*ncols*gridDim.x + gridDim.x*col + blockIdx.x],dot3);
                 }
             } else {
-                dot = ghost_partialBlockReduceSum(dot,SELL_CUDA_THREADSPERBLOCK/ncols/warpSize);
+                dot1 = ghost_1dPartialBlockReduceSum(dot1,nrowsinblock/warpSize);
                 __syncthreads();
-                    
-                col = threadIdx.x/(SELL_CUDA_THREADSPERBLOCK/ncols/warpSize);
-                if (!(threadIdx.x%(SELL_CUDA_THREADSPERBLOCK/ncols/warpSize)) && col<ncols) {
-                    fromReal<v_t,v_t_b>(localdot[0*ncols*gridDim.x + gridDim.x*col + blockIdx.x],dot);
+                dot2 = ghost_1dPartialBlockReduceSum(dot2,nrowsinblock/warpSize);
+                __syncthreads();
+                dot3 = ghost_1dPartialBlockReduceSum(dot3,nrowsinblock/warpSize);
+                __syncthreads();
+
+                if ((threadIdx.x<blockDim.x/warpSize) && threadIdx.x%(nrowsinblock/warpSize) == 0) {
+                    col=threadIdx.x/(blockDim.x/(warpSize*ncolsinblock));
+                    fromReal<v_t,v_t_b>(localdot[0*ncols*gridDim.x + gridDim.x*col + blockIdx.x],dot1);
+                    localdot[1*ncols*gridDim.x + gridDim.x*col + blockIdx.x] = dot2;
+                    fromReal<v_t,v_t_b>(localdot[2*ncols*gridDim.x + gridDim.x*col + blockIdx.x],dot3);
                 }
             }
-        }
-        if (do_dot_xy) {
-            v_t dot;
-            zero<v_t>(dot);
-        
-            row = blockDim.x/ncols*blockIdx.x+threadIdx.x%(SELL_CUDA_THREADSPERBLOCK/ncols);
-            col = threadIdx.x/(SELL_CUDA_THREADSPERBLOCK/ncols);
-        
-
-            __syncthreads();
-            if (row<nrows) {
-                dot = mulConj<v_t>(rhs[rhs_lda*row+col],lhs[lhs_lda*row+col]);
-            }
-
-
-            if (SELL_CUDA_THREADSPERBLOCK/ncols <= 32) {
-                dot = ghost_partialWarpReduceSum(dot,SELL_CUDA_THREADSPERBLOCK/ncols);
-                __syncthreads();
-                
-                if (!(threadIdx.x%(SELL_CUDA_THREADSPERBLOCK/ncols))) {
-                    localdot[1*ncols*gridDim.x + gridDim.x*col + blockIdx.x] = dot;
-                }
-            } else {
-                dot = ghost_partialBlockReduceSum(dot,SELL_CUDA_THREADSPERBLOCK/ncols/warpSize);
-                __syncthreads();
-                
-                col = threadIdx.x/(SELL_CUDA_THREADSPERBLOCK/ncols/warpSize);
-                if (!(threadIdx.x%(SELL_CUDA_THREADSPERBLOCK/ncols/warpSize)) && col<ncols) {
-                    localdot[1*ncols*gridDim.x + gridDim.x*col + blockIdx.x] = dot;
-                }
-            }
-        }
-        if (do_dot_xx) {
-            v_t_b dot;
-            zero<v_t_b>(dot);
-        
-            row = blockDim.x/ncols*blockIdx.x+threadIdx.x%(SELL_CUDA_THREADSPERBLOCK/ncols);
-            col = threadIdx.x/(SELL_CUDA_THREADSPERBLOCK/ncols);
-        
-
-            __syncthreads();
-            if (row<nrows) {
-                dot = mulConjSame<v_t,v_t_b>(lhs[lhs_lda*row+col]);
-            }
-
-
-            if (SELL_CUDA_THREADSPERBLOCK/ncols <= 32) {
-                dot = ghost_partialWarpReduceSum(dot,SELL_CUDA_THREADSPERBLOCK/ncols);
-                __syncthreads();
-                
-                if (!(threadIdx.x%(SELL_CUDA_THREADSPERBLOCK/ncols))) {
-                    fromReal<v_t,v_t_b>(localdot[0*ncols*gridDim.x + gridDim.x*col + blockIdx.x],dot);
-                }
-            } else {
-                dot = ghost_partialBlockReduceSum(dot,SELL_CUDA_THREADSPERBLOCK/ncols/warpSize);
-                __syncthreads();
-                    
-                col = threadIdx.x/(SELL_CUDA_THREADSPERBLOCK/ncols/warpSize);
-                if (!(threadIdx.x%(SELL_CUDA_THREADSPERBLOCK/ncols/warpSize)) && col<ncols) {
-                    fromReal<v_t,v_t_b>(localdot[2*ncols*gridDim.x + gridDim.x*col + blockIdx.x],dot);
-                }
-            }
+            
         }
     }
 
 #endif
 
 }
-
-    template<typename m_t, typename v_t, typename v_t_b, int C, int ncols, bool do_axpby, bool do_scale, bool do_vshift, bool do_dot_yy, bool do_dot_xy, bool do_dot_xx, bool do_chain_axpby>  
-__global__ void SELL_kernel_CU_rm_tmpl(v_t * const __restrict__ lhs, const int lhs_lda, const v_t * const __restrict__ rhs, const int rhs_lda, const ghost_spmv_flags_t flags, const int nrows, const ghost_lidx_t * const __restrict__ rowlen, const ghost_lidx_t * const __restrict__ mcol, const m_t * const __restrict__ val, const ghost_lidx_t * const __restrict__ chunkstart, const v_t * const __restrict__ shift, const v_t alpha, const v_t beta, v_t * const __restrict__ localdot, v_t * const __restrict__ z, const int z_lda, const v_t delta, const v_t eta)
-{
-    int i = threadIdx.y+blockIdx.x*blockDim.y;
-    int col = blockDim.x*blockIdx.y+threadIdx.x;
-
-    if (i<nrows) {
-        int cs, tid;
-        if (C == blockDim.y) {
-            cs = chunkstart[blockIdx.x];
-            tid = threadIdx.y;
-        } else {
-            cs = chunkstart[i/C];
-            tid = threadIdx.y%C;
-        }
-        int j;
-        v_t tmp;
-
-        zero<v_t>(tmp);
-
-        for (j=0; j<rowlen[i]; j++) {
-            tmp = axpy<v_t,m_t>(tmp, rhs[rhs_lda*mcol[cs + tid + j*C]+col], val[cs+tid+j*C]);
-        }
-
-        if (do_vshift) {
-            tmp = axpy<v_t,v_t>(tmp,rhs[rhs_lda*i+col],scale2<v_t,float>(shift[col],-1.f));
-        }
-        if (do_scale) {
-            tmp = scale<v_t>(alpha,tmp);
-        }
-        if (do_axpby) {
-            lhs[lhs_lda*i+col] = axpy<v_t,v_t>(tmp,lhs[lhs_lda*i+col],beta);
-        } else {
-            lhs[lhs_lda*i+col] = tmp;
-        }
-        if (do_chain_axpby) {
-            z[z_lda*i+col] = axpby<v_t>(lhs[lhs_lda*i+col],z[z_lda*i+col],eta,delta);
-        }
-    }
-#ifdef LOCALDOT_ONTHEFLY 
-    if (do_dot_yy && do_dot_xy && do_dot_xx) {
-        v_t_b dot1,dot3; 
-        v_t dot2; 
-        zero<v_t_b>(dot1);
-        zero<v_t>(dot2);
-        zero<v_t_b>(dot3);
-
-        i = threadIdx.x+blockIdx.x*blockDim.y;
-        col = blockDim.x*blockIdx.y+threadIdx.y;
-
-        __syncthreads();
-        if (i<nrows) {
-            dot1 = mulConjSame<v_t,v_t_b>(lhs[lhs_lda*i+col]);
-            dot2 = mulConj<v_t>(rhs[rhs_lda*i+col],lhs[lhs_lda*i+col]);
-            dot3 = mulConjSame<v_t,v_t_b>(rhs[rhs_lda*i+col]);
-        }
-        dot1 = ghost_warpReduceSum(dot1);
-        dot2 = ghost_warpReduceSum(dot2);
-        dot3 = ghost_warpReduceSum(dot3);
-
-        if (threadIdx.x==0) {
-            fromReal<v_t,v_t_b>(localdot[0*gridDim.y*blockDim.x*gridDim.x + gridDim.x*threadIdx.y + blockIdx.x], dot1);
-            localdot[1*gridDim.y*blockDim.x*gridDim.x + gridDim.x*threadIdx.y + blockIdx.x] = dot2;
-            fromReal<v_t,v_t_b>(localdot[2*gridDim.y*blockDim.x*gridDim.x + gridDim.x*threadIdx.y + blockIdx.x], dot3);
-        }
-    } else if (do_dot_xy && do_dot_xx) {
-        v_t_b dot3; 
-        v_t dot2; 
-        zero<v_t>(dot2);
-        zero<v_t_b>(dot3);
-
-        i = threadIdx.x+blockIdx.x*blockDim.y;
-        col = blockDim.x*blockIdx.y+threadIdx.y;
-
-        __syncthreads();
-        if (i<nrows) {
-            dot2 = mulConj<v_t>(rhs[rhs_lda*i+col],lhs[lhs_lda*i+col]);
-            dot3 = mulConjSame<v_t,v_t_b>(rhs[rhs_lda*i+col]);
-        }
-        dot2 = ghost_warpReduceSum(dot2);
-        dot3 = ghost_warpReduceSum(dot3);
-
-        if (threadIdx.x==0) {
-            localdot[1*gridDim.y*blockDim.x*gridDim.x + gridDim.x*threadIdx.y + blockIdx.x] = dot2;
-            fromReal<v_t,v_t_b>(localdot[2*gridDim.y*blockDim.x*gridDim.x + gridDim.x*threadIdx.y + blockIdx.x], dot3);
-        }
-    } else {
-        if (do_dot_yy) {
-            v_t_b dot; 
-            zero<v_t_b>(dot);
-
-            i = threadIdx.x+blockIdx.x*blockDim.y;
-            col = blockDim.x*blockIdx.y+threadIdx.y;
-
-            __syncthreads();
-            if (i<nrows) {
-                dot = mulConjSame<v_t,v_t_b>(rhs[rhs_lda*i+col]);
-            }
-            dot = ghost_warpReduceSum(dot);
-
-            if (threadIdx.x==0) {
-                fromReal<v_t,v_t_b>(localdot[0*gridDim.y*blockDim.x*gridDim.x + gridDim.x*threadIdx.y + blockIdx.x], dot);
-            }
-        }
-        if (do_dot_xy) {
-            v_t dot; 
-            zero<v_t>(dot);
-
-            i = threadIdx.x+blockIdx.x*blockDim.y;
-            col = blockDim.x*blockIdx.y+threadIdx.y;
-
-            __syncthreads();
-            if (i<nrows) {
-                dot = mulConj<v_t>(lhs[lhs_lda*i+col],rhs[rhs_lda*i+col]);
-            }
-            dot = ghost_warpReduceSum(dot);
-
-            if (threadIdx.x==0) {
-                localdot[1*gridDim.y*blockDim.x*gridDim.x + gridDim.x*threadIdx.y + blockIdx.x] = *(v_t *)&dot;
-            }
-        }
-        if (do_dot_xx) {
-            v_t_b dot; 
-            zero<v_t_b>(dot);
-
-            i = threadIdx.x+blockIdx.x*blockDim.y;
-            col = blockDim.x*blockIdx.y+threadIdx.y;
-
-            __syncthreads();
-            if (i<nrows) {
-                dot = mulConjSame<v_t,v_t_b>(rhs[rhs_lda*i+col]);
-            }
-            dot = ghost_warpReduceSum(dot);
-
-            if (threadIdx.x==0) {
-                localdot[2*gridDim.y*blockDim.x*gridDim.x + gridDim.x*threadIdx.y + blockIdx.x] = *(v_t *)&dot;
-            }
-        }
-    }
-
-#endif
-
-}
-
-template<typename m_t, typename v_t, typename v_t_b, int C, int ncols, bool do_axpby, bool do_scale, bool do_vshift, bool do_dot_yy, bool do_dot_xy, bool do_dot_xx, bool do_chain_axpby>  
-__global__ void SELL_kernel_CU_tmpl(
-        v_t * const __restrict__ lhs, const int lhs_lda, const v_t * const __restrict__ rhs, const int rhs_lda, const ghost_spmv_flags_t flags, const int nrows, const ghost_lidx_t * const __restrict__ rowlen, const ghost_lidx_t * const __restrict__ mcol, const m_t * const __restrict__ val, const ghost_lidx_t * const __restrict__ chunkstart, const v_t * const __restrict__ shift, const v_t alpha, const v_t beta, v_t * const __restrict__ localdot, v_t * const __restrict__ z, const int z_lda, const v_t delta, const v_t eta)
+    
+template<typename m_t, typename v_t, typename v_t_b, int nrowsinblock, int C, int ncols, bool do_axpby, bool do_scale, bool do_vshift, bool do_dot_yy, bool do_dot_xy, bool do_dot_xx, bool do_chain_axpby>  
+__global__ void SELL_kernel_CU_cm_tmpl(
+        v_t * const __restrict__ lhs, const int lhs_lda, const v_t * const __restrict__ rhs, const int rhs_lda, const ghost_spmv_flags flags, const int nrows, const ghost_lidx * const __restrict__ rowlen, const ghost_lidx * const __restrict__ mcol, const m_t * const __restrict__ val, const ghost_lidx * const __restrict__ chunkstart, const v_t * const __restrict__ shift, const v_t alpha, const v_t beta, v_t * const __restrict__ localdot, v_t * const __restrict__ z, const int z_lda, const v_t delta, const v_t eta)
 {
     int i = threadIdx.x+blockIdx.x*blockDim.x;
     int col = blockDim.y*blockIdx.y+threadIdx.y;
 
-    if (i<nrows) {
+    if (i<nrows && col<ncols) {
         int cs, tid;
         if (C == blockDim.x) {
             cs = chunkstart[blockIdx.x];
@@ -738,12 +387,11 @@ __global__ void SELL_kernel_CU_tmpl(
         dot2 = ghost_blockReduceSum(dot2);
         __syncthreads();
         dot3 = ghost_blockReduceSum(dot3);
-        __syncthreads();
 
         if (threadIdx.x==0) {
-            fromReal<v_t,v_t_b>(localdot[0*gridDim.y*blockDim.y*gridDim.x + 3*col + blockIdx.x],dot1);
-            localdot[1*gridDim.y*blockDim.y*gridDim.x + 3*col + blockIdx.x] = dot2;
-            fromReal<v_t,v_t_b>(localdot[2*gridDim.y*blockDim.y*gridDim.x + 3*col + blockIdx.x],dot3);
+            fromReal<v_t,v_t_b>(localdot[0*ncols*gridDim.x + gridDim.x*col + blockIdx.x],dot1);
+            localdot[1*ncols*gridDim.x + gridDim.x*col + blockIdx.x] = dot2;
+            fromReal<v_t,v_t_b>(localdot[2*ncols*gridDim.x + gridDim.x*col + blockIdx.x],dot3);
         }
     } else {
         if (do_dot_yy) {
@@ -758,7 +406,7 @@ __global__ void SELL_kernel_CU_tmpl(
             __syncthreads();
 
             if (threadIdx.x==0) {
-                fromReal<v_t,v_t_b>(localdot[0*gridDim.y*blockDim.y*gridDim.x + 3*col + blockIdx.x],dot);
+                fromReal<v_t,v_t_b>(localdot[0*ncols*gridDim.x + gridDim.x*col + blockIdx.x],dot);
             }
         }
         if (do_dot_xy) {
@@ -773,7 +421,7 @@ __global__ void SELL_kernel_CU_tmpl(
             __syncthreads();
 
             if (threadIdx.x==0) {
-                localdot[1*gridDim.y*blockDim.y*gridDim.x + 3*col + blockIdx.x] = dot;
+                localdot[1*ncols*gridDim.x + gridDim.x*col + blockIdx.x] = dot;
             }
         }
         if (do_dot_xx) {
@@ -788,7 +436,7 @@ __global__ void SELL_kernel_CU_tmpl(
             __syncthreads();
 
             if (threadIdx.x==0) {
-                fromReal<v_t,v_t_b>(localdot[2*gridDim.y*blockDim.y*gridDim.x + 3*col + blockIdx.x],dot);
+                fromReal<v_t,v_t_b>(localdot[2*ncols*gridDim.x + gridDim.x*col + blockIdx.x],dot);
             }
         }
     }
@@ -797,14 +445,14 @@ __global__ void SELL_kernel_CU_tmpl(
 }
 
 template<typename m_dt, typename v_dt_host, typename v_dt_device, typename v_dt_base>
-static ghost_error_t ghost_cu_sell_spmv_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags, va_list argp)
+static ghost_error ghost_cu_sell_spmv_tmpl(ghost_sparsemat *mat, ghost_densemat *lhs, ghost_densemat *rhs, ghost_spmv_opts traits)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     cudaGetLastError(); /* Remove previous error */
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
     void *lhsval, *rhsval, *zval;
     int zstride;
-    ghost_densemat_t *lhscompact, *rhscompact, *zcompact;
+    ghost_densemat *lhscompact, *rhscompact, *zcompact;
     if (lhs->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         PERFWARNING_LOG("Cloning (and compressing) lhs before operation");
         GHOST_CALL_RETURN(lhs->clone(lhs,&lhscompact,lhs->traits.nrows,0,lhs->traits.ncols,0));
@@ -817,74 +465,74 @@ static ghost_error_t ghost_cu_sell_spmv_tmpl(ghost_sparsemat_t *mat, ghost_dense
     } else {
         rhscompact = rhs;
     }
-    GHOST_CALL_RETURN(ghost_densemat_cu_valptr(lhscompact,&lhsval));
-    GHOST_CALL_RETURN(ghost_densemat_cu_valptr(rhscompact,&rhsval));
+    lhsval = lhscompact->cu_val;
+    rhsval = rhscompact->cu_val;
     int cu_device;
     GHOST_CALL_RETURN(ghost_cu_device(&cu_device));
     v_dt_device *cu_localdot = NULL;
     v_dt_device *cu_shift = NULL;
     v_dt_host *localdot = NULL;
     v_dt_device *shift, scale, beta, sdelta,seta;
-    ghost_densemat_t *z = NULL;
+    ghost_densemat *z = NULL;
     dim3 block, grid;
-    GHOST_SPMV_PARSE_ARGS(flags,argp,scale,beta,shift,localdot,z,sdelta,seta,v_dt_host,v_dt_device);
+    GHOST_SPMV_PARSE_TRAITS(traits,scale,beta,shift,localdot,z,sdelta,seta,v_dt_host,v_dt_device);
     if (z && (z->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
-        PERFWARNING_LOG("Cloning (and compressing) rhs before operation");
+        PERFWARNING_LOG("Cloning (and compressing) z before operation");
         GHOST_CALL_RETURN(z->clone(z,&zcompact,z->traits.nrows,0,z->traits.ncols,0));
     } else {
         zcompact = z;
     }
     if (z) {
         zstride = z->stride;
-        GHOST_CALL_RETURN(ghost_densemat_cu_valptr(zcompact,&zval));
+        zval = zcompact->cu_val;
     } else {
         zstride = 0;
     }
-    if (flags & GHOST_SPMV_AXPY) {
+    if (traits.flags & GHOST_SPMV_AXPY) {
         v_dt_host hbeta = 1.;
         beta = *((v_dt_device *)&hbeta);
     }
     strcpy(boolstr,"\0");
-    if (flags & GHOST_SPMV_AXPBY || flags & GHOST_SPMV_AXPY) {
+    if (traits.flags & GHOST_SPMV_AXPBY || traits.flags & GHOST_SPMV_AXPY) {
         strcat(boolstr,"true,");
     } else {
         strcat(boolstr,"false,");
     }
-    if (flags & GHOST_SPMV_SCALE) {
+    if (traits.flags & GHOST_SPMV_SCALE) {
         strcat(boolstr,"true,");
     } else {
         strcat(boolstr,"false,");
     }
-    if (flags & GHOST_SPMV_VSHIFT || flags & GHOST_SPMV_SHIFT) {
+    if (traits.flags & GHOST_SPMV_VSHIFT || traits.flags & GHOST_SPMV_SHIFT) {
         strcat(boolstr,"true,");
     } else {
         strcat(boolstr,"false,");
     }
-    if (flags & GHOST_SPMV_DOT_YY) {
+    if (traits.flags & GHOST_SPMV_DOT_YY) {
         strcat(boolstr,"true,");
     } else {
         strcat(boolstr,"false,");
     }
-    if (flags & GHOST_SPMV_DOT_XY) {
+    if (traits.flags & GHOST_SPMV_DOT_XY) {
         strcat(boolstr,"true,");
     } else {
         strcat(boolstr,"false,");
     }
-    if (flags & GHOST_SPMV_DOT_XX) {
+    if (traits.flags & GHOST_SPMV_DOT_XX) {
         strcat(boolstr,"true,");
     } else {
         strcat(boolstr,"false,");
     }
-    if (flags & GHOST_SPMV_CHAIN_AXPBY) {
+    if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
         strcat(boolstr,"true");
     } else {
         strcat(boolstr,"false");
     }
-    if (flags & (GHOST_SPMV_SHIFT|GHOST_SPMV_VSHIFT)) {
-        size_t shiftsize = sizeof(v_dt_device)*(flags & (GHOST_SPMV_VSHIFT|GHOST_SPMV_SHIFT)?rhs->traits.ncols:0);
+    if (traits.flags & (GHOST_SPMV_SHIFT|GHOST_SPMV_VSHIFT)) {
+        size_t shiftsize = sizeof(v_dt_device)*(traits.flags & (GHOST_SPMV_VSHIFT|GHOST_SPMV_SHIFT)?rhs->traits.ncols:0);
         GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_shift,shiftsize));
-        if (flags & GHOST_SPMV_SHIFT) {
-            ghost_lidx_t c;
+        if (traits.flags & GHOST_SPMV_SHIFT) {
+            ghost_lidx c;
             for (c=0; c<rhs->traits.ncols; c++) {
                 GHOST_CALL_RETURN(ghost_cu_upload(&cu_shift[c],shift,sizeof(v_dt_device)));
             }
@@ -893,98 +541,115 @@ static ghost_error_t ghost_cu_sell_spmv_tmpl(ghost_sparsemat_t *mat, ghost_dense
         }
     }
 
-    ghost_cu_deviceprop_t prop;
-    GHOST_CALL_RETURN(ghost_cu_deviceprop(&prop));
+    ghost_cu_deviceprop prop;
+    GHOST_CALL_RETURN(ghost_cu_deviceprop_get(&prop));
         
        
     GHOST_INSTR_START("spmv_cuda")
-    if (rhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
-        block.x = SELL_CUDA_THREADSPERBLOCK/MIN(MAX_COLS_PER_BLOCK,rhs->traits.ncols);
-        block.y = MIN(MAX_COLS_PER_BLOCK,rhs->traits.ncols);
-        grid.x = (int)ceil(mat->nrowsPadded/(double)block.x);
-        grid.y = (int)(ceil(rhs->traits.ncols/(double)MAX_COLS_PER_BLOCK));
-        if (flags & GHOST_SPMV_DOT_ANY) {
+    if (rhs->traits.storage == GHOST_DENSEMAT_COLMAJOR || (rhs->stride == 1)) {
+        block.x = PAD(CEILDIV(SELL_CUDA_THREADSPERBLOCK,MIN(MAX_COLS_PER_BLOCK_COLMAJOR,rhs->traits.ncols)),32);
+        block.y = MIN(MAX_COLS_PER_BLOCK_COLMAJOR,rhs->traits.ncols);
+        while(block.x*block.y > SELL_CUDA_THREADSPERBLOCK && block.x > 32) {
+            block.x -= 32;
+        }
+
+        grid.x = CEILDIV(mat->nrowsPadded,block.x);
+        grid.y = CEILDIV(rhs->traits.ncols,MAX_COLS_PER_BLOCK_COLMAJOR);
+        if (traits.flags & GHOST_SPMV_DOT) {
             GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
         }
         size_t reqSmem = 0;
-        if (flags & GHOST_SPMV_DOT_ANY) {
+        if (traits.flags & GHOST_SPMV_DOT) {
             reqSmem = sizeof(v_dt_device)*32*block.y;
         }
         if (prop.sharedMemPerBlock < reqSmem) {
             WARNING_LOG("Not enough shared memory available! CUDA kernel will not execute!");
         }
         DEBUG_LOG(1,"grid %dx%d block %dx%d shmem %zu",grid.x,grid.y,block.x,block.y,reqSmem);
-        SELL_CU_SPMV_SELECTOR(SELL_kernel_CU_tmpl,m_dt,v_dt_device,v_dt_base,grid,block,reqSmem)
-    } else if (rhs->traits.ncols == 32) {
-        DEBUG_LOG(1,"Experimental row-major CUDA SELL-SpMMV");
-        block.x = 32;
-        block.y = SELL_CUDA_THREADSPERBLOCK/block.x;
-        grid.x = (int)ceil(mat->nrows/((double)block.y*block.x/rhs->traits.ncols));
-        grid.y = (int)(ceil(rhs->traits.ncols/(double)MAX_COLS_PER_BLOCK));
-        if (flags & GHOST_SPMV_DOT_ANY) {
-            GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
-        }
-        size_t reqSmem = 0;
-        if (prop.sharedMemPerBlock < reqSmem) {
-            WARNING_LOG("Not enough shared memory available! CUDA kernel will not execute!");
-        }
-        DEBUG_LOG(1,"grid %dx%d block %dx%d shmem %zu",grid.x,grid.y,block.x,block.y,reqSmem);
-        SELL_CU_SPMV_SELECTOR(SELL_kernel_CU_rm_tmpl,m_dt,v_dt_device,v_dt_base,grid,block,reqSmem)
-        /*INFO_LOG("Very experimental row-major CUDA SELL-SpMMV");
-        block.x = 32;
-        block.y = 32;
-        grid.x = (int)ceil(mat->nrows/block.x);
-        grid.y = 1;
-        INFO_LOG("grid %dx%d block %dx%d",grid.x,grid.y,block.x,block.y);
-        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(dt2)*rhs->traits.ncols*3*grid.x));
-        SELL_CU_SPMV_SELECTOR(SELL_kernel_CU_rm_tmpl_v2,dt1,dt2,grid,block,0)*/
+        SELL_CU_SPMV_SELECTOR(SELL_kernel_CU_cm_tmpl,m_dt,v_dt_device,v_dt_base,0,grid,block,reqSmem)
     } else {
-        DEBUG_LOG(1,"Experimental row-major CUDA SELL-SpMMV with ncols != 32");
-        /*block.x = MIN(MAX_COLS_PER_BLOCK,rhs->traits.ncols);*/
-        block.x = SELL_CUDA_THREADSPERBLOCK;
-        block.y = 1;
-        grid.x = (int)ceil(mat->nrows/((double)block.y*block.x/(double)rhs->traits.ncols));
-        grid.y = 1;
-        if (flags & GHOST_SPMV_DOT_ANY) {
-            GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
+        if (rhs->traits.ncols > 8) { // 16 rows per block, 9...16 columns per block, 144...256 threads per block
+            const int nrowsinblock = 16;
+            grid.x = CEILDIV(mat->nrows,nrowsinblock);
+            grid.y = CEILDIV(rhs->traits.ncols,nrowsinblock);
+            block.x = nrowsinblock*CEILDIV(rhs->traits.ncols,grid.y);
+            if (traits.flags & GHOST_SPMV_DOT) {
+                GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
+            }
+            DEBUG_LOG(1,"grid %dx%d block %dx%d nrowsinblock %d",grid.x,grid.y,block.x,block.y,nrowsinblock);
+            SELL_CU_SPMV_SELECTOR(SELL_kernel_CU_rm_tmpl,m_dt,v_dt_device,v_dt_base,nrowsinblock,grid,block,0)
+        } else if (rhs->traits.ncols > 4) { // 32 rows per block, 5...8 columns per block, 160...256 threads per block
+            const int nrowsinblock = 32;
+            grid.x = CEILDIV(mat->nrows,nrowsinblock);
+            grid.y = 1;
+            block.x = nrowsinblock*rhs->traits.ncols;
+            if (traits.flags & GHOST_SPMV_DOT) {
+                GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
+            }
+            DEBUG_LOG(1,"grid %dx%d block %dx%d nrowsinblock %d",grid.x,grid.y,block.x,block.y,nrowsinblock);
+            SELL_CU_SPMV_SELECTOR(SELL_kernel_CU_rm_tmpl,m_dt,v_dt_device,v_dt_base,nrowsinblock,grid,block,0)
+        } else if (rhs->traits.ncols > 2) { // 64 rows per block, 3...4 columns per block, 192...256 threads per block
+            const int nrowsinblock = 64;
+            grid.x = CEILDIV(mat->nrows,nrowsinblock);
+            grid.y = 1;
+            block.x = nrowsinblock*rhs->traits.ncols;
+            if (traits.flags & GHOST_SPMV_DOT) {
+                GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
+            }
+            int smem = (block.x/32)*sizeof(v_dt_device);
+            DEBUG_LOG(1,"grid %dx%d block %dx%d nrowsinblock %d smem %d",grid.x,grid.y,block.x,block.y,nrowsinblock,smem);
+            SELL_CU_SPMV_SELECTOR(SELL_kernel_CU_rm_tmpl,m_dt,v_dt_device,v_dt_base,nrowsinblock,grid,block,smem)
+        } else if (rhs->traits.ncols > 1) { // 64 rows per block, 3...4 columns per block, 192...256 threads per block
+            const int nrowsinblock = 128;
+            grid.x = CEILDIV(mat->nrows,nrowsinblock);
+            grid.y = 1;
+            block.x = nrowsinblock*rhs->traits.ncols;
+            if (traits.flags & GHOST_SPMV_DOT) {
+                GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
+            }
+            int smem = (block.x/32)*sizeof(v_dt_device);
+            DEBUG_LOG(1,"grid %dx%d block %dx%d nrowsinblock %d smem %d",grid.x,grid.y,block.x,block.y,nrowsinblock,smem);
+            SELL_CU_SPMV_SELECTOR(SELL_kernel_CU_rm_tmpl,m_dt,v_dt_device,v_dt_base,nrowsinblock,grid,block,smem)
+        } else {
+            const int nrowsinblock = 256;
+            grid.x = CEILDIV(mat->nrows,nrowsinblock);
+            grid.y = 1;
+            block.x = nrowsinblock*rhs->traits.ncols;
+            if (traits.flags & GHOST_SPMV_DOT) {
+                GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
+            }
+            int smem = (block.x/32)*sizeof(v_dt_device);
+            DEBUG_LOG(1,"grid %dx%d block %dx%d nrowsinblock %d smem %d",grid.x,grid.y,block.x,block.y,nrowsinblock,smem);
+            SELL_CU_SPMV_SELECTOR(SELL_kernel_CU_rm_tmpl,m_dt,v_dt_device,v_dt_base,nrowsinblock,grid,block,smem)
         }
-        size_t reqSmem = 0;
-        if ((flags & GHOST_SPMV_DOT_ANY) && (SELL_CUDA_THREADSPERBLOCK/rhs->traits.ncols > 32)) {
-            reqSmem = sizeof(v_dt_device)*32;
-        }
-        if (prop.sharedMemPerBlock < reqSmem) {
-            WARNING_LOG("Not enough shared memory available! CUDA kernel will not execute!");
-        }
-        DEBUG_LOG(1,"grid %dx%d block %dx%d shmem %zu",grid.x,grid.y,block.x,block.y,reqSmem);
-        SELL_CU_SPMV_SELECTOR(SELL_kernel_CU_rm_1dblock_tmpl,m_dt,v_dt_device,v_dt_base,grid,block,reqSmem)
     }
     CUDA_CALL_RETURN(cudaGetLastError());
     if (lhscompact != lhs) {
         DEBUG_LOG(1,"Transform lhs back");
         GHOST_CALL_RETURN(lhs->fromVec(lhs,lhscompact,0,0));
-        lhscompact->destroy(lhscompact);
+        ghost_densemat_destroy(lhscompact);
     }
     if (rhscompact != rhs) {
         DEBUG_LOG(1,"Transform rhs back");
         GHOST_CALL_RETURN(rhs->fromVec(rhs,rhscompact,0,0));
-        rhscompact->destroy(rhscompact);
+        ghost_densemat_destroy(rhscompact);
     }
     cudaDeviceSynchronize();
     GHOST_INSTR_STOP("spmv_cuda")
-    if (flags & GHOST_SPMV_DOT_ANY) {
+    if (traits.flags & GHOST_SPMV_DOT) {
 #ifdef LOCALDOT_ONTHEFLY
         GHOST_INSTR_START("spmv_cuda_dot_reduction")
-        ghost_lidx_t col;
+        ghost_lidx col;
         for (col=0; col<rhs->traits.ncols; col++) {
             deviceReduce3<v_dt_device>(&cu_localdot[grid.x*col], &cu_localdot[col], rhs->traits.ncols*grid.x, grid.x);
         }
-        if (flags & GHOST_SPMV_DOT_YY) {
+        if (traits.flags & GHOST_SPMV_DOT_YY) {
             GHOST_CALL_RETURN(ghost_cu_download(localdot,cu_localdot,rhs->traits.ncols*sizeof(v_dt_host)));
         }
-        if (flags & GHOST_SPMV_DOT_XY) {
+        if (traits.flags & GHOST_SPMV_DOT_XY) {
             GHOST_CALL_RETURN(ghost_cu_download(&localdot[rhs->traits.ncols],&cu_localdot[rhs->traits.ncols*grid.x],rhs->traits.ncols*sizeof(v_dt_host)));
         }
-        if (flags & GHOST_SPMV_DOT_XX) {
+        if (traits.flags & GHOST_SPMV_DOT_XX) {
             GHOST_CALL_RETURN(ghost_cu_download(&localdot[2*rhs->traits.ncols],&cu_localdot[2*rhs->traits.ncols*grid.x],rhs->traits.ncols*sizeof(v_dt_host)));
         }
         GHOST_INSTR_STOP("spmv_cuda_dot_reduction")
@@ -998,25 +663,29 @@ static ghost_error_t ghost_cu_sell_spmv_tmpl(ghost_sparsemat_t *mat, ghost_dense
         GHOST_INSTR_STOP("spmv_cuda_dot")
 #endif
     }
-    //if (flags & GHOST_SPMV_CHAIN_AXPBY) {
+    //if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
     //    PERFWARNING_LOG("AXPBY will not be done on-the-fly!");
     //    z->axpby(z,lhs,&seta,&sdelta);
    // }
-    if (flags & GHOST_SPMV_DOT_ANY) {
+    if (traits.flags & GHOST_SPMV_DOT) {
         GHOST_CALL_RETURN(ghost_cu_free(cu_localdot));
     }
-    if (flags & (GHOST_SPMV_SHIFT|GHOST_SPMV_VSHIFT)) {
+    if (traits.flags & (GHOST_SPMV_SHIFT|GHOST_SPMV_VSHIFT)) {
         GHOST_CALL_RETURN(ghost_cu_free(cu_shift));
     }
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
     return ret;
 }
 
-extern "C" ghost_error_t ghost_cu_sell_spmv_selector(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags, va_list argp)
+extern "C" ghost_error ghost_cu_sell_spmv_selector(ghost_densemat *lhs, ghost_sparsemat *mat, ghost_densemat *rhs, ghost_spmv_opts traits)
 {
-    ghost_error_t ret;
+    ghost_error ret;
 
-    SELECT_TMPL_4DATATYPES(mat->traits->datatype,rhs->traits.datatype,ghost_complex,ret,ghost_cu_sell_spmv_tmpl,mat,lhs,rhs,flags,argp);
+    if (mat->traits.C == 1 && rhs->traits.ncols == 1) {
+        INFO_LOG("Calling CUBLAS CRS SpMV for SELL-1 matrix");
+        return ghost_cu_sell1_spmv_selector(lhs,mat,rhs,traits);
+    } 
+    SELECT_TMPL_4DATATYPES(mat->traits.datatype,rhs->traits.datatype,ghost_complex,ret,ghost_cu_sell_spmv_tmpl,mat,lhs,rhs,traits);
 
     return ret;
 }

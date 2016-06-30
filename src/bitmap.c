@@ -1,13 +1,15 @@
 #include "ghost/bitmap.h"
+#include "ghost/func_util.h"
 
 
 
-ghost_error_t ghost_bitmap_copy_indices(ghost_bitmap_t dst, ghost_lidx_t *offset, ghost_bitmap_t src, ghost_lidx_t *idx, ghost_lidx_t nidx)
+ghost_error ghost_bitmap_copy_indices(ghost_bitmap dst, ghost_lidx *offset, ghost_bitmap src, ghost_lidx *idx, ghost_lidx nidx)
 {
-    ghost_lidx_t origbit = -1;
-    ghost_lidx_t previdx = -1;
-    ghost_lidx_t i, j;
-    ghost_lidx_t off = 0;
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+    ghost_lidx origbit = -1;
+    ghost_lidx previdx = -1;
+    ghost_lidx i, j;
+    ghost_lidx off = 0;
     
     for (i=0; i<nidx; i++) {
         for (j=0; j<idx[i]-previdx; j++) { // skip gaps
@@ -24,6 +26,7 @@ ghost_error_t ghost_bitmap_copy_indices(ghost_bitmap_t dst, ghost_lidx_t *offset
         *offset = off;
     }
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return GHOST_SUCCESS;
 } 
     

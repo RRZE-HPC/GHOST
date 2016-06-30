@@ -8,7 +8,7 @@
 
 #include "error.h"
 
-typedef void * (*ghost_errorhandler_t)(void *error);
+typedef void * (*ghost_errorhandler)(void *error);
 
 #ifdef __cplusplus
 extern "C" {
@@ -21,7 +21,7 @@ extern "C" {
      *
      * @return The error handler of NULL if none is set.
      */
-    ghost_errorhandler_t ghost_errorhandler_get(ghost_error_t e);
+    ghost_errorhandler ghost_errorhandler_get(ghost_error e);
 
 
     /**
@@ -30,7 +30,7 @@ extern "C" {
      * @param e The error.
      * @param h The handler.
      */
-    ghost_error_t ghost_errorhandler_set(ghost_error_t e, ghost_errorhandler_t h);
+    ghost_error ghost_errorhandler_set(ghost_error e, ghost_errorhandler h);
 #ifdef __cplusplus
 }
 #endif

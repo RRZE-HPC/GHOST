@@ -1,57 +1,63 @@
 #ifndef GHOST_CU_SELL_KERNEL_H
 #define GHOST_CU_SELL_KERNEL_H
 
+#include "ghost/cu_complex.h"
+#include <cuda.h>
+
 extern __shared__ char shared[];
+
+// double precision version only present from CUDA 6.5 onwards
+#if CUDA_VERSION < 6050
+__device__ inline
+double __shfl_down(double var, unsigned int srcLane, int width=32) {
+    int2 a = *reinterpret_cast<int2*>(&var);
+    a.x = __shfl_down(a.x, srcLane, width);
+    a.y = __shfl_down(a.y, srcLane, width);
+    return *reinterpret_cast<double*>(&a);
+}
+#endif
 
 template<typename v_t>
 __device__ inline
-v_t ghost_shfl_down(v_t var, unsigned int srcLane) {
-    return __shfl_down(var, srcLane, warpSize);
+v_t ghost_shfl_down(v_t var, unsigned int srcLane, int width) {
+    return __shfl_down(var, srcLane, width);
 }
 
 template<>
 __device__ inline
-double ghost_shfl_down<double>(double var, unsigned int srcLane) {
-    int2 a = *reinterpret_cast<int2*>(&var);
-    a.x = __shfl_down(a.x, srcLane, warpSize);
-    a.y = __shfl_down(a.y, srcLane, warpSize);
-    return *reinterpret_cast<double*>(&a);
-}
-
-template<>
-__device__ inline
-cuFloatComplex ghost_shfl_down<cuFloatComplex>(cuFloatComplex var, unsigned int srcLane) {
-    int2 a = *reinterpret_cast<int2*>(&var);
-    a.x = __shfl_down(a.x, srcLane, warpSize);
-    a.y = __shfl_down(a.y, srcLane, warpSize);
+cuFloatComplex ghost_shfl_down<cuFloatComplex>(cuFloatComplex var, unsigned int srcLane, int width) {
+    float2 a = *reinterpret_cast<float2*>(&var);
+    a.x = __shfl_down(a.x, srcLane, width);
+    a.y = __shfl_down(a.y, srcLane, width);
     return *reinterpret_cast<cuFloatComplex*>(&a);
 }
 
 template<>
 __device__ inline
-cuDoubleComplex ghost_shfl_down<cuDoubleComplex>(cuDoubleComplex var, unsigned int srcLane) {
-    int4 a = *reinterpret_cast<int4*>(&var);
-    a.x = __shfl_down(a.x, srcLane, warpSize);
-    a.y = __shfl_down(a.y, srcLane, warpSize);
-    a.z = __shfl_down(a.z, srcLane, warpSize);
-    a.w = __shfl_down(a.w, srcLane, warpSize);
+cuDoubleComplex ghost_shfl_down<cuDoubleComplex>(cuDoubleComplex var, unsigned int srcLane, int width) {
+    double2 a = *reinterpret_cast<double2*>(&var);
+    a.x = __shfl_down(a.x, srcLane, width);
+    a.y = __shfl_down(a.y, srcLane, width);
     return *reinterpret_cast<cuDoubleComplex*>(&a);
 }
 
+// This assumes that the warpSize is 32.
+// Hard-coding this enhances the performance significantly due to unrolling
 template<typename v_t>
 __inline__ __device__
 v_t ghost_warpReduceSum(v_t val) {
-    for (int offset = warpSize/2; offset > 0; offset /= 2) { 
-        val = axpy<v_t>(val,ghost_shfl_down(val, offset),1.f);
+#pragma unroll
+    for (int offset = 32/2; offset > 0; offset /= 2) { 
+        val = accu<v_t>(val,ghost_shfl_down(val, offset, 32));
     }
     return val;
 }
 
 template<typename v_t>
 __inline__ __device__
-v_t ghost_partialWarpReduceSum(v_t val,int size) {
+v_t ghost_partialWarpReduceSum(v_t val,int size, int width) {
     for (int offset = size/2; offset > 0; offset /= 2) { 
-        val = axpy<v_t>(val,ghost_shfl_down(val, offset),1.f);
+        val = accu<v_t>(val,ghost_shfl_down(val, offset, width));
     }
     return val;
 }
@@ -60,9 +66,9 @@ template<>
 __inline__ __device__
 double3 ghost_warpReduceSum<double3>(double3 val) {
     for (int offset = warpSize/2; offset > 0; offset /= 2) { 
-        val.x += ghost_shfl_down(val.x, offset);
-        val.y += ghost_shfl_down(val.y, offset);
-        val.z += ghost_shfl_down(val.z, offset);
+        val.x += ghost_shfl_down(val.x, offset, warpSize);
+        val.y += ghost_shfl_down(val.y, offset, warpSize);
+        val.z += ghost_shfl_down(val.z, offset, warpSize);
     }
     return val;
 }
@@ -89,7 +95,36 @@ v_t ghost_partialBlockReduceSum(v_t val,int size) {
         zero<v_t>(val);
     }
 
-    if (threadIdx.x/warpSize == 0) val = ghost_partialWarpReduceSum(val,size); //Final reduce within first warp
+    if (threadIdx.x/warpSize == 0) val = ghost_partialWarpReduceSum(val,size,warpSize); //Final reduce within first warp
+
+    return val;
+}
+
+template<typename v_t>
+__inline__ __device__
+v_t ghost_1dPartialBlockReduceSum(v_t val, int nwarps) {
+
+    v_t * shmem = (v_t *)shared; // Shared mem for 32 partial sums
+
+    int lane = (threadIdx.x % warpSize);
+    int wid = (threadIdx.x / warpSize);
+
+    val = ghost_warpReduceSum(val);     // Each warp performs partial reduction
+
+    if (threadIdx.x%warpSize == 0) shmem[wid]=val; // Write reduced value to shared memory
+
+    __syncthreads();              // Wait for all partial reductions
+
+    //read from shared memory only if that warp existed
+    if (threadIdx.x < blockDim.x / warpSize) {
+        val = shmem[lane];
+    } else {
+        zero<v_t>(val);
+    }
+
+    if (threadIdx.x/warpSize == 0) {
+        val = ghost_partialWarpReduceSum(val,nwarps,nwarps); //Final reduce within first warp
+    }
 
     return val;
 }
@@ -226,15 +261,15 @@ struct CustomSum
 };
 
 template<typename v_t>
-__global__ void ghost_deviceReduceSum(v_t *in, v_t *out, ghost_lidx_t N)
+__global__ void ghost_deviceReduceSum(v_t *in, v_t *out, ghost_lidx N)
 {
 
-    ghost_lidx_t i;
+    ghost_lidx i;
     v_t sum;
     zero<v_t>(sum);
 
     for (i=blockIdx.x*blockDim.x+threadIdx.x; i<N; i += blockDim.x*gridDim.x) {
-        sum = axpy<v_t>(sum,in[i],1.f);
+        sum = accu<v_t>(sum,in[i]);
     }
     sum = ghost_blockReduceSum(sum);
     if (threadIdx.x == 0) {

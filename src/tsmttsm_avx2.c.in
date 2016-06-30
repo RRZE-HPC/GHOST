@@ -1,3 +1,4 @@
+/*!GHOST_AUTOGEN BLOCKDIM1;BLOCKDIM2 */
 #include "ghost/config.h"
 #include "ghost/types.h"
 #include "ghost/math.h"
@@ -10,16 +11,18 @@
 #include <float.h>
 #include "iaca/iacaMarks.h"
 
+#GHOST_SUBST CFGK ${BLOCKDIM1}
+#GHOST_SUBST CFGM ${BLOCKDIM2}
+
 #define complex_mul(a,b) _mm256_fmaddsub_pd(_mm256_shuffle_pd(b,b,0),a,_mm256_mul_pd(_mm256_shuffle_pd(b,b,0xF),_mm256_shuffle_pd(a,a,5)))
 #define complex_mul_conj1(b,a) _mm256_fmaddsub_pd(_mm256_shuffle_pd(b,b,0),a,_mm256_mul_pd(_mm256_mul_pd(_mm256_shuffle_pd(b,b,0xF),_mm256_set1_pd(-1.)),_mm256_shuffle_pd(a,a,5)))
 
-#GHOST_FUNC_BEGIN#CFGK=${CFG_BLOCKVECTOR_SIZES}#CFGM=${CFG_BLOCKVECTOR_SIZES}
-ghost_error_t ghost_tsmttsm__a_avx2_d_CFGK_CFGM_1_cm_rm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conmv)
+ghost_error ghost_tsmttsm__a_avx2_d_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conmv)
 {
     UNUSED(conmv);
-#ifdef GHOST_HAVE_AVX2
+#ifdef GHOST_BUILD_AVX2
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
 
     int myrank=0;
 
@@ -27,7 +30,7 @@ ghost_error_t ghost_tsmttsm__a_avx2_d_CFGK_CFGM_1_cm_rm(ghost_densemat_t *x, gho
         GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
     }
 
-    ghost_lidx_t n = v->traits.nrows;
+    ghost_lidx n = v->traits.nrows;
     INFO_LOG("In AVX2 TSMTTSM with two fixed block sizes [CFGK][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
 
     if (n%2) {
@@ -39,9 +42,9 @@ ghost_error_t ghost_tsmttsm__a_avx2_d_CFGK_CFGM_1_cm_rm(ghost_densemat_t *x, gho
     const double * const restrict wval = (const double *) w->val;
     double * const restrict xval = (double *) x->val;
 
-    const ghost_lidx_t ldv = v->stride;
-    const ghost_lidx_t ldw = w->stride;
-    const ghost_lidx_t ldx = x->stride;
+    const ghost_lidx ldv = v->stride;
+    const ghost_lidx ldw = w->stride;
+    const ghost_lidx ldx = x->stride;
 
     __m256d betavec, alphavec;
    
@@ -57,9 +60,9 @@ ghost_error_t ghost_tsmttsm__a_avx2_d_CFGK_CFGM_1_cm_rm(ghost_densemat_t *x, gho
         betavec = _mm256_setzero_pd();
     }
 
-    ghost_lidx_t i,m;
+    ghost_lidx i,m;
 
-    ghost_lidx_t k;
+    ghost_lidx k;
     for (k=0; k<CFGK; k++) {
         for (m=0; m+4<=CFGM; m+=4) {
             _mm256_store_pd(&xval[k*ldx+m],_mm256_mul_pd(_mm256_load_pd(&xval[k*ldx+m]),betavec));
@@ -75,7 +78,7 @@ ghost_error_t ghost_tsmttsm__a_avx2_d_CFGK_CFGM_1_cm_rm(ghost_densemat_t *x, gho
         __m256d vvec0, vvec1;
 
         double * restrict x_priv;
-        ghost_lidx_t ldxpriv = PAD(CFGM,4);
+        ghost_lidx ldxpriv = PAD(CFGM,4);
         ghost_malloc_align((void **)&x_priv,ldxpriv*CFGK*sizeof(double),32);
         memset(x_priv,0,ldxpriv*CFGK*sizeof(double));
 
@@ -177,15 +180,13 @@ out:
     return GHOST_ERR_UNKNOWN;
 #endif
 }
-#GHOST_FUNC_END
 
-#GHOST_FUNC_BEGIN#CFGK=${CFG_BLOCKVECTOR_SIZES}#CFGM=${CFG_BLOCKVECTOR_SIZES}
-ghost_error_t ghost_tsmttsm__a_avx2_z_CFGK_CFGM_1_cm_rm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conmv)
+ghost_error ghost_tsmttsm__a_avx2_z_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conmv)
 {
     UNUSED(conmv);
-#ifdef GHOST_HAVE_AVX2
+#ifdef GHOST_BUILD_AVX2
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
 
     int myrank=0;
 
@@ -193,7 +194,7 @@ ghost_error_t ghost_tsmttsm__a_avx2_z_CFGK_CFGM_1_cm_rm(ghost_densemat_t *x, gho
         GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
     }
 
-    ghost_lidx_t n = v->traits.nrows;
+    ghost_lidx n = v->traits.nrows;
     INFO_LOG("In AVX2 TSMTTSM with two fixed block sizes [CFGK][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
 
     if (n%2) {
@@ -205,9 +206,9 @@ ghost_error_t ghost_tsmttsm__a_avx2_z_CFGK_CFGM_1_cm_rm(ghost_densemat_t *x, gho
     const double complex * const restrict wval = (const double complex*) w->val;
     double complex * const restrict xval = (double complex*) x->val;
 
-    const ghost_lidx_t ldv = v->stride;
-    const ghost_lidx_t ldw = w->stride;
-    const ghost_lidx_t ldx = x->stride;
+    const ghost_lidx ldv = v->stride;
+    const ghost_lidx ldw = w->stride;
+    const ghost_lidx ldx = x->stride;
 
     __m256d alphavec;
    
@@ -221,9 +222,9 @@ ghost_error_t ghost_tsmttsm__a_avx2_z_CFGK_CFGM_1_cm_rm(ghost_densemat_t *x, gho
         dbeta = 0.;
     }
 
-    ghost_lidx_t i,m;
+    ghost_lidx i,m;
 
-    ghost_lidx_t k;
+    ghost_lidx k;
     for (k=0; k<CFGK; k++) {
         for (m=0; m<CFGM; m++) {
             xval[k*ldx+m] = dbeta*xval[k*ldx+m];
@@ -376,4 +377,3 @@ out:
     return GHOST_ERR_UNKNOWN;
 #endif
 }
-#GHOST_FUNC_END

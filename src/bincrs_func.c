@@ -4,6 +4,7 @@
 #include "ghost/util.h"
 #include "ghost/bincrs.h"
 #include "ghost/machine.h"
+#include "ghost/locality.h"
 
 static inline uint32_t bswap_32(uint32_t val)
 {
@@ -27,13 +28,16 @@ static inline uint64_t bswap_64(uint64_t val)
 #define SWAPREQ(header) (header.endianess == GHOST_BINCRS_LITTLE_ENDIAN)?ghost_machine_bigendian()?1:0:ghost_machine_bigendian()?0:1
 
 
-int ghost_sparsemat_rowfunc_bincrs(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, void *val, void *arg)
+int ghost_sparsemat_rowfunc_bincrs(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *col, void *val, void *arg)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION|GHOST_FUNCTYPE_IO);
     UNUSED(arg);
 
-    static ghost_gidx_t *colInd = NULL, *rowPtr = NULL;
+    static ghost_gidx *colInd = NULL, *globalRowPtr = NULL, *rowPtr = NULL;
     static char *values = NULL;
     static size_t dtsize = 0;
+    static ghost_gidx firstrow = 0;
+    static ghost_lidx nrows = 0;
 
     if (row == GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_GETDIM) {
         ghost_bincrs_header_t header;
@@ -46,18 +50,20 @@ int ghost_sparsemat_rowfunc_bincrs(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost
 
         col[0] = header.nrows;
         col[1] = header.ncols;
+
+        if(rowlen) *rowlen = header.datatype;
     } else if ((row == GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_GETRPT) || (row == GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_INIT)) {
 
         ghost_sparsemat_rowfunc_bincrs_initargs args = 
             *(ghost_sparsemat_rowfunc_bincrs_initargs *)val;
         char *filename = args.filename;
-        ghost_datatype_t matdt = args.dt;
+        ghost_datatype matdt = args.dt;
         ghost_datatype_size(&dtsize,matdt);
         ghost_bincrs_header_t header;
         ghost_bincrs_header_read(&header,filename);
 
         FILE *f;
-        ghost_gidx_t i;
+        ghost_gidx i;
         size_t ret;
 
         if ((f = fopen64(filename,"r")) == NULL) {
@@ -66,8 +72,8 @@ int ghost_sparsemat_rowfunc_bincrs(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost
         }
         
 
-        if ((ghost_datatype_t)(header.datatype) != matdt) { 
-            ERROR_LOG("Casting not yet implemented!");
+        if ((ghost_datatype)(header.datatype) != matdt) { 
+            ERROR_LOG("Value casting not implemented! Adjust your sparsemat datatype to match the file!");
             return 1;
         }
         if (header.symmetry != GHOST_BINCRS_SYMM_GENERAL) {
@@ -75,38 +81,68 @@ int ghost_sparsemat_rowfunc_bincrs(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost
             return 1;
         }
 
-        ghost_malloc((void **)&colInd,header.nnz * sizeof(ghost_gidx_t));
-        ghost_malloc((void **)&rowPtr,(header.nrows + 1) * sizeof(ghost_gidx_t));
-        ghost_malloc((void **)&values,header.nnz * dtsize);
-
-#pragma omp parallel for
-        for(i=0; i < header.nrows+1; ++i){
-            rowPtr[i] = 0;
-        }
-
-#pragma omp parallel for
-        for(i=0; i < header.nrows; ++i){
-            values[rowPtr[i]] = 0;
-            colInd[rowPtr[i]] = 0;
-        }
-            
         if (fseeko(f,GHOST_BINCRS_SIZE_HEADER,SEEK_SET)) {
             ERROR_LOG("Seek failed");
             return GHOST_ERR_IO;
         }
-        if ((ret = fread(rowPtr, GHOST_BINCRS_SIZE_RPT_EL, (header.nrows+1),f)) != (size_t)(header.nrows+1)){
-            ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
-            return GHOST_ERR_IO;
-        }
         
         if (row == GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_GETRPT) {
-            col = rowPtr;
-        } else {
-            if ((ret = fread(colInd, GHOST_BINCRS_SIZE_COL_EL, (header.nnz),f)) != (size_t)(header.nnz)){
+            ghost_malloc((void **)&globalRowPtr,(header.nrows + 1) * sizeof(ghost_gidx));
+
+#pragma omp parallel for
+            for(i=0; i < header.nrows+1; ++i){
+                globalRowPtr[i] = 0;
+            }
+            if ((ret = fread(globalRowPtr, GHOST_BINCRS_SIZE_RPT_EL, (header.nrows+1),f)) != (size_t)(header.nrows+1)){
                 ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
                 return GHOST_ERR_IO;
             }
-            if ((ret = fread(values, dtsize, (header.nnz),f)) != (size_t)(header.nnz)){
+            col = globalRowPtr;
+        } else {
+            int me;
+            ghost_sparsemat *mat = (ghost_sparsemat *)arg;
+            ghost_rank(&me,mat->context->mpicomm);
+            firstrow = mat->context->lfRow[me];
+            nrows = mat->context->lnrows[me];
+        
+            ghost_malloc((void **)&rowPtr,(nrows + 1) * sizeof(ghost_gidx));
+            
+            if (fseeko(f,firstrow*GHOST_BINCRS_SIZE_RPT_EL,SEEK_CUR)) {
+                ERROR_LOG("Seek failed");
+                return GHOST_ERR_IO;
+            }
+            if ((ret = fread(rowPtr, GHOST_BINCRS_SIZE_RPT_EL, nrows+1,f)) != (size_t)(nrows+1)){
+                ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
+                return GHOST_ERR_IO;
+            }
+            
+            ghost_lidx nnz = (ghost_lidx)(rowPtr[nrows]-rowPtr[0]);
+            ghost_malloc((void **)&colInd,nnz * sizeof(ghost_gidx));
+            ghost_malloc((void **)&values,nnz * dtsize);
+
+#pragma omp parallel for
+            for(i=0; i < nrows; ++i){
+                values[rowPtr[i]-rowPtr[0]] = 0;
+                colInd[rowPtr[i]-rowPtr[0]] = 0;
+            }
+            
+            
+            if (fseeko(f,GHOST_BINCRS_SIZE_HEADER+(header.nrows+1)*GHOST_BINCRS_SIZE_RPT_EL+rowPtr[0]*GHOST_BINCRS_SIZE_COL_EL,SEEK_SET)) {
+                ERROR_LOG("Seek failed");
+                return GHOST_ERR_IO;
+            }
+            
+            if ((ret = fread(colInd, GHOST_BINCRS_SIZE_COL_EL, nnz,f)) != (size_t)(nnz)){
+                ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
+                return GHOST_ERR_IO;
+            }
+            
+            if (fseeko(f,GHOST_BINCRS_SIZE_HEADER+(header.nrows+1)*GHOST_BINCRS_SIZE_RPT_EL+header.nnz*GHOST_BINCRS_SIZE_COL_EL+rowPtr[0]*dtsize,SEEK_SET)) {
+                ERROR_LOG("Seek failed");
+                return GHOST_ERR_IO;
+            }
+            
+            if ((ret = fread(values, dtsize, nnz,f)) != (size_t)(nnz)){
                 ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
                 return GHOST_ERR_IO;
             }
@@ -117,21 +153,24 @@ int ghost_sparsemat_rowfunc_bincrs(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost
     } else if (row == GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_FINALIZE) {
         free(colInd);
         free(rowPtr);
+        free(globalRowPtr);
         free(values);
     } else {
-        *rowlen = rowPtr[row+1]-rowPtr[row];
-        memcpy(col,&colInd[rowPtr[row]],(*rowlen)*sizeof(ghost_gidx_t));
-        memcpy(val,&values[rowPtr[row]*dtsize],(*rowlen)*dtsize);
+        *rowlen = rowPtr[row-firstrow+1]-rowPtr[row-firstrow];
+        memcpy(col,&colInd[rowPtr[row-firstrow]-rowPtr[0]],(*rowlen)*sizeof(ghost_gidx));
+        memcpy(val,&values[(rowPtr[row-firstrow]-rowPtr[0])*dtsize],(*rowlen)*dtsize);
     }
 
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION|GHOST_FUNCTYPE_IO);
     return 0;
 
 
 }
 
-ghost_error_t ghost_bincrs_header_read(ghost_bincrs_header_t *header, char *matrixPath)
+ghost_error ghost_bincrs_header_read(ghost_bincrs_header_t *header, char *matrixPath)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_IO);
     FILE* file;
     long filesize;
     int swapReq = 0;
@@ -180,7 +219,7 @@ ghost_error_t ghost_bincrs_header_read(ghost_bincrs_header_t *header, char *matr
     if (swapReq)  header->nnz  = bswap_64(header->nnz);
 
     size_t valSize;
-    GHOST_CALL_RETURN(ghost_datatype_size(&valSize,(ghost_datatype_t)header->datatype));
+    GHOST_CALL_RETURN(ghost_datatype_size(&valSize,(ghost_datatype)header->datatype));
 
     long rightFilesize = GHOST_BINCRS_SIZE_HEADER +
         (long)(header->nrows+1) * GHOST_BINCRS_SIZE_RPT_EL +
@@ -194,6 +233,7 @@ ghost_error_t ghost_bincrs_header_read(ghost_bincrs_header_t *header, char *matr
 
     fclose(file);
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_IO);
     return GHOST_SUCCESS;
 }
 

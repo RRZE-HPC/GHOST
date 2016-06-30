@@ -9,7 +9,8 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <hwloc.h>
-#include "ghost/error.h"
+#include "error.h"
+#include "types.h"
 
 #define GHOST_NUMANODE_ANY -1
 
@@ -25,7 +26,7 @@ extern "C" {
      *
      * If the topology has been created before, this function returns immediately.
      */
-    ghost_error_t ghost_topology_create();
+    ghost_error ghost_topology_create();
     /**
      * @brief Destroy and free the topology object.
      */
@@ -37,7 +38,7 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_topology_get(hwloc_topology_t *topo);
+    ghost_error ghost_topology_get(hwloc_topology_t *topo);
     /**
      * @ingroup machine
      * 
@@ -49,7 +50,7 @@ extern "C" {
      *
      * This information may be useful in situations where the locality of data (cache or memory) influences things like the OpenMP scheduling.
      */
-    ghost_error_t ghost_machine_innercache_size(uint64_t *size);
+    ghost_error ghost_machine_innercache_size(uint64_t *size);
     /**
      * @ingroup machine
      * 
@@ -61,7 +62,7 @@ extern "C" {
      *
      * This information may be useful in situations where the locality of data (cache or memory) influences things like the OpenMP scheduling.
      */
-    ghost_error_t ghost_machine_outercache_size(uint64_t *size);
+    ghost_error ghost_machine_outercache_size(uint64_t *size);
     /**
      * @brief Get the cache line siye. 
      *
@@ -71,7 +72,7 @@ extern "C" {
      *
      * This information may be useful in situations where false sharing has to be avoided.
      */
-    ghost_error_t ghost_machine_cacheline_size(unsigned *size);
+    ghost_error ghost_machine_cacheline_size(unsigned *size);
     /**
      * @brief Get the number of (physical) cores in the machine.
      *
@@ -80,7 +81,7 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_machine_ncore(int *nCores, int numaNode);
+    ghost_error ghost_machine_ncore(int *nCores, int numaNode);
     /**
      * @brief Get the number of SMT threads per core in the machine.
      *
@@ -88,7 +89,7 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_machine_nsmt(int *nLevels);
+    ghost_error ghost_machine_nsmt(int *nLevels);
     /**
      * @brief Get the number of available hardware threads (= physical cores times SMT level) 
      * or processing units in the machine.
@@ -98,7 +99,7 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_machine_npu(int *nPUs, int numaNode);
+    ghost_error ghost_machine_npu(int *nPUs, int numaNode);
     /**
      * @brief Get the number of NUMA nodes in the machine.
      *
@@ -106,11 +107,11 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_machine_nnuma(int *nNodes);
-    ghost_error_t ghost_machine_nnuma_in_cpuset(int *nNodes, hwloc_const_cpuset_t set);
-    ghost_error_t ghost_machine_npu_in_cpuset(int *nPUs, hwloc_const_cpuset_t set);
-    ghost_error_t ghost_machine_ncore_in_cpuset(int *nCores, hwloc_const_cpuset_t set);
-    ghost_error_t ghost_machine_numanode(hwloc_obj_t *node, int idx);
+    ghost_error ghost_machine_nnuma(int *nNodes);
+    ghost_error ghost_machine_nnuma_in_cpuset(int *nNodes, hwloc_const_cpuset_t set);
+    ghost_error ghost_machine_npu_in_cpuset(int *nPUs, hwloc_const_cpuset_t set);
+    ghost_error ghost_machine_ncore_in_cpuset(int *nCores, hwloc_const_cpuset_t set);
+    ghost_error ghost_machine_numanode(hwloc_obj_t *node, int idx);
     /**
      * @brief Check whether machine is big endian.
      *
@@ -126,7 +127,7 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_machine_string(char **str);
+    ghost_error ghost_machine_string(char **str);
 
     /**
      * @brief Get the machine's alignment restriction for aligned stores/loads.
@@ -141,6 +142,8 @@ extern "C" {
      * @return The SIMD width in bytes.
      */
     int ghost_machine_simd_width();
+    ghost_implementation ghost_get_best_implementation_for_bytesize(int bytes);
+    int ghost_implementation_alignment(ghost_implementation impl);
 #ifdef __cplusplus
 }
 #endif

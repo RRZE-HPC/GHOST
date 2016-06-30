@@ -9,7 +9,6 @@
 #include "config.h"
 #include "types.h"
 #include "error.h"
-#include "perm.h"
 #include "context.h"
 #include "sparsemat.h"
 
@@ -50,7 +49,7 @@
 typedef struct 
 {
     char *filename;
-    ghost_datatype_t dt;
+    ghost_datatype dt;
 } ghost_sparsemat_rowfunc_bincrs_initargs;
 
 /**
@@ -107,39 +106,11 @@ extern "C" {
  *
  * If called with row #GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_INIT, the parameter
  * \p val has to be a ghost_sparsemat_rowfunc_bincrs_initargs * with the according
- * information filled in. The parameter \p col has to be a ghost_gidx_t[2] in 
+ * information filled in. The parameter \p col has to be a ghost_gidx[2] in 
  * which the number of rows and columns will be stored.
  */
-int ghost_sparsemat_rowfunc_bincrs(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, void *val, void *arg);
-    ghost_error_t ghost_bincrs_header_read(ghost_bincrs_header_t *header, char *path);
-
-#if 0
-
-    ghost_error_t ghost_bincrs_header_read(ghost_bincrs_header_t *header, char *path);
-    ghost_error_t ghost_bincrs_col_read(ghost_gidx_t *col, char *matrixPath, ghost_gidx_t offsRows, ghost_lidx_t nRows, ghost_context_t *context, int keepCols);
-    ghost_error_t ghost_bincrs_col_read_opened(ghost_gidx_t *col, char *matrixPath, ghost_gidx_t offsRows, ghost_lidx_t nRows, ghost_context_t *context, int keepCols, FILE *filed);
-    ghost_error_t ghost_bincrs_val_read(char *val, ghost_datatype_t datatype, char *matrixPath, ghost_gidx_t offsRows, ghost_lidx_t nRows, ghost_permutation_t *perm);
-    ghost_error_t ghost_bincrs_val_read_opened(char *val, ghost_datatype_t datatype, char *matrixPath, ghost_gidx_t offsRows, ghost_lidx_t nRows, ghost_permutation_t *perm, FILE *filed);
-    ghost_error_t ghost_bincrs_rpt_read(ghost_gidx_t *rpt, char *matrixPath, ghost_gidx_t offsRows, ghost_lidx_t nRows, ghost_permutation_t *perm);
-    ghost_error_t ghost_bincrs_rpt_read_opened(ghost_gidx_t *rpt, char *matrixPath, ghost_gidx_t offsRows, ghost_lidx_t nRows, ghost_permutation_t *perm, FILE *filed);
-
-    void dd_ghost_castarray(void *, void *, int);
-    void ds_ghost_castarray(void *, void *, int);
-    void dc_ghost_castarray(void *, void *, int);
-    void dz_ghost_castarray(void *, void *, int);
-    void sd_ghost_castarray(void *, void *, int);
-    void ss_ghost_castarray(void *, void *, int);
-    void sc_ghost_castarray(void *, void *, int);
-    void sz_ghost_castarray(void *, void *, int);
-    void cd_ghost_castarray(void *, void *, int);
-    void cs_ghost_castarray(void *, void *, int);
-    void cc_ghost_castarray(void *, void *, int);
-    void cz_ghost_castarray(void *, void *, int);
-    void zd_ghost_castarray(void *, void *, int);
-    void zs_ghost_castarray(void *, void *, int);
-    void zc_ghost_castarray(void *, void *, int);
-    void zz_ghost_castarray(void *, void *, int);
-#endif
+int ghost_sparsemat_rowfunc_bincrs(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *col, void *val, void *arg);
+    ghost_error ghost_bincrs_header_read(ghost_bincrs_header_t *header, char *path);
 
 #ifdef __cplusplus
 }

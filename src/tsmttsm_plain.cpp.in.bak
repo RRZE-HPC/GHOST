@@ -1,0 +1,31 @@
+/*!GHOST_AUTOGEN BLOCKDIM1;BLOCKDIM2 */
+#include "ghost/config.h"
+#include "ghost/types.h"
+#include "ghost/math.h"
+#include "ghost/instr.h"
+#include "ghost/locality.h"
+#include "ghost/util.h"
+#include "ghost/tsmttsm_plain_gen.h"
+#include "ghost/tsmttsm_plain_kernel_tmpl.h"
+#include <complex>
+
+#GHOST_SUBST CFGK ${BLOCKDIM1}
+#GHOST_SUBST CFGM ${BLOCKDIM2}
+#GHOST_SUBST OUTERUNROLL 1
+
+ghost_error ghost_tsmttsm__a_plain_x_CFGK_CFGM_OUTERUNROLL_cm_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
+{
+    if (x->traits.datatype & GHOST_DT_COMPLEX) {
+        if (x->traits.datatype & GHOST_DT_DOUBLE) {
+            return ghost_tsmttsm__a_plain_cm_rm_tmpl<std::complex<double>, CFGM, CFGK, OUTERUNROLL>(x,v,w,(std::complex<double> *)alpha,(std::complex<double> *)beta,conjv);
+        } else {
+            return ghost_tsmttsm__a_plain_cm_rm_tmpl<std::complex<float>, CFGM, CFGK, OUTERUNROLL>(x,v,w,(std::complex<float> *)alpha,(std::complex<float> *)beta,conjv);
+        }
+    } else {
+        if (x->traits.datatype & GHOST_DT_DOUBLE) {
+            return ghost_tsmttsm__a_plain_cm_rm_tmpl<double, CFGM, CFGK, OUTERUNROLL>(x,v,w,(double *)alpha,(double *)beta,conjv);
+        } else {
+            return ghost_tsmttsm__a_plain_cm_rm_tmpl<float, CFGM, CFGK, OUTERUNROLL>(x,v,w,(float *)alpha,(float *)beta,conjv);
+        }
+    }
+}

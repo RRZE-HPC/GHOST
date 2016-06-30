@@ -29,17 +29,17 @@
 #include "ghost/densemat_iter_macros.h"
 #include "ghost/densemat_common.c.def"
 
-static ghost_error_t vec_rm_fromFunc(ghost_densemat_t *vec, int (*fp)(ghost_gidx_t, ghost_lidx_t, void *));
-static ghost_error_t ghost_distributeVector(ghost_densemat_t *vec, ghost_densemat_t *nodeVec);
-static ghost_error_t ghost_collectVectors(ghost_densemat_t *vec, ghost_densemat_t *totalVec); 
-static ghost_error_t ghost_cloneVector(ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nr, ghost_lidx_t roffs, ghost_lidx_t nc, ghost_lidx_t coffs);
-static ghost_error_t vec_rm_compress(ghost_densemat_t *vec);
-static ghost_error_t densemat_rm_halocommInit(ghost_densemat_t *vec, ghost_densemat_halo_comm_t *comm);
-static ghost_error_t densemat_rm_halocommFinalize(ghost_densemat_t *vec, ghost_densemat_halo_comm_t *comm);
+static ghost_error ghost_distributeVector(ghost_densemat *vec, ghost_densemat *nodeVec);
+static ghost_error ghost_collectVectors(ghost_densemat *vec, ghost_densemat *totalVec); 
+static ghost_error ghost_cloneVector(ghost_densemat *src, ghost_densemat **new, ghost_lidx nr, ghost_lidx roffs, ghost_lidx nc, ghost_lidx coffs);
+static ghost_error vec_rm_compress(ghost_densemat *vec);
+static ghost_error densemat_rm_halocommInit(ghost_densemat *vec, ghost_densemat_halo_comm *comm);
+static ghost_error densemat_rm_halocommFinalize(ghost_densemat *vec, ghost_densemat_halo_comm *comm);
 
-ghost_error_t ghost_densemat_rm_setfuncs(ghost_densemat_t *vec)
+ghost_error ghost_densemat_rm_setfuncs(ghost_densemat *vec)
 {
-    ghost_error_t ret = GHOST_SUCCESS;
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_SETUP);
+    ghost_error ret = GHOST_SUCCESS;
 
     if (vec->traits.location & GHOST_LOCATION_DEVICE)
     {
@@ -72,20 +72,19 @@ ghost_error_t ghost_densemat_rm_setfuncs(ghost_densemat_t *vec)
         vec->vscale = &ghost_densemat_rm_vscale_selector;
         vec->fromScalar = &ghost_densemat_rm_fromScalar_selector;
         vec->fromRand = &ghost_densemat_rm_fromRand_selector;
-        vec->conj = &ghost_densemat_cm_conj_selector;
+        vec->conj = &ghost_densemat_rm_conj_selector;
     }
 
     vec->reduce = &ghost_densemat_rm_reduce;
     vec->compress = &vec_rm_compress;
     vec->string = &ghost_densemat_rm_string_selector;
-    vec->fromFunc = &vec_rm_fromFunc;
+    vec->fromFunc = &ghost_densemat_rm_fromFunc;
     vec->fromVec = &ghost_densemat_rm_fromVec_selector;
     vec->fromFile = &ghost_densemat_rm_fromFile;
     vec->toFile = &ghost_densemat_rm_toFile;
     vec->distribute = &ghost_distributeVector;
     vec->collect = &ghost_collectVectors;
     vec->normalize = &ghost_densemat_rm_normalize_selector;
-    vec->destroy = &ghost_densemat_destroy;
     vec->permute = &ghost_densemat_rm_permute_selector;
     vec->clone = &ghost_cloneVector;
     vec->entry = &ghost_densemat_rm_entry;
@@ -104,49 +103,11 @@ ghost_error_t ghost_densemat_rm_setfuncs(ghost_densemat_t *vec)
     vec->upload = &ghost_densemat_rm_upload;
     vec->download = &ghost_densemat_rm_download;
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_SETUP);
     return ret;
 }
 
-static ghost_error_t vec_rm_fromFunc(ghost_densemat_t *vec, int (*fp)(ghost_gidx_t, ghost_lidx_t, void *))
-{
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
-    int rank;
-    ghost_gidx_t offset;
-    if (vec->context) {
-        GHOST_CALL_RETURN(ghost_rank(&rank, vec->context->mpicomm));
-        offset = vec->context->lfRow[rank];
-    } else {
-        rank = 0;
-        offset = 0;
-    }
-    int needInit = 0;
-    GHOST_CALL_RETURN(ghost_densemat_rm_malloc(vec,&needInit));
-
-
-    if (vec->traits.location & GHOST_LOCATION_HOST) { // vector is stored on host
-        if( needInit ) {
-          DENSEMAT_ITER_INIT(vec,fp(offset+row,col,valptr));
-        } else {
-          DENSEMAT_ITER(vec,fp(offset+row,col,valptr));
-        }
-        vec->upload(vec);
-    } else {
-        INFO_LOG("Need to create dummy HOST densemat!");
-        ghost_densemat_t *hostVec;
-        ghost_densemat_traits_t htraits = vec->traits;
-        htraits.location = GHOST_LOCATION_HOST;
-        htraits.flags &= (ghost_densemat_flags_t)~GHOST_DENSEMAT_VIEW;
-        GHOST_CALL_RETURN(ghost_densemat_create(&hostVec,vec->context,htraits));
-        GHOST_CALL_RETURN(hostVec->fromFunc(hostVec,fp));
-        GHOST_CALL_RETURN(vec->fromVec(vec,hostVec,0,0));
-        hostVec->destroy(hostVec);
-    }
-
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
-    return GHOST_SUCCESS;
-}
-
-static ghost_error_t ghost_distributeVector(ghost_densemat_t *vec, ghost_densemat_t *nodeVec)
+static ghost_error ghost_distributeVector(ghost_densemat *vec, ghost_densemat *nodeVec)
 {
     DEBUG_LOG(1,"Distributing vector");
     int me;
@@ -161,12 +122,12 @@ static ghost_error_t ghost_distributeVector(ghost_densemat_t *vec, ghost_densema
         return GHOST_ERR_INVALID_ARG;
     }
 
-    ghost_lidx_t c;
+    ghost_lidx c;
 #ifdef GHOST_HAVE_MPI
     DEBUG_LOG(2,"Scattering global vector to local vectors");
 
-    ghost_mpi_datatype_t mpidt;
-    GHOST_CALL_RETURN(ghost_mpi_datatype(&mpidt,vec->traits.datatype));
+    ghost_mpi_datatype mpidt;
+    GHOST_CALL_RETURN(ghost_mpi_datatype_get(&mpidt,vec->traits.datatype));
 
     int i;
 
@@ -207,16 +168,16 @@ static ghost_error_t ghost_distributeVector(ghost_densemat_t *vec, ghost_densema
     return GHOST_SUCCESS;
 }
 
-static ghost_error_t ghost_collectVectors(ghost_densemat_t *vec, ghost_densemat_t *totalVec) 
+static ghost_error ghost_collectVectors(ghost_densemat *vec, ghost_densemat *totalVec) 
 {
-    ghost_lidx_t c;
+    ghost_lidx c;
 #ifdef GHOST_HAVE_MPI
     int me;
     int nprocs;
-    ghost_mpi_datatype_t mpidt;
+    ghost_mpi_datatype mpidt;
     GHOST_CALL_RETURN(ghost_rank(&me, vec->context->mpicomm));
     GHOST_CALL_RETURN(ghost_nrank(&nprocs, vec->context->mpicomm));
-    GHOST_CALL_RETURN(ghost_mpi_datatype(&mpidt,vec->traits.datatype));
+    GHOST_CALL_RETURN(ghost_mpi_datatype_get(&mpidt,vec->traits.datatype));
     
     bool uniformstorage;
     GHOST_CALL_RETURN(ghost_densemat_uniformstorage(&uniformstorage,vec));
@@ -265,15 +226,15 @@ static ghost_error_t ghost_collectVectors(ghost_densemat_t *vec, ghost_densemat_
 
 }
 
-static ghost_error_t ghost_cloneVector(ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nr, ghost_lidx_t roffs, ghost_lidx_t nc, ghost_lidx_t coffs)
+static ghost_error ghost_cloneVector(ghost_densemat *src, ghost_densemat **new, ghost_lidx nr, ghost_lidx roffs, ghost_lidx nc, ghost_lidx coffs)
 {
-    ghost_densemat_traits_t newTraits = src->traits;
+    ghost_densemat_traits newTraits = src->traits;
     newTraits.ncols = nc;
     newTraits.ncolsorig = nc;
     newTraits.nrows = nr;
     newTraits.nrowsorig = nr;
-    newTraits.flags &= ~(ghost_densemat_flags_t)GHOST_DENSEMAT_VIEW;
-    newTraits.flags &= ~(ghost_densemat_flags_t)GHOST_DENSEMAT_SCATTERED;
+    newTraits.flags &= ~(ghost_densemat_flags)GHOST_DENSEMAT_VIEW;
+    newTraits.flags &= ~(ghost_densemat_flags)GHOST_DENSEMAT_SCATTERED;
 
     ghost_densemat_create(new,src->context,newTraits);
 
@@ -281,14 +242,14 @@ static ghost_error_t ghost_cloneVector(ghost_densemat_t *src, ghost_densemat_t *
     return GHOST_SUCCESS;
 }
 
-static ghost_error_t vec_rm_compress(ghost_densemat_t *vec)
+static ghost_error vec_rm_compress(ghost_densemat *vec)
 {
     if (!(vec->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
         return GHOST_SUCCESS;
     }
 
     if (vec->traits.location & GHOST_LOCATION_HOST) {
-        ghost_lidx_t v,i;
+        ghost_lidx v,i;
 
         char *val = NULL;
         if (vec->traits.location & GHOST_LOCATION_DEVICE) {
@@ -333,19 +294,19 @@ static ghost_error_t vec_rm_compress(ghost_densemat_t *vec)
     ghost_bitmap_set_range(vec->rowmask,0,vec->traits.nrows-1);
     vec->traits.ncolsorig = vec->traits.ncols;
     vec->traits.nrowsorig = vec->traits.nrows;
-    vec->traits.flags &= ~(ghost_densemat_flags_t)GHOST_DENSEMAT_VIEW;
-    vec->traits.flags &= ~(ghost_densemat_flags_t)GHOST_DENSEMAT_SCATTERED;
+    vec->traits.flags &= ~(ghost_densemat_flags)GHOST_DENSEMAT_VIEW;
+    vec->traits.flags &= ~(ghost_densemat_flags)GHOST_DENSEMAT_SCATTERED;
     vec->stride = vec->traits.ncolspadded;
 
     return GHOST_SUCCESS;
 }
 
-static ghost_error_t densemat_rm_halocommInit(ghost_densemat_t *vec, ghost_densemat_halo_comm_t *comm)
+static ghost_error densemat_rm_halocommInit(ghost_densemat *vec, ghost_densemat_halo_comm *comm)
 {
 #ifdef GHOST_HAVE_MPI
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
-    ghost_error_t ret = GHOST_SUCCESS;
-    int i, to_PE, from_PE;
+    ghost_error ret = GHOST_SUCCESS;
+    int i, to_PE, from_PE, partner;
     int nprocs;
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, vec->context->mpicomm),err,ret);
     GHOST_CALL_GOTO(ghost_densemat_halocommInit_common(vec,comm),err,ret);
@@ -364,17 +325,18 @@ static ghost_error_t densemat_rm_halocommInit(ghost_densemat_t *vec, ghost_dense
         }
         comm->tmprecv_mem = NULL;
     }
-        
+       
+    GHOST_INSTR_START("assemble_buf"); 
     if (vec->context->perm_local) {
 #ifdef GHOST_HAVE_CUDA
         if (vec->traits.location & GHOST_LOCATION_DEVICE) {
-            ghost_densemat_cu_rm_communicationassembly(comm->cu_work,comm->dueptr,vec,(ghost_lidx_t *)vec->context->perm_local->cu_perm);
+            ghost_densemat_cu_rm_communicationassembly(comm->cu_work,comm->dueptr,comm->acc_dues,vec,vec->context->perm_local->cu_perm);
         } else 
 #endif
             if (vec->traits.location & GHOST_LOCATION_HOST) {
-#pragma omp parallel private(to_PE,i)
-                for (to_PE=0 ; to_PE<nprocs ; to_PE++){
-#pragma omp for 
+                for (partner = 0; partner<vec->context->nduepartners; partner++) {
+                    to_PE = vec->context->duepartners[partner];
+#pragma omp parallel for 
                     for (i=0; i<vec->context->dues[to_PE]; i++){
                         memcpy(comm->work + (comm->dueptr[to_PE]+i)*vec->elSize*vec->traits.ncols,DENSEMAT_VALPTR(vec,vec->context->perm_local->perm[vec->context->duelist[to_PE][i]],0),vec->elSize*vec->traits.ncols);
                     }
@@ -383,29 +345,29 @@ static ghost_error_t densemat_rm_halocommInit(ghost_densemat_t *vec, ghost_dense
     } else {
 #ifdef GHOST_HAVE_CUDA
         if (vec->traits.location & GHOST_LOCATION_DEVICE) {
-            ghost_densemat_cu_rm_communicationassembly(comm->cu_work,comm->dueptr,vec,NULL);
+            ghost_densemat_cu_rm_communicationassembly(comm->cu_work,comm->dueptr,comm->acc_dues,vec,NULL);
         } else 
 #endif
             if (vec->traits.location & GHOST_LOCATION_HOST) {
-#pragma omp parallel private(to_PE,i)
-                for (to_PE=0 ; to_PE<nprocs ; to_PE++){
-#pragma omp for 
+                for (partner = 0; partner<vec->context->nduepartners; partner++) {
+                    to_PE = vec->context->duepartners[partner];
+#pragma omp parallel for 
                     for (i=0; i<vec->context->dues[to_PE]; i++){
                         memcpy(comm->work + (comm->dueptr[to_PE]+i)*vec->elSize*vec->traits.ncols,DENSEMAT_VALPTR(vec,vec->context->duelist[to_PE][i],0),vec->elSize*vec->traits.ncols);
                     }
                 }
             }
     }
+    GHOST_INSTR_STOP("assemble_buf"); 
 #ifdef GHOST_HAVE_CUDA
     if (vec->traits.location & GHOST_LOCATION_DEVICE) {
-        GHOST_INSTR_START("downloadcomm->work");
-#ifdef GHOST_HAVE_TRACK_DATATRANSFERS
+        GHOST_INSTR_START("download_buf");
+#ifdef GHOST_TRACK_DATATRANSFERS
         ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_IN,GHOST_DATATRANSFER_RANK_GPU,vec->traits.ncols*comm->acc_dues*vec->elSize);
 
 #endif
-        INFO_LOG("download work");
         ghost_cu_download(comm->work,comm->cu_work,vec->traits.ncols*comm->acc_dues*vec->elSize);
-        GHOST_INSTR_STOP("downloadcomm->work");
+        GHOST_INSTR_STOP("download_buf");
     }
 #endif
     
@@ -425,25 +387,22 @@ out:
 
 }
 
-static ghost_error_t densemat_rm_halocommFinalize(ghost_densemat_t *vec, ghost_densemat_halo_comm_t *comm)
+static ghost_error densemat_rm_halocommFinalize(ghost_densemat *vec, ghost_densemat_halo_comm *comm)
 {
 #ifdef GHOST_HAVE_MPI
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
-    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_error ret = GHOST_SUCCESS;
     
     int nprocs;
-    int i, from_PE;
+    int i, from_PE, partner;
     
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, vec->context->mpicomm),err,ret);
 
     GHOST_CALL_GOTO(ghost_densemat_halocommFinalize_common(comm),err,ret);
-    if ((nprocs > 1) && (vec->stride != vec->traits.ncols) && (vec->traits.location == GHOST_LOCATION_DEVICE)) {
-        ERROR_LOG("Assemble row-major view not yet implemented for device densemats!");
-        return GHOST_ERR_NOT_IMPLEMENTED;
-    }
     if ((vec->stride != vec->traits.ncols) && (vec->traits.location == GHOST_LOCATION_HOST)) {
         GHOST_INSTR_START("Assemble row-major view");
-        for (from_PE=0; from_PE<nprocs; from_PE++){
+        for (partner=0; partner<vec->context->nwishpartners; partner++){
+            from_PE = vec->context->wishpartners[partner];
             for (i=0; i<vec->context->wishes[from_PE]; i++){
                 memcpy(DENSEMAT_VALPTR(vec,vec->context->hput_pos[from_PE]+i,0),&comm->tmprecv[from_PE][(i*vec->traits.ncols)*vec->elSize],vec->elSize*vec->traits.ncols);
             }
@@ -454,10 +413,10 @@ static ghost_error_t densemat_rm_halocommFinalize(ghost_densemat_t *vec, ghost_d
 #ifdef GHOST_HAVE_CUDA 
     GHOST_INSTR_START("upload")
     if (vec->traits.location & GHOST_LOCATION_DEVICE) {
-#ifdef GHOST_HAVE_TRACK_DATATRANSFERS
+#ifdef GHOST_TRACK_DATATRANSFERS
         ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_OUT,GHOST_DATATRANSFER_RANK_GPU,vec->context->halo_elements*vec->traits.ncols*vec->elSize);
 #endif
-        ghost_cu_upload(DENSEMAT_CUVALPTR(vec,vec->traits.nrows,0),comm->tmprecv_mem,vec->traits.ncols*comm->acc_wishes*vec->elSize);
+        ghost_cu_upload2d(DENSEMAT_CUVALPTR(vec,vec->traits.nrowspadded,0),vec->stride*vec->elSize,comm->tmprecv_mem,vec->traits.ncols*vec->elSize,vec->traits.ncols*vec->elSize,comm->acc_wishes);
         INFO_LOG("upload halo");
     }
     GHOST_INSTR_STOP("upload");

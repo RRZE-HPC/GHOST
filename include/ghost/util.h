@@ -42,9 +42,13 @@
  */
 #define PAD(n,p) (((n)<1 || (p)<1)?(n):(((n) % (p)) ? ((n) + (p) - (n) % (p)) : (n)))
 
+#define CEILDIV(a,b) ((int)(ceil(((double)(a))/((double)(b)))))
+
 #define GHOST_PAD_MAX 1024
 
 #define IS_ALIGNED(PTR,BYTES) (((uintptr_t)(const void *)(PTR)) % (BYTES) == 0)
+
+#define ISPOWEROFTWO(x) (((x) & ((x)-1)) == 0)
 
 /**
  * @brief Avoid unused variable/function warnings.
@@ -67,9 +71,9 @@ _Pragma("omp single") {\
 extern "C" {
 #endif
 
-    ghost_error_t ghost_header_string(char **str, const char *fmt, ...);
-    ghost_error_t ghost_footer_string(char **str); 
-    ghost_error_t ghost_line_string(char **str, const char *label, const char *unit, const char *format, ...);
+    ghost_error ghost_header_string(char **str, const char *fmt, ...);
+    ghost_error ghost_footer_string(char **str); 
+    ghost_error ghost_line_string(char **str, const char *label, const char *unit, const char *format, ...);
 
 
     /**
@@ -80,7 +84,7 @@ extern "C" {
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_malloc(void **mem, const size_t size);
+    ghost_error ghost_malloc(void **mem, const size_t size);
     /**
      * @brief Allocate aligned memory.
      *
@@ -90,7 +94,7 @@ extern "C" {
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_malloc_align(void **mem, const size_t size, const size_t align);
+    ghost_error ghost_malloc_align(void **mem, const size_t size, const size_t align);
 
     /**
      * @brief Allocate pinned memory to enable fast CPU-GPU transfers.
@@ -102,7 +106,25 @@ extern "C" {
      *
      * If CUDA is not enabled, a normal malloc is done.
      */
-    ghost_error_t ghost_malloc_pinned(void **mem, const size_t size);
+    ghost_error ghost_malloc_pinned(void **mem, const size_t size);
+    
+    /**
+     * @brief Get the largest SELL chunk height of auto-generated kernels.
+     *
+     * @return The largest configured SELL chunk height or 0 if none has been 
+     * configured.
+     */
+    int ghost_sell_max_cfg_chunkheight();
+
+    /**
+     * @brief Get the largest configured densemat dimension which is smaller or equal than a given dimension.
+     *
+     * @param dim The target dimension
+     *
+     * @return The closest configured densemat dimensions (must be smaller or equal than the given dimension).
+     */
+    int ghost_get_next_cfg_densemat_dim(int dim);
+
 
     /**
      * @brief Computes a hash from three integral input values.
@@ -115,7 +137,23 @@ extern "C" {
      *
      * The function has been taken from http://burtleburtle.net/bob/hash/doobs.html
      */
-    int ghost_hash(int a, int b, int c);
+    inline int ghost_hash(int a, int b, int c)
+    {
+        //GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+        
+        a -= b; a -= c; a ^= (c>>13);
+        b -= c; b -= a; b ^= (a<<8);
+        c -= a; c -= b; c ^= (b>>13);
+        a -= b; a -= c; a ^= (c>>12);
+        b -= c; b -= a; b ^= (a<<16);
+        c -= a; c -= b; c ^= (b>>5);
+        a -= b; a -= c; a ^= (c>>3);
+        b -= c; b -= a; b ^= (a<<10);
+        c -= a; c -= b; c ^= (b>>15);
+
+        //GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
+        return c;
+    }
 
 #ifdef __cplusplus
 }

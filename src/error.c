@@ -1,53 +1,67 @@
 #include "ghost/error.h"
+#include "ghost/func_util.h"
 
-char * ghost_error_string(ghost_error_t e)
+char * ghost_error_string(ghost_error e)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+    char *ret;
     switch (e) {
         case GHOST_ERR_INVALID_ARG:
-            return "Invalid argument";
+            ret = "Invalid argument";
             break;
         case GHOST_ERR_MPI:
-            return "Error in MPI";
+            ret = "Error in MPI";
             break;
         case GHOST_ERR_CUDA:
-            return "Error in CUDA";
+            ret = "Error in CUDA";
             break;
         case GHOST_ERR_CUBLAS:
-            return "Error in cuBLAS";
+            ret = "Error in cuBLAS";
             break;
         case GHOST_ERR_CURAND:
-            return "Error in cuRAND";
+            ret = "Error in cuRAND";
             break;
         case GHOST_ERR_HWLOC:
-            return "Error in hwloc";
+            ret = "Error in hwloc";
             break;
         case GHOST_ERR_SCOTCH:
-            return "Error in Scotch";
+            ret = "Error in Scotch";
             break;
         case GHOST_ERR_NOT_IMPLEMENTED:
-            return "Not implemented";
+            ret = "Not implemented";
             break;
         case GHOST_ERR_IO:
-            return "I/O error";
+            ret = "I/O error";
             break;
         case GHOST_ERR_DATATYPE:
-            return "Error with data types";
+            ret = "Error with data types";
             break;
         case GHOST_ERR_COLPACK:
-            return "Error in ColPack";
+            ret = "Error in ColPack";
+            break;
+        case GHOST_ERR_BLOCKCOLOR:
+            ret = "Error in BlockColoring";
+            break;
+        case GHOST_ERR_NOT_COLORED:
+	    ret = "Matrix not Colored";
+            break;
+        case GHOST_ERR_RED_BLACK:
+            ret = "Error in Red-Black splitting of the matrix";
             break;
         case GHOST_ERR_LAPACK:
-            return "Error in LAPACK";
+            ret = "Error in LAPACK";
             break;
         case GHOST_ERR_BLAS:
-            return "Error in BLAS";
+            ret = "Error in BLAS";
             break;
         case GHOST_ERR_UNKNOWN:
-            return "Unknown error";
+            ret = "Unknown error";
             break;
         default:
-            return "Invalid";
+            ret = "Invalid";
             break;
     }
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
+    return ret;
 }

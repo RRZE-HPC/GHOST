@@ -6,6 +6,8 @@
 #ifndef GHOST_CU_COMPLEX_H
 #define GHOST_CU_COMPLEX_H
 
+#include <cuComplex.h>
+
 template<typename T>
 __device__  __host__ inline void zero(T &val)
 {
@@ -58,6 +60,25 @@ template<>
 __device__ inline void fromReal<cuFloatComplex,float>(cuFloatComplex &val, float real)
 {
     val = make_cuFloatComplex(real,0.f);
+}
+
+// val += val2
+template<typename t>
+__device__ inline t accu(t val, t val2)
+{
+    return val+val2;
+}
+
+template<>
+__device__ inline cuFloatComplex accu<cuFloatComplex>(cuFloatComplex val, cuFloatComplex val2)
+{
+    return cuCaddf(val,val2);
+}
+
+template<>
+__device__ inline cuDoubleComplex accu<cuDoubleComplex>(cuDoubleComplex val, cuDoubleComplex val2)
+{
+    return cuCadd(val,val2);
 }
 
 // val += val2*val3

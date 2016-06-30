@@ -1,11 +1,14 @@
 #include <stdlib.h>
+#include "ghost/sparsemat.h"
 #include "ghost/util.h"
 #include "ghost/mmio.h"
 #include "ghost/matrixmarket.h"
+#include "ghost/locality.h"
 
-int ghost_sparsemat_rowfunc_mm(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, void *val, void *arg)
+int ghost_sparsemat_rowfunc_mm(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *col, void *val, void *arg)
 {
-    static ghost_gidx_t *colInd = NULL, *rowPtr = NULL;
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
+    static ghost_gidx *colInd = NULL, *rowPtr = NULL;
     static char *values = NULL;
     static size_t dtsize = 0;
 
@@ -17,10 +20,21 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gid
         FILE *f;
         int ret_code;
         int M, N, nz;
+        MM_typecode matcode;
 
         if ((f = fopen(filename,"r")) == NULL) {
             ERROR_LOG("fopen with %s failed!",filename);
             return 1;
+        }
+
+        if (mm_read_banner(f, &matcode) != 0){
+            ERROR_LOG("Could not process Matrix Market banner!");
+            return 1;
+        }
+        
+        if (rowlen){
+            if (mm_is_complex(matcode)) *rowlen = (ghost_lidx)GHOST_DT_COMPLEX;
+            else *rowlen = (ghost_lidx)GHOST_DT_REAL;
         }
 
         if((ret_code = mm_read_mtx_crd_size(f, &M, &N, &nz)) != 0){
@@ -36,7 +50,7 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gid
         ghost_sparsemat_rowfunc_mm_initargs args = 
             *(ghost_sparsemat_rowfunc_mm_initargs *)val;
         char *filename = args.filename;
-        ghost_datatype_t matdt = args.dt;
+        ghost_datatype matdt = args.dt;
 
         ghost_datatype_size(&dtsize,matdt);
 
@@ -44,8 +58,8 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gid
         int ret_code;
         MM_typecode matcode;
         int M, N, nz, actualnz;
-        ghost_gidx_t * offset;
-        ghost_gidx_t i;
+        ghost_gidx * offset;
+        ghost_gidx i;
         int symm = 0;
 
         if ((f = fopen(filename,"r")) == NULL) {
@@ -83,7 +97,6 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gid
 
         if (mm_is_symmetric(matcode)) {
             PERFWARNING_LOG("Will create a general matrix out of a symmetric matrix!");
-            INFO_LOG("Setting sparsemat symmetry to 'symmetric'");
             *(int *)arg = 1;
             actualnz = nz*2;
             symm = 1;
@@ -93,26 +106,34 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gid
         }
 
 
-        ghost_malloc((void **)&colInd,actualnz * sizeof(ghost_gidx_t));
-        ghost_malloc((void **)&rowPtr,(M + 1) * sizeof(ghost_gidx_t));
+        ghost_malloc((void **)&colInd,actualnz * sizeof(ghost_gidx));
+        ghost_malloc((void **)&rowPtr,(M + 1) * sizeof(ghost_gidx));
         ghost_malloc((void **)&values,actualnz * dtsize);
-        ghost_malloc((void **)&offset,(M + 1) * sizeof(ghost_gidx_t));
+        ghost_malloc((void **)&offset,(M + 1) * sizeof(ghost_gidx));
 
         for(i = 0; i <= M; ++i){
             rowPtr[i] = 0;
             offset[i] = 0;
         }
 
-        ghost_gidx_t readrow,readcol;
+        ghost_gidx readrow,readcol;
         char value[dtsize];
         fpos_t pos;
         fgetpos(f,&pos);
 
         for (i = 0; i < nz; ++i){
             if (matdt & GHOST_DT_COMPLEX) {
-                fscanf(f, "%"PRGIDX" %"PRGIDX" %lg %lg\n", &readrow,&readcol,(double *)value,(double *)(value+dtsize/2));
+                if (matdt & GHOST_DT_DOUBLE) {
+                    fscanf(f, "%"PRGIDX" %"PRGIDX" %lg %lg\n", &readrow,&readcol,(double *)value,(double *)(value+dtsize/2));
+                } else {
+                    fscanf(f, "%"PRGIDX" %"PRGIDX" %g %g\n", &readrow,&readcol,(float *)value,(float *)(value+dtsize/2));
+                }
             } else {
-                fscanf(f, "%"PRGIDX" %"PRGIDX" %lg\n", &readrow,&readcol,(double *)value);
+                if (matdt & GHOST_DT_DOUBLE) {
+                    fscanf(f, "%"PRGIDX" %"PRGIDX" %lg\n", &readrow,&readcol,(double *)value);
+                } else {
+                    fscanf(f, "%"PRGIDX" %"PRGIDX" %g\n", &readrow,&readcol,(float *)value);
+                }
             }
             readcol--;
             readrow--;
@@ -139,9 +160,17 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gid
 
             for (i = 0; i < nz; ++i){
                 if (matdt & GHOST_DT_COMPLEX) {
-                    fscanf(f, "%"PRGIDX" %"PRGIDX" %lg %lg\n", &readrow,&readcol,(double *)value,(double *)(value+dtsize/2));
+                    if (matdt & GHOST_DT_DOUBLE) {
+                        fscanf(f, "%"PRGIDX" %"PRGIDX" %lg %lg\n", &readrow,&readcol,(double *)value,(double *)(value+dtsize/2));
+                    } else {
+                        fscanf(f, "%"PRGIDX" %"PRGIDX" %g %g\n", &readrow,&readcol,(float *)value,(float *)(value+dtsize/2));
+                    }
                 } else {
-                    fscanf(f, "%"PRGIDX" %"PRGIDX" %lg\n", &readrow,&readcol,(double *)value);
+                    if (matdt & GHOST_DT_DOUBLE) {
+                        fscanf(f, "%"PRGIDX" %"PRGIDX" %lg\n", &readrow,&readcol,(double *)value);
+                    } else {
+                        fscanf(f, "%"PRGIDX" %"PRGIDX" %g\n", &readrow,&readcol,(float *)value);
+                    }
                 }
                 readrow--;
                 readcol--;
@@ -169,19 +198,21 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gid
         free(values);
     } else {
         *rowlen = rowPtr[row+1]-rowPtr[row];
-        memcpy(col,&colInd[rowPtr[row]],(*rowlen)*sizeof(ghost_gidx_t));
+        memcpy(col,&colInd[rowPtr[row]],(*rowlen)*sizeof(ghost_gidx));
         memcpy(val,&values[rowPtr[row]*dtsize],(*rowlen)*dtsize);
     }
 
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
     return 0;
 
 
 }
 
-int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, void *val, void *arg)
+int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *col, void *val, void *arg)
 {
-    static ghost_gidx_t *colInd = NULL, *rowPtr = NULL;
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
+    static ghost_gidx *colInd = NULL, *rowPtr = NULL;
     static char *values = NULL;
     static size_t dtsize = 0;
 
@@ -193,10 +224,21 @@ int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx_t row, ghost_lidx_t *rowlen,
         FILE *f;
         int ret_code;
         int M, N, nz;
+        MM_typecode matcode;
 
         if ((f = fopen(filename,"r")) == NULL) {
             ERROR_LOG("fopen with %s failed!",filename);
             return 1;
+        }
+
+        if (mm_read_banner(f, &matcode) != 0){
+            ERROR_LOG("Could not process Matrix Market banner!");
+            return 1;
+        }
+        
+        if (rowlen){
+            if (mm_is_complex(matcode)) *rowlen = (ghost_lidx)GHOST_DT_COMPLEX;
+            else *rowlen = (ghost_lidx)GHOST_DT_REAL;
         }
 
         if((ret_code = mm_read_mtx_crd_size(f, &N, &M, &nz)) != 0){
@@ -212,7 +254,7 @@ int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx_t row, ghost_lidx_t *rowlen,
         ghost_sparsemat_rowfunc_mm_initargs args = 
             *(ghost_sparsemat_rowfunc_mm_initargs *)val;
         char *filename = args.filename;
-        ghost_datatype_t matdt = args.dt;
+        ghost_datatype matdt = args.dt;
 
         ghost_datatype_size(&dtsize,matdt);
 
@@ -220,8 +262,8 @@ int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx_t row, ghost_lidx_t *rowlen,
         int ret_code;
         MM_typecode matcode;
         int M, N, nz, actualnz;
-        ghost_gidx_t * offset;
-        ghost_gidx_t i;
+        ghost_gidx * offset;
+        ghost_gidx i;
         int symm = 0;
 
         if ((f = fopen(filename,"r")) == NULL) {
@@ -259,7 +301,6 @@ int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx_t row, ghost_lidx_t *rowlen,
 
         if (mm_is_symmetric(matcode)) {
             PERFWARNING_LOG("Will create a general matrix out of a symmetric matrix!");
-            INFO_LOG("Setting sparsemat symmetry to 'symmetric'");
             *(int *)arg = 1;
             actualnz = nz*2;
             symm = 1;
@@ -269,26 +310,34 @@ int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx_t row, ghost_lidx_t *rowlen,
         }
 
 
-        ghost_malloc((void **)&colInd,actualnz * sizeof(ghost_gidx_t));
-        ghost_malloc((void **)&rowPtr,(M + 1) * sizeof(ghost_gidx_t));
+        ghost_malloc((void **)&colInd,actualnz * sizeof(ghost_gidx));
+        ghost_malloc((void **)&rowPtr,(M + 1) * sizeof(ghost_gidx));
         ghost_malloc((void **)&values,actualnz * dtsize);
-        ghost_malloc((void **)&offset,(M + 1) * sizeof(ghost_gidx_t));
+        ghost_malloc((void **)&offset,(M + 1) * sizeof(ghost_gidx));
 
         for(i = 0; i <= M; ++i){
             rowPtr[i] = 0;
             offset[i] = 0;
         }
 
-        ghost_gidx_t readrow,readcol;
+        ghost_gidx readrow,readcol;
         char value[dtsize];
         fpos_t pos;
         fgetpos(f,&pos);
 
         for (i = 0; i < nz; ++i){
             if (matdt & GHOST_DT_COMPLEX) {
-                fscanf(f, "%"PRGIDX" %"PRGIDX" %lg %lg\n", &readcol,&readrow,(double *)value,(double *)(value+dtsize/2));
+                if (matdt & GHOST_DT_DOUBLE) {
+                    fscanf(f, "%"PRGIDX" %"PRGIDX" %lg %lg\n", &readcol,&readrow,(double *)value,(double *)(value+dtsize/2));
+                } else {
+                    fscanf(f, "%"PRGIDX" %"PRGIDX" %g %g\n", &readcol,&readrow,(float *)value,(float *)(value+dtsize/2));
+                }
             } else {
-                fscanf(f, "%"PRGIDX" %"PRGIDX" %lg\n", &readcol,&readrow,(double *)value);
+                if (matdt & GHOST_DT_DOUBLE) {
+                    fscanf(f, "%"PRGIDX" %"PRGIDX" %lg\n", &readcol,&readrow,(double *)value);
+                } else {
+                    fscanf(f, "%"PRGIDX" %"PRGIDX" %g\n", &readcol,&readrow,(float *)value);
+                }
             }
             readcol--;
             readrow--;
@@ -315,9 +364,17 @@ int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx_t row, ghost_lidx_t *rowlen,
 
             for (i = 0; i < nz; ++i){
                 if (matdt & GHOST_DT_COMPLEX) {
-                    fscanf(f, "%"PRGIDX" %"PRGIDX" %lg %lg\n", &readcol,&readrow,(double *)value,(double *)(value+dtsize/2));
+                    if (matdt & GHOST_DT_DOUBLE) {
+                        fscanf(f, "%"PRGIDX" %"PRGIDX" %lg %lg\n", &readcol,&readrow,(double *)value,(double *)(value+dtsize/2));
+                    } else {
+                        fscanf(f, "%"PRGIDX" %"PRGIDX" %g %g\n", &readcol,&readrow,(float *)value,(float *)(value+dtsize/2));
+                    }
                 } else {
-                    fscanf(f, "%"PRGIDX" %"PRGIDX" %lg\n", &readcol,&readrow,(double *)value);
+                    if (matdt & GHOST_DT_DOUBLE) {
+                        fscanf(f, "%"PRGIDX" %"PRGIDX" %lg\n", &readcol,&readrow,(double *)value);
+                    } else {
+                        fscanf(f, "%"PRGIDX" %"PRGIDX" %g\n", &readcol,&readrow,(float *)value);
+                    }
                 }
                 readrow--;
                 readcol--;
@@ -345,12 +402,122 @@ int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx_t row, ghost_lidx_t *rowlen,
         free(values);
     } else {
         *rowlen = rowPtr[row+1]-rowPtr[row];
-        memcpy(col,&colInd[rowPtr[row]],(*rowlen)*sizeof(ghost_gidx_t));
+        memcpy(col,&colInd[rowPtr[row]],(*rowlen)*sizeof(ghost_gidx));
         memcpy(val,&values[rowPtr[row]*dtsize],(*rowlen)*dtsize);
     }
 
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
     return 0;
 
 
+}
+
+ghost_error ghost_sparsemat_to_mm(char *path, ghost_sparsemat *mat)
+{
+    MM_typecode matcode;
+    ghost_lidx row,entinrow,globrow;
+    ghost_lidx sellidx;
+    int nrank,rank;
+    FILE *fp;
+    
+    if (mat->context->gnrows > INT_MAX) {
+        ERROR_LOG("The number of matrix rows exceeds INT_MAX and I cannot write a MatrixMarket file!");
+        return GHOST_ERR_INVALID_ARG;
+    }
+    
+    if (mat->context->gncols > INT_MAX) {
+        ERROR_LOG("The number of matrix columns exceeds INT_MAX and I cannot write a MatrixMarket file!");
+        return GHOST_ERR_INVALID_ARG;
+    }
+    
+    if (mat->context->gnnz > INT_MAX) {
+        ERROR_LOG("The number of matrix entries exceeds INT_MAX and I cannot write a MatrixMarket file!");
+        return GHOST_ERR_INVALID_ARG;
+    }
+    
+    ghost_nrank(&nrank,mat->context->mpicomm);
+    ghost_rank(&rank,mat->context->mpicomm);
+    
+    if (nrank > 1 && !(mat->traits.flags & GHOST_SPARSEMAT_SAVE_ORIG_COLS)) {
+        WARNING_LOG("The matrix is distributed and the non-compressed columns are not saved. The output will probably be useless!");
+    }
+   
+    if (rank == 0) { 
+        fp = fopen(path,"w");
+        if (!fp) {
+            ERROR_LOG("Unable to open file %s!",path);
+            return GHOST_ERR_INVALID_ARG;
+        }
+        mm_initialize_typecode(&matcode);
+        mm_set_matrix(&matcode);
+        mm_set_coordinate(&matcode);
+        if (mat->traits.datatype & GHOST_DT_REAL) {
+            mm_set_real(&matcode);
+        } else {
+            mm_set_complex(&matcode);
+        }
+        
+        mm_write_banner(fp,matcode);
+        mm_write_mtx_crd_size(fp,(int)mat->context->gnrows,(int)mat->context->gncols,(int)mat->context->gnnz);
+        
+        fclose(fp);
+    }
+
+    int i;
+    for (i=0; i<nrank; i++) {
+#ifdef GHOST_HAVE_MPI
+        MPI_Barrier(mat->context->mpicomm);
+#endif
+        if (i == rank) {
+            fp = fopen(path,"a");
+            if (!fp) {
+                ERROR_LOG("Unable to open file %s!",path);
+                return GHOST_ERR_INVALID_ARG;
+            }
+
+            globrow = mat->context->lfRow[rank]+1;
+
+            for (row=1; row<=mat->nrows; row++, globrow++) {
+                for (entinrow=0; entinrow<SELL(mat)->rowLen[row-1]; entinrow++) {
+                    sellidx = SELL(mat)->chunkStart[(row-1)/mat->traits.C] + entinrow*mat->traits.C + (row-1)%mat->traits.C;
+                    if (mat->traits.flags & GHOST_SPARSEMAT_SAVE_ORIG_COLS) {
+                        int col = (int)mat->col_orig[sellidx]+1;
+                        if (mat->traits.datatype & GHOST_DT_REAL) {
+                            if (mat->traits.datatype & GHOST_DT_DOUBLE) {
+                                fprintf(fp,"%d %d %10.3g\n",globrow,col,((double *)SELL(mat)->val)[sellidx]);
+                            } else {
+                                fprintf(fp,"%d %d %10.3g\n",globrow,col,((float *)SELL(mat)->val)[sellidx]);
+                            }
+                        } else {
+                            if (mat->traits.datatype & GHOST_DT_DOUBLE) {
+                                fprintf(fp,"%d %d %10.3g %10.3g\n",globrow,col,creal(((complex double *)SELL(mat)->val)[sellidx]),cimag(((complex double *)SELL(mat)->val)[sellidx]));
+                            } else {
+                                fprintf(fp,"%d %d %10.3g %10.3g\n",globrow,col,crealf(((complex float *)SELL(mat)->val)[sellidx]),cimagf(((complex float *)SELL(mat)->val)[sellidx]));
+                            }
+                        }
+                    } else {
+                        ghost_lidx col = SELL(mat)->col[sellidx]+1;
+                        if (mat->traits.datatype & GHOST_DT_REAL) {
+                            if (mat->traits.datatype & GHOST_DT_DOUBLE) {
+                                fprintf(fp,"%d %d %10.3g\n",globrow,col,((double *)SELL(mat)->val)[sellidx]);
+                            } else {
+                                fprintf(fp,"%d %d %10.3g\n",globrow,col,((float *)SELL(mat)->val)[sellidx]);
+                            }
+                        } else {
+                            if (mat->traits.datatype & GHOST_DT_DOUBLE) {
+                                fprintf(fp,"%d %d %10.3g %10.3g\n",globrow,col,creal(((complex double *)SELL(mat)->val)[sellidx]),cimag(((complex double *)SELL(mat)->val)[sellidx]));
+                            } else {
+                                fprintf(fp,"%d %d %10.3g %10.3g\n",globrow,col,crealf(((complex float *)SELL(mat)->val)[sellidx]),cimagf(((complex float *)SELL(mat)->val)[sellidx]));
+                            }
+                        }
+                    }
+                    
+                }
+            }
+            fclose(fp);
+        }
+    }
+
+    return GHOST_SUCCESS;
 }

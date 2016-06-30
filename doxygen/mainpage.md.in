@@ -1,90 +1,18 @@
 @CMAKE_PROJECT_NAME@ @GHOST_VERSION@ API documentation  {#mainpage}
 ======================================================
 
-This Doxygen documentation has been created with the following GHOST settings:
-
-Feature                | Enabled                     |
----------------------- | --------------------------- |
-64-bit global indices  | @GHOST_HAVE_LONGIDX_GLOBAL@ |
-64-bit local indices   | @GHOST_HAVE_LONGIDX_LOCAL@  |
-CUDA                   | @GHOST_HAVE_CUDA@           |
-Timing instrumentation | @GHOST_HAVE_INSTR_TIMING@   |
-Likwid instrumentation | @GHOST_HAVE_INSTR_LIKWID@   |
-
 Minimal code example
 --------------------
 
 The following code example performs a sparse matrix-vector multiplication with random input vector and a diagonal matrix.
 
 ~~~{.c}
-#include <ghost.h>
-#include <stdio.h>
-
-#define N 4
-GHOST_REGISTER_DT_D(mydata)
-
-static int diag(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, void *val, void *arg)
-{
-    *rowlen = 1;
-    col[0] = row;
-    ((mydata_t *)val)[0] = (mydata_t)(row+1);
-    
-    return 0;
-}
-
-int main(int argc, char **argv) 
-{
-    ghost_context_t *ctx;
-    ghost_sparsemat_t *A;
-    ghost_densemat_t *y, *x;
-    double zero = 0.;
-    char *Astr, *xstr, *ystr;
-    
-    ghost_sparsemat_traits_t mtraits = GHOST_SPARSEMAT_TRAITS_INITIALIZER;
-    ghost_densemat_traits_t vtraits = GHOST_DENSEMAT_TRAITS_INITIALIZER;
-    ghost_spmv_flags_t spmvflags = GHOST_SPMV_DEFAULT; // we want to perform y = A*x
-
-    ghost_init(argc,argv);
-
-    // create matrix source
-    ghost_sparsemat_src_rowfunc_t matsrc = GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER;
-    matsrc.func = diag;
-    matsrc.maxrowlen = N;
-
-    // create context
-    ghost_context_create(&ctx,N,N,GHOST_CONTEXT_DEFAULT,&matsrc,GHOST_SPARSEMAT_SRC_FUNC,MPI_COMM_WORLD,1.);
-   
-    // create sparse matrix A from row-wise function    
-    ghost_sparsemat_create(&A, ctx, &mtraits, 1);
-    A->fromRowFunc(A,&matsrc);
-
-    // create input vector x and output vector y
-    ghost_densemat_create(&x, ctx, vtraits);
-    ghost_densemat_create(&y, ctx, vtraits);
-    x->fromRand(x); // x = random
-    y->fromScalar(y,&zero); // y = 0
-
-    // compute y = A*x
-    ghost_spmv(y,A,x,&spmvflags);
-   
-    // print y, A and x 
-    A->string(A,&Astr,1);
-    x->string(x,&xstr);
-    y->string(y,&ystr);
-    printf("%s\n=\n%s\n*\n%s\n",ystr,Astr,xstr);
-   
-    // clean up 
-    free(Astr); 
-    free(xstr);
-    free(ystr);
-    A->destroy(A);
-    x->destroy(x);
-    y->destroy(y);
-    ghost_context_destroy(ctx);
-
-    ghost_finalize();
-
-    return 0;
-}
+@GHOST_MINIMAL_EXAMPLE@
 ~~~
+
+This Doxygen documentation has been created with the following ghost/config.h:
+
+@verbatim
+@GHOST_CONFIG_H@
+@endverbatim
 

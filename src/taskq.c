@@ -25,7 +25,7 @@
 #include <mkl.h>
 #endif
 
-#ifdef GHOST_HAVE_INSTR_LIKWID
+#ifdef GHOST_INSTR_LIKWID
 #include <likwid.h>
 #endif
 
@@ -41,7 +41,7 @@
 /**
  * @brief The task queue created by ghost_taskq_init().
  */
-ghost_taskq_t *taskq = NULL;
+ghost_taskq *taskq = NULL;
 
 /**
  * @brief This is set to 1 if the tasqs are about to be killed. 
@@ -83,8 +83,9 @@ static pthread_key_t threadcount_key;
 static pthread_key_t mutex_key;
 
 
-ghost_error_t ghost_taskq_create()
+ghost_error ghost_taskq_create()
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING|GHOST_FUNCTYPE_SETUP);
     int t,s;
     int npu;
 
@@ -94,7 +95,7 @@ ghost_error_t ghost_taskq_create()
     ghost_machine_npu(&npu,GHOST_NUMANODE_ANY);
     nthreadcount = npu+1;
 
-    GHOST_CALL_RETURN(ghost_malloc((void **)&taskq,sizeof(ghost_taskq_t)));
+    GHOST_CALL_RETURN(ghost_malloc((void **)&taskq,sizeof(ghost_taskq)));
     pthread_mutex_init(&(taskq->mutex),NULL);
 
     pthread_mutex_lock(&(taskq->mutex));
@@ -130,6 +131,8 @@ ghost_error_t ghost_taskq_create()
 
     pthread_mutex_unlock(&(taskq->mutex));
     pthread_mutex_unlock(&globalMutex);
+    
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING|GHOST_FUNCTYPE_SETUP);
     return GHOST_SUCCESS;
 }
 
@@ -141,8 +144,10 @@ ghost_error_t ghost_taskq_create()
  *
  * @return GHOST_SUCCESS on success or GHOST_FAILURE on failure.
  */
-static int taskq_deleteTask(ghost_taskq_t *q, ghost_task_t *t)
+static int taskq_deleteTask(ghost_taskq *q, ghost_task *t)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING);
+    
     if (t == q->head) {
         DEBUG_LOG(1,"Removing head from queue %p",(void *)q);
         q->head = t->next;
@@ -163,6 +168,7 @@ static int taskq_deleteTask(ghost_taskq_t *q, ghost_task_t *t)
         t->next->prev = t->prev;
 
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING);
     return GHOST_SUCCESS;
 }
 
@@ -176,13 +182,14 @@ static int taskq_deleteTask(ghost_taskq_t *q, ghost_task_t *t)
  *
  * @return A pointer to the selected task or NULL if no suited task could be found. 
  */
-static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q, int nthreads)
+static ghost_task * taskq_findDeleteAndPinTask(ghost_taskq *q, int nthreads)
 {
     if (q == NULL) {
         WARNING_LOG("Tried to find a job but the queue is NULL");
         return NULL;
     }
-    ghost_task_t *curTask = q->head;
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING);
+    ghost_task *curTask = q->head;
 
     DEBUG_LOG(1,"Try to find a suitable task");
 
@@ -223,6 +230,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q, int nthreads)
                 ghost_thread_unpin();
             }
             pthread_mutex_unlock(curTask->mutex);
+            GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING);
             return curTask;
         }
 
@@ -283,7 +291,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q, int nthreads)
         }
 
         int curThread;
-        ghost_pumap_t *pumap;
+        ghost_pumap *pumap;
         ghost_pumap_get(&pumap);
 
 
@@ -316,33 +324,26 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q, int nthreads)
 
 
         DEBUG_LOG(1,"Pinning task's threads");
-        {
-            int curCore = hwloc_bitmap_first(myfree);
-            // pin me
-            ghost_thread_pin(curCore);
-            if( curTask->nThreads > 0 ) {
-                int *cores = NULL;
-                ghost_malloc((void **)&cores,sizeof(int)*curTask->nThreads);
-                for(curThread=0; curThread<curTask->nThreads; curThread++) {
-                    cores[curThread] = curCore;
-                    hwloc_bitmap_set(mybusy,curCore);
-                    curCore = hwloc_bitmap_next(myfree,curCore);
-                }
-                // pin
-            
+        int curCore = hwloc_bitmap_first(myfree);
+        // pin me
+        ghost_thread_pin(curCore);
+        
+        if( curTask->nThreads > 0 ) {
+            int cores[curTask->nThreads];
+            for(curThread=0; curThread<curTask->nThreads; curThread++) {
+                cores[curThread] = curCore;
+                hwloc_bitmap_set(mybusy,curCore);
+                curCore = hwloc_bitmap_next(myfree,curCore);
+            }
+        
 #pragma omp parallel private(curThread)
-                {
-                    curThread = ghost_omp_threadnum();
-                    DEBUG_LOG(1,"Thread %d (%d): Core # %d is idle, using it",curThread,
-                            (int)pthread_self(),cores[curThread]);
+            {
+                curThread = ghost_omp_threadnum();
+                DEBUG_LOG(1,"Thread %d (%d): Core # %d is idle, using it",curThread,
+                        (int)pthread_self(),cores[curThread]);
 
-                    ghost_thread_pin(cores[curThread]);
+                ghost_thread_pin(cores[curThread]);
 
-//#ifdef GHOST_HAVE_INSTR_LIKWID
-//                    likwid_markerThreadInit();
-//#endif
-                }
-                free(cores);
             }
         }
 
@@ -360,24 +361,30 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q, int nthreads)
         hwloc_bitmap_free(myfree);
         DEBUG_LOG(1,"Pinning successful, returning");
 
-            pthread_mutex_unlock(curTask->mutex);
+        pthread_mutex_unlock(curTask->mutex);
+
+        GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING);
         return curTask;
     }
 
     DEBUG_LOG(1,"Could not find and delete a task, returning NULL");
+    
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING);
     return NULL;
-
-
 }
 
-ghost_error_t ghost_taskq_startroutine(void *(**func)(void *))
+ghost_error ghost_taskq_startroutine(void *(**func)(void *))
 {
     if (!func) {
         ERROR_LOG("NULL pointer");
         return GHOST_ERR_INVALID_ARG;
     }
+    
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING);
+    
     *func =  &thread_main;
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING);
     return GHOST_SUCCESS;
 }
 
@@ -391,7 +398,7 @@ ghost_error_t ghost_taskq_startroutine(void *(**func)(void *))
 static void * thread_main(void *arg)
 {
 #ifdef GHOST_HAVE_CUDA
-    ghost_type_t ghost_type;
+    ghost_type ghost_type;
     ghost_type_get(&ghost_type);
     if (ghost_type == GHOST_TYPE_CUDA) {
         int cu_device;
@@ -399,7 +406,10 @@ static void * thread_main(void *arg)
         ghost_cu_init(cu_device);
     }
 #endif
-    ghost_task_t *myTask = NULL;
+    ghost_task *myTask = NULL;
+    
+    ghost_instr_prefix_set("");
+    ghost_instr_suffix_set("");
 
     pthread_key_t key;
     ghost_thpool_key(&key);
@@ -412,7 +422,7 @@ static void * thread_main(void *arg)
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
     pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS,NULL);
 
-    ghost_thpool_t *ghost_thpool = NULL;
+    ghost_thpool *ghost_thpool = NULL;
     ghost_thpool_get(&ghost_thpool);
     sem_post(ghost_thpool->sem);
 
@@ -468,7 +478,7 @@ static void * thread_main(void *arg)
             pthread_mutex_unlock(&newTaskMutex_by_threadcount[nthreads]);
             // protect threadpool (possible reallocation) by global mutex!
             pthread_mutex_lock(&globalMutex);
-            ghost_thpool_thread_add(threadFunc,nthreads);
+            ghost_thpoolhread_add(threadFunc,nthreads);
             pthread_mutex_unlock(&globalMutex);
         } else {
             pthread_mutex_unlock(&newTaskMutex_by_threadcount[nthreads]);
@@ -477,13 +487,20 @@ static void * thread_main(void *arg)
         pthread_mutex_lock(myTask->stateMutex);
         myTask->state = GHOST_TASK_RUNNING;    
         pthread_mutex_unlock(myTask->stateMutex);
-        
 
+#ifdef GHOST_BUILD_MIC
+        int blocktime = kmp_get_blocktime();
+        kmp_set_blocktime(1000); 
+#endif
         DEBUG_LOG(1,"Starting exeuction of task %p",(void *)myTask);
         pthread_setspecific(key,myTask);
         myTask->ret = myTask->func(myTask->arg);
         pthread_setspecific(key,NULL);
         DEBUG_LOG(1,"Task %p finished",(void *)myTask);
+
+#ifdef GHOST_BUILD_MIC
+        kmp_set_blocktime(blocktime); 
+#endif
         
         pthread_mutex_lock(&anyTaskFinishedMutex);
         num_pending_tasks--;
@@ -512,8 +529,9 @@ static void * thread_main(void *arg)
  *
  * @return GHOST_SUCCESS on success or GHOST_FAILURE on failure.
  */
-ghost_error_t ghost_taskq_add(ghost_task_t *t)
+ghost_error ghost_taskq_add(ghost_task *t)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING);
 
     if (taskq==NULL) {
         WARNING_LOG("Tried to add a task to a queue which is NULL");
@@ -546,7 +564,7 @@ ghost_error_t ghost_taskq_add(ghost_task_t *t)
         }
     }
     
-    ghost_task_t *cur;
+    ghost_task *cur;
     ghost_task_cur(&cur);
     if (cur) {
         DEBUG_LOG(1,"Adding task from within another task");
@@ -567,6 +585,7 @@ ghost_error_t ghost_taskq_add(ghost_task_t *t)
     pthread_mutex_unlock(&anyTaskFinishedMutex);
     pthread_mutex_unlock(&taskq->mutex);
     
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING);
     return GHOST_SUCCESS;
 }
 
@@ -575,11 +594,12 @@ ghost_error_t ghost_taskq_add(ghost_task_t *t)
  *
  * @return GHOST_SUCCESS on success or GHOST_FAILURE on failure.
  */
-ghost_error_t ghost_taskq_destroy()
+ghost_error ghost_taskq_destroy()
 {
     if (taskq == NULL) {
         return GHOST_SUCCESS;
     }
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING|GHOST_FUNCTYPE_TEARDOWN);
 
     pthread_mutex_lock(&globalMutex);
     killed = 1;
@@ -606,6 +626,7 @@ ghost_error_t ghost_taskq_destroy()
     DEBUG_LOG(1,"Free task queues");    
     free(taskq); taskq = NULL;
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING|GHOST_FUNCTYPE_TEARDOWN);
     return GHOST_SUCCESS;    
 }
 
@@ -614,15 +635,16 @@ ghost_error_t ghost_taskq_destroy()
  *
  * @return GHOST_SUCCESS on success or GHOST_FAILURE on failure.
  */
-ghost_error_t ghost_taskq_waitall()
+ghost_error ghost_taskq_waitall()
 {
     if (!taskq) {
         return GHOST_SUCCESS;
     }
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING);
 
     int canremain = 0;
 
-    ghost_task_t *cur;
+    ghost_task *cur;
     ghost_task_cur(&cur);
     if (cur) {
         WARNING_LOG("This function has been called inside a task! I will allow one task (this one) to remain active in order to avoid deadlocks.");
@@ -637,6 +659,7 @@ ghost_error_t ghost_taskq_waitall()
     }
     pthread_mutex_unlock(&anyTaskFinishedMutex);
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING);
     return GHOST_SUCCESS;
 }
 
@@ -650,8 +673,9 @@ ghost_error_t ghost_taskq_waitall()
  *
  * @return GHOST_SUCCESS on success or GHOST_FAILURE on failure.
  */
-ghost_error_t ghost_taskq_waitsome(ghost_task_t ** tasks, int nt, int *index)
+ghost_error ghost_taskq_waitsome(ghost_task ** tasks, int nt, int *index)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING);
     int t;
     int ret = 0;
 
@@ -668,8 +692,10 @@ ghost_error_t ghost_taskq_waitsome(ghost_task_t ** tasks, int nt, int *index)
         }
         pthread_mutex_unlock(tasks[t]->stateMutex);
     }
-    if (ret)
+    if (ret) {
+        GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING);
         return GHOST_SUCCESS;
+    }
 
     pthread_mutex_lock(&anyTaskFinishedMutex);
     pthread_cond_wait(&anyTaskFinishedCond,&anyTaskFinishedMutex);
@@ -687,5 +713,6 @@ ghost_error_t ghost_taskq_waitsome(ghost_task_t ** tasks, int nt, int *index)
         pthread_mutex_unlock(tasks[t]->stateMutex);
     }
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING);
     return GHOST_SUCCESS;
 }

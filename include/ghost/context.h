@@ -9,11 +9,87 @@
 #include "config.h"
 #include "types.h"
 #include "error.h"
-#include "perm.h"
 
-typedef struct ghost_context_t ghost_context_t;
+typedef struct ghost_context ghost_context;
+
+typedef enum
+{
+    GHOST_PERMUTATION_ORIG2PERM,
+    GHOST_PERMUTATION_PERM2ORIG
+}
+ghost_permutation_direction;
+
+typedef enum
+{
+    GHOST_PERMUTATION_SYMMETRIC,
+    GHOST_PERMUTATION_UNSYMMETRIC
+}
+ghost_permutation_method;
+
+/*typedef enum
+{
+    GHOST_PERM_NO_DISTINCTION=1, 
+}
+ghost_permutation_flags;
+  
+#ifdef __cplusplus
+inline ghost_permutation_flags operator|(const ghost_permutation_flags &a,
+        const ghost_permutation_flags &b)
+{
+    return static_cast<ghost_permutation_flags>(
+            static_cast<int>(a) | static_cast<int>(b));
+}
+
+inline ghost_permutation_flags operator&(const ghost_permutation_flags &a,
+        const ghost_permutation_flags &b)
+{
+    return static_cast<ghost_permutation_flags>(
+            static_cast<int>(a) & static_cast<int>(b));
+}
+#endif
+*/
 
 
+ 
+typedef struct
+{
+    /**
+     * @brief Gets an original index and returns the corresponding permuted position.
+     *
+     * NULL if no permutation applied to the matrix.
+     */
+    ghost_gidx *perm;
+    /**
+     * @brief Gets an index in the permuted system and returns the original index.
+     *
+     * NULL if no permutation applied to the matrix.
+     */
+    ghost_gidx *invPerm;
+    /**
+     * @brief Gets an original index and returns the corresponding permuted position of columns.
+     *
+     * NULL if no permutation applied to the matrix, or if the perm=colPerm.
+     */
+    ghost_gidx *colPerm;
+    /**
+     * @brief Gets an index in the permuted system and returns the original index of columns.
+     *
+     * NULL if no permutation applied to the matrix, or if the invPerm=invColPerm.
+     */
+    ghost_gidx *colInvPerm;
+    /**
+    * @brief A flag to indicate whether symmetric or unsymmetric permutation is carried out
+    * 	     (internal) Its necessary for destruction of permutations, since we need to know whether 
+    * 	     both perm and colPerm point to same array. 
+    *
+    * GHOST_PERMUTATION_SYMMETRIC - if symmetric (both point to same array)
+    * GHOST_PERMUTATION_UNSYMMETRIC - if unsymmetric (points to different array) 
+    */
+    ghost_permutation_method method;   
+
+    ghost_gidx *cu_perm;
+}
+ghost_permutation;
 
 /**
  * @brief This struct holds all possible flags for a context.
@@ -27,15 +103,35 @@ typedef enum {
     /**
      * @brief Distribute work among the ranks by number of rows.
      */
-    GHOST_CONTEXT_DIST_ROWS = 8
+    GHOST_CONTEXT_DIST_ROWS = 8,
+    /**
+    * @brief Does not make a distinction between local and remote entries if set; this might lead to higher communication time
+    */
+    GHOST_PERM_NO_DISTINCTION=16,
+
 } ghost_context_flags_t;
 
+#ifdef __cplusplus
+inline ghost_context_flags_t operator|(const ghost_context_flags_t &a,
+        const ghost_context_flags_t &b)
+{
+    return static_cast<ghost_context_flags_t>(
+            static_cast<int>(a) | static_cast<int>(b));
+}
+
+inline ghost_context_flags_t operator&(const ghost_context_flags_t &a,
+        const ghost_context_flags_t &b)
+{
+    return static_cast<ghost_context_flags_t>(
+            static_cast<int>(a) & static_cast<int>(b));
+}
+#endif
 /**
  * @brief The GHOST context.
  *
  * The context is relevant in the MPI-parallel case. It holds information about data distribution and communication.
  */
-struct ghost_context_t
+struct ghost_context
 {
     /**
      * @brief Row pointers
@@ -44,19 +140,19 @@ struct ghost_context_t
      * at context creation in order to create the distribution. once the matrix
      * is being created, the row pointers are distributed
      */
-    ghost_gidx_t *rpt;
+    ghost_gidx *rpt;
     /**
      * @brief The global number of non-zeros
      */
-    ghost_gidx_t gnnz;
+    ghost_gidx gnnz;
     /**
      * @brief The global number of rows
      */
-    ghost_gidx_t gnrows;
+    ghost_gidx gnrows;
     /**
      * @brief The global number of columns.
      */
-    ghost_gidx_t gncols;
+    ghost_gidx gncols;
     /**
      * @brief The context's property flags.
      */
@@ -72,59 +168,79 @@ struct ghost_context_t
     /**
      * @brief The context's MPI communicator.
      */
-    ghost_mpi_comm_t mpicomm;
+    ghost_mpi_comm mpicomm;
+    /**
+     * @brief The context's parent MPI communicator.
+     *
+     * This is only used for two-level MPI parallelism and MPI_COMM_NULL otherwise.
+     *
+     */
+    ghost_mpi_comm mpicomm_parent;
     /**
      * @brief The matrix' global permutation.
      */
-    ghost_permutation_t *perm_global;
+    ghost_permutation *perm_global;
     /**
      * @brief The matrix' local permutation.
      */
-    ghost_permutation_t *perm_local;
+    ghost_permutation *perm_local;
     /**
      * @brief Number of remote elements with unique colidx
      */
-    ghost_lidx_t halo_elements; // TODO rename nHaloElements
+    ghost_lidx halo_elements; // TODO rename nHaloElements
     /**
      * @brief Number of matrix elements for each rank
      */
-    ghost_lidx_t* lnEnts; // TODO rename nLclEnts
+    ghost_lidx* lnEnts; // TODO rename nLclEnts
     /**
      * @brief Index of first element into the global matrix for each rank
      */
-    ghost_gidx_t* lfEnt; // TODO rename firstLclEnt
+    ghost_gidx* lfEnt; // TODO rename firstLclEnt
     /**
      * @brief Number of matrix rows for each rank
      */
-    ghost_lidx_t* lnrows; // TODO rename nLclRows
+    ghost_lidx* lnrows; // TODO rename nLclRows
     /**
      * @brief Index of first matrix row for each rank
      */
-    ghost_gidx_t* lfRow; // TODO rename firstLclRow
+    ghost_gidx* lfRow; // TODO rename firstLclRow
     /**
+     * @brief Number of densemat rows (or sparsemat columns) with padding 
+     * Required if GHOST_PERM_NO_DISTINCTION is set
+     */
+    ghost_lidx nrowspadded;
+     /**
      * @brief Number of wishes (= unique RHS elements to get) from each rank
      */
-    ghost_lidx_t * wishes; // TODO rename nWishes
+    ghost_lidx * wishes; // TODO rename nWishes
     /**
      * @brief Column idx of wishes from each rank
      */
-    ghost_lidx_t ** wishlist; // TODO rename wishes
+    ghost_lidx ** wishlist; // TODO rename wishes
     /**
      * @brief Number of dues (= unique RHS elements from myself) to each rank
      */
-    ghost_lidx_t * dues; // TODO rename nDues
+    ghost_lidx * dues; // TODO rename nDues
     /**
      * @brief Column indices of dues to each rank
      */
-    ghost_lidx_t ** duelist; // TODO rename dues
+    ghost_lidx ** duelist; // TODO rename dues
     /**
      * @brief Column indices of dues to each rank (CUDA)
      */
-    ghost_lidx_t ** cu_duelist; // TODO rename dues
+    ghost_lidx ** cu_duelist; // TODO rename dues
     /**
      * @brief First index to get RHS elements coming from each rank
      */
-    ghost_lidx_t* hput_pos; // TODO rename
+    ghost_lidx* hput_pos; // TODO rename
+    int *duepartners;
+    int nduepartners;
+    int *wishpartners;
+    int nwishpartners;
+    /**
+     * @brief Number of matrix entries in each local column.
+     */
+    ghost_lidx *entsInCol;
 };
 
 
@@ -148,7 +264,7 @@ typedef enum {
      * @brief Empty source.
      */
     GHOST_SPARSEMAT_SRC_NONE
-} ghost_sparsemat_src_t;
+} ghost_sparsemat_src;
 
 
 #ifdef __cplusplus
@@ -165,13 +281,13 @@ extern "C" {
      * @param[in] matrixSource The sparse matrix source.     
      * @param[in] srcType The type of the sparse matrix source.     
      * @param[in] comm The MPI communicator in which the context is present.
-     * @param[in] weight This influences the work distribution amon ranks. 
+     * @param[in] weight This influences the work distribution amon ranks. If set to 0., it is automatically determined. 
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      * 
-     * The matrix source can either be one of ghost_sparsemat_src_t. The concrete type has to be specified in the srcType parameter. 
+     * The matrix source can either be one of ghost_sparsemat_src. The concrete type has to be specified in the srcType parameter. 
      * It must not be ::GHOST_SPARSEMAT_SRC_NONE in the following cases:
-     * -# If gnrows or gncols are given as less than 1, the source has to be a a pointer to a ghost_sparsemat_src_rowfunc_t and srcType has to be set to ::GHOST_SPARSEMAT_SRC_FILE. 
+     * -# If gnrows or gncols are given as less than 1, the source has to be a a pointer to a ghost_sparsemat_src_rowfunc and srcType has to be set to ::GHOST_SPARSEMAT_SRC_FILE. 
      * -# If the flag GHOST_CONTEXT_WORKDIST_NZE is set in the flags, the source may be of any type (except ::GHOST_SPARSEMAT_SRC_NONE of course)
      * 
      * In all other cases, i.e., gnrows and gncols are correctly set and the distribution of matrix rows across ranks should be done by the number of rows, the matrixSource parameter will be ignored. 
@@ -183,7 +299,7 @@ extern "C" {
      * Thus, A would be assigned 6 million matrix rows and B 2 million.
      * 
      */
-    ghost_error_t ghost_context_create(ghost_context_t **context, ghost_gidx_t gnrows, ghost_gidx_t gncols, ghost_context_flags_t flags, void *matrixSource, ghost_sparsemat_src_t srcType, ghost_mpi_comm_t comm, double weight); 
+    ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, ghost_gidx gncols, ghost_context_flags_t flags, void *matrixSource, ghost_sparsemat_src srcType, ghost_mpi_comm comm, double weight); 
     
     /**
      * @ingroup stringification
@@ -194,7 +310,7 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_context_string(char **str, ghost_context_t *context);
+    ghost_error ghost_context_string(char **str, ghost_context *context);
     /**
      * @brief Free the context's resources.
      *
@@ -202,21 +318,7 @@ extern "C" {
      *
      * If the context is NULL it will be ignored.
      */
-    void ghost_context_destroy(ghost_context_t *ctx);
-
-    /**
-     * @brief Assemble communication information in the given context.
-     * @param[inout] ctx The context.
-     * @param[in] col_orig The original column indices of the sparse matrix which is bound to the context.
-     * @param[out] col The compressed column indices of the sparse matrix which is bound to the context.
-     *
-     * @return ::GHOST_SUCCESS on success or an error indicator.
-     * 
-     * The following fields of ghost_context_t are being filled in this function:
-     * wishes, wishlist, dues, duelist, hput_pos.
-     * Additionally, the columns in col_orig are being compressed and stored in col.
-     */
-    ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_orig, ghost_lidx_t *col);
+    void ghost_context_destroy(ghost_context *ctx);
     
     /**
      * @brief Get the name of the work distribution scheme.
@@ -226,6 +328,15 @@ extern "C" {
      * @return A string holding a sensible name of the work distribution scheme.
      */
     char * ghost_context_workdist_string(ghost_context_flags_t flags);
+    /**
+     * @brief Create a global inverse permutation from a present global permutation
+     *
+     * @param context A context with a valid global permutation
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+ghost_error ghost_global_perm_inv(ghost_gidx *toPerm, ghost_gidx *fromPerm, ghost_context *context);
+    int ghost_rank_of_row(ghost_context *ctx, ghost_gidx row);
 
 #ifdef __cplusplus
 } //extern "C"
