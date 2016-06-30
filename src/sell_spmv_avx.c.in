@@ -101,6 +101,8 @@ ghost_error_t ghost_sellspmv__a_avx_d_d_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat,
                     #GHOST_UNROLL#_mm256_store_pd(&lval[c*CHUNKHEIGHT+(4*@)],_mm256_add_pd(tmp@,_mm256_load_pd(&lval[c*CHUNKHEIGHT+(4*@)])));#CHUNKHEIGHT/4
                 } else if (spmvmOptions & GHOST_SPMV_AXPBY) {
                     #GHOST_UNROLL#_mm256_store_pd(&lval[c*CHUNKHEIGHT+(4*@)],_mm256_add_pd(tmp@,_mm256_mul_pd(beta,_mm256_load_pd(&lval[c*CHUNKHEIGHT+(4*@)]))));#CHUNKHEIGHT/4
+                } else if (spmvmOptions & GHOST_SPMV_LOCAL) {
+                    #GHOST_UNROLL#_mm256_store_pd(&lval[c*CHUNKHEIGHT+4*@],tmp@);#CHUNKHEIGHT/4
                 } else {
                     #GHOST_UNROLL#_mm256_stream_pd(&lval[c*CHUNKHEIGHT+(4*@)],tmp@);#CHUNKHEIGHT/4
                 }
