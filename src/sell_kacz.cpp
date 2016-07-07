@@ -160,10 +160,12 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
     ghost_alignment opt_align;
     
     ghost_densemat_storage try_storage[2] = {GHOST_DENSEMAT_COLMAJOR,GHOST_DENSEMAT_ROWMAJOR};
-    int n_storage, pos_storage, first_storage;
+    int n_storage, pos_storage, first_storage, n_mdt, n_vdt;
     
-    p.vdt = x->traits.datatype;
-    p.mdt = mat->traits.datatype;
+    ghost_datatype try_vdt[2] = {x->traits.datatype,GHOST_DT_ANY};
+    ghost_datatype try_mdt[2] = {mat->traits.datatype,GHOST_DT_ANY};
+    n_vdt = sizeof(try_vdt)/sizeof(ghost_datatype); 
+    n_mdt = sizeof(try_mdt)/sizeof(ghost_datatype); 
    
     if (x->traits.ncols == 1 && b->traits.ncols == 1 && 
             (x->traits.storage == GHOST_DENSEMAT_COLMAJOR || x->stride == 1) && 
@@ -201,7 +203,7 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
 
     int n_chunkheight = sizeof(try_chunkheight)/sizeof(int);
     int n_blocksz = sizeof(try_blocksz)/sizeof(int);
-    int pos_chunkheight, pos_blocksz;
+    int pos_chunkheight, pos_blocksz, pos_mdt, pos_vdt;
 
     bool optimal = true;
     
@@ -229,21 +231,27 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
                 }
 
                 for (p.alignment = opt_align; (int)p.alignment >= GHOST_UNALIGNED; p.alignment = (ghost_alignment)((int)p.alignment-1)) {
-                    for (pos_storage = first_storage; pos_storage < n_storage+first_storage; pos_storage++) {  
-                        p.chunkheight = try_chunkheight[pos_chunkheight];
-                        p.blocksz = try_blocksz[pos_blocksz];
-                        p.storage = try_storage[pos_storage];
+                    for (pos_mdt = 0; pos_mdt < n_mdt; pos_mdt++) {
+                        for (pos_vdt = 0; pos_vdt < n_vdt; pos_vdt++) {
+                            for (pos_storage = first_storage; pos_storage < n_storage+first_storage; pos_storage++) {  
+                                p.chunkheight = try_chunkheight[pos_chunkheight];
+                                p.blocksz = try_blocksz[pos_blocksz];
+                                p.storage = try_storage[pos_storage];
+                                p.mdt = try_mdt[pos_mdt];
+                                p.vdt = try_vdt[pos_vdt];
 
 
-                    INFO_LOG("Try chunkheight=%s, blocksz=%s, impl=%s, %s, method %s",
-                            p.chunkheight==-1?"arbitrary":std::to_string((long long)p.chunkheight).c_str(),
-                            p.blocksz==-1?"arbitrary":std::to_string((long long)p.blocksz).c_str(),
-                            ghost_implementation_string(p.impl),p.alignment==GHOST_UNALIGNED?"unaligned":"aligned",p.method==BMC?"BMC":p.method==MC?"MC":"BMC_RB");
-                    kernel = ghost_kacz_kernels[p];
-                    if (kernel) {
-	                goto end_of_loop;
-                       }
-                   }
+                            INFO_LOG("Try chunkheight=%s, blocksz=%s, impl=%s, %s, method %s",
+                                    p.chunkheight==-1?"arbitrary":std::to_string((long long)p.chunkheight).c_str(),
+                                    p.blocksz==-1?"arbitrary":std::to_string((long long)p.blocksz).c_str(),
+                                    ghost_implementation_string(p.impl),p.alignment==GHOST_UNALIGNED?"unaligned":"aligned",p.method==BMC?"BMC":p.method==MC?"MC":"BMC_RB");
+                            kernel = ghost_kacz_kernels[p];
+                            if (kernel) {
+                            goto end_of_loop;
+                               }
+                           }
+                        }
+                    }
                     optimal = false;
                 }
             }
