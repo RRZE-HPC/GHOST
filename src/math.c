@@ -381,11 +381,11 @@ int ghost_spmv_perf(double *perf, double time, void *varg)
 
     flops = (double)spmvFlopsPerMatrixEntry*(double)nnz*(double)ncol;
 
-    if (arg.flags & GHOST_SPMV_AXPY) {
-        flops += flopsPerAdd*nrow*ncol;
+    if (!(arg.flags & GHOST_SPMV_AXPY) && !(arg.flags & GHOST_SPMV_AXPBY)) { // y=Ax case, we have one ADD less in each row as tmp=0 before the inner loop
+        flops -= flopsPerAdd*nrow*ncol;
     }
     if (arg.flags & GHOST_SPMV_AXPBY) {
-        flops += (flopsPerMul+flopsPerAdd)*nrow*ncol;
+        flops += flopsPerMul*nrow*ncol;
     }
     if (arg.flags & GHOST_SPMV_SHIFT) {
         flops += (flopsPerMul+flopsPerAdd)*nrow*ncol;
