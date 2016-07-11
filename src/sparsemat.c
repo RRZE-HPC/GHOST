@@ -2224,7 +2224,9 @@ static ghost_error SELL_split(ghost_sparsemat *mat)
 
         current_l = 0;
         current_r = 0;
-        ghost_lidx col_l[mat->traits.C], col_r[mat->traits.C];
+        ghost_lidx *col_l, *col_r;
+        ghost_malloc((void **)&col_l,sizeof(ghost_lidx)*mat->traits.C);
+        ghost_malloc((void **)&col_r,sizeof(ghost_lidx)*mat->traits.C);
 
         for(chunk = 0; chunk < mat->nrowsPadded/mat->traits.C; chunk++) {
 
@@ -2261,6 +2263,9 @@ static ghost_error SELL_split(ghost_sparsemat *mat)
                 }
             }
         }
+
+        free(col_l);
+        free(col_r);
 
 #ifdef GHOST_HAVE_CUDA
         if (!(mat->traits.flags & GHOST_SPARSEMAT_HOST)) {
