@@ -256,15 +256,10 @@ ghost_error ghost_sparsemat_perm_spmp(ghost_sparsemat *mat, void *matrixSource, 
 
         bfsBipartite(*csr, *csrT, intperm, intinvperm, intcolperm, intcolinvperm);
 
-	if(me==0)
+/*	if(me==0)
 		csr->storeMatrixMarket("proc0_before_RCM");
 	if(me==1)
 		csr->storeMatrixMarket("proc1_before_RCM");
-
-/*	if(me==0)
-		csr->storeMatrixMarket("after_bfs_0");
-        if(me==1)
-		csr->storeMatrixMarket("after_bfs_1");
 */
         useperm = intperm;
         useinvperm = intinvperm; 
@@ -309,11 +304,11 @@ ghost_error ghost_sparsemat_perm_spmp(ghost_sparsemat *mat, void *matrixSource, 
     }
     else {
         csrperm = csr->permute(intcolperm ,useinvperm);
- 	if(me==0)
+/* 	if(me==0)
 		csrperm->storeMatrixMarket("proc0_after_RCM");
 	if(me==1)
 		csrperm->storeMatrixMarket("proc1_after_RCM");
-
+*/
    }
 
     INFO_LOG("Permuted bandwidth, avg. width: %d, %g",csrperm->getBandwidth(),csrperm->getAverageWidth());
@@ -363,7 +358,7 @@ out:
 #else
     free(intcolperm);  
     free(intcolinvperm); 
-      delete csrT;
+    delete csrT;
 #endif
     delete csr;
     delete csrperm;

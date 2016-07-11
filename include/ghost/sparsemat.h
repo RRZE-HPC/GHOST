@@ -108,6 +108,8 @@ ghost_kacz_normalize;
 
 typedef struct {
     void *omega;
+    //void *sigma_r;//real part of shift
+    //void *sigma_i;//imaginary part of shift 
     ghost_kacz_direction direction;
     ghost_kacz_normalize normalize;
 }

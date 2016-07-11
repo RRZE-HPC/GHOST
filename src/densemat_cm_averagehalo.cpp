@@ -84,23 +84,28 @@ static ghost_error ghost_densemat_cm_averagehalo_tmpl(ghost_densemat *vec)
      GHOST_CALL_GOTO(ghost_malloc((void **)&nrankspresent, vec->traits.nrows*sizeof(int)),err,ret);
 
 #pragma omp parallel for schedule(static) private(i)
-    for (i=0; i<vec->traits.nrows; i++) {
-	if(vec->context->flags & GHOST_PERM_NO_DISTINCTION){
-        	nrankspresent[i] = vec->context->entsInCol[vec->context->perm_local->colInvPerm[i]]?1:0; //this has also to be permuted since it was
-													 //for unpermuted columns that we calculate
-		if(nrankspresent[i]==1)
-	        	sum[i] = ((T *)vec->val)[i];
-		else
-			sum[i] = 0;
+    for (i=0; i<vec->traits.nrows; i++) {	
+	if(vec->context->perm_local) {
+        	if(vec->context->perm_local->colInvPerm[i]< vec->context->lnrows[rank] ) { //This check is important since entsInCol has only lnrows(NO_DISTINCTION
+											 //might give seg fault else) the rest are halo anyway, not needed for local sums
+			nrankspresent[i] = vec->context->entsInCol[vec->context->perm_local->colInvPerm[i]]?1:0; //this has also to be permuted since it was
+														 //for unpermuted columns that we calculate
+			if(nrankspresent[i]==1)
+	        		sum[i] = ((T *)vec->val)[i];
+			else
+				sum[i] = 0;
+		} else {
+			nrankspresent[i] = 0;
+			sum[i]=0;
+		} 	
 	} else {
-		nrankspresent[i] = vec->context->entsInCol[i]?1:0;		
-		if(nrankspresent[i]==1)
-		        sum[i] = ((T *)vec->val)[i];
-		else
-			sum[i] = 0;
+			nrankspresent[i] = vec->context->entsInCol[i]?1:0;		
+			if(nrankspresent[i]==1)
+		        	sum[i] = ((T *)vec->val)[i];
+			else
+				sum[i] = 0;
 	}
-
-     }
+  }
     
      ghost_lidx currow;
      curwork = work;
