@@ -303,6 +303,7 @@ ghost_error set_kacz_ratio(ghost_sparsemat *mat, void *matrixSource, ghost_spars
    mat->kacz_setting.active_threads = nthread[0];
    calculate_bw(mat,matrixSource,srcType);
    mat->kaczRatio = ((double)mat->nrows)/mat->bandwidth;
+   free(nthread);
    return GHOST_SUCCESS;
 }
 
@@ -1076,7 +1077,7 @@ ERROR_LOG("max_col after BMC<%d> = %d",me,max_col);
                     crsval = &((char *)(((ghost_sparsemat_rowfunc_crs_arg *)src->arg)->val))[crsrpt[actualrow]*mat->elSize];
 
 #pragma vector nontemporal
-                    for (colidx = 0; colidx<rl[row]; colidx++) {
+                    for(colidx = 0; colidx<rl[row]; colidx++) {
                         // assignment is much faster than memcpy with non-constant size, so we need those branches...
                         if (mat->traits.datatype & GHOST_DT_REAL) {
                             if (mat->traits.datatype & GHOST_DT_DOUBLE) {
@@ -1165,16 +1166,8 @@ ERROR_LOG("max_col after BMC<%d> = %d",me,max_col);
                                        // (*col)[(*chunkptr)[chunk]+colidx*C+i] = mat->context->perm_local->colPerm[tmpcol[i*src->maxrowlen+colidx]]	
                                        // do not permute remote and do not allow local to go to remote
                                        if(tmpcol[i*src->maxrowlen+colidx] < mat->context->nrowspadded ) {
-						if( mat->context->perm_local->colPerm[tmpcol[i*src->maxrowlen+colidx]]>=mat->context->nrowspadded ) {	
-							ERROR_LOG("MAT->nrows<%d>=%d",me,mat->nrows);
-							ERROR_LOG("Ensure you have halo number of paddings, since GHOST_PERM_NO_DISTINCTION is switched on");			
-							ERROR_LOG("nrowspadded<%d> = %d",me,mat->context->nrowspadded);
-							ERROR_LOG("CHUNK PTR value = %d",(*chunkptr)[chunk])
-							ERROR_LOG("ERROR produced at row = %d by column: %d and after perm%d, idx requested=%d",row, tmpcol[i*src->maxrowlen+colidx] ,mat->context->perm_local->colPerm[tmpcol[i*src->maxrowlen+colidx]],i*src->maxrowlen+colidx)	
-							ERROR_LOG("Value at that point = %f",tmpval[i*src->maxrowlen+colidx]);
-							ERROR_LOG("zero permuted to %d",mat->context->perm_local->colPerm[0]);
-							ERROR_LOG("PRINTING ALL COLUMN ENTRIES,Rowlen=%d, MAXRowlen=%d",rl[row],src->maxrowlen)
-  						//exit(0);
+						if( mat->context->perm_local->colPerm[tmpcol[i*src->maxrowlen+colidx]]>=mat->context->nrowspadded ) {		
+							ERROR_LOG("Ensure you have halo number of paddings, since GHOST_PERM_NO_DISTINCTION is switched on");		
 						}
 				        	(*col)[(*chunkptr)[chunk]+colidx*C+i] = mat->context->perm_local->colPerm[tmpcol[i*src->maxrowlen+colidx]];
 	            			} else {
@@ -1950,9 +1943,8 @@ if(nprocs>1 && mat->traits.flags & GHOST_SOLVER_KACZ && mat->traits.flags & GHOS
     	if (!SELL(mat)->rowLen) GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->rowLen, (mat->nrowsPadded)*sizeof(ghost_lidx)),err,ret);
     	if (!SELL(mat)->rowLenPadded) GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->rowLenPadded, (mat->nrowsPadded)*sizeof(ghost_lidx)),err,ret);
 
-    	ghost_gidx *new_col;
-    	GHOST_CALL_GOTO(ghost_malloc((void **)&new_col, mat->nEnts*sizeof(ghost_gidx)),err,ret);
-
+    	ghost_gidx *new_col = NULL;
+    	//GHOST_CALL_GOTO(ghost_malloc((void **)&new_col, mat->nEnts*sizeof(ghost_gidx)),err,ret); //will be allocated in the call
 
     	GHOST_CALL_GOTO(ghost_sparsemat_fromfunc_common(SELL(mat)->rowLen,SELL(mat)->rowLenPadded,SELL(mat)->chunkLen,SELL(mat)->chunkLenPadded,&(SELL(mat)->chunkStart),&(SELL(mat)->val),&new_col,&after_split,mat,mat->traits.C,mat->traits.T),err,ret);
 
@@ -1998,12 +1990,6 @@ if(mat->traits.flags & GHOST_SOLVER_KACZ) {
 }
 int rank;
 ghost_rank(&rank, mat->context->mpicomm);
-
-
-if(rank==0)
-sparsemat_write(mat,"proc0");
-if(rank==1)
-sparsemat_write(mat,"proc1");
 
 
 #ifdef GHOST_HAVE_CUDA
