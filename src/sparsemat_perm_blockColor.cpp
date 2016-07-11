@@ -8,6 +8,7 @@
 #include "ColPack/ColPackHeaders.h"
 #endif
 #include <vector>
+#include <limits.h>
 
 extern "C" ghost_error ghost_sparsemat_blockColor(ghost_sparsemat *mat, void *matrixSource, ghost_sparsemat_src srcType) 
 {
@@ -37,13 +38,13 @@ extern "C" ghost_error ghost_sparsemat_blockColor(ghost_sparsemat *mat, void *ma
     uint32_t *adolc_data = NULL;
 #endif
  
-    ghost_gidx ncols_halo_padded = mat->ncols;
-
+    ghost_gidx ncols_halo_padded = mat->ncols ;
+     
     if (mat->context->flags & GHOST_PERM_NO_DISTINCTION) {
      	ncols_halo_padded = mat->context->nrowspadded + mat->context->halo_elements+1;
    }
 
-    #ifdef GHOST_HAVE_COLPACK
+   #ifdef GHOST_HAVE_COLPACK
      ColPack::BipartiteGraphPartialColoringInterface *GC;
      adolc = new uint32_t*[mat->nrows];
     #endif
@@ -168,8 +169,14 @@ extern "C" ghost_error ghost_sparsemat_blockColor(ghost_sparsemat *mat, void *ma
        ghost_gidx * tmpcol = NULL;
        char * tmpval = NULL;
        ghost_lidx rowlen;
+	
 
-  #pragma omp parallel private (tmpval,tmpcol,rowlen) reduction(+:nnz) 
+	//TODO delete it
+	ghost_lidx max_col = 0;
+	int me;
+	ghost_rank(&me, mat->context->mpicomm);
+
+  #pragma omp parallel private (tmpval,tmpcol,rowlen) reduction(+:nnz) reduction(max:max_col)
     {
         ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize);
         ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx));
@@ -186,11 +193,18 @@ extern "C" ghost_error ghost_sparsemat_blockColor(ghost_sparsemat *mat, void *ma
                 src->func(mat->context->lfRow[me]+i,&rowlen,tmpcol,tmpval,src->arg);
             }
             nnz += rowlen;
+//TODO delete after test
+		for(int j=0 ;j<rowlen; ++j)
+		{
+//			max_col = MAX(max_col,mat->context->perm_local->colPerm[tmpcol[j]]);	
+		}	
+
         }
         free(tmpval); tmpval = NULL;
         free(tmpcol); tmpcol = NULL;
     }
-}
+//ERROR_LOG("max_col after RCM<%d> = %d",me,max_col);
+} 
  
    if (srcType == GHOST_SPARSEMAT_SRC_FUNC || srcType == GHOST_SPARSEMAT_SRC_FILE) {
        ghost_sparsemat_src_rowfunc *src = (ghost_sparsemat_src_rowfunc *)matrixSource;
@@ -231,15 +245,15 @@ extern "C" ghost_error ghost_sparsemat_blockColor(ghost_sparsemat *mat, void *ma
 		rpt[i+1] = rpt[i] + rowlen;
 	}
 
-                int start_col =  mat->nrows + ncols_halo_padded;
-                int end_col   = 0;
-    
+                ghost_lidx start_col =  INT_MAX;
+                ghost_lidx end_col   =  0;
+   
 		if(mat->context->perm_local) {
                 	if(mat->context->perm_local->colPerm == NULL) {
                 		for(int j=rpt[i]; j<rpt[i+1]; ++j) {
                 			start_col = MIN(start_col, mat->context->perm_local->perm[col[j]]);
                         		end_col   = MAX(end_col, mat->context->perm_local->perm[col[j]]);
-                		} 
+	        		} 
  			} else {
                         	for(int j=rpt[i]; j<rpt[i+1]; ++j) {
                                 	start_col = MIN(start_col, mat->context->perm_local->colPerm[col[j]]);
@@ -275,12 +289,14 @@ extern "C" ghost_error ghost_sparsemat_blockColor(ghost_sparsemat *mat, void *ma
 
       #pragma omp single
 	{
-		INFO_LOG("NO. of Rows Multicolored = %d\n",ctr_nrows_MC);
+		INFO_LOG("NO. of Rows Multicolored = %d",ctr_nrows_MC);
 	}
 	
      // free(tmpcol);
       free(tmpval);
      }
+    free(col);
+    free(rpt);
    }
             
 /*       for(int i=0; i<nrows; ++i){
@@ -299,7 +315,7 @@ extern "C" ghost_error ghost_sparsemat_blockColor(ghost_sparsemat *mat, void *ma
 
     if (!mat->context->perm_local) {
    	//this branch if no local permutations are carried out before
-    	WARNING_LOG("The matrix has not been RCM permuted, BLOCK coloring works better for matrix with small bandwidths\n");
+    	WARNING_LOG("The matrix has not been RCM permuted, BLOCK coloring works better for matrix with small bandwidths");
     	GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local,sizeof(ghost_permutation)), err, ret);
 	old_perm = false;
     	GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->perm,sizeof(ghost_gidx)*mat->nrows), err, ret);
@@ -321,7 +337,7 @@ extern "C" ghost_error ghost_sparsemat_blockColor(ghost_sparsemat *mat, void *ma
        	//this branch if no unsymmetric permutations have been carried out before
                  
        	if(mat->nrows != mat->context->nrowspadded) {
-		ERROR_LOG("Trying to do symmetric permutation on non-squared matrix\n");
+		ERROR_LOG("Trying to do symmetric permutation on non-squared matrix");
        	}
 
         //now make it unsymmetric
@@ -377,7 +393,7 @@ extern "C" ghost_error ghost_sparsemat_blockColor(ghost_sparsemat *mat, void *ma
 #ifdef GHOST_HAVE_COLPACK         
     INFO_LOG("Create permutation from coloring");
     free(curcol);
-    //now build adolc for multicoloring
+   //now build adolc for multicoloring
     //int nrows_to_mc = mat->zone_ptr[mat->nzones+1]-mat->zone_ptr[mat->nzones];
     offs = mat->zone_ptr[mat->nzones];		
     adolc_data = new uint32_t[ctr_nnz_MC + ctr_nrows_MC];
@@ -392,7 +408,7 @@ if (srcType == GHOST_SPARSEMAT_SRC_FUNC || srcType == GHOST_SPARSEMAT_SRC_FILE) 
  
     ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx));
     ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize);
- 
+
     for(int i=0; i< ctr_nrows_MC; ++i) {
 	if (mat->context->perm_global && mat->context->perm_local) {
                  src->func(mat->context->perm_global->invPerm[mat->context->perm_local->invPerm[offs+i]],&rowlen,tmpcol,tmpval,src->arg);
@@ -407,7 +423,7 @@ if (srcType == GHOST_SPARSEMAT_SRC_FUNC || srcType == GHOST_SPARSEMAT_SRC_FILE) 
 	for(int j=0; j<rowlen; ++j) {
 		adolc_data[pos++] = tmpcol[j];
 	}
-    }
+   }
 free(tmpcol);
 free(tmpval);
 }
@@ -479,7 +495,8 @@ free(tmpval);
 err:
 
 out:
- free(curcol);
+ 
+free(curcol);
  return ret;
 }
 

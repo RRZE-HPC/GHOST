@@ -12,7 +12,6 @@
         GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
         int me;
         ghost_rank(&me, A->context->mpicomm);
-
    
         std::string base_name(name);
         std::stringstream fileName;  
@@ -27,11 +26,13 @@
 
   	ghost_sell *sell_mat = SELL(A);
         double *mval = (double*) sell_mat->val; 
+	int C = A->traits.C;
 
-  	for (int row=0; row<A->nrows; ++row) {
-        	ghost_lidx idx =  sell_mat->chunkStart[row];
-        	for (int j=0; j<sell_mat->rowLen[row]; ++j) {
-                	file<<row+1<<" "<<(int)sell_mat->col[idx+j]+1<<" "<<mval[idx+j]<<"\n";
+ 	for (int row=0; row<A->nrows; ++row) {
+        	ghost_lidx idx =  sell_mat->chunkStart[row/C] + row%C ;	
+        	for (int j=0; j<sell_mat->chunkLen[row/C]; ++j) {
+                	file<<row+1<<" "<<(int)sell_mat->col[idx]+1<<" "<<mval[idx]<<"\n";
+			idx += C;
          	}
   	}
       
