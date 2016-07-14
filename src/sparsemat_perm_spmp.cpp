@@ -89,8 +89,7 @@ ghost_error ghost_sparsemat_perm_spmp(ghost_sparsemat *mat, void *matrixSource, 
 
     rpt[0] = 0;
     localrpt[0] = 0;
-
-   
+ 
 #pragma omp parallel private (tmpval,tmpcol,i,rowlen) reduction(+:nnz)
     {
         ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize);
@@ -103,7 +102,7 @@ ghost_error ghost_sparsemat_perm_spmp(ghost_sparsemat *mat, void *matrixSource, 
                 nnz += rowlen;
             }
         } else {
-           for (i=0; i<mat->context->lnrows[me]; i++) {
+          for (i=0; i<mat->context->lnrows[me]; i++) {
                 src->func(mat->context->lfRow[me]+i,&rowlen,tmpcol,tmpval,src->arg);
                 nnz += rowlen;
             }
@@ -114,7 +113,6 @@ ghost_error ghost_sparsemat_perm_spmp(ghost_sparsemat *mat, void *matrixSource, 
         free(tmpcol); tmpcol = NULL;
     }
    
- 
     GHOST_CALL_GOTO(ghost_malloc((void **)&col,nnz*sizeof(ghost_gidx)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&localcol,nnz*sizeof(int)),err,ret);
 
@@ -147,15 +145,13 @@ ghost_error ghost_sparsemat_perm_spmp(ghost_sparsemat *mat, void *matrixSource, 
     free(tmpval); tmpval = NULL;
     localnnz = localent;
 
-
     GHOST_CALL_GOTO(ghost_malloc((void **)&val,sizeof(double)*localnnz),err,ret);
     memset(val,0,sizeof(double)*localnnz);
 
     if (mat->context->flags & GHOST_PERM_NO_DISTINCTION) {
      	ncols_halo_padded = mat->context->nrowspadded + mat->context->halo_elements+1;
     }
-
-    csr = new SpMP::CSR(mat->nrows,ncols_halo_padded,localrpt,localcol,val);
+   csr = new SpMP::CSR(mat->nrows,ncols_halo_padded,localrpt,localcol,val);
       
     GHOST_CALL_GOTO(ghost_malloc((void **)&intperm,sizeof(int)*mat->nrows),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&intinvperm,sizeof(int)*mat->nrows),err,ret);
@@ -221,12 +217,11 @@ ghost_error ghost_sparsemat_perm_spmp(ghost_sparsemat *mat, void *matrixSource, 
         useinvperm = intinvperm;
 
 #else
+ 
+      INFO_LOG("Doing BFS Bipartite instead of RCM as the matrix is not symmetric.");         
 
-
-       INFO_LOG("Doing BFS Bipartite instead of RCM as the matrix is not symmetric.");    
-       
       csrT = csr->transpose();
-  /*      csrTT = csrT->transpose();
+ /*      csrTT = csrT->transpose();
 
         INFO_LOG("Checking TRANSPOSE");
 
@@ -261,11 +256,10 @@ ghost_error ghost_sparsemat_perm_spmp(ghost_sparsemat *mat, void *matrixSource, 
 
         bfsBipartite(*csr, *csrT, intperm, intinvperm, intcolperm, intcolinvperm);
 
-
 /*	if(me==0)
-		csr->storeMatrixMarket("after_bfs_0");
-        if(me==1)
-		csr->storeMatrixMarket("after_bfs_1");
+		csr->storeMatrixMarket("proc0_before_RCM");
+	if(me==1)
+		csr->storeMatrixMarket("proc1_before_RCM");
 */
         useperm = intperm;
         useinvperm = intinvperm; 
@@ -310,7 +304,12 @@ ghost_error ghost_sparsemat_perm_spmp(ghost_sparsemat *mat, void *matrixSource, 
     }
     else {
         csrperm = csr->permute(intcolperm ,useinvperm);
-    }
+/* 	if(me==0)
+		csrperm->storeMatrixMarket("proc0_after_RCM");
+	if(me==1)
+		csrperm->storeMatrixMarket("proc1_after_RCM");
+*/
+   }
 
     INFO_LOG("Permuted bandwidth, avg. width: %d, %g",csrperm->getBandwidth(),csrperm->getAverageWidth());
   
@@ -332,8 +331,7 @@ err:
     ERROR_LOG("Deleting permutations");
     free(mat->context->perm_local->perm); mat->context->perm_local->perm = NULL;
     free(mat->context->perm_local->invPerm); mat->context->perm_local->invPerm = NULL;
-
-    if( mat->context->perm_local->perm != NULL) {
+   if( mat->context->perm_local->perm != NULL) {
     	free(mat->context->perm_local->colPerm); mat->context->perm_local->colPerm = NULL;
 
 	free(mat->context->perm_local->colInvPerm); mat->context->perm_local->colInvPerm = NULL;
@@ -360,7 +358,7 @@ out:
 #else
     free(intcolperm);  
     free(intcolinvperm); 
-      delete csrT;
+    delete csrT;
 #endif
     delete csr;
     delete csrperm;

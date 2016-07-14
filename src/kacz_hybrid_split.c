@@ -1,4 +1,5 @@
 #include "ghost/kacz_hybrid_split.h"
+#include <limits.h>
 
 typedef enum {
  MIN_LOWER = 0,
@@ -24,8 +25,8 @@ ghost_error find_zone_extrema(ghost_sparsemat *mat, int **extrema, ghost_lidx a,
  
  ghost_lidx max_lower = 0;
  ghost_lidx max_upper = 0;
- ghost_lidx min_lower = mat->ncols;
- ghost_lidx min_upper = mat->ncols;
+ ghost_lidx min_lower = INT_MAX;
+ ghost_lidx min_upper = INT_MAX;
  ghost_lidx chunk = 0;
  ghost_lidx rowinchunk = 0;
  ghost_lidx chunkheight = mat->traits.C;
@@ -51,11 +52,13 @@ ghost_error find_zone_extrema(ghost_sparsemat *mat, int **extrema, ghost_lidx a,
 
  err:
 
+
  out:
  return ret;
 }
 
 //This check is not necessary since this should not fail, if implemented correctly
+//Right now this works only for 1 processor since if multiple processor the remote entries gets moved to the end
 ghost_error checker(ghost_sparsemat *mat)
 {
      ghost_error ret = GHOST_SUCCESS;
@@ -86,9 +89,9 @@ ghost_error checker(ghost_sparsemat *mat)
         //check pure zones
 	if( (zones[4*i] != zones[4*i+1]) && ((zones[4*(i-1)] != zones[4*(i-1)+1])) && pure_min <= pure_max ) {
            ret = GHOST_ERR_BLOCKCOLOR;
-           printf("ERR 1\n");
-           printf("error occured at pure_min=%d, pure_max=%d",pure_min,pure_max); 
-          // break;
+           ERROR_LOG("ERR 1");
+	   ERROR_LOG("pure_min = %d, pure_max=%d, btw [%d-%d] and [%d-%d]",pure_min,pure_max, zones[4*(i-1)], zones[4*(i-1)+1],zones[4*i],zones[4*i+1]);
+         // break;
 	}
        
 
@@ -202,8 +205,8 @@ printf("Bandwidth from calculation crs = %d\n", lower+upper);
 	
 	   for(int j=0; j<mat->sell->chunkLen[chunk]; ++j) {
 		if(j==0 || virtual_col(idx)!=0) { //TODO somehow fix it, since filling dummy columns with 0
-           	start_col = MIN(start_col, virtual_col(idx));
-           	end_col   = MAX(end_col,   virtual_col(idx));
+           		start_col = MIN(start_col, virtual_col(idx));
+           		end_col   = MAX(end_col,   virtual_col(idx));
 		}
 	   	idx+=chunkheight;
  	   }	
@@ -214,7 +217,6 @@ printf("Bandwidth from calculation crs = %d\n", lower+upper);
 
   *lower_bw = lower;
   *upper_bw = upper;
-
   return GHOST_SUCCESS;
 }
  
@@ -328,8 +330,10 @@ mat->zone_ptr = new_zone_ptr;
  kacz_analyze_print(mat);
 #endif
  
- //currently be done only if CHUNKHEIGHT==1 
- if(mat->traits.C == 1) 
+ //currently be done only if CHUNKHEIGHT==1, and NO_DISTINCTION is on, since if no distinction is not on 
+ //further permutation occurs after ghost_sparsemat_fromfunc_common , which permutes remote entries
+ //this causes problem for checking although the result is correct
+ if(mat->traits.C == 1 && mat->context->flags & GHOST_PERM_NO_DISTINCTION) 
  {
  	INFO_LOG("CHECKING BLOCK COLORING")
  	checker(mat);

@@ -10,7 +10,7 @@ ghost_error ghost_sell_kacz_selector(ghost_densemat *x, ghost_sparsemat *mat, gh
     if(!(mat->traits.flags & GHOST_SPARSEMAT_COLOR)) {
     	if(!(mat->traits.flags & GHOST_SPARSEMAT_BLOCKCOLOR) && (mat->kaczRatio >= 2*mat->kacz_setting.active_threads)) {
 		INFO_LOG("BMC KACZ without transition called");
-		ret = ghost_kacz_rb(x,mat,b,opts);
+		ret = ghost_kacz_bmc(x,mat,b,opts);
     	}
     	else {
 		INFO_LOG("BMC KACZ with transition called");

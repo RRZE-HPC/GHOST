@@ -683,27 +683,21 @@ endif()
 
 
 if (GHOST_USE_SPMP)
-    if (NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
-        message(ERROR "SpMP can only be used with the Intel compiler currently! SpMP will be disabled!")
-        set(GHOST_HAVE_SPMP 0)
-    else()
-        set(GHOST_HAVE_SPMP 1)
-        set(GITHUB_GIT_URL "github.com" CACHE STRING "The github GIT URL. This has to be changed in certain situations if located behind a firewall.")
-        include(ExternalProject)
-        set_property(DIRECTORY PROPERTY EP_STEP_TARGETS build)
-        ExternalProject_Add(SpMP
-            PREFIX ${PROJECT_SOURCE_DIR}/SpMP
-            GIT_REPOSITORY git://${GITHUB_GIT_URL}/jspark1105/SpMP.git
-            CONFIGURE_COMMAND "" 
-            BUILD_COMMAND make
-            BUILD_IN_SOURCE 1
-            INSTALL_COMMAND ""
-            )
-        #set(LIBSPMP ${PROJECT_SOURCE_DIR}/SpMP/src/SpMP/libspmp.a)
-        target_link_libraries(ghost "${PROJECT_SOURCE_DIR}/SpMP/src/SpMP/libspmp.a")
-        include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/SpMP/src)
-        add_dependencies(ghost SpMP)
-    endif()
+    set(GHOST_HAVE_SPMP 1)
+    set(GITHUB_GIT_URL "github.com" CACHE STRING "The github GIT URL. This has to be changed in certain situations if located behind a firewall.")
+    include(ExternalProject)
+    set_property(DIRECTORY PROPERTY EP_STEP_TARGETS build)
+    ExternalProject_Add(SpMP
+        PREFIX ${PROJECT_BINARY_DIR}/SpMP
+        GIT_REPOSITORY git://${GITHUB_GIT_URL}/jspark1105/SpMP.git
+        CONFIGURE_COMMAND "" 
+        BUILD_COMMAND make CC=${CMAKE_CXX_COMPILER} CCFLAGS=${CMAKE_CXX_FLAGS}
+        BUILD_IN_SOURCE 1
+        INSTALL_COMMAND ""
+        )
+    target_link_libraries(ghost "${PROJECT_BINARY_DIR}/SpMP/src/SpMP/libspmp.a")
+    include_directories(SYSTEM ${PROJECT_BINARY_DIR}/SpMP/src)
+    add_dependencies(ghost SpMP)
 endif()
 
 if (GHOST_BUILD_MIC)

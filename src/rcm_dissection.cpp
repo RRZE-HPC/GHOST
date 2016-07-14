@@ -121,7 +121,9 @@ else{
 
 //make it compatible for bmc kernel, so only one kernel is enough
   ghost_lidx new_nzones = 2*mat->nzones; //double the zones
-  ghost_lidx *new_zone_ptr = new ghost_lidx[new_nzones+1];
+  ghost_lidx *new_zone_ptr; // = new ghost_lidx[new_nzones+1];
+
+  ghost_malloc((void **)&new_zone_ptr, (new_nzones+1)*sizeof(ghost_lidx));
 //  ghost_malloc((void **)&new_zone_ptr,(new_nzones+1)*sizeof(ghost_lidx)); 
  
   for(int i=0; i< mat->nzones; i+=2) {
