@@ -1383,7 +1383,6 @@ ghost_error ghost_sparsemat_info_string(char **str, ghost_sparsemat *mat)
                 } else {
                     ghost_line_string(str,"Local permutation strategy",NULL,"Sorting");
                 }
-                ghost_line_string(str,"Row length sorting scope (sigma)",NULL,"%d",mat->traits.sortScope);
             } else if (mat->traits.flags & GHOST_SPARSEMAT_RCM) {
                 ghost_line_string(str,"Local permutation strategy",NULL,"RCM");
             }
@@ -1392,7 +1391,8 @@ ghost_error ghost_sparsemat_info_string(char **str, ghost_sparsemat *mat)
     } else {
         ghost_line_string(str,"Permuted",NULL,"No");
     }
-
+    
+    ghost_line_string(str,"Row length sorting scope (sigma)",NULL,"%d",mat->traits.sortScope);
     ghost_line_string(str,"Ascending columns in row",NULL,"%s",mat->traits.flags&GHOST_SPARSEMAT_NOT_SORT_COLS?"Maybe":"Yes");
     ghost_line_string(str,"Max row length (# rows)",NULL,"%d (%d)",mat->maxRowLen,mat->nMaxRows);
     ghost_line_string(str,"Row length variance",NULL,"%f",mat->variance);
