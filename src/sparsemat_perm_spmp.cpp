@@ -313,7 +313,7 @@ ghost_error ghost_sparsemat_perm_spmp(ghost_sparsemat *mat, void *matrixSource, 
 
     INFO_LOG("Permuted bandwidth, avg. width: %d, %g",csrperm->getBandwidth(),csrperm->getAverageWidth());
   
-MPI_Barrier(mat->context->mpicomm);  
+  
 #pragma omp parallel for
     for (i=0; i<mat->nrows; i++) {
         mat->context->perm_local->perm[i] = useperm[i];

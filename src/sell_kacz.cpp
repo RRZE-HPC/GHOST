@@ -9,6 +9,7 @@
 #include "ghost/sell_kacz_mc_gen.h"
 //#include "ghost/sell_kacz_avx_gen.h"
 #include "ghost/sell_kacz_bmc_gen.h"
+#include "ghost/sell_kacz_bmc_shift_gen.h"
 #include <complex>
 #include <unordered_map>
 
@@ -16,6 +17,8 @@ using namespace std;
 
 const ghost_kacz_opts GHOST_KACZ_OPTS_INITIALIZER = {
     .omega = NULL,
+    .sigma_r = NULL,
+    .sigma_i = NULL,
     .direction = GHOST_KACZ_DIRECTION_UNDEFINED,
     .normalize = no
 };
@@ -133,23 +136,41 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error ret = GHOST_SUCCESS;
     ghost_kacz_parameters p;
-    
-    if(!(mat->traits.flags & GHOST_SPARSEMAT_COLOR)) {
-    	if(!(mat->traits.flags & GHOST_SPARSEMAT_BLOCKCOLOR) && (mat->kaczRatio >= 2*mat->kacz_setting.active_threads)) {
-		INFO_LOG("BMC KACZ without transition called");
-		p.method = BMC;//Now BMC_RB can run with BMC 
-    	}
-    	else {
-		INFO_LOG("BMC KACZ with transition called");
-		p.method = BMC;
+
+    if((opts.sigma_r || opts.sigma_i)) {     
+    	if(!(mat->traits.flags & GHOST_SPARSEMAT_COLOR)) {
+    		if(!(mat->traits.flags & GHOST_SPARSEMAT_BLOCKCOLOR) && (mat->kaczRatio >= 2*mat->kacz_setting.active_threads)) {
+			INFO_LOG("BMC KACZ_shift without transition called");
+			p.method = BMCshift;//Now BMC_RB can run with BMC 
+    		}
+    		else {
+			INFO_LOG("BMC KACZ_shift with transition called");
+			p.method = BMCshift;
+    		}
+    	} else {
+        	ERROR_LOG("Shift ignored MC with shift not implemented");
+		p.method = MC;
     	}
     } else {
-        INFO_LOG("Using unoptimal kernel KACZ with MC");
+    	if(!(mat->traits.flags & GHOST_SPARSEMAT_COLOR)) {
+    		if(!(mat->traits.flags & GHOST_SPARSEMAT_BLOCKCOLOR) && (mat->kaczRatio >= 2*mat->kacz_setting.active_threads)) {
+			INFO_LOG("BMC KACZ without transition called");
+			p.method = BMC;//Now BMC_RB can run with BMC 
+    		}
+    		else {
+			INFO_LOG("BMC KACZ with transition called");
+			p.method = BMC;
+    		}
+    	} else {
+        	INFO_LOG("Using unoptimal kernel KACZ with MC");
 		p.method = MC;
+    	}
     }
+ 
     // if map is empty include generated code for map construction
     if (ghost_kacz_kernels.empty()) {
 #include "sell_kacz_bmc.def"
+#include "sell_kacz_bmc_shift.def"
 #include "sell_kacz_mc.def"
 //#include "sell_kacz_avx.def"
       
@@ -241,13 +262,13 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
                                 p.vdt = try_vdt[pos_vdt];
 
 
-                            INFO_LOG("Try chunkheight=%s, blocksz=%s, impl=%s, %s, method %s",
+                            	INFO_LOG("Try chunkheight=%s, blocksz=%s, impl=%s, %s, method %s",
                                     p.chunkheight==-1?"arbitrary":std::to_string((long long)p.chunkheight).c_str(),
                                     p.blocksz==-1?"arbitrary":std::to_string((long long)p.blocksz).c_str(),
-                                    ghost_implementation_string(p.impl),p.alignment==GHOST_UNALIGNED?"unaligned":"aligned",p.method==BMC?"BMC":p.method==MC?"MC":"BMC_RB");
-                            kernel = ghost_kacz_kernels[p];
-                            if (kernel) {
-                            goto end_of_loop;
+                                    ghost_implementation_string(p.impl),p.alignment==GHOST_UNALIGNED?"unaligned":"aligned",p.method==BMC?"BMC":p.method==MC?"MC":"BMC_shift");
+                            	kernel = ghost_kacz_kernels[p];
+                            	if (kernel) {
+                            		goto end_of_loop;
                                }
                            }
                         }

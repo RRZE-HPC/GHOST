@@ -108,8 +108,8 @@ ghost_kacz_normalize;
 
 typedef struct {
     void *omega;
-    //void *sigma_r;//real part of shift
-    //void *sigma_i;//imaginary part of shift 
+    void *sigma_r;//real part of shift
+    void *sigma_i;//imaginary part of shift 
     ghost_kacz_direction direction;
     ghost_kacz_normalize normalize;
 }
@@ -127,7 +127,8 @@ typedef enum{
       BMC_RB,
       BMC_one_sweep,
       BMC_two_sweep,
-      BMC
+      BMC,
+      BMCshift
 }
 ghost_kacz_method;
 
@@ -1018,7 +1019,7 @@ extern "C" {
     ghost_error ghost_kacz_bmc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts);
     ghost_error ghost_kacz_rb_with_shift(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, double *shift_r,  ghost_kacz_opts opts);
     ghost_error ghost_carp(ghost_sparsemat *mat, ghost_densemat *x, ghost_densemat *b, void *omega);
-    ghost_error ghost_carp_shift(ghost_sparsemat *mat, ghost_densemat *x_real, ghost_densemat *x_imag, ghost_densemat *b, double sigma_r, double sigma_i, void *omega);
+    ghost_error ghost_carp_shift(ghost_sparsemat *mat, ghost_densemat *x, ghost_densemat *b, void *omega, void *sigma_r, void *sigma_i);
     ghost_error checker(ghost_sparsemat *mat);
     ghost_error split_transition(ghost_sparsemat *mat);
 
