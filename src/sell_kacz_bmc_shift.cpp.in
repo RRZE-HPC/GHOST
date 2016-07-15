@@ -16,7 +16,7 @@
 
    
 //Solving (A-(sigma_r + i*sigma_i)I)* x = b
-#if (NVECS==1 && CHUNKHEIGHT==1)
+//#if (NVECS==1 && CHUNKHEIGHT==1) //TODO
 //this is necessary since #pragma omp for doesn't understand !=
 #define FORWARD_SHIFT_LOOP(start,end,MT,VT)                            \
  _Pragma("omp parallel for") 				    	       \
@@ -32,7 +32,7 @@
         for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            \
                  scal_r -= (MT)mval[idx] * x_r[sellmat->col[idx]];     \
 		 scal_i -= (MT)mval[idx] * x_i[sellmat->col[idx]];     \
-                 if(opts.normalize==no && i!=mat->context->perm_local->colInvPerm[sellmat->col[idx]]) {      \
+                 if(opts.normalize==no && row!=mat->context->perm_local->colInvPerm[sellmat->col[idx]]) {      \
                   rownorm += mval[idx]*mval[idx];                      \
 		 } else {                                              \
 		  rownorm += (mval[idx]-sigma_r)*(mval[idx]-sigma_r) + sigma_i*sigma_i; \
@@ -73,7 +73,7 @@
         for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            \
                  scal_r -= (MT)mval[idx] * x_r[sellmat->col[idx]];     \
 		 scal_i -= (MT)mval[idx] * x_i[sellmat->col[idx]];     \
-                 if(opts.normalize==no && i!=mat->context->perm_local->colInvPerm[sellmat->col[idx]]) {      \
+                 if(opts.normalize==no && row!=mat->context->perm_local->colInvPerm[sellmat->col[idx]]) {      \
                   rownorm += mval[idx]*mval[idx];                      \
 		 } else {                                              \
 		  rownorm += (mval[idx]-sigma_r)*(mval[idx]-sigma_r) + sigma_i*sigma_i; \
@@ -99,7 +99,7 @@
                 idx += 1;                                              \
         }        						       \
 }
-	                                                       
+/*	                                                       
 #elif CHUNKHEIGHT == 1
 
 #define FORWARD_SHIFT_LOOP(start,end,MT,VT)                            \
@@ -430,17 +430,17 @@ if(start_chunk>end_chunk) {       										\
      	}    
 #endif
 
-
+*/
 template <typename MT> // TODO, typename VT>
 ghost_error ghost_kacz_BMCshift_u_plain_cm_CHUNKHEIGHT_NVECS_tmpl(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
 
     MT sigma_r = *(MT *)opts.sigma_r;
-    MT sigma_i = *(MT *)opts.sigmA_i;
+    MT sigma_i = *(MT *)opts.sigma_i;
 
    if(sigma_r == 0 && sigma_i == 0) {
-	PERF_LOG("Use BMC without shifts if shifts are 0")
+	WARNING_LOG("Use BMC without shifts if shifts are 0")
    }
 
 #if CHUNKHEIGHT>1
