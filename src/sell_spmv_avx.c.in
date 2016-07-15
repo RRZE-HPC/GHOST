@@ -378,11 +378,11 @@ ghost_error ghost_sellspmv__a_avx_z_z_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
     beta = _mm256_insertf128_pd(beta,_mm_loadu_pd((double *)&sbeta),1);
     if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
         delta = _mm256_setzero_pd();
-        delta = _mm256_insertf128_pd(delta,_mm_load_pd((double *)&sdelta),0);
-        delta = _mm256_insertf128_pd(delta,_mm_load_pd((double *)&sdelta),1);
+        delta = _mm256_insertf128_pd(delta,_mm_loadu_pd((double *)&sdelta),0);
+        delta = _mm256_insertf128_pd(delta,_mm_loadu_pd((double *)&sdelta),1);
         eta = _mm256_setzero_pd();
-        eta = _mm256_insertf128_pd(eta,_mm_load_pd((double *)&seta),0);
-        eta = _mm256_insertf128_pd(eta,_mm_load_pd((double *)&seta),1);
+        eta = _mm256_insertf128_pd(eta,_mm_loadu_pd((double *)&seta),0);
+        eta = _mm256_insertf128_pd(eta,_mm_loadu_pd((double *)&seta),1);
     }
 
     int nthreads = 1;
