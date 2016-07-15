@@ -396,7 +396,19 @@ static int densemat_perment_cmp (const void *a, const void *b)
 template <typename v_t> 
 static ghost_error FUNCNAME(permute_tmpl(ghost_densemat *vec, ghost_permutation_direction dir))
 {
-    if (!vec->context->perm_local && !vec->context->perm_global) {
+printf("%s\n",vec->traits.permutemethod==ROW?"ROW":vec->traits.permutemethod==COLUMN?"COLUMN":"NONE");
+if(vec->traits.permutemethod == NONE) {
+    ERROR_LOG("traits.permutemethod==NONE, therefore no permutation is carried out. Please set the field to COLUMN or ROW");
+} else {
+
+    int me;
+    #ifdef GHOST_HAVE_MPI
+    	GHOST_CALL_RETURN(ghost_rank(&me, vec->context->mpicomm));
+    #else
+	me = 0;
+    #endif
+
+    if (!vec->perm_local && !vec->perm_global) {
         WARNING_LOG("No permutation vector present!");
         return GHOST_SUCCESS;
     }
@@ -405,46 +417,30 @@ static ghost_error FUNCNAME(permute_tmpl(ghost_densemat *vec, ghost_permutation_
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
 
-    if ((vec->traits.flags & (ghost_densemat_flags)GHOST_DENSEMAT_COLPERMUTED) && dir == GHOST_PERMUTATION_ORIG2COLPERM) {
-         WARNING_LOG("The densemat is already permuted and should not be permuted in this direction again!");
-    }
-    if (!(vec->traits.flags & (ghost_densemat_flags)GHOST_DENSEMAT_COLPERMUTED) && dir == GHOST_PERMUTATION_COLPERM2ORIG) {
-        WARNING_LOG("The densemat is not yet permuted and should not be permuted back!");
-    }
-     if ((vec->traits.flags & (ghost_densemat_flags)GHOST_DENSEMAT_PERMUTED) && dir == GHOST_PERMUTATION_ORIG2COLPERM) {
-         WARNING_LOG("The densemat is already ROW permuted and should not be COLUMN permuted in this direction again!");
-    }
-
     if ((vec->traits.flags & (ghost_densemat_flags)GHOST_DENSEMAT_PERMUTED) && dir == GHOST_PERMUTATION_ORIG2PERM) {
-        WARNING_LOG("The densemat is already permuted and should not be permuted in this direction again!");
+         WARNING_LOG("The densemat is already permuted and should not be permuted in this direction again!");
     }
     if (!(vec->traits.flags & (ghost_densemat_flags)GHOST_DENSEMAT_PERMUTED) && dir == GHOST_PERMUTATION_PERM2ORIG) {
         WARNING_LOG("The densemat is not yet permuted and should not be permuted back!");
     }
-    if ((vec->traits.flags & (ghost_densemat_flags)GHOST_DENSEMAT_COLPERMUTED) && dir == GHOST_PERMUTATION_ORIG2PERM) {
-        WARNING_LOG("The densemat is already COLUMN permuted and should not be ROW permuted in this direction again!");
-    }
- 
+
     GHOST_CALL_RETURN(vec->download(vec));
 
-    if (dir == GHOST_PERMUTATION_PERM2ORIG && vec->context->perm_local) {
+    if (dir == GHOST_PERMUTATION_PERM2ORIG && vec->perm_local) {
         ghost_densemat *vecclone;
-        ghost_densemat_clone(&vecclone,vec,vec->traits.nrows,0,vec->traits.ncols,0);
+	//TODO this is a dirty hack, since the size of rowperm and colperm varies
+	if(vec->traits.permutemethod == ROW) {
+        	ghost_densemat_clone(&vecclone,vec,vec->context->lnrows[me],0,vec->traits.ncols,0);
+	} else {
+        	ghost_densemat_clone(&vecclone,vec,vec->traits.nrows,0,vec->traits.ncols,0);
+	}
         vecclone->download(vecclone);
-        DENSEMAT_ITER(vec,*valptr = *(v_t *)DENSEMAT_VALPTR(vecclone,vec->context->perm_local->perm[row],col));
-        ghost_densemat_destroy(vecclone);
-        GHOST_CALL_RETURN(vec->upload(vec));
-    }
-     if (dir == GHOST_PERMUTATION_COLPERM2ORIG && vec->context->perm_local) {
-        ghost_densemat *vecclone;
-        ghost_densemat_clone(&vecclone,vec,vec->traits.nrows,0,vec->traits.ncols,0);
-        vecclone->download(vecclone);
-        DENSEMAT_ITER(vec,*valptr = *(v_t *)DENSEMAT_VALPTR(vecclone,vec->context->perm_local->colPerm[row],col));
+        DENSEMAT_ITER(vec,*valptr = *(v_t *)DENSEMAT_VALPTR(vecclone,vec->perm_local->perm[row],col));
         ghost_densemat_destroy(vecclone);
         GHOST_CALL_RETURN(vec->upload(vec));
     }
 
-    if (vec->context->perm_global) {
+    if (vec->perm_global) {
 #ifdef GHOST_HAVE_MPI
         ghost_lidx i,me,nprocs,c;
         GHOST_CALL_RETURN(ghost_rank(&me,vec->context->mpicomm));
@@ -462,11 +458,11 @@ static ghost_error FUNCNAME(permute_tmpl(ghost_densemat *vec, ghost_permutation_
                 if (dir == GHOST_PERMUTATION_ORIG2PERM) {
                     dstrank = ghost_rank_of_row(vec->context,vec->context->perm_global->perm[i]);
                     srcrank = ghost_rank_of_row(vec->context,vec->context->perm_global->invPerm[i]);
-                    rowindst = vec->context->perm_global->perm[i]-vec->context->lfRow[dstrank];
+                    rowindst = vec->perm_global->perm[i]-vec->context->lfRow[dstrank];
                 } else {
                     dstrank = ghost_rank_of_row(vec->context,vec->context->perm_global->invPerm[i]);
                     srcrank = ghost_rank_of_row(vec->context,vec->context->perm_global->perm[i]);
-                    rowindst = vec->context->perm_global->invPerm[i]-vec->context->lfRow[dstrank];
+                    rowindst = vec->perm_global->invPerm[i]-vec->context->lfRow[dstrank];
                 }
 
                 MPI_Isend(DENSEMAT_VALPTR(vecclone,i,c),1,vec->mpidt,dstrank,rowindst,vec->context->mpicomm,&req[i]);
@@ -480,41 +476,29 @@ static ghost_error FUNCNAME(permute_tmpl(ghost_densemat *vec, ghost_permutation_
         ERROR_LOG("There should not be a global permutation in case MPI is disabled!");
 #endif
     } 
-    if (dir == GHOST_PERMUTATION_ORIG2PERM && vec->context->perm_local) {
+    if (dir == GHOST_PERMUTATION_ORIG2PERM && vec->perm_local) {
         ghost_densemat *vecclone;
-        ghost_densemat_clone(&vecclone,vec,vec->traits.nrows,0,vec->traits.ncols,0);
+ 	//TODO this is a dirty hack, since the size of rowperm and colperm varies
+	if(vec->traits.permutemethod == ROW) {
+        	ghost_densemat_clone(&vecclone,vec,vec->context->lnrows[me],0,vec->traits.ncols,0);
+	} else {
+        	ghost_densemat_clone(&vecclone,vec,vec->traits.nrows,0,vec->traits.ncols,0);
+	}
         vecclone->download(vecclone);
-        DENSEMAT_ITER(vec,*valptr = *(v_t *)DENSEMAT_VALPTR(vecclone,vec->context->perm_local->invPerm[row],col));
+        DENSEMAT_ITER(vec,*valptr = *(v_t *)DENSEMAT_VALPTR(vecclone,vec->perm_local->invPerm[row],col));
         ghost_densemat_destroy(vecclone);
         GHOST_CALL_RETURN(vec->upload(vec));
     }
-    if (dir == GHOST_PERMUTATION_ORIG2COLPERM && vec->context->perm_local) {
-        ghost_densemat *vecclone;
-        ghost_densemat_clone(&vecclone,vec,vec->traits.nrows,0,vec->traits.ncols,0);
-        vecclone->download(vecclone);
-        DENSEMAT_ITER(vec,*valptr = *(v_t *)DENSEMAT_VALPTR(vecclone,vec->context->perm_local->colInvPerm[row],col));
-        ghost_densemat_destroy(vecclone);
-        GHOST_CALL_RETURN(vec->upload(vec));
-    }
-
     
     if (dir == GHOST_PERMUTATION_ORIG2PERM) {
         vec->traits.flags |= (ghost_densemat_flags)GHOST_DENSEMAT_PERMUTED;
     }
-    else if (dir == GHOST_PERMUTATION_PERM2ORIG) {
+    else {
         vec->traits.flags &= (ghost_densemat_flags)(~GHOST_DENSEMAT_PERMUTED);
     }
-    else if (dir == GHOST_PERMUTATION_ORIG2COLPERM) {
-        vec->traits.flags |= (ghost_densemat_flags)GHOST_DENSEMAT_COLPERMUTED;
-    }
-    else if (dir == GHOST_PERMUTATION_COLPERM2ORIG) {
-        vec->traits.flags &= (ghost_densemat_flags)(~GHOST_DENSEMAT_COLPERMUTED);
-    }
-
-
+}
         
-
-    return GHOST_SUCCESS;
+   return GHOST_SUCCESS;
 }
 
 template <typename v_t> 

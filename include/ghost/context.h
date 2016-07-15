@@ -15,9 +15,7 @@ typedef struct ghost_context ghost_context;
 typedef enum
 {
     GHOST_PERMUTATION_ORIG2PERM,
-    GHOST_PERMUTATION_PERM2ORIG,
-    GHOST_PERMUTATION_ORIG2COLPERM,
-    GHOST_PERMUTATION_COLPERM2ORIG
+    GHOST_PERMUTATION_PERM2ORIG
 }
 ghost_permutation_direction;
 

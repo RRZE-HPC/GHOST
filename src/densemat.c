@@ -38,7 +38,8 @@ const ghost_densemat_traits GHOST_DENSEMAT_TRAITS_INITIALIZER = {
     .flags = GHOST_DENSEMAT_DEFAULT,
     .storage = GHOST_DENSEMAT_STORAGE_DEFAULT,
     .location = GHOST_LOCATION_DEFAULT,
-    .datatype = (ghost_datatype)(GHOST_DT_DOUBLE|GHOST_DT_REAL)
+    .datatype = (ghost_datatype)(GHOST_DT_DOUBLE|GHOST_DT_REAL),
+    .permutemethod = NONE
 };
 
 const ghost_densemat_halo_comm GHOST_DENSEMAT_HALO_COMM_INITIALIZER = {
@@ -71,7 +72,7 @@ ghost_error ghost_densemat_create(ghost_densemat **vec, ghost_context *ctx, ghos
     (*vec)->rowmask = NULL;
     (*vec)->val = NULL;
     (*vec)->cu_val = NULL;
-
+   
     if ((*vec)->context) {
         if ((*vec)->context->perm_global || (*vec)->context->perm_local) {
             (*vec)->traits.flags |= (ghost_densemat_flags)GHOST_DENSEMAT_PERMUTED;
@@ -83,6 +84,29 @@ ghost_error ghost_densemat_create(ghost_densemat **vec, ghost_context *ctx, ghos
     } else {
         (*vec)->src = NULL;
     }
+
+
+   if(ctx->perm_local == NULL) {
+		(*vec)->perm_local = NULL;
+    } else if((*vec)->traits.permutemethod == COLUMN) {
+	        GHOST_CALL_GOTO(ghost_malloc((void **)&((*vec)->perm_local),sizeof(ghost_densemat_permutation)),err,ret); 
+		(*vec)->perm_local->perm    = ctx->perm_local->colPerm;
+		(*vec)->perm_local->invPerm = ctx->perm_local->colInvPerm;
+    } else {
+	        GHOST_CALL_GOTO(ghost_malloc((void **)&((*vec)->perm_local),sizeof(ghost_densemat_permutation)),err,ret); 
+		(*vec)->perm_local->perm    = ctx->perm_local->perm;
+		(*vec)->perm_local->invPerm = ctx->perm_local->invPerm;
+    }
+
+    //Right now there are no Global row and column permutation, once there, modify this
+    if(ctx->perm_global == NULL) {
+		(*vec)->perm_global = NULL;
+    } else {
+	        GHOST_CALL_GOTO(ghost_malloc((void **)&((*vec)->perm_global),sizeof(ghost_densemat_permutation)),err,ret); 
+		(*vec)->perm_global->perm    = ctx->perm_global->colPerm;
+		(*vec)->perm_global->invPerm = ctx->perm_global->colInvPerm;
+    }
+
 
     GHOST_CALL_GOTO(ghost_datatype_size(&(*vec)->elSize,(*vec)->traits.datatype),err,ret);
     getNrowsFromContext((*vec));

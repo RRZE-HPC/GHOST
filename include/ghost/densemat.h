@@ -69,14 +69,14 @@ typedef enum {
      */
     GHOST_DENSEMAT_SCATTERED_TR = 128,
     /**
-     * @brief The densemat has been permuted in #GHOST_PERMUTATION_ORIG2PERM 
-     * direction via its ghost_densemat::permute() function. 
-     *
-     * This flag gets deleted once the densemat has been row permuted back 
-     * (#GHOST_PERMUTATION_PERM2ORIG).
-     */
+    * @brief The densemat has been permuted in #GHOST_PERMUTATION_ORIG2PERM 
+    * direction via its ghost_densemat::permute() function. 
+    *
+    * This flag gets deleted once the densemat has been row permuted back 
+    * (#GHOST_PERMUTATION_PERM2ORIG).
+    */
     GHOST_DENSEMAT_PERMUTED = 256,
-    /**
+   /**
      * @brief By default, a densemat's location gets set to #GHOST_DENSEMAT_HOST|#GHOST_DENSEMAT_DEVICE automatically
      * when the first up-/download occurs and the GHOST type is CUDA. This behavior can be disabled by setting this flag.
      */
@@ -85,17 +85,36 @@ typedef enum {
      * @brief Set this flag if the number of columns should be padded according to the SIMD width.
      */
     GHOST_DENSEMAT_PAD_COLS = 1024,
-    /**
-     * @brief The densemat has been permuted in #GHOST_PERMUTATION_ORIG2PERM 
-     * direction via its ghost_densemat::permute() function. 
-     *
-     * This flag gets deleted once the densemat has been column permuted back 
-     * (#GHOST_PERMUTATION_COLPERM2ORIG).
-     */
-    GHOST_DENSEMAT_COLPERMUTED = 2048
 }  
 ghost_densemat_flags;
 
+/**
+ * @brief enums to configure densemat permutations.
+ */
+typedef enum {
+    NONE ,
+    ROW  ,
+    COLUMN
+}
+ghost_densemat_permuted;
+
+typedef struct
+{
+    /**
+     * @brief Gets an original index and returns the corresponding permuted position.
+     *
+     * NULL if no permutation applied to the matrix.
+     */
+    ghost_gidx *perm;
+    /**
+     * @brief Gets an index in the permuted system and returns the original index.
+     *
+     * NULL if no permutation applied to the matrix.
+     */
+    ghost_gidx *invPerm;
+}
+ghost_densemat_permutation;
+ 
 #define GHOST_DENSEMAT_SCATTERED (GHOST_DENSEMAT_SCATTERED_LD|GHOST_DENSEMAT_SCATTERED_TR)
 
 /**
@@ -229,6 +248,16 @@ typedef struct
      * @brief Location of the densemat.
      */
     ghost_location location;
+    /**
+     * @brief Gives the information on which permutation is 
+     *        carried out on the densemat,
+     *        Possible values NONE, ROW, COLUMN
+     *
+     *        if NONE- no permutation would be possible by densemat->permute (default)
+     *        if ROW - row permutations are done by densemat->permute
+     *        if COLUMN - column permutations are done by densemat->permute 
+     */
+    ghost_densemat_permuted permutemethod;
 }
 ghost_densemat_traits;
 
@@ -288,6 +317,16 @@ struct ghost_densemat
      */
     ghost_lidx stride;
     /**
+     * @brief Densemat local permutation
+     *
+     */
+    ghost_densemat_permutation *perm_local;
+     /**
+     * @brief Densemat global permutation
+     *
+     */
+    ghost_densemat_permutation *perm_global;
+     /**
      * @brief Masked out columns for scattered views
      */
     ghost_bitmap colmask;
