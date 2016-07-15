@@ -72,7 +72,7 @@ typedef enum {
      * @brief The densemat has been permuted in #GHOST_PERMUTATION_ORIG2PERM 
      * direction via its ghost_densemat::permute() function. 
      *
-     * This flag gets deleted once the densemat has been permuted back 
+     * This flag gets deleted once the densemat has been row permuted back 
      * (#GHOST_PERMUTATION_PERM2ORIG).
      */
     GHOST_DENSEMAT_PERMUTED = 256,
@@ -84,8 +84,16 @@ typedef enum {
     /**
      * @brief Set this flag if the number of columns should be padded according to the SIMD width.
      */
-    GHOST_DENSEMAT_PAD_COLS = 1024
-} 
+    GHOST_DENSEMAT_PAD_COLS = 1024,
+    /**
+     * @brief The densemat has been permuted in #GHOST_PERMUTATION_ORIG2PERM 
+     * direction via its ghost_densemat::permute() function. 
+     *
+     * This flag gets deleted once the densemat has been column permuted back 
+     * (#GHOST_PERMUTATION_COLPERM2ORIG).
+     */
+    GHOST_DENSEMAT_COLPERMUTED = 2048
+}  
 ghost_densemat_flags;
 
 #define GHOST_DENSEMAT_SCATTERED (GHOST_DENSEMAT_SCATTERED_LD|GHOST_DENSEMAT_SCATTERED_TR)
