@@ -416,7 +416,6 @@ static ghost_error FUNCNAME(entry(ghost_densemat * vec, void *val, ghost_lidx r,
     return GHOST_SUCCESS;
 }
 
-
 static ghost_error FUNCNAME(reduce(ghost_densemat * vec_in, ghost_mpi_comm comm, int root)) 
 {
 #ifdef GHOST_HAVE_MPI
@@ -886,5 +885,4 @@ static ghost_error FUNCNAME(fromFunc(ghost_densemat *vec, int (*fp)(ghost_gidx, 
     return GHOST_SUCCESS;
 
 }
-
 

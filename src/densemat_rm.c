@@ -81,6 +81,8 @@ ghost_error ghost_densemat_rm_setfuncs(ghost_densemat *vec)
     vec->fromFunc = &ghost_densemat_rm_fromFunc;
     vec->fromVec = &ghost_densemat_rm_fromVec_selector;
     vec->fromFile = &ghost_densemat_rm_fromFile;
+    vec->fromReal = &ghost_densemat_rm_fromReal_selector;
+    vec->fromComplex = &ghost_densemat_rm_fromComplex_selector;
     vec->toFile = &ghost_densemat_rm_toFile;
     vec->distribute = &ghost_distributeVector;
     vec->collect = &ghost_collectVectors;
