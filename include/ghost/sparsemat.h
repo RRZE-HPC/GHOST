@@ -108,12 +108,19 @@ ghost_kacz_normalize;
 
 typedef struct {
     void *omega;
-    void *sigma_r;//real part of shift
-    void *sigma_i;//imaginary part of shift 
+    void *shift;// shift can be complex
     ghost_kacz_direction direction;
     ghost_kacz_normalize normalize;
 }
 ghost_kacz_opts;
+
+typedef struct {
+    void *omega;
+    void *shift;//shift can be complex
+    ghost_kacz_normalize normalize;
+}
+ghost_carp_opts; //no direction since forward followed by backward done
+
 
 /**
  * @brief internal to differentiate between different KACZ sweep methods
@@ -128,7 +135,8 @@ typedef enum{
       BMC_one_sweep,
       BMC_two_sweep,
       BMC,
-      BMCshift
+      BMCshift,
+      BMCNORMAL //for system normalized at start
 }
 ghost_kacz_method;
 
@@ -322,6 +330,8 @@ ghost_kacz_parameters;
 
 extern const ghost_spmv_opts GHOST_SPMV_OPTS_INITIALIZER;
 extern const ghost_kacz_opts GHOST_KACZ_OPTS_INITIALIZER;
+extern const ghost_carp_opts GHOST_CARP_OPTS_INITIALIZER;
+
 
 typedef ghost_error (*ghost_spmv_kernel)(ghost_densemat*, ghost_sparsemat *, ghost_densemat*, ghost_spmv_opts);
 typedef ghost_error (*ghost_kacz_kernel)(ghost_densemat*, ghost_sparsemat *, ghost_densemat*, ghost_kacz_opts);
@@ -1018,11 +1028,9 @@ extern "C" {
     ghost_error ghost_kacz_rb(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts);
     ghost_error ghost_kacz_bmc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts);
     ghost_error ghost_kacz_rb_with_shift(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, double *shift_r,  ghost_kacz_opts opts);
-    ghost_error ghost_carp(ghost_sparsemat *mat, ghost_densemat *x, ghost_densemat *b, void *omega);
-    ghost_error ghost_carp_shift(ghost_sparsemat *mat, ghost_densemat *x, ghost_densemat *b, void *omega, void *sigma_r, void *sigma_i);
+    ghost_error ghost_carp(ghost_sparsemat *mat, ghost_densemat *x, ghost_densemat *b, ghost_carp_opts opts);
     ghost_error checker(ghost_sparsemat *mat);
     ghost_error split_transition(ghost_sparsemat *mat);
-
     /**
      * @brief Prints the row distribution details of KACZ. 
      *

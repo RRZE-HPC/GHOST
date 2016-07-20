@@ -10,6 +10,7 @@
 #include "ghost/densemat.h"
 #include "ghost/locality.h"
 #include "ghost/sell_kacz_bmc_shift_gen.h"
+#include <complex>
 
 #GHOST_SUBST NVECS ${BLOCKDIM1}
 #GHOST_SUBST CHUNKHEIGHT ${CHUNKHEIGHT}
@@ -18,87 +19,83 @@
 //Solving (A-(sigma_r + i*sigma_i)I)* x = b
 //#if (NVECS==1 && CHUNKHEIGHT==1) //TODO
 //this is necessary since #pragma omp for doesn't understand !=
-#define FORWARD_SHIFT_LOOP(start,end,MT,VT)                            \
- _Pragma("omp parallel for") 				    	       \
- for (ghost_lidx row=start; row<end; ++row){                           \
- 	 MT inv_rownorm;					       \
-         MT rownorm = 0;				     	       \
-         MT scal_r  = sigma_r*x_r[row] - sigma_i*x_i[row];             \
-	 MT scal_i  = sigma_r*x_i[row] + sigma_i*x_r[row];             \
-	 ghost_lidx  idx = sellmat->chunkStart[row];                   \
-        if(bval != NULL) {                                             \
-          scal_r += bval[row];        				       \
-	}							       \
-        for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            \
-                 scal_r -= (MT)mval[idx] * x_r[sellmat->col[idx]];     \
-		 scal_i -= (MT)mval[idx] * x_i[sellmat->col[idx]];     \
-                 if(opts.normalize==no && row!=mat->context->perm_local->colInvPerm[sellmat->col[idx]]) {      \
-                  rownorm += mval[idx]*mval[idx];                      \
-		 } else {                                              \
-		  rownorm += (mval[idx]-sigma_r)*(mval[idx]-sigma_r) + sigma_i*sigma_i; \
-		}						       \
-                 idx += 1;                                             \
-        }                                                              \
-        if(opts.normalize==no){    				       \
-		 inv_rownorm = 1.0/rownorm;                            \
-        	 scal_r *= inv_rownorm;                                \
-	 	 scal_i *= inv_rownorm;                                \
-        }                                                              \
-        scal_r *= omega;                                               \
-	scal_i *= omega;					       \
-	idx -= sellmat->rowLen[row];                                   \
-                                                                       \
-        x_r[row] = x_r[row] - scal_r*sigma_r - scal_i*sigma_i;       /*Transpose is conjugate transpose*/  \
-	x_i[row] = x_i[row] + scal_r*sigma_i - scal_i*sigma_r;         \
-                                                                       \
- 	_Pragma("simd vectorlength(4)")                                \
-         for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {           \
-	        x_r[sellmat->col[idx]] = x_r[sellmat->col[idx]] + scal_r * (MT)mval[idx];\
-		x_i[sellmat->col[idx]] = x_i[sellmat->col[idx]] + scal_i * (MT)mval[idx];\
-                idx += 1;                                              \
-        }         						       \
-  }                                                                    \
+#define FORWARD_SHIFT_LOOP(start,end,MT,VT)                            		\
+ _Pragma("omp parallel for") 				    	       		\
+ for (ghost_lidx row=start; row<end; ++row){                           		\
+         VT rownorm = 0;				     	       		\
+	 VT scal = 0;								\
+         ghost_lidx idx = sellmat->chunkStart[row];                   		\
+         if(bval != NULL) {                                             	\
+          scal = bval[row];        				       		\
+	 }							       		\
+	 ghost_lidx diag_idx = sellmat->rowLen[row];				\
+	 if(mat->context->perm_local->method == GHOST_PERMUTATION_UNSYMMETRIC)  \
+		diag_idx = mat->context->perm_local->colPerm[mat->context->perm_local->invPerm[row]]; \
+	 else									\
+		diag_idx = row;							\
+	printf("diag_idx = %d\n",diag_idx);					\
+         /*TODO split loop if needed; for performance */			\
+         for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) { \
+		MT mval_idx = mval[idx+j];					\
+	 	if(diag_idx!=sellmat->col[idx+j]) { 				\
+			scal -= mval_idx*xval[sellmat->col[idx+j]];     	\
+                	rownorm += std::norm(mval_idx);              		\
+		} else {                                                	\
+			printf("mval = %f\n", mval_idx);			\
+			scal -= (mval_idx-sigma)*xval[sellmat->col[idx+j]]; 	\
+        	  	rownorm += std::norm((mval_idx-sigma)); 		\
+		}						        	\
+        }\
+	scal /= rownorm;                  	               	        	\
+	scal *= omega;								\
+	                                                               		\
+	_Pragma("simd vectorlength(4)")                                		\
+        for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {/*can be split for performance*/           		\
+	 	if(diag_idx!=sellmat->col[idx+j]) { /*mat->context->perm_local->colInvPerm[sellmat->col[idx+j]]) {*/  \
+			xval[sellmat->col[idx+j]] = xval[sellmat->col[idx+j]] + scal * std::conj(mval[idx+j]);\
+	        } else {  \
+			xval[sellmat->col[idx+j]] = xval[sellmat->col[idx+j]] + scal * std::conj(mval[idx+j]-sigma);\
+		}								\
+	}         						       		\
+  }                                                                    		\
 
-#define BACKWARD_SHIFT_LOOP(start,end,MT,VT)                           \
-  _Pragma("omp parallel for") 				       	       \
-  for (ghost_lidx row=start; row>end; --row){                          \
-  	 MT inv_rownorm;					       \
-         MT rownorm = 0;				     	       \
-         MT scal_r  = sigma_r*x_r[row] - sigma_i*x_i[row];             \
-	 MT scal_i  = sigma_r*x_i[row] + sigma_i*x_r[row];             \
-	 ghost_lidx  idx = sellmat->chunkStart[row];                   \
-        if(bval != NULL) {                                             \
-          scal_r += bval[row];        				       \
-	}							       \
-        for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            \
-                 scal_r -= (MT)mval[idx] * x_r[sellmat->col[idx]];     \
-		 scal_i -= (MT)mval[idx] * x_i[sellmat->col[idx]];     \
-                 if(opts.normalize==no && row!=mat->context->perm_local->colInvPerm[sellmat->col[idx]]) {      \
-                  rownorm += mval[idx]*mval[idx];                      \
-		 } else {                                              \
-		  rownorm += (mval[idx]-sigma_r)*(mval[idx]-sigma_r) + sigma_i*sigma_i; \
-		}						       \
-                 idx += 1;                                             \
-        }                                                              \
-        if(opts.normalize==no){    				       \
-		 inv_rownorm = 1.0/rownorm;                            \
-        	 scal_r *= inv_rownorm;                                \
-	 	 scal_i *= inv_rownorm;                                \
-        }                                                              \
-        scal_r *= omega;                                               \
-	scal_i *= omega;					       \
-	idx -= sellmat->rowLen[row];                                   \
-                                                                       \
-        x_r[row] = x_r[row] - scal_r*sigma_r - scal_i*sigma_i;       /*Transpose is conjugate transpose*/  \
-	x_i[row] = x_i[row] + scal_r*sigma_i - scal_i*sigma_r;         \
-                                                                       \
- 	_Pragma("simd vectorlength(4)")                                \
-         for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {           \
-	        x_r[sellmat->col[idx]] = x_r[sellmat->col[idx]] + scal_r * (MT)mval[idx];\
-		x_i[sellmat->col[idx]] = x_i[sellmat->col[idx]] + scal_i * (MT)mval[idx];\
-                idx += 1;                                              \
-        }        						       \
-}
+#define BACKWARD_SHIFT_LOOP(start,end,MT,VT)           		                \
+  _Pragma("omp parallel for") 						       	\
+  for (ghost_lidx row=start; row>end; --row){                   		\
+         VT rownorm = 0;				     	       		\
+	 VT scal = 0;								\
+         ghost_lidx idx = sellmat->chunkStart[row];                   		\
+         if(bval != NULL) {                                             	\
+          scal = bval[row];        				       		\
+	 }							       		\
+	 ghost_lidx diag_idx = sellmat->rowLen[row];				\
+	 if(mat->context->perm_local->method == GHOST_PERMUTATION_UNSYMMETRIC)  \
+		diag_idx = mat->context->perm_local->colPerm[mat->context->perm_local->invPerm[row]]; \
+	 else									\
+		diag_idx = row;							\
+         /*TODO split loop if needed for performance */				\
+         for (ghost_lidx j=0;j<sellmat->rowLen[row]; ++j) { \
+		MT mval_idx = mval[idx+j];					\
+	 	if(diag_idx!=sellmat->col[idx+j]) { 				\
+			scal -= mval_idx*xval[sellmat->col[idx+j]];     	\
+                	rownorm += std::norm(mval_idx);              		\
+		} else {                                                	\
+			scal -= (mval_idx-sigma)*xval[sellmat->col[idx+j]];  	\
+        	  	rownorm += std::norm((mval_idx-sigma)); 		\
+		}						        	\
+        }\
+	scal /= rownorm;                  	               	        	\
+	scal *= omega;								\
+	                                                               		\
+	_Pragma("simd vectorlength(4)")                                		\
+        for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {/*can be split for performance*/           		\
+	 	if(diag_idx!=sellmat->col[idx+j]) { /*mat->context->perm_local->colInvPerm[sellmat->col[idx+j]]) {*/  \
+			xval[sellmat->col[idx+j]] = xval[sellmat->col[idx+j]] + scal * std::conj(mval[idx+j]);\
+	        } else {  \
+			xval[sellmat->col[idx+j]] = xval[sellmat->col[idx+j]] + scal * std::conj(mval[idx+j]-sigma);\
+		}								\
+	}         						       		\
+  }                                                                    		\
 /*	                                                       
 #elif CHUNKHEIGHT == 1
 
@@ -431,18 +428,18 @@ if(start_chunk>end_chunk) {       										\
 #endif
 
 */
-template <typename MT> // TODO, typename VT>
+template <typename MT, typename VT>
 ghost_error ghost_kacz_BMCshift_u_plain_cm_CHUNKHEIGHT_NVECS_tmpl(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+  
+    VT sigma = *(VT *)opts.shift;
 
-    MT sigma_r = *(MT *)opts.sigma_r;
-    MT sigma_i = *(MT *)opts.sigma_i;
-
-   if(sigma_r == 0 && sigma_i == 0) {
-	WARNING_LOG("Use BMC without shifts if shifts are 0")
+   if(!(x->traits.datatype & (ghost_datatype)GHOST_DT_COMPLEX) ) {
+	WARNING_LOG("If you have specified complex shifts as option, ensure your output vector is also complex type!")
+        //return GHOST_ERR_DATATYPE;
    }
-
+ 
 #if CHUNKHEIGHT>1
     ghost_lidx start_rem, start_chunk, end_chunk, end_rem;									
     ghost_lidx chunk       = 0;											
@@ -465,8 +462,7 @@ ghost_error ghost_kacz_BMCshift_u_plain_cm_CHUNKHEIGHT_NVECS_tmpl(ghost_densemat
    if(b!= NULL)
      bval = (MT *)(b->val);
 
-    MT *x_r = (MT *)(x->val);
-    MT *x_i = (MT *)(&x->val[x->stride]);
+    VT *xval = (VT *)(x->val);
     MT *mval = (MT *)sellmat->val;
     MT omega = *(MT *)opts.omega;
     ghost_lidx *zone_ptr = (ghost_lidx*) mat->zone_ptr;
@@ -510,7 +506,7 @@ ghost_error ghost_kacz_BMCshift_u_plain_cm_CHUNKHEIGHT_NVECS_tmpl(ghost_densemat
             mc_start  = color_ptr[i]-1;
             mc_end    = color_ptr[i-1]-1;
 //            stride   = -1;
-            BACKWARD_SHIFT_LOOP(mc_start,mc_end,MT,MT)
+            BACKWARD_SHIFT_LOOP(mc_start,mc_end,MT,VT)
          }
 
 #ifdef GHOST_HAVE_OPENMP  
@@ -536,26 +532,26 @@ ghost_error ghost_kacz_BMCshift_u_plain_cm_CHUNKHEIGHT_NVECS_tmpl(ghost_densemat
 //      stride    = -1;
     	if(mat->kacz_setting.kacz_method == BMC_one_sweep) { 
     		for(ghost_lidx zone = 0; zone<4; ++zone) { 
-           		BACKWARD_SHIFT_LOOP(start[zone],end[zone],MT,MT)   
+           		BACKWARD_SHIFT_LOOP(start[zone],end[zone],MT,VT)   
      
    	  	        #pragma omp barrier                           
 		}
  	} else if (mat->kacz_setting.kacz_method == BMC_two_sweep) {
-		BACKWARD_SHIFT_LOOP(start[0],end[0],MT,MT)
+		BACKWARD_SHIFT_LOOP(start[0],end[0],MT,VT)
      		#pragma omp barrier 
    
      		if(tid%2 != 0) {
-            		BACKWARD_SHIFT_LOOP(start[1],end[1],MT,MT)
+            		BACKWARD_SHIFT_LOOP(start[1],end[1],MT,VT)
         	}	 
        		#pragma omp barrier
        		if(tid%2 == 0) {
-            		BACKWARD_SHIFT_LOOP(start[1],end[1],MT,MT)
+            		BACKWARD_SHIFT_LOOP(start[1],end[1],MT,VT)
         	}
 
       		#pragma omp barrier
-       		BACKWARD_SHIFT_LOOP(start[2],end[2],MT,MT)
+       		BACKWARD_SHIFT_LOOP(start[2],end[2],MT,VT)
      		#pragma omp barrier 
-       		BACKWARD_SHIFT_LOOP(start[3],end[3],MT,MT)               
+       		BACKWARD_SHIFT_LOOP(start[3],end[3],MT,VT)               
   	}      
 
 #ifdef GHOST_HAVE_OPENMP
@@ -587,23 +583,23 @@ ghost_error ghost_kacz_BMCshift_u_plain_cm_CHUNKHEIGHT_NVECS_tmpl(ghost_densemat
 
       	if(mat->kacz_setting.kacz_method == BMC_one_sweep) { 
     		for(ghost_lidx zone = 0; zone<4; ++zone) { 
-            		FORWARD_SHIFT_LOOP(start[zone],end[zone],MT,MT)        
+            		FORWARD_SHIFT_LOOP(start[zone],end[zone],MT,VT)        
    		   	#pragma omp barrier                           
       		}
  	} else if (mat->kacz_setting.kacz_method == BMC_two_sweep) {
-	    	FORWARD_SHIFT_LOOP(start[0],end[0],MT,MT)
+	    	FORWARD_SHIFT_LOOP(start[0],end[0],MT,VT)
      		#pragma omp barrier 
-       		FORWARD_SHIFT_LOOP(start[1],end[1],MT,MT)
+       		FORWARD_SHIFT_LOOP(start[1],end[1],MT,VT)
    		#pragma omp barrier
      		if(tid%2 == 0) {
-            		FORWARD_SHIFT_LOOP(start[2],end[2],MT,MT)
+            		FORWARD_SHIFT_LOOP(start[2],end[2],MT,VT)
         	}	 
        		#pragma omp barrier
        		if(tid%2 != 0) {
-            		FORWARD_SHIFT_LOOP(start[2],end[2],MT,MT)
+            		FORWARD_SHIFT_LOOP(start[2],end[2],MT,VT)
         	}
     		#pragma omp barrier 
-       		FORWARD_SHIFT_LOOP(start[3],end[3],MT,MT)               
+       		FORWARD_SHIFT_LOOP(start[3],end[3],MT,VT)               
   	}      
 
 #ifdef GHOST_HAVE_OPENMP
@@ -614,7 +610,7 @@ ghost_error ghost_kacz_BMCshift_u_plain_cm_CHUNKHEIGHT_NVECS_tmpl(ghost_densemat
             	mc_end    = color_ptr[i+1];
 //            	stride    = 1;
 
-           	FORWARD_SHIFT_LOOP(mc_start,mc_end,MT,MT)
+           	FORWARD_SHIFT_LOOP(mc_start,mc_end,MT,VT)
 	}
 }
 
@@ -629,4 +625,15 @@ ghost_error ghost_kacz_BMCshift_u_plain_cm_CHUNKHEIGHT_NVECS_tmpl(ghost_densemat
     return GHOST_SUCCESS;
 }
 
+ghost_error ghost_kacz__BMCshift_u_plain_x_x_cm_CHUNKHEIGHT_NVECS(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts)
+{
+    ghost_error ret = GHOST_SUCCESS;
+
+    //SELECT_TMPL_1DATATYPE(mat->traits.datatype,std::complex,ret,ghost_kacz_BMCshift_u_plain_cm_CHUNKHEIGHT_NVECS_tmpl,x,mat,b,opts);
+    // TODO mixed datatypes
+    SELECT_TMPL_2DATATYPES_base_derived(mat->traits.datatype,x->traits.datatype,std::complex,ret,ghost_kacz_BMCshift_u_plain_cm_CHUNKHEIGHT_NVECS_tmpl,x,mat,b,opts);
+
+    return ret;
+
+}
 
