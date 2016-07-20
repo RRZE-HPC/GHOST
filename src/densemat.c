@@ -86,7 +86,7 @@ ghost_error ghost_densemat_create(ghost_densemat **vec, ghost_context *ctx, ghos
     }
 
 
-   if(ctx->perm_local == NULL) {
+   if(ctx==NULL || ctx->perm_local == NULL) {
 		(*vec)->perm_local = NULL;
     } else if((*vec)->traits.permutemethod == COLUMN) {
 	        GHOST_CALL_GOTO(ghost_malloc((void **)&((*vec)->perm_local),sizeof(ghost_densemat_permutation)),err,ret); 
@@ -99,7 +99,7 @@ ghost_error ghost_densemat_create(ghost_densemat **vec, ghost_context *ctx, ghos
     }
 
     //Right now there are no Global row and column permutation, once there, modify this
-    if(ctx->perm_global == NULL) {
+    if(ctx==NULL || ctx->perm_global == NULL) {
 		(*vec)->perm_global = NULL;
     } else {
 	        GHOST_CALL_GOTO(ghost_malloc((void **)&((*vec)->perm_global),sizeof(ghost_densemat_permutation)),err,ret); 

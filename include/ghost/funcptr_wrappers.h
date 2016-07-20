@@ -230,6 +230,32 @@ static inline ghost_error ghost_densemat_init_file(ghost_densemat *x, char *path
 
 /**
  * @ingroup denseinit
+ * @brief Initializes a complex densemat from two real ones (one holding the real, the other one the imaginary part).
+ * @param vec The densemat.
+ * @param re The real source densemat.
+ * @param im The imaginary source densemat.
+ * @return ::GHOST_SUCCESS on success or an error indicator.
+ */
+static inline ghost_error ghost_densemat_init_real(ghost_densemat *vec, ghost_densemat *re, ghost_densemat *im)
+{
+    return vec->fromReal(vec,re,im);
+}
+
+/**
+ * @ingroup denseinit
+ * @brief Initializes two real densemats from a complex one.
+ * @param re The resulting real densemat holding the real part of the source.
+ * @param im The resulting real densemat holding the imaginary part of the source.
+ * @param src The complex source densemat.
+ * @return ::GHOST_SUCCESS on success or an error indicator.
+ */
+static inline ghost_error ghost_densemat_init_complex(ghost_densemat *re, ghost_densemat *im, ghost_densemat *src)
+{
+    return re->fromComplex(re,im,src);
+}
+
+/**
+ * @ingroup denseinit
  * @ingroup denseview
  * @brief View plain data which is stored with a given stride 
  * @param x The densemat.

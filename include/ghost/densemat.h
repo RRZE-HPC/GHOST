@@ -465,6 +465,14 @@ struct ghost_densemat
      */
     ghost_error (*fromRand) (ghost_densemat *vec);
     /**
+     * Documented in ghost_densemat_init_real()
+     */
+    ghost_error (*fromReal) (ghost_densemat *vec, ghost_densemat *re, ghost_densemat *im);
+    /**
+     * Documented in ghost_densemat_init_complex()
+     */
+    ghost_error (*fromComplex) (ghost_densemat *re, ghost_densemat *im, ghost_densemat *src);
+    /**
      * @brief Sets the densemat to have the same values on all processes.
      *
      * @param vec The densemat.

@@ -659,6 +659,68 @@ static ghost_error FUNCNAME(fromVec_tmpl(ghost_densemat *vec, ghost_densemat *ve
     return GHOST_SUCCESS;
 }
 
+template <typename v_t> 
+static ghost_error FUNCNAME(fromReal_tmpl(ghost_densemat *vec, ghost_densemat *re, ghost_densemat *im))
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
+    
+    GHOST_DENSEMAT_CHECK_SIMILARITY(re,im);
+    
+    int needInit = 0;
+    FUNCNAME(malloc(vec,&needInit));
+    
+    if( needInit && (vec->traits.location & GHOST_LOCATION_HOST) ) {
+        PERFWARNING_LOG("Fast initialization of padding elements not supported for ITER2* macros, filling with zeros first");
+        DENSEMAT_ITER_INIT(vec,(*(ghost_complex<v_t> *)valptr).re = 0.; (*(ghost_complex<v_t> *)valptr).im = 0.);
+    }
+
+    re->download(re);
+    im->download(im);
+
+    DENSEMAT_ITER2(vec,re,(*((ghost_complex<v_t> *)(vec->val+2*((char *)valptr1-vec->val)))).re = *(v_t *)valptr2; (*((ghost_complex<v_t> *)(vec->val+2*((char *)valptr1-vec->val)))).im = *(((v_t *)im->val+(valptr2-(v_t *)re->val))););
+    
+    vec->upload(vec);
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
+    return GHOST_SUCCESS;
+
+}
+
+template <typename v_t> 
+static ghost_error FUNCNAME(fromComplex_tmpl(ghost_densemat *re, ghost_densemat *im, ghost_densemat *c))
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
+
+    GHOST_DENSEMAT_CHECK_SIMILARITY(re,im);
+    
+    int needInit = 0;
+    FUNCNAME(malloc(re,&needInit));
+    
+    if( needInit && (re->traits.location & GHOST_LOCATION_HOST) ) {
+        PERFWARNING_LOG("Fast initialization of padding elements not supported for ITER2* macros, filling with zeros first");
+        DENSEMAT_ITER_INIT(re,*(v_t *)valptr = 0.;);
+    }
+
+    needInit = 0;
+    FUNCNAME(malloc(re,&needInit));
+    
+    if( needInit && (im->traits.location & GHOST_LOCATION_HOST) ) {
+        PERFWARNING_LOG("Fast initialization of padding elements not supported for ITER2* macros, filling with zeros first");
+        DENSEMAT_ITER_INIT(im,*(v_t *)valptr = 0.;);
+    }
+
+    c->download(c);
+
+    DENSEMAT_ITER2(re,c,*(v_t *)valptr1 = (*((ghost_complex<v_t> *)(c->val+2*((char *)valptr2-c->val)))).re;*(((v_t *)im->val+(valptr1-(v_t *)re->val))) = (*((ghost_complex<v_t> *)(c->val+2*((char *)valptr2-c->val)))).im;);
+
+    re->upload(re);    
+    im->upload(im);    
+
+    
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
+    return GHOST_SUCCESS;
+
+}
 
 
 extern "C" ghost_error FUNCNAME(string_selector(ghost_densemat *vec, char **str))
@@ -778,3 +840,24 @@ extern "C" ghost_error FUNCNAME(conj_selector(ghost_densemat *vec))
     return ret;
 }
 
+extern "C" ghost_error FUNCNAME(fromReal_selector(ghost_densemat *vec, ghost_densemat *re, ghost_densemat *im))
+{
+    ghost_error ret = GHOST_SUCCESS;
+
+    if (vec->traits.datatype & GHOST_DT_DOUBLE) {
+        ret = FUNCNAME(fromReal_tmpl<double>)(vec,re,im);
+    } else {
+        ret = FUNCNAME(fromReal_tmpl<float>)(vec,re,im);
+    }
+
+    return ret;
+}
+
+extern "C" ghost_error FUNCNAME(fromComplex_selector(ghost_densemat *re, ghost_densemat *im, ghost_densemat *c))
+{
+    ghost_error ret = GHOST_SUCCESS;
+
+    SELECT_TMPL_1DATATYPE(re->traits.datatype,ghost_complex,ret,FUNCNAME(fromComplex_tmpl),re,im,c);
+
+    return ret;
+}
