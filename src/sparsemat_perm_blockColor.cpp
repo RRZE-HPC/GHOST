@@ -344,8 +344,8 @@ extern "C" ghost_error ghost_sparsemat_blockColor(ghost_sparsemat *mat, void *ma
         mat->context->perm_local->method = GHOST_PERMUTATION_UNSYMMETRIC;
 
         //anyway separate both permutations 
-   	GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->colPerm,sizeof(ghost_gidx)*mat->ncols), err, ret);
-        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->colInvPerm,sizeof(ghost_gidx)*mat->ncols), err, ret);
+   	GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->colPerm,sizeof(ghost_gidx)*ncols_halo_padded), err, ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->colInvPerm,sizeof(ghost_gidx)*ncols_halo_padded), err, ret);
 
         #pragma omp parallel for         
         for(int i=0; i<ncols_halo_padded; ++i) {

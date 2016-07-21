@@ -1866,7 +1866,7 @@ static ghost_error SELL_fromRowFunc(ghost_sparsemat *mat, ghost_sparsemat_src_ro
 //set NO_DISTINCTION when block multicolor and RCM is on and more than 2 processors, TODO pure MC and MPI
 //this has to be invoked even if no permutations are carried out and more than 2 processors, since we need to
 //know amount of remote entries before (used in sparsemat_blockcolor; 
-if(nprocs>1 && mat->traits.flags & GHOST_SOLVER_KACZ && mat->traits.flags & GHOST_SPARSEMAT_RCM) {
+if(nprocs>1 && mat->traits.flags & GHOST_SOLVER_KACZ) {
 
      INFO_LOG("NO DISTINCTION is set");
      mat->context->flags |=   (ghost_context_flags_t) GHOST_PERM_NO_DISTINCTION; 

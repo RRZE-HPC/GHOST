@@ -13,18 +13,19 @@ static ghost_error ghost_densemat_rm_averagehalo_tmpl(ghost_densemat *vec, ghost
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
     ghost_error ret = GHOST_SUCCESS;
 
-    int rank, nrank, i, d, acc_dues = 0;
+    int rank, nrank, i, j, d, acc_dues = 0;
     T *work = NULL, *curwork = NULL;
     MPI_Request *req = NULL;
     T *sum = NULL;
     int *nrankspresent = NULL;
     
     
-    if (vec->traits.ncols > 1) {
+/*    if (vec->traits.ncols > 1) {
         ERROR_LOG("Multi-vec case not yet implemented");
         ret = GHOST_ERR_NOT_IMPLEMENTED;
         goto err;
     }
+*/
 
     if (ctx == NULL) {
         WARNING_LOG("Trying to average the halos of a densemat which has no context!");
@@ -80,59 +81,77 @@ static ghost_error ghost_densemat_rm_averagehalo_tmpl(ghost_densemat *vec, ghost
    
 
 
-     GHOST_CALL_GOTO(ghost_malloc((void **)&sum, vec->traits.nrows*sizeof(T)),err,ret);
+     GHOST_CALL_GOTO(ghost_malloc((void **)&sum, vec->traits.ncols*vec->traits.nrows*sizeof(T)),err,ret);
      GHOST_CALL_GOTO(ghost_malloc((void **)&nrankspresent, vec->traits.nrows*sizeof(int)),err,ret);
 
-#pragma omp parallel for schedule(static) private(i)
-    for (i=0; i<vec->traits.nrows; i++) {	
-	if(ctx->perm_local) {
-        	if(ctx->perm_local->colInvPerm[i]< ctx->lnrows[rank] ) { //This check is important since entsInCol has only lnrows(NO_DISTINCTION
-											 //might give seg fault else) the rest are halo anyway, not needed for local sums
-			nrankspresent[i] = ctx->entsInCol[ctx->perm_local->colInvPerm[i]]?1:0; //this has also to be permuted since it was
-														 //for unpermuted columns that we calculate
-			if(nrankspresent[i]==1)
-	        		sum[i] = ((T *)vec->val)[i];
-			else
-				sum[i] = 0;
-		} else {
-			nrankspresent[i] = 0;
-			sum[i]=0;
-		} 	
-	} else {
-			nrankspresent[i] = ctx->entsInCol[i]?1:0;		
-			if(nrankspresent[i]==1)
-		        	sum[i] = ((T *)vec->val)[i];
-			else
-				sum[i] = 0;
-	}
-  }
-    
+#pragma omp parallel for schedule(static) private(i,j)
+     for (i=0; i<vec->traits.nrows; i++) {	
+	     if(ctx->perm_local) {
+		     if(ctx->perm_local->colInvPerm[i]< ctx->lnrows[rank] ) { //This check is important since entsInCol has only lnrows(NO_DISTINCTION
+			     //might give seg fault else) the rest are halo anyway, not needed for local sums
+			     nrankspresent[i] = ctx->entsInCol[ctx->perm_local->colInvPerm[i]]?1:0; //this has also to be permuted since it was
+			     //for unpermuted columns that we calculate
+			     if(nrankspresent[i]==1){
+				     for(j=0;j<vec->traits.ncols;++j){
+					     sum[i*vec->traits.ncols+j] = ((T *)vec->val)[i*vec->traits.ncols+j];
+				     }
+			     } else {
+				     for(j=0;j<vec->traits.ncols;++j){
+					     sum[i*vec->traits.ncols+j] = 0;
+				     }
+			     }
+		     } else {
+			     nrankspresent[i] = 0;
+			     for(j=0;j<vec->traits.ncols;++j){
+				     sum[i*vec->traits.ncols+j]=0;
+			     }
+		     } 	
+	     } else {
+		     nrankspresent[i] = ctx->entsInCol[i]?1:0;		
+		     if(nrankspresent[i]==1) {
+			     for(j=0;j<vec->traits.ncols;++j){
+				     sum[i*vec->traits.ncols+j] = ((T *)vec->val)[i*vec->traits.ncols+j];
+			     }
+		     } else {
+			     for(j=0;j<vec->traits.ncols;++j){
+				     sum[i*vec->traits.ncols+j] = 0;
+			     }
+		     }
+	     }
+     }
+
      ghost_lidx currow;
      curwork = work;
 
     for (i=0; i<nrank; i++) {
-	if(ctx->perm_local) {
-#pragma omp parallel for schedule(static) private(d)
+	    if(ctx->perm_local) {
+#pragma omp parallel for schedule(static) private(d,j)
 	        for (d=0 ;d < ctx->dues[i]; d++) {
-        	    sum[ctx->perm_local->colPerm[ctx->duelist[i][d]]] += curwork[d];
-             	    nrankspresent[ctx->perm_local->colPerm[ctx->duelist[i][d]]]++; 
+			for(j=0 ; j<vec->traits.ncols; ++j) {
+		    		sum[(ctx->perm_local->colPerm[ctx->duelist[i][d]])*vec->traits.ncols+j] += curwork[d*vec->traits.ncols+j];
+			 }
+			nrankspresent[ctx->perm_local->colPerm[ctx->duelist[i][d]]]++; 
 		}
-	} else {
-#pragma omp parallel for schedule(static) private(d)
+	    } else {
+#pragma omp parallel for schedule(static) private(d,j)
 	        for (d=0 ;d < ctx->dues[i]; d++) {
-        	    sum[ctx->duelist[i][d]] += curwork[d];
-            	    nrankspresent[ctx->duelist[i][d]]++; 
-		}
-	}
-           curwork += ctx->dues[i];
-     }
+  		      for(j=0 ; j<vec->traits.ncols; ++j) {
+              		sum[(ctx->duelist[i][d])*vec->traits.ncols+j] += curwork[d*vec->traits.ncols+j];
+            	      }
+            	      nrankspresent[ctx->duelist[i][d]]++; 
+		 } 
+	      }
+           curwork += ctx->dues[i]*vec->traits.ncols;
+    }
 
-#pragma omp parallel for schedule(static) private(currow)
+#pragma omp parallel for schedule(static) private(currow,j)
     for (currow=0; currow<vec->traits.nrows; currow++) {
       if(nrankspresent[currow]!=0) {
- 	       ((T *)vec->val)[currow] = sum[currow]/(T)nrankspresent[currow];
-	}
-     }
+		for(j=0; j<vec->traits.ncols; ++j) {
+ 	       		((T *)vec->val)[currow*vec->traits.ncols+j] = sum[currow*vec->traits.ncols+j]/(T)nrankspresent[currow];
+		}
+	    }
+    }
 
 /* } else { 
     GHOST_CALL_GOTO(ghost_malloc((void **)&sum, ctx->lnrows[rank]*sizeof(T)),err,ret);
