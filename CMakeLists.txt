@@ -619,6 +619,29 @@ if (NOT EXISTS "${HWLOC_INCLUDE_DIR}/hwloc.h")
 endif()
 
 include_directories(BEFORE ${HWLOC_INCLUDE_DIR} ${PROJECT_BINARY_DIR}/ghost ${PROJECT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/include)
+
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel") 
+    if (GHOST_USE_SPMP)
+        set(GHOST_HAVE_SPMP 1)
+        set(GITHUB_GIT_URL "github.com" CACHE STRING "The github GIT URL. This has to be changed in certain situations if located behind a firewall.")
+        include(ExternalProject)
+        set_property(DIRECTORY PROPERTY EP_STEP_TARGETS build)
+        ExternalProject_Add(SpMP
+            PREFIX ${PROJECT_BINARY_DIR}/SpMP
+            GIT_REPOSITORY git://${GITHUB_GIT_URL}/jspark1105/SpMP.git
+            CONFIGURE_COMMAND "" 
+            BUILD_COMMAND make CC=${CMAKE_CXX_COMPILER} 
+            BUILD_IN_SOURCE 1
+            INSTALL_COMMAND ""
+            )
+        target_link_libraries(ghost "${PROJECT_BINARY_DIR}/SpMP/src/SpMP/libspmp.a")
+        include_directories(SYSTEM ${PROJECT_BINARY_DIR}/SpMP/src)
+        add_dependencies(ghost SpMP)
+    endif()
+else()
+    message(FATAL_ERROR "SpMP will not build with a compiler which is not Clang/GNU/Intel. Please disable SpMP or use a different compiler!")
+endif()
+
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Cray")
     # msg 193 complains about commented out lines in config.h
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -h c99 -h msglevel_3 -h nomessage=193")
@@ -645,13 +668,13 @@ else ()
     endif()
 ########################################################################
 
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -std=c99 -Wall -Wextra")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -std=c++0x -Wall -Wextra")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -std=c99 -Wall -Wextra -save-temps")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -std=c++0x -Wall -Wextra -save-temps")
     if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
         set(CMAKE_INCLUDE_SYSTEM_FLAG_C "-isystem ") # Not present in Cmake 2.8.11.2
         set(CMAKE_INCLUDE_SYSTEM_FLAG_CXX "-isystem ") # Not present in Cmake 2.8.11.2
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wunused-variable -save-temps -fsource-asm -w3 -wd981")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wunused-variable -save-temps -fsource-asm -w3 -wd981 -wd383")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wunused-variable -fsource-asm -w3 -wd981")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wunused-variable -fsource-asm -w3 -wd981 -wd383")
         if ("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
             set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-alias")
             set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-alias")
@@ -679,25 +702,6 @@ endif ()
 if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0")
-endif()
-
-
-if (GHOST_USE_SPMP)
-    set(GHOST_HAVE_SPMP 1)
-    set(GITHUB_GIT_URL "github.com" CACHE STRING "The github GIT URL. This has to be changed in certain situations if located behind a firewall.")
-    include(ExternalProject)
-    set_property(DIRECTORY PROPERTY EP_STEP_TARGETS build)
-    ExternalProject_Add(SpMP
-        PREFIX ${PROJECT_BINARY_DIR}/SpMP
-        GIT_REPOSITORY git://${GITHUB_GIT_URL}/jspark1105/SpMP.git
-        CONFIGURE_COMMAND "" 
-        BUILD_COMMAND make CC=${CMAKE_CXX_COMPILER} CCFLAGS=${CMAKE_CXX_FLAGS}
-        BUILD_IN_SOURCE 1
-        INSTALL_COMMAND ""
-        )
-    target_link_libraries(ghost "${PROJECT_BINARY_DIR}/SpMP/src/SpMP/libspmp.a")
-    include_directories(SYSTEM ${PROJECT_BINARY_DIR}/SpMP/src)
-    add_dependencies(ghost SpMP)
 endif()
 
 if (GHOST_BUILD_MIC)
