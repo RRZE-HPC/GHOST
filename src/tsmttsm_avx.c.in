@@ -151,10 +151,6 @@ ghost_error ghost_tsmttsm1__a_avx_d_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_dens
         free(x_priv);
     }
    
-    goto out;
-err:
-
-out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 #else
@@ -308,10 +304,6 @@ ghost_error ghost_tsmttsm__a_avx_d_CFGK_CFGM_OUTERUNROLL_rm(ghost_densemat *x, g
         free(x_priv);
     }
    
-    goto out;
-err:
-
-out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 #else
@@ -465,10 +457,6 @@ ghost_error ghost_tsmttsm__u_avx_d_CFGK_CFGM_OUTERUNROLL_rm(ghost_densemat *x, g
         free(x_priv);
     }
    
-    goto out;
-err:
-
-out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 #else
@@ -637,10 +625,6 @@ ghost_error ghost_tsmttsm__a_avx_s_CFGK_CFGM_OUTERUNROLL_rm(ghost_densemat *x, g
         free(x_priv);
     }
    
-    goto out;
-err:
-
-out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 #else
@@ -848,10 +832,6 @@ ghost_error ghost_tsmttsm__a_avx_z_CFGK_CFGM_2_rm(ghost_densemat *x, ghost_dense
         free(x_priv);
     }
    
-    goto out;
-err:
-
-out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 #else
@@ -1037,10 +1017,6 @@ ghost_error ghost_tsmttsm__a_avx_c_CFGK_CFGM_4_rm(ghost_densemat *x, ghost_dense
         free(x_priv);
     }
    
-    goto out;
-err:
-
-out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 #else
@@ -1269,10 +1245,6 @@ ghost_error ghost_tsmttsm2__a_avx_z_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_dens
         free(x_priv);
     }
    
-    goto out;
-err:
-
-out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 #else
@@ -1430,10 +1402,6 @@ ghost_error ghost_tsmttsm1__a_avx_z_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_dens
     free(wreal);
     free(wimag);
    
-    goto out;
-err:
-
-out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 #else
@@ -1595,10 +1563,6 @@ ghost_error ghost_tsmttsm2__a_avx_d_CFGK_CFGM_1_cm_rm(ghost_densemat *x, ghost_d
         free(x_priv);
     }
    
-    goto out;
-err:
-
-out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 #else
@@ -1781,10 +1745,6 @@ ghost_error ghost_tsmttsm3__a_avx_d_CFGK_CFGM_1_cm_rm(ghost_densemat *x, ghost_d
         free(x_priv);
     }
    
-    goto out;
-err:
-
-out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 #else
@@ -1914,10 +1874,6 @@ ghost_error ghost_tsmttsm2__a_avx_d_CFGK_CFGM_1_cm_rm(ghost_densemat *x, ghost_d
         free(x_priv);
     }
    
-    goto out;
-err:
-
-out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 #else

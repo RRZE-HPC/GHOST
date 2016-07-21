@@ -84,3 +84,4 @@ void ghost_omp_set_dynamic(int dynamic_threads)
 #endif
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
 }
+

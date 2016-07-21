@@ -57,7 +57,7 @@ ghost_error ghost_sparsemat_perm_scotch(ghost_sparsemat *mat, void *matrixSource
     WARNING_LOG("Scotch not available. Will not create matrix permutation!");
     return GHOST_SUCCESS;
 #else
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_PREPROCESS);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_SETUP);
     ghost_error ret = GHOST_SUCCESS;
     ghost_gidx *col = NULL, i, j, k;
     ghost_sorting_helper *rowSort = NULL;
@@ -178,7 +178,7 @@ ghost_error ghost_sparsemat_perm_scotch(ghost_sparsemat *mat, void *matrixSource
     SCOTCH_CALL_GOTO(SCOTCH_stratInit(strat),err,ret);
     
     /* use strategy string from traits */
-    SCOTCH_CALL_GOTO(SCOTCH_stratDgraphOrder(strat,mat->traits->scotchStrat),err,ret);
+    SCOTCH_CALL_GOTO(SCOTCH_stratDgraphOrder(strat,mat->traits.scotchStrat),err,ret);
 
     /* or use some default strategy */
     /* \todo: I'm not sure what the 'balrat' value does (last param),
@@ -304,7 +304,7 @@ out:
     if (strat) {
         SCOTCH_stratExit(strat);
     }
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_PREPROCESS);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_SETUP);
     
     
     return ret;

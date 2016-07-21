@@ -70,10 +70,6 @@ ghost_error ghost_tsmttsm__a_plain_d_x_x_1_rm(ghost_densemat *x, ghost_densemat 
         free(x_priv);
     }
     
-    goto out;
-err:
-
-out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 }
@@ -142,10 +138,6 @@ ghost_error ghost_tsmttsm__u_plain_d_x_x_1_rm(ghost_densemat *x, ghost_densemat 
         free(x_priv);
     }
     
-    goto out;
-err:
-
-out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 }
@@ -214,10 +206,6 @@ ghost_error ghost_tsmttsm__u_plain_d_x_x_1_cm(ghost_densemat *x, ghost_densemat 
         free(x_priv);
     }
     
-    goto out;
-err:
-
-out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 }
@@ -282,10 +270,6 @@ ghost_error ghost_tsmttsm__a_plain_d_x_x_1_cm(ghost_densemat *x, ghost_densemat 
         free(x_priv);
     }
     
-    goto out;
-err:
-
-out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 }
@@ -364,10 +348,6 @@ ghost_error ghost_tsmttsm__a_plain_z_x_x_1_rm(ghost_densemat *x, ghost_densemat 
         free(x_priv);
     }
     
-    goto out;
-err:
-
-out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 }
@@ -443,10 +423,6 @@ ghost_error ghost_tsmttsm__u_plain_z_x_x_1_rm(ghost_densemat *x, ghost_densemat 
         free(x_priv);
     }
     
-    goto out;
-err:
-
-out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 }
@@ -525,10 +501,6 @@ ghost_error ghost_tsmttsm__a_plain_c_x_x_1_rm(ghost_densemat *x, ghost_densemat 
         free(x_priv);
     }
     
-    goto out;
-err:
-
-out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 }
@@ -607,10 +579,6 @@ ghost_error ghost_tsmttsm__a_plain_z_x_x_1_cm(ghost_densemat *x, ghost_densemat 
         free(x_priv);
     }
     
-    goto out;
-err:
-
-out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 }

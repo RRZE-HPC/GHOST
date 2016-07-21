@@ -154,10 +154,6 @@ ghost_error ghost_tsmttsm__a_sse_d_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_dense
         free(x_priv);
     }
    
-    goto out;
-err:
-
-out:
     if (xpad != xval) {
         for (k=0; k<CFGK; k++) {
             for (m=0; m<CFGM; m++) {

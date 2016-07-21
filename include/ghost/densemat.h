@@ -665,6 +665,9 @@ extern "C" {
      *
      * @note No memory will be allocated in this function. Before any operation with the densemat is done,
      * an initialization function (see @ref denseinit) has to be called with the densemat.
+     *
+     * The context is only used to extract the size of the densemat. It will not be stored in the densemat.
+     * If the size is already correctly specified by the user in the traits, the context may be NULL.
      */
     ghost_error ghost_densemat_create(ghost_densemat **vec, 
             ghost_context *ctx, ghost_densemat_traits traits);

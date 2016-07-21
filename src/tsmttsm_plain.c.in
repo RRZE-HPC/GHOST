@@ -133,10 +133,6 @@ ghost_error ghost_tsmttsm__u_plain_d_CFGK_CFGM_OUTERUNROLL_cm(ghost_densemat *x,
     }
 #endif
    
-    goto out;
-err:
-
-out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 }
@@ -232,10 +228,6 @@ ghost_error ghost_tsmttsm__a_plain_z_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_den
         free(x_priv);
     }
    
-    goto out;
-err:
-
-out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 }
@@ -305,10 +297,6 @@ ghost_error ghost_tsmttsm__a_plain_d_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_den
         free(x_priv);
     }
    
-    goto out;
-err:
-
-out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 }
@@ -376,10 +364,6 @@ ghost_error ghost_tsmttsm__a_plain_d_CFGK_CFGM_4_cm(ghost_densemat *x, ghost_den
         free(x_priv);
     }
    
-    goto out;
-err:
-
-out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 }
