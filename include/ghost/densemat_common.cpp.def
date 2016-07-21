@@ -49,7 +49,7 @@
 using namespace std;
 
 template<typename v_t>
-static ghost_error FUNCNAME(normalize_tmpl(ghost_densemat *vec))
+static ghost_error FUNCNAME(normalize_tmpl(ghost_densemat *vec, ghost_mpi_comm mpicomm))
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error ret = GHOST_SUCCESS;
@@ -57,7 +57,7 @@ static ghost_error FUNCNAME(normalize_tmpl(ghost_densemat *vec))
     v_t *s = NULL;
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&s,vec->traits.ncols*sizeof(v_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_dot(s,vec,vec),err,ret);
+    GHOST_CALL_GOTO(ghost_dot(s,vec,vec,mpicomm),err,ret);
 
     for (v=0; v<vec->traits.ncols; v++) {
         s[v] = (v_t)sqrt(s[v]);
@@ -233,11 +233,7 @@ static ghost_error FUNCNAME(vaxpy_tmpl(ghost_densemat *vec, ghost_densemat *vec2
 #ifdef GHOST_INSTR_TIMING
     ghost_axpy_perf_args pargs;
     pargs.ncols = vec->traits.ncols;
-    if (vec->context) {
-        pargs.globnrows = vec->context->gnrows;
-    } else {
-        pargs.globnrows = vec->traits.nrows;
-    }
+    pargs.globnrows = vec->traits.gnrows;
     pargs.dt = vec->traits.datatype;
 
     ghost_timing_set_perfFunc(NULL,__ghost_functag,ghost_axpy_perf,(void *)&pargs,sizeof(pargs),GHOST_AXPY_PERF_UNIT);
@@ -261,11 +257,7 @@ static ghost_error FUNCNAME(vaxpby_tmpl(ghost_densemat *vec, ghost_densemat *vec
 #ifdef GHOST_INSTR_TIMING
     ghost_axpby_perf_args pargs;
     pargs.ncols = vec->traits.ncols;
-    if (vec->context) {
-        pargs.globnrows = vec->context->gnrows;
-    } else {
-        pargs.globnrows = vec->traits.nrows;
-    }
+    pargs.globnrows = vec->traits.gnrows;
     pargs.dt = vec->traits.datatype;
 
     ghost_timing_set_perfFunc(NULL,__ghost_functag,ghost_axpby_perf,(void *)&pargs,sizeof(pargs),GHOST_AXPBY_PERF_UNIT);
@@ -295,11 +287,7 @@ static ghost_error FUNCNAME(vaxpbypcz_tmpl(ghost_densemat *vec, ghost_densemat *
 #ifdef GHOST_INSTR_TIMING
     ghost_axpbypcz_perf_args pargs;
     pargs.ncols = vec->traits.ncols;
-    if (vec->context) {
-        pargs.globnrows = vec->context->gnrows;
-    } else {
-        pargs.globnrows = vec->traits.nrows;
-    }
+    pargs.globnrows = vec->traits.gnrows;
     pargs.dt = vec->traits.datatype;
 
     ghost_timing_set_perfFunc(NULL,__ghost_functag,ghost_axpbypcz_perf,(void *)&pargs,sizeof(pargs),GHOST_AXPBYPCZ_PERF_UNIT);
@@ -318,11 +306,7 @@ static ghost_error FUNCNAME(vscale_tmpl(ghost_densemat *vec, void *scale))
 #ifdef GHOST_INSTR_TIMING
     ghost_scale_perf_args pargs;
     pargs.ncols = vec->traits.ncols;
-    if (vec->context) {
-        pargs.globnrows = vec->context->gnrows;
-    } else {
-        pargs.globnrows = vec->traits.nrows;
-    }
+    pargs.globnrows = vec->traits.gnrows;
     pargs.dt = vec->traits.datatype;
 
     ghost_timing_set_perfFunc(NULL,__ghost_functag,ghost_scale_perf,(void *)&pargs,sizeof(pargs),GHOST_SCALE_PERF_UNIT);
@@ -394,19 +378,12 @@ static int densemat_perment_cmp (const void *a, const void *b)
 
 
 template <typename v_t> 
-static ghost_error FUNCNAME(permute_tmpl(ghost_densemat *vec, ghost_permutation_direction dir))
+static ghost_error FUNCNAME(permute_tmpl(ghost_densemat *vec, ghost_context *ctx, ghost_permutation_direction dir))
 {
 printf("%s\n",vec->traits.permutemethod==ROW?"ROW":vec->traits.permutemethod==COLUMN?"COLUMN":"NONE");
 if(vec->traits.permutemethod == NONE) {
     ERROR_LOG("traits.permutemethod==NONE, therefore no permutation is carried out. Please set the field to COLUMN or ROW");
 } else {
-
-    int me;
-    #ifdef GHOST_HAVE_MPI
-    	GHOST_CALL_RETURN(ghost_rank(&me, vec->context->mpicomm));
-    #else
-	me = 0;
-    #endif
 
     if (!vec->perm_local && !vec->perm_global) {
         WARNING_LOG("No permutation vector present!");
@@ -430,7 +407,7 @@ if(vec->traits.permutemethod == NONE) {
         ghost_densemat *vecclone;
 	//TODO this is a dirty hack, since the size of rowperm and colperm varies
 	if(vec->traits.permutemethod == ROW) {
-        	ghost_densemat_clone(&vecclone,vec,vec->context->lnrows[me],0,vec->traits.ncols,0);
+        	ghost_densemat_clone(&vecclone,vec,vec->traits.nrows/*context->lnrows[me]*/,0,vec->traits.ncols,0);
 	} else {
         	ghost_densemat_clone(&vecclone,vec,vec->traits.nrows,0,vec->traits.ncols,0);
 	}
@@ -442,9 +419,7 @@ if(vec->traits.permutemethod == NONE) {
 
     if (vec->perm_global) {
 #ifdef GHOST_HAVE_MPI
-        ghost_lidx i,me,nprocs,c;
-        GHOST_CALL_RETURN(ghost_rank(&me,vec->context->mpicomm));
-        GHOST_CALL_RETURN(ghost_nrank(&nprocs,vec->context->mpicomm));
+        ghost_lidx i,c;
         MPI_Request *req;
         ghost_malloc((void **)&req,vec->traits.nrows*2*sizeof(MPI_Request));
 
@@ -456,17 +431,17 @@ if(vec->traits.permutemethod == NONE) {
         for (c=0; c<vec->traits.ncols; c++) {
             for (i=0; i<vec->traits.nrows; i++) {
                 if (dir == GHOST_PERMUTATION_ORIG2PERM) {
-                    dstrank = ghost_rank_of_row(vec->context,vec->context->perm_global->perm[i]);
-                    srcrank = ghost_rank_of_row(vec->context,vec->context->perm_global->invPerm[i]);
-                    rowindst = vec->perm_global->perm[i]-vec->context->lfRow[dstrank];
+                    dstrank = ghost_rank_of_row(ctx,vec->perm_global->perm[i]);
+                    srcrank = ghost_rank_of_row(ctx,vec->perm_global->invPerm[i]);
+                    rowindst = vec->perm_global->perm[i]-ctx->lfRow[dstrank];
                 } else {
-                    dstrank = ghost_rank_of_row(vec->context,vec->context->perm_global->invPerm[i]);
-                    srcrank = ghost_rank_of_row(vec->context,vec->context->perm_global->perm[i]);
-                    rowindst = vec->perm_global->invPerm[i]-vec->context->lfRow[dstrank];
+                    dstrank = ghost_rank_of_row(ctx,vec->perm_global->invPerm[i]);
+                    srcrank = ghost_rank_of_row(ctx,vec->perm_global->perm[i]);
+                    rowindst = vec->perm_global->invPerm[i]-ctx->lfRow[dstrank];
                 }
 
-                MPI_Isend(DENSEMAT_VALPTR(vecclone,i,c),1,vec->mpidt,dstrank,rowindst,vec->context->mpicomm,&req[i]);
-                MPI_Irecv(DENSEMAT_VALPTR(vec,i,c),1,vec->mpidt,srcrank,i,vec->context->mpicomm,&req[vec->traits.nrows+i]);
+                MPI_Isend(DENSEMAT_VALPTR(vecclone,i,c),1,vec->mpidt,dstrank,rowindst,ctx->mpicomm,&req[i]);
+                MPI_Irecv(DENSEMAT_VALPTR(vec,i,c),1,vec->mpidt,srcrank,i,ctx->mpicomm,&req[vec->traits.nrows+i]);
             }
             MPI_Waitall(2*vec->traits.nrows,req,MPI_STATUS_IGNORE);
         }
@@ -480,7 +455,7 @@ if(vec->traits.permutemethod == NONE) {
         ghost_densemat *vecclone;
  	//TODO this is a dirty hack, since the size of rowperm and colperm varies
 	if(vec->traits.permutemethod == ROW) {
-        	ghost_densemat_clone(&vecclone,vec,vec->context->lnrows[me],0,vec->traits.ncols,0);
+        	ghost_densemat_clone(&vecclone,vec,vec->traits.nrows/*vec->context->lnrows[me]*/,0,vec->traits.ncols,0);
 	} else {
         	ghost_densemat_clone(&vecclone,vec,vec->traits.nrows,0,vec->traits.ncols,0);
 	}
@@ -732,11 +707,11 @@ extern "C" ghost_error FUNCNAME(string_selector(ghost_densemat *vec, char **str)
     return ret;
 }
 
-extern "C" ghost_error FUNCNAME(normalize_selector(ghost_densemat *vec))
+extern "C" ghost_error FUNCNAME(normalize_selector(ghost_densemat *vec, ghost_mpi_comm mpicomm))
 { 
     ghost_error ret = GHOST_SUCCESS;
 
-    SELECT_TMPL_1DATATYPE(vec->traits.datatype,ghost_complex,ret,FUNCNAME(normalize_tmpl),vec);
+    SELECT_TMPL_1DATATYPE(vec->traits.datatype,ghost_complex,ret,FUNCNAME(normalize_tmpl),vec,mpicomm);
 
     return ret;
 }
@@ -822,11 +797,11 @@ extern "C" ghost_error FUNCNAME(fromVec_selector(ghost_densemat *vec, ghost_dens
     return ret;
 }
 
-extern "C" ghost_error FUNCNAME(permute_selector(ghost_densemat *vec, ghost_permutation_direction dir))
+extern "C" ghost_error FUNCNAME(permute_selector(ghost_densemat *vec, ghost_context *ctx, ghost_permutation_direction dir))
 { 
     ghost_error ret = GHOST_SUCCESS;
 
-    SELECT_TMPL_1DATATYPE(vec->traits.datatype,ghost_complex,ret,FUNCNAME(permute_tmpl),vec,dir);
+    SELECT_TMPL_1DATATYPE(vec->traits.datatype,ghost_complex,ret,FUNCNAME(permute_tmpl),vec,ctx,dir);
 
     return ret;
 }

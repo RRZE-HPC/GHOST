@@ -3,7 +3,6 @@
 #include "ghost/types.h"
 #include "ghost/math.h"
 #include "ghost/instr.h"
-#include "ghost/locality.h"
 #include "ghost/util.h"
 #include "ghost/tsmttsm_kahan_plain_gen.h"
 
@@ -15,12 +14,6 @@ ghost_error ghost_tsmttsm_kahan__a_plain_d_CFGK_CFGM_1_rm(ghost_densemat *x, gho
     UNUSED(conjv);
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
-
-    int myrank=0;
-
-    if (v->context) {
-        GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
-    }
 
     ghost_lidx n = v->traits.nrows;
     INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
@@ -36,11 +29,6 @@ ghost_error ghost_tsmttsm_kahan__a_plain_d_CFGK_CFGM_1_rm(ghost_densemat *x, gho
     double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
     
-    // make sure that the initial x only gets added up once
-    if (myrank) {
-        dbeta = 0.;
-    }
-
     ghost_lidx i,j;
     
     if (x->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
@@ -116,12 +104,6 @@ ghost_error ghost_tsmttsm_kahan__a_plain_z_CFGK_CFGM_1_rm(ghost_densemat *x, gho
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
 
-    int myrank=0;
-
-    if (v->context) {
-        GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
-    }
-
     ghost_lidx n = v->traits.nrows;
     INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
     
@@ -141,11 +123,6 @@ ghost_error ghost_tsmttsm_kahan__a_plain_z_CFGK_CFGM_1_rm(ghost_densemat *x, gho
     ghost_mpi_op_sum(&mpiop_zadd,(ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
     ghost_mpi_datatype_get(&mpidt_z,(ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
     
-    // make sure that the initial x only gets added up once
-    if (myrank) {
-        dbeta = 0.;
-    }
-
     ghost_lidx i,j;
     
     if (x->traits.storage == GHOST_DENSEMAT_COLMAJOR) {

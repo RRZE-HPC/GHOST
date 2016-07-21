@@ -197,7 +197,7 @@ ghost_error ghost_cu_sell1_spmv_selector(ghost_densemat * lhs_in, ghost_sparsema
         lhstraits.location = GHOST_LOCATION_DEVICE;
         lhstraits.storage = GHOST_DENSEMAT_COLMAJOR;
         lhstraits.flags &= (ghost_densemat_flags)(~GHOST_DENSEMAT_VIEW);
-        GHOST_CALL_GOTO(ghost_densemat_create(&lhs,lhs_in->context,lhstraits),err,ret);
+        GHOST_CALL_GOTO(ghost_densemat_create(&lhs,NULL,lhstraits),err,ret);
         GHOST_CALL_GOTO(lhs->fromVec(lhs,lhs_in,0,0),err,ret);
     } else {
         lhs = lhs_in;
@@ -214,7 +214,7 @@ ghost_error ghost_cu_sell1_spmv_selector(ghost_densemat * lhs_in, ghost_sparsema
         rhstraits.location = GHOST_LOCATION_DEVICE;
         rhstraits.storage = GHOST_DENSEMAT_COLMAJOR;
         rhstraits.flags &= (ghost_densemat_flags)(~GHOST_DENSEMAT_VIEW);
-        GHOST_CALL_GOTO(ghost_densemat_create(&rhs,rhs_in->context,rhstraits),err,ret);
+        GHOST_CALL_GOTO(ghost_densemat_create(&rhs,NULL,rhstraits),err,ret);
         GHOST_CALL_GOTO(rhs->fromVec(rhs,rhs_in,0,0),err,ret);
         ghost_lidx nhalo = rhs->traits.nrowshalo - rhs->traits.nrowspadded;
         GHOST_CALL_GOTO(ghost_cu_memtranspose(nhalo,rhs->traits.ncols,&rhs->cu_val[rhs->traits.nrowspadded*rhs->elSize],rhs->stride,&rhs_in->cu_val[rhs_in->traits.nrowspadded*rhs_in->stride*rhs_in->elSize],rhs_in->stride,rhs->traits.datatype),err,ret);

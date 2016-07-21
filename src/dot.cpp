@@ -34,32 +34,7 @@ static bool operator==(const ghost_dot_parameters& a, const ghost_dot_parameters
 
 static unordered_map<ghost_dot_parameters, ghost_dot_kernel> ghost_dot_kernels;
 
-ghost_error ghost_dot(void *res, ghost_densemat *vec1, ghost_densemat *vec2)
-{
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_COMMUNICATION);
-    GHOST_CALL_RETURN(ghost_localdot(res,vec1,vec2));
-#ifdef GHOST_HAVE_MPI
-    if (vec1->context) {
-        GHOST_INSTR_START("reduce")
-        ghost_mpi_op sumOp;
-        ghost_mpi_datatype mpiDt;
-        ghost_mpi_op_sum(&sumOp,vec1->traits.datatype);
-        ghost_mpi_datatype_get(&mpiDt,vec1->traits.datatype);
-        int v;
-        if (vec1->context) {
-            for (v=0; v<MIN(vec1->traits.ncols,vec2->traits.ncols); v++) {
-                MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE, (char *)res+vec1->elSize*v, 1, mpiDt, sumOp, vec1->context->mpicomm));
-            }
-        }
-        GHOST_INSTR_STOP("reduce")
-    }
-#endif
-
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_COMMUNICATION);
-    return GHOST_SUCCESS;
-}
-
-ghost_error ghost_localdot(void *res, ghost_densemat *vec1, ghost_densemat *vec2)
+ghost_error ghost_dot(void *res, ghost_densemat *vec1, ghost_densemat *vec2, ghost_mpi_comm mpicomm)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
 
@@ -130,11 +105,7 @@ out:
     if (!kernel) {
         ghost_dot_perf_args dot_perfargs;
         dot_perfargs.ncols = vec1->traits.ncols;
-        if (vec1->context) {
-            dot_perfargs.globnrows = vec1->context->gnrows;
-        } else {
-            dot_perfargs.globnrows = vec1->traits.nrows;
-        }
+        dot_perfargs.globnrows = vec1->traits.gnrows;
         dot_perfargs.dt = vec1->traits.datatype;
         if (vec1 == vec2) {
             dot_perfargs.samevec = true;
@@ -145,6 +116,22 @@ out:
         PERFWARNING_LOG("Fallback to vanilla dot implementation");
         ret = vec1->localdot_vanilla(vec1,res,vec2);
     }
+
+#ifdef GHOST_HAVE_MPI
+    if (mpicomm != MPI_COMM_NULL) {
+        GHOST_INSTR_START("reduce")
+        ghost_mpi_op sumOp;
+        ghost_mpi_datatype mpiDt;
+        ghost_mpi_op_sum(&sumOp,vec1->traits.datatype);
+        ghost_mpi_datatype_get(&mpiDt,vec1->traits.datatype);
+        int v;
+        for (v=0; v<MIN(vec1->traits.ncols,vec2->traits.ncols); v++) {
+            MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE, (char *)res+vec1->elSize*v, 1, mpiDt, sumOp, mpicomm));
+        }
+        GHOST_INSTR_STOP("reduce")
+    }
+#endif
+
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
     return ret;

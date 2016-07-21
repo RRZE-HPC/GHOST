@@ -14,7 +14,7 @@
 #endif
 
 ghost_error ghost_gemm_valid(ghost_densemat *x, ghost_densemat *v, const char * transv, 
-ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce,ghost_gemm_flags flags, int printerror) 
+ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce, ghost_context *ctx, ghost_gemm_flags flags, int printerror) 
 {
     if (v->traits.datatype != w->traits.datatype) {
         if (printerror) {
@@ -24,6 +24,11 @@ ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce,ghost
     }
     if (!((v->traits.location & w->traits.location) & x->traits.location)) { 
         ERROR_LOG("Invalid densemat locations: %s <- %s x %s",ghost_location_string(x->traits.location),ghost_location_string(v->traits.location),ghost_location_string(w->traits.location));
+        return GHOST_ERR_INVALID_ARG;
+    }
+    
+    if ((reduce != GHOST_GEMM_NO_REDUCE) && !ctx) {
+        ERROR_LOG("A reduction should be done but no context is given!");
         return GHOST_ERR_INVALID_ARG;
     }
     
@@ -61,7 +66,7 @@ ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce,ghost
 
 
 static ghost_error ghost_gemm_blas(ghost_densemat *x_in, ghost_densemat *v_in, const char * transv_in, 
-ghost_densemat *w_in, const char *transw_in, void *alpha, void *beta, int reduce,ghost_gemm_flags flags) 
+ghost_densemat *w_in, const char *transw_in, void *alpha, void *beta, int reduce, ghost_context *ctx, ghost_gemm_flags flags) 
 {
     UNUSED(flags);
 
@@ -95,15 +100,10 @@ ghost_densemat *w_in, const char *transw_in, void *alpha, void *beta, int reduce
         w->clone(w,&wc,w->traits.nrows,0,w->traits.ncols,0);
         w = wc;
     }
-    
-    if (v->context == NULL && w->context == NULL && x->context == NULL && reduce != GHOST_GEMM_NO_REDUCE) {
-        INFO_LOG("Reduction should be done but none of the vectors has a context. Ommitting the reduction...");
-        reduce = GHOST_GEMM_NO_REDUCE;
-    }
 
     int nranks = 1;
-    if (v->context) {
-        GHOST_CALL_GOTO(ghost_nrank(&nranks, v->context->mpicomm),err,ret);
+    if (ctx) {
+        GHOST_CALL_GOTO(ghost_nrank(&nranks, ctx->mpicomm),err,ret);
     }
 
     if ((reduce != GHOST_GEMM_NO_REDUCE) && (reduce >= nranks)) {
@@ -117,8 +117,8 @@ ghost_densemat *w_in, const char *transw_in, void *alpha, void *beta, int reduce
     if (strncasecmp(transv_in,"N",1)) {
         nrV = v->traits.ncols; 
         ncV = v->traits.nrows;
-        if (v->context) {
-            ncVglob = v->context->gnrows;
+        if (ctx) {
+            ncVglob = ctx->gnrows;
         } else {
             ncVglob = w->traits.nrows;
         }
@@ -126,8 +126,8 @@ ghost_densemat *w_in, const char *transw_in, void *alpha, void *beta, int reduce
     } else {
         nrV = v->traits.nrows; 
         ncV = v->traits.ncols;
-        if (v->context) {
-            nrVglob = v->context->gnrows;
+        if (ctx) {
+            nrVglob = ctx->gnrows;
         } else {
             nrVglob = v->traits.nrows;
         }
@@ -135,8 +135,8 @@ ghost_densemat *w_in, const char *transw_in, void *alpha, void *beta, int reduce
     }
     if (strncasecmp(transw_in,"N",1)) {
         ncW = w->traits.nrows;
-        if (w->context) {
-            ncWglob = w->context->gnrows;
+        if (ctx) {
+            ncWglob = ctx->gnrows;
         } else {
             ncWglob = w->traits.nrows;
         }
@@ -184,8 +184,8 @@ ghost_densemat *w_in, const char *transw_in, void *alpha, void *beta, int reduce
     // take the comm from v if and only if a reduction is requested.
     int myrank=0;
 
-    if ((reduce != GHOST_GEMM_NO_REDUCE) && (v->context)) {
-        GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
+    if ((reduce != GHOST_GEMM_NO_REDUCE) && (ctx)) {
+        GHOST_CALL_GOTO(ghost_rank(&myrank,ctx->mpicomm),err,ret);
     }
 
     void *mybeta;
@@ -423,8 +423,8 @@ ghost_densemat *w_in, const char *transw_in, void *alpha, void *beta, int reduce
         }
     }
 
-    if ((reduce != GHOST_GEMM_NO_REDUCE) && (v->context)) {
-        x->reduce(x,v->context->mpicomm,reduce);
+    if ((reduce != GHOST_GEMM_NO_REDUCE) && (ctx)) {
+        x->reduce(x,ctx->mpicomm,reduce);
     }
     if (w != w_in) {
         INFO_LOG("Destroy clone of w");
@@ -445,7 +445,7 @@ out:
 }
 
 ghost_error ghost_gemm(ghost_densemat *x_in, ghost_densemat *v_in, const char * transv, 
-ghost_densemat *w_in, const char *transw, void *alpha, void *beta, int reduce,ghost_gemm_flags flags) 
+ghost_densemat *w_in, const char *transw, void *alpha, void *beta, int reduce, ghost_context *ctx, ghost_gemm_flags flags) 
 {
 #ifdef GHOST_IDX64_LOCAL
 #ifndef GHOST_HAVE_MKL
@@ -504,10 +504,10 @@ ghost_densemat *w_in, const char *transw, void *alpha, void *beta, int reduce,gh
     
     if (!(flags & GHOST_GEMM_NOT_SPECIAL)) { 
         /*if (flags & GHOST_GEMM_KAHAN) {
-            if (ghost_tsmttsm_kahan_valid(x,v,transv,w,transw,alpha,beta,reduce,0) == GHOST_SUCCESS) {
+            if (ghost_tsmttsm_kahan_valid(x,v,transv,w,transw,alpha,beta,reduce,ctx,0) == GHOST_SUCCESS) {
                 INFO_LOG("Transparently call special implementation Kahan-TSMTTSM");
 
-                ret = ghost_tsmttsm_kahan(x,v,w,alpha,beta,reduce,transv[0] == 'C' || transv[0] == 'c');
+                ret = ghost_tsmttsm_kahan(x,v,w,alpha,beta,reduce,ctx,transv[0] == 'C' || transv[0] == 'c');
                 if( ret == GHOST_SUCCESS )
                   donespecial = 1;
                 else if( ret != GHOST_ERR_INVALID_ARG )
@@ -518,9 +518,9 @@ ghost_densemat *w_in, const char *transw, void *alpha, void *beta, int reduce,gh
             }
         }*/
 
-        if (ghost_tsmttsm_valid(x,v,transv,w,transw,alpha,beta,reduce,flags,0) == GHOST_SUCCESS) {
+        if (ghost_tsmttsm_valid(x,v,transv,w,transw,alpha,beta,reduce,ctx,flags,0) == GHOST_SUCCESS) {
             INFO_LOG("Transparently call special implementation TSMTTSM");
-            ret = ghost_tsmttsm(x,v,w,alpha,beta,reduce,transv[0] == 'C' || transv[0] == 'c',flags);
+            ret = ghost_tsmttsm(x,v,w,alpha,beta,reduce,ctx,transv[0] == 'C' || transv[0] == 'c',flags);
             if( ret == GHOST_SUCCESS )
               donespecial = 1;
             else if( ret != GHOST_ERR_INVALID_ARG )
@@ -545,8 +545,8 @@ ghost_densemat *w_in, const char *transw, void *alpha, void *beta, int reduce,gh
     }
 
     if (!donespecial) {
-        if ((ret = ghost_gemm_valid(x,v,transv,w,transw,alpha,beta,reduce,flags,1)) == GHOST_SUCCESS) {
-            ret = ghost_gemm_blas(x,v,transv,w,transw,alpha,beta,reduce,flags);
+        if ((ret = ghost_gemm_valid(x,v,transv,w,transw,alpha,beta,reduce,ctx,flags,1)) == GHOST_SUCCESS) {
+            ret = ghost_gemm_blas(x,v,transv,w,transw,alpha,beta,reduce,ctx,flags);
         }
     }
     

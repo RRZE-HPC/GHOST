@@ -3,7 +3,6 @@
 #include "ghost/types.h"
 #include "ghost/math.h"
 #include "ghost/instr.h"
-#include "ghost/locality.h"
 #include "ghost/util.h"
 #include "ghost/tsmttsm_sse_gen.h"
 #include <immintrin.h>
@@ -17,12 +16,6 @@ ghost_error ghost_tsmttsm__a_sse_d_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_dense
 #ifdef GHOST_BUILD_SSE
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
-
-    int myrank=0;
-
-    if (v->context) {
-        GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
-    }
 
     ghost_lidx n = v->traits.nrows;
     INFO_LOG("In SSE TSMTTSM with two fixed block sizes [CFGK][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
@@ -45,12 +38,6 @@ ghost_error ghost_tsmttsm__a_sse_d_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_dense
     betavec = _mm_set1_pd(dbeta);
     alphavec = _mm_set1_pd(dalpha);
     
-    // make sure that the initial x only gets added up once
-    if (myrank) {
-        dbeta = 0.;
-        betavec = _mm_setzero_pd();
-    }
-
     ghost_lidx i,m;
     if (!IS_ALIGNED(xval,16) || ((x->stride*x->elSize) % 16)) {
         ldxpad = PAD(x->stride,2);

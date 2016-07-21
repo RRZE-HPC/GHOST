@@ -3,7 +3,6 @@
 #include "ghost/types.h"
 #include "ghost/math.h"
 #include "ghost/instr.h"
-#include "ghost/locality.h"
 #include "ghost/util.h"
 #include "ghost/tsmttsm_avx_gen.h"
 #include <immintrin.h>
@@ -29,12 +28,6 @@ ghost_error ghost_tsmttsm1__a_avx_d_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_dens
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
 
-    int myrank=0;
-
-    if (v->context) {
-        GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
-    }
-
     ghost_lidx n = v->traits.nrows;
     INFO_LOG("In AVX TSMTTSM with two fixed block sizes [CFGK][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
 
@@ -58,11 +51,6 @@ ghost_error ghost_tsmttsm1__a_avx_d_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_dens
     double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
     
-    // make sure that the initial x only gets added up once
-    if (myrank) {
-        dbeta = 0.;
-    }
-
     ghost_lidx i,m;
 
     ghost_lidx k;
@@ -187,12 +175,6 @@ ghost_error ghost_tsmttsm__a_avx_d_CFGK_CFGM_OUTERUNROLL_rm(ghost_densemat *x, g
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
 
-    int myrank=0;
-
-    if (v->context) {
-        GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
-    }
-
     ghost_lidx n = v->traits.nrows;
     INFO_LOG("In AVX TSMTTSM with two fixed block sizes [CFGK][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
 
@@ -216,11 +198,6 @@ ghost_error ghost_tsmttsm__a_avx_d_CFGK_CFGM_OUTERUNROLL_rm(ghost_densemat *x, g
     double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
     
-    // make sure that the initial x only gets added up once
-    if (myrank) {
-        dbeta = 0.;
-    }
-
     ghost_lidx i,m;
 
     ghost_lidx k;
@@ -355,12 +332,6 @@ ghost_error ghost_tsmttsm__u_avx_d_CFGK_CFGM_OUTERUNROLL_rm(ghost_densemat *x, g
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
 
-    int myrank=0;
-
-    if (v->context) {
-        GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
-    }
-
     ghost_lidx n = v->traits.nrows;
     INFO_LOG("In AVX TSMTTSM with two fixed block sizes [CFGK][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
 
@@ -383,11 +354,6 @@ ghost_error ghost_tsmttsm__u_avx_d_CFGK_CFGM_OUTERUNROLL_rm(ghost_densemat *x, g
     
     double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
-    
-    // make sure that the initial x only gets added up once
-    if (myrank) {
-        dbeta = 0.;
-    }
 
     ghost_lidx i,m;
 
@@ -523,12 +489,6 @@ ghost_error ghost_tsmttsm__a_avx_s_CFGK_CFGM_OUTERUNROLL_rm(ghost_densemat *x, g
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
 
-    int myrank=0;
-
-    if (v->context) {
-        GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
-    }
-
     ghost_lidx n = v->traits.nrows;
     INFO_LOG("In AVX TSMTTSM with two fixed block sizes [CFGK][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
 
@@ -553,12 +513,6 @@ ghost_error ghost_tsmttsm__a_avx_s_CFGK_CFGM_OUTERUNROLL_rm(ghost_densemat *x, g
     float dalpha = *(float *)alpha;
     float dbeta = *(float *)beta;
     
-    // make sure that the initial x only gets added up once
-    if (myrank) {
-        dbeta = 0.;
-        betavec = _mm256_setzero_ps();
-    }
-
     ghost_lidx i,m;
 
     ghost_lidx k;
@@ -707,12 +661,6 @@ ghost_error ghost_tsmttsm__a_avx_z_CFGK_CFGM_2_rm(ghost_densemat *x, ghost_dense
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
 
-    int myrank=0;
-
-    if (v->context) {
-        GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
-    }
-
     ghost_lidx n = v->traits.nrows;
     INFO_LOG("In AVX TSMTTSM with two fixed block sizes [CFGK][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
 
@@ -736,11 +684,6 @@ ghost_error ghost_tsmttsm__a_avx_z_CFGK_CFGM_2_rm(ghost_densemat *x, ghost_dense
     double complex dalpha = *(double complex *)alpha;
     double complex dbeta = *(double complex *)beta;
     
-    // make sure that the initial x only gets added up once
-    if (myrank) {
-        dbeta = 0.;
-    }
-
     ghost_lidx i,m;
 
     ghost_lidx k;
@@ -929,12 +872,6 @@ ghost_error ghost_tsmttsm__a_avx_c_CFGK_CFGM_4_rm(ghost_densemat *x, ghost_dense
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
 
-    int myrank=0;
-
-    if (v->context) {
-        GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
-    }
-
     ghost_lidx n = v->traits.nrows;
     INFO_LOG("In AVX TSMTTSM with two fixed block sizes [CFGK][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
 
@@ -958,11 +895,6 @@ ghost_error ghost_tsmttsm__a_avx_c_CFGK_CFGM_4_rm(ghost_densemat *x, ghost_dense
     float complex dalpha = *(float complex *)alpha;
     float complex dbeta = *(float complex *)beta;
     
-    // make sure that the initial x only gets added up once
-    if (myrank) {
-        dbeta = 0.;
-    }
-
     ghost_lidx i,m;
 
     ghost_lidx k;
@@ -1129,12 +1061,6 @@ ghost_error ghost_tsmttsm2__a_avx_z_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_dens
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
 
-    int myrank=0;
-
-    if (v->context) {
-        GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
-    }
-
     ghost_lidx n = v->traits.nrows;
     INFO_LOG("In AVX TSMTTSM with two fixed block sizes [CFGK][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
 
@@ -1158,11 +1084,6 @@ ghost_error ghost_tsmttsm2__a_avx_z_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_dens
     double complex dalpha = *(double complex *)alpha;
     double complex dbeta = *(double complex *)beta;
     
-    // make sure that the initial x only gets added up once
-    if (myrank) {
-        dbeta = 0.;
-    }
-
     ghost_lidx i,m;
 
     ghost_lidx k;
@@ -1374,12 +1295,6 @@ ghost_error ghost_tsmttsm1__a_avx_z_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_dens
     ghost_error ret = GHOST_SUCCESS;
     ghost_lidx i,m,k;
 
-    int myrank=0;
-
-    if (v->context) {
-        GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
-    }
-
     ghost_lidx n = v->traits.nrows;
     INFO_LOG("In AVX TSMTTSM with two fixed block sizes [CFGK][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
 
@@ -1402,11 +1317,6 @@ ghost_error ghost_tsmttsm1__a_avx_z_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_dens
     //double complex dalpha = *(double complex *)alpha;
     double complex dbeta = *(double complex *)beta;
     
-    // make sure that the initial x only gets added up once
-    if (myrank) {
-        dbeta = 0.;
-    }
-
     double *vreal, *vimag, *wreal, *wimag;
     ghost_malloc_align((void **)&vreal,CFGM*n*sizeof(double),32);
     ghost_malloc_align((void **)&vimag,CFGM*n*sizeof(double),32);
@@ -1712,12 +1622,6 @@ ghost_error ghost_tsmttsm3__a_avx_d_CFGK_CFGM_1_cm_rm(ghost_densemat *x, ghost_d
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
 
-    int myrank=0;
-
-    if (v->context) {
-        GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
-    }
-
     ghost_lidx n = v->traits.nrows;
     INFO_LOG("In AVX TSMTTSM with two fixed block sizes with transposed sub-blocks [CFGK][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
 
@@ -1742,12 +1646,6 @@ ghost_error ghost_tsmttsm3__a_avx_d_CFGK_CFGM_1_cm_rm(ghost_densemat *x, ghost_d
     double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
     
-    // make sure that the initial x only gets added up once
-    if (myrank) {
-        dbeta = 0.;
-        betavec = _mm256_setzero_pd();
-    }
-
     ghost_lidx i,m;
 
     ghost_lidx k;
@@ -1910,12 +1808,6 @@ ghost_error ghost_tsmttsm2__a_avx_d_CFGK_CFGM_1_cm_rm(ghost_densemat *x, ghost_d
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
 
-    int myrank=0;
-
-    if (v->context) {
-        GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
-    }
-
     ghost_lidx n = v->traits.nrows;
     INFO_LOG("In AVX TSMTTSM with two fixed block sizes [CFGK][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
 
@@ -1941,12 +1833,6 @@ ghost_error ghost_tsmttsm2__a_avx_d_CFGK_CFGM_1_cm_rm(ghost_densemat *x, ghost_d
     double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
     
-    // make sure that the initial x only gets added up once
-    if (myrank) {
-        dbeta = 0.;
-        betavec = _mm256_setzero_pd();
-    }
-
     ghost_lidx i,m;
 
     ghost_lidx k;

@@ -113,11 +113,11 @@ ghost_error ghost_tsmm_inplace(ghost_densemat *x, ghost_densemat *w, void *alpha
 
     if ((ret = ghost_tsmm_inplace_valid(x,x,"N",w,"N",alpha,beta,GHOST_GEMM_NO_REDUCE,1)) != GHOST_SUCCESS) {
         INFO_LOG("TSMM-inplace cannot be applied. Checking whether GEMM is fine!");
-        if ((ret = ghost_gemm_valid(x,x,"N",w,"N",alpha,beta,GHOST_GEMM_NO_REDUCE,GHOST_GEMM_DEFAULT,1)) != GHOST_SUCCESS) {
+        if ((ret = ghost_gemm_valid(x,x,"N",w,"N",alpha,beta,GHOST_GEMM_NO_REDUCE,NULL,GHOST_GEMM_DEFAULT,1)) != GHOST_SUCCESS) {
             ERROR_LOG("GEMM cannot be applied!");
             return ret;
         } else {
-            return ghost_gemm(x,x,"N",w,"N",alpha,beta,GHOST_GEMM_NO_REDUCE,GHOST_GEMM_NOT_SPECIAL);
+            return ghost_gemm(x,x,"N",w,"N",alpha,beta,GHOST_GEMM_NO_REDUCE,NULL,GHOST_GEMM_NOT_SPECIAL);
         }
     }
     
@@ -227,18 +227,14 @@ end_of_loop:
         ret = kernel(x,w,alpha,beta);
     } else {
         PERFWARNING_LOG("Could not find TSMM-inplace kernel. Fallback to GEMM");
-        ret = ghost_gemm(x,x,"N",w,"N",alpha,beta,GHOST_GEMM_NO_REDUCE,GHOST_GEMM_NOT_SPECIAL);
+        ret = ghost_gemm(x,x,"N",w,"N",alpha,beta,GHOST_GEMM_NO_REDUCE,NULL,GHOST_GEMM_NOT_SPECIAL);
     }
 
 #ifdef GHOST_INSTR_TIMING
     ghost_gemm_perf_args tsmm_inplace_perfargs;
     tsmm_inplace_perfargs.n = w->traits.ncols;
     tsmm_inplace_perfargs.k = w->traits.nrows;
-    if (x->context) {
-        tsmm_inplace_perfargs.m = x->context->gnrows;
-    } else {
-        tsmm_inplace_perfargs.m = x->traits.nrows;
-    }
+    tsmm_inplace_perfargs.m = x->traits.gnrows;
     tsmm_inplace_perfargs.dt = x->traits.datatype;
     tsmm_inplace_perfargs.betaiszero = ghost_iszero(beta,x->traits.datatype);
     tsmm_inplace_perfargs.alphaisone = ghost_isone(alpha,x->traits.datatype);

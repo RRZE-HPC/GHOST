@@ -36,31 +36,22 @@ extern "C" {
 #endif
 
     /**
+     * @ingroup globops
      * @ingroup locops
      *
-     * @brief Compute the loc dot product of two dense vectors/matrices.
+     * @brief Compute the dot product of two dense vectors/matrices.
      *
      * @param res Where to store the result.
      * @param vec1 The first vector/matrix.
      * @param vec2 The second vector/matrix.
-     *
-     * @return ::GHOST_SUCCESS on success or an error indicator.
-     */
-    ghost_error ghost_localdot(void *res, ghost_densemat *vec1, ghost_densemat *vec2);
-    /**
-     * @ingroup globops
-     *
-     * @brief Compute the global dot product of two dense vectors/matrices.
-     *
-     * @param res Where to store the result.
-     * @param vec1 The first vector/matrix.
-     * @param vec2 The second vector/matrix.
+     * @param mpicomm The communicator if a global reduction of the result for distributed densemats should be done.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      *
-     * This function first computes the local dot product ghost_localdot() and then performs an allreduce on the result.
+     * This function first computes the local dot product. 
+     * If a context is given, it then performs an allreduce on the result.
      */
-    ghost_error ghost_dot(void *res, ghost_densemat *vec1, ghost_densemat *vec2);
+    ghost_error ghost_dot(void *res, ghost_densemat *vec1, ghost_densemat *vec2, ghost_mpi_comm mpicomm);
 
 
 #ifdef __cplusplus
