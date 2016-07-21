@@ -340,7 +340,7 @@ static ghost_error densemat_rm_halocommInit(ghost_densemat *vec, ghost_densemat_
                     to_PE = vec->context->duepartners[partner];
 #pragma omp parallel for 
                     for (i=0; i<vec->context->dues[to_PE]; i++){
-                        memcpy(comm->work + (comm->dueptr[to_PE]+i)*vec->elSize*vec->traits.ncols,DENSEMAT_VALPTR(vec,vec->context->perm_local->perm[vec->context->duelist[to_PE][i]],0),vec->elSize*vec->traits.ncols);
+                        memcpy(comm->work + (comm->dueptr[to_PE]+i)*vec->elSize*vec->traits.ncols,DENSEMAT_VALPTR(vec,vec->context->perm_local->colPerm[vec->context->duelist[to_PE][i]],0),vec->elSize*vec->traits.ncols);
                     }
                 }
             }
