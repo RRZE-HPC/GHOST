@@ -102,14 +102,15 @@ typedef int ghost_mpi_datatype;
  * @brief Calls the function with template arguments <dt1,dt2 > such that dt1 is always base
  * class of dt2.
  */
+
 #define SELECT_TMPL_2DATATYPES_base_derived(dt1,dt2,complexclass,ret,func,...)\
-              if (dt1 & GHOST_DT_COMPLEX) {\
+     if (dt1 & GHOST_DT_COMPLEX) {\
         if (dt1 & GHOST_DT_DOUBLE) {\
             if (dt2 & GHOST_DT_COMPLEX) {\
                 if (dt2 & GHOST_DT_DOUBLE) {\
                     ret = func<complexclass<double>,complexclass<double> >(__VA_ARGS__);\
                 } else {\
-                    ret = func<complexclass<double>,complexclass<float> >(__VA_ARGS__);\
+                  /* ret = func<complexclass<double>,complexclass<float> >(__VA_ARGS__);*/\
                 }\
             } else {\
 		ret = GHOST_ERR_DATATYPE;  \
@@ -117,7 +118,7 @@ typedef int ghost_mpi_datatype;
         } else {\
             if (dt2 & GHOST_DT_COMPLEX) {\
                 if (dt2 & GHOST_DT_DOUBLE) {\
-                    ret = func<complexclass<float>,complexclass<double> >(__VA_ARGS__);\
+                  /*  ret = func<complexclass<float>,complexclass<double> >(__VA_ARGS__);*/\
                 } else {\
                     ret = func<complexclass<float>,complexclass<float> >(__VA_ARGS__);\
                 }\
@@ -131,25 +132,25 @@ typedef int ghost_mpi_datatype;
                 if (dt2 & GHOST_DT_DOUBLE) {\
                     ret = func<double,complexclass<double> >(__VA_ARGS__);\
                 } else {\
-                    ret = func<double,complexclass<float> >(__VA_ARGS__);\
+                    /*ret = func<double,complexclass<float> >(__VA_ARGS__);*/\
                 }\
             } else {\
                 if (dt2 & GHOST_DT_DOUBLE) {\
                     ret = func<double,double>(__VA_ARGS__);\
                 } else {\
-                    ret = func<double,float>(__VA_ARGS__);\
+                    /*ret = func<double,float>(__VA_ARGS__);*/\
                 } \
             }\
         } else {\
             if (dt2 & GHOST_DT_COMPLEX) {\
                 if (dt2 & GHOST_DT_DOUBLE) {\
-                    ret = func<float,complexclass<double> >(__VA_ARGS__);\
+                 /*   ret = func<float,complexclass<double> >(__VA_ARGS__);*/\
                 } else {\
                     ret = func<float,complexclass<float> >(__VA_ARGS__);\
                 }\
             } else {\
                 if (dt2 & GHOST_DT_DOUBLE) {\
-                    ret = func<float,double>(__VA_ARGS__);\
+                    /*ret = func<float,double>(__VA_ARGS__);*/\
                 } else {\
                     ret = func<float,float>(__VA_ARGS__);\
                 }\
