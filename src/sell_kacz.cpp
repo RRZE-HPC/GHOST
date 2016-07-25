@@ -141,12 +141,21 @@ static ghost_error kacz_fallback(ghost_densemat *x, ghost_sparsemat *mat, ghost_
     return GHOST_SUCCESS;
 }
 
-ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts)
+ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *rhs, ghost_kacz_opts opts)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error ret = GHOST_SUCCESS;
     ghost_kacz_parameters p;
 
+    ghost_densemat *b;
+    //deal with NULL pointer of b
+    if(rhs==NULL) {
+      ghost_densemat_create_and_view_densemat(&b, x, x->traits.nrows, 0, x->traits.ncols, 0);
+      b->val = NULL; 
+    } else {
+      b = rhs;
+    }
+ 
     if(opts.shift) {     
     	if(!(mat->traits.flags & GHOST_SPARSEMAT_COLOR)) {
     		if(!(mat->traits.flags & GHOST_SPARSEMAT_BLOCKCOLOR) && (mat->kaczRatio >= 2*mat->kacz_setting.active_threads)) {
@@ -158,8 +167,8 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
 			p.method = BMCshift;
     		}
     	} else {
-        	ERROR_LOG("Shift ignored MC with shift not implemented");
-		p.method = MC;
+    	ERROR_LOG("Shift ignored MC with shift not implemented");
+  		p.method = MC;
     	}
     } else if(opts.normalize==yes) {
     	if(!(mat->traits.flags & GHOST_SPARSEMAT_COLOR)) {
@@ -172,8 +181,8 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
 			p.method = BMCNORMAL;
     		}
     	} else {
-        	INFO_LOG("Using unoptimal kernel KACZ with MC");
-		p.method = MC;
+        INFO_LOG("Using unoptimal kernel KACZ with MC");
+		    p.method = MC;
     	}
     } else {
     	if(!(mat->traits.flags & GHOST_SPARSEMAT_COLOR)) {
@@ -186,8 +195,8 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
 			p.method = BMC;
     		}
     	} else {
-        	INFO_LOG("Using unoptimal kernel KACZ with MC");
-		p.method = MC;
+      	INFO_LOG("Using unoptimal kernel KACZ with MC");
+		    p.method = MC;
     	}
     }
 	 
