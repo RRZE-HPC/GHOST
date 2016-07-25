@@ -396,7 +396,6 @@ static int densemat_perment_cmp (const void *a, const void *b)
 template <typename v_t> 
 static ghost_error FUNCNAME(permute_tmpl(ghost_densemat *vec, ghost_permutation_direction dir))
 {
-printf("%s\n",vec->traits.permutemethod==ROW?"ROW":vec->traits.permutemethod==COLUMN?"COLUMN":"NONE");
 if(vec->traits.permutemethod == NONE) {
     ERROR_LOG("traits.permutemethod==NONE, therefore no permutation is carried out. Please set the field to COLUMN or ROW");
 } else {
