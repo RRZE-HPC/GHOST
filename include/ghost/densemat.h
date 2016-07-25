@@ -287,6 +287,12 @@ struct ghost_densemat
      * @brief The densemat's traits.
      */
     ghost_densemat_traits traits;
+
+    /**
+     * @brief The context in which the densemat is living.
+     * TODO: This field may be deleted in a future revision.
+     */
+    ghost_context *context;
     /**
      * @brief The values of the densemat.
      */
