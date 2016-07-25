@@ -92,6 +92,7 @@ static ghost_error FUNCNAME(view(ghost_densemat *src, ghost_densemat **new, ghos
 
     (*new)->stride = src->stride;
     (*new)->src = src->src;
+    (*new)->context=src->context;
 #ifdef GHOST_HAVE_MPI
     MPI_CALL_RETURN(MPI_Type_free(&((*new)->fullmpidt)));
     MPI_CALL_RETURN(MPI_Type_vector((*new)->nblock,(*new)->blocklen,(*new)->stride,(*new)->mpidt,&((*new)->fullmpidt)));
@@ -169,6 +170,7 @@ static ghost_error FUNCNAME(viewCols(ghost_densemat *src, ghost_densemat **new, 
     FUNCNAME(malloc(*new,NULL));
     (*new)->stride = src->stride;
     (*new)->src = src->src;
+    (*new)->context=src->context;
 #ifdef GHOST_HAVE_MPI
     MPI_CALL_RETURN(MPI_Type_free(&((*new)->fullmpidt)));
     MPI_CALL_RETURN(MPI_Type_vector((*new)->nblock,(*new)->blocklen,(*new)->stride,(*new)->mpidt,&((*new)->fullmpidt)));
