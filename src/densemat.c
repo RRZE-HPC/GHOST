@@ -69,6 +69,7 @@ ghost_error ghost_densemat_create(ghost_densemat **vec, ghost_context *ctx, ghos
     ghost_error ret = GHOST_SUCCESS;
     GHOST_CALL_GOTO(ghost_malloc((void **)vec,sizeof(ghost_densemat)),err,ret);
     (*vec)->traits = traits;
+    (*vec)->context = ctx;
     (*vec)->colmask = NULL;
     (*vec)->rowmask = NULL;
     (*vec)->val = NULL;
