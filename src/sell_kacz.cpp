@@ -20,6 +20,7 @@ using namespace std;
 const ghost_kacz_opts GHOST_KACZ_OPTS_INITIALIZER = {
     .omega = NULL,
     .shift = NULL,
+    .num_shifts = 0,
     .direction = GHOST_KACZ_DIRECTION_UNDEFINED,
     .normalize = no
 };
@@ -27,6 +28,7 @@ const ghost_kacz_opts GHOST_KACZ_OPTS_INITIALIZER = {
 const ghost_carp_opts GHOST_CARP_OPTS_INITIALIZER = {
     .omega = NULL,
     .shift = NULL,
+    .num_shifts = 0,
     .normalize = no
 };
 

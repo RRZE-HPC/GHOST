@@ -17,162 +17,216 @@
 
    
 //Solving (A-(sigma_r + i*sigma_i)I)* x = b
-//#if (NVECS==1 && CHUNKHEIGHT==1) //TODO
+//#if (NVECS==1 && CHUNKHEIGHT==1) 
 //this is necessary since #pragma omp for doesn't understand !=
 #define FORWARD_SHIFT_LOOP(start,end,MT,VT)                            		\
- _Pragma("omp parallel for") 				    	       		\
- for (ghost_lidx row=start; row<end; ++row){                           		\
-         VT rownorm = 0;				     	       		\
-	 VT scal = 0;								\
-         ghost_lidx idx = sellmat->chunkStart[row];                   		\
-         if(bval != NULL) {                                             	\
-          scal = bval[row];        				       		\
-	 }							       		\
-	 ghost_lidx diag_idx = sellmat->rowLen[row];				\
-	 if(mat->context->perm_local->method == GHOST_PERMUTATION_UNSYMMETRIC)  \
-		diag_idx = mat->context->perm_local->colPerm[mat->context->perm_local->invPerm[row]]; \
-	 else									\
-		diag_idx = row;							\
-	printf("diag_idx = %d\n",diag_idx);					\
-         /*TODO split loop if needed; for performance */			\
-         for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) { \
-		MT mval_idx = mval[idx+j];					\
-	 	if(diag_idx!=sellmat->col[idx+j]) { 				\
-			scal -= mval_idx*xval[sellmat->col[idx+j]];     	\
-                	rownorm += std::norm(mval_idx);              		\
-		} else {                                                	\
-			printf("mval = %f\n", mval_idx);			\
-			scal -= (mval_idx-sigma)*xval[sellmat->col[idx+j]]; 	\
-        	  	rownorm += std::norm((mval_idx-sigma)); 		\
-		}						        	\
-        }\
-	scal /= rownorm;                  	               	        	\
-	scal *= omega;								\
-	                                                               		\
-	_Pragma("simd vectorlength(4)")                                		\
-        for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {/*can be split for performance*/           		\
-	 	if(diag_idx!=sellmat->col[idx+j]) { /*mat->context->perm_local->colInvPerm[sellmat->col[idx+j]]) {*/  \
-			xval[sellmat->col[idx+j]] = xval[sellmat->col[idx+j]] + scal * std::conj(mval[idx+j]);\
-	        } else {  \
-			xval[sellmat->col[idx+j]] = xval[sellmat->col[idx+j]] + scal * std::conj(mval[idx+j]-sigma);\
-		}								\
-	}         						       		\
-  }                                                                    		\
+_Pragma("omp parallel for") 				    	       		                      \
+for (ghost_lidx row=start; row<end; ++row){                           		\
+  VT rownorm = 0;				     	       		                                  \
+	VT scal = 0;						                                                \
+  ghost_lidx idx = sellmat->chunkStart[row];                   		        \
+  if(bval != NULL) {                                              	      \
+    scal = bval[row];        			                      	       		      \
+  }							                                               		        \
+	ghost_lidx diag_idx = sellmat->rowLen[row];				                      \
+                                                                          \
+  if(mat->context->perm_local->method == GHOST_PERMUTATION_UNSYMMETRIC)   \
+	  diag_idx = mat->context->perm_local->colPerm[mat->context->perm_local->invPerm[row]]; \
+  else									                                                  \
+    diag_idx = row;							                                          \
+                                                                          \
+  /*TODO split loop if needed; for performance */			                    \
+  for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {                     \
+	  MT mval_idx = mval[idx+j];					                                  \
+	 	if(diag_idx!=sellmat->col[idx+j]) { 				                          \
+		  scal    -= static_cast<VT>(mval_idx*xval[sellmat->col[idx+j]]);     \
+      rownorm += static_cast<VT>(std::norm(mval_idx));                    \
+		} else {                                                	            \
+  		scal    -= static_cast<VT>((mval_idx-sigma[0])*xval[sellmat->col[idx+j]]);\
+     	rownorm += static_cast<VT>(std::norm((mval_idx-sigma[0])));         \
+		}						        	                                                \
+  }                                                                       \
+	scal = static_cast<VT>(scal/rownorm);           	               	      \
+	scal *= omega;								                                          \
+	                                                               		      \
+	_Pragma("simd vectorlength(4)")                                		      \
+  for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {/*can be split for performance*/           		                    \
+	  if(diag_idx!=sellmat->col[idx+j]) { /*mat->context->perm_local->colInvPerm[sellmat->col[idx+j]]) {*/                \
+		  xval[sellmat->col[idx+j]] = xval[sellmat->col[idx+j]] + static_cast<VT>(scal * std::conj(mval[idx+j]));           \
+    } else {                                                                                                            \
+	  	xval[sellmat->col[idx+j]] = xval[sellmat->col[idx+j]] + static_cast<VT>(scal * std::conj(mval[idx+j]-sigma[0]));  \
+		}								                                                      \
+  }         						       		                                        \
+}                                                                    		  \
 
 #define BACKWARD_SHIFT_LOOP(start,end,MT,VT)           		                \
-  _Pragma("omp parallel for") 						       	\
-  for (ghost_lidx row=start; row>end; --row){                   		\
-         VT rownorm = 0;				     	       		\
-	 VT scal = 0;								\
-         ghost_lidx idx = sellmat->chunkStart[row];                   		\
-         if(bval != NULL) {                                             	\
-          scal = bval[row];        				       		\
-	 }							       		\
-	 ghost_lidx diag_idx = sellmat->rowLen[row];				\
-	 if(mat->context->perm_local->method == GHOST_PERMUTATION_UNSYMMETRIC)  \
-		diag_idx = mat->context->perm_local->colPerm[mat->context->perm_local->invPerm[row]]; \
-	 else									\
-		diag_idx = row;							\
-         /*TODO split loop if needed for performance */				\
-         for (ghost_lidx j=0;j<sellmat->rowLen[row]; ++j) { \
-		MT mval_idx = mval[idx+j];					\
-	 	if(diag_idx!=sellmat->col[idx+j]) { 				\
-			scal -= mval_idx*xval[sellmat->col[idx+j]];     	\
-                	rownorm += std::norm(mval_idx);              		\
-		} else {                                                	\
-			scal -= (mval_idx-sigma)*xval[sellmat->col[idx+j]];  	\
-        	  	rownorm += std::norm((mval_idx-sigma)); 		\
-		}						        	\
-        }\
-	scal /= rownorm;                  	               	        	\
-	scal *= omega;								\
-	                                                               		\
-	_Pragma("simd vectorlength(4)")                                		\
-        for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {/*can be split for performance*/           		\
-	 	if(diag_idx!=sellmat->col[idx+j]) { /*mat->context->perm_local->colInvPerm[sellmat->col[idx+j]]) {*/  \
-			xval[sellmat->col[idx+j]] = xval[sellmat->col[idx+j]] + scal * std::conj(mval[idx+j]);\
-	        } else {  \
-			xval[sellmat->col[idx+j]] = xval[sellmat->col[idx+j]] + scal * std::conj(mval[idx+j]-sigma);\
-		}								\
-	}         						       		\
-  }                                                                    		\
-/*	                                                       
-#elif CHUNKHEIGHT == 1
+_Pragma("omp parallel for") 						       	                          \
+for (ghost_lidx row=start; row>end; --row){                   		        \
+  VT rownorm = 0;				     	       		                                  \
+	VT scal = 0;						                                                \
+  ghost_lidx idx = sellmat->chunkStart[row];                   		        \
+  if(bval != NULL) {                                              	      \
+    scal = bval[row];        			                      	       		      \
+  }							                                               		        \
+	ghost_lidx diag_idx = sellmat->rowLen[row];				                      \
+                                                                          \
+  if(mat->context->perm_local->method == GHOST_PERMUTATION_UNSYMMETRIC)   \
+	  diag_idx = mat->context->perm_local->colPerm[mat->context->perm_local->invPerm[row]]; \
+  else									                                                  \
+    diag_idx = row;							                                          \
+                                                                          \
+  /*TODO split loop if needed; for performance */			                    \
+  for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {                     \
+	  MT mval_idx = mval[idx+j];					                                  \
+	 	if(diag_idx!=sellmat->col[idx+j]) { 				                          \
+		  scal    -= static_cast<VT>(mval_idx*xval[sellmat->col[idx+j]]);     \
+      rownorm += static_cast<VT>(std::norm(mval_idx));                    \
+		} else {                                                	            \
+  		scal    -= static_cast<VT>((mval_idx-sigma[0])*xval[sellmat->col[idx+j]]);\
+     	rownorm += static_cast<VT>(std::norm((mval_idx-sigma[0])));         \
+		}						        	                                                \
+  }                                                                       \
+	scal = static_cast<VT>(scal/rownorm);           	               	      \
+	scal *= omega;								                                          \
+	                                                               		      \
+	_Pragma("simd vectorlength(4)")                                		      \
+  for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {/*can be split for performance*/           		                    \
+	  if(diag_idx!=sellmat->col[idx+j]) { /*mat->context->perm_local->colInvPerm[sellmat->col[idx+j]]) {*/                \
+		  xval[sellmat->col[idx+j]] = xval[sellmat->col[idx+j]] + static_cast<VT>(scal * std::conj(mval[idx+j]));           \
+    } else {                                                                                                            \
+	  	xval[sellmat->col[idx+j]] = xval[sellmat->col[idx+j]] + static_cast<VT>(scal * std::conj(mval[idx+j]-sigma[0]));  \
+		}								                                                      \
+  }         						       		                                        \
+}                                                                    		  \
 
-#define FORWARD_SHIFT_LOOP(start,end,MT,VT)                            \
- _Pragma("omp parallel for") 				               \
- for (ghost_lidx row=start; row<end; ++row){                           \
-         MT rownorm = 0.;                                              \
-         MT scal[NVECS] = {0};                                         \
-	 ghost_lidx  idx = sellmat->chunkStart[row];                   \
-                                                                       \
-         if(bval != NULL) {                                            \
-          	for(int block=0; block<NVECS; ++block) {               \
-          		scal[block]  = -bval[NVECS*row+block];         \
-		}						       \
-	}							       \
-        for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            \
-		for(int block=0; block<NVECS; ++block) {	       \
-                 	scal[block] += (MT)mval[idx] * xval[NVECS*sellmat->col[idx]+block];  \
-		}						       \
-                if(opts.normalize==no)                         	       \
-               		rownorm += mval[idx]*mval[idx];        	       \
-	idx+=1;							       \
-       }                                                               \
-        if(opts.normalize==no){ 				       \
-	 for(int block=0; block<NVECS; ++block){                       \
-         	scal[block] /= (MT)rownorm;                        \
-                scal[block] *= omega;                                  \
-	 }						               \
-        }                                                              \
-	idx -= sellmat->rowLen[row];                                   \
-                                                                       \
- 	_Pragma("simd vectorlength(4)")                                \
-         for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {           \
-		for(int block=0; block<NVECS; ++block) {	       \
-        		xval[NVECS*sellmat->col[idx]+block] = xval[NVECS*sellmat->col[idx]+block] - scal[block] * (MT)mval[idx];\
-        	}						       \
-	      idx += 1;                                                \
-          }                                                            \
-      }                                                                \
+//While solving for block vector, first array of shifts are considered then the RHS b                                                       
+//#elif CHUNKHEIGHT == 1
+//#else //TODO
+#if 0
+#define FORWARD_SHIFT_LOOP(start,end,MT,VT)                            		                \
+_Pragma("omp parallel for") 				    	       		                                      \
+for (ghost_lidx row=start; row<end; ++row){                           		                \
+  VT *rownorm, *scal;                                                                     \
+  ghost_malloc((void **)&rownorm,sizeof(VT)*num_shifts);                                  \
+  ghost_malloc((void **)&scal,sizeof(VT)*num_shifts*num_blocks);                          \
+  ghost_lidx idx = sellmat->chunkStart[row];                   		                        \
+  if(bval != NULL) {                                              	                      \
+  	for(int block=0; block<num_blocks; ++block) {                                         \
+      for(int shift=0; shift<num_shifts; ++shift) {                                       \
+        scal[block*num_shifts+shift]  = bval[row*num_blocks+block];                       \
+      }                                                                                   \
+    }                                                                                     \
+  }							                                               		                        \
+  for(int shift=0; shift<num_shifts; ++shift) {                                           \
+   rownorm[shift]  = 0;                                                                   \
+  }                                                                                       \
+ ghost_lidx diag_idx = sellmat->rowLen[row];				                                      \
+                                                                                          \
+  if(mat->context->perm_local->method == GHOST_PERMUTATION_UNSYMMETRIC)                   \
+	 diag_idx = mat->context->perm_local->colPerm[mat->context->perm_local->invPerm[row]];  \
+  else									                                                                  \
+   diag_idx = row;							                                                          \
+                                                                                          \
+  /*TODO split loop if needed; for performance */			                                    \
+  for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {                                     \
+    for(int block=0; block<num_blocks; ++block) {                                         \
+      for(int shift=0; shift<num_shifts; ++shift) {                                       \
+        MT mval_idx = mval[idx+j];					                                              \
+	 	    if(diag_idx!=sellmat->col[idx+j]) { 			              	                        \
+		      scal[block*num_shifts+shift] -= mval_idx*xval[(sellmat->col[idx+j])*num_blocks*num_shifts + block*num_shifts + shift];     	          \
+          rownorm[shift] += (VT)std::norm(mval_idx);              		                    \
+		    } else {                                                	                        \
+  		    scal[block*num_shifts+shift] -= (mval_idx-sigma[shift])*xval[(sellmat->col[idx+j])*num_blocks*num_shifts + block*num_shifts + shift];  \
+     	    rownorm[shift] += (VT)std::norm((mval_idx-sigma[shift]));                       \
+		    }						        	                                                            \
+      }                                                                                   \
+    }                                                                                     \
+  }                                                                                       \
+	for(int block=0; block<num_blocks; ++block) {                                           \
+    for(int shift=0; shift<num_shifts; ++shift) {                                         \
+	    scal[block*num_shifts+shift] /= (VT)rownorm[shift];          	                      \
+	    scal[block*num_shifts+shift] *= omega;					                                    \
+   }                                                                                      \
+  }			                                                                                  \
+                                                                		                      \
+  for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {/*can be split for performance*/     \
+	  for(int block=0; block<num_blocks; ++block) {                                         \
+      for(int shift=0; shift<num_shifts; ++shift) {                                       \
+	      if(diag_idx!=sellmat->col[idx+j]) {                                               \
+		      xval[(sellmat->col[idx+j])*num_blocks*num_shifts + block*num_shifts + shift] += scal[block*num_shifts+shift] * std::conj(mval[idx+j]);     \
+        } else {                                                                                                                                     \
+	  	    xval[(sellmat->col[idx+j])*num_blocks*num_shifts + block*num_shifts + shift] += scal[block*num_shifts+shift] * std::conj(mval[idx+j]-sigma[block*num_shifts+shift]);  \
+		    }	                                                                                \
+      }	                                                                                  \
+    }						                                                                          \
+  }         						       		                                                        \
+ free(rownorm);                                                                           \
+ free(scal);                                                                              \
+}                                                                    		                  \
 
-#define BACKWARD_SHIFT_LOOP(start,end,MT,VT)           			       \
- _Pragma("omp parallel for") 				       \
- for (ghost_lidx row=start; row>end; --row){                           \
-         MT rownorm = 0.;                                          \
-         MT scal[NVECS] = {0};                                     \
-	 ghost_lidx  idx = sellmat->chunkStart[row];                   \
-                                                                       \
-         if(bval != NULL) {                                            \
-          	for(int block=0; block<NVECS; ++block) {               \
-          		scal[block]  = -bval[NVECS*row+block];         \
-		}						       \
-	}							       \
-        for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            \
-		for(int block=0; block<NVECS; ++block) {	       \
-                 	scal[block] += (MT)mval[idx] * xval[NVECS*sellmat->col[idx]+block];  \
-		}						       \
-                if(opts.normalize==no)                         	       \
-               		rownorm += mval[idx]*mval[idx];        	       \
-	idx+=1;							       \
-       }                                                               \
-        if(opts.normalize==no){ 				       \
-	 for(int block=0; block<NVECS; ++block){                       \
-         	scal[block] /= (MT)rownorm;                        \
-                scal[block] *= omega;                                  \
-	 }						               \
-        }                                                              \
-	idx -= sellmat->rowLen[row];                                   \
-                                                                       \
- 	_Pragma("simd vectorlength(4)")                                \
-         for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {           \
-		for(int block=0; block<NVECS; ++block) {	       \
-        		xval[NVECS*sellmat->col[idx]+block] = xval[NVECS*sellmat->col[idx]+block] - scal[block] * (MT)mval[idx];\
-        	}						       \
-	      idx += 1;                                                \
-          }                                                            \
-      }                                                                \
+#define BACKWARD_SHIFT_LOOP(start,end,MT,VT)           		                                \
+_Pragma("omp parallel for") 				                		       	                          \
+for (ghost_lidx row=start; row>end; --row){                                   		        \
+  VT *rownorm, *scal;                                                                     \
+  ghost_malloc((void **)&rownorm,sizeof(VT)*num_shifts);                                  \
+  ghost_malloc((void **)&scal,sizeof(VT)*num_shifts*num_blocks);                          \
+  ghost_lidx idx = sellmat->chunkStart[row];                   		                        \
+  if(bval != NULL) {                                              	                      \
+  	for(int block=0; block<num_blocks; ++block) {                                         \
+      for(int shift=0; shift<num_shifts; ++shift) {                                       \
+        scal[block*num_shifts+shift]  = bval[row*num_blocks+block];                       \
+      }                                                                                   \
+    }                                                                                     \
+  }							                                               		                        \
+	for(int shift=0; shift<num_shifts; ++shift) {                                           \
+   rownorm[shift]  = 0;                                                                   \
+  }                                                                                       \
+  ghost_lidx diag_idx = sellmat->rowLen[row];				                                      \
+                                                                                          \
+  if(mat->context->perm_local->method == GHOST_PERMUTATION_UNSYMMETRIC)                   \
+	 diag_idx = mat->context->perm_local->colPerm[mat->context->perm_local->invPerm[row]];  \
+  else									                                                                  \
+  diag_idx = row;							                                                            \
+                                                                                          \
+  /*TODO split loop if needed; for performance */			                                    \
+  for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {                                     \
+    for(int block=0; block<num_blocks; ++block) {                                         \
+      for(int shift=0; shift<num_shifts; ++shift) {                                       \
+	      MT mval_idx = mval[idx+j];					                                              \
+	 	    if(diag_idx!=sellmat->col[idx+j]) { 			              	                        \
+		      scal[block*num_shifts+shift] -= mval_idx*xval[(sellmat->col[idx+j])*num_blocks*num_shifts + block*num_shifts + shift];     	          \
+          rownorm[shift] += (VT)std::norm(mval_idx);              		                    \
+		    } else {                                                	                        \
+  		    scal[block*num_shifts+shift] -= (mval_idx-sigma[shift])*xval[(sellmat->col[idx+j])*num_blocks*num_shifts + block*num_shifts + shift];  \
+     	    rownorm[shift] += (VT)std::norm((mval_idx-sigma[shift]));                       \
+		    }						        	                                                            \
+      }                                                                                   \
+    }                                                                                     \
+  }                                                                                       \
+	for(int block=0; block<num_blocks; ++block) {                                           \
+    for(int shift=0; shift<num_shifts; ++shift) {                                         \
+	    scal[block*num_shifts+shift] /= (VT)rownorm[shift];          	                      \
+	    scal[block*num_shifts+shift] *= omega;					                                    \
+    }                                                                                     \
+  }			                                                                                  \
+	                                                               		                      \
+  for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {/*can be split for performance*/     \
+	  for(int block=0; block<num_blocks; ++block) {                                         \
+      for(int shift=0; shift<num_shifts; ++shift) {                                       \
+	      if(diag_idx!=sellmat->col[idx+j]) {                                               \
+		      xval[(sellmat->col[idx+j])*num_blocks*num_shifts + block*num_shifts + shift] += scal[block*num_shifts+shift] * std::conj(mval[idx+j]);     \
+        } else {                                                                                                                                     \
+	  	    xval[(sellmat->col[idx+j])*num_blocks*num_shifts + block*num_shifts + shift] += scal[block*num_shifts+shift] * std::conj(mval[idx+j]-sigma[block*num_shifts+shift]);  \
+		    }	                                                                                \
+      }	                                                                                  \
+    }						                                                                          \
+  }         						       		                                                        \
+ free(rownorm);                                                                           \
+ free(scal);                                                                              \
+}                                                                    		                  \
 
+#endif
+/*
 #else 
 
 #define FORWARD_SHIFT_LOOP(start,end,MT,VT)           		            						\
@@ -431,83 +485,91 @@ if(start_chunk>end_chunk) {       										\
 template <typename MT, typename VT>
 ghost_error ghost_kacz_BMCshift_u_plain_cm_CHUNKHEIGHT_NVECS_tmpl(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts)
 {
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
-  
-    VT sigma = *(VT *)opts.shift;
+  GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+  VT *sigma = (VT *)opts.shift;
 
-   if(!(x->traits.datatype & (ghost_datatype)GHOST_DT_COMPLEX) ) {
-	WARNING_LOG("If you have specified complex shifts as option, ensure your output vector is also complex type!")
-        //return GHOST_ERR_DATATYPE;
-   }
+  int num_shifts = 0, num_blocks = 0;
+
+  if(opts.num_shifts == 0) {
+    num_shifts = 1;
+  } else {
+    num_shifts = opts.num_shifts;
+  }
+ 
+  
+  if(num_shifts > NVECS) {
+    WARNING_LOG("You have %d shifts requested but there are only %d columns in the output vector",num_shifts,NVECS)
+    WARNING_LOG("Solving for the first %d shifts",NVECS)
+    num_blocks = 1;
+  } else {
+    num_blocks = static_cast<int>(NVECS/num_shifts);
+  }
+
+ if(!(x->traits.datatype & (ghost_datatype)GHOST_DT_COMPLEX) ) {
+	  WARNING_LOG("If you have specified complex shifts as option, ensure your output vector is also complex type!")      
+    //return GHOST_ERR_DATATYPE;
+  }
  
 #if CHUNKHEIGHT>1
-    ghost_lidx start_rem, start_chunk, end_chunk, end_rem;									
-    ghost_lidx chunk       = 0;											
-    ghost_lidx rowinchunk  = 0; 											
-    ghost_lidx idx=0, row=0;   											
+  ghost_lidx start_rem, start_chunk, end_chunk, end_rem;									
+  ghost_lidx chunk       = 0;											
+  ghost_lidx rowinchunk  = 0; 											
+  ghost_lidx idx=0, row=0;   											
 #endif
 
-   if (mat->nzones == 0 || mat->zone_ptr == NULL) {
-        ERROR_LOG("Splitting of matrix by Block Multicoloring  has not be done!");
-   }
-  
-   if (NVECS > 1) {
-        ERROR_LOG("Multi-vec not implemented!");
-        return GHOST_ERR_NOT_IMPLEMENTED;
-    }
+  if(mat->nzones == 0 || mat->zone_ptr == NULL) {
+    ERROR_LOG("Splitting of matrix by Block Multicoloring  has not be done!");
+  }
    
-    ghost_sell *sellmat = SELL(mat); 
-    MT *bval = NULL;
+  ghost_sell *sellmat = SELL(mat); 
+  MT *bval = NULL;
   
-   if(b!= NULL)
-     bval = (MT *)(b->val);
+  if(b!= NULL)
+    bval = (MT *)(b->val);
 
-    VT *xval = (VT *)(x->val);
-    MT *mval = (MT *)sellmat->val;
-    MT omega = *(MT *)opts.omega;
-    ghost_lidx *zone_ptr = (ghost_lidx*) mat->zone_ptr;
-    //ghost_lidx nzones    = mat->nzones;
-    ghost_lidx *color_ptr= (ghost_lidx*) mat->color_ptr;
-    //ghost_lidx ncolors   = mat->ncolors;
-    ghost_lidx nthreads  = mat->kacz_setting.active_threads;
-    int prev_nthreads;
-    int prev_omp_nested;
+  VT *xval = (VT *)(x->val);
+  MT *mval = (MT *)sellmat->val;
+  MT omega = *(MT *)opts.omega;
+  ghost_lidx *zone_ptr = (ghost_lidx*) mat->zone_ptr;
+  //ghost_lidx nzones    = mat->nzones;
+  ghost_lidx *color_ptr= (ghost_lidx*) mat->color_ptr;
+  //ghost_lidx ncolors   = mat->ncolors;
+  ghost_lidx nthreads  = mat->kacz_setting.active_threads;
+  int prev_nthreads;
+  int prev_omp_nested;
 
-    int rank;
-    //TODO remove after test
-    ghost_rank(&rank, mat->context->mpicomm);
+  int rank;
+  //TODO remove after test
+  ghost_rank(&rank, mat->context->mpicomm);
 
 
 #ifdef GHOST_HAVE_OPENMP
-   // disables dynamic thread adjustments 
-    ghost_omp_set_dynamic(0);
-    ghost_omp_nthread_set(nthreads);
-    prev_omp_nested = ghost_omp_get_nested();
-    ghost_omp_set_nested(0);    
-    //printf("Setting number of threads to %d for KACZ sweep\n",nthreads);
-
+  // disables dynamic thread adjustments 
+  prev_nthreads = ghost_omp_nthread();
+  ghost_omp_set_dynamic(0);
+  ghost_omp_nthread_set(nthreads);
+  prev_omp_nested = ghost_omp_get_nested();
+  ghost_omp_set_nested(0);    
+  //printf("Setting number of threads to %d for KACZ sweep\n",nthreads);
 #endif
-    ghost_lidx *flag;
-    flag = (ghost_lidx*) malloc((nthreads+2)*sizeof(ghost_lidx));
+  ghost_lidx *flag;
+  flag = (ghost_lidx*) malloc((nthreads+2)*sizeof(ghost_lidx));
 
-    for (int i=0; i<nthreads+2; i++) {
-        flag[i] = 0;
-    }    //always execute first and last blocks
-    flag[0] = 1;         
-    flag[nthreads+1] = 1;
+  for (int i=0; i<nthreads+2; i++) {
+    flag[i] = 0;
+  }    //always execute first and last blocks
+  flag[0] = 1;         
+  flag[nthreads+1] = 1;
 
-   //Do multicolored rows, if in backward direction
+  //Do multicolored rows, if in backward direction
     int mc_start, mc_end;
 
-//    ghost_lidx stride = 0;
-
-   if (opts.direction == GHOST_KACZ_DIRECTION_BACKWARD) {
-	for(int i=mat->ncolors; i>0; --i) {
-            mc_start  = color_ptr[i]-1;
-            mc_end    = color_ptr[i-1]-1;
-//            stride   = -1;
-            BACKWARD_SHIFT_LOOP(mc_start,mc_end,MT,VT)
-         }
+  if (opts.direction == GHOST_KACZ_DIRECTION_BACKWARD) {
+	  for(int i=mat->ncolors; i>0; --i) {
+      mc_start  = color_ptr[i]-1;
+      mc_end    = color_ptr[i-1]-1;
+      BACKWARD_SHIFT_LOOP(mc_start,mc_end,MT,VT)
+     }
 
 #ifdef GHOST_HAVE_OPENMP  
 #if CHUNKHEIGHT > 1
@@ -517,48 +579,44 @@ ghost_error ghost_kacz_BMCshift_u_plain_cm_CHUNKHEIGHT_NVECS_tmpl(ghost_densemat
 #endif
  	{
 #endif 
-        ghost_lidx tid = ghost_omp_threadnum();
+    ghost_lidx tid = ghost_omp_threadnum();
    	ghost_lidx start[4];
-    	ghost_lidx end[4];
+    ghost_lidx end[4];
 
-	start[0]  = zone_ptr[4*tid+4]-1; 
-	end[0]    = zone_ptr[4*tid+3]-1;   	
-        start[1]  = zone_ptr[4*tid+3]-1;
-    	end[1]    = zone_ptr[4*tid+2]-1;
-        start[2]  = zone_ptr[4*tid+2]-1;
-        end[2]    = zone_ptr[4*tid+1]-1;
-        start[3]  = zone_ptr[4*tid+1]-1;
-        end[3]    = zone_ptr[4*tid]  -1;
-//      stride    = -1;
-    	if(mat->kacz_setting.kacz_method == BMC_one_sweep) { 
-    		for(ghost_lidx zone = 0; zone<4; ++zone) { 
-           		BACKWARD_SHIFT_LOOP(start[zone],end[zone],MT,VT)   
-     
-   	  	        #pragma omp barrier                           
-		}
- 	} else if (mat->kacz_setting.kacz_method == BMC_two_sweep) {
-		BACKWARD_SHIFT_LOOP(start[0],end[0],MT,VT)
-     		#pragma omp barrier 
-   
+	  start[0]  = zone_ptr[4*tid+4]-1; 
+	  end[0]    = zone_ptr[4*tid+3]-1;   	
+    start[1]  = zone_ptr[4*tid+3]-1;
+    end[1]    = zone_ptr[4*tid+2]-1;
+    start[2]  = zone_ptr[4*tid+2]-1;
+    end[2]    = zone_ptr[4*tid+1]-1;
+    start[3]  = zone_ptr[4*tid+1]-1;
+    end[3]    = zone_ptr[4*tid]  -1;
+
+   	if(mat->kacz_setting.kacz_method == BMC_one_sweep) { 
+      for(ghost_lidx zone = 0; zone<4; ++zone) { 
+        BACKWARD_SHIFT_LOOP(start[zone],end[zone],MT,VT)   
+        #pragma omp barrier                           
+		  }
+ 	  } else if (mat->kacz_setting.kacz_method == BMC_two_sweep) {
+	  	  BACKWARD_SHIFT_LOOP(start[0],end[0],MT,VT)
+   	  	#pragma omp barrier 
      		if(tid%2 != 0) {
-            		BACKWARD_SHIFT_LOOP(start[1],end[1],MT,VT)
-        	}	 
-       		#pragma omp barrier
-       		if(tid%2 == 0) {
-            		BACKWARD_SHIFT_LOOP(start[1],end[1],MT,VT)
-        	}
-
-      		#pragma omp barrier
-       		BACKWARD_SHIFT_LOOP(start[2],end[2],MT,VT)
+          BACKWARD_SHIFT_LOOP(start[1],end[1],MT,VT)
+        }	 
+       	#pragma omp barrier
+       	if(tid%2 == 0) {
+          BACKWARD_SHIFT_LOOP(start[1],end[1],MT,VT)
+        }
+     		#pragma omp barrier
+     		BACKWARD_SHIFT_LOOP(start[2],end[2],MT,VT)
      		#pragma omp barrier 
-       		BACKWARD_SHIFT_LOOP(start[3],end[3],MT,VT)               
-  	}      
-
+     		BACKWARD_SHIFT_LOOP(start[3],end[3],MT,VT)               
+    }      
 #ifdef GHOST_HAVE_OPENMP
   }
 #endif
 
-   } else {
+  } else {
 
 #ifdef GHOST_HAVE_OPENMP  
 #if CHUNKHEIGHT > 1
@@ -568,61 +626,60 @@ ghost_error ghost_kacz_BMCshift_u_plain_cm_CHUNKHEIGHT_NVECS_tmpl(ghost_densemat
 #endif
  	{
 #endif 
-        ghost_lidx tid = ghost_omp_threadnum();
-	ghost_lidx start[4];
-    	ghost_lidx end[4];
-       	start[0]  = zone_ptr[4*tid];
-    	end[0]    = zone_ptr[4*tid+1];
-     	start[1]  = zone_ptr[4*tid+1];
-        end[1]    = zone_ptr[4*tid+2];
-	start[2]  = zone_ptr[4*tid+2];
-        end[2]    = zone_ptr[4*tid+3];
-        start[3]  = zone_ptr[4*tid+3];
-        end[3]    = zone_ptr[4*tid+4];
-//        stride    = 1;
+    ghost_lidx tid = ghost_omp_threadnum();
+	  ghost_lidx start[4];
+    ghost_lidx end[4];
+    start[0]  = zone_ptr[4*tid];
+    end[0]    = zone_ptr[4*tid+1];
+    start[1]  = zone_ptr[4*tid+1];
+    end[1]    = zone_ptr[4*tid+2];
+	  start[2]  = zone_ptr[4*tid+2];
+    end[2]    = zone_ptr[4*tid+3];
+    start[3]  = zone_ptr[4*tid+3];
+    end[3]    = zone_ptr[4*tid+4];
 
-      	if(mat->kacz_setting.kacz_method == BMC_one_sweep) { 
-    		for(ghost_lidx zone = 0; zone<4; ++zone) { 
-            		FORWARD_SHIFT_LOOP(start[zone],end[zone],MT,VT)        
-   		   	#pragma omp barrier                           
-      		}
- 	} else if (mat->kacz_setting.kacz_method == BMC_two_sweep) {
-	    	FORWARD_SHIFT_LOOP(start[0],end[0],MT,VT)
+  	if(mat->kacz_setting.kacz_method == BMC_one_sweep) { 
+   		for(ghost_lidx zone = 0; zone<4; ++zone) { 
+     		FORWARD_SHIFT_LOOP(start[zone],end[zone],MT,VT)        
+   	   	#pragma omp barrier                           
+    	}
+ 	  } else if (mat->kacz_setting.kacz_method == BMC_two_sweep) {
+	      FORWARD_SHIFT_LOOP(start[0],end[0],MT,VT)
      		#pragma omp barrier 
-       		FORWARD_SHIFT_LOOP(start[1],end[1],MT,VT)
-   		#pragma omp barrier
+       	FORWARD_SHIFT_LOOP(start[1],end[1],MT,VT)
+   	  	#pragma omp barrier
      		if(tid%2 == 0) {
-            		FORWARD_SHIFT_LOOP(start[2],end[2],MT,VT)
-        	}	 
-       		#pragma omp barrier
-       		if(tid%2 != 0) {
-            		FORWARD_SHIFT_LOOP(start[2],end[2],MT,VT)
-        	}
+        	FORWARD_SHIFT_LOOP(start[2],end[2],MT,VT)
+        }	 
+       	#pragma omp barrier
+       	if(tid%2 != 0) {
+          FORWARD_SHIFT_LOOP(start[2],end[2],MT,VT)
+        }
     		#pragma omp barrier 
-       		FORWARD_SHIFT_LOOP(start[3],end[3],MT,VT)               
+       	FORWARD_SHIFT_LOOP(start[3],end[3],MT,VT)               
   	}      
 
 #ifdef GHOST_HAVE_OPENMP
   }
 #endif
 	for(int i=0; i<mat->ncolors; ++i) { 
-        	mc_start  = color_ptr[i];
-            	mc_end    = color_ptr[i+1];
-//            	stride    = 1;
-
-           	FORWARD_SHIFT_LOOP(mc_start,mc_end,MT,VT)
+    mc_start  = color_ptr[i];
+    mc_end    = color_ptr[i+1];
+   	FORWARD_SHIFT_LOOP(mc_start,mc_end,MT,VT)
 	}
-}
 
-    free(flag);	    
+  }
+
+free(flag);	    
 
 //reset values TODO reset n_threads
 #ifdef GHOST_HAVE_OPENMP
-   ghost_omp_set_nested(prev_omp_nested);    
+  ghost_omp_nthread_set(prev_nthreads);
+  ghost_omp_set_nested(prev_omp_nested);    
 #endif
 
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
-    return GHOST_SUCCESS;
+  GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+  return GHOST_SUCCESS;
 }
 
 ghost_error ghost_kacz__BMCshift_u_plain_x_x_cm_CHUNKHEIGHT_NVECS(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts)

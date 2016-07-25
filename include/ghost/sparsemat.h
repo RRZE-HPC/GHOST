@@ -109,6 +109,7 @@ ghost_kacz_normalize;
 typedef struct {
     void *omega;
     void *shift;// shift can be complex
+    int num_shifts; //number of shifts provided
     ghost_kacz_direction direction;
     ghost_kacz_normalize normalize;
 }
@@ -117,6 +118,7 @@ ghost_kacz_opts;
 typedef struct {
     void *omega;
     void *shift;//shift can be complex
+    int num_shifts;//number of shifts provided
     ghost_kacz_normalize normalize;
 }
 ghost_carp_opts; //no direction since forward followed by backward done
@@ -446,6 +448,22 @@ typedef enum {
     GHOST_SOLVER_KACZ = 16384,
 
 } ghost_sparsemat_flags;
+
+#ifdef __cplusplus
+inline ghost_sparsemat_flags operator|(const ghost_sparsemat_flags &a,
+        const ghost_sparsemat_flags &b)
+{
+    return static_cast<ghost_sparsemat_flags>(
+            static_cast<int>(a) | static_cast<int>(b));
+}
+
+inline ghost_sparsemat_flags operator&(const ghost_sparsemat_flags &a,
+        const ghost_sparsemat_flags &b)
+{
+    return static_cast<ghost_sparsemat_flags>(
+            static_cast<int>(a) & static_cast<int>(b));
+}
+#endif
 
 
 /**
