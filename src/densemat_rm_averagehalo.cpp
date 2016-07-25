@@ -38,7 +38,7 @@ static ghost_error ghost_densemat_rm_averagehalo_tmpl(ghost_densemat *vec)
        acc_dues += vec->context->dues[i];
     }
     
-    GHOST_CALL_GOTO(ghost_malloc((void **)&work, acc_dues*sizeof(T)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&work, vec->traits.ncols*acc_dues*sizeof(T)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&req, 2*nrank*sizeof(MPI_Request)),err,ret);
     
     for (i=0; i<2*nrank; i++) {
@@ -64,8 +64,8 @@ static ghost_error ghost_densemat_rm_averagehalo_tmpl(ghost_densemat *vec)
    	}
 
     } else {*/
-        for (i=0; i<nrank; i++) {
-                MPI_CALL_GOTO(MPI_Isend(&((T *)vec->val)[vec->context->hput_pos[i]],vec->context->wishes[i]*vec->traits.ncols,vec->mpidt,i,rank,vec->context->mpicomm,&req[i]),err,ret);
+        for (i=0; i<nrank; i++) {		
+                MPI_CALL_GOTO(MPI_Isend(&((T *)vec->val)[vec->context->hput_pos[i]*vec->traits.ncols],vec->context->wishes[i]*vec->traits.ncols,vec->mpidt,i,rank,vec->context->mpicomm,&req[i]),err,ret);
         }
    // }
 
@@ -127,7 +127,7 @@ static ghost_error ghost_densemat_rm_averagehalo_tmpl(ghost_densemat *vec)
 #pragma omp parallel for schedule(static) private(d,j)
 	        for (d=0 ;d < vec->context->dues[i]; d++) {
 			for(j=0 ; j<vec->traits.ncols; ++j) {
-		    		sum[(vec->context->perm_local->colPerm[vec->context->duelist[i][d]])*vec->traits.ncols+j] += curwork[d*vec->traits.ncols+j];
+		    		sum[( vec->context->perm_local->colPerm[vec->context->duelist[i][d]] )*vec->traits.ncols + j] += curwork[d*vec->traits.ncols+j];
 			 }
 			nrankspresent[vec->context->perm_local->colPerm[vec->context->duelist[i][d]]]++; 
 		}
