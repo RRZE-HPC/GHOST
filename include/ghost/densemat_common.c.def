@@ -87,7 +87,7 @@ static ghost_error FUNCNAME(view(ghost_densemat *src, ghost_densemat **new, ghos
     newTraits.nrowspadded = nr;
     newTraits.flags |= (ghost_densemat_flags)GHOST_DENSEMAT_VIEW;
 
-    ghost_densemat_create(new,src->context,newTraits);
+    ghost_densemat_create(new,NULL,newTraits);
     FUNCNAME(malloc(*new,NULL));
 
     (*new)->stride = src->stride;
@@ -165,7 +165,7 @@ static ghost_error FUNCNAME(viewCols(ghost_densemat *src, ghost_densemat **new, 
     newTraits.ncolsorig = src->traits.ncolsorig;
     newTraits.flags |= (ghost_densemat_flags)GHOST_DENSEMAT_VIEW;
 
-    ghost_densemat_create(new,src->context,newTraits);
+    ghost_densemat_create(new,NULL,newTraits);
     FUNCNAME(malloc(*new,NULL));
     (*new)->stride = src->stride;
     (*new)->src = src->src;
@@ -213,7 +213,7 @@ static ghost_error FUNCNAME(viewScatteredCols(ghost_densemat *src, ghost_densema
     newTraits.flags |= (ghost_densemat_flags)GHOST_DENSEMAT_VIEW;
     newTraits.flags |= (ghost_densemat_flags)GHOST_DENSEMAT_SCATTERED_COLS;
 
-    ghost_densemat_create(new,src->context,newTraits);
+    ghost_densemat_create(new,NULL,newTraits);
     FUNCNAME(malloc(*new,NULL));
     (*new)->stride = src->stride;
     (*new)->src = src->src;
@@ -260,7 +260,7 @@ static ghost_error FUNCNAME(viewScatteredVec(ghost_densemat *src, ghost_densemat
     newTraits.flags |= (ghost_densemat_flags)GHOST_DENSEMAT_VIEW;
     newTraits.flags |= (ghost_densemat_flags)GHOST_DENSEMAT_SCATTERED;
 
-    ghost_densemat_create(new,src->context,newTraits);
+    ghost_densemat_create(new,NULL,newTraits);
     FUNCNAME(malloc(*new,NULL));
     (*new)->stride = src->stride;
     (*new)->src = src->src;
@@ -433,7 +433,7 @@ static ghost_error FUNCNAME(reduce(ghost_densemat * vec_in, ghost_mpi_comm comm,
         vectraits.flags &= (ghost_densemat_flags)~GHOST_DENSEMAT_SCATTERED;
         vectraits.location = GHOST_LOCATION_HOST;
 
-        ghost_densemat_create(&vec,vec_in->context,vectraits);
+        ghost_densemat_create(&vec,NULL,vectraits);
         vec->fromVec(vec,vec_in,0,0);
     } else {
         vec = vec_in;
@@ -577,13 +577,8 @@ static ghost_error FUNCNAME(syncValues(ghost_densemat *vec, ghost_mpi_comm comm,
     return GHOST_SUCCESS;
 }
 
-static ghost_error FUNCNAME(toFile(ghost_densemat *vec, char *path, bool singleFile))
+static ghost_error FUNCNAME(toFile(ghost_densemat *vec, char *path, ghost_mpi_comm mpicomm))
 {
-    if (!vec->context && singleFile) {
-        WARNING_LOG("Trying to write a combined file for a non-distributed densemat. Forcing separate files...");
-        singleFile = false;
-    }
-
     int32_t endianess = ghost_machine_bigendian();
     int32_t version = 1;
     int32_t order = GHOST_BINDENSEMAT_ORDER_ROW_FIRST;
@@ -596,28 +591,20 @@ static ghost_error FUNCNAME(toFile(ghost_densemat *vec, char *path, bool singleF
     int32_t datatype = vec->traits.datatype;
     int64_t ncols = (int64_t)vec->traits.ncols;
     int64_t nrows;
-    if (singleFile) {
-        nrows = (int64_t)vec->context->gnrows;
-    } else {
+    if (mpicomm == MPI_COMM_SELF) {
         nrows = vec->traits.nrows;
+    } else {
+        nrows = vec->traits.gnrows;
     }
 
 #ifdef GHOST_HAVE_MPI
-
     int rank = 0;
-    ghost_mpi_comm mpicomm = MPI_COMM_NULL;
-    if (singleFile) {
-        GHOST_CALL_RETURN(ghost_rank(&rank, vec->context->mpicomm));
-        mpicomm = vec->context->mpicomm;
-    } else {
-        mpicomm = MPI_COMM_SELF;
-    }
     
     MPI_File fileh;
     MPI_Status status;
     MPI_CALL_RETURN(MPI_File_open(mpicomm,path,MPI_MODE_WRONLY|MPI_MODE_CREATE,MPI_INFO_NULL,&fileh));
 
-    if (!singleFile || (rank == 0)) { // write header AND portion
+    if ((mpicomm == MPI_COMM_SELF) || (rank == 0)) { // write header AND portion
         MPI_CALL_RETURN(MPI_File_write(fileh,&endianess,1,MPI_INT,&status));
         MPI_CALL_RETURN(MPI_File_write(fileh,&version,1,MPI_INT,&status));
         MPI_CALL_RETURN(MPI_File_write(fileh,&order,1,MPI_INT,&status));
@@ -626,8 +613,8 @@ static ghost_error FUNCNAME(toFile(ghost_densemat *vec, char *path, bool singleF
         MPI_CALL_RETURN(MPI_File_write(fileh,&ncols,1,MPI_LONG_LONG,&status));
     }    
    
-    if (singleFile) {
-        MPI_CALL_RETURN(MPI_File_seek(fileh,GHOST_BINDENSEMAT_SIZE_HEADER+vec->elSize*vec->context->lfRow[rank]*vec->traits.ncols,MPI_SEEK_SET)); 
+    if (mpicomm != MPI_COMM_SELF) {
+        MPI_CALL_RETURN(MPI_File_seek(fileh,GHOST_BINDENSEMAT_SIZE_HEADER+vec->elSize*vec->traits.goffs*vec->traits.ncols,MPI_SEEK_SET)); 
     }
 
     if (DENSEMAT_COMPACT(vec)) {
@@ -637,9 +624,9 @@ static ghost_error FUNCNAME(toFile(ghost_densemat *vec, char *path, bool singleF
             ghost_densemat *writevec;
             ghost_densemat_traits writevectraits = vec->traits;
             writevectraits.storage = GHOST_DENSEMAT_ROWMAJOR;
-            ghost_densemat_create(&writevec,vec->context,writevectraits);
+            ghost_densemat_create(&writevec,NULL,writevectraits);
             writevec->fromVec(writevec,vec,0,0);
-            writevec->toFile(writevec,path,singleFile);
+            writevec->toFile(writevec,path,mpicomm);
             ghost_densemat_destroy(writevec);
         } else {
             INFO_LOG("Fast write");
@@ -684,13 +671,8 @@ static ghost_error FUNCNAME(toFile(ghost_densemat *vec, char *path, bool singleF
     return GHOST_SUCCESS;
 }
 
-static ghost_error FUNCNAME(fromFile(ghost_densemat *vec, char *path, bool singleFile))
+static ghost_error FUNCNAME(fromFile(ghost_densemat *vec, char *path, ghost_mpi_comm mpicomm))
 {
-    if (!vec->context && singleFile) {
-        WARNING_LOG("Trying to read a combined file for a non-distributed densemat. Forcing separate files...");
-        singleFile = false;
-    }
-    
     int needInit = 0;
     FUNCNAME(malloc(vec,&needInit));
 
@@ -709,16 +691,6 @@ static ghost_error FUNCNAME(fromFile(ghost_densemat *vec, char *path, bool singl
     int64_t nrows;
 
 #ifdef GHOST_HAVE_MPI
-
-    int rank = 0;
-    ghost_mpi_comm mpicomm = MPI_COMM_NULL;
-    if (singleFile) {
-        GHOST_CALL_RETURN(ghost_rank(&rank, vec->context->mpicomm));
-        mpicomm = vec->context->mpicomm;
-    } else {
-        mpicomm = MPI_COMM_SELF;
-    }
-    
     MPI_File fileh;
     MPI_Status status;
     MPI_CALL_RETURN(MPI_File_open(mpicomm,path,MPI_MODE_RDONLY,MPI_INFO_NULL,&fileh));
@@ -767,19 +739,19 @@ static ghost_error FUNCNAME(fromFile(ghost_densemat *vec, char *path, bool singl
         return GHOST_ERR_IO;
     }
     
-    if (!singleFile && (vec->traits.nrows != nrows)) {
+    if (mpicomm == MPI_COMM_SELF && (vec->traits.nrows != nrows)) {
         ERROR_LOG("The number of rows does not match between the file and the densemat!");
         return GHOST_ERR_IO;
     }
   
-    if (singleFile && vec->context && (vec->context->gnrows != nrows)) {
-        ERROR_LOG("The number of rows does not match between the file (%"PRId64") and the densemat's context (%"PRGIDX")!",nrows,vec->context->gnrows);
+    if ((mpicomm != MPI_COMM_SELF) && (vec->traits.gnrows != nrows)) {
+        ERROR_LOG("The number of rows does not match between the file (%"PRId64") and the densemat (%"PRGIDX")!",nrows,vec->traits.gnrows);
         return GHOST_ERR_IO;
     }
 
 #ifdef GHOST_HAVE_MPI 
-    if (singleFile) {
-        MPI_CALL_RETURN(MPI_File_seek(fileh,vec->elSize*vec->context->lfRow[rank]*vec->traits.ncols,MPI_SEEK_CUR)); 
+    if (mpicomm != MPI_COMM_SELF) {
+        MPI_CALL_RETURN(MPI_File_seek(fileh,vec->elSize*vec->traits.goffs*vec->traits.ncols,MPI_SEEK_CUR)); 
     }
 
     if (DENSEMAT_COMPACT(vec) && (order == myorder)) {
@@ -792,8 +764,8 @@ static ghost_error FUNCNAME(fromFile(ghost_densemat *vec, char *path, bool singl
         ghost_densemat *readvec;
         ghost_densemat_traits readvectraits = vec->traits;
         readvectraits.storage = (ghost_densemat_storage)order;
-        ghost_densemat_create(&readvec,vec->context,readvectraits);
-        readvec->fromFile(readvec,path,singleFile);
+        ghost_densemat_create(&readvec,NULL,readvectraits);
+        readvec->fromFile(readvec,path,mpicomm);
         vec->fromVec(vec,readvec,0,0);
         ghost_densemat_destroy(readvec);
     }
@@ -808,7 +780,7 @@ static ghost_error FUNCNAME(fromFile(ghost_densemat *vec, char *path, bool singl
         ghost_densemat_traits readvectraits = vec->traits;
         readvectraits.storage = GHOST_DENSEMAT_ROWMAJOR;
         ghost_densemat_create(&readvec,NULL,readvectraits);
-        readvec->fromFile(readvec,path,singleFile);
+        readvec->fromFile(readvec,path,mpicomm);
         vec->fromVec(vec,readvec,0,0);
         readvec->destroy(readvec);
     }
@@ -824,42 +796,34 @@ static ghost_error FUNCNAME(fromFile(ghost_densemat *vec, char *path, bool singl
 static ghost_error FUNCNAME(fromFunc(ghost_densemat *vec, int (*fp)(ghost_gidx, ghost_lidx, void *, void *), void *arg))
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
-    int rank;
-    ghost_gidx offset;
-    if (vec->context) {
-        GHOST_CALL_RETURN(ghost_rank(&rank, vec->context->mpicomm));
-        offset = vec->context->lfRow[rank];
-    } else {
-        rank = 0;
-        offset = 0;
-    }
+    ghost_gidx offset = vec->traits.goffs;
     int needInit = 0;
     GHOST_CALL_RETURN(FUNCNAME(malloc(vec,&needInit)));
 
     if (vec->traits.location & GHOST_LOCATION_HOST) { // vector is stored on host
-        if (!vec->context || (!vec->context->perm_local && !vec->context->perm_global)) {
+        if ((!vec->perm_local && !vec->perm_global)) {
             if( needInit ) {
               DENSEMAT_ITER_INIT(vec,fp(offset+row,col,valptr,arg));
             } else {
               DENSEMAT_ITER(vec,fp(offset+row,col,valptr,arg));
             }
-        } else if (vec->context->perm_local && !vec->context->perm_global) {
+        } else if (vec->perm_local && !vec->perm_global) {
             if( needInit ) {
-              DENSEMAT_ITER_INIT(vec,fp(offset+vec->context->perm_local->invPerm[row],col,valptr,arg));
+              DENSEMAT_ITER_INIT(vec,fp(offset+vec->perm_local->invPerm[row],col,valptr,arg));
             } else {
-              DENSEMAT_ITER(vec,fp(offset+vec->context->perm_local->invPerm[row],col,valptr,arg));
+              DENSEMAT_ITER(vec,fp(offset+vec->perm_local->invPerm[row],col,valptr,arg));
             }
-        } else if (!vec->context->perm_local && vec->context->perm_global) {
+        } else if (!vec->perm_local && vec->perm_global) {
             if( needInit ) {
-              DENSEMAT_ITER_INIT(vec,fp(vec->context->perm_global->invPerm[row],col,valptr,arg));
+              DENSEMAT_ITER_INIT(vec,fp(vec->perm_global->invPerm[row],col,valptr,arg));
             } else {
-              DENSEMAT_ITER(vec,fp(vec->context->perm_global->invPerm[row],col,valptr,arg));
+              DENSEMAT_ITER(vec,fp(vec->perm_global->invPerm[row],col,valptr,arg));
             }
-        } else if (vec->context->perm_local && vec->context->perm_global) {
+        } else if (vec->perm_local && vec->perm_global) {
             if( needInit ) {
-              DENSEMAT_ITER_INIT(vec,fp(vec->context->perm_global->invPerm[vec->context->perm_local->invPerm[row]],col,valptr,arg));
+              DENSEMAT_ITER_INIT(vec,fp(vec->perm_global->invPerm[vec->perm_local->invPerm[row]],col,valptr,arg));
             } else {
-              DENSEMAT_ITER(vec,fp(vec->context->perm_global->invPerm[vec->context->perm_local->invPerm[row]],col,valptr,arg));
+              DENSEMAT_ITER(vec,fp(vec->perm_global->invPerm[vec->perm_local->invPerm[row]],col,valptr,arg));
             }
         }
 
@@ -875,7 +839,7 @@ static ghost_error FUNCNAME(fromFunc(ghost_densemat *vec, int (*fp)(ghost_gidx, 
         ghost_densemat_traits htraits = vec->traits;
         htraits.location = GHOST_LOCATION_HOST;
         htraits.flags &= (ghost_densemat_flags)~GHOST_DENSEMAT_VIEW;
-        GHOST_CALL_RETURN(ghost_densemat_create(&hostVec,vec->context,htraits));
+        GHOST_CALL_RETURN(ghost_densemat_create(&hostVec,NULL,htraits));
         GHOST_CALL_RETURN(hostVec->fromFunc(hostVec,fp,arg));
         GHOST_CALL_RETURN(vec->fromVec(vec,hostVec,0,0));
         ghost_densemat_destroy(hostVec);

@@ -3,7 +3,6 @@
 #include "ghost/types.h"
 #include "ghost/math.h"
 #include "ghost/instr.h"
-#include "ghost/locality.h"
 #include "ghost/util.h"
 #include "ghost/tsmttsm_kahan_var2_plain_gen.h"
 
@@ -16,13 +15,6 @@ ghost_error ghost_tsmttsm_kahan__a_plain_d_x_x_1_rm(ghost_densemat *x, ghost_den
     ghost_lidx n = v->traits.nrows;
     ghost_lidx m = v->traits.ncols;
     double *finalc;
-
-    int myrank=0;
-
-    if (v->context) {
-        GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
-    }
-
     
     INFO_LOG("In TSMTTSM with arbitrary block sizes %dx%d <- %dx%d * %dx%d",m,K,m,n,n,K);
     
@@ -37,11 +29,6 @@ ghost_error ghost_tsmttsm_kahan__a_plain_d_x_x_1_rm(ghost_densemat *x, ghost_den
     double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
     
-    // make sure that the initial x only gets added up once
-    if (myrank) {
-        dbeta = 0.;
-    }
-
     ghost_lidx i,j;
         
     ghost_malloc((void **)&finalc,m*K*sizeof(double));
@@ -146,10 +133,6 @@ ghost_error ghost_tsmttsm_kahan__a_plain_d_x_x_1_rm(ghost_densemat *x, ghost_den
 
     }
    
-    goto out;
-err:
-
-out:
     free(finalc);
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
@@ -164,12 +147,6 @@ ghost_error ghost_tsmttsm_kahan__a_plain_z_x_x_1_rm(ghost_densemat *x, ghost_den
     ghost_lidx n = v->traits.nrows;
     ghost_lidx m = v->traits.ncols;
     complex double *finalc;
-
-    int myrank=0;
-
-    if (v->context) {
-        GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
-    }
 
     
     INFO_LOG("In TSMTTSM with arbitrary block sizes %dx%d <- %dx%d * %dx%d",m,K,m,n,n,K);
@@ -190,11 +167,6 @@ ghost_error ghost_tsmttsm_kahan__a_plain_z_x_x_1_rm(ghost_densemat *x, ghost_den
     ghost_mpi_op_sum(&mpiop_zadd,(ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
     ghost_mpi_datatype_get(&mpidt_z,(ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
     
-    // make sure that the initial x only gets added up once
-    if (myrank) {
-        dbeta = 0.;
-    }
-
     ghost_lidx i,j;
         
     ghost_malloc((void **)&finalc,m*K*sizeof(complex double));
@@ -339,10 +311,6 @@ ghost_error ghost_tsmttsm_kahan__a_plain_z_x_x_1_rm(ghost_densemat *x, ghost_den
 
     }
    
-    goto out;
-err:
-
-out:
     free(finalc);
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;

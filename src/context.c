@@ -777,21 +777,21 @@ ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, gh
     ghost_lidx rowpaddingoffset = 0;
      
      if(mat->context->flags & GHOST_PERM_NO_DISTINCTION) {
-                ghost_lidx halo_ctr = 0;
-		//we need to know number of halo elements now
- 		for(int k=0;k<nprocs;++k) {
-		    if (k != me){ 
-        		    for (int j=0;j<ctx->wishes[k];j++){
-				++halo_ctr;
- 			    }
-		    }
-		}
-  			
-		ctx->nrowspadded   =  PAD(ctx->lnrows[me]+halo_ctr+1,rowpadding);
-		rowpaddingoffset   =  ctx->nrowspadded-ctx->lnrows[me];
+        ghost_lidx halo_ctr = 0;
+        //we need to know number of halo elements now
+        for(int k=0;k<nprocs;++k) {
+        if (k != me){ 
+            for (j=0;j<ctx->wishes[k];j++){
+                ++halo_ctr;
+            }
+        }
+        }
+
+        ctx->nrowspadded   =  PAD(ctx->lnrows[me]+halo_ctr+1,rowpadding);
+        rowpaddingoffset   =  ctx->nrowspadded-ctx->lnrows[me];
     } else {
-	 //ctx->nrowspadded = PAD(ctx->lnrows[me],rowpadding);// this is set already
-	 rowpaddingoffset = PAD(ctx->lnrows[me],rowpadding)-ctx->lnrows[me];
+	    //ctx->nrowspadded = PAD(ctx->lnrows[me],rowpadding);// this is set already
+	    rowpaddingoffset = PAD(ctx->lnrows[me],rowpadding)-ctx->lnrows[me];
     }
 
     GHOST_INSTR_START("compress_cols")

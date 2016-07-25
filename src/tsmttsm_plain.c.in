@@ -3,7 +3,6 @@
 #include "ghost/types.h"
 #include "ghost/math.h"
 #include "ghost/instr.h"
-#include "ghost/locality.h"
 #include "ghost/util.h"
 #include "ghost/tsmttsm_plain_gen.h"
 
@@ -34,12 +33,6 @@ ghost_error ghost_tsmttsm__u_plain_d_CFGK_CFGM_OUTERUNROLL_cm(ghost_densemat *x,
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
 
-    int myrank=0;
-
-    if (v->context) {
-        GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
-    }
-
     ghost_lidx n = v->traits.nrows;
     if (n%OUTERUNROLL) {
         n+=(OUTERUNROLL-n%OUTERUNROLL);
@@ -57,11 +50,6 @@ ghost_error ghost_tsmttsm__u_plain_d_CFGK_CFGM_OUTERUNROLL_cm(ghost_densemat *x,
     double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
     
-    // make sure that the initial x only gets added up once
-    if (myrank) {
-        dbeta = 0.;
-    }
-
     ghost_lidx i;
 #if 0
     ghost_lidx j,k;
@@ -145,10 +133,6 @@ ghost_error ghost_tsmttsm__u_plain_d_CFGK_CFGM_OUTERUNROLL_cm(ghost_densemat *x,
     }
 #endif
    
-    goto out;
-err:
-
-out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 }
@@ -158,12 +142,6 @@ ghost_error ghost_tsmttsm__a_plain_z_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_den
     UNUSED(conjv);
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
-
-    int myrank=0;
-
-    if (v->context) {
-        GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
-    }
 
     ghost_lidx n = v->traits.nrows;
     INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
@@ -183,11 +161,6 @@ ghost_error ghost_tsmttsm__a_plain_z_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_den
     ghost_mpi_op_sum(&mpiop_zadd,(ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
     ghost_mpi_datatype_get(&mpidt_z,(ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
     
-    // make sure that the initial x only gets added up once
-    if (myrank) {
-        dbeta = 0.;
-    }
-
     ghost_lidx i,j;
     
     ghost_lidx k;
@@ -255,10 +228,6 @@ ghost_error ghost_tsmttsm__a_plain_z_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_den
         free(x_priv);
     }
    
-    goto out;
-err:
-
-out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 }
@@ -268,12 +237,6 @@ ghost_error ghost_tsmttsm__a_plain_d_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_den
     UNUSED(conjv);
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
-
-    int myrank=0;
-
-    if (v->context) {
-        GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
-    }
 
     ghost_lidx n = v->traits.nrows;
     INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
@@ -288,11 +251,6 @@ ghost_error ghost_tsmttsm__a_plain_d_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_den
     double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
     
-    // make sure that the initial x only gets added up once
-    if (myrank) {
-        dbeta = 0.;
-    }
-
     ghost_lidx i,j;
     
     ghost_lidx k;
@@ -339,10 +297,6 @@ ghost_error ghost_tsmttsm__a_plain_d_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_den
         free(x_priv);
     }
    
-    goto out;
-err:
-
-out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 }
@@ -352,12 +306,6 @@ ghost_error ghost_tsmttsm__a_plain_d_CFGK_CFGM_4_cm(ghost_densemat *x, ghost_den
     UNUSED(conjv);
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
-
-    int myrank=0;
-
-    if (v->context) {
-        GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
-    }
 
     ghost_lidx n = v->traits.nrows;
     if (n%4) {
@@ -376,11 +324,6 @@ ghost_error ghost_tsmttsm__a_plain_d_CFGK_CFGM_4_cm(ghost_densemat *x, ghost_den
     double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
     
-    // make sure that the initial x only gets added up once
-    if (myrank) {
-        dbeta = 0.;
-    }
-
     ghost_lidx i,j,t;
     
     ghost_lidx k;
@@ -421,10 +364,6 @@ ghost_error ghost_tsmttsm__a_plain_d_CFGK_CFGM_4_cm(ghost_densemat *x, ghost_den
         free(x_priv);
     }
    
-    goto out;
-err:
-
-out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 }

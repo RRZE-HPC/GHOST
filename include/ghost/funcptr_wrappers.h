@@ -142,14 +142,15 @@ static inline ghost_error ghost_vscale(ghost_densemat *x, void *s)
  * @ingroup globops
  * @brief Normalizes a densemat (interpreted as a block vector).
  * @param x The densemat.
+ * @param mpicomm The communicator if a global normalization should be done.
  * @return ::GHOST_SUCCESS on success or an error indicator.
  *
  * This function normalizes every column of the matrix to have Euclidian norm 1.
  * This function is just a wrapper to ghost_densemat::normalize.
  */
-static inline ghost_error ghost_normalize(ghost_densemat *x)
+static inline ghost_error ghost_normalize(ghost_densemat *x, ghost_mpi_comm mpicomm)
 { 
-    return x->normalize(x); 
+    return x->normalize(x,mpicomm); 
 }
 
 /**
@@ -220,12 +221,13 @@ static inline ghost_error ghost_densemat_init_densemat(ghost_densemat *x, ghost_
  * @brief Initializes a densemat from a file.
  * @param x The densemat.
  * @param path Path to the file.
- * @param single Read from a single (global) file. Ignored in the non-MPI case.
+ * @param mpicomm If equal to MPI_COMM_SELF, each process will read from a separate file.
+ * Else, a combined file will be read with MPI I/O.
  * @return ::GHOST_SUCCESS on success or an error indicator.
  */
-static inline ghost_error ghost_densemat_init_file(ghost_densemat *x, char *path, bool single)
+static inline ghost_error ghost_densemat_init_file(ghost_densemat *x, char *path, ghost_mpi_comm mpicomm)
 {
-    return x->fromFile(x,path,single);
+    return x->fromFile(x,path,mpicomm);
 }
 
 /**
@@ -364,14 +366,15 @@ static inline ghost_error ghost_densemat_string(char **str, ghost_densemat *x)
 }
 
 /**
- * @brief Permute a densemat with according to its local permutation with a given direction.
+ * @brief Permute a densemat in a given direction.
  * @param x The densemat.
+ * @param ctx The context if a global permutation is present.
  * @param dir The permutation direction.
  * @return ::GHOST_SUCCESS on success or an error indicator.
  */
-static inline ghost_error ghost_densemat_permute(ghost_densemat *x, ghost_permutation_direction dir)
+static inline ghost_error ghost_densemat_permute(ghost_densemat *x, ghost_context *ctx, ghost_permutation_direction dir)
 {
-    return x->permute(x,dir);
+    return x->permute(x,ctx,dir);
 }
 
 /**

@@ -226,11 +226,11 @@ __global__ static void FUNCNAME(communicationassembly_kernel)(T *vec, T *work, g
     }
 }
 
-extern "C" ghost_error FUNCNAME(communicationassembly)(void * work, ghost_lidx *dueptr, ghost_lidx totaldues, ghost_densemat *vec, ghost_gidx *perm)
+extern "C" ghost_error FUNCNAME(communicationassembly)(void * work, ghost_lidx *dueptr, ghost_lidx totaldues, ghost_densemat *vec, ghost_context *ctx, ghost_gidx *perm)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
   
-    if (!vec->context->cu_duelist) {
+    if (!ctx->cu_duelist) {
        ERROR_LOG("cu_duelist must not be NULL!");
        return GHOST_ERR_INVALID_ARG;
     }
@@ -241,7 +241,6 @@ extern "C" ghost_error FUNCNAME(communicationassembly)(void * work, ghost_lidx *
 
 
     int nrank, proc, me;
-    ghost_context *ctx = vec->context;
     
     ghost_nrank(&nrank,ctx->mpicomm); 
     ghost_rank(&me,ctx->mpicomm);

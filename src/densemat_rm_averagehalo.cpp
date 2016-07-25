@@ -7,7 +7,7 @@
 #include "ghost/densemat_iter_macros.h"
 
 template<typename T>
-static ghost_error ghost_densemat_rm_averagehalo_tmpl(ghost_densemat *vec)
+static ghost_error ghost_densemat_rm_averagehalo_tmpl(ghost_densemat *vec, ghost_context *ctx)
 {
 #ifdef GHOST_HAVE_MPI
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
@@ -26,16 +26,17 @@ static ghost_error ghost_densemat_rm_averagehalo_tmpl(ghost_densemat *vec)
         goto err;
     }
 */
-    if (vec->context == NULL) {
+
+    if (ctx == NULL) {
         WARNING_LOG("Trying to average the halos of a densemat which has no context!");
         goto out;
     }
 
-    GHOST_CALL_GOTO(ghost_rank(&rank,vec->context->mpicomm),err,ret);
-    GHOST_CALL_GOTO(ghost_nrank(&nrank,vec->context->mpicomm),err,ret);
+    GHOST_CALL_GOTO(ghost_rank(&rank,ctx->mpicomm),err,ret);
+    GHOST_CALL_GOTO(ghost_nrank(&nrank,ctx->mpicomm),err,ret);
   
     for (i=0; i<nrank; i++) {
-       acc_dues += vec->context->dues[i];
+       acc_dues += ctx->dues[i];
     }
     
     GHOST_CALL_GOTO(ghost_malloc((void **)&work, vec->traits.ncols*acc_dues*sizeof(T)),err,ret);
@@ -45,50 +46,47 @@ static ghost_error ghost_densemat_rm_averagehalo_tmpl(ghost_densemat *vec)
         req[i] = MPI_REQUEST_NULL;
     }
 
-   /* if(vec->context->perm_local && vec->context->flags & GHOST_PERM_NO_DISTINCTION){
+   /* if(ctx->perm_local && ctx->flags & GHOST_PERM_NO_DISTINCTION){
     	for (int to_PE=0; to_PE<nrank; to_PE++) {
 		T* packed_data;
-		GHOST_CALL_GOTO(ghost_malloc((void **)&packed_data, vec->context->wishes[to_PE]*vec->traits.ncols*vec->elSize),err,ret);
+		GHOST_CALL_GOTO(ghost_malloc((void **)&packed_data, ctx->wishes[to_PE]*vec->traits.ncols*vec->elSize),err,ret);
 
     //   printf("packed data\n");	
-		for (int i=0; i<vec->context->wishes[to_PE]; i++){
+		for (int i=0; i<ctx->wishes[to_PE]; i++){
                     for (int c=0; c<vec->traits.ncols; c++) {
-                       memcpy(&packed_data[(c*vec->context->wishes[to_PE]+i)],DENSEMAT_VALPTR(vec,vec->context->perm_local->colPerm[vec->context->hput_pos[to_PE]+i],c),vec->elSize);
-//			printf("%f\n",packed_data[(c*vec->context->wishes[to_PE]+i)]);
+                       memcpy(&packed_data[(c*ctx->wishes[to_PE]+i)],DENSEMAT_VALPTR(vec,ctx->perm_local->colPerm[ctx->hput_pos[to_PE]+i],c),vec->elSize);
+//			printf("%f\n",packed_data[(c*ctx->wishes[to_PE]+i)]);
 
                     }
                 }
                //TODO blocking and delete packed_data        
-               MPI_CALL_GOTO(MPI_Isend(packed_data,vec->context->wishes[to_PE]*vec->traits.ncols,vec->mpidt,to_PE,rank,vec->context->mpicomm,&req[to_PE]),err,ret);
+               MPI_CALL_GOTO(MPI_Isend(packed_data,ctx->wishes[to_PE]*vec->traits.ncols,vec->mpidt,to_PE,rank,ctx->mpicomm,&req[to_PE]),err,ret);
         
    	}
 
     } else {*/
-        for (i=0; i<nrank; i++) {		
-                MPI_CALL_GOTO(MPI_Isend(&((T *)vec->val)[vec->context->hput_pos[i]*vec->traits.ncols],vec->context->wishes[i]*vec->traits.ncols,vec->mpidt,i,rank,vec->context->mpicomm,&req[i]),err,ret);
-        }
+    for (i=0; i<nrank; i++) {
+      MPI_CALL_GOTO(MPI_Isend(&((T *)vec->val)[ctx->hput_pos[i]*vec->traits.ncols],ctx->wishes[i]*vec->traits.ncols,vec->mpidt,i,rank,ctx->mpicomm,&req[i]),err,ret);
+    }
    // }
 
     curwork = work;
     for (i=0; i<nrank; i++) {
-         MPI_CALL_GOTO(MPI_Irecv(curwork,vec->context->dues[i]*vec->traits.ncols,vec->mpidt,i,i,vec->context->mpicomm,&req[nrank+i]),err,ret);
-        curwork += vec->context->dues[i];
+         MPI_CALL_GOTO(MPI_Irecv(curwork,ctx->dues[i]*vec->traits.ncols,vec->mpidt,i,i,ctx->mpicomm,&req[nrank+i]),err,ret);
+        curwork += ctx->dues[i];
     }
     
-
     MPI_CALL_GOTO(MPI_Waitall(2*nrank,req,MPI_STATUSES_IGNORE),err,ret);
    
-
-
-     GHOST_CALL_GOTO(ghost_malloc((void **)&sum, vec->traits.ncols*vec->traits.nrows*sizeof(T)),err,ret);
-     GHOST_CALL_GOTO(ghost_malloc((void **)&nrankspresent, vec->traits.nrows*sizeof(int)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&sum, vec->traits.ncols*vec->traits.nrows*sizeof(T)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&nrankspresent, vec->traits.nrows*sizeof(int)),err,ret);
 
 #pragma omp parallel for schedule(static) private(i,j)
      for (i=0; i<vec->traits.nrows; i++) {	
-	     if(vec->context->perm_local) {
-		     if(vec->context->perm_local->colInvPerm[i]< vec->context->lnrows[rank] ) { //This check is important since entsInCol has only lnrows(NO_DISTINCTION
+	     if(ctx->perm_local) {
+		     if(ctx->perm_local->colInvPerm[i]< ctx->lnrows[rank] ) { //This check is important since entsInCol has only lnrows(NO_DISTINCTION
 			     //might give seg fault else) the rest are halo anyway, not needed for local sums
-			     nrankspresent[i] = vec->context->entsInCol[vec->context->perm_local->colInvPerm[i]]?1:0; //this has also to be permuted since it was
+			     nrankspresent[i] = ctx->entsInCol[ctx->perm_local->colInvPerm[i]]?1:0; //this has also to be permuted since it was
 			     //for unpermuted columns that we calculate
 			     if(nrankspresent[i]==1){
 				     for(j=0;j<vec->traits.ncols;++j){
@@ -106,7 +104,7 @@ static ghost_error ghost_densemat_rm_averagehalo_tmpl(ghost_densemat *vec)
 			     }
 		     } 	
 	     } else {
-		     nrankspresent[i] = vec->context->entsInCol[i]?1:0;		
+		     nrankspresent[i] = ctx->entsInCol[i]?1:0;		
 		     if(nrankspresent[i]==1) {
 			     for(j=0;j<vec->traits.ncols;++j){
 				     sum[i*vec->traits.ncols+j] = ((T *)vec->val)[i*vec->traits.ncols+j];
@@ -122,67 +120,67 @@ static ghost_error ghost_densemat_rm_averagehalo_tmpl(ghost_densemat *vec)
      ghost_lidx currow;
      curwork = work;
 
-    for (i=0; i<nrank; i++) {
-	    if(vec->context->perm_local) {
-#pragma omp parallel for schedule(static) private(d,j)
-	        for (d=0 ;d < vec->context->dues[i]; d++) {
+for (i=0; i<nrank; i++) {
+  if(ctx->perm_local) {
+  #pragma omp parallel for schedule(static) private(d,j)
+    for (d=0 ;d < ctx->dues[i]; d++) {
 			for(j=0 ; j<vec->traits.ncols; ++j) {
-		    		sum[( vec->context->perm_local->colPerm[vec->context->duelist[i][d]] )*vec->traits.ncols + j] += curwork[d*vec->traits.ncols+j];
-			 }
-			nrankspresent[vec->context->perm_local->colPerm[vec->context->duelist[i][d]]]++; 
+	    		sum[( ctx->perm_local->colPerm[ctx->duelist[i][d]] )*vec->traits.ncols + j] += curwork[d*vec->traits.ncols+j];
+		  }
+		  nrankspresent[ctx->perm_local->colPerm[ctx->duelist[i][d]]]++; 
 		}
-	    } else {
+	} else {
 #pragma omp parallel for schedule(static) private(d,j)
-	        for (d=0 ;d < vec->context->dues[i]; d++) {
-  		      for(j=0 ; j<vec->traits.ncols; ++j) {
-              		sum[(vec->context->duelist[i][d])*vec->traits.ncols+j] += curwork[d*vec->traits.ncols+j];
-            	      }
-            	      nrankspresent[vec->context->duelist[i][d]]++; 
-		 } 
-	      }
-           curwork += vec->context->dues[i]*vec->traits.ncols;
-    }
+    for (d=0 ;d < ctx->dues[i]; d++) {
+  	  for(j=0 ; j<vec->traits.ncols; ++j) {
+        sum[(ctx->duelist[i][d])*vec->traits.ncols+j] += curwork[d*vec->traits.ncols+j];
+      }
+        nrankspresent[ctx->duelist[i][d]]++; 
+    } 
+  }
+      curwork += ctx->dues[i]*vec->traits.ncols;
+}
 
 #pragma omp parallel for schedule(static) private(currow,j)
     for (currow=0; currow<vec->traits.nrows; currow++) {
       if(nrankspresent[currow]!=0) {
-		for(j=0; j<vec->traits.ncols; ++j) {
- 	       		((T *)vec->val)[currow*vec->traits.ncols+j] = sum[currow*vec->traits.ncols+j]/(T)nrankspresent[currow];
-		}
+		    for(j=0; j<vec->traits.ncols; ++j) {
+ 	        ((T *)vec->val)[currow*vec->traits.ncols+j] = sum[currow*vec->traits.ncols+j]/(T)nrankspresent[currow];
+		    }
 	    }
     }
 
 /* } else { 
-    GHOST_CALL_GOTO(ghost_malloc((void **)&sum, vec->context->lnrows[rank]*sizeof(T)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&nrankspresent, vec->context->lnrows[rank]*sizeof(int)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&sum, ctx->lnrows[rank]*sizeof(T)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&nrankspresent, ctx->lnrows[rank]*sizeof(int)),err,ret);
 
     
-    for (i=0; i<vec->context->lnrows[rank]; i++) {
+    for (i=0; i<ctx->lnrows[rank]; i++) {
         sum[i] = ((T *)vec->val)[i];
-    	nrankspresent[i] = vec->context->entsInCol[i]?1:0;	
+    	nrankspresent[i] = ctx->entsInCol[i]?1:0;	
     }
     
     ghost_lidx currow;
     curwork = work;
     for (i=0; i<nrank; i++) {
-        for (d=0 ;d < vec->context->dues[i]; d++) {
-	   if(vec->context->perm_local) {
-	           sum[vec->context->perm_local->colPerm[vec->context->duelist[i][d]]] +=  curwork[d];
-	           nrankspresent[vec->context->perm_local->colPerm[vec->context->duelist[i][d]]]++;
+        for (d=0 ;d < ctx->dues[i]; d++) {
+	   if(ctx->perm_local) {
+	           sum[ctx->perm_local->colPerm[ctx->duelist[i][d]]] +=  curwork[d];
+	           nrankspresent[ctx->perm_local->colPerm[ctx->duelist[i][d]]]++;
 	   } else {
-          	   sum[vec->context->duelist[i][d]] += curwork[d];
-           	   nrankspresent[vec->context->duelist[i][d]]++;
+          	   sum[ctx->duelist[i][d]] += curwork[d];
+           	   nrankspresent[ctx->duelist[i][d]]++;
 	   }        
         }
-        curwork += vec->context->dues[i];
+        curwork += ctx->dues[i];
     }
 
-      for (i=0; i<vec->context->lnrows[rank]; i++) {
+      for (i=0; i<ctx->lnrows[rank]; i++) {
         printf("<%d> ranks of row[%d] = %d\n",rank,i,nrankspresent[i]);
     }
 
         
-    for (currow=0; currow<vec->context->lnrows[rank]; currow++) { 
+    for (currow=0; currow<ctx->lnrows[rank]; currow++) { 
         ((T *)vec->val)[currow] = sum[currow]/(T)nrankspresent[currow];
     }
    }
@@ -205,12 +203,12 @@ out:
 #endif
 }
 
-ghost_error ghost_densemat_rm_averagehalo_selector(ghost_densemat *vec)
+ghost_error ghost_densemat_rm_averagehalo_selector(ghost_densemat *vec, ghost_context *ctx)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
     ghost_error ret = GHOST_SUCCESS;
 
-    SELECT_TMPL_1DATATYPE(vec->traits.datatype,std::complex,ret,ghost_densemat_rm_averagehalo_tmpl,vec);
+    SELECT_TMPL_1DATATYPE(vec->traits.datatype,std::complex,ret,ghost_densemat_rm_averagehalo_tmpl,vec,ctx);
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_COMMUNICATION);
     return ret;

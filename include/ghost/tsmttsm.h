@@ -40,6 +40,7 @@ extern "C" {
      * @param[in] alpha
      * @param[in] beta
      * @param[in] reduce
+     * @param[in] context In which context to do the reduction if one is specified.
      * @param[in] conjv If v should be conjugated, set this to != 1.
      * @param[in] flags Flags. Currently, they are only checked for ::GHOST_GEMM_KAHAN.
      *
@@ -58,7 +59,7 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error ghost_tsmttsm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int reduce, int conjv,ghost_gemm_flags flags);
+    ghost_error ghost_tsmttsm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int reduce, ghost_context *ctx, int conjv,ghost_gemm_flags flags);
     
     /**
      * @brief Check whether TSMTTSM can be applied instead of GEMM with the given arguments.
@@ -77,7 +78,7 @@ extern "C" {
      * @return 
      */
     ghost_error ghost_tsmttsm_valid(ghost_densemat *x, ghost_densemat *v, const char * transv, 
-        ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce, ghost_gemm_flags flags, int printerror);
+        ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce, ghost_context *ctx, ghost_gemm_flags flags, int printerror);
 
 #ifdef __cplusplus
 }

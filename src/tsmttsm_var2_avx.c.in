@@ -3,7 +3,6 @@
 #include "ghost/types.h"
 #include "ghost/math.h"
 #include "ghost/instr.h"
-#include "ghost/locality.h"
 #include "ghost/util.h"
 #include "ghost/tsmttsm_var2_avx_gen.h"
 #include <immintrin.h>
@@ -23,12 +22,6 @@ ghost_error ghost_tsmttsm__a_avx_d_x_x_1_rm(ghost_densemat *x, ghost_densemat *v
 #ifdef GHOST_BUILD_AVX
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
-
-    int myrank=0;
-
-    if (v->context) {
-        GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
-    }
 
     const double * const restrict vval = (const double *) v->val;
     const double * const restrict wval = (const double *) w->val;
@@ -50,137 +43,121 @@ ghost_error ghost_tsmttsm__a_avx_d_x_x_1_rm(ghost_densemat *x, ghost_densemat *v
     double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
     
-    // make sure that the initial x only gets added up once
-    if (myrank) {
-        dbeta = 0.;
-        betavec = _mm256_setzero_pd();
-    }
-
     ghost_lidx i,m;
 
-    if (x->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
-        ghost_lidx k;
-        for (k=0; k<x->traits.ncols; k++) {
-            for (m=0; m+4<=x->traits.nrows; m+=4) {
-                _mm256_storeu_pd(&xval[k*ldx+m],_mm256_mul_pd(_mm256_loadu_pd(&xval[k*ldx+m]),betavec));
-            }
-            for (; m<x->traits.nrows; m++) {
-                xval[k*ldx+m] = dbeta*xval[k*ldx+m];
-            }
+    ghost_lidx k;
+    for (k=0; k<x->traits.ncols; k++) {
+        for (m=0; m+4<=x->traits.nrows; m+=4) {
+            _mm256_storeu_pd(&xval[k*ldx+m],_mm256_mul_pd(_mm256_loadu_pd(&xval[k*ldx+m]),betavec));
         }
+        for (; m<x->traits.nrows; m++) {
+            xval[k*ldx+m] = dbeta*xval[k*ldx+m];
+        }
+    }
 #pragma omp parallel private(m,k)
-        {
-            m=0;
-            #GHOST_UNROLL#__m256d vvec@;#4
-            #GHOST_UNROLL#__m256d wvec@;#4
+    {
+        m=0;
+        #GHOST_UNROLL#__m256d vvec@;#4
+        #GHOST_UNROLL#__m256d wvec@;#4
 
-            double *x_priv;
-            ghost_lidx ldxpriv = PAD(ldv,4);
-            if (ldxpriv != ldv) {
-                INFO_LOG("Pad xpriv from %d to %d",ldv,ldxpriv);
-            }
-            ghost_malloc_align((void **)&x_priv,ldxpriv*ldw*sizeof(double),32);
-            memset(x_priv,0,ldxpriv*ldw*sizeof(double));
-            
-            if (fabs(dalpha-1.) > DBL_MIN) { 
+        double *x_priv;
+        ghost_lidx ldxpriv = PAD(ldv,4);
+        if (ldxpriv != ldv) {
+            INFO_LOG("Pad xpriv from %d to %d",ldv,ldxpriv);
+        }
+        ghost_malloc_align((void **)&x_priv,ldxpriv*ldw*sizeof(double),32);
+        memset(x_priv,0,ldxpriv*ldw*sizeof(double));
+        
+        if (fabs(dalpha-1.) > DBL_MIN) { 
 
 #pragma omp for schedule(runtime)
-                for (i=0; i<n; i++) {
-                    for (k=0; k+4<=x->traits.ncols; k+=4) {
-                        #GHOST_UNROLL#wvec@ = _mm256_mul_pd(_mm256_set1_pd(wval[i*ldw+(k+@)]),alphavec);#4
-                       
-                        for (m=0; m+4<=x->traits.nrows; m+=4) {
-                            #GHOST_UNROLL#vvec@ = _mm256_mul_pd(_mm256_loadu_pd(&vval[i*ldv+m]),wvec@);#4
-                            #GHOST_UNROLL#_mm256_store_pd(&x_priv[(k+@)*ldxpriv+m],_mm256_add_pd(_mm256_load_pd(&x_priv[(k+@)*ldxpriv+m]),vvec@));#4
-
-                        }
-                        for (; m<x->traits.nrows; m++) {
-                            x_priv[(k+0)*ldxpriv+m] += dalpha*vval[i*ldv+m]*wval[i*ldw+(k+0)];
-                            x_priv[(k+1)*ldxpriv+m] += dalpha*vval[i*ldv+m]*wval[i*ldw+(k+1)];
-                            x_priv[(k+2)*ldxpriv+m] += dalpha*vval[i*ldv+m]*wval[i*ldw+(k+2)];
-                            x_priv[(k+3)*ldxpriv+m] += dalpha*vval[i*ldv+m]*wval[i*ldw+(k+3)];
-                        }
-                    }
-                    for (; k<x->traits.ncols; k++) {
-                        wvec0 = _mm256_mul_pd(_mm256_set1_pd(wval[i*ldw+(k+0)]),alphavec);
-                        for (m=0; m+4<=x->traits.nrows; m+=4) {
-                            vvec0 = _mm256_mul_pd(_mm256_loadu_pd(&vval[i*ldv+m]),wvec0);
-                            _mm256_store_pd(&x_priv[(k+0)*ldxpriv+m],_mm256_add_pd(_mm256_load_pd(&x_priv[(k+0)*ldxpriv+m]),vvec0));
-                        }
-                        for (; m<x->traits.nrows; m++) {
-                            x_priv[k*ldxpriv+m] += dalpha*vval[i*ldv+m]*wval[i*ldw+k];
-                        }
-                    }
-                }
-            } else {
-                INFO_LOG("fast case alpha=1");
-#pragma omp for schedule(runtime)
-                for (i=0; i<n; i++) {
-                    for (k=0; k+4<=x->traits.ncols; k+=4) {
-                        #GHOST_UNROLL#wvec@ = _mm256_set1_pd(wval[i*ldw+(k+@)]);#4
-                       
-                        for (m=0; m+4<=x->traits.nrows; m+=4) {
-                            #GHOST_UNROLL#vvec@ = _mm256_mul_pd(_mm256_loadu_pd(&vval[i*ldv+m]),wvec@);#4
-                            #GHOST_UNROLL#_mm256_store_pd(&x_priv[(k+@)*ldxpriv+m],_mm256_add_pd(_mm256_load_pd(&x_priv[(k+@)*ldxpriv+m]),vvec@));#4
-
-                        }
-                        for (; m<x->traits.nrows; m++) {
-                            x_priv[(k+0)*ldxpriv+m] += vval[i*ldv+m]*wval[i*ldw+(k+0)];
-                            x_priv[(k+1)*ldxpriv+m] += vval[i*ldv+m]*wval[i*ldw+(k+1)];
-                            x_priv[(k+2)*ldxpriv+m] += vval[i*ldv+m]*wval[i*ldw+(k+2)];
-                            x_priv[(k+3)*ldxpriv+m] += vval[i*ldv+m]*wval[i*ldw+(k+3)];
-                        }
-                    }
-                    for (; k<x->traits.ncols; k++) {
-                        wvec0 = _mm256_set1_pd(wval[i*ldw+(k+0)]);
-                        for (m=0; m+4<=x->traits.nrows; m+=4) {
-                            vvec0 = _mm256_mul_pd(_mm256_loadu_pd(&vval[i*ldv+m]),wvec0);
-                            _mm256_store_pd(&x_priv[(k+0)*ldxpriv+m],_mm256_add_pd(_mm256_load_pd(&x_priv[(k+0)*ldxpriv+m]),vvec0));
-                        }
-                        for (; m<x->traits.nrows; m++) {
-                            x_priv[k*ldxpriv+m] += vval[i*ldv+m]*wval[i*ldw+k];
-                        }
-                    }
-                }
-            }
-                
-            
-#pragma omp critical
-            {
-                m=0;
+            for (i=0; i<n; i++) {
                 for (k=0; k+4<=x->traits.ncols; k+=4) {
+                    #GHOST_UNROLL#wvec@ = _mm256_mul_pd(_mm256_set1_pd(wval[i*ldw+(k+@)]),alphavec);#4
+                   
                     for (m=0; m+4<=x->traits.nrows; m+=4) {
-                        #GHOST_UNROLL#_mm256_storeu_pd(&xval[(k+@)*ldx+m],_mm256_add_pd(_mm256_loadu_pd(&xval[(k+@)*ldx+m]),_mm256_load_pd(&x_priv[(k+@)*ldxpriv+m])));#4
+                        #GHOST_UNROLL#vvec@ = _mm256_mul_pd(_mm256_loadu_pd(&vval[i*ldv+m]),wvec@);#4
+                        #GHOST_UNROLL#_mm256_store_pd(&x_priv[(k+@)*ldxpriv+m],_mm256_add_pd(_mm256_load_pd(&x_priv[(k+@)*ldxpriv+m]),vvec@));#4
+
                     }
                     for (; m<x->traits.nrows; m++) {
-                        xval[(k+0)*ldx+m] += x_priv[(k+0)*ldxpriv+m];
-                        xval[(k+1)*ldx+m] += x_priv[(k+1)*ldxpriv+m];
-                        xval[(k+2)*ldx+m] += x_priv[(k+2)*ldxpriv+m];
-                        xval[(k+3)*ldx+m] += x_priv[(k+3)*ldxpriv+m];
+                        x_priv[(k+0)*ldxpriv+m] += dalpha*vval[i*ldv+m]*wval[i*ldw+(k+0)];
+                        x_priv[(k+1)*ldxpriv+m] += dalpha*vval[i*ldv+m]*wval[i*ldw+(k+1)];
+                        x_priv[(k+2)*ldxpriv+m] += dalpha*vval[i*ldv+m]*wval[i*ldw+(k+2)];
+                        x_priv[(k+3)*ldxpriv+m] += dalpha*vval[i*ldv+m]*wval[i*ldw+(k+3)];
                     }
                 }
                 for (; k<x->traits.ncols; k++) {
+                    wvec0 = _mm256_mul_pd(_mm256_set1_pd(wval[i*ldw+(k+0)]),alphavec);
                     for (m=0; m+4<=x->traits.nrows; m+=4) {
-                        _mm256_storeu_pd(&xval[(k+0)*ldx+m],_mm256_add_pd(_mm256_loadu_pd(&xval[(k+0)*ldx+m]),_mm256_load_pd(&x_priv[(k+0)*ldxpriv+m])));
+                        vvec0 = _mm256_mul_pd(_mm256_loadu_pd(&vval[i*ldv+m]),wvec0);
+                        _mm256_store_pd(&x_priv[(k+0)*ldxpriv+m],_mm256_add_pd(_mm256_load_pd(&x_priv[(k+0)*ldxpriv+m]),vvec0));
                     }
                     for (; m<x->traits.nrows; m++) {
-                        xval[k*ldx+m] += x_priv[k*ldxpriv+m];
+                        x_priv[k*ldxpriv+m] += dalpha*vval[i*ldv+m]*wval[i*ldw+k];
                     }
                 }
             }
-            free(x_priv);
+        } else {
+            INFO_LOG("fast case alpha=1");
+#pragma omp for schedule(runtime)
+            for (i=0; i<n; i++) {
+                for (k=0; k+4<=x->traits.ncols; k+=4) {
+                    #GHOST_UNROLL#wvec@ = _mm256_set1_pd(wval[i*ldw+(k+@)]);#4
+                   
+                    for (m=0; m+4<=x->traits.nrows; m+=4) {
+                        #GHOST_UNROLL#vvec@ = _mm256_mul_pd(_mm256_loadu_pd(&vval[i*ldv+m]),wvec@);#4
+                        #GHOST_UNROLL#_mm256_store_pd(&x_priv[(k+@)*ldxpriv+m],_mm256_add_pd(_mm256_load_pd(&x_priv[(k+@)*ldxpriv+m]),vvec@));#4
+
+                    }
+                    for (; m<x->traits.nrows; m++) {
+                        x_priv[(k+0)*ldxpriv+m] += vval[i*ldv+m]*wval[i*ldw+(k+0)];
+                        x_priv[(k+1)*ldxpriv+m] += vval[i*ldv+m]*wval[i*ldw+(k+1)];
+                        x_priv[(k+2)*ldxpriv+m] += vval[i*ldv+m]*wval[i*ldw+(k+2)];
+                        x_priv[(k+3)*ldxpriv+m] += vval[i*ldv+m]*wval[i*ldw+(k+3)];
+                    }
+                }
+                for (; k<x->traits.ncols; k++) {
+                    wvec0 = _mm256_set1_pd(wval[i*ldw+(k+0)]);
+                    for (m=0; m+4<=x->traits.nrows; m+=4) {
+                        vvec0 = _mm256_mul_pd(_mm256_loadu_pd(&vval[i*ldv+m]),wvec0);
+                        _mm256_store_pd(&x_priv[(k+0)*ldxpriv+m],_mm256_add_pd(_mm256_load_pd(&x_priv[(k+0)*ldxpriv+m]),vvec0));
+                    }
+                    for (; m<x->traits.nrows; m++) {
+                        x_priv[k*ldxpriv+m] += vval[i*ldv+m]*wval[i*ldw+k];
+                    }
+                }
+            }
+        }
+            
+        
+#pragma omp critical
+        {
+            m=0;
+            for (k=0; k+4<=x->traits.ncols; k+=4) {
+                for (m=0; m+4<=x->traits.nrows; m+=4) {
+                    #GHOST_UNROLL#_mm256_storeu_pd(&xval[(k+@)*ldx+m],_mm256_add_pd(_mm256_loadu_pd(&xval[(k+@)*ldx+m]),_mm256_load_pd(&x_priv[(k+@)*ldxpriv+m])));#4
+                }
+                for (; m<x->traits.nrows; m++) {
+                    xval[(k+0)*ldx+m] += x_priv[(k+0)*ldxpriv+m];
+                    xval[(k+1)*ldx+m] += x_priv[(k+1)*ldxpriv+m];
+                    xval[(k+2)*ldx+m] += x_priv[(k+2)*ldxpriv+m];
+                    xval[(k+3)*ldx+m] += x_priv[(k+3)*ldxpriv+m];
+                }
+            }
+            for (; k<x->traits.ncols; k++) {
+                for (m=0; m+4<=x->traits.nrows; m+=4) {
+                    _mm256_storeu_pd(&xval[(k+0)*ldx+m],_mm256_add_pd(_mm256_loadu_pd(&xval[(k+0)*ldx+m]),_mm256_load_pd(&x_priv[(k+0)*ldxpriv+m])));
+                }
+                for (; m<x->traits.nrows; m++) {
+                    xval[k*ldx+m] += x_priv[k*ldxpriv+m];
+                }
+            }
+        }
+        free(x_priv);
     }
             
-    } else {
-        ERROR_LOG("Will be implemented soon :-)!");
-        ret = GHOST_ERR_NOT_IMPLEMENTED;
-        goto err;
-    }
    
-    goto out;
-err:
-
-out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 #else

@@ -30,6 +30,7 @@
 typedef struct {
     ghost_densemat *rhs;
     ghost_densemat_halo_comm *comm;
+    ghost_context *ctx;
 } commArgs;
 
 static void *communicate(void *vargs)
@@ -39,8 +40,8 @@ static void *communicate(void *vargs)
     ghost_error *ret = NULL;
     GHOST_CALL_GOTO(ghost_malloc((void **)&ret,sizeof(ghost_error)),err,*ret);
     *ret = GHOST_SUCCESS;
-    GHOST_CALL_GOTO(args->rhs->halocommStart(args->rhs,args->comm),err,*ret);
-    GHOST_CALL_GOTO(args->rhs->halocommFinalize(args->rhs,args->comm),err,*ret);
+    GHOST_CALL_GOTO(args->rhs->halocommStart(args->rhs,args->ctx,args->comm),err,*ret);
+    GHOST_CALL_GOTO(args->rhs->halocommFinalize(args->rhs,args->ctx,args->comm),err,*ret);
 
     goto out;
 err:
@@ -131,6 +132,7 @@ ghost_error ghost_spmv_taskmode(ghost_densemat* res, ghost_sparsemat* mat, ghost
 
     cargs.rhs = invec;
     cargs.comm = &comm;
+    cargs.ctx = mat->context;
     cplargs.mat = mat->localPart;
     cplargs.invec = invec;
     cplargs.res = res;
@@ -140,7 +142,7 @@ ghost_error ghost_spmv_taskmode(ghost_densemat* res, ghost_sparsemat* mat, ghost
     
     GHOST_INSTR_START("haloassembly");
     
-    GHOST_CALL_GOTO(invec->halocommInit(invec,&comm),err,ret);
+    GHOST_CALL_GOTO(invec->halocommInit(invec,mat->context,&comm),err,ret);
     
     GHOST_INSTR_STOP("haloassembly");
 

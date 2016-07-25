@@ -3,7 +3,6 @@
 #include "ghost/types.h"
 #include "ghost/math.h"
 #include "ghost/instr.h"
-#include "ghost/locality.h"
 #include "ghost/util.h"
 #include "ghost/tsmttsm_var2_plain_gen.h"
 
@@ -13,12 +12,6 @@ ghost_error ghost_tsmttsm__a_plain_d_x_x_1_rm(ghost_densemat *x, ghost_densemat 
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
     ghost_lidx K = w->traits.ncols;
-
-    int myrank=0;
-
-    if (v->context) {
-        GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
-    }
 
     ghost_lidx n = v->traits.nrows;
     ghost_lidx m = v->traits.ncols;
@@ -36,11 +29,6 @@ ghost_error ghost_tsmttsm__a_plain_d_x_x_1_rm(ghost_densemat *x, ghost_densemat 
     double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
     
-    // make sure that the initial x only gets added up once
-    if (myrank) {
-        dbeta = 0.;
-    }
-
     ghost_lidx i,j;
     
     ghost_lidx k;
@@ -82,10 +70,6 @@ ghost_error ghost_tsmttsm__a_plain_d_x_x_1_rm(ghost_densemat *x, ghost_densemat 
         free(x_priv);
     }
     
-    goto out;
-err:
-
-out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 }
@@ -96,12 +80,6 @@ ghost_error ghost_tsmttsm__u_plain_d_x_x_1_rm(ghost_densemat *x, ghost_densemat 
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
     ghost_lidx K = w->traits.ncols;
-
-    int myrank=0;
-
-    if (v->context) {
-        GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
-    }
 
     ghost_lidx n = v->traits.nrows;
     ghost_lidx m = v->traits.ncols;
@@ -119,11 +97,6 @@ ghost_error ghost_tsmttsm__u_plain_d_x_x_1_rm(ghost_densemat *x, ghost_densemat 
     const ghost_lidx ldx = x->stride;
     
     
-    // make sure that the initial x only gets added up once
-    if (myrank) {
-        dbeta = 0.;
-    }
-
     ghost_lidx i,j;
     
     ghost_lidx k;
@@ -165,10 +138,6 @@ ghost_error ghost_tsmttsm__u_plain_d_x_x_1_rm(ghost_densemat *x, ghost_densemat 
         free(x_priv);
     }
     
-    goto out;
-err:
-
-out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 }
@@ -180,12 +149,6 @@ ghost_error ghost_tsmttsm__u_plain_d_x_x_1_cm(ghost_densemat *x, ghost_densemat 
     ghost_error ret = GHOST_SUCCESS;
     ghost_lidx K = w->traits.ncols;
 
-    int myrank=0;
-
-    if (v->context) {
-        GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
-    }
-
     ghost_lidx n = v->traits.nrows;
     ghost_lidx m = v->traits.ncols;
     
@@ -202,11 +165,6 @@ ghost_error ghost_tsmttsm__u_plain_d_x_x_1_cm(ghost_densemat *x, ghost_densemat 
     double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
     
-    // make sure that the initial x only gets added up once
-    if (myrank) {
-        dbeta = 0.;
-    }
-
     ghost_lidx i,j;
     
     ghost_lidx k;
@@ -248,10 +206,6 @@ ghost_error ghost_tsmttsm__u_plain_d_x_x_1_cm(ghost_densemat *x, ghost_densemat 
         free(x_priv);
     }
     
-    goto out;
-err:
-
-out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 }
@@ -263,12 +217,6 @@ ghost_error ghost_tsmttsm__a_plain_d_x_x_1_cm(ghost_densemat *x, ghost_densemat 
     ghost_error ret = GHOST_SUCCESS;
     ghost_lidx K = w->traits.ncols;
 
-    int myrank=0;
-
-    if (v->context) {
-        GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
-    }
-
     ghost_lidx n = v->traits.nrows;
     ghost_lidx m = v->traits.ncols;
     
@@ -285,11 +233,6 @@ ghost_error ghost_tsmttsm__a_plain_d_x_x_1_cm(ghost_densemat *x, ghost_densemat 
     double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
     
-    // make sure that the initial x only gets added up once
-    if (myrank) {
-        dbeta = 0.;
-    }
-
     ghost_lidx i,j;
     
     ghost_lidx k;
@@ -327,10 +270,6 @@ ghost_error ghost_tsmttsm__a_plain_d_x_x_1_cm(ghost_densemat *x, ghost_densemat 
         free(x_priv);
     }
     
-    goto out;
-err:
-
-out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 }
@@ -341,12 +280,6 @@ ghost_error ghost_tsmttsm__a_plain_z_x_x_1_rm(ghost_densemat *x, ghost_densemat 
     ghost_error ret = GHOST_SUCCESS;
     ghost_lidx K = w->traits.ncols;
 
-    int myrank=0;
-
-    if (v->context) {
-        GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
-    }
-
     ghost_lidx n = v->traits.nrows;
     ghost_lidx m = v->traits.ncols;
     
@@ -368,11 +301,6 @@ ghost_error ghost_tsmttsm__a_plain_z_x_x_1_rm(ghost_densemat *x, ghost_densemat 
     ghost_mpi_op_sum(&mpiop_zadd,(ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
     ghost_mpi_datatype_get(&mpidt_z,(ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
     
-    // make sure that the initial x only gets added up once
-    if (myrank) {
-        dbeta = 0.+I*0.;
-    }
-
     ghost_lidx i,j;
     
     ghost_lidx k;
@@ -420,10 +348,6 @@ ghost_error ghost_tsmttsm__a_plain_z_x_x_1_rm(ghost_densemat *x, ghost_densemat 
         free(x_priv);
     }
     
-    goto out;
-err:
-
-out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 }
@@ -434,12 +358,6 @@ ghost_error ghost_tsmttsm__u_plain_z_x_x_1_rm(ghost_densemat *x, ghost_densemat 
     ghost_error ret = GHOST_SUCCESS;
     ghost_lidx K = w->traits.ncols;
 
-    int myrank=0;
-
-    if (v->context) {
-        GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
-    }
-
     ghost_lidx n = v->traits.nrows;
     ghost_lidx m = v->traits.ncols;
     
@@ -461,11 +379,6 @@ ghost_error ghost_tsmttsm__u_plain_z_x_x_1_rm(ghost_densemat *x, ghost_densemat 
     ghost_mpi_op_sum(&mpiop_zadd,(ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
     ghost_mpi_datatype_get(&mpidt_z,(ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
     
-    // make sure that the initial x only gets added up once
-    if (myrank) {
-        dbeta = 0.+I*0.;
-    }
-
     ghost_lidx i,j;
     
     ghost_lidx k;
@@ -510,10 +423,6 @@ ghost_error ghost_tsmttsm__u_plain_z_x_x_1_rm(ghost_densemat *x, ghost_densemat 
         free(x_priv);
     }
     
-    goto out;
-err:
-
-out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 }
@@ -523,12 +432,6 @@ ghost_error ghost_tsmttsm__a_plain_c_x_x_1_rm(ghost_densemat *x, ghost_densemat 
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
     ghost_lidx K = w->traits.ncols;
-
-    int myrank=0;
-
-    if (v->context) {
-        GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
-    }
 
     ghost_lidx n = v->traits.nrows;
     ghost_lidx m = v->traits.ncols;
@@ -551,11 +454,6 @@ ghost_error ghost_tsmttsm__a_plain_c_x_x_1_rm(ghost_densemat *x, ghost_densemat 
     ghost_mpi_op_sum(&mpiop_zadd,(ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_FLOAT));
     ghost_mpi_datatype_get(&mpidt_z,(ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_FLOAT));
     
-    // make sure that the initial x only gets added up once
-    if (myrank) {
-        dbeta = 0.+I*0.;
-    }
-
     ghost_lidx i,j;
     
     ghost_lidx k;
@@ -603,10 +501,6 @@ ghost_error ghost_tsmttsm__a_plain_c_x_x_1_rm(ghost_densemat *x, ghost_densemat 
         free(x_priv);
     }
     
-    goto out;
-err:
-
-out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 }
@@ -616,12 +510,6 @@ ghost_error ghost_tsmttsm__a_plain_z_x_x_1_cm(ghost_densemat *x, ghost_densemat 
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
     ghost_lidx K = w->traits.ncols;
-
-    int myrank=0;
-
-    if (v->context) {
-        GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
-    }
 
     ghost_lidx n = v->traits.nrows;
     ghost_lidx m = v->traits.ncols;
@@ -644,11 +532,6 @@ ghost_error ghost_tsmttsm__a_plain_z_x_x_1_cm(ghost_densemat *x, ghost_densemat 
     ghost_mpi_op_sum(&mpiop_zadd,(ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
     ghost_mpi_datatype_get(&mpidt_z,(ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
     
-    // make sure that the initial x only gets added up once
-    if (myrank) {
-        dbeta = 0.+I*0.;
-    }
-
     ghost_lidx i,j;
     
     ghost_lidx k;
@@ -696,10 +579,6 @@ ghost_error ghost_tsmttsm__a_plain_z_x_x_1_cm(ghost_densemat *x, ghost_densemat 
         free(x_priv);
     }
     
-    goto out;
-err:
-
-out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 }
