@@ -380,11 +380,11 @@ static int densemat_perment_cmp (const void *a, const void *b)
 template <typename v_t> 
 static ghost_error FUNCNAME(permute_tmpl(ghost_densemat *vec, ghost_context *ctx, ghost_permutation_direction dir))
 {
+
 if(vec->traits.permutemethod == NONE) {
     ERROR_LOG("traits.permutemethod==NONE, therefore no permutation is carried out. Please set the field to COLUMN or ROW");
 } else {
-
-    if (!vec->perm_local && !vec->perm_global) {
+   if (!vec->perm_local && !vec->perm_global) {
         WARNING_LOG("No permutation vector present!");
         return GHOST_SUCCESS;
     }
@@ -404,12 +404,7 @@ if(vec->traits.permutemethod == NONE) {
 
     if (dir == GHOST_PERMUTATION_PERM2ORIG && vec->perm_local) {
         ghost_densemat *vecclone;
-	//TODO this is a dirty hack, since the size of rowperm and colperm varies
-	if(vec->traits.permutemethod == ROW) {
-        	ghost_densemat_clone(&vecclone,vec,vec->traits.nrows/*context->lnrows[me]*/,0,vec->traits.ncols,0);
-	} else {
-        	ghost_densemat_clone(&vecclone,vec,vec->traits.nrows,0,vec->traits.ncols,0);
-	}
+       	ghost_densemat_clone(&vecclone,vec,vec->traits.nrows,0,vec->traits.ncols,0);
         vecclone->download(vecclone);
         DENSEMAT_ITER(vec,*valptr = *(v_t *)DENSEMAT_VALPTR(vecclone,vec->perm_local->perm[row],col));
         ghost_densemat_destroy(vecclone);
@@ -452,14 +447,25 @@ if(vec->traits.permutemethod == NONE) {
     } 
     if (dir == GHOST_PERMUTATION_ORIG2PERM && vec->perm_local) {
         ghost_densemat *vecclone;
- 	//TODO this is a dirty hack, since the size of rowperm and colperm varies
-	if(vec->traits.permutemethod == ROW) {
-        	ghost_densemat_clone(&vecclone,vec,vec->traits.nrows/*vec->context->lnrows[me]*/,0,vec->traits.ncols,0);
-	} else {
-        	ghost_densemat_clone(&vecclone,vec,vec->traits.nrows,0,vec->traits.ncols,0);
-	}
-        vecclone->download(vecclone);
-        DENSEMAT_ITER(vec,*valptr = *(v_t *)DENSEMAT_VALPTR(vecclone,vec->perm_local->invPerm[row],col));
+       	ghost_densemat_clone(&vecclone,vec,vec->traits.nrows,0,vec->traits.ncols,0);
+        vecclone->download(vecclone);       
+
+        //Accessing invPerm would be a problem if GHOST_PERM_NO_DISTINCTION is ON
+        if(ghost_omp_in_parallel()) {
+          for(int i=0; i<vec->traits.nrows; ++i) {
+            for(int col =0; col<vec->traits.ncols; ++col) {
+            ((v_t*)vec->val)[(vec->perm_local->perm[i])*vec->traits.ncols+col] = ((v_t*)vecclone->val)[i*vecclone->traits.ncols+col];
+            }
+          }
+        } else {
+          #pragma omp parallel for
+          for(int i=0; i<vec->traits.nrows; ++i) {
+            for(int col =0; col<vec->traits.ncols; ++col) {
+            ((v_t*)vec->val)[(vec->perm_local->perm[i])*vec->traits.ncols+col] = ((v_t*)vecclone->val)[i*vecclone->traits.ncols+col];
+            }
+          }
+        }
+        //DENSEMAT_ITER(vec, *valptr = *(v_t *)DENSEMAT_VALPTR(vecclone,vec->perm_local->invPerm[row],col)); //this would yield seg fault
         ghost_densemat_destroy(vecclone);
         GHOST_CALL_RETURN(vec->upload(vec));
     }
