@@ -165,8 +165,8 @@ ghost_error ghost_tsmttsm(ghost_densemat *x_in, ghost_densemat *v, ghost_densema
         kernels = ghost_tsmttsm_kernels;
     }
 
-    int me;
-    ghost_rank(&me,ctx->mpicomm);
+    int me=0;
+    if (ctx) ghost_rank(&me,ctx->mpicomm);
     // make sure that the initial x only gets added up once
     if (me) {
         memset(beta,0,x_in->elSize);
