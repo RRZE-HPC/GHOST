@@ -72,7 +72,7 @@ typedef enum {
     * @brief The densemat has been permuted in #GHOST_PERMUTATION_ORIG2PERM 
     * direction via its ghost_densemat::permute() function. 
     *
-    * This flag gets deleted once the densemat has been row permuted back 
+    * This flag gets deleted once the densemat has been permuted back 
     * (#GHOST_PERMUTATION_PERM2ORIG).
     */
     GHOST_DENSEMAT_PERMUTED = 256,

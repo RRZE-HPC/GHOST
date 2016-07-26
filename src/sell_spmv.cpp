@@ -393,7 +393,7 @@ extern "C" ghost_error ghost_sell_spmv_selector(ghost_densemat *lhs,
         ERROR_LOG("The number of columns for the densemats does not match!");
         return GHOST_ERR_INVALID_ARG;
     }
-    if (rhs->traits.nrows != lhs->traits.nrows) {
+    if (!(mat->context->flags & GHOST_PERM_NO_DISTINCTION) && rhs->traits.nrows != lhs->traits.nrows) { //if No distinction is set it can be rectangular matrix
         ERROR_LOG("The number of rows for the densemats does not match!");
         return GHOST_ERR_INVALID_ARG;
     }
