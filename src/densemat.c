@@ -82,11 +82,6 @@ ghost_error ghost_densemat_create(ghost_densemat **vec, ghost_context *ctx, ghos
         if ((*vec)->traits.gnrows == 0) {
             (*vec)->traits.gnrows = ctx->gnrows;
         }
-        if ((*vec)->traits.nrows == 0) {
-            int me;
-            ghost_rank(&me,ctx->mpicomm);
-            (*vec)->traits.nrows = ctx->lnrows[me];
-        }
         if ((*vec)->traits.goffs == 0) {
             int me;
             ghost_rank(&me,ctx->mpicomm);
