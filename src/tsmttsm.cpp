@@ -292,6 +292,14 @@ end_of_loop:
         if (reduce != GHOST_GEMM_NO_REDUCE && ctx) {
             x->reduce(x,ctx->mpicomm,reduce);
         }
+    } else if (flags & GHOST_GEMM_KAHAN) { 
+        WARNING_LOG("Could not find TSMTTSM-Kahan kernel. Trying non-Kahan version!");
+        flags &= ~GHOST_GEMM_KAHAN;
+        if (x != x_in) {
+            ghost_densemat_destroy(x);
+        }
+        x = x_in;
+        ret = ghost_gemm(x_in,v,conjv?"C":"T",w,"N",alpha,beta,reduce,ctx,flags);
     } else {
         PERFWARNING_LOG("Could not find TSMTTSM kernel. Fallback to GEMM");
         if (x != x_in) {

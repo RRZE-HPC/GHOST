@@ -29,6 +29,16 @@ typedef enum {
     GHOST_GEMM_KAHAN = 4
 } ghost_gemm_flags;
 
+#ifdef __cplusplus
+inline ghost_gemm_flags operator&=(ghost_gemm_flags &a, const ghost_gemm_flags &b) {
+    a = static_cast<ghost_gemm_flags>(static_cast<int>(a) & static_cast<int>(b));
+    return a;
+}
+inline ghost_gemm_flags operator~(const ghost_gemm_flags &a) {
+    return static_cast<ghost_gemm_flags>(~static_cast<int>(a));
+}
+#endif
+
 typedef struct {
     /* C = alpha(A*B) + beta(C)
      * C is mxn
