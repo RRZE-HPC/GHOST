@@ -77,7 +77,7 @@ ghost_error ghost_densemat_create(ghost_densemat **vec, ghost_context *ctx, ghos
    
     if (ctx) {
         if (ctx->perm_global || ctx->perm_local) {
-            (*vec)->traits.flags |= (ghost_densemat_flags)GHOST_DENSEMAT_PERMUTED;
+           // (*vec)->traits.flags |= (ghost_densemat_flags)GHOST_DENSEMAT_PERMUTED;//why this??
         }
         if ((*vec)->traits.gnrows == 0) {
             (*vec)->traits.gnrows = ctx->gnrows;
@@ -97,24 +97,24 @@ ghost_error ghost_densemat_create(ghost_densemat **vec, ghost_context *ctx, ghos
 
 
    if(ctx==NULL || ctx->perm_local == NULL) {
-		(*vec)->perm_local = NULL;
+		      (*vec)->perm_local = NULL;
     } else if((*vec)->traits.permutemethod == COLUMN) {
 	        GHOST_CALL_GOTO(ghost_malloc((void **)&((*vec)->perm_local),sizeof(ghost_densemat_permutation)),err,ret); 
-		(*vec)->perm_local->perm    = ctx->perm_local->colPerm;
-		(*vec)->perm_local->invPerm = ctx->perm_local->colInvPerm;
+      		(*vec)->perm_local->perm    = ctx->perm_local->colPerm;
+		      (*vec)->perm_local->invPerm = ctx->perm_local->colInvPerm;
     } else {
 	        GHOST_CALL_GOTO(ghost_malloc((void **)&((*vec)->perm_local),sizeof(ghost_densemat_permutation)),err,ret); 
-		(*vec)->perm_local->perm    = ctx->perm_local->perm;
-		(*vec)->perm_local->invPerm = ctx->perm_local->invPerm;
+		      (*vec)->perm_local->perm    = ctx->perm_local->perm;
+		      (*vec)->perm_local->invPerm = ctx->perm_local->invPerm;
     }
 
     //Right now there are no Global row and column permutation, once there, modify this
     if(ctx==NULL || ctx->perm_global == NULL) {
-		(*vec)->perm_global = NULL;
+		      (*vec)->perm_global = NULL;
     } else {
 	        GHOST_CALL_GOTO(ghost_malloc((void **)&((*vec)->perm_global),sizeof(ghost_densemat_permutation)),err,ret); 
-		(*vec)->perm_global->perm    = ctx->perm_global->colPerm;
-		(*vec)->perm_global->invPerm = ctx->perm_global->colInvPerm;
+		      (*vec)->perm_global->perm    = ctx->perm_global->colPerm;
+		      (*vec)->perm_global->invPerm = ctx->perm_global->colInvPerm;
     }
 
 
@@ -186,11 +186,14 @@ static ghost_error getNrowsFromContext(ghost_densemat *vec, ghost_context *ctx)
     if (ctx != NULL) {
         int rank;
         GHOST_CALL_RETURN(ghost_rank(&rank, ctx->mpicomm));
-        if(ctx->flags & GHOST_PERM_NO_DISTINCTION) {
-		vec->traits.nrows = ctx->nrowspadded;
-	} else {
+        //make distinction between Left and Right side vectors (since now we have rectangular matrix)
+        if(ctx->flags & GHOST_PERM_NO_DISTINCTION && vec->traits.permutemethod==COLUMN) {
+		      vec->traits.nrows = ctx->nrowspadded; 
+        } else if(ctx->flags & GHOST_PERM_NO_DISTINCTION && vec->traits.permutemethod==ROW) {
+          vec->traits.nrows = ctx->lnrows[rank];
+        } else {
         	vec->traits.nrows = ctx->lnrows[rank];
-	}
+	      }
     }
 
     if (vec->traits.flags & GHOST_DENSEMAT_VIEW) {
@@ -246,14 +249,14 @@ static ghost_error getNrowsFromContext(ghost_densemat *vec, ghost_context *ctx)
     }
 
     if (ctx != NULL) {
-        int rank;
+/*        int rank;
         GHOST_CALL_RETURN(ghost_rank(&rank, ctx->mpicomm)); 
         if(ctx->flags & GHOST_PERM_NO_DISTINCTION) {
-		vec->traits.nrows = ctx->nrowspadded;
-	} else {
+	      	vec->traits.nrows = ctx->nrowspadded;
+      	} else {
         	vec->traits.nrows = ctx->lnrows[rank];
-	}
-
+	      }
+*/
 	 if (!(vec->traits.flags & GHOST_DENSEMAT_NO_HALO)) {
             if (ctx->halo_elements == -1) {
                 ERROR_LOG("You have to make sure to read in the matrix _before_ creating the right hand side vector in a distributed context! This is because we have to know the number of halo elements of the vector.");
