@@ -381,6 +381,7 @@ ghost_densemat *w_in, const char *transw_in, void *alpha, void *beta, int reduce
             transv[0] = 'N';
           else
           {
+            ERROR_LOG("Invalid storage layout");
             // cannot do it
             ret = GHOST_ERR_NOT_IMPLEMENTED;
             goto err;
@@ -394,6 +395,7 @@ ghost_densemat *w_in, const char *transw_in, void *alpha, void *beta, int reduce
             transw[0] = 'N';
           else
           {
+            ERROR_LOG("Invalid storage layout");
             // cannot do it
             ret = GHOST_ERR_NOT_IMPLEMENTED;
             goto err;
@@ -437,6 +439,7 @@ ghost_densemat *w_in, const char *transw_in, void *alpha, void *beta, int reduce
     
     goto out;
 err:
+    ERROR_LOG("Error in GEMM");
 
 out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
