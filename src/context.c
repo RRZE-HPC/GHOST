@@ -25,7 +25,7 @@ ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, gho
         ghost_bench_stream(GHOST_BENCH_STREAM_COPY,&weight,&max_bw);
         INFO_LOG("Automatically setting weight to %f according to STREAM copy bandwidth!",weight);
     }
-          
+    
     int nranks, me, i;
     ghost_error ret = GHOST_SUCCESS;
     
@@ -34,6 +34,7 @@ ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, gho
     ghost_gidx *tmpcol = NULL;
     
     GHOST_CALL_GOTO(ghost_malloc((void **)context,sizeof(ghost_context)),err,ret);
+    (*context)->weight=weight;
     (*context)->flags = context_flags;
     (*context)->mpicomm = comm;
     (*context)->mpicomm_parent = MPI_COMM_NULL;
