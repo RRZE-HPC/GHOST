@@ -1123,17 +1123,17 @@ ERROR_LOG("max_col after BMC<%d> = %d",me,max_col);
         } else {
 #pragma omp for schedule(runtime)
             for( chunk = 0; chunk < nchunks; chunk++ ) {
-               memset(tmpval,0,mat->elSize*src->maxrowlen*C);	
-		if(mat->context->flags & GHOST_PERM_NO_DISTINCTION) {
+                memset(tmpval,0,mat->elSize*src->maxrowlen*C);	
+       		    if(mat->context->flags & GHOST_PERM_NO_DISTINCTION) {
                 	for (i=0; i<src->maxrowlen*C; i++) {	
 	            		tmpcol[i] = 0;
                 	}
-		} else {
+		        } else {
 	                for (i=0; i<src->maxrowlen*C; i++) {	
         	            tmpcol[i] = mat->context->lfRow[me];
                 	}
-		}
-               for (i=0, row = chunk*C; (i<C) && (chunk*C+i < mat->nrows); i++, row++) {
+		        }
+                for (i=0, row = chunk*C; (i<C) && (chunk*C+i < mat->nrows); i++, row++) {
                     if (mat->traits.flags & GHOST_SPARSEMAT_PERMUTE) {
                         if (mat->context->perm_global && mat->context->perm_local) {
                             funcret = src->func(mat->context->perm_global->invPerm[mat->context->perm_local->invPerm[row]],&rl[row],&tmpcol[src->maxrowlen*i],&tmpval[src->maxrowlen*i*mat->elSize],src->arg);
@@ -1157,28 +1157,29 @@ ERROR_LOG("max_col after BMC<%d> = %d",me,max_col);
                                 // no distinction between global and local entries
                                 // global permutation will be done after all rows are read
                                 (*col)[(*chunkptr)[chunk]+colidx*C+i] = tmpcol[i*src->maxrowlen+colidx];
-              	   		 } else { 
-		                // local permutation: distinction between global and local entries, if GHOST_PERM_NO_DISTINCTION is not set 
-                                if ((mat->context->flags & GHOST_PERM_NO_DISTINCTION) || ((tmpcol[i*src->maxrowlen+colidx] >= mat->context->lfRow[me]) && (tmpcol[i*src->maxrowlen+colidx] < (mat->context->lfRow[me]+mat->ncols)))) { // local entry: copy with permutation
+              	   		    } else { 
+		                        // local permutation: distinction between global and local entries, if GHOST_PERM_NO_DISTINCTION is not set 
+                                if ((mat->context->flags & GHOST_PERM_NO_DISTINCTION) || ((tmpcol[i*src->maxrowlen+colidx] >= mat->context->lfRow[me]) && (tmpcol[i*src->maxrowlen+colidx] < (mat->context->lfRow[me]+mat->ncols)))) { 
+                                    // local entry: copy with permutation
                                     if (mat->traits.flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS) {
                                         (*col)[(*chunkptr)[chunk]+colidx*C+i] = tmpcol[i*src->maxrowlen+colidx];
-                                    }else if(mat->context->flags & GHOST_PERM_NO_DISTINCTION) {
-                                       // (*col)[(*chunkptr)[chunk]+colidx*C+i] = mat->context->perm_local->colPerm[tmpcol[i*src->maxrowlen+colidx]]	
-                                       // do not permute remote and do not allow local to go to remote
-                                       if(tmpcol[i*src->maxrowlen+colidx] < mat->context->nrowspadded ) {
-						if( mat->context->perm_local->colPerm[tmpcol[i*src->maxrowlen+colidx]]>=mat->context->nrowspadded ) {		
-							ERROR_LOG("Ensure you have halo number of paddings, since GHOST_PERM_NO_DISTINCTION is switched on");		
-						}
-				        	(*col)[(*chunkptr)[chunk]+colidx*C+i] = mat->context->perm_local->colPerm[tmpcol[i*src->maxrowlen+colidx]];
-	            			} else {
-						(*col)[(*chunkptr)[chunk]+colidx*C+i] = tmpcol[i*src->maxrowlen+colidx];
-				       }
-                                   } else {
-				(*col)[(*chunkptr)[chunk]+colidx*C+i] = mat->context->perm_local->colPerm[tmpcol[i*src->maxrowlen+colidx]-mat->context->lfRow[me]]+mat->context->lfRow[me];
-
+                                    } else if(mat->context->flags & GHOST_PERM_NO_DISTINCTION) {
+                                        // (*col)[(*chunkptr)[chunk]+colidx*C+i] = mat->context->perm_local->colPerm[tmpcol[i*src->maxrowlen+colidx]]	
+                                        // do not permute remote and do not allow local to go to remote
+                                        if(tmpcol[i*src->maxrowlen+colidx] < mat->context->nrowspadded ) {
+						                    if( mat->context->perm_local->colPerm[tmpcol[i*src->maxrowlen+colidx]]>=mat->context->nrowspadded ) {		
+							                    ERROR_LOG("Ensure you have halo number of paddings, since GHOST_PERM_NO_DISTINCTION is switched on");		
+						                    }
+				        	                (*col)[(*chunkptr)[chunk]+colidx*C+i] = mat->context->perm_local->colPerm[tmpcol[i*src->maxrowlen+colidx]];
+	            			            } else {
+						                    (*col)[(*chunkptr)[chunk]+colidx*C+i] = tmpcol[i*src->maxrowlen+colidx];
+				                        }
+                                    } else {
+ 				                        (*col)[(*chunkptr)[chunk]+colidx*C+i] = mat->context->perm_local->colPerm[tmpcol[i*src->maxrowlen+colidx]-mat->context->lfRow[me]]+mat->context->lfRow[me];
 //                                        (*col)[(*chunkptr)[chunk]+colidx*C+i] = mat->context->perm_local->colPerm[tmpcol[i*src->maxrowlen+colidx]-mat->context->lfRow[me]]+mat->context->lfRow[me];
                                     }
-                                } else { // remote entry: copy without permutation
+                                } else { 
+                                    // remote entry: copy without permutation
                                     (*col)[(*chunkptr)[chunk]+colidx*C+i] = tmpcol[i*src->maxrowlen+colidx];
                                 }
                             }
