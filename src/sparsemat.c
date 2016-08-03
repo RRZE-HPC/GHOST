@@ -780,9 +780,9 @@ ghost_error ghost_sparsemat_fromfunc_common(ghost_lidx *rl, ghost_lidx *rlp, gho
        set_kacz_ratio(mat, (void *)src, GHOST_SPARSEMAT_SRC_FUNC);
        if(mat->kaczRatio < mat->kacz_setting.active_threads) {
             mat->traits.flags |= (ghost_sparsemat_flags)GHOST_SPARSEMAT_PERMUTE;
-            mat->traits.flags |= (ghost_sparsemat_flags)GHOST_SPARSEMAT_BLOCKCOLOR; 
-            }
-     }
+            //mat->traits.flags |= (ghost_sparsemat_flags)GHOST_SPARSEMAT_BLOCKCOLOR; //This would be done by inner test
+           }
+    }
    if (mat->traits.flags & GHOST_SPARSEMAT_PERMUTE) {
         if (mat->traits.flags & GHOST_SPARSEMAT_SCOTCHIFY) {
             ghost_sparsemat_perm_scotch(mat,(void *)src,GHOST_SPARSEMAT_SRC_FUNC);
@@ -797,18 +797,19 @@ ghost_error ghost_sparsemat_fromfunc_common(ghost_lidx *rl, ghost_lidx *rlp, gho
       if (mat->traits.flags & GHOST_SPARSEMAT_COLOR) {
             ghost_sparsemat_perm_color(mat,(void *)src,GHOST_SPARSEMAT_SRC_FUNC);
         }
-    //blockcoloring needs to know bandwidth 
+    //blockcoloring needs to know bandwidth //TODO avoid 2 times calculating  bandwidth, if no RCM or no bandwidth disturbing permutations are done 
     if( (mat->traits.flags & GHOST_SOLVER_KACZ) && !(mat->traits.flags & GHOST_SPARSEMAT_COLOR)) {
-               set_kacz_ratio(mat, (void *)src, GHOST_SPARSEMAT_SRC_FUNC);
+           set_kacz_ratio(mat, (void *)src, GHOST_SPARSEMAT_SRC_FUNC);
            if(mat->kaczRatio < mat->kacz_setting.active_threads) {
             mat->traits.flags |= (ghost_sparsemat_flags)GHOST_SPARSEMAT_BLOCKCOLOR; 
-                   }
-    }
-    //take this branch only if the matrix cannot be bandwidth bound, 
+          }
+   }
+   //take this branch only if the matrix cannot be bandwidth bound, 
     //else normal splitting with just RCM permutation would do the work
         if (mat->traits.flags & GHOST_SPARSEMAT_BLOCKCOLOR) {
            ghost_sparsemat_blockColor(mat,(void *)src,GHOST_SPARSEMAT_SRC_FUNC);
         }
+
         if (mat->traits.sortScope > 1) {
             ghost_sparsemat_perm_sort(mat,(void *)src,GHOST_SPARSEMAT_SRC_FUNC,mat->traits.sortScope);
         }
@@ -823,51 +824,6 @@ ghost_error ghost_sparsemat_fromfunc_common(ghost_lidx *rl, ghost_lidx *rlp, gho
         if (mat->traits.flags & GHOST_SPARSEMAT_NOT_SORT_COLS) {
             PERFWARNING_LOG("Unsorted columns inside a row may yield to bad performance! However, matrix construnction will be faster.");
         }
-//TODO remove after test
-if(0) {
-//      ghost_sparsemat_src_rowfunc *src = (ghost_sparsemat_src_rowfunc *)GHOST_SPARSEMAT_SRC_FUNC;
-       ghost_gidx * tmpcol = NULL;
-       char * tmpval = NULL;
-       ghost_lidx rowlen;
-    int nnz =0; 
-
-    //TODO delete it
-    ghost_lidx max_col = 0, max_chunk=0;
-    int me;
-    ghost_rank(&me, mat->context->mpicomm);
-    
-  #pragma omp parallel private (tmpval,tmpcol,rowlen) reduction(+:nnz) reduction(max:max_col) 
-    {
-        ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize);
-        ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx));
-        
-#pragma omp for
-        for (int i=0; i<mat->context->lnrows[me]; i++) {
-            if (mat->context->perm_global && mat->context->perm_local) {
-                src->func(mat->context->perm_global->invPerm[mat->context->perm_local->invPerm[i]],&rowlen,tmpcol,tmpval,src->arg);
-            } else if (mat->context->perm_global) {
-                src->func(mat->context->perm_global->invPerm[i],&rowlen,tmpcol,tmpval,src->arg);
-            } else if (mat->context->perm_local) {
-                src->func(mat->context->lfRow[me]+mat->context->perm_local->invPerm[i],&rowlen,tmpcol,tmpval,src->arg);
-            } else {
-                src->func(mat->context->lfRow[me]+i,&rowlen,tmpcol,tmpval,src->arg);
-            }
-            nnz += rowlen;
-//TODO delete after test
-        for(int j=0 ;j<rowlen; ++j)
-        {
-            max_col = MAX(max_col,mat->context->perm_local->colPerm[tmpcol[j]]);    
-        }   
-
-
-        }
-ERROR_LOG("max_col after BMC<%d> = %d",me,max_col);
-        free(tmpval); tmpval = NULL;
-        free(tmpcol); tmpcol = NULL;
-    }
-}
-//TO REMOVE TILL HERE
- 
    } else {
 
        if (mat->traits.sortScope > 1) {
@@ -1254,7 +1210,12 @@ ERROR_LOG("max_col after BMC<%d> = %d",me,max_col);
 err:
 
 out:
-
+  if(mat->traits.flags & (ghost_sparsemat_flags)GHOST_SPARSEMAT_BLOCKCOLOR) {
+      ERROR_LOG("ON end common")
+  } else {
+       ERROR_LOG("OFF end common")
+  }
+ 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
     return ret;
 }
@@ -1843,7 +1804,148 @@ static inline int ghost_sparsemat_rowfunc_after_split_func(ghost_gidx row, ghost
     return 0;
 }
 
+ghost_error initHaloAvg(ghost_sparsemat *mat)
+{
+    ghost_error ret = GHOST_SUCCESS;
+    int me,nprocs;
+    GHOST_CALL_GOTO(ghost_rank(&me,mat->context->mpicomm),err,ret);
+    GHOST_CALL_GOTO(ghost_nrank(&nprocs, mat->context->mpicomm),err,ret);
+ 
+    bool *compression_flag;
+    int *temp_nrankspresent;
+    ghost_context *ctx = mat->context; 
+    //calculate rankspresent here and store it, no need to do this each time averaging is done
+    GHOST_CALL_GOTO(ghost_malloc((void **)&temp_nrankspresent, ctx->nrowspadded*sizeof(int)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&compression_flag, ctx->nrowspadded*sizeof(bool)),err,ret);
+   
+    #pragma omp parallel for schedule(runtime)
+     for (int i=0; i<ctx->nrowspadded; i++) {	
+	     if(ctx->perm_local) {
+		     if(ctx->perm_local->colInvPerm[i]< ctx->lnrows[me] ) { //This check is important since entsInCol has only lnrows(NO_DISTINCTION
+			     //might give seg fault else) the rest are halo anyway, not needed for local sums
+			     temp_nrankspresent[i] = ctx->entsInCol[ctx->perm_local->colInvPerm[i]]?1:0; //this has also to be permuted since it was
+         } else {
+		       temp_nrankspresent[i] = 0;//ctx->entsInCol[i]?1:0;		
+         }
+      } else {
+         if(i < ctx->lnrows[me]) {
+			      temp_nrankspresent[i] = ctx->entsInCol[i]?1:0; //this has also to be permuted since it was
+          } else {
+            temp_nrankspresent[i] = 0;
+          }
+      } 
 
+    compression_flag[i] = false;
+    }
+
+    ghost_lidx ndues = 0;
+  	for (int i=0; i<nprocs; i++) {
+      if(ctx->perm_local) {
+      #pragma omp parallel for schedule(runtime) 
+        for (int d=0 ;d < ctx->dues[i]; d++) {
+		      temp_nrankspresent[ctx->perm_local->colPerm[ctx->duelist[i][d]]]++; 
+          compression_flag[ctx->perm_local->colPerm[ctx->duelist[i][d]]] = true;
+        }
+      } else {
+       #pragma omp parallel for schedule(runtime) 
+        for (int d=0 ;d < ctx->dues[i]; d++) {
+	        temp_nrankspresent[ctx->duelist[i][d]]++; 
+          compression_flag[ctx->duelist[i][d]] = true;
+        }
+      }
+    ndues += ctx->dues[i];
+    }
+
+    ghost_lidx *temp_avg_ptr;
+    GHOST_CALL_GOTO(ghost_malloc((void **)&temp_avg_ptr, ctx->nrowspadded*sizeof(ghost_lidx)),err,ret);
+    ghost_lidx ctr = 0;
+    //count number of elements
+    for(ghost_lidx i=0; i<ctx->nrowspadded; ++i) {
+       if(ctr==0 && compression_flag[i]==true){
+         temp_avg_ptr[ctr] = i; 
+         ctr += 1; 
+       }
+       else if(ctr!=0 && (compression_flag[i-1]!=compression_flag[i])) {
+         temp_avg_ptr[ctr] = i; 
+         ctr += 1;
+       } 
+       else if(i==ctx->nrowspadded-1 && (compression_flag[i-1]==true)) {
+         temp_avg_ptr[ctr] = i+1;
+         ctr += 1;
+      }
+    }
+  
+    ghost_lidx totalElem = 0;
+    for(ghost_lidx i=0; i<ctr/2; ++i) {
+      totalElem += (temp_avg_ptr[2*i+1]-temp_avg_ptr[2*i]);
+    }
+
+   ctx->nChunkAvg = ctr/2;
+   ctx->nElemAvg = totalElem;
+   //printf("Nchunk(%d) = %d, Total Elem(%d) = %d\n",me,ctx->nChunkAvg,me,totalElem); 
+   GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->avg_ptr, ctr*sizeof(ghost_lidx)),err,ret);
+   //now have a compressed column pointer for averaging
+ #pragma omp parallel for schedule(runtime)
+    for(int i=0; i<ctr; ++i) {
+      ctx->avg_ptr[i] = temp_avg_ptr[i];
+      //printf("pointers[%d] = %d\n",i,temp_avg_ptr[i]);
+    }
+
+    ghost_lidx *map; //map from original column to compressed column
+    GHOST_CALL_GOTO(ghost_malloc((void **)&map, ctx->nrowspadded*sizeof(ghost_lidx)),err,ret); 
+  
+    ghost_lidx col_ctr = 0;
+    GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->nrankspresent, totalElem*sizeof(ghost_lidx)),err,ret);
+    for(ghost_lidx i=0; i<ctx->nChunkAvg; ++i) {
+      for(ghost_lidx j=ctx->avg_ptr[2*i]; j<ctx->avg_ptr[2*i+1]; ++j) {
+        ctx->nrankspresent[col_ctr] = temp_nrankspresent[j];
+        //printf("nrankspresent[%d] = %d\n",col_ctr,ctx->nrankspresent[col_ctr]);
+        map[j] = col_ctr;
+        ++col_ctr;
+      }  
+    }
+    
+    ctx->mapAvg = map;
+    //now get a mapped duelist
+    GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->mappedDuelist, ndues*sizeof(ghost_lidx)),err,ret); 
+    ctr = 0;
+   	for (int i=0; i<nprocs; i++) {
+      if(ctx->perm_local) {
+       for (int d=0 ;d < ctx->dues[i]; d++) {
+		      ctx->mappedDuelist[ctr] = map[ ctx->perm_local->colPerm[ctx->duelist[i][d]] ]; 
+          ++ctr;
+        }
+      } else {
+        for (int d=0 ;d < ctx->dues[i]; d++) {
+	        ctx->mappedDuelist[ctr] = map[ ctx->duelist[i][d] ]; 
+          ++ctr;
+        }
+      }
+   }
+
+    /*printf("Mapped Due List(%d) = \n",me);
+   	for (int i=0; i<nprocs; i++) {
+     for (int d=0 ;d < ctx->dues[i]; d++) {
+        if(ctx->perm_local)
+        printf("%d -> %d\n",ctx->perm_local->colPerm[ctx->duelist[i][d]], map[ctx->perm_local->colPerm[ctx->duelist[i][d]]]);
+        else
+        printf("%d -> %d\n",ctx->duelist[i][d], map[ctx->duelist[i][d]]);
+     }
+    }
+    */        
+ 
+    free(temp_avg_ptr); 
+    free(temp_nrankspresent);
+    goto out;
+
+    err:
+        ERROR_LOG("ERROR in initHaloAvg");
+        return  GHOST_ERR_MPI; 
+
+    out:
+        return ret;        
+}
+ 
 static ghost_error SELL_fromRowFunc(ghost_sparsemat *mat, ghost_sparsemat_src_rowfunc *src)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
@@ -1866,7 +1968,7 @@ static ghost_error SELL_fromRowFunc(ghost_sparsemat *mat, ghost_sparsemat_src_ro
  
 //set NO_DISTINCTION when block multicolor and RCM is on and more than 2 processors, TODO pure MC and MPI
 //this has to be invoked even if no permutations are carried out and more than 2 processors, since we need to
-//know amount of remote entries before (used in sparsemat_blockcolor; 
+//know amount of remote entries before (used in sparsemat_blockcolor); 
 if(nprocs>1 && mat->traits.flags & GHOST_SOLVER_KACZ) {
 
      INFO_LOG("NO DISTINCTION is set");
@@ -1879,8 +1981,8 @@ if(nprocs>1 && mat->traits.flags & GHOST_SOLVER_KACZ) {
         GHOST_CALL_GOTO(ghost_sparsemat_fromfunc_common_dummy(SELL(mat)->rowLen,SELL(mat)->rowLenPadded,SELL(mat)->chunkLen,SELL(mat)->chunkLenPadded,&(SELL(mat)->chunkStart),&(SELL(mat)->val),&(mat->col_orig),src,mat,mat->traits.C,mat->traits.T),err,ret);
 
     if (ret != GHOST_SUCCESS) {
-             goto err;
-        }
+      goto err;
+    }
  
     GHOST_CALL_GOTO(mat->split(mat),err,ret);
 
@@ -1929,69 +2031,67 @@ if(nprocs>1 && mat->traits.flags & GHOST_SOLVER_KACZ) {
     after_split.flags= GHOST_SPARSEMAT_ROWFUNC_DEFAULT;
     after_split.arg = &after_split_arg; 
        
-        free(SELL(mat)->chunkStart); SELL(mat)->chunkStart=NULL;
-        free(SELL(mat)->val); SELL(mat)->val=NULL;
+    free(SELL(mat)->chunkStart); SELL(mat)->chunkStart=NULL;
+    free(SELL(mat)->val); SELL(mat)->val=NULL;
     //free(mat->col_orig); mat->col_orig=NULL;//don't destroy will be used for printing
-        free(SELL(mat)->chunkMin); SELL(mat)->chunkMin=NULL;
-        free(SELL(mat)->chunkLen); SELL(mat)->chunkLen=NULL;
-        free(SELL(mat)->chunkLenPadded); SELL(mat)->chunkLenPadded=NULL;
-        free(SELL(mat)->rowLen); SELL(mat)->rowLen=NULL;
-        free(SELL(mat)->rowLenPadded); SELL(mat)->rowLenPadded=NULL;
+    free(SELL(mat)->chunkMin); SELL(mat)->chunkMin=NULL;
+    free(SELL(mat)->chunkLen); SELL(mat)->chunkLen=NULL;
+    free(SELL(mat)->chunkLenPadded); SELL(mat)->chunkLenPadded=NULL;
+    free(SELL(mat)->rowLen); SELL(mat)->rowLen=NULL;
+    free(SELL(mat)->rowLenPadded); SELL(mat)->rowLenPadded=NULL;
 
-        if (!SELL(mat)->chunkMin) GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->chunkMin, (nChunks)*sizeof(ghost_lidx)),err,ret);
-        if (!SELL(mat)->chunkLen) GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->chunkLen, (nChunks)*sizeof(ghost_lidx)),err,ret);
-        if (!SELL(mat)->chunkLenPadded) GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->chunkLenPadded, (nChunks)*sizeof(ghost_lidx)),err,ret);
-        if (!SELL(mat)->rowLen) GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->rowLen, (mat->nrowsPadded)*sizeof(ghost_lidx)),err,ret);
-        if (!SELL(mat)->rowLenPadded) GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->rowLenPadded, (mat->nrowsPadded)*sizeof(ghost_lidx)),err,ret);
+    if (!SELL(mat)->chunkMin) GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->chunkMin, (nChunks)*sizeof(ghost_lidx)),err,ret);
+    if (!SELL(mat)->chunkLen) GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->chunkLen, (nChunks)*sizeof(ghost_lidx)),err,ret);
+    if (!SELL(mat)->chunkLenPadded) GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->chunkLenPadded, (nChunks)*sizeof(ghost_lidx)),err,ret);
+    if (!SELL(mat)->rowLen) GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->rowLen, (mat->nrowsPadded)*sizeof(ghost_lidx)),err,ret);
+    if (!SELL(mat)->rowLenPadded) GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->rowLenPadded, (mat->nrowsPadded)*sizeof(ghost_lidx)),err,ret);
 
-        ghost_gidx *new_col = NULL;
-        //GHOST_CALL_GOTO(ghost_malloc((void **)&new_col, mat->nEnts*sizeof(ghost_gidx)),err,ret); //will be allocated in the call
+    ghost_gidx *new_col = NULL;
+    //GHOST_CALL_GOTO(ghost_malloc((void **)&new_col, mat->nEnts*sizeof(ghost_gidx)),err,ret); //will be allocated in the call
 
-        GHOST_CALL_GOTO(ghost_sparsemat_fromfunc_common(SELL(mat)->rowLen,SELL(mat)->rowLenPadded,SELL(mat)->chunkLen,SELL(mat)->chunkLenPadded,&(SELL(mat)->chunkStart),&(SELL(mat)->val),&new_col,&after_split,mat,mat->traits.C,mat->traits.T),err,ret);
+    GHOST_CALL_GOTO(ghost_sparsemat_fromfunc_common(SELL(mat)->rowLen,SELL(mat)->rowLenPadded,SELL(mat)->chunkLen,SELL(mat)->chunkLenPadded,&(SELL(mat)->chunkStart),&(SELL(mat)->val),&new_col,&after_split,mat,mat->traits.C,mat->traits.T),err,ret);
 
-        free(SELL(mat)->col); SELL(mat)->col=NULL;
+ 
+    free(SELL(mat)->col); SELL(mat)->col=NULL;
 
-        GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->col, mat->nEnts*sizeof(ghost_lidx)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->col, mat->nEnts*sizeof(ghost_lidx)),err,ret);
 
-        for(i=0;i<mat->nEnts;++i) {
-        SELL(mat)->col[i] = (ghost_lidx) new_col[i];
-        }
-
+    for(i=0;i<mat->nEnts;++i) {
+      SELL(mat)->col[i] = (ghost_lidx) new_col[i];
+    }
+ 
     //mat->col_orig = new_col;
-        free(new_col);
+    free(new_col);
     free(sell_col);
     free(sell_val);
     free(sell_chunkStart); 
     free(sell_rowLen);
-    } else {
+    
+  } else {
 
     mat->context->nrowspadded = PAD(mat->context->lnrows[me],ghost_densemat_row_padding());
-        GHOST_CALL_GOTO(ghost_sparsemat_fromfunc_common(SELL(mat)->rowLen,SELL(mat)->rowLenPadded,SELL(mat)->chunkLen,SELL(mat)->chunkLenPadded,&(SELL(mat)->chunkStart),&(SELL(mat)->val),&(mat->col_orig),src,mat,mat->traits.C,mat->traits.T),err,ret);
-
+    GHOST_CALL_GOTO(ghost_sparsemat_fromfunc_common(SELL(mat)->rowLen,SELL(mat)->rowLenPadded,SELL(mat)->chunkLen,SELL(mat)->chunkLenPadded,&(SELL(mat)->chunkStart),&(SELL(mat)->val),&(mat->col_orig),src,mat,mat->traits.C,mat->traits.T),err,ret);
     if (ret != GHOST_SUCCESS) {
-            goto err;
-        }
-
-        GHOST_CALL_GOTO(mat->split(mat),err,ret);
-   }
+       goto err;
+    }
+    GHOST_CALL_GOTO(mat->split(mat),err,ret);
+ }
+ initHaloAvg(mat);
 
 if(mat->traits.flags & GHOST_SOLVER_KACZ) {
-    //split transition zones 
-    if(mat->traits.flags & GHOST_SPARSEMAT_BLOCKCOLOR) {
-         split_transition(mat);
-    } 
-    //split if no splitting was done before and MC is off
-    else if(!(mat->traits.flags & GHOST_SPARSEMAT_COLOR)) {
-            if( (mat->kaczRatio >= 2*mat->kacz_setting.active_threads) ) {
-            ghost_rcm_dissect(mat);
-        } else {
-        split_analytical(mat);
-            }
+  //split transition zones 
+  if(mat->traits.flags & (ghost_sparsemat_flags)GHOST_SPARSEMAT_BLOCKCOLOR) {
+    split_transition(mat);
+  } 
+  //split if no splitting was done before and MC is off
+  else if(!(mat->traits.flags & GHOST_SPARSEMAT_COLOR)) {
+    if( (mat->kaczRatio >= 2*mat->kacz_setting.active_threads) ) {
+      ghost_rcm_dissect(mat);
+    } else {
+      split_analytical(mat);
     }
+  }
 }
-int rank;
-ghost_rank(&rank, mat->context->mpicomm);
-
 
 #ifdef GHOST_HAVE_CUDA
     if (!(mat->traits.flags & GHOST_SPARSEMAT_HOST))
