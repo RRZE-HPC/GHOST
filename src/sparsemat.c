@@ -1210,12 +1210,6 @@ ghost_error ghost_sparsemat_fromfunc_common(ghost_lidx *rl, ghost_lidx *rlp, gho
 err:
 
 out:
-  if(mat->traits.flags & (ghost_sparsemat_flags)GHOST_SPARSEMAT_BLOCKCOLOR) {
-      ERROR_LOG("ON end common")
-  } else {
-       ERROR_LOG("OFF end common")
-  }
- 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
     return ret;
 }
