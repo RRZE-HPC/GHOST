@@ -9,7 +9,7 @@
 
 //returns the virtual column index; ie takes into account the permutation of halo elements also
 #define virtual_col(col_idx)\
-   (mat->context->flags & GHOST_PERM_NO_DISTINCTION)?( (col_ptr[col_idx]<mat->context->nrowspadded)?col_ptr[col_idx]:mat->context->perm_local->colPerm[col_ptr[col_idx]] ):col_ptr[col_idx]\
+   (mat->context->flags & GHOST_PERM_NO_DISTINCTION && mat->context->perm_local )?( (col_ptr[col_idx]<mat->context->nrowspadded)?col_ptr[col_idx]:mat->context->perm_local->colPerm[col_ptr[col_idx]] ):col_ptr[col_idx]\
 
 
 ghost_error find_transition_zone(ghost_sparsemat *mat, int n_threads)
