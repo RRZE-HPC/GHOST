@@ -628,9 +628,9 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" ST
         set_property(DIRECTORY PROPERTY EP_STEP_TARGETS build)
         ExternalProject_Add(SpMP
             PREFIX ${PROJECT_BINARY_DIR}/SpMP
-            GIT_REPOSITORY http://${GITHUB_GIT_URL}/jspark1105/SpMP.git
+            GIT_REPOSITORY http://${GITHUB_GIT_URL}/IntelLabs/SpMP.git
             CONFIGURE_COMMAND "" 
-            BUILD_COMMAND make CC=${CMAKE_CXX_COMPILER} 
+            BUILD_COMMAND make
             BUILD_IN_SOURCE 1
             INSTALL_COMMAND ""
             )
