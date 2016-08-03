@@ -106,20 +106,36 @@ typedef enum{
 }
 ghost_kacz_normalize;
 
+typedef enum{
+     normal,
+     eco,
+     performance
+}
+ghost_kacz_mode;
+
+
 typedef struct {
     void *omega;
     void *shift;// shift can be complex
     int num_shifts; //number of shifts provided
     ghost_kacz_direction direction;
+    ghost_kacz_mode mode; 
+    int best_block_size; //it provides the best block size if performance mode is set 
     ghost_kacz_normalize normalize;
+    void *scale; //scaled values if normalize is on
+    bool initialized; //internal flag
 }
 ghost_kacz_opts;
 
 typedef struct {
     void *omega;
-    void *shift;//shift can be complex
-    int num_shifts;//number of shifts provided
+    void *shift;// shift can be complex
+    int num_shifts; //number of shifts provided
+    ghost_kacz_mode mode; 
+    int best_block_size; //it provides the best block size if performance mode is set 
     ghost_kacz_normalize normalize;
+    void *scale; //scaled values if normalize is on
+    bool initialized; //internal flag
 }
 ghost_carp_opts; //no direction since forward followed by backward done
 
@@ -1049,6 +1065,22 @@ extern "C" {
     ghost_error ghost_carp(ghost_sparsemat *mat, ghost_densemat *x, ghost_densemat *b, ghost_carp_opts opts);
     ghost_error checker(ghost_sparsemat *mat);
     ghost_error split_transition(ghost_sparsemat *mat);
+ 
+    /**
+     * @brief Initialize CARP 
+     *
+     * @param[in] mat: The sparsematrix
+     * @param[in] b: The rhs
+     * @param opts Options.
+     */ 
+    ghost_error ghost_carp_init(ghost_sparsemat *mat, ghost_densemat *b, ghost_carp_opts *opts); 
+     /**
+     * @brief Finds optimum parameters for CARP 
+     *
+     * @param[in] mat: The sparsematrix
+     * @param opts Options.
+     */ 
+    ghost_error ghost_carp_perf_init(ghost_sparsemat *mat, ghost_carp_opts *opts);
     /**
      * @brief Prints the row distribution details of KACZ. 
      *

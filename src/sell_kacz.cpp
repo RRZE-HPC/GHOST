@@ -22,15 +22,179 @@ const ghost_kacz_opts GHOST_KACZ_OPTS_INITIALIZER = {
     .shift = NULL,
     .num_shifts = 0,
     .direction = GHOST_KACZ_DIRECTION_UNDEFINED,
-    .normalize = no
+    .mode = normal,
+    .best_block_size = 1,
+    .normalize = no,
+    .scale = NULL,
+    .initialized = false
 };
 
 const ghost_carp_opts GHOST_CARP_OPTS_INITIALIZER = {
     .omega = NULL,
     .shift = NULL,
     .num_shifts = 0,
-    .normalize = no
+    .mode = normal,
+    .best_block_size = 1,
+    .normalize = no,
+    .scale = NULL,
+    .initialized = false
 };
+
+template<typename m_t>
+static ghost_error ghost_carp_init_tmpl(ghost_sparsemat *mat, ghost_densemat *rhs, ghost_carp_opts *opts)
+{
+  typedef m_t v_t;
+  //normalize the system if normalize is yes
+  if(opts->normalize == yes) {
+    opts->initialized = true;
+    ghost_lidx chunkHeight = mat->traits.C;
+    ghost_lidx nchunks = mat->nrows/chunkHeight;
+    ghost_lidx remchunk = mat->nrows%chunkHeight;
+    m_t *scal;
+    ghost_malloc((void **)&scal,mat->nrows*sizeof(m_t));
+    ghost_lidx row,idx;
+    m_t* mval = ((m_t*)mat->sell->val);
+    v_t* bval = ((v_t*)rhs->val);
+   
+    #ifdef GHOST_HAVE_OPENMP 
+      #pragma omp parallel for schedule(runtime)
+    #endif
+    for(ghost_lidx chunk=0; chunk < nchunks; ++chunk) {
+     #pragma simd
+      for(ghost_lidx chunkinrow=0; chunkinrow<mat->traits.C; ++chunkinrow) {
+        //TODO convert this into function for outer loop vectorisation
+        row = chunk*mat->traits.C + chunkinrow;
+        idx = mat->sell->chunkStart[chunk] + chunkinrow;              
+        scal[row] = 0;
+        for(ghost_lidx j=0; j<mat->sell->chunkLen[chunk]; ++j) {
+          scal[row] += mval[idx]*mval[idx];
+          idx+=chunkHeight;
+        }    
+        scal[row] = sqrt(scal[row]);
+        idx -= mat->sell->chunkLen[chunk]*chunkHeight;               
+        for(ghost_lidx j=0; j<mat->sell->chunkLen[chunk]; ++j) {
+          mval[idx] = ((m_t)mval[idx])/scal[row];
+          idx+=chunkHeight;
+        }     
+        bval[row] = ((v_t)bval[row])/(m_t)scal[row];
+      } 
+    }
+      
+      ghost_lidx chunk = nchunks; 
+      for(ghost_lidx chunkinrow=0; chunkinrow<remchunk; ++chunkinrow) {
+        row = chunk*mat->traits.C + chunkinrow;
+        idx = mat->sell->chunkStart[chunk] + chunkinrow;              
+        scal[row] = 0;
+        for(ghost_lidx j=0; j<mat->sell->chunkLen[chunk]; ++j) {
+          scal[row] += mval[idx]*mval[idx];
+          idx+=chunkHeight;
+        }    
+        scal[row] = sqrt(scal[row]);
+        idx -= mat->sell->chunkLen[chunk]*chunkHeight;               
+        for(ghost_lidx j=0; j<mat->sell->chunkLen[chunk]; ++j) {
+          mval[idx] = ((m_t)mval[idx])/scal[row];
+          idx+=chunkHeight;
+        }
+        bval[row] = ((v_t)bval[row])/(m_t)scal[row];
+      } 
+   
+     opts->scale = scal;     
+ } 
+
+}
+
+ghost_error ghost_carp_init(ghost_sparsemat *mat, ghost_densemat *rhs, ghost_carp_opts *opts)
+{
+   ghost_error ret = GHOST_SUCCESS;
+   SELECT_TMPL_1DATATYPE(mat->traits.datatype,std::complex,ret,ghost_carp_init_tmpl,mat,rhs,opts);
+   return ret;
+}
+
+//This finds optimum parameters for the CARP, depending on the matrix
+//options like shift should be set before entering this
+template<typename m_t>
+ghost_error ghost_carp_perf_init_tmpl(ghost_sparsemat *mat, ghost_carp_opts *opts) {
+ ghost_error ret = GHOST_SUCCESS; 
+ if(opts->mode == performance) {
+  //check for optimal block value
+  ghost_densemat *test_rhs, *test_x;
+  ghost_densemat_traits vtraits_col = GHOST_DENSEMAT_TRAITS_INITIALIZER;
+  ghost_densemat_traits vtraits_row = GHOST_DENSEMAT_TRAITS_INITIALIZER;
+  vtraits_col.storage = GHOST_DENSEMAT_ROWMAJOR;
+  vtraits_col.permutemethod = COLUMN;
+  vtraits_row.storage = GHOST_DENSEMAT_ROWMAJOR;
+  vtraits_row.permutemethod = ROW;
+  vtraits_row.datatype = (ghost_datatype)mat->traits.datatype;
+  double start,end;
+  double max_flop = 0;
+  //as a safety factor complex number is taken as x
+  if(opts->shift != NULL) {
+    for(int i=0; i<opts->num_shifts; ++i) {
+      //no mixing of double and float, also in the kernels, so this is valid
+      if(mat->traits.datatype & GHOST_DT_DOUBLE) {
+        vtraits_col.datatype = (ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE);
+      } else {
+        vtraits_col.datatype = (ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_FLOAT);
+      }
+    }
+  }  
+
+  std::complex<double> zero=0;
+  std::complex<double> one=1;
+  
+  int total_sizes = 6;
+  int *block_size;
+  ghost_malloc((void **)&block_size, total_sizes*sizeof(int));
+  //TODO block values should be precompiled, now 1,4,8,16,32,64,128,256
+  if(total_sizes > 1) {
+    block_size[0] = 1;
+  }
+  if(total_sizes > 2) {
+    block_size[1] = 4;
+  }
+  if(total_sizes>3) {
+    for(int i=2; i<total_sizes; ++i) {
+      block_size[i] = block_size[i-1]*2; 
+    }
+  }
+  int nIter = 1;//things like alpha=0 wouldn't be considered, but the LC 
+  for (int i=0; i<total_sizes; ++i) { 
+    vtraits_col.ncols = block_size[i];
+    vtraits_row.ncols = block_size[i];
+    ghost_densemat_create(&test_x, mat->context, vtraits_col);
+    ghost_densemat_create(&test_rhs, mat->context, vtraits_row);
+    test_x->fromScalar(test_x,&zero);
+    test_rhs->fromScalar(test_rhs,&one);
+    ghost_barrier();
+    ghost_timing_wcmilli(&start);
+
+    for(int iter=0; iter<nIter; ++iter) {
+      ghost_carp(mat, test_x, test_rhs, *opts);
+    }
+
+    ghost_barrier();
+    ghost_timing_wcmilli(&end);
+    double flop = ((nIter*mat->context->gnnz)*vtraits_col.ncols*1*8*1e-6)/(end-start);
+    if(flop > max_flop) {
+      max_flop = std::max(max_flop,flop);
+    } else {
+     //Some LC broken
+     opts->best_block_size = block_size[i-1];
+     free(block_size);
+     return ret;
+    }
+  }
+  opts->best_block_size = block_size[total_sizes-1];
+  free(block_size);
+ }
+return ret;
+}
+
+ghost_error ghost_carp_perf_init(ghost_sparsemat *mat, ghost_carp_opts *opts) {
+   ghost_error ret = GHOST_SUCCESS;
+   SELECT_TMPL_1DATATYPE(mat->traits.datatype,std::complex,ret,ghost_carp_perf_init_tmpl,mat,opts);
+   return ret;
+}
 
 
 // Hash function for unordered_map
@@ -62,7 +226,11 @@ ghost_kacz_kernels = unordered_map<ghost_kacz_parameters,ghost_kacz_kernel>();
 template<typename m_t, typename v_t, bool forward>
 static ghost_error kacz_fallback(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts)
 {
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+
+   ghost_lidx rank;
+   ghost_rank(&rank,mat->context->mpicomm);
+
+   GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     
     if (!mat->color_ptr || mat->ncolors == 0) {
         WARNING_LOG("Matrix has not been colored!");
@@ -71,7 +239,11 @@ static ghost_error kacz_fallback(ghost_densemat *x, ghost_sparsemat *mat, ghost_
         ERROR_LOG("Multi-vec not implemented!");
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
-   
+    
+    if(opts.normalize == yes && opts.initialized == false) {
+        WARNING_LOG("Kacz on normalized system is called, and the system has not been normalized at the start"); 
+    }
+    
     ghost_lidx c;
     ghost_lidx row;
     ghost_lidx rowinchunk;
@@ -83,10 +255,6 @@ static ghost_error kacz_fallback(ghost_densemat *x, ghost_sparsemat *mat, ghost_
     v_t *xval = (v_t *)(x->val);
     m_t *mval = (m_t *)sellmat->val;
     v_t omega = *(v_t *)opts.omega;
-
-
-    int rank;
-    ghost_rank(&rank,mat->context->mpicomm);
 
     ghost_lidx firstcolor, lastcolor, stride;
     
@@ -137,8 +305,10 @@ static ghost_error kacz_fallback(ghost_densemat *x, ghost_sparsemat *mat, ghost_
         }
     }
     
+
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     return GHOST_SUCCESS;
+  
 }
 
 ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *rhs, ghost_kacz_opts opts)
@@ -147,6 +317,11 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
     ghost_error ret = GHOST_SUCCESS;
     ghost_kacz_parameters p;
 
+    //if rectangular matrix
+    if(x->traits.permutemethod != COLUMN && mat->nrows != mat->context->nrowspadded) {
+      ERROR_LOG("Output vector is not COLUMN(Right sided) vector, please set permutemethod to column in traits field")
+    }
+ 
     ghost_densemat *b;
     //deal with NULL pointer of b
     if(rhs==NULL) {
