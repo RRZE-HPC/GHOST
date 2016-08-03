@@ -629,8 +629,8 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" ST
         ExternalProject_Add(SpMP
             PREFIX ${PROJECT_BINARY_DIR}/SpMP
             GIT_REPOSITORY http://${GITHUB_GIT_URL}/IntelLabs/SpMP.git
-            CONFIGURE_COMMAND "" 
-            BUILD_COMMAND make
+            CONFIGURE_COMMAND ${PROJECT_SOURCE_DIR}/cmake/configure_spmp.sh ${PROJECT_BINARY_DIR}/SpMP/src/SpMP/synk/loadimba.cpp
+            BUILD_COMMAND make CC=${CMAKE_CXX_COMPILER} CCFLAGS=${CMAKE_CXX_FLAGS} 
             BUILD_IN_SOURCE 1
             INSTALL_COMMAND ""
             )
