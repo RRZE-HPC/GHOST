@@ -241,6 +241,36 @@ struct ghost_context
      * @brief Number of matrix entries in each local column.
      */
     ghost_lidx *entsInCol;
+     /**
+     * @brief The number of chunks in avg_ptr
+     **/
+    ghost_lidx nChunkAvg;
+    /**
+    * @brief Compressed Pointer to the densematrix row indices where averaging has to be done 
+    * (eg: used in densemat averaging)
+    */ 
+    ghost_lidx *avg_ptr;
+     /**
+     * @brief The total elements to be averaged
+     **/
+    ghost_lidx nElemAvg;
+    /**
+    * @brief Map used to compress the pointer 
+    * (eg: used in densemat averaging)
+    */ 
+    ghost_lidx *mapAvg; 
+    /**
+    * @brief Mapped Duelist 
+    * (eg: used in densemat averaging)
+    */ 
+    ghost_lidx *mappedDuelist; //This might be removed in a future version
+    /**
+    * @brief  no. of ranks present in column index corresponding to avg_ptr
+    *         (only elements with halo entries are stored)
+    *         (eg: used in densemat averaging)
+    */ 
+    int *nrankspresent;
+ 
 };
 
 

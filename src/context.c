@@ -453,6 +453,11 @@ void ghost_context_destroy(ghost_context *context)
         free(context->duepartners); context->duepartners = NULL;
         free(context->wishpartners); context->wishpartners = NULL;
         free(context->entsInCol); context->entsInCol = NULL;
+        free(context->avg_ptr); context->avg_ptr = NULL;
+        free(context->mapAvg); context->mapAvg = NULL;
+        free(context->mappedDuelist); context->mappedDuelist = NULL;
+        free(context->nrankspresent); context->nrankspresent = NULL;
+
         if( context->perm_local )
         {
           free(context->perm_local->perm); context->perm_local->perm = NULL;

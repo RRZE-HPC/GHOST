@@ -240,6 +240,13 @@ static ghost_error ghost_cloneVector(ghost_densemat *src, ghost_densemat **new, 
     ghost_densemat_create(new,NULL,newTraits);
 
     (*new)->fromVec(*new,src,roffs,coffs);
+ 
+    //since context is not present we should copy the perm pointer
+    if(src->perm_local) {
+      ghost_malloc((void **)&((*new)->perm_local),sizeof(ghost_densemat_permutation)); 
+      (*new)->perm_local->perm = src->perm_local->perm;
+    }
+
     return GHOST_SUCCESS;
 }
 
