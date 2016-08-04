@@ -604,6 +604,12 @@ void ghost_densemat_destroy( ghost_densemat* vec )
 #ifdef GHOST_HAVE_MPI
         MPI_Type_free(&(vec->fullmpidt));
 #endif
+        /* free permutation objects - but not the actual index arrays. They 
+           belong to the context of the matrix which defines the permutation
+           applied.
+         */
+        if (vec->perm_local) {free(vec->perm_local); vec->perm_local=NULL;}
+        if (vec->perm_global){free(vec->perm_global); vec->perm_global=NULL;}
         free(vec);
     }
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TEARDOWN);
