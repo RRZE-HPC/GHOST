@@ -53,7 +53,11 @@ ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, gho
     (*context)->wishpartners = NULL;
     (*context)->nwishpartners = 0;
     (*context)->entsInCol = NULL;
-   
+    
+    (*context)->avg_ptr = NULL;
+    (*context)->mapAvg = NULL;
+    (*context)->mappedDuelist = NULL;
+    (*context)->nrankspresent = NULL;   
 
     GHOST_CALL_GOTO(ghost_nrank(&nranks, (*context)->mpicomm),err,ret);
     GHOST_CALL_GOTO(ghost_rank(&me, (*context)->mpicomm),err,ret);
