@@ -2070,9 +2070,11 @@ if(nprocs>1 && mat->traits.flags & GHOST_SOLVER_KACZ) {
     }
     GHOST_CALL_GOTO(mat->split(mat),err,ret);
  }
- initHaloAvg(mat);
 
 if(mat->traits.flags & GHOST_SOLVER_KACZ) {
+
+  initHaloAvg(mat);
+
   //split transition zones 
   if(mat->traits.flags & (ghost_sparsemat_flags)GHOST_SPARSEMAT_BLOCKCOLOR) {
     split_transition(mat);
