@@ -31,6 +31,12 @@ extern "C" ghost_error ghost_sparsemat_perm_color(ghost_sparsemat *mat, void *ma
     char * tmpval = NULL;
     ghost_gidx * tmpcol = NULL;
 
+   ghost_gidx ncols_halo_padded = mat->context->nrowspadded ;
+   if (mat->context->flags & GHOST_PERM_NO_DISTINCTION) {
+     	ncols_halo_padded = mat->context->nrowspadded + mat->context->halo_elements+1;
+   }
+
+
     GHOST_CALL_GOTO(ghost_rank(&me,mat->context->mpicomm),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,(mat->context->lnrows[me]+1) * sizeof(ghost_gidx)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&rptlocal,(mat->context->lnrows[me]+1) * sizeof(ghost_lidx)),err,ret);
@@ -144,10 +150,10 @@ extern "C" ghost_error ghost_sparsemat_perm_color(ghost_sparsemat *mat, void *ma
         mat->context->perm_local->method = GHOST_PERMUTATION_UNSYMMETRIC; //you can also make it symmetric
         GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->perm,sizeof(ghost_gidx)*mat->nrows),err,ret);
         GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->invPerm,sizeof(ghost_gidx)*mat->nrows),err,ret);   
-        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->colPerm,sizeof(ghost_gidx)*mat->ncols),err,ret);
-        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->colInvPerm,sizeof(ghost_gidx)*mat->ncols),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->colPerm,sizeof(ghost_gidx)*ncols_halo_padded),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->colInvPerm,sizeof(ghost_gidx)*ncols_halo_padded),err,ret);
 
-        for(int i=0; i<mat->ncols; ++i) {
+        for(int i=0; i<ncols_halo_padded; ++i) {
                 mat->context->perm_local->colPerm[i] = i;
                 mat->context->perm_local->colInvPerm[i] = i;
         }
@@ -159,10 +165,10 @@ extern "C" ghost_error ghost_sparsemat_perm_color(ghost_sparsemat *mat, void *ma
     } else if(mat->context->perm_local->method == GHOST_PERMUTATION_SYMMETRIC) {
         oldperm = mat->context->perm_local;
 	mat->context->perm_local->method = GHOST_PERMUTATION_UNSYMMETRIC;//change to unsymmetric
-        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->colPerm,sizeof(ghost_gidx)*mat->ncols),err,ret);
-        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->colInvPerm,sizeof(ghost_gidx)*mat->ncols),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->colPerm,sizeof(ghost_gidx)*ncols_halo_padded),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->colInvPerm,sizeof(ghost_gidx)*ncols_halo_padded),err,ret);
 
-        for(int i=0; i<mat->ncols; ++i) {
+        for(int i=0; i<ncols_halo_padded; ++i) {
                 mat->context->perm_local->colPerm[i] = mat->context->perm_local->perm[i];
                 mat->context->perm_local->colInvPerm[i] = mat->context->perm_local->invPerm[i];
         }        

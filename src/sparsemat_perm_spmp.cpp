@@ -53,7 +53,7 @@ ghost_error ghost_sparsemat_perm_spmp(ghost_sparsemat *mat, void *matrixSource, 
     int *useperm = NULL, *useinvperm = NULL;
     int localnnz = 0;
     SpMP::CSR *csr = NULL, *csrperm = NULL;
-    ghost_lidx ncols_halo_padded = mat->ncols;    
+    ghost_lidx ncols_halo_padded = mat->context->nrowspadded;    
 
 #ifdef NONSYM_RCM_MIRROR
     int *symcol = NULL, *symrpt = NULL;
@@ -125,7 +125,7 @@ ghost_error ghost_sparsemat_perm_spmp(ghost_sparsemat *mat, void *matrixSource, 
         } 
         rpt[i+1] = rpt[i] + rowlen;
        
-	if (mat->context->flags & GHOST_PERM_NO_DISTINCTION) {
+    	if (mat->context->flags & GHOST_PERM_NO_DISTINCTION) {
         	for (j=rpt[i]; j<rpt[i+1]; j++) {
                 		localcol[localent] = col[j] ;
                                 localent++;
@@ -147,11 +147,12 @@ ghost_error ghost_sparsemat_perm_spmp(ghost_sparsemat *mat, void *matrixSource, 
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&val,sizeof(double)*localnnz),err,ret);
     memset(val,0,sizeof(double)*localnnz);
-
+    
     if (mat->context->flags & GHOST_PERM_NO_DISTINCTION) {
      	ncols_halo_padded = mat->context->nrowspadded + mat->context->halo_elements+1;
     }
-   csr = new SpMP::CSR(mat->nrows,ncols_halo_padded,localrpt,localcol,val);
+    
+    csr = new SpMP::CSR(mat->nrows,ncols_halo_padded,localrpt,localcol,val);
       
     GHOST_CALL_GOTO(ghost_malloc((void **)&intperm,sizeof(int)*mat->nrows),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&intinvperm,sizeof(int)*mat->nrows),err,ret);
@@ -243,8 +244,8 @@ ghost_error ghost_sparsemat_perm_spmp(ghost_sparsemat *mat, void *matrixSource, 
        INFO_LOG("TRANSPOSE check finished");         
 */
         int m = mat->nrows;
-        int n = ncols_halo_padded;//mat->ncols;
-
+        int n = ncols_halo_padded;
+      
  
 /*        for(int i=0; i<n; ++i) {
  		csrT->rowptr[i] = csr      
@@ -265,7 +266,7 @@ ghost_error ghost_sparsemat_perm_spmp(ghost_sparsemat *mat, void *matrixSource, 
         useinvperm = intinvperm; 
 
         mat->context->perm_local->method = GHOST_PERMUTATION_UNSYMMETRIC; 
-	GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->colPerm,sizeof(ghost_gidx)*ncols_halo_padded),err,ret);
+      	GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->colPerm,sizeof(ghost_gidx)*ncols_halo_padded),err,ret);
         GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->colInvPerm,sizeof(ghost_gidx)*ncols_halo_padded),err,ret);
 
  

@@ -38,9 +38,8 @@ extern "C" ghost_error ghost_sparsemat_blockColor(ghost_sparsemat *mat, void *ma
     uint32_t *adolc_data = NULL;
 #endif
  
-    ghost_gidx ncols_halo_padded = mat->ncols ;
-     
-    if (mat->context->flags & GHOST_PERM_NO_DISTINCTION) {
+   ghost_gidx ncols_halo_padded = mat->context->nrowspadded ;
+   if (mat->context->flags & GHOST_PERM_NO_DISTINCTION) {
      	ncols_halo_padded = mat->context->nrowspadded + mat->context->halo_elements+1;
    }
 
@@ -317,20 +316,20 @@ extern "C" ghost_error ghost_sparsemat_blockColor(ghost_sparsemat *mat, void *ma
    	//this branch if no local permutations are carried out before
     	WARNING_LOG("The matrix has not been RCM permuted, BLOCK coloring works better for matrix with small bandwidths");
     	GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local,sizeof(ghost_permutation)), err, ret);
-	old_perm = false;
+    	old_perm = false;
     	GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->perm,sizeof(ghost_gidx)*mat->nrows), err, ret);
     	GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->invPerm,sizeof(ghost_gidx)*mat->nrows), err, ret);
   
-        mat->context->perm_local->method = GHOST_PERMUTATION_UNSYMMETRIC;
+      mat->context->perm_local->method = GHOST_PERMUTATION_UNSYMMETRIC;
 
         //anyway separate both permutations 
-   	GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->colPerm,sizeof(ghost_gidx)*ncols_halo_padded), err, ret);
-        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->colInvPerm,sizeof(ghost_gidx)*ncols_halo_padded), err, ret);
+   	  GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->colPerm,sizeof(ghost_gidx)*ncols_halo_padded), err, ret);
+      GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->colInvPerm,sizeof(ghost_gidx)*ncols_halo_padded), err, ret);
 
       	#pragma omp parallel for         
        	for(int i=0; i<ncols_halo_padded; ++i) { 
        		mat->context->perm_local->colPerm[i] = i;
-		mat->context->perm_local->colInvPerm[i] = i;
+		      mat->context->perm_local->colInvPerm[i] = i;
        	} 
 
      } else if(mat->context->perm_local->method == GHOST_PERMUTATION_SYMMETRIC) {
@@ -473,6 +472,7 @@ free(tmpval);
     }
 
 #else
+    WARNING_LOG("COLPACK is not available, only 1 thread would be used")
     mat->ncolors = 1;
     ghost_malloc((void **)&mat->color_ptr,(mat->ncolors+1)*sizeof(ghost_lidx)); 
   
