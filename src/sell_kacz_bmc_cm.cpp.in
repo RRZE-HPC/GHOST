@@ -18,77 +18,75 @@
 
 #if (NVECS==1 && CHUNKHEIGHT==1)
 //this is necessary since #pragma omp for doesn't understand !=
-#define FORWARD_LOOP(start,end,MT,VT)                                  \
- _Pragma("omp parallel for") 				    	       \
- for (ghost_lidx row=start; row<end; ++row){                           \
-         MT rownorm = 0.;                                              \
-         MT scal = 0;                                                  \
-	 ghost_lidx  idx = sellmat->chunkStart[row];                   \
-        if(bval != NULL) {                                             \
-          scal  = -bval[row];        				       \
-	}							       \
-        for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            \
-		 MT mval_idx = (MT)mval[idx+j];			       \
-                 scal += mval_idx * xval[sellmat->col[idx+j]];         \
-                 rownorm += std::norm(mval_idx);                       \
-       }                                                               \
-        scal /= (MT)rownorm;                                           \
-        scal *= omega;                                                 \
-                                                                       \
- 	_Pragma("simd vectorlength(4)")                                \
-         for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {           \
-		xval[sellmat->col[idx+j]] = xval[sellmat->col[idx+j]] - scal*std::conj(mval[idx+j]);\
-	 }         						       \
-  }                                                                    \
+#define FORWARD_LOOP(start,end,MT,VT)                                   \
+_Pragma("omp parallel for") 				    	                              \
+for (ghost_lidx row=start; row<end; ++row){                             \
+  MT rownorm = 0.;                                                      \
+  MT scal = 0;                                                          \
+	ghost_lidx  idx = sellmat->chunkStart[row];                           \
+  if(bval != NULL) {                                                    \
+    scal  = -bval[row];        				                                  \
+	}							                                                        \
+  for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {                   \
+	  MT mval_idx = (MT)mval[idx+j];			                                \
+    scal += mval_idx * xval[sellmat->col[idx+j]];                       \
+    rownorm += std::norm(mval_idx);                                     \
+  }                                                                     \
+  scal /= (MT)rownorm;                                                  \
+  scal *= omega;                                                        \
+                                                                        \
+ 	_Pragma("simd vectorlength(4)")                                       \
+    for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {                 \
+		  xval[sellmat->col[idx+j]] = xval[sellmat->col[idx+j]] - scal*std::conj(mval[idx+j]);\
+	  }         						                                              \
+}                                                                       \
 
-#define BACKWARD_LOOP(start,end,MT,VT)                                 \
- _Pragma("omp parallel for") 				       	       \
- for (ghost_lidx row=start; row>end; --row){                           \
-         MT rownorm = 0.;                                              \
-         MT scal = 0;                                                  \
-	 ghost_lidx  idx = sellmat->chunkStart[row];                   \
-                                                                       \
-         if(bval != NULL)                                              \
-          scal  = -bval[row];                                          \
-         for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {           \
-		 MT mval_idx = (MT)mval[idx+j];			       \
-                 scal += mval_idx * xval[sellmat->col[idx+j]];         \
-                 rownorm += std::norm(mval_idx);                       \
-       }                                                               \
-       scal /= (MT)rownorm;                                            \
-       scal *= omega;                                                  \
-                                                                       \
- 	_Pragma("simd vectorlength(4)")                                \
-         for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {           \
-		xval[sellmat->col[idx+j]] = xval[sellmat->col[idx+j]] - scal*std::conj(mval[idx+j]);\
-	 }         						       \
-  }                                                                    \
+#define BACKWARD_LOOP(start,end,MT,VT)                                  \
+ _Pragma("omp parallel for") 				       	                            \
+ for (ghost_lidx row=start; row>end; --row){                            \
+  MT rownorm = 0.;                                                      \
+  MT scal = 0;                                                          \
+	ghost_lidx  idx = sellmat->chunkStart[row];                           \
+  if(bval != NULL) {                                                    \
+    scal  = -bval[row];        				                                  \
+	}							                                                        \
+  for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {                   \
+	  MT mval_idx = (MT)mval[idx+j];			                                \
+    scal += mval_idx * xval[sellmat->col[idx+j]];                       \
+    rownorm += std::norm(mval_idx);                                     \
+  }                                                                     \
+  scal /= (MT)rownorm;                                                  \
+  scal *= omega;                                                        \
+                                                                        \
+ 	_Pragma("simd vectorlength(4)")                                       \
+    for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {                 \
+		  xval[sellmat->col[idx+j]] = xval[sellmat->col[idx+j]] - scal*std::conj(mval[idx+j]);\
+	  }         						                                              \
+}                                                                       \
 
-#define LOOP(start,end,stride,MT,VT)                                   \
-  for (ghost_lidx row=start; row!=end; row+=stride){                   \
-         MT rownorm = 0.;                                              \
-         MT scal = 0;                                                  \
-	 ghost_lidx  idx = sellmat->chunkStart[row];                   \
-                                                                       \
-         if(bval != NULL)                                              \
-          scal  = -bval[row];                                          \
-        for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            \
-		 MT mval_idx = mval[idx];			       \
-                 scal += (MT)mval_idx * xval[sellmat->col[idx]];      \
-                 rownorm += std::norm(mval_idx);                      \
-                 idx += 1;                                             \
-          }                                                            \
-        scal /= (MT)rownorm;                                           \
-        scal *= omega;                                                 \
-	idx -= sellmat->rowLen[row];                                   \
-                                                                       \
- 	_Pragma("simd vectorlength(4)")                                \
-         for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {           \
-		xval[sellmat->col[idx]] = xval[sellmat->col[idx]] - scal * std::conj(mval[idx]);\
-                idx += 1;                                              \
-         }                                                             \
-      }         
-		                                                       
+#define LOOP(start,end,stride,MT,VT)                                    \
+for (ghost_lidx row=start; row!=end; row+=stride){                      \
+  MT rownorm = 0.;                                                      \
+  MT scal = 0;                                                          \
+	ghost_lidx  idx = sellmat->chunkStart[row];                           \
+  if(bval != NULL) {                                                    \
+    scal  = -bval[row];        				                                  \
+	}							                                                        \
+  for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {                   \
+	  MT mval_idx = (MT)mval[idx+j];			                                \
+    scal += mval_idx * xval[sellmat->col[idx+j]];                       \
+    rownorm += std::norm(mval_idx);                                     \
+  }                                                                     \
+  scal /= (MT)rownorm;                                                  \
+  scal *= omega;                                                        \
+                                                                        \
+ 	_Pragma("simd vectorlength(4)")                                       \
+    for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {                 \
+		  xval[sellmat->col[idx+j]] = xval[sellmat->col[idx+j]] - scal*std::conj(mval[idx+j]);\
+	  }         						                                              \
+}                                                                       \
+
+	                                                       
 #elif CHUNKHEIGHT == 1
 
  #define FORWARD_LOOP(start,end,MT,VT)                                 \
@@ -430,8 +428,8 @@ static ghost_error ghost_kacz_BMC_u_plain_cm_CHUNKHEIGHT_NVECS_tmpl(ghost_densem
     ghost_sell *sellmat = SELL(mat); 
     MT *bval = NULL;
   
-   if(b!= NULL)
-     bval = (MT *)(b->val);
+    if(b!= NULL)
+      bval = (MT *)(b->val);
 
     MT *xval = (MT *)(x->val);
     MT *mval = (MT *)sellmat->val;
@@ -444,9 +442,9 @@ static ghost_error ghost_kacz_BMC_u_plain_cm_CHUNKHEIGHT_NVECS_tmpl(ghost_densem
     int prev_nthreads;
     int prev_omp_nested;
 
-int rank;
-//TODO remove after test
-ghost_rank(&rank, mat->context->mpicomm);
+    int rank;
+    //TODO remove after test
+    ghost_rank(&rank, mat->context->mpicomm);
 
 
 #ifdef GHOST_HAVE_OPENMP
@@ -470,15 +468,26 @@ ghost_rank(&rank, mat->context->mpicomm);
    //Do multicolored rows, if in backward direction
     int mc_start, mc_end;
 
-//    ghost_lidx stride = 0;
+   //ghost_lidx stride = 0;
+    if (opts.direction == GHOST_KACZ_DIRECTION_BACKWARD) {
+  	#ifdef GHOST_HAVE_COLPACK 
+	  for(int i=mat->ncolors; i>0; --i) {
+      mc_start  = color_ptr[i]-1;
+      mc_end    = color_ptr[i-1]-1;
+      BACKWARD_LOOP(mc_start,mc_end,MT,MT)
+    }
+    #else
+    ghost_omp_set_dynamic(0);
+    ghost_omp_nthread_set(1);
 
-   if (opts.direction == GHOST_KACZ_DIRECTION_BACKWARD) {
-	for(int i=mat->ncolors; i>0; --i) {
-            mc_start  = color_ptr[i]-1;
-            mc_end    = color_ptr[i-1]-1;
-//            stride   = -1;
-            BACKWARD_LOOP(mc_start,mc_end,MT,MT)
-         }
+   for(int i=mat->ncolors; i>0; --i) {
+      mc_start  = color_ptr[i]-1;
+      mc_end    = color_ptr[i-1]-1;
+      BACKWARD_LOOP(mc_start,mc_end,MT,MT)
+    }
+
+    ghost_omp_nthread_set(nthreads);
+    #endif
 
 #ifdef GHOST_HAVE_OPENMP  
 #if CHUNKHEIGHT > 1
@@ -488,24 +497,23 @@ ghost_rank(&rank, mat->context->mpicomm);
 #endif
  	{
 #endif 
-        ghost_lidx tid = ghost_omp_threadnum();
+    ghost_lidx tid = ghost_omp_threadnum();
    	ghost_lidx start[4];
-    	ghost_lidx end[4];
+    ghost_lidx end[4];
 
-	start[0]  = zone_ptr[4*tid+4]-1; 
-	end[0]    = zone_ptr[4*tid+3]-1;   	
-        start[1]  = zone_ptr[4*tid+3]-1;
-    	end[1]    = zone_ptr[4*tid+2]-1;
-        start[2]  = zone_ptr[4*tid+2]-1;
-        end[2]    = zone_ptr[4*tid+1]-1;
-        start[3]  = zone_ptr[4*tid+1]-1;
-        end[3]    = zone_ptr[4*tid]  -1;
-//      stride    = -1;
-    	if(mat->kacz_setting.kacz_method == BMC_one_sweep) { 
-    		for(ghost_lidx zone = 0; zone<4; ++zone) { 
-           		BACKWARD_LOOP(start[zone],end[zone],MT,MT)   
-     
-   	  	        #pragma omp barrier                           
+	  start[0]  = zone_ptr[4*tid+4]-1; 
+	  end[0]    = zone_ptr[4*tid+3]-1;   	
+    start[1]  = zone_ptr[4*tid+3]-1;
+    end[1]    = zone_ptr[4*tid+2]-1;
+    start[2]  = zone_ptr[4*tid+2]-1;
+    end[2]    = zone_ptr[4*tid+1]-1;
+    start[3]  = zone_ptr[4*tid+1]-1;
+    end[3]    = zone_ptr[4*tid]  -1;
+    //stride    = -1;
+    if(mat->kacz_setting.kacz_method == BMC_one_sweep) { 
+      for(ghost_lidx zone = 0; zone<4; ++zone) { 
+        BACKWARD_LOOP(start[zone],end[zone],MT,MT)    
+   	  	#pragma omp barrier                           
  
 	      //TODO A more efficient way of locking is necessary, normal locks makes problem if the matrix size is small
 	      //but this explicit flush method is expensive than barrier
@@ -536,23 +544,21 @@ ghost_rank(&rank, mat->context->mpicomm);
   
 */
   	//	LOCK_NEIGHBOUR(tid)
-       		}
- 	} else if (mat->kacz_setting.kacz_method == BMC_two_sweep) {
-		BACKWARD_LOOP(start[0],end[0],MT,MT)
-     		#pragma omp barrier 
-   
-     		if(tid%2 != 0) {
-            		BACKWARD_LOOP(start[1],end[1],MT,MT)
-        	}	 
-       		#pragma omp barrier
-       		if(tid%2 == 0) {
-            		BACKWARD_LOOP(start[1],end[1],MT,MT)
-        	}
-
-      		#pragma omp barrier
-       		BACKWARD_LOOP(start[2],end[2],MT,MT)
-     		#pragma omp barrier 
-       		BACKWARD_LOOP(start[3],end[3],MT,MT)               
+     	}
+ 	  } else if (mat->kacz_setting.kacz_method == BMC_two_sweep) {
+		  BACKWARD_LOOP(start[0],end[0],MT,MT)
+     	#pragma omp barrier   
+     	if(tid%2 != 0) {
+        BACKWARD_LOOP(start[1],end[1],MT,MT)
+      }	 
+      #pragma omp barrier
+      if(tid%2 == 0) {
+        BACKWARD_LOOP(start[1],end[1],MT,MT)
+     	}
+      #pragma omp barrier
+   		BACKWARD_LOOP(start[2],end[2],MT,MT)
+   		#pragma omp barrier 
+   		BACKWARD_LOOP(start[3],end[3],MT,MT)               
   	}      
 
 #ifdef GHOST_HAVE_OPENMP
@@ -569,53 +575,66 @@ ghost_rank(&rank, mat->context->mpicomm);
 #endif
  	{
 #endif 
-        ghost_lidx tid = ghost_omp_threadnum();
-	ghost_lidx start[4];
-    	ghost_lidx end[4];
-       	start[0]  = zone_ptr[4*tid];
-    	end[0]    = zone_ptr[4*tid+1];
-     	start[1]  = zone_ptr[4*tid+1];
-        end[1]    = zone_ptr[4*tid+2];
-	start[2]  = zone_ptr[4*tid+2];
-        end[2]    = zone_ptr[4*tid+3];
-        start[3]  = zone_ptr[4*tid+3];
-        end[3]    = zone_ptr[4*tid+4];
-//        stride    = 1;
+    ghost_lidx tid = ghost_omp_threadnum();
+	  ghost_lidx start[4];
+    ghost_lidx end[4];
+    start[0]  = zone_ptr[4*tid];
+    end[0]    = zone_ptr[4*tid+1];
+    start[1]  = zone_ptr[4*tid+1];
+    end[1]    = zone_ptr[4*tid+2];
+	  start[2]  = zone_ptr[4*tid+2];
+    end[2]    = zone_ptr[4*tid+3];
+    start[3]  = zone_ptr[4*tid+3];
+    end[3]    = zone_ptr[4*tid+4];
 
-      	if(mat->kacz_setting.kacz_method == BMC_one_sweep) { 
-    		for(ghost_lidx zone = 0; zone<4; ++zone) { 
-            		FORWARD_LOOP(start[zone],end[zone],MT,MT)        
-   		   	#pragma omp barrier                           
-      		}
- 	} else if (mat->kacz_setting.kacz_method == BMC_two_sweep) {
+    if(mat->kacz_setting.kacz_method == BMC_one_sweep) { 
+ 		  for(ghost_lidx zone = 0; zone<4; ++zone) { 
+        FORWARD_LOOP(start[zone],end[zone],MT,MT)        
+   		  #pragma omp barrier                           
+      }
+ 	  } else if (mat->kacz_setting.kacz_method == BMC_two_sweep) {
 	    	FORWARD_LOOP(start[0],end[0],MT,MT)
      		#pragma omp barrier 
-       		FORWARD_LOOP(start[1],end[1],MT,MT)
-   		#pragma omp barrier
+     		FORWARD_LOOP(start[1],end[1],MT,MT)
+   	  	#pragma omp barrier
      		if(tid%2 == 0) {
-            		FORWARD_LOOP(start[2],end[2],MT,MT)
-        	}	 
-       		#pragma omp barrier
-       		if(tid%2 != 0) {
-            		FORWARD_LOOP(start[2],end[2],MT,MT)
-        	}
+        	FORWARD_LOOP(start[2],end[2],MT,MT)
+        }	 
+       	#pragma omp barrier
+       	if(tid%2 != 0) {
+          FORWARD_LOOP(start[2],end[2],MT,MT)
+       	}
     		#pragma omp barrier 
-       		FORWARD_LOOP(start[3],end[3],MT,MT)               
+       	FORWARD_LOOP(start[3],end[3],MT,MT)               
   	}      
 
 #ifdef GHOST_HAVE_OPENMP
   }
 #endif
+
+#ifdef GHOST_HAVE_COLPACK 
 	for(int i=0; i<mat->ncolors; ++i) { 
         	mc_start  = color_ptr[i];
-            	mc_end    = color_ptr[i+1];
-//            	stride    = 1;
-
-           	FORWARD_LOOP(mc_start,mc_end,MT,MT)
+         	mc_end    = color_ptr[i+1];
+         	FORWARD_LOOP(mc_start,mc_end,MT,MT)
 	}
+#else
+ ghost_omp_set_dynamic(0);
+ ghost_omp_nthread_set(1);
+
+for(int i=0; i<mat->ncolors; ++i) { 
+        	mc_start  = color_ptr[i];
+         	mc_end    = color_ptr[i+1];
+         	FORWARD_LOOP(mc_start,mc_end,MT,MT)
+	}
+
+ghost_omp_nthread_set(nthreads);
+
+#endif
+
 }
 
-    free(flag);	    
+free(flag);	    
 
 //reset values TODO reset n_threads
 #ifdef GHOST_HAVE_OPENMP
