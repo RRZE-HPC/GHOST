@@ -402,11 +402,36 @@ if(vec->traits.permutemethod == NONE) {
 
     GHOST_CALL_RETURN(vec->download(vec));
 
-    if (dir == GHOST_PERMUTATION_PERM2ORIG && vec->perm_local) {
+     if (dir == GHOST_PERMUTATION_PERM2ORIG && vec->perm_local) {
         ghost_densemat *vecclone;
        	ghost_densemat_clone(&vecclone,vec,vec->traits.nrows,0,vec->traits.ncols,0);
         vecclone->download(vecclone);
-        DENSEMAT_ITER(vec,*valptr = *(v_t *)DENSEMAT_VALPTR(vecclone,vec->perm_local->perm[row],col));
+
+       if(ghost_omp_in_parallel()) {
+          #pragma omp for
+          for(int i=0; i<vec->traits.nrows; ++i) {
+            for(int col =0; col<vec->traits.ncols; ++col) {
+              if(vec->perm_local->perm[i] < vec->traits.nrows) {
+               ((v_t*)vec->val)[i*vec->traits.ncols+col] = ((v_t*)vecclone->val)[(vec->perm_local->perm[i])*vec->traits.ncols+col];
+             } else {
+                ((v_t*)vec->val)[i*vec->traits.ncols+col] = ((v_t*)vecclone->val)[(vec->perm_local->perm[vec->perm_local->perm[i]])*vec->traits.ncols+col];//this element value is zero and it goes to the place where halo would have been permuted to;
+             }
+            } 
+          }
+        } else {
+          #pragma omp parallel for
+          for(int i=0; i<vec->traits.nrows; ++i) {
+            for(int col =0; col<vec->traits.ncols; ++col) {
+              if(vec->perm_local->perm[i] < vec->traits.nrows) {
+                ((v_t*)vec->val)[i*vec->traits.ncols+col] = ((v_t*)vecclone->val)[(vec->perm_local->perm[i])*vec->traits.ncols+col];
+              } else {
+                ((v_t*)vec->val)[i*vec->traits.ncols+col] = ((v_t*)vecclone->val)[(vec->perm_local->perm[vec->perm_local->perm[i]])*vec->traits.ncols+col];//this element value is zero and it goes to the place where halo would have been permuted to;
+             } 
+            }
+          }
+        }
+
+        //DENSEMAT_ITER(vec,*valptr = *(v_t *)DENSEMAT_VALPTR(vecclone,vec->perm_local->perm[row],col));
         ghost_densemat_destroy(vecclone);
         GHOST_CALL_RETURN(vec->upload(vec));
     }
@@ -452,19 +477,28 @@ if(vec->traits.permutemethod == NONE) {
 
         //Accessing invPerm would be a problem if GHOST_PERM_NO_DISTINCTION is ON
         if(ghost_omp_in_parallel()) {
+          #pragma omp for
           for(int i=0; i<vec->traits.nrows; ++i) {
             for(int col =0; col<vec->traits.ncols; ++col) {
-            ((v_t*)vec->val)[(vec->perm_local->perm[i])*vec->traits.ncols+col] = ((v_t*)vecclone->val)[i*vecclone->traits.ncols+col];
-            }
-          }
-        } else {
+              if(vec->perm_local->perm[i] < vec->traits.nrows) {
+                ((v_t*)vec->val)[(vec->perm_local->perm[i])*vec->traits.ncols+col] = ((v_t*)vecclone->val)[i*vecclone->traits.ncols+col];
+              } else {
+                ((v_t*)vec->val)[(vec->perm_local->perm[vec->perm_local->perm[i]])*vec->traits.ncols+col] = ((v_t*)vecclone->val)[i*vecclone->traits.ncols+col];
+             }
+           }
+         }
+       } else {
           #pragma omp parallel for
           for(int i=0; i<vec->traits.nrows; ++i) {
             for(int col =0; col<vec->traits.ncols; ++col) {
-            ((v_t*)vec->val)[(vec->perm_local->perm[i])*vec->traits.ncols+col] = ((v_t*)vecclone->val)[i*vecclone->traits.ncols+col];
-            }
-          }
-        }
+              if(vec->perm_local->perm[i] < vec->traits.nrows) { 
+                ((v_t*)vec->val)[(vec->perm_local->perm[i])*vec->traits.ncols+col] = ((v_t*)vecclone->val)[i*vecclone->traits.ncols+col];
+              } else {
+                ((v_t*)vec->val)[(vec->perm_local->perm[vec->perm_local->perm[i]])*vec->traits.ncols+col] = ((v_t*)vecclone->val)[i*vecclone->traits.ncols+col];
+             }
+           }
+         }
+       }
         //DENSEMAT_ITER(vec, *valptr = *(v_t *)DENSEMAT_VALPTR(vecclone,vec->perm_local->invPerm[row],col)); //this would yield seg fault
         ghost_densemat_destroy(vecclone);
         GHOST_CALL_RETURN(vec->upload(vec));
@@ -519,14 +553,12 @@ static ghost_error FUNCNAME(fromScalar_tmpl(ghost_densemat *vec, void *val))
 
     int needInit = 0;
     FUNCNAME(malloc(vec,&needInit));
-
     if( needInit ) {
       DENSEMAT_ITER_INIT(vec,*(v_t *)valptr = *(v_t *)val);
     } else {
       DENSEMAT_ITER(vec,*(v_t *)valptr = *(v_t *)val);
     }
     
-
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
     
     return GHOST_SUCCESS;
