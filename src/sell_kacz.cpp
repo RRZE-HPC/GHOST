@@ -57,7 +57,7 @@ static ghost_error ghost_carp_init_tmpl(ghost_sparsemat *mat, ghost_densemat *rh
     v_t* bval = ((v_t*)rhs->val);
    
     #ifdef GHOST_HAVE_OPENMP 
-      #pragma omp parallel for schedule(runtime)
+      #pragma omp parallel for schedule(runtime) private(row,idx) 
     #endif
     for(ghost_lidx chunk=0; chunk < nchunks; ++chunk) {
      #pragma simd
@@ -76,7 +76,8 @@ static ghost_error ghost_carp_init_tmpl(ghost_sparsemat *mat, ghost_densemat *rh
           mval[idx] = ((m_t)mval[idx])/scal[row];
           idx+=chunkHeight;
         }     
-        bval[row] = ((v_t)bval[row])/(m_t)scal[row];
+        if(bval != NULL)
+          bval[row] = ((v_t)bval[row])/(m_t)scal[row];
       } 
     }
       
@@ -95,7 +96,8 @@ static ghost_error ghost_carp_init_tmpl(ghost_sparsemat *mat, ghost_densemat *rh
           mval[idx] = ((m_t)mval[idx])/scal[row];
           idx+=chunkHeight;
         }
-        bval[row] = ((v_t)bval[row])/(m_t)scal[row];
+        if(bval != NULL)
+          bval[row] = ((v_t)bval[row])/(m_t)scal[row];
       } 
    
      opts->scale = scal;     
@@ -325,7 +327,11 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
     ghost_densemat *b;
     //deal with NULL pointer of b
     if(rhs==NULL) {
-      ghost_densemat_create_and_view_densemat(&b, x, x->traits.nrows, 0, x->traits.ncols, 0);
+      if(opts.num_shifts != 0)       
+        ghost_densemat_create_and_view_densemat(&b, x, x->traits.nrows, 0, x->traits.ncols/opts.num_shifts, 0);
+      else       
+        ghost_densemat_create_and_view_densemat(&b, x, x->traits.nrows, 0, x->traits.ncols, 0);
+
       b->val = NULL; 
     } else {
       b = rhs;
@@ -407,10 +413,10 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
         first_storage = 0;
     } else {
         n_storage = 1;
-        if (x->traits.storage == GHOST_DENSEMAT_ROWMAJOR && b->traits.storage == x->traits.storage) {
-            first_storage = 1;
-        } else {
+        if (x->traits.storage == GHOST_DENSEMAT_COLMAJOR && b->traits.storage == x->traits.storage) {
             first_storage = 0;
+        } else {
+            first_storage = 1;
         }
     }
     if ((b->traits.flags & GHOST_DENSEMAT_SCATTERED) || 
@@ -473,10 +479,10 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
                                 p.vdt = try_vdt[pos_vdt];
 
 
-                            	INFO_LOG("Try chunkheight=%s, blocksz=%s, impl=%s, %s, method %s",
+                            	INFO_LOG("Try chunkheight=%s, blocksz=%s, impl=%s, %s, method %s, storage %s, vec DT %s",
                                     p.chunkheight==-1?"arbitrary":std::to_string((long long)p.chunkheight).c_str(),
                                     p.blocksz==-1?"arbitrary":std::to_string((long long)p.blocksz).c_str(),
-                                    ghost_implementation_string(p.impl),p.alignment==GHOST_UNALIGNED?"unaligned":"aligned",p.method==BMC?"BMC":p.method==MC?"MC":p.method==BMCNORMAL?"BMC_NORMAL":"BMC_shift");
+                                    ghost_implementation_string(p.impl),p.alignment==GHOST_UNALIGNED?"unaligned":"aligned",p.method==BMC?"BMC":p.method==MC?"MC":p.method==BMCNORMAL?"BMC_NORMAL":"BMC_shift",ghost_densemat_storage_string(p.storage),ghost_datatype_string(p.vdt));
                             	kernel = ghost_kacz_kernels[p];
                             	if (kernel) {
                             		goto end_of_loop;
