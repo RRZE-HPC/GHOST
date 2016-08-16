@@ -187,13 +187,19 @@ static ghost_error getNrowsFromContext(ghost_densemat *vec, ghost_context *ctx)
         int rank;
         GHOST_CALL_RETURN(ghost_rank(&rank, ctx->mpicomm));
         //make distinction between Left and Right side vectors (since now we have rectangular matrix)
-        if(ctx->flags & GHOST_PERM_NO_DISTINCTION && vec->traits.permutemethod==COLUMN) {
-		      vec->traits.nrows = ctx->nrowspadded; 
-        } else if(ctx->flags & GHOST_PERM_NO_DISTINCTION && vec->traits.permutemethod==ROW) {
-          vec->traits.nrows = ctx->lnrows[rank];
+        if(ctx->flags & GHOST_PERM_NO_DISTINCTION){
+          if(vec->traits.permutemethod==COLUMN) {
+		        vec->traits.nrows = ctx->nrowspadded; 
+          } else if(vec->traits.permutemethod==ROW) {
+            vec->traits.nrows = ctx->lnrows[rank];
+          } 
+          vec->traits.maxnrows = MAX(ctx->nrowspadded, ctx->lnrows[rank]); //required for rectanglar matrices
         } else {
         	vec->traits.nrows = ctx->lnrows[rank];
+          vec->traits.maxnrows = ctx->lnrows[rank];
 	      }
+    } else {
+        vec->traits.maxnrows = vec->traits.nrows;
     }
 
     if (vec->traits.flags & GHOST_DENSEMAT_VIEW) {
@@ -239,6 +245,7 @@ static ghost_error getNrowsFromContext(ghost_densemat *vec, ghost_context *ctx)
 #endif
  
         vec->traits.nrowspadded = PAD(vec->traits.nrows,padding);
+        vec->traits.maxnrowspadded = PAD(vec->traits.maxnrows,padding);
     }
       
     if (vec->traits.ncolsorig == 0) {
@@ -263,16 +270,21 @@ static ghost_error getNrowsFromContext(ghost_densemat *vec, ghost_context *ctx)
                 return GHOST_ERR_UNKNOWN;
             }
             vec->traits.nrowshalo = vec->traits.nrowspadded+ctx->halo_elements;
+            vec->traits.maxnrowshalo = vec->traits.maxnrowspadded+ctx->halo_elements;
         } else {
             vec->traits.nrowshalo = vec->traits.nrowspadded;
+            vec->traits.maxnrowshalo = vec->traits.maxnrowspadded;
         }
     } else {
         // context->hput_pos[0] = nrows if only one process, so we need a dummy element 
         vec->traits.nrowshalo = vec->traits.nrowspadded; 
+        vec->traits.maxnrowshalo = vec->traits.maxnrowspadded;
     }
  
+
     vec->traits.nrowshalopadded = PAD(vec->traits.nrowshalo,ghost_machine_simd_width()/4);
-    
+    vec->traits.maxnrowshalopadded = PAD(vec->traits.maxnrowshalo,ghost_machine_simd_width()/4);
+   
     DEBUG_LOG(1,"The vector has %"PRLIDX" w/ %"PRLIDX" halo elements (padded: %"PRLIDX") rows",
             vec->traits.nrows,vec->traits.nrowshalo-vec->traits.nrows,vec->traits.nrowspadded);
     return GHOST_SUCCESS; 
@@ -618,3 +630,44 @@ ghost_lidx ghost_densemat_row_padding()
     return padding;
 }
 
+//The third argument isPermuted if set, it assumes the vector is permuted
+//else it takes the value of GHOST_DENSEMAT_PERMUTED
+//TODO: this is just for time being since the flag have to be set 
+//after each operator like SpMV or CARP 
+ghost_error switch_permutation_method( ghost_densemat **vec, ghost_context *ctx, bool isPermuted) 
+{
+    int rank;
+    GHOST_CALL_RETURN(ghost_rank(&rank, ctx->mpicomm));
+    bool permuted = false;
+    char *vecstr;
+
+    if((*vec)->traits.permutemethod != NONE) {
+      if((*vec)->traits.flags & (ghost_densemat_flags)GHOST_DENSEMAT_PERMUTED || isPermuted) 
+      {
+        (*vec)->permute(*vec,ctx,GHOST_PERMUTATION_PERM2ORIG);
+        permuted = true;
+      }
+      if((*vec)->perm_local) {
+        free((*vec)->perm_local);
+        (*vec)->perm_local = NULL;
+      }
+      if((*vec)->perm_global) {
+        free((*vec)->perm_global);
+        (*vec)->perm_global = NULL;
+      }
+      (*vec)->traits.permutemethod = ((*vec)->traits.permutemethod==ROW)?COLUMN:ROW;
+      ghost_densemat *temp_vec; 
+      ghost_densemat_create(&temp_vec,ctx,(*vec)->traits);//no allocation
+      temp_vec->val = (*vec)->val;
+      free(*vec);//not the value
+      (*vec) = temp_vec;
+
+      if(permuted) {
+        (*vec)->permute(*vec,ctx,GHOST_PERMUTATION_ORIG2PERM);
+      }
+    } else {
+      WARNING_LOG("Permutation Method cannot be switched since matrix has permutemethod == NONE")
+    }
+  
+   return GHOST_SUCCESS;
+}   

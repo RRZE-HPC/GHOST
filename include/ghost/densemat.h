@@ -208,6 +208,11 @@ typedef struct
      */
     ghost_lidx nrows;
     /**
+     * @brief The Maximum of nrows of Left and Right sided densemat 
+     * required if matrix is rectangular
+     */
+    ghost_lidx maxnrows;
+    /**
      * @brief The number of rows of the densemat which is viewed by this 
      * densemat.
      */
@@ -217,15 +222,30 @@ typedef struct
      */
     ghost_lidx nrowshalo;
     /**
+     * @brief The Maximum of nrowshalo of Left and Right sided densemat 
+     * required if matrix is rectangular
+     */
+    ghost_lidx maxnrowshalo;
+    /**
      * @brief The padded number of rows (may differ from nrows for col-major 
      * densemats).
      */
     ghost_lidx nrowspadded;
     /**
+     * @brief The Maximum of nrowspadded of Left and Right sided densemat 
+     * required if matrix is rectangular
+     */
+    ghost_lidx maxnrowspadded;
+    /**
      * @brief The number of rows including padding, halo, and halo-padding elements
      * There is another padding after the halo elements to guarantee aligned access to successive columns for col-major densemats.
      */
     ghost_lidx nrowshalopadded;
+     /**
+     * @brief The Maximum of nrowspadded of Left and Right sided densemat 
+     * required if matrix is rectangular
+     */
+    ghost_lidx maxnrowshalopadded;
     /**
      * @brief The number of columns.
      */
@@ -778,6 +798,18 @@ extern "C" {
      * @return The number of padded rows.
      */
     ghost_lidx ghost_densemat_row_padding();
+
+    /**
+     * @brief Switches permmethod(side) from the current method(side) to the other method(side).
+     *
+     * @return The number of padded rows.
+     * @param vec Where to store the matrix.
+     * @param ctx The context the matrix lives in or NULL.
+     * @param isPermuted This overrules the flag GHOST_DENSEMAT_PERMUTED 
+     * (this is required for time-being since operators like SpMV, CARP is not 
+     *  currently setting the GHOST_DENSEMAT_PERMUTED flag)
+     */ 
+    ghost_error switch_permutation_method( ghost_densemat **vec, ghost_context *ctx, bool isPermuted); 
 
 #ifdef __cplusplus
 }
