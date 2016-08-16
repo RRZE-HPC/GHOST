@@ -118,6 +118,7 @@ set (SOURCES
     src/sell_kacz_mc.c
     src/sell_kacz_selector.c
     src/kacz_analyze_print.c
+    src/sell_kacz_fallback.cpp 
     )
 
 set (HEADERS
@@ -171,6 +172,7 @@ set (HEADERS
     include/ghost/kacz_split_analytical.h
     include/ghost/sell_kacz_bmc.h 
     include/ghost/sell_kacz_mc.h
+    include/ghost/sell_kacz_fallback.h
     )
 
 string(REPLACE "," ";" GHOST_GEN_SELL_C_LIST ${GHOST_GEN_SELL_C})
@@ -248,7 +250,7 @@ configure_file (
                 list(APPEND GENERATED_FILES ${PROJECT_BINARY_DIR}/src_generated/${AUTOGEN_FUNCTION}__${BLOCKDIM1}_${CHUNKHEIGHT}${TEMPLATE_SRCFILE_EXT})
             endforeach()
         endforeach()
-    elseif(TEMPLATE_DEPS_LIST MATCHES "^BLOCKDIM1;BLOCKDIM2$")
+   elseif(TEMPLATE_DEPS_LIST MATCHES "^BLOCKDIM1;BLOCKDIM2$")
         foreach(BLOCKDIM1 ${GHOST_GEN_DENSEMAT_DIM_LIST})
             foreach(BLOCKDIM2 ${GHOST_GEN_DENSEMAT_DIM_LIST})
                 configure_file (
