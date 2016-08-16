@@ -6,6 +6,8 @@
 #define ROWMAJOR
 #include "ghost/densemat_iter_macros.h"
 
+//TODO fix this- for some reasons broken
+
 template<typename T>
 static ghost_error ghost_densemat_rm_averagehalo_tmpl(ghost_densemat *vec, ghost_context *ctx)
 {
@@ -13,7 +15,7 @@ static ghost_error ghost_densemat_rm_averagehalo_tmpl(ghost_densemat *vec, ghost
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
     ghost_error ret = GHOST_SUCCESS;
 
-    int rank, nrank, i, j, k, ctr, start, d, acc_dues = 0;
+    int rank, nrank, i, j,  ctr, start, d, acc_dues = 0;
     T *work = NULL, *curwork = NULL;
     MPI_Request *req = NULL;
     T *sum = NULL;
@@ -33,7 +35,8 @@ static ghost_error ghost_densemat_rm_averagehalo_tmpl(ghost_densemat *vec, ghost
 
     GHOST_CALL_GOTO(ghost_rank(&rank,ctx->mpicomm),err,ret);
     GHOST_CALL_GOTO(ghost_nrank(&nrank,ctx->mpicomm),err,ret);
-  
+
+  if(nrank > 1) {  
     for (i=0; i<nrank; i++) {
        acc_dues += ctx->dues[i];
     }
@@ -71,13 +74,12 @@ static ghost_error ghost_densemat_rm_averagehalo_tmpl(ghost_densemat *vec, ghost
 
     curwork = work;
     for (i=0; i<nrank; i++) {
-         MPI_CALL_GOTO(MPI_Irecv(curwork,ctx->dues[i]*vec->traits.ncols,vec->mpidt,i,i,ctx->mpicomm,&req[nrank+i]),err,ret);
+        MPI_CALL_GOTO(MPI_Irecv(curwork,ctx->dues[i]*vec->traits.ncols,vec->mpidt,i,i,ctx->mpicomm,&req[nrank+i]),err,ret);
         curwork += ctx->dues[i];
     }
     
     MPI_CALL_GOTO(MPI_Waitall(2*nrank,req,MPI_STATUSES_IGNORE),err,ret);
-   
-   GHOST_CALL_GOTO(ghost_malloc((void **)&sum,vec->traits.ncols*ctx->nElemAvg*sizeof(T)),err,ret);//multiply by 8 to avoid false sharing
+    GHOST_CALL_GOTO(ghost_malloc((void **)&sum,vec->traits.ncols*ctx->nElemAvg*sizeof(T)),err,ret);
 
   #pragma omp parallel for schedule(runtime)   //which one to parallelise(inner or outer) depends on the matrix
    for(int i=0 ; i<ctx->nChunkAvg; ++i) {
@@ -108,8 +110,7 @@ static ghost_error ghost_densemat_rm_averagehalo_tmpl(ghost_densemat *vec, ghost
     }
   }
  
-    ghost_lidx currow;
-     curwork = work;
+    curwork = work;
 
 
 start = 0;
@@ -132,7 +133,7 @@ for(int i=0 ; i<ctx->nChunkAvg; ++i) {
   for(int j=ctx->avg_ptr[2*i]; j<ctx->avg_ptr[2*i+1]; ++j) {
     int ctr = ctx->mapAvg[j];
     for(int k=0; k<vec->traits.ncols; ++k) {
-      ((T *)vec->val)[j*vec->traits.ncols+k] = sum[ctr]/(T)ctx->nrankspresent[ctr];
+      ((T *)vec->val)[j*vec->traits.ncols+k] = sum[ctr*vec->traits.ncols+k]/(T)ctx->nrankspresent[ctr];
     }
   }
 }
@@ -147,6 +148,10 @@ out:
     free(req);
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_COMMUNICATION);
     return ret;
+
+  } else {
+   return ret;
+  }
 
 #else
     UNUSED(vec);

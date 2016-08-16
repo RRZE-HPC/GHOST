@@ -33,7 +33,8 @@ static ghost_error ghost_densemat_cm_averagehalo_tmpl(ghost_densemat *vec, ghost
 
     GHOST_CALL_GOTO(ghost_rank(&rank,ctx->mpicomm),err,ret);
     GHOST_CALL_GOTO(ghost_nrank(&nrank,ctx->mpicomm),err,ret);
-  
+ 
+   if(nrank > 1) { 
     for (i=0; i<nrank; i++) {
        acc_dues += ctx->dues[i];
     }
@@ -180,6 +181,11 @@ out:
     free(req);
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_COMMUNICATION);
     return ret;
+
+  } else {
+    return ret;
+  }
+
 #else
     UNUSED(vec);
     ERROR_LOG("MPI is required!");
