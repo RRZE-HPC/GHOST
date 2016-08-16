@@ -52,8 +52,12 @@ ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, gho
     (*context)->nduepartners = 0;
     (*context)->wishpartners = NULL;
     (*context)->nwishpartners = 0;
-    (*context)->entsInCol = NULL;
-   
+    (*context)->entsInCol = NULL;  
+
+    (*context)->avg_ptr = NULL;
+    (*context)->mapAvg = NULL;
+    (*context)->mappedDuelist = NULL;
+    (*context)->nrankspresent = NULL;   
 
     GHOST_CALL_GOTO(ghost_nrank(&nranks, (*context)->mpicomm),err,ret);
     GHOST_CALL_GOTO(ghost_rank(&me, (*context)->mpicomm),err,ret);
@@ -453,10 +457,13 @@ void ghost_context_destroy(ghost_context *context)
         free(context->duepartners); context->duepartners = NULL;
         free(context->wishpartners); context->wishpartners = NULL;
         free(context->entsInCol); context->entsInCol = NULL;
-        free(context->avg_ptr); context->avg_ptr = NULL;
-        free(context->mapAvg); context->mapAvg = NULL;
-        free(context->mappedDuelist); context->mappedDuelist = NULL;
-        free(context->nrankspresent); context->nrankspresent = NULL;
+
+        if(context->avg_ptr){
+          free(context->avg_ptr); context->avg_ptr = NULL;
+          free(context->mapAvg); context->mapAvg = NULL;
+          free(context->mappedDuelist); context->mappedDuelist = NULL;
+          free(context->nrankspresent); context->nrankspresent = NULL;
+        }
 
         if( context->perm_local )
         {
@@ -786,17 +793,17 @@ ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, gh
         ghost_lidx halo_ctr = 0;
         //we need to know number of halo elements now
         for(int k=0;k<nprocs;++k) {
-        if (k != me){ 
+          if (k != me){ 
             for (j=0;j<ctx->wishes[k];j++){
                 ++halo_ctr;
             }
-        }
+          }
         }
 
-        ctx->nrowspadded   =  PAD(ctx->lnrows[me]+halo_ctr+1,rowpadding);
+        ctx->nrowspadded   =  PAD(ctx->lnrows[me]+halo_ctr,rowpadding);
         rowpaddingoffset   =  ctx->nrowspadded-ctx->lnrows[me];
     } else {
-	    //ctx->nrowspadded = PAD(ctx->lnrows[me],rowpadding);// this is set already
+	    ctx->nrowspadded = PAD(ctx->lnrows[me],rowpadding);// this is set already
 	    rowpaddingoffset = PAD(ctx->lnrows[me],rowpadding)-ctx->lnrows[me];
     }
 
@@ -908,7 +915,7 @@ ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, gh
         ctx->wishlist[i]   = &(wishl_mem[acc_wishes]);
 
         if(mat->context->flags & GHOST_PERM_NO_DISTINCTION) {	
-		ctx->hput_pos[i]   = ctx->nrowspadded + acc_wishes;
+		      ctx->hput_pos[i]   = ctx->nrowspadded + acc_wishes;
 	} else {
         	ctx->hput_pos[i]   = PAD(ctx->lnrows[me],rowpadding)+acc_wishes;
 	}

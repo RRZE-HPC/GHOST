@@ -593,7 +593,7 @@ ghost_error ghost_sparsemat_fromfunc_common_dummy(ghost_lidx *rl, ghost_lidx *rl
                             crscol = &((ghost_sparsemat_rowfunc_crs_arg *)src->arg)->col[crsrpt[actualrow]];
                             if (0){//mat->traits.flags & GHOST_SPARSEMAT_PERMUTE) {
                                 // local permutation: distinction between global and local entriess, if GHOST_PERM_NO_DISTINCTION is not set 
-                                if ((mat->context->flags & GHOST_PERM_NO_DISTINCTION) || ( (crscol[colidx] >= mat->context->lfRow[me]) && (crscol[colidx] < (mat->context->lfRow[me]+mat->ncols)) )) { // local entry: copy with permutation
+                                if ((mat->context->flags & GHOST_PERM_NO_DISTINCTION) || ( (crscol[colidx] >= mat->context->lfRow[me]) && (crscol[colidx] < (mat->context->lfRow[me]+mat->nrows)) )) { // local entry: copy with permutation
                                     if (mat->traits.flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS) {
                                         (*col)[(*chunkptr)[chunk]+colidx*C+i] = crscol[colidx];
                                     } else if(mat->context->flags & GHOST_PERM_NO_DISTINCTION) {
@@ -647,13 +647,13 @@ ghost_error ghost_sparsemat_fromfunc_common_dummy(ghost_lidx *rl, ghost_lidx *rl
                     for (colidx = 0; colidx<clp[chunk]; colidx++) {
                         memcpy(*val+mat->elSize*((*chunkptr)[chunk]+colidx*C+i),&tmpval[mat->elSize*(i*src->maxrowlen+colidx)],mat->elSize);
                         if (mat->traits.flags & GHOST_SPARSEMAT_PERMUTE) {
-                            if (0){//mat->context->perm_global && !mat->context->perm_local) {
+                            if(0){// (mat->context->perm_global && !mat->context->perm_local) {
                                 // no distinction between global and local entries
                                 // global permutation will be done after all rows are read
                                 (*col)[(*chunkptr)[chunk]+colidx*C+i] = tmpcol[i*src->maxrowlen+colidx];
                             } else { 
                                 // local permutation: distinction between global and local entries, if GHOST_PERM_NO_DISTINCTION is not set 
-                                if (0){//(mat->context->perm_local->flags & GHOST_PERM_NO_DISTINCTION) ||(tmpcol[i*src->maxrowlen+colidx] >= mat->context->lfRow[me]) && (tmpcol[i*src->maxrowlen+colidx] < (mat->context->lfRow[me]+mat->ncols))) { // local entry: copy with permutation
+                                if(0){// ((mat->context->perm_local->flags & GHOST_PERM_NO_DISTINCTION) ||(tmpcol[i*src->maxrowlen+colidx] >= mat->context->lfRow[me]) && (tmpcol[i*src->maxrowlen+colidx] < (mat->context->lfRow[me]+mat->nrows))) { // local entry: copy with permutation
                                     if (mat->traits.flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS) {
                                         (*col)[(*chunkptr)[chunk]+colidx*C+i] = tmpcol[i*src->maxrowlen+colidx];
                                     }else if(mat->context->flags & GHOST_PERM_NO_DISTINCTION) {
@@ -759,10 +759,10 @@ ghost_error ghost_sparsemat_fromfunc_common(ghost_lidx *rl, ghost_lidx *rlp, gho
     GHOST_CALL_GOTO(ghost_rank(&me, mat->context->mpicomm),err,ret);
  
   
-    if(mat->traits.flags & GHOST_PERM_NO_DISTINCTION) 
+    /*if(mat->traits.flags & GHOST_PERM_NO_DISTINCTION) 
         mat->ncols = mat->context->nrowspadded; 
-    else 
-        mat->ncols = mat->context->gncols;
+    else */
+    mat->ncols = mat->context->gncols;
 
    mat->nrows = mat->context->lnrows[me];
 
@@ -1052,7 +1052,7 @@ ghost_error ghost_sparsemat_fromfunc_common(ghost_lidx *rl, ghost_lidx *rlp, gho
                             crscol = &((ghost_sparsemat_rowfunc_crs_arg *)src->arg)->col[crsrpt[actualrow]];
                             if (mat->traits.flags & GHOST_SPARSEMAT_PERMUTE) {
                                 // local permutation: distinction between global and local entriess, if GHOST_PERM_NO_DISTINCTION is not set 
-                                if ((mat->context->flags & GHOST_PERM_NO_DISTINCTION) || ( (crscol[colidx] >= mat->context->lfRow[me]) && (crscol[colidx] < (mat->context->lfRow[me]+mat->ncols)) )) { // local entry: copy with permutation
+                                if ((mat->context->flags & GHOST_PERM_NO_DISTINCTION) || ( (crscol[colidx] >= mat->context->lfRow[me]) && (crscol[colidx] < (mat->context->lfRow[me]+mat->nrows)) )) { // local entry: copy with permutation
                                     if (mat->traits.flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS) {
                                         (*col)[(*chunkptr)[chunk]+colidx*C+i] = crscol[colidx];
                                     } else if(mat->context->flags & GHOST_PERM_NO_DISTINCTION) {
@@ -1131,6 +1131,7 @@ ghost_error ghost_sparsemat_fromfunc_common(ghost_lidx *rl, ghost_lidx *rlp, gho
                                             (*col)[(*chunkptr)[chunk]+colidx*C+i] = tmpcol[i*src->maxrowlen+colidx];
                                         }
                                     } else {
+
                                         (*col)[(*chunkptr)[chunk]+colidx*C+i] = mat->context->perm_local->colPerm[tmpcol[i*src->maxrowlen+colidx]-mat->context->lfRow[me]]+mat->context->lfRow[me];
 //                                        (*col)[(*chunkptr)[chunk]+colidx*C+i] = mat->context->perm_local->colPerm[tmpcol[i*src->maxrowlen+colidx]-mat->context->lfRow[me]]+mat->context->lfRow[me];
                                     }
@@ -1811,7 +1812,7 @@ ghost_error initHaloAvg(ghost_sparsemat *mat)
     //calculate rankspresent here and store it, no need to do this each time averaging is done
     GHOST_CALL_GOTO(ghost_malloc((void **)&temp_nrankspresent, ctx->nrowspadded*sizeof(int)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&compression_flag, ctx->nrowspadded*sizeof(bool)),err,ret);
-   
+ 
     #pragma omp parallel for schedule(runtime)
      for (int i=0; i<ctx->nrowspadded; i++) {	
 	     if(ctx->perm_local) {
@@ -1819,7 +1820,7 @@ ghost_error initHaloAvg(ghost_sparsemat *mat)
 			     //might give seg fault else) the rest are halo anyway, not needed for local sums
 			     temp_nrankspresent[i] = ctx->entsInCol[ctx->perm_local->colInvPerm[i]]?1:0; //this has also to be permuted since it was
          } else {
-		       temp_nrankspresent[i] = 0;//ctx->entsInCol[i]?1:0;		
+		       //temp_nrankspresent[i] = 0;//ctx->entsInCol[i]?1:0;		
          }
       } else {
          if(i < ctx->lnrows[me]) {
@@ -2054,6 +2055,9 @@ if(nprocs>1 && mat->traits.flags & GHOST_SOLVER_KACZ) {
       SELL(mat)->col[i] = (ghost_lidx) new_col[i];
     }
  
+    initHaloAvg(mat);
+
+
     //mat->col_orig = new_col;
     free(new_col);
     free(sell_col);
@@ -2070,8 +2074,6 @@ if(nprocs>1 && mat->traits.flags & GHOST_SOLVER_KACZ) {
     }
     GHOST_CALL_GOTO(mat->split(mat),err,ret);
  }
- initHaloAvg(mat);
-
 if(mat->traits.flags & GHOST_SOLVER_KACZ) {
   //split transition zones 
   if(mat->traits.flags & (ghost_sparsemat_flags)GHOST_SPARSEMAT_BLOCKCOLOR) {
