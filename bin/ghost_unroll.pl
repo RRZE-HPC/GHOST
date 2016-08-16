@@ -25,6 +25,7 @@ sub unroll {
     my $spaces =  (split /#/,$_[0])[0];
     my $codeline =  (split /#/,$_[0])[2];
     my $unrollsize = (split /#/,$_[0])[3];
+    $unrollsize =~ s/\\//g; # delete backslash from unrollsize (happens in macros)
     chomp($unrollsize);
     $unrollsize =~ s/([()\d\-\+\*\/%]+)/$1/gee; # evaluate unroll size 
     
