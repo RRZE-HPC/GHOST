@@ -52,8 +52,8 @@ ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, gho
     (*context)->nduepartners = 0;
     (*context)->wishpartners = NULL;
     (*context)->nwishpartners = 0;
-    (*context)->entsInCol = NULL;  
-
+    (*context)->entsInCol = NULL;
+    
     (*context)->avg_ptr = NULL;
     (*context)->mapAvg = NULL;
     (*context)->mappedDuelist = NULL;
