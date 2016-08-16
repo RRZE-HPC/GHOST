@@ -476,35 +476,39 @@ if(vec->traits.permutemethod == NONE) {
         vecclone->download(vecclone);       
 
 
-        //Accessing invPerm would be a problem if GHOST_PERM_NO_DISTINCTION is ON
-        if(ghost_omp_in_parallel()) {
-          #pragma omp for
-          for(int i=0; i<vec->traits.nrows; ++i) {
-            for(int col =0; col<vec->traits.ncols; ++col) {
-              if(vec->perm_local->perm[i] < vec->traits.nrows) {
-                ((v_t*)vec->val)[(vec->perm_local->perm[i])*vec->traits.ncols+col] = ((v_t*)vecclone->val)[i*vecclone->traits.ncols+col];
-              } else {
-                ((v_t*)vec->val)[(vec->perm_local->perm[vec->perm_local->perm[i]])*vec->traits.ncols+col] = ((v_t*)vecclone->val)[i*vecclone->traits.ncols+col];
-             }
-           }
-         }
-       } else {
-          #pragma omp parallel for
-          for(int i=0; i<vec->traits.nrows; ++i) {
-            for(int col =0; col<vec->traits.ncols; ++col) {
-              if(vec->perm_local->perm[i] < vec->traits.nrows) { 
-                ((v_t*)vec->val)[(vec->perm_local->perm[i])*vec->traits.ncols+col] = ((v_t*)vecclone->val)[i*vecclone->traits.ncols+col];
-              } else {
-                ((v_t*)vec->val)[(vec->perm_local->perm[vec->perm_local->perm[i]])*vec->traits.ncols+col] = ((v_t*)vecclone->val)[i*vecclone->traits.ncols+col];
-             }
-           }
-         }
-       }
-        //DENSEMAT_ITER(vec, *valptr = *(v_t *)DENSEMAT_VALPTR(vecclone,vec->perm_local->invPerm[row],col)); //this would yield seg fault
-  /*
         if (ctx->flags & GHOST_PERM_NO_DISTINCTION) {
             WARNING_LOG("This will probably not work for views or non-standard densemats.");
             //FIXME Fix this
+            //Accessing invPerm would be a problem if GHOST_PERM_NO_DISTINCTION is ON
+            if(ghost_omp_in_parallel()) {
+              #pragma omp for
+              for(int i=0; i<vec->traits.nrows; ++i) {
+                for(int col =0; col<vec->traits.ncols; ++col) {
+                  if(vec->perm_local->perm[i] < vec->traits.nrows) {
+                    ((v_t*)vec->val)[(vec->perm_local->perm[i])*vec->traits.ncols+col] = ((v_t*)vecclone->val)[i*vecclone->traits.ncols+col];
+                  } else {
+                    ((v_t*)vec->val)[(vec->perm_local->perm[vec->perm_local->perm[i]])*vec->traits.ncols+col] = ((v_t*)vecclone->val)[i*vecclone->traits.ncols+col];
+                 }
+               }
+             }
+           } else {
+              #pragma omp parallel for
+              for(int i=0; i<vec->traits.nrows; ++i) {
+                for(int col =0; col<vec->traits.ncols; ++col) {
+                  if(vec->perm_local->perm[i] < vec->traits.nrows) { 
+                    ((v_t*)vec->val)[(vec->perm_local->perm[i])*vec->traits.ncols+col] = ((v_t*)vecclone->val)[i*vecclone->traits.ncols+col];
+                  } else {
+                    ((v_t*)vec->val)[(vec->perm_local->perm[vec->perm_local->perm[i]])*vec->traits.ncols+col] = ((v_t*)vecclone->val)[i*vecclone->traits.ncols+col];
+                 }
+               }
+             }
+           }
+        } else {
+            DENSEMAT_ITER(vec, *valptr = *(v_t *)DENSEMAT_VALPTR(vecclone,vec->perm_local->invPerm[row],col)); //this would yield seg fault
+        }
+        //DENSEMAT_ITER(vec, *valptr = *(v_t *)DENSEMAT_VALPTR(vecclone,vec->perm_local->invPerm[row],col)); //this would yield seg fault
+  /*
+        if (ctx->flags & GHOST_PERM_NO_DISTINCTION) {
             //Accessing invPerm would be a problem if GHOST_PERM_NO_DISTINCTION is ON
             if(ghost_omp_in_parallel()) {
               for(int i=0; i<vec->traits.nrows; ++i) {
