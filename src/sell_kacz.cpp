@@ -437,7 +437,7 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
     }
     
     int try_chunkheight[2] = {mat->traits.C,-1}; 
-    int try_blocksz[2] = {x->traits.ncols,-1}; 
+    int try_blocksz[2] = {b->traits.ncols,-1}; 
 
     int n_chunkheight = sizeof(try_chunkheight)/sizeof(int);
     int n_blocksz = sizeof(try_blocksz)/sizeof(int);
