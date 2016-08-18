@@ -14,10 +14,12 @@
 #include <immintrin.h>      
 
 #GHOST_SUBST NVECS ${BLOCKDIM1}
-#GHOST_SUBST NSHIFTS 8
+#GHOST_SUBST NSHIFTS 1
 #GHOST_SUBST CHUNKHEIGHT ${CHUNKHEIGHT}
 
-#if NVECS!=64
+//Fix for gcc compile error
+#define _mm256_set_m128d(va, vb) \
+        _mm256_insertf128_pd(_mm256_castpd128_pd256(vb), va, 1)
 
 //AVX
 #define complex_mul(a,b) _mm256_addsub_pd(_mm256_mul_pd(_mm256_shuffle_pd(b,b,0),a),_mm256_mul_pd(_mm256_shuffle_pd(b,b,0xF),_mm256_shuffle_pd(a,a,5)))
@@ -26,7 +28,7 @@
 #define complex_mul_128(b,a) _mm_addsub_pd(_mm_mul_pd(_mm_shuffle_pd(a,a,0), b),_mm_mul_pd(_mm_shuffle_pd(a,a,3), _mm_shuffle_pd(b,b,1))) 
 #define complex_mul_conj128(b,a) _mm_addsub_pd(_mm_mul_pd(_mm_shuffle_pd(b,b,0), a),_mm_mul_pd(_mm_set1_pd(-1.),_mm_mul_pd(_mm_shuffle_pd(b,b,3), _mm_shuffle_pd(a,a,1)))) 
 
-
+/*
 //for debuging
 void _mm256d_print(__m256d src)
 {
@@ -50,9 +52,9 @@ void _mm_print(__m128d src)
   printf("%f\t%f\n",dst[0],dst[1]);
 
 }
-
+*/
 //Solving (A-(sigma_r + i*sigma_i)I)* x = b
-#if (NVECS*NSHIFTS==1 && CHUNKHEIGHT==1) 
+#if 0//(NVECS*NSHIFTS==1 && CHUNKHEIGHT==1) 
 
 //this is necessary since #pragma omp for doesn't understand !=
 #define FORWARD_SHIFT_LOOP(start,end,MT,VT)                            		\
@@ -184,8 +186,9 @@ for (ghost_lidx row=start; row>end; --row) {                   		        \
 
 //While solving for block vector, first RHS b is considered then shifts                                                       
 
+#endif
 
-#elif (NSHIFTS%4==0 && CHUNKHEIGHT==1) 
+#if (NSHIFTS%2==0 && CHUNKHEIGHT==1) 
 
 #define FORWARD_SHIFT_LOOP(start,end,MT,VT)                            		                \
 _Pragma("omp parallel for") 				    	       		                                      \
@@ -194,16 +197,16 @@ _Pragma("omp parallel for") 				    	       		                                  
   #GHOST_UNROLL#__m256d scal@ =  _mm256_setzero_pd();\#((2*NSHIFTS*NVECS)/4)              \
   #GHOST_UNROLL#__m256d mval_sigma@ =  _mm256_setzero_pd();\#(2*NSHIFTS/4)                \
   __m256d rp_x,ip_x;                                                                      \
-  __m256d xval_vec,mval_idx,sigma_r_vec, sigma_i_vec;                                     \
+  __m256d xval_vec,mval_idx;													                                     \
   __m256d mval_diag = _mm256_setzero_pd();                                                \
   __m128d zero=_mm_setzero_pd();                                                          \
   __m256d zero_256=_mm256_setzero_pd();                                                   \
   __m256d temp1, temp2;                                                                   \
-  __m128d templo_1, temphi_1, templo_2, temphi_2, mval_idx_128;                           \
+  __m128d templo_1, temphi_1, templo_2, mval_idx_128;                                     \
   __m256d omega_vec;                                                                      \
   ghost_lidx idx = sellmat->chunkStart[row];                   		                        \
   if(bval != NULL) {                                              	                      \
-      #GHOST_UNROLL#templo_1 =_mm_loadl_pd (zero, &bval[row*num_blocks+~2*@%NVECS~]); templo_2 =_mm_loadl_pd (zero, &bval[row*num_blocks+~2*@%NVECS+1~]);scal@=_mm256_set_m128d(templo_2,templo_1);\#(NVECS*NSHIFTS)/2                                         \
+      #GHOST_UNROLL#templo_1 =_mm_loadl_pd (zero, &bval[row*num_blocks+~2*@%NVECS~]); templo_2 =_mm_loadl_pd (zero, &bval[row*num_blocks+~(2*@+1)%NVECS~]);scal@=_mm256_set_m128d(templo_2,templo_1);\#(NVECS*NSHIFTS)/2                                         \
   }							                                                                          \
   ghost_lidx diag_idx = 0;	                  			                                      \
                                                                                           \
@@ -259,16 +262,16 @@ for (ghost_lidx row=start; row>end; --row){                                   		
   #GHOST_UNROLL#__m256d scal@ =  _mm256_setzero_pd();\#((2*NSHIFTS*NVECS)/4)              \
   #GHOST_UNROLL#__m256d mval_sigma@ =  _mm256_setzero_pd();\#(2*NSHIFTS/4)                \
   __m256d rp_x,ip_x;                                                                      \
-  __m256d xval_vec,mval_idx,sigma_r_vec, sigma_i_vec;                                     \
+  __m256d xval_vec,mval_idx;													                                     \
   __m256d mval_diag = _mm256_setzero_pd();                                                \
   __m128d zero=_mm_setzero_pd();                                                          \
   __m256d zero_256=_mm256_setzero_pd();                                                   \
   __m256d temp1, temp2;                                                                   \
-  __m128d templo_1, temphi_1, templo_2, temphi_2, mval_idx_128;                           \
+  __m128d templo_1, temphi_1, templo_2, mval_idx_128;                                     \
   __m256d omega_vec;                                                                      \
   ghost_lidx idx = sellmat->chunkStart[row];                   		                        \
   if(bval != NULL) {                                              	                      \
-      #GHOST_UNROLL#templo_1 =_mm_loadl_pd (zero, &bval[row*num_blocks+~2*@%NVECS~]); templo_2 =_mm_loadl_pd (zero, &bval[row*num_blocks+~2*@%NVECS+1~]);scal@=_mm256_set_m128d(templo_2,templo_1);\#(NVECS*NSHIFTS)/2                                         \
+      #GHOST_UNROLL#templo_1 =_mm_loadl_pd (zero, &bval[row*num_blocks+~2*@%NVECS~]); templo_2 =_mm_loadl_pd (zero, &bval[row*num_blocks+~(2*@+1)%NVECS~]);scal@=_mm256_set_m128d(templo_2,templo_1);\#(NVECS*NSHIFTS)/2                                         \
   }							                                                                          \
   ghost_lidx diag_idx = 0;	                  			                                      \
                                                                                           \
@@ -314,7 +317,8 @@ for (ghost_lidx row=start; row>end; --row){                                   		
  #GHOST_UNROLL#templo_1 = (~((2*@)/NVECS)~ & 1)?_mm256_extractf128_pd(mval_sigma~(2*@)/(2*NVECS)~,1):_mm256_extractf128_pd(mval_sigma~(2*@)/(2*NVECS)~,0);temphi_1=(~(2*@+1)/(NVECS)~ & 1)?_mm256_extractf128_pd(mval_sigma~(2*@+1)/(2*NVECS)~,1):_mm256_extractf128_pd(mval_sigma~(2*@+1)/(2*NVECS)~,0); xval_vec = _mm256_loadu_pd(&xval[diag_idx*NVECS*NSHIFTS + ~4*@~]); xval_vec = _mm256_add_pd(xval_vec,complex_mul_conj256(_mm256_set_m128d(temphi_1,templo_1), scal~@~)); _mm256_storeu_pd(&xval[diag_idx*NVECS*NSHIFTS + ~4*@~], xval_vec);\#(NSHIFTS*NVECS)/2            \
 }
 
-#elif (NSHIFTS%2==0 && CHUNKHEIGHT==1) 
+
+#elif (NVECS%2==0 && CHUNKHEIGHT==1) 
 
 #define FORWARD_SHIFT_LOOP(start,end,MT,VT)                            		                \
 _Pragma("omp parallel for") 				    	       		                                      \
@@ -322,17 +326,73 @@ _Pragma("omp parallel for") 				    	       		                                  
   #GHOST_UNROLL#double rownorm@ = 0;\#(NSHIFTS)                                           \
   #GHOST_UNROLL#__m256d scal@ =  _mm256_setzero_pd();\#((2*NSHIFTS*NVECS)/4)              \
   #GHOST_UNROLL#__m128d mval_sigma@ =  _mm_setzero_pd();\#(2*NSHIFTS/2)                   \
-  __m256d xval_vec,mval_idx,sigma_r_vec, sigma_i_vec;                                     \
+  __m256d xval_vec,mval_idx;													                                     \
   __m128d mval_diag = _mm_setzero_pd();                                                   \
   __m128d zero=_mm_setzero_pd();                                                          \
-  __m256d zero_256=_mm256_setzero_pd();                                                   \
-  __m256d temp1, temp2;                                                                   \
-  __m128d templo_1, temphi_1, templo_2, temphi_2;                                         \
+  __m128d templo_1, temphi_1, templo_2;                                                   \
   __m256d omega_vec;                                                                      \
   double mval_idx_64;                                                                     \
   ghost_lidx idx = sellmat->chunkStart[row];                   		                        \
   if(bval != NULL) {                                              	                      \
-      #GHOST_UNROLL#templo_1 =_mm_loadl_pd (zero, &bval[row*num_blocks+~2*@%NVECS~]); templo_2 =_mm_loadl_pd (zero, &bval[row*num_blocks+~2*@%NVECS+1~]);scal@=_mm256_set_m128d(templo_2,templo_1);\#(NVECS*NSHIFTS)/2                                         \
+      #GHOST_UNROLL#templo_1 =_mm_loadl_pd (zero, &bval[row*num_blocks+~2*@%NVECS~]); templo_2 =_mm_loadl_pd (zero, &bval[row*num_blocks+~(2*@+1)%NVECS~]);scal@=_mm256_set_m128d(templo_2,templo_1);\#(NVECS*NSHIFTS)/2                                         \
+  }							                                                                          \
+  ghost_lidx diag_idx = 0;	                  			                                      \
+                                                                                          \
+  if(mat->context->perm_local && mat->context->perm_local->method == GHOST_PERMUTATION_UNSYMMETRIC) \
+	  diag_idx = mat->context->perm_local->colPerm[mat->context->perm_local->invPerm[row]]; \
+  else									                                                                  \
+   diag_idx = row;							                                                          \
+                                                                                          \
+  ghost_lidx j = 0;                                                                       \
+  for(j=0; j<sellmat->rowLen[row] && sellmat->col[idx+j]!=diag_idx; ++j) {                \
+    mval_idx_64 =  mval[idx+j];                                                           \
+    mval_idx = _mm256_set1_pd(mval_idx_64);                                               \
+    ghost_lidx col_idx = 2*sellmat->col[idx+j];  /* mul 2 since double*/                  \
+    #GHOST_UNROLL#xval_vec = _mm256_loadu_pd(&xval[col_idx*NVECS*NSHIFTS + ~4*@~]); scal@ = _mm256_sub_pd (scal@,_mm256_mul_pd(mval_idx,xval_vec));\#(NVECS*NSHIFTS)/2\
+    #GHOST_UNROLL#rownorm@ += mval_idx_64*mval_idx_64;\#NSHIFTS                           \
+  }                                                                                       \
+ if(j!=sellmat->rowLen[row]) {                                                            \
+    mval_diag =  _mm_setr_pd(mval[idx+j],0);                                           \
+  }                                                                                       \
+   diag_idx = 2*diag_idx; /* mul 2 since complex to double*/                              \
+   #GHOST_UNROLL#mval_sigma@ =_mm_add_pd(mval_diag,_mm_sub_pd(zero,_mm_loadu_pd(&sigma[~2*@~])));\#NSHIFTS\
+   #GHOST_UNROLL#templo_1 = mval_sigma~((2*@)/NVECS)~; temphi_1=mval_sigma~(2*@+1)/(NVECS)~; xval_vec = _mm256_loadu_pd(&xval[diag_idx*NVECS*NSHIFTS + ~4*@~]); scal@ = _mm256_sub_pd(scal@,complex_mul(_mm256_set_m128d(temphi_1,templo_1),xval_vec));\#(NVECS*NSHIFTS)/2  \
+   #GHOST_UNROLL#templo_1 = complex_mul_conj128(mval_sigma~@~,mval_sigma~@~); rownorm@ += _mm_cvtsd_f64(templo_1);\#NSHIFTS\
+                                                                                          \
+  for(int k=j+1; k<sellmat->rowLen[row]; ++k) {                                           \
+    mval_idx_64 =  mval[idx+k];                                                           \
+    mval_idx = _mm256_set1_pd(mval_idx_64);                                               \
+    ghost_lidx col_idx = 2*sellmat->col[idx+k];  /* mul 2 since double*/                  \
+    #GHOST_UNROLL#xval_vec = _mm256_loadu_pd(&xval[col_idx*NVECS*NSHIFTS + ~4*@~]); scal@ = _mm256_sub_pd (scal@,_mm256_mul_pd(mval_idx,xval_vec));\#(NVECS*NSHIFTS)/2\
+    #GHOST_UNROLL#rownorm@ += mval_idx_64*mval_idx_64;\#NSHIFTS                           \
+  }                                                                                       \
+  omega_vec = _mm256_broadcast_sd(&omega);                                                \
+  #GHOST_UNROLL#templo_1 = _mm_set1_pd (rownorm~((2*@)/NVECS)~); temphi_1 = _mm_set1_pd (rownorm~(2*@+1)/(NVECS)~) ;scal@ =_mm256_div_pd( _mm256_mul_pd(scal@,omega_vec),_mm256_set_m128d(temphi_1,templo_1));\#(NSHIFTS*NVECS)/2\
+                                                                                          \
+  for(ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {                                      \
+	  mval_idx = _mm256_broadcast_sd (&mval[idx+j]);                                        \
+    ghost_lidx col_idx = 2*sellmat->col[idx+j];                                           \
+    #GHOST_UNROLL#xval_vec = _mm256_loadu_pd(&xval[col_idx*NVECS*NSHIFTS + ~4*@~]); xval_vec = _mm256_add_pd(xval_vec, _mm256_mul_pd(scal@, mval_idx)); _mm256_storeu_pd (&xval[col_idx*NVECS*NSHIFTS + ~4*@~], xval_vec);\#(NSHIFTS*NVECS)/2                      \
+ }         						       		                                                          \
+ #GHOST_UNROLL#mval_sigma@ = _mm_sub_pd(zero,_mm_loadu_pd(&sigma[~2*@~]));\#NSHIFTS       \
+ #GHOST_UNROLL#templo_1 = mval_sigma~((2*@)/NVECS)~ ;temphi_1=mval_sigma~(2*@+1)/(NVECS)~; xval_vec = _mm256_loadu_pd(&xval[diag_idx*NVECS*NSHIFTS + ~4*@~]); xval_vec = _mm256_add_pd(xval_vec,complex_mul_conj256(_mm256_set_m128d(temphi_1,templo_1), scal~@~)); _mm256_storeu_pd(&xval[diag_idx*NVECS*NSHIFTS + ~4*@~], xval_vec);\#(NSHIFTS*NVECS)/2                                                                                   \
+}
+ 
+#define BACKWARD_SHIFT_LOOP(start,end,MT,VT)           		                                \
+_Pragma("omp parallel for") 				                		       	                          \
+for (ghost_lidx row=start; row>end; --row){                                   		        \
+  #GHOST_UNROLL#double rownorm@ = 0;\#(NSHIFTS)                                           \
+  #GHOST_UNROLL#__m256d scal@ =  _mm256_setzero_pd();\#((2*NSHIFTS*NVECS)/4)              \
+  #GHOST_UNROLL#__m128d mval_sigma@ =  _mm_setzero_pd();\#(2*NSHIFTS/2)                   \
+  __m256d xval_vec,mval_idx;													                                     \
+  __m128d mval_diag = _mm_setzero_pd();                                                   \
+  __m128d zero=_mm_setzero_pd();                                                          \
+  __m128d templo_1, temphi_1, templo_2;                                                   \
+  __m256d omega_vec;                                                                      \
+  double mval_idx_64;                                                                     \
+  ghost_lidx idx = sellmat->chunkStart[row];                   		                        \
+  if(bval != NULL) {                                              	                      \
+      #GHOST_UNROLL#templo_1 =_mm_loadl_pd (zero, &bval[row*num_blocks+~2*@%NVECS~]); templo_2 =_mm_loadl_pd (zero, &bval[row*num_blocks+~(2*@+1)%NVECS~]);scal@=_mm256_set_m128d(templo_2,templo_1);\#(NVECS*NSHIFTS)/2                                         \
   }							                                                                          \
   ghost_lidx diag_idx = 0;	                  			                                      \
                                                                                           \
@@ -376,68 +436,6 @@ _Pragma("omp parallel for") 				    	       		                                  
  #GHOST_UNROLL#templo_1 = mval_sigma~((2*@)/NVECS)~ ;temphi_1=mval_sigma~(2*@+1)/(NVECS)~; xval_vec = _mm256_loadu_pd(&xval[diag_idx*NVECS*NSHIFTS + ~4*@~]); xval_vec = _mm256_add_pd(xval_vec,complex_mul_conj256(_mm256_set_m128d(temphi_1,templo_1), scal~@~)); _mm256_storeu_pd(&xval[diag_idx*NVECS*NSHIFTS + ~4*@~], xval_vec);\#(NSHIFTS*NVECS)/2                                                                                   \
 }
 
- 
-#define BACKWARD_SHIFT_LOOP(start,end,MT,VT)           		                                \
-_Pragma("omp parallel for") 				                		       	                          \
-for (ghost_lidx row=start; row>end; --row){                                   		        \
-  #GHOST_UNROLL#__m128d rownorm@ = _mm_setzero_pd();\#(NSHIFTS/2)                         \
-  #GHOST_UNROLL#__m256d scal@ =  _mm256_setzero_pd();\#((2*NSHIFTS*NVECS)/4)              \
-  #GHOST_UNROLL#__m256d mval_sigma@ =  _mm256_setzero_pd();\#(2*NSHIFTS/4)                \
-  __m256d rp_x,ip_x;                                                                      \
-  __m256d xval_vec,mval_idx,sigma_r_vec, sigma_i_vec;                                     \
-  __m256d mval_diag = _mm256_setzero_pd();                                                \
-  __m128d zero=_mm_setzero_pd();                                                          \
-  __m256d zero_256=_mm256_setzero_pd();                                                   \
-  __m256d temp1, temp2;                                                                   \
-  __m128d templo_1, temphi_1, templo_2, temphi_2, mval_idx_128;                           \
-  __m256d omega_vec;                                                                      \
-  ghost_lidx idx = sellmat->chunkStart[row];                   		                        \
-  if(bval != NULL) {                                              	                      \
-      #GHOST_UNROLL#templo_1 =_mm_loadl_pd (zero, &bval[row*num_blocks+~2*@%NVECS~]); templo_2 =_mm_loadl_pd (zero, &bval[row*num_blocks+~2*@%NVECS+1~]);scal@=_mm256_set_m128d(templo_2,templo_1);\#(NVECS*NSHIFTS)/2                                         \
-  }							                                                                          \
-  ghost_lidx diag_idx = 0;	                  			                                      \
-                                                                                          \
-  if(mat->context->perm_local && mat->context->perm_local->method == GHOST_PERMUTATION_UNSYMMETRIC) \
-	  diag_idx = mat->context->perm_local->colPerm[mat->context->perm_local->invPerm[row]]; \
-  else									                                                                  \
-   diag_idx = row;							                                                          \
-                                                                                          \
-  ghost_lidx j = 0;                                                                       \
-  for(j=0; j<sellmat->rowLen[row] && sellmat->col[idx+j]!=diag_idx; ++j) {                \
-    mval_idx_128 =  _mm_set_pd1(mval[idx+j]);                                             \
-    mval_idx = _mm256_set_m128d(mval_idx_128, mval_idx_128);                              \
-    ghost_lidx col_idx = 2*sellmat->col[idx+j];  /* mul 2 since double*/                  \
-    #GHOST_UNROLL#xval_vec = _mm256_loadu_pd(&xval[col_idx*NVECS*NSHIFTS + ~4*@~]); scal@ = _mm256_sub_pd (scal@,_mm256_mul_pd(mval_idx,xval_vec));\#(NVECS*NSHIFTS)/2\
-    #GHOST_UNROLL#rownorm@ = _mm_add_pd (rownorm@, _mm_mul_pd(mval_idx_128, mval_idx_128));\#NSHIFTS/2 \
-      /*TODO check making it double and later broadcasting*/\
-  }                                                                                       \
- if(j!=sellmat->rowLen[row]) {                                                           \
-    mval_diag =  _mm256_setr_pd(mval[idx+j],0,mval[idx+j],0);                             \
-  }                                                                                       \
-   diag_idx = 2*diag_idx; /* mul 2 since complex to double*/                              \
-   #GHOST_UNROLL#mval_sigma@ =_mm256_add_pd(mval_diag,_mm256_sub_pd(zero_256,_mm256_loadu_pd(&sigma[~4*@~])));\#NSHIFTS/2\
-   #GHOST_UNROLL#templo_1 = (~((2*@)/NVECS)~ & 1)?_mm256_extractf128_pd(mval_sigma~(2*@)/(2*NVECS)~,1):_mm256_extractf128_pd(mval_sigma~(2*@)/(2*NVECS)~,0);temphi_1=(~(2*@+1)/(NVECS)~ & 1)?_mm256_extractf128_pd(mval_sigma~(2*@+1)/(2*NVECS)~,1):_mm256_extractf128_pd(mval_sigma~(2*@+1)/(2*NVECS)~,0); xval_vec = _mm256_loadu_pd(&xval[diag_idx*NVECS*NSHIFTS + ~4*@~]); scal@ = _mm256_sub_pd(scal@,complex_mul(_mm256_set_m128d(temphi_1,templo_1),xval_vec));\#(NVECS*NSHIFTS)/2  \
-   #GHOST_UNROLL#temp1 = complex_mul_conj256(mval_sigma~@~,mval_sigma~@~); templo_1 =_mm256_extractf128_pd(temp1, 0); temphi_1 =_mm_permute_pd(_mm256_extractf128_pd(temp1, 1),1); rownorm@ = _mm_add_pd(rownorm@,_mm_add_pd (templo_1, temphi_1));\#NSHIFTS/2   \
-                                                                                          \
-  for(int k=j+1; k<sellmat->rowLen[row]; ++k) {                                           \
-    mval_idx_128 =  _mm_set_pd1(mval[idx+k]);                                             \
-    mval_idx = _mm256_set_m128d(mval_idx_128, mval_idx_128) ;                             \
-    ghost_lidx col_idx = 2*sellmat->col[idx+k];  /* mul 2 since double*/                  \
-    #GHOST_UNROLL#xval_vec = _mm256_loadu_pd(&xval[col_idx*NVECS*NSHIFTS + ~4*@~]); scal@ = _mm256_sub_pd (scal@,_mm256_mul_pd(mval_idx,xval_vec));\#(NVECS*NSHIFTS)/2\
-    #GHOST_UNROLL#rownorm@ = _mm_add_pd (rownorm@, _mm_mul_pd(mval_idx_128, mval_idx_128));\#NSHIFTS/2 \
-      /*TODO check making it double and later broadcasting*/\
-  }                                                                                        \
-  omega_vec = _mm256_broadcast_sd(&omega);                                                \
-  #GHOST_UNROLL#templo_1 = (~((2*@)/NVECS)~ & 1)?_mm_unpackhi_pd(rownorm~(2*@)/(2*NVECS)~, rownorm~(2*@)/(2*NVECS)~):_mm_movedup_pd (rownorm~(2*@)/(2*NVECS)~); temphi_1 = (~(2*@+1)/(NVECS)~ & 1)?_mm_unpackhi_pd(rownorm~(2*@+1)/(2*NVECS)~, rownorm~(2*@+1)/(2*NVECS)~):_mm_movedup_pd (rownorm~(2*@+1)/(2*NVECS)~);scal@ =_mm256_div_pd( _mm256_mul_pd(scal@,omega_vec),_mm256_set_m128d(temphi_1,templo_1));\#(NSHIFTS*NVECS)/2\
-                                                                                          \
-  for(ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {                                      \
-	  mval_idx = _mm256_broadcast_sd (&mval[idx+j]);                                        \
-    ghost_lidx col_idx = 2*sellmat->col[idx+j];                                           \
-    #GHOST_UNROLL#xval_vec = _mm256_loadu_pd(&xval[col_idx*NVECS*NSHIFTS + ~4*@~]); xval_vec = _mm256_add_pd(xval_vec, _mm256_mul_pd(scal@, mval_idx)); _mm256_storeu_pd (&xval[col_idx*NVECS*NSHIFTS + ~4*@~], xval_vec);\#(NSHIFTS*NVECS)/2                      \
- }         						       		                                                          \
- #GHOST_UNROLL#mval_sigma@ = _mm256_sub_pd(zero_256,_mm256_loadu_pd(&sigma[~4*@~]));\#NSHIFTS/2 \
- #GHOST_UNROLL#templo_1 = (~((2*@)/NVECS)~ & 1)?_mm256_extractf128_pd(mval_sigma~(2*@)/(2*NVECS)~,1):_mm256_extractf128_pd(mval_sigma~(2*@)/(2*NVECS)~,0);temphi_1=(~(2*@+1)/(NVECS)~ & 1)?_mm256_extractf128_pd(mval_sigma~(2*@+1)/(2*NVECS)~,1):_mm256_extractf128_pd(mval_sigma~(2*@+1)/(2*NVECS)~,0); xval_vec = _mm256_loadu_pd(&xval[diag_idx*NVECS*NSHIFTS + ~4*@~]); xval_vec = _mm256_add_pd(xval_vec,complex_mul_conj256(_mm256_set_m128d(temphi_1,templo_1), scal~@~)); _mm256_storeu_pd(&xval[diag_idx*NVECS*NSHIFTS + ~4*@~], xval_vec);\#(NSHIFTS*NVECS)/2            \
-}
 
 #else
 
@@ -453,7 +451,7 @@ for (ghost_lidx row=start; row<end; ++row){                           		        
   double mval_diag = 0;                                                                   \
   ghost_lidx idx = sellmat->chunkStart[row];                   		                        \
   if(bval != NULL) {                                              	                      \
-      #GHOST_UNROLL#scal_~(2*@)~ = bval[row*num_blocks+~@%NSHIFTS~];\#NVECS*NSHIFTS        \
+      #GHOST_UNROLL#scal_~(2*@)~ = bval[row*num_blocks+~@%NVECS~];\#NVECS*NSHIFTS       \
   }							                                               		                        \
   ghost_lidx diag_idx = 0;	                  			                                      \
                                                                                           \
@@ -496,7 +494,6 @@ for (ghost_lidx row=start; row<end; ++row){                           		        
  #GHOST_UNROLL#xval[2*(diag_idx*NVECS*NSHIFTS + @)] += scal_~(2*@)~*(-sigma[2*~@/NVECS~]) - scal_~(2*@+1)~*(sigma[2*~@/NVECS~+1]);xval[2*(diag_idx*NVECS*NSHIFTS + @)+1] += scal_~(2*@)~*sigma[2*~@/NVECS~+1] -  scal_~(2*@+1)~*-sigma[2*~@/NVECS~];\#NSHIFTS*NVECS \
 }                                                                    		                  \
                                                                 		                      \
-
 
 #define BACKWARD_SHIFT_LOOP(start,end,MT,VT)           		                                \
 _Pragma("omp parallel for") 				                		       	                          \
@@ -510,7 +507,7 @@ for (ghost_lidx row=start; row>end; --row){                                   		
   double mval_diag = 0;                                                                   \
   ghost_lidx idx = sellmat->chunkStart[row];                   		                        \
   if(bval != NULL) {                                              	                      \
-      #GHOST_UNROLL#scal_~(2*@)~ = bval[row*num_blocks+~@%NSHIFTS~];\#NVECS*NSHIFTS        \
+      #GHOST_UNROLL#scal_~(2*@)~ = bval[row*num_blocks+~@%NVECS~];\#NVECS*NSHIFTS        \
   }							                                               		                        \
   ghost_lidx diag_idx = 0;	                  			                                      \
                                                                                           \
@@ -552,9 +549,10 @@ for (ghost_lidx row=start; row>end; --row){                                   		
  }         						       		                                                        \
  #GHOST_UNROLL#xval[2*(diag_idx*NVECS*NSHIFTS + @)] += scal_~(2*@)~*(-sigma[2*~@/NVECS~]) - scal_~(2*@+1)~*(sigma[2*~@/NVECS~+1]);xval[2*(diag_idx*NVECS*NSHIFTS + @)+1] += scal_~(2*@)~*sigma[2*~@/NVECS~+1] -  scal_~(2*@+1)~*-sigma[2*~@/NVECS~];\#NSHIFTS*NVECS \
 }                                                                    		                  \
-                                                                		                      \
+
 
 #endif
+
 
 #if 0
 
@@ -565,7 +563,7 @@ _Pragma("omp parallel for") 				    	       		                                  
   #GHOST_UNROLL#__m256d scal@ =  _mm256_setzero_pd();\#((2*NSHIFTS*NVECS)/4)              \
   #GHOST_UNROLL#__m256d mval_sigma@ =  _mm256_setzero_pd();\#(2*NSHIFTS/4)                \
   __m256d rp_x,ip_x;                                                                      \
-  __m256d xval_vec,mval_idx,sigma_r_vec, sigma_i_vec;                                     \
+  __m256d xval_vec,mval_idx;													                                     \
   __m256d mval_diag = _mm256_setzero_pd();                                                \
   __m128d zero=_mm_setzero_pd();                                                          \
   __m256d zero_256=_mm256_setzero_pd();                                                   \
@@ -615,7 +613,7 @@ _Pragma("omp parallel for") 				    	       		                                  
  }         						       		                                                          \
  #GHOST_UNROLL#mval_sigma@ = _mm256_sub_pd(zero_256,_mm256_loadu_pd(&sigma[~4*@~]));\#NSHIFTS/2 \
  #GHOST_UNROLL#xval_vec = _mm256_loadu_pd(&xval[diag_idx*NVECS*NSHIFTS + ~4*@~]); xval_vec = _mm256_add_pd(xval_vec,complex_mul_conj256(mval_sigma~@/NVECS~, scal@)); _mm256_storeu_pd(&xval[diag_idx*NVECS*NSHIFTS + ~4*@~], xval_vec);\#(NSHIFTS*NVECS)/2            \
-}                                                                     		                  \                                                                		           
+}                                                                     		                 \
 
 
 
@@ -626,7 +624,7 @@ for (ghost_lidx row=start; row>end; --row){                                   		
   #GHOST_UNROLL#__m256d scal@ =  _mm256_setzero_pd();\#((2*NSHIFTS*NVECS)/4)              \
   #GHOST_UNROLL#__m256d mval_sigma@ =  _mm256_setzero_pd();\#(2*NSHIFTS/4)                \
   __m256d rp_x,ip_x;                                                                      \
-  __m256d xval_vec,mval_idx,sigma_r_vec, sigma_i_vec;                                     \
+  __m256d xval_vec,mval_idx;		   										                                     \
   __m256d mval_diag = _mm256_setzero_pd();                                                \
   __m128d zero=_mm_setzero_pd();                                                          \
   __m256d zero_256=_mm256_setzero_pd();                                                   \
@@ -676,7 +674,7 @@ for (ghost_lidx row=start; row>end; --row){                                   		
  }         						       		                                                          \
  #GHOST_UNROLL#mval_sigma@ = _mm256_sub_pd(zero_256,_mm256_loadu_pd(&sigma[~4*@~]));\#NSHIFTS/2 \
  #GHOST_UNROLL#xval_vec = _mm256_loadu_pd(&xval[diag_idx*NVECS*NSHIFTS + ~4*@~]); xval_vec = _mm256_add_pd(xval_vec,complex_mul_conj256(mval_sigma~@/NVECS~, scal@)); _mm256_storeu_pd(&xval[diag_idx*NVECS*NSHIFTS + ~4*@~], xval_vec);\#(NSHIFTS*NVECS)/2          \
-}                                                                     		                  \                                                                		         
+}                                                                     		                \
 
 #endif
 
@@ -983,7 +981,7 @@ ghost_error ghost_kacz_BMCshift_u_plain_rm_CHUNKHEIGHT_NVECS(ghost_densemat *x, 
   if(b!= NULL)
     bval = (MT *)(b->val);
 
-  VT *xval_z = (VT *)(x->val);
+  //VT *xval_z = (VT *)(x->val);
   double *xval = (double *)(x->val); //cast to double
   MT *mval = (MT *)sellmat->val;
   MT omega = *(MT *)opts.omega;
@@ -1159,4 +1157,4 @@ ghost_error ghost_kacz__BMCshift_u_plain_x_x_rm_CHUNKHEIGHT_NVECS(ghost_densemat
 
 }
 
-#endif
+
