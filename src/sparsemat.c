@@ -105,7 +105,7 @@ ghost_error ghost_sparsemat_create(ghost_sparsemat ** mat, ghost_context *contex
     (*mat)->color_ptr = NULL;
     (*mat)->nzones = 0;
     (*mat)->zone_ptr = NULL;
-    (*mat)->kacz_setting.kacz_method = MC;//fallback
+    (*mat)->kacz_setting.kacz_method = GHOST_KACZ_METHOD_MC;//fallback
     (*mat)->kacz_setting.active_threads = 0;
 
     if ((*mat)->traits.sortScope == GHOST_SPARSEMAT_SORT_GLOBAL) {

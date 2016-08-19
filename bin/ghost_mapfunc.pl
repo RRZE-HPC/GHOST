@@ -69,7 +69,7 @@ while (<>) {
         } elsif ($funcname eq "ghost_kacz") {
             print "{\n";
             print $funcname."_parameters pars;\n";
-            print "pars.method = ".$funcpars[0].";\n";
+            print "pars.method = GHOST_KACZ_METHOD_".$funcpars[0].";\n";
             print "pars.alignment = ".$alignments{$funcpars[1]}.";\n";
             print "pars.impl = ".$implementations{$funcpars[2]}.";\n";
             print "pars.mdt = ".$datatypes{$funcpars[3]}.";\n";

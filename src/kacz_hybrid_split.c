@@ -121,7 +121,7 @@ ghost_error checker(ghost_sparsemat *mat)
 //	    break;
 	}
 	//check transition in transition zones, if we are using one sweep method, 
-	if(mat->kacz_setting.kacz_method == BMC_one_sweep) {
+	if(mat->kacz_setting.kacz_method == GHOST_KACZ_METHOD_BMC_one_sweep) {
 	        trans_max = extrema_trans[MAX_UPPER];
         	free(extrema_trans);
         	find_zone_extrema(mat, &extrema_trans, zones[4*i+2], zones[4*i+3]);
@@ -296,7 +296,7 @@ ghost_error split_transition(ghost_sparsemat *mat)
 
 
    //now check whether the transition in transition is overlapping- if one region overlaps we use 2 sweep method (with threads/2) , else one sweep method 
-   mat->kacz_setting.kacz_method = BMC_one_sweep;
+   mat->kacz_setting.kacz_method = GHOST_KACZ_METHOD_BMC_one_sweep;
  
    for(int i=1; i<n_zones; ++i) {
      //	ghost_gidx lower = virtual_col(row_ptr[new_zone_ptr[4*i+2]]); //This might not work if the matrix is not RCM permuted
@@ -311,7 +311,7 @@ ghost_error split_transition(ghost_sparsemat *mat)
         
        if(lower <= upper) {
            //printf("check lower = %d and upper =%d\n",virtual_col(row_ptr[new_zone_ptr[4*i+2]]) , virtual_col(row_ptr[new_zone_ptr[4*i-1]]-1));
-           mat->kacz_setting.kacz_method = BMC_two_sweep;	
+           mat->kacz_setting.kacz_method = GHOST_KACZ_METHOD_BMC_two_sweep;	
            WARNING_LOG("ONLY half the available threads would be used for transitional sweep\n");
            break;
        }
@@ -447,10 +447,10 @@ mat->zone_ptr = new_zone_ptr;
 
    //now check whether the transition in transition is overlapping- if one region overlaps we use 2 sweep method (with threads/2) , else one sweep method 
    for(int i=1; i<n_zones-1; ++i) {
-	mat->kacz_setting.kacz_method = BMC_one_sweep;
+	mat->kacz_setting.kacz_method = GHOST_KACZ_METHOD_BMC_one_sweep;
 
        if(col_ptr[row_ptr[new_zone_ptr[4*i+2]]] <= col_ptr[row_ptr[new_zone_ptr[[4*i-1]]]-1]) {
-           mat->kacz_setting.kacz_method = BMC_two_sweep;	
+           mat->kacz_setting.kacz_method = GHOST_KACZ_METHOD_BMC_two_sweep;	
            break;
        }
   }

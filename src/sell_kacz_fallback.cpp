@@ -251,12 +251,12 @@ ghost_omp_nthread_set(nthreads);
     end[2]    = zone_ptr[4*tid+1]-1;
     start[3]  = zone_ptr[4*tid+1]-1;
     end[3]    = zone_ptr[4*tid]  -1;
-    if(mat->kacz_setting.kacz_method == BMC_one_sweep) { 
+    if(mat->kacz_setting.kacz_method == GHOST_KACZ_METHOD_BMC_one_sweep) { 
       for(ghost_lidx zone = 0; zone<4; ++zone) { 
         BACKWARD_LOOP(start[zone],end[zone],MT,MT)   
    	  	#pragma omp barrier                           
       }
- 	  } else if (mat->kacz_setting.kacz_method == BMC_two_sweep) {
+ 	  } else if (mat->kacz_setting.kacz_method == GHOST_KACZ_METHOD_BMC_two_sweep) {
 		    BACKWARD_LOOP(start[0],end[0],MT,MT)
      		#pragma omp barrier 
      		if(tid%2 != 0) {
@@ -294,12 +294,12 @@ ghost_omp_nthread_set(nthreads);
     start[3]  = zone_ptr[4*tid+3];
     end[3]    = zone_ptr[4*tid+4];
 
-   	if(mat->kacz_setting.kacz_method == BMC_one_sweep) { 
+   	if(mat->kacz_setting.kacz_method == GHOST_KACZ_METHOD_BMC_one_sweep) { 
       for(ghost_lidx zone = 0; zone<4; ++zone) { 
         FORWARD_LOOP(start[zone],end[zone],MT,MT)        
    		 	#pragma omp barrier                           
       }
- 	  } else if (mat->kacz_setting.kacz_method == BMC_two_sweep) {
+ 	  } else if (mat->kacz_setting.kacz_method == GHOST_KACZ_METHOD_BMC_two_sweep) {
 	    FORWARD_LOOP(start[0],end[0],MT,MT)
      	#pragma omp barrier 
       FORWARD_LOOP(start[1],end[1],MT,MT)

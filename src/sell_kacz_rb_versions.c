@@ -77,12 +77,12 @@ ghost_error ghost_kacz_rb_v1(ghost_densemat *x, ghost_sparsemat *mat, ghost_dens
 	 double scal  = -bval[row]; 
          for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {
                  scal += (double)mval[idx] * xval[sellmat->col[idx]];
-                if(opts.normalize==no)
+                if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)
                  rownorm += mval[idx]*mval[idx]; 
                  idx += 1;
           }
              
-         if(opts.normalize==no) 
+         if(opts.normalize==GHOST_KACZ_NORMALIZE_NO) 
           scal /= (double)rownorm;
         //scal *= omega;
 
@@ -110,12 +110,12 @@ ghost_error ghost_kacz_rb_v1(ghost_densemat *x, ghost_sparsemat *mat, ghost_dens
          double scal = -bval[row];
          for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {
                  scal += (double)mval[idx] * xval[sellmat->col[idx]];
-                if(opts.normalize==no)
+                if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)
                  rownorm += mval[idx]*mval[idx];
                  idx += 1;
           }
    
-        if(opts.normalize==no) 
+        if(opts.normalize==GHOST_KACZ_NORMALIZE_NO) 
          scal /= (double)rownorm;
         //scal *= omega;
 	
@@ -206,12 +206,12 @@ ghost_error ghost_kacz_rb_v2(ghost_densemat *x, ghost_sparsemat *mat, ghost_dens
 	 double scal  = -bval[row]; 
          for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {
                  scal += (double)mval[idx] * xval[sellmat->col[idx]];
-                if(opts.normalize==no)
+                if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)
                  rownorm += mval[idx]*mval[idx]; 
                  idx += 1;
           }
              
-         if(opts.normalize==no) 
+         if(opts.normalize==GHOST_KACZ_NORMALIZE_NO) 
           scal /= (double)rownorm;
         //scal *= omega;
 
@@ -241,12 +241,12 @@ ghost_error ghost_kacz_rb_v2(ghost_densemat *x, ghost_sparsemat *mat, ghost_dens
          double scal = -bval[row];
          for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {
                  scal += (double)mval[idx] * xval[sellmat->col[idx]];
-                if(opts.normalize==no)
+                if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)
                  rownorm += mval[idx]*mval[idx];
                  idx += 1;
           }
    
-        if(opts.normalize==no) 
+        if(opts.normalize==GHOST_KACZ_NORMALIZE_NO) 
          scal /= (double)rownorm;
         //scal *= omega;
 	
@@ -336,7 +336,7 @@ ghost_error ghost_kacz_rb_v3(ghost_densemat *x, ghost_sparsemat *mat, ghost_dens
      double scal    = -bval[row];
          for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {
                  scal += (double)mval[idx] * xval[sellmat->col[idx]];
-                if(opts.normalize==no)
+                if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)
                  rownorm += mval[idx]*mval[idx];
                  idx += 1;
           }
@@ -357,12 +357,12 @@ ghost_error ghost_kacz_rb_v3(ghost_densemat *x, ghost_sparsemat *mat, ghost_dens
 	 scal  = -bval[row+stride]; 
          for (ghost_lidx j=0; j<sellmat->rowLen[row+stride]; ++j) {
                  scal += (double)mval[idx] * xval[sellmat->col[idx]];
-                if(opts.normalize==no)
+                if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)
                  rownorm += mval[idx]*mval[idx]; 
                  idx += 1;
           }
              
-         if(opts.normalize==no) 
+         if(opts.normalize==GHOST_KACZ_NORMALIZE_NO) 
           scal /= (double)rownorm;
         //scal *= omega;
        
@@ -390,7 +390,7 @@ ghost_error ghost_kacz_rb_v3(ghost_densemat *x, ghost_sparsemat *mat, ghost_dens
      scal    = -bval[row];
          for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {
                  scal += (double)mval[idx] * xval[sellmat->col[idx]];
-                if(opts.normalize==no)
+                if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)
                  rownorm += mval[idx]*mval[idx];
                  idx += 1;
           }
@@ -411,12 +411,12 @@ ghost_error ghost_kacz_rb_v3(ghost_densemat *x, ghost_sparsemat *mat, ghost_dens
          scal = -bval[row+stride];
          for (ghost_lidx j=0; j<sellmat->rowLen[row+stride]; ++j) {
                  scal += (double)mval[idx] * xval[sellmat->col[idx]];
-                if(opts.normalize==no)
+                if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)
                  rownorm += mval[idx]*mval[idx];
                  idx += 1;
           }
    
-        if(opts.normalize==no) 
+        if(opts.normalize==GHOST_KACZ_NORMALIZE_NO) 
          scal /= (double)rownorm;
         //scal *= omega;	
         
@@ -519,12 +519,12 @@ ghost_error ghost_kacz_rb_v4(ghost_densemat *x, ghost_sparsemat *mat, ghost_dens
 	 double scal  = -bval[row]; 
          for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {
                  scal += (double)mval[idx] * xval[sellmat->col[idx]];
-                if(opts.normalize==no)
+                if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)
                  rownorm += mval[idx]*mval[idx]; 
                  idx += 1;
           }
              
-         if(opts.normalize==no) 
+         if(opts.normalize==GHOST_KACZ_NORMALIZE_NO) 
           scal /= (double)rownorm;
         //scal *= omega;
 
@@ -553,12 +553,12 @@ ghost_error ghost_kacz_rb_v4(ghost_densemat *x, ghost_sparsemat *mat, ghost_dens
          double scal = -bval[row];
          for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {
                  scal += (double)mval[idx] * xval[sellmat->col[idx]];
-                if(opts.normalize==no)
+                if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)
                  rownorm += mval[idx]*mval[idx];
                  idx += 1;
           }
    
-        if(opts.normalize==no) 
+        if(opts.normalize==GHOST_KACZ_NORMALIZE_NO) 
          scal /= (double)rownorm;
         //scal *= omega;
 	
@@ -683,11 +683,11 @@ ghost_error ghost_kacz_rb_v5(ghost_densemat *x, ghost_sparsemat *mat, ghost_dens
         
         for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {
                  scal += (double)mval[idx] * xval[sellmat->col[idx]];
-                if(opts.normalize==no)
+                if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)
                  rownorm += mval[idx]*mval[idx]; 
                  idx += 1;
           }
-        if(opts.normalize==no) 
+        if(opts.normalize==GHOST_KACZ_NORMALIZE_NO) 
           scal /= (double)rownorm;
          scal *= omega;
 
@@ -735,12 +735,12 @@ ghost_error ghost_kacz_rb_v5(ghost_densemat *x, ghost_sparsemat *mat, ghost_dens
  
          for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {
                  scal += (double)mval[idx] * xval[sellmat->col[idx]];
-                if(opts.normalize==no)
+                if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)
                  rownorm += mval[idx]*mval[idx];
                  idx += 1;
           }
       
-        if(opts.normalize==no) 
+        if(opts.normalize==GHOST_KACZ_NORMALIZE_NO) 
          scal /= (double)rownorm;
         scal *= omega;
 	

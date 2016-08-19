@@ -116,7 +116,7 @@ printf("check  lower = %d, upper = %d\n",virtual_col(row_ptr[zones[4*i+3]]),virt
 //	    break;
 	}
 		//check transition in transition zones, if we are using one sweep method, 
-	if(mat->kacz_setting.kacz_method == BMC_one_sweep) {
+	if(mat->kacz_setting.kacz_method == GHOST_KACZ_METHOD_BMC_one_sweep) {
 	        trans_max = extrema_trans[MAX_UPPER];
         	free(extrema_trans);
         	find_zone_extrema(mat, &extrema_trans, zones[4*i+2], zones[4*i+3]);
@@ -276,7 +276,7 @@ ghost_error split_analytical(ghost_sparsemat *mat)
   	mat->color_ptr[i] = mat->zone_ptr[mat->nzones];
     }
  
-   mat->kacz_setting.kacz_method = BMC_one_sweep;
+   mat->kacz_setting.kacz_method = GHOST_KACZ_METHOD_BMC_one_sweep;
  
    for(int i=1; i<current_threads; ++i) {	 
         ghost_lidx chunk_lower      = zone_ptr[4*i+2]/chunkheight;
@@ -289,7 +289,7 @@ ghost_error split_analytical(ghost_sparsemat *mat)
 
        	if(lower <= upper) {
            //printf("check lower = %d and upper =%d\n",virtual_col(row_ptr[zone_ptr[4*i+2]]) , virtual_col(row_ptr[zone_ptr[4*i-1]]-1));
-           mat->kacz_setting.kacz_method = BMC_two_sweep;	
+           mat->kacz_setting.kacz_method = GHOST_KACZ_METHOD_BMC_two_sweep;	
            WARNING_LOG("ONLY half the available threads would be used for transitional sweep\n");
            break;
        }

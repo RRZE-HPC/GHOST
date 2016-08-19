@@ -101,15 +101,15 @@ typedef enum {
 ghost_kacz_direction;
 
 typedef enum{
-     yes,
-     no
+     GHOST_KACZ_NORMALIZE_YES,
+     GHOST_KACZ_NORMALIZE_NO
 }
 ghost_kacz_normalize;
 
 typedef enum{
-     normal,
-     eco,
-     performance
+     GHOST_KACZ_MODE_NORMAL,
+     GHOST_KACZ_MODE_ECO,
+     GHOST_KACZ_MODE_PERFORMANCE
 }
 ghost_kacz_mode;
 
@@ -148,13 +148,13 @@ ghost_carp_opts; //no direction since forward followed by backward done
  * BMC_two_trans_sweep - Block Multicolored with RCM ( condition : nrows/(total_bw+1) > threads, and transition can overlap)
  */
 typedef enum{
-      MC,
-      BMC_RB,
-      BMC_one_sweep,
-      BMC_two_sweep,
-      BMC,
-      BMCshift,
-      BMCNORMAL //for system normalized at start
+      GHOST_KACZ_METHOD_MC,
+      GHOST_KACZ_METHOD_BMC_RB,
+      GHOST_KACZ_METHOD_BMC_one_sweep,
+      GHOST_KACZ_METHOD_BMC_two_sweep,
+      GHOST_KACZ_METHOD_BMC,
+      GHOST_KACZ_METHOD_BMCshift,
+      GHOST_KACZ_METHOD_BMCNORMAL //for system normalized at start
 }
 ghost_kacz_method;
 

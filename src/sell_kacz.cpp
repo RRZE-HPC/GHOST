@@ -22,9 +22,9 @@ const ghost_kacz_opts GHOST_KACZ_OPTS_INITIALIZER = {
     .shift = NULL,
     .num_shifts = 0,
     .direction = GHOST_KACZ_DIRECTION_UNDEFINED,
-    .mode = normal,
+    .mode = GHOST_KACZ_MODE_NORMAL,
     .best_block_size = 1,
-    .normalize = no,
+    .normalize = GHOST_KACZ_NORMALIZE_NO,
     .scale = NULL,
     .initialized = false
 };
@@ -33,9 +33,9 @@ const ghost_carp_opts GHOST_CARP_OPTS_INITIALIZER = {
     .omega = NULL,
     .shift = NULL,
     .num_shifts = 0,
-    .mode = normal,
+    .mode = GHOST_KACZ_MODE_NORMAL,
     .best_block_size = 1,
-    .normalize = no,
+    .normalize = GHOST_KACZ_NORMALIZE_NO,
     .scale = NULL,
     .initialized = false
 };
@@ -45,7 +45,7 @@ static ghost_error ghost_carp_init_tmpl(ghost_sparsemat *mat, ghost_densemat *rh
 {
   typedef m_t v_t;
   //normalize the system if normalize is yes
-  if(opts->normalize == yes) {
+  if(opts->normalize == GHOST_KACZ_NORMALIZE_YES) {
     opts->initialized = true;
     ghost_lidx chunkHeight = mat->traits.C;
     ghost_lidx nchunks = mat->nrows/chunkHeight;
@@ -101,8 +101,9 @@ static ghost_error ghost_carp_init_tmpl(ghost_sparsemat *mat, ghost_densemat *rh
       } 
    
      opts->scale = scal;     
- } 
+  } 
 
+  return GHOST_SUCCESS;
 }
 
 ghost_error ghost_carp_init(ghost_sparsemat *mat, ghost_densemat *rhs, ghost_carp_opts *opts)
@@ -117,7 +118,7 @@ ghost_error ghost_carp_init(ghost_sparsemat *mat, ghost_densemat *rhs, ghost_car
 template<typename m_t>
 ghost_error ghost_carp_perf_init_tmpl(ghost_sparsemat *mat, ghost_carp_opts *opts) {
  ghost_error ret = GHOST_SUCCESS; 
- if(opts->mode == performance) {
+ if(opts->mode == GHOST_KACZ_MODE_PERFORMANCE) {
   //check for optimal block value
   ghost_densemat *test_rhs, *test_x;
   ghost_densemat_traits vtraits_col = GHOST_DENSEMAT_TRAITS_INITIALIZER;
@@ -242,7 +243,7 @@ static ghost_error kacz_fallback(ghost_densemat *x, ghost_sparsemat *mat, ghost_
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
     
-    if(opts.normalize == yes && opts.initialized == false) {
+    if(opts.normalize == GHOST_KACZ_NORMALIZE_YES && opts.initialized == false) {
         WARNING_LOG("Kacz on normalized system is called, and the system has not been normalized at the start"); 
     }
     
@@ -341,43 +342,43 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
     	if(!(mat->traits.flags & GHOST_SPARSEMAT_COLOR)) {
     		if(!(mat->traits.flags & GHOST_SPARSEMAT_BLOCKCOLOR) && (mat->kaczRatio >= 2*mat->kacz_setting.active_threads)) {
 			INFO_LOG("BMC KACZ_shift without transition called");
-			p.method = BMCshift;//Now BMC_RB can run with BMC 
+			p.method = GHOST_KACZ_METHOD_BMCshift;//Now BMC_RB can run with BMC 
     		}
     		else {
 			INFO_LOG("BMC KACZ_shift with transition called");
-			p.method = BMCshift;
+			p.method = GHOST_KACZ_METHOD_BMCshift;
     		}
     	} else {
     	ERROR_LOG("Shift ignored MC with shift not implemented");
-  		p.method = MC;
+  		p.method = GHOST_KACZ_METHOD_MC;
     	}
-    } else if(opts.normalize==yes) {
+    } else if(opts.normalize==GHOST_KACZ_NORMALIZE_YES) {
     	if(!(mat->traits.flags & GHOST_SPARSEMAT_COLOR)) {
     		if(!(mat->traits.flags & GHOST_SPARSEMAT_BLOCKCOLOR) && (mat->kaczRatio >= 2*mat->kacz_setting.active_threads)) {
 			INFO_LOG("BMC KACZ without transition, for Normalized system called");
-			p.method = BMCNORMAL;//Now BMC_RB can run with BMC 
+			p.method = GHOST_KACZ_METHOD_BMCNORMAL;//Now BMC_RB can run with BMC 
     		}
     		else {
 			INFO_LOG("BMC KACZ with transition, for Normalized system called");
-			p.method = BMCNORMAL;
+			p.method = GHOST_KACZ_METHOD_BMCNORMAL;
     		}
     	} else {
         INFO_LOG("Using unoptimal kernel KACZ with MC");
-		    p.method = MC;
+		    p.method = GHOST_KACZ_METHOD_MC;
     	}
     } else {
     	if(!(mat->traits.flags & GHOST_SPARSEMAT_COLOR)) {
     		if(!(mat->traits.flags & GHOST_SPARSEMAT_BLOCKCOLOR) && (mat->kaczRatio >= 2*mat->kacz_setting.active_threads)) {
 			INFO_LOG("BMC KACZ without transition called");
-			p.method = BMC;//Now BMC_RB can run with BMC 
+			p.method = GHOST_KACZ_METHOD_BMC;//Now BMC_RB can run with BMC 
     		}
     		else {
 			INFO_LOG("BMC KACZ with transition called");
-			p.method = BMC;
+			p.method = GHOST_KACZ_METHOD_BMC;
     		}
     	} else {
       	INFO_LOG("Using unoptimal kernel KACZ with MC");
-		    p.method = MC;
+		    p.method = GHOST_KACZ_METHOD_MC;
     	}
     }
 	 
@@ -482,7 +483,7 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
                             	INFO_LOG("Try chunkheight=%s, blocksz=%s, impl=%s, %s, method %s, storage %s, vec DT %s",
                                     p.chunkheight==-1?"arbitrary":std::to_string((long long)p.chunkheight).c_str(),
                                     p.blocksz==-1?"arbitrary":std::to_string((long long)p.blocksz).c_str(),
-                                    ghost_implementation_string(p.impl),p.alignment==GHOST_UNALIGNED?"unaligned":"aligned",p.method==BMC?"BMC":p.method==MC?"MC":p.method==BMCNORMAL?"BMC_NORMAL":"BMC_shift",ghost_densemat_storage_string(p.storage),ghost_datatype_string(p.vdt));
+                                    ghost_implementation_string(p.impl),p.alignment==GHOST_UNALIGNED?"unaligned":"aligned",p.method==GHOST_KACZ_METHOD_BMC?"BMC":p.method==GHOST_KACZ_METHOD_MC?"MC":p.method==GHOST_KACZ_METHOD_BMCNORMAL?"BMC_NORMAL":"BMC_shift",ghost_densemat_storage_string(p.storage),ghost_datatype_string(p.vdt));
                             	kernel = ghost_kacz_kernels[p];
                             	if (kernel) {
                             		goto end_of_loop;

@@ -16,7 +16,7 @@ ghost_error ghost_initialize_kacz(ghost_sparsemat *mat, ghost_densemat *b, ghost
     ghost_lidx idx;
 
   //normalize if necessary
-   if(opts.normalize == yes) {
+   if(opts.normalize == GHOST_KACZ_NORMALIZE_YES) {
        for(int row=0; row < mat->nrows; ++row) {
            rownorm = 0;
            idx =  sellmat->chunkStart[row];
@@ -129,11 +129,11 @@ ghost_error ghost_kacz_rb(ghost_densemat *x, ghost_sparsemat *mat, ghost_densema
         
         for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {
                  scal += (double)mval[idx] * xval[sellmat->col[idx]];
-                if(opts.normalize==no)
+                if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)
                  rownorm += mval[idx]*mval[idx]; 
                  idx += 1;
           }
-        if(opts.normalize==no) 
+        if(opts.normalize==GHOST_KACZ_NORMALIZE_NO) 
           scal /= (double)rownorm;
          scal *= omega;
 
@@ -181,12 +181,12 @@ ghost_error ghost_kacz_rb(ghost_densemat *x, ghost_sparsemat *mat, ghost_densema
  
          for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {
                  scal += (double)mval[idx] * xval[sellmat->col[idx]];
-                if(opts.normalize==no)
+                if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)
                  rownorm += mval[idx]*mval[idx];
                  idx += 1;
           }
    
-        if(opts.normalize==no) 
+        if(opts.normalize==GHOST_KACZ_NORMALIZE_NO) 
          scal /= (double)rownorm;
         scal *= omega;
 	
@@ -309,13 +309,13 @@ ghost_error ghost_kacz_rb_with_shift(ghost_densemat *x, ghost_sparsemat *mat, gh
         
         for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {
                  scal += (double)mval[idx] * xval[sellmat->col[idx]];
-                if(opts.normalize==no)
+                if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)
                  rownorm += mval[idx]*mval[idx]; 
                  idx += 1;
           }
         scal -= (*shift_r) * xval[row];
 
-        if(opts.normalize==no) {
+        if(opts.normalize==GHOST_KACZ_NORMALIZE_NO) {
           rownorm += (*shift_r) * (*shift_r);
           scal /= (double)rownorm;
          }
@@ -351,13 +351,13 @@ ghost_error ghost_kacz_rb_with_shift(ghost_densemat *x, ghost_sparsemat *mat, gh
  
          for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {
                  scal += (double)mval[idx] * xval[sellmat->col[idx]];
-                if(opts.normalize==no)
+                if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)
                  rownorm += mval[idx]*mval[idx];
                  idx += 1;
           }
         scal -= (*shift_r) * xval[row];  
 
-        if(opts.normalize==no) {
+        if(opts.normalize==GHOST_KACZ_NORMALIZE_NO) {
          rownorm += (*shift_r) * (*shift_r);
          scal /= (double)rownorm;
          }
