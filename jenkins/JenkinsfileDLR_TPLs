@@ -73,6 +73,6 @@ export FC="ifort" CC="icc" CXX="icpc"
  
  Changes:
  ${CHANGES, showDependencies=true, format="[%a] %r %m\\n"}
- ''', subject: '$DEFAULT_SUBJECT', to: 'Jonas.Thies@DLR.de'
+ ''', subject: '$DEFAULT_SUBJECT', to: 'Jonas.Thies@DLR.de', attachLog: true, attachmentsPattern: 'attach_pattern'
  }
 }
