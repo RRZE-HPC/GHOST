@@ -2,8 +2,8 @@ node("SC-030083L") {
    dir("/localdata/f_buildn/ESSEX_workspace/GHOST_TPLs/"){
    
    stage 'check out from bitbucket'
-   git url: 'https://bitbucket.org/essex/ghost.git', branch: 'devel'
-   
+   checkout([$class: 'GitSCM', branches: [[name: '*/devel']], doGenerateSubmoduleConfigurations: false, extensions: [[$class: 'CleanCheckout']], gitTool: 'Default', submoduleCfg: [], userRemoteConfigs: [[url: 'https://bitbucket.org/essex/ghost.git']]])
+
    shellPrefix="#!/bin/bash\n"
    
    stage 'native Release build with Zoltan and GCC 5.3.0'
@@ -73,6 +73,10 @@ export FC="ifort" CC="icc" CXX="icpc"
  
  Changes:
  ${CHANGES, showDependencies=true, format="[%a] %r %m\\n"}
- ''', subject: '$DEFAULT_SUBJECT', to: 'Jonas.Thies@DLR.de', attachLog: true, attachmentsPattern: 'attach_pattern'
+ ''', subject: '$DEFAULT_SUBJECT', attachLog: true, compressLog: true, replyTo: '$DEFAULT_REPLY_TO', subject: ''
+to: 'Jonas.Thies@DLR.de', attachLog: true, attachmentsPattern: 'attach_pattern'
  }
 }
+
+attachmentsPattern: 'build_*/test.log.gz', body: '', 
+
