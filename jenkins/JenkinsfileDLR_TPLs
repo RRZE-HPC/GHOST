@@ -61,6 +61,18 @@ module() { eval `/usr/bin/modulecmd bash $*`; }
 export FC="ifort" CC="icc" CXX="icpc"
 ./test/ci-sc-dlr-optional-libs.sh -e intel-16.0.3-mpich -b Debug -f optional-libs -v native -c "-DGHOST_USE_SPMP:BOOL=ON"
 ''')
+
+ stage 'e-mail results'
+ emailext body: '''Project: ${PROJECT_NAME}
+ Revision: ${GIT_REVISION}
+ 
+ CI-Build trigger: ${CAUSE}
+ 
+ Attachments:
+ - Build log: build.zip
+ 
+ Changes:
+ ${CHANGES, showDependencies=true, format="[%a] %r %m\\n"}
+ ''', subject: '$DEFAULT_SUBJECT', to: 'Jonas.Thies@DLR.de'
  }
- emailext body: '$DEFAULT_BODY', subject: '$DEFAULT_SUBJECT', to: 'Jonas.Thies@DLR.de'
 }
