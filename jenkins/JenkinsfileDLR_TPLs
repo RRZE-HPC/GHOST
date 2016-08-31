@@ -1,0 +1,65 @@
+node("SC-030083L") {
+   dir("/localdata/f_buildn/ESSEX_workspace/GHOST_TPLs/"){
+   
+   stage 'check out from bitbucket'
+   git url: 'https://bitbucket.org/essex/ghost.git'
+   shellPrefix="#!/bin/bash\n"
+   
+   stage 'native Release build with Zoltan and GCC 5.3.0'
+   sh(shellPrefix + '''# configure modulesystem to load newer bash!
+export MODULEPATH=/tools/modulesystem/modulefiles
+module() { eval `/usr/bin/modulecmd bash $*`; }
+# set ccache path
+export CCACHE_DIR=/home_local/f_buildn/ESSEX_workspace/.ccache
+export FC="ccache gfortran" CC="ccache gcc" CXX="ccache g++"
+./test/ci-sc-dlr-optional-libs.sh -e gcc-5.3.0-openmpi -b Release -f optional-libs -v native
+''')
+
+   stage 'native Debug build with Zoltan and GCC 5.3.0 and OpenMPI'
+   sh(shellPrefix + '''# configure modulesystem to load newer bash!
+export MODULEPATH=/tools/modulesystem/modulefiles
+module() { eval `/usr/bin/modulecmd bash $*`; }
+# set ccache path
+export CCACHE_DIR=/home_local/f_buildn/ESSEX_workspace/.ccache
+export FC="ccache gfortran" CC="ccache gcc" CXX="ccache g++"
+./test/ci-sc-dlr-optional-libs.sh -e gcc-5.3.0-openmpi -b Debug -f optional-libs -v native
+''')
+
+   stage 'CUDA Release build with Zoltan, GCC 4.9.2 and OpenMPI'
+   sh(shellPrefix + '''# configure modulesystem to load newer bash!
+export MODULEPATH=/tools/modulesystem/modulefiles
+module() { eval `/usr/bin/modulecmd bash $*`; }
+# set ccache path
+export CCACHE_DIR=/home_local/f_buildn/ESSEX_workspace/.ccache
+export FC="ccache gfortran" CC="ccache gcc" CXX="ccache g++"
+./test/ci-sc-dlr-optional-libs.sh -e gcc-4.9.2-openmpi-1.10.1 -b Release -f optional-libs -v CUDA
+''')
+
+   stage 'CUDA Debug build with Zoltan, GCC 4.9.2 and OpenMPI'
+   sh(shellPrefix + '''# configure modulesystem to load newer bash!
+export MODULEPATH=/tools/modulesystem/modulefiles
+module() { eval `/usr/bin/modulecmd bash $*`; }
+# set ccache path
+export CCACHE_DIR=/home_local/f_buildn/ESSEX_workspace/.ccache
+export FC="ccache gfortran" CC="ccache gcc" CXX="ccache g++"
+./test/ci-sc-dlr-optional-libs.sh -e gcc-4.9.2-openmpi-1.10.1 -b Debug -f optional-libs -v CUDA
+''')
+
+   stage 'native Release build with SPMP, ICC 16.0.3 and MPICH'
+   sh(shellPrefix + '''# configure modulesystem to load newer bash!
+export MODULEPATH=/tools/modulesystem/modulefiles
+module() { eval `/usr/bin/modulecmd bash $*`; }
+export FC="ifort" CC="icc" CXX="icpc"
+./test/ci-sc-dlr-optional-libs.sh -e intel-16.0.3-mpich -b Release -f optional-libs -v native -c "-DGHOST_USE_SPMP:BOOL=ON"
+''')
+
+   stage 'native Debug build with SPMP, ICC 16.0.3 and MPICH'
+   sh(shellPrefix + '''# configure modulesystem to load newer bash!
+export MODULEPATH=/tools/modulesystem/modulefiles
+module() { eval `/usr/bin/modulecmd bash $*`; }
+export FC="ifort" CC="icc" CXX="icpc"
+./test/ci-sc-dlr-optional-libs.sh -e intel-16.0.3-mpich -b Debug -f optional-libs -v native -c "-DGHOST_USE_SPMP:BOOL=ON"
+''')
+ }
+}
+emailext body: '$DEFAULT_BODY', subject: '$DEFAULT_SUBJECT', to: 'Jonas.Thies@DLR.de'
