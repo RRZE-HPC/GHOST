@@ -62,5 +62,5 @@ export FC="ifort" CC="icc" CXX="icpc"
 ./test/ci-sc-dlr-optional-libs.sh -e intel-16.0.3-mpich -b Debug -f optional-libs -v native -c "-DGHOST_USE_SPMP:BOOL=ON"
 ''')
  }
+ emailext body: '$DEFAULT_BODY', subject: '$DEFAULT_SUBJECT', to: 'Jonas.Thies@DLR.de'
 }
-emailext body: '$DEFAULT_BODY', subject: '$DEFAULT_SUBJECT', to: 'Jonas.Thies@DLR.de'
