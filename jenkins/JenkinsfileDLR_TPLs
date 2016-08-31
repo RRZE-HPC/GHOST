@@ -2,7 +2,8 @@ node("SC-030083L") {
    dir("/localdata/f_buildn/ESSEX_workspace/GHOST_TPLs/"){
    
    stage 'check out from bitbucket'
-   git url: 'https://bitbucket.org/essex/ghost.git'
+   git url: 'https://bitbucket.org/essex/ghost.git', branch: 'devel'
+   
    shellPrefix="#!/bin/bash\n"
    
    stage 'native Release build with Zoltan and GCC 5.3.0'
