@@ -62,7 +62,8 @@ export FC="ifort" CC="icc" CXX="icpc"
 ./test/ci-sc-dlr-optional-libs.sh -e intel-16.0.3-mpich -b Debug -f optional-libs -v native -c "-DGHOST_USE_SPMP:BOOL=ON"
 ''')
 
- stage 'e-mail results'
+# stage 'e-mail results'
+step([$class: 'Mailer', notifyEveryUnstableBuild: false, recipients: 'Jonas.Thies@DLR.de', sendToIndividuals: false])
  emailext body: '''Project: ${PROJECT_NAME}
  Revision: ${GIT_REVISION}
  
@@ -73,10 +74,7 @@ export FC="ifort" CC="icc" CXX="icpc"
  
  Changes:
  ${CHANGES, showDependencies=true, format="[%a] %r %m\\n"}
- ''', subject: '$DEFAULT_SUBJECT', attachLog: true, compressLog: true, replyTo: '$DEFAULT_REPLY_TO', subject: ''
-to: 'Jonas.Thies@DLR.de', attachLog: true, attachmentsPattern: 'attach_pattern'
+ ''', subject: '$DEFAULT_SUBJECT', attachLog: true, compressLog: true, replyTo: '$DEFAULT_REPLY_TO', to: 'Jonas.Thies@DLR.de', attachLog: true, compressLog: true
  }
 }
-
-attachmentsPattern: 'build_*/test.log.gz', body: '', 
 
