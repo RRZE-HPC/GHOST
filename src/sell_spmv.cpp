@@ -247,7 +247,7 @@ static ghost_error ghost_sell_spmv_plain_cm(ghost_densemat *lhs,
             {
 
                 rhsv = (v_t *)rhs->val+rcol*rhs->stride;
-                lhsv = (v_t *)lhs->val+lcol*rhs->stride;
+                lhsv = (v_t *)lhs->val+lcol*lhs->stride;
                 if (z) {
                     zv = (v_t *)z->val+zcol*z->stride;
                 }
