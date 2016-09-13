@@ -138,7 +138,7 @@ else{
   delete[] mat->zone_ptr;
   mat->zone_ptr = new_zone_ptr;
   mat->nzones   = new_nzones;
-  mat->kacz_setting.kacz_method = BMC_one_sweep;
+  mat->kacz_setting.kacz_method = GHOST_KACZ_METHOD_BMC_one_sweep;
 
   mat->ncolors = 1;//mat->zone_ptr[mat->nzones+1] - mat->zone_ptr[mat->nzones];
   ghost_malloc((void **)&mat->color_ptr,(mat->ncolors+1)*sizeof(ghost_lidx)); 

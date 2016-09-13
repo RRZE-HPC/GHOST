@@ -496,7 +496,8 @@ static ghost_error ghost_kacz_BMC_u_plain_cm_CHUNKHEIGHT_NVECS_tmpl(ghost_densem
         ghost_omp_nthread_set(nthreads);
         #endif
         
-        #ifdef GHOST_HAVE_OPENMP 
+        
+        #ifdef GHOST_HAVE_OPENMP  
         #if CHUNKHEIGHT > 1
         #pragma omp parallel private(start_rem, start_chunk, end_chunk, end_rem, chunk, rowinchunk, idx, row)
         #else
@@ -508,38 +509,38 @@ static ghost_error ghost_kacz_BMC_u_plain_cm_CHUNKHEIGHT_NVECS_tmpl(ghost_densem
             ghost_lidx start[4];
             ghost_lidx end[4];
             
-            start[0] = zone_ptr[4*tid+4]-1; 
-            end[0] = zone_ptr[4*tid+3]-1; 
-            start[1] = zone_ptr[4*tid+3]-1;
-            end[1] = zone_ptr[4*tid+2]-1;
-            start[2] = zone_ptr[4*tid+2]-1;
-            end[2] = zone_ptr[4*tid+1]-1;
-            start[3] = zone_ptr[4*tid+1]-1;
-            end[3] = zone_ptr[4*tid] -1;
-            //stride = -1;
-            if(mat->kacz_setting.kacz_method == BMC_one_sweep) { 
+            start[0]  = zone_ptr[4*tid+4]-1; 
+            end[0]    = zone_ptr[4*tid+3]-1;   	
+            start[1]  = zone_ptr[4*tid+3]-1;
+            end[1]    = zone_ptr[4*tid+2]-1;
+            start[2]  = zone_ptr[4*tid+2]-1;
+            end[2]    = zone_ptr[4*tid+1]-1;
+            start[3]  = zone_ptr[4*tid+1]-1;
+            end[3]    = zone_ptr[4*tid]  -1;
+            //stride    = -1;
+            if(mat->kacz_setting.kacz_method == GHOST_KACZ_METHOD_BMC_one_sweep) { 
                 for(ghost_lidx zone = 0; zone<4; ++zone) { 
-                    BACKWARD_LOOP(start[zone],end[zone],MT,MT) 
-                    #pragma omp barrier 
+                    BACKWARD_LOOP(start[zone],end[zone],MT,MT)    
+                    #pragma omp barrier                           
                     
                     //TODO A more efficient way of locking is necessary, normal locks makes problem if the matrix size is small
                     //but this explicit flush method is expensive than barrier
                     
-                    /* if(tid == 0)
-                     * flag[0] = zone+1;
+                    /*              if(tid == 0)
+                     *                  flag[0] = zone+1;
+                     *         
+                     *               if(tid == nthreads-1)
+                     *                  flag[nthreads+1] = zone+1;
+                     *                 
+                     *            
+                     *    		flag[tid+1] = zone+1; 
+                     *    		#pragma omp flush      
                      * 
-                     * if(tid == nthreads-1)
-                     * flag[nthreads+1] = zone+1;
-                     * 
-                     * 
-                     * flag[tid+1] = zone+1; 
-                     * #pragma omp flush 
-                     * 
-                     * if(opts.direction == GHOST_KACZ_DIRECTION_FORWARD) {
-                     * while(flag[tid+2]<zone+1){
-                     * // printf("Forward: thread %d spinning, my flag is %d, neighbour flag is %d and zone = %d\n",tid, flag[tid+1], flag[tid+2],zone+1);
-                     * 
-                     * #pragma omp flush
+                     *    		if(opts.direction == GHOST_KACZ_DIRECTION_FORWARD) {
+                     *			 while(flag[tid+2]<zone+1){
+                     *                        // printf("Forward: thread %d spinning, my flag is %d, neighbour flag is %d and zone = %d\n",tid, flag[tid+1], flag[tid+2],zone+1);
+                     *                         
+                     *        	         #pragma omp flush
                 }
                 } else {
                     while(flag[tid]<zone+1 ){
@@ -547,17 +548,17 @@ static ghost_error ghost_kacz_BMC_u_plain_cm_CHUNKHEIGHT_NVECS_tmpl(ghost_densem
                         
                         #pragma omp flush
                 } 
-                } 
+                }    
                 
                 */
-                    // LOCK_NEIGHBOUR(tid)
+                    //	LOCK_NEIGHBOUR(tid)
                 }
-            } else if (mat->kacz_setting.kacz_method == BMC_two_sweep) {
+            } else if (mat->kacz_setting.kacz_method == GHOST_KACZ_METHOD_BMC_two_sweep) {
                 BACKWARD_LOOP(start[0],end[0],MT,MT)
-                #pragma omp barrier 
+                #pragma omp barrier   
                 if(tid%2 != 0) {
                     BACKWARD_LOOP(start[1],end[1],MT,MT)
-                } 
+                }	 
                 #pragma omp barrier
                 if(tid%2 == 0) {
                     BACKWARD_LOOP(start[1],end[1],MT,MT)
@@ -565,8 +566,8 @@ static ghost_error ghost_kacz_BMC_u_plain_cm_CHUNKHEIGHT_NVECS_tmpl(ghost_densem
                 #pragma omp barrier
                 BACKWARD_LOOP(start[2],end[2],MT,MT)
                 #pragma omp barrier 
-                BACKWARD_LOOP(start[3],end[3],MT,MT) 
-            } 
+                BACKWARD_LOOP(start[3],end[3],MT,MT)               
+            }      
             
             #ifdef GHOST_HAVE_OPENMP
         }
@@ -574,7 +575,7 @@ static ghost_error ghost_kacz_BMC_u_plain_cm_CHUNKHEIGHT_NVECS_tmpl(ghost_densem
         
     } else {
         
-        #ifdef GHOST_HAVE_OPENMP 
+        #ifdef GHOST_HAVE_OPENMP  
         #if CHUNKHEIGHT > 1
         #pragma omp parallel private(start_rem, start_chunk, end_chunk, end_rem, chunk, rowinchunk, idx, row)
         #else
@@ -585,35 +586,35 @@ static ghost_error ghost_kacz_BMC_u_plain_cm_CHUNKHEIGHT_NVECS_tmpl(ghost_densem
             ghost_lidx tid = ghost_omp_threadnum();
             ghost_lidx start[4];
             ghost_lidx end[4];
-            start[0] = zone_ptr[4*tid];
-            end[0] = zone_ptr[4*tid+1];
-            start[1] = zone_ptr[4*tid+1];
-            end[1] = zone_ptr[4*tid+2];
-            start[2] = zone_ptr[4*tid+2];
-            end[2] = zone_ptr[4*tid+3];
-            start[3] = zone_ptr[4*tid+3];
-            end[3] = zone_ptr[4*tid+4];
+            start[0]  = zone_ptr[4*tid];
+            end[0]    = zone_ptr[4*tid+1];
+            start[1]  = zone_ptr[4*tid+1];
+            end[1]    = zone_ptr[4*tid+2];
+            start[2]  = zone_ptr[4*tid+2];
+            end[2]    = zone_ptr[4*tid+3];
+            start[3]  = zone_ptr[4*tid+3];
+            end[3]    = zone_ptr[4*tid+4];
             
-            if(mat->kacz_setting.kacz_method == BMC_one_sweep) { 
+            if(mat->kacz_setting.kacz_method == GHOST_KACZ_METHOD_BMC_one_sweep) { 
                 for(ghost_lidx zone = 0; zone<4; ++zone) { 
-                    FORWARD_LOOP(start[zone],end[zone],MT,MT) 
-                    #pragma omp barrier 
+                    FORWARD_LOOP(start[zone],end[zone],MT,MT)        
+                    #pragma omp barrier                           
                 }
-            } else if (mat->kacz_setting.kacz_method == BMC_two_sweep) {
+            } else if (mat->kacz_setting.kacz_method == GHOST_KACZ_METHOD_BMC_two_sweep) {
                 FORWARD_LOOP(start[0],end[0],MT,MT)
                 #pragma omp barrier 
                 FORWARD_LOOP(start[1],end[1],MT,MT)
                 #pragma omp barrier
                 if(tid%2 == 0) {
                     FORWARD_LOOP(start[2],end[2],MT,MT)
-                } 
+                }	 
                 #pragma omp barrier
                 if(tid%2 != 0) {
                     FORWARD_LOOP(start[2],end[2],MT,MT)
                 }
                 #pragma omp barrier 
-                FORWARD_LOOP(start[3],end[3],MT,MT) 
-            } 
+                FORWARD_LOOP(start[3],end[3],MT,MT)               
+            }      
             
             #ifdef GHOST_HAVE_OPENMP
         }
@@ -621,8 +622,8 @@ static ghost_error ghost_kacz_BMC_u_plain_cm_CHUNKHEIGHT_NVECS_tmpl(ghost_densem
         
         #ifdef GHOST_HAVE_COLPACK 
         for(int i=0; i<mat->ncolors; ++i) { 
-            mc_start = color_ptr[i];
-            mc_end = color_ptr[i+1];
+            mc_start  = color_ptr[i];
+            mc_end    = color_ptr[i+1];
             FORWARD_LOOP(mc_start,mc_end,MT,MT)
         }
         #else
@@ -630,8 +631,8 @@ static ghost_error ghost_kacz_BMC_u_plain_cm_CHUNKHEIGHT_NVECS_tmpl(ghost_densem
         ghost_omp_nthread_set(1);
         
         for(int i=0; i<mat->ncolors; ++i) { 
-            mc_start = color_ptr[i];
-            mc_end = color_ptr[i+1];
+            mc_start  = color_ptr[i];
+            mc_end    = color_ptr[i+1];
             FORWARD_LOOP(mc_start,mc_end,MT,MT)
         }
         
@@ -641,11 +642,11 @@ static ghost_error ghost_kacz_BMC_u_plain_cm_CHUNKHEIGHT_NVECS_tmpl(ghost_densem
         
     }
     
-    free(flag); 
+    free(flag);	    
     
     //reset values TODO reset n_threads
     #ifdef GHOST_HAVE_OPENMP
-    ghost_omp_set_nested(prev_omp_nested); 
+    ghost_omp_set_nested(prev_omp_nested);    
     #endif
     
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);

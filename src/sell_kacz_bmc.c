@@ -15,11 +15,11 @@
           scal  = -bval[row];                                          \
         for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            \
                  scal += (double)mval[idx] * xval[sellmat->col[idx]];  \
-                if(opts.normalize==no)                                 \
+                if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)                                 \
                  rownorm += mval[idx]*mval[idx];                       \
                  idx += 1;                                             \
           }                                                            \
-        if(opts.normalize==no){                                        \
+        if(opts.normalize==GHOST_KACZ_NORMALIZE_NO){                                        \
          scal /= (double)rownorm;                                      \
         }                                                              \
         scal *= omega;                                                 \
@@ -42,11 +42,11 @@
           scal  = -bval[row];                                          \
         for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            \
                  scal += (double)mval[idx] * xval[sellmat->col[idx]];  \
-                if(opts.normalize==no)                                 \
+                if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)                                 \
                  rownorm += mval[idx]*mval[idx];                       \
                  idx += 1;                                             \
           }                                                            \
-        if(opts.normalize==no){                                        \
+        if(opts.normalize==GHOST_KACZ_NORMALIZE_NO){                                        \
          scal /= (double)rownorm;                                      \
         }                                                              \
         scal *= omega;                                                 \
@@ -70,11 +70,11 @@
           scal  = -bval[row];                                          \
         for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            \
                  scal += (double)mval[idx] * xval[sellmat->col[idx]];  \
-                if(opts.normalize==no)                                 \
+                if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)                                 \
                  rownorm += mval[idx]*mval[idx];                       \
                  idx += 1;                                             \
           }                                                            \
-        if(opts.normalize==no){                                        \
+        if(opts.normalize==GHOST_KACZ_NORMALIZE_NO){                                        \
          scal /= (double)rownorm;                                      \
         }                                                              \
         scal *= omega;                                                 \
@@ -112,11 +112,11 @@
 		for(int block=0; block<NVECS; ++block) {	       						\
                		scal[block] += (double)mval[idx] * xval[NVECS*sellmat->col[idx]+block];  		\
 		}						       						\
-               	if(opts.normalize==no)                         	       						\
+               	if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)                         	       						\
       			rownorm += mval[idx]*mval[idx];        	       						\
 		idx+=CHUNKHEIGHT;							       			\
        	}                                                               					\
-        if(opts.normalize==no){ 				       						\
+        if(opts.normalize==GHOST_KACZ_NORMALIZE_NO){ 				       						\
 		for(int block=0; block<NVECS; ++block){                       					\
          		scal[block] /= (double)rownorm;                        					\
                 	scal[block] *= omega;                                  					\
@@ -149,11 +149,11 @@
 			for(int block=0; block<NVECS; ++block) {	       					\
                  		scal[block] += (double)mval[idx] * xval[NVECS*sellmat->col[idx]+block];  	\
 			}						       					\
-                	if(opts.normalize==no)                         	       					\
+                	if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)                         	       					\
                			rownorm += mval[idx]*mval[idx];        	       					\
 			idx+=CHUNKHEIGHT;							       		\
        		}                                                               				\
-        	if(opts.normalize==no){ 				       					\
+        	if(opts.normalize==GHOST_KACZ_NORMALIZE_NO){ 				       					\
 	 		for(int block=0; block<NVECS; ++block){                       				\
          			scal[block] /= (double)rownorm;                        				\
                 		scal[block] *= omega;                                  				\
@@ -185,11 +185,11 @@
 		for(int block=0; block<NVECS; ++block) {	       						\
                		scal[block] += (double)mval[idx] * xval[NVECS*sellmat->col[idx]+block];  		\
 		}						       						\
-               	if(opts.normalize==no)                         	       						\
+               	if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)                         	       						\
       			rownorm += mval[idx]*mval[idx];        	       						\
 		idx+=CHUNKHEIGHT;							       			\
        	}                                                               					\
-        if(opts.normalize==no){ 				       						\
+        if(opts.normalize==GHOST_KACZ_NORMALIZE_NO){ 				       						\
 		for(int block=0; block<NVECS; ++block){                       					\
          		scal[block] /= (double)rownorm;                        					\
                 	scal[block] *= omega;                                  					\
@@ -229,11 +229,11 @@
 		for(int block=0; block<NVECS; ++block) {	       						\
                		scal[block] += (double)mval[idx] * xval[NVECS*sellmat->col[idx]+block];  		\
 		}						       						\
-               	if(opts.normalize==no)                         	       						\
+               	if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)                         	       						\
       			rownorm += mval[idx]*mval[idx];        	       						\
 		idx+=CHUNKHEIGHT;							       			\
        	}                                                               					\
-        if(opts.normalize==no){ 				       						\
+        if(opts.normalize==GHOST_KACZ_NORMALIZE_NO){ 				       						\
 		for(int block=0; block<NVECS; ++block){                       					\
          		scal[block] /= (double)rownorm;                        					\
                 	scal[block] *= omega;                                  					\
@@ -266,11 +266,11 @@
 			for(int block=0; block<NVECS; ++block) {	       					\
                  		scal[block] += (double)mval[idx] * xval[NVECS*sellmat->col[idx]+block];  	\
 			}						       					\
-                	if(opts.normalize==no)                         	       					\
+                	if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)                         	       					\
                			rownorm += mval[idx]*mval[idx];        	       					\
 			idx+=CHUNKHEIGHT;							       		\
        		}                                                               				\
-        	if(opts.normalize==no){ 				       					\
+        	if(opts.normalize==GHOST_KACZ_NORMALIZE_NO){ 				       					\
 	 		for(int block=0; block<NVECS; ++block){                       				\
          			scal[block] /= (double)rownorm;                        				\
                 		scal[block] *= omega;                                  				\
@@ -302,11 +302,11 @@
 		for(int block=0; block<NVECS; ++block) {	       						\
                		scal[block] += (double)mval[idx] * xval[NVECS*sellmat->col[idx]+block];  		\
 		}						       						\
-               	if(opts.normalize==no)                         	       						\
+               	if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)                         	       						\
       			rownorm += mval[idx]*mval[idx];        	       						\
 		idx+=CHUNKHEIGHT;							       			\
        	}                                                               					\
-        if(opts.normalize==no){ 				       						\
+        if(opts.normalize==GHOST_KACZ_NORMALIZE_NO){ 				       						\
 		for(int block=0; block<NVECS; ++block){                       					\
          		scal[block] /= (double)rownorm;                        					\
                 	scal[block] *= omega;                                  					\
@@ -360,11 +360,11 @@
 		for(int block=0; block<NVECS; ++block) {	       \
                  	scal[block] += (double)mval[idx] * xval[NVECS*sellmat->col[idx]+block];  \
 		}						       \
-                if(opts.normalize==no)                         	       \
+                if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)                         	       \
                		rownorm += mval[idx]*mval[idx];        	       \
 	idx+=1;							       \
        }                                                               \
-        if(opts.normalize==no){ 				       \
+        if(opts.normalize==GHOST_KACZ_NORMALIZE_NO){ 				       \
 	 for(int block=0; block<NVECS; ++block){                       \
          	scal[block] /= (double)rownorm;                        \
                 scal[block] *= omega;                                  \
@@ -396,11 +396,11 @@
 		for(int block=0; block<NVECS; ++block) {	       \
                  	scal[block] += (double)mval[idx] * xval[NVECS*sellmat->col[idx]+block];  \
 		}						       \
-                if(opts.normalize==no)                         	       \
+                if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)                         	       \
                		rownorm += mval[idx]*mval[idx];        	       \
 	idx+=1;							       \
        }                                                               \
-        if(opts.normalize==no){ 				       \
+        if(opts.normalize==GHOST_KACZ_NORMALIZE_NO){ 				       \
 	 for(int block=0; block<NVECS; ++block){                       \
          	scal[block] /= (double)rownorm;                        \
                 scal[block] *= omega;                                  \
@@ -427,7 +427,7 @@ ghost_error ghost_initialize_kacz_bmc(ghost_sparsemat *mat, ghost_densemat *b, g
     ghost_lidx idx;
 
   //normalize if necessary
-   if(opts.normalize == yes) {
+   if(opts.normalize == GHOST_KACZ_NORMALIZE_YES) {
        for(int row=0; row < mat->nrows; ++row) {
            rownorm = 0;
            idx =  sellmat->chunkStart[row];
@@ -559,7 +559,7 @@ ghost_error ghost_kacz_bmc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densem
 
     //double rownorm = 0.;
 
- if(mat->kacz_setting.kacz_method == BMC_one_sweep) { 
+ if(mat->kacz_setting.kacz_method == GHOST_KACZ_METHOD_BMC_one_sweep) { 
     for(ghost_lidx zone = 0; zone<4; ++zone) { 
 
 	LOOP(start[zone],end[zone],stride);
@@ -602,7 +602,7 @@ ghost_error ghost_kacz_bmc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densem
 */
   	//	LOCK_NEIGHBOUR(tid)
    }
- } else if (mat->kacz_setting.kacz_method == BMC_two_sweep) {
+ } else if (mat->kacz_setting.kacz_method == GHOST_KACZ_METHOD_BMC_two_sweep) {
       LOOP(start[0],end[0],stride)
       #pragma omp barrier  
       if(opts.direction == GHOST_KACZ_DIRECTION_BACKWARD) {
@@ -671,11 +671,11 @@ ghost_error ghost_kacz_bmc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densem
         for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            \
                  scal_r -= (double)mval[idx] * x_r[sellmat->col[idx]]; \
 		 scal_i -= (double)mval[idx] * x_i[sellmat->col[idx]]; \
-                 if(opts.normalize==no)                                \
+                 if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)                                \
            	       rownorm += mval[idx]*mval[idx];                 \
                  idx += 1;                                             \
         }                                                              \
-        if(opts.normalize==no){    				       \
+        if(opts.normalize==GHOST_KACZ_NORMALIZE_NO){    				       \
 	 inv_rownorm = 1.0/rownorm;                                    \
          scal_r *= inv_rownorm;                                        \
 	 scal_i *= inv_rownorm;                                        \
@@ -707,11 +707,11 @@ ghost_error ghost_kacz_bmc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densem
         for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            \
                  scal_r -= (double)mval[idx] * x_r[sellmat->col[idx]]; \
 		 scal_i -= (double)mval[idx] * x_i[sellmat->col[idx]]; \
-                 if(opts.normalize==no)                                \
+                 if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)                                \
            	       rownorm += mval[idx]*mval[idx];                 \
                  idx += 1;                                             \
         }                                                              \
-        if(opts.normalize==no){    				       \
+        if(opts.normalize==GHOST_KACZ_NORMALIZE_NO){    				       \
 	 inv_rownorm = 1.0/rownorm;                                    \
          scal_r *= inv_rownorm;                                        \
 	 scal_i *= inv_rownorm;                                        \
@@ -743,11 +743,11 @@ ghost_error ghost_kacz_bmc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densem
         for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            \
                  scal_r -= (double)mval[idx] * x_r[sellmat->col[idx]]; \
 		 scal_i -= (double)mval[idx] * x_i[sellmat->col[idx]]; \
-                 if(opts.normalize==no)                                \
+                 if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)                                \
            	       rownorm += mval[idx]*mval[idx];                 \
                  idx += 1;                                             \
         }                                                              \
-        if(opts.normalize==no){    				       \
+        if(opts.normalize==GHOST_KACZ_NORMALIZE_NO){    				       \
 	 inv_rownorm = 1.0/rownorm;                                    \
          scal_r *= inv_rownorm;                                        \
 	 scal_i *= inv_rownorm;                                        \
@@ -872,7 +872,7 @@ ghost_error ghost_kacz_shift_bmc(ghost_densemat *x_real, ghost_densemat *x_imag,
 
     //double rownorm = 0.;
 
- if(mat->kacz_setting.kacz_method == BMC_one_sweep) { 
+ if(mat->kacz_setting.kacz_method == GHOST_KACZ_METHOD_BMC_one_sweep) { 
     for(ghost_lidx zone = 0; zone<4; ++zone) { 
 
             SHIFT_LOOP(start[zone],end[zone],stride)   
@@ -909,7 +909,7 @@ ghost_error ghost_kacz_shift_bmc(ghost_densemat *x_real, ghost_densemat *x_imag,
 */
   	//	LOCK_NEIGHBOUR(tid)
    }
- } else if (mat->kacz_setting.kacz_method == BMC_two_sweep) {
+ } else if (mat->kacz_setting.kacz_method == GHOST_KACZ_METHOD_BMC_two_sweep) {
 //TODO remove barriers its for testing 
      SHIFT_LOOP(start[0],end[0],stride)
       #pragma omp barrier 
