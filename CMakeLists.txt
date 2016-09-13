@@ -113,13 +113,12 @@ set (SOURCES
     src/sparsemat_write.cpp
     src/sparsemat_perm_blockColor.cpp 
     src/kacz_hybrid_split.c
-    src/kacz_split_analytical.c
     src/sell_kacz_bmc.c 
     src/sell_kacz_mc.c
     src/sell_kacz_selector.c
     src/kacz_analyze_print.c
     src/sell_kacz_fallback.cpp 
-    )
+   )
 
 set (HEADERS
     include/ghost/bench.h
@@ -169,11 +168,10 @@ set (HEADERS
     include/ghost/carp_rb.h
     include/ghost/sell_kacz_rb_versions.h 
     include/ghost/kacz_hybrid_split.h
-    include/ghost/kacz_split_analytical.h
     include/ghost/sell_kacz_bmc.h 
     include/ghost/sell_kacz_mc.h
     include/ghost/sell_kacz_fallback.h
-    )
+   )
 
 string(REPLACE "," ";" GHOST_GEN_SELL_C_LIST ${GHOST_GEN_SELL_C})
 string(REPLACE "," ";" GHOST_GEN_DENSEMAT_DIM_LIST ${GHOST_GEN_DENSEMAT_DIM})
