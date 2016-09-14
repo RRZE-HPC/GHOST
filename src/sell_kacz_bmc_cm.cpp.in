@@ -16,6 +16,7 @@
 #GHOST_SUBST NVECS ${BLOCKDIM1}
 #GHOST_SUBST CHUNKHEIGHT ${CHUNKHEIGHT}
 
+
 #if (NVECS==1 && CHUNKHEIGHT==1)
 //this is necessary since #pragma omp for doesn't understand !=
 #define FORWARD_LOOP(start,end,MT,VT) \
@@ -457,6 +458,15 @@ static ghost_error ghost_kacz_BMC_u_plain_cm_CHUNKHEIGHT_NVECS_tmpl(ghost_densem
     #ifdef GHOST_HAVE_OPENMP
     // disables dynamic thread adjustments 
     ghost_omp_set_dynamic(0);
+    
+    #pragma omp parallel shared(prev_nthreads)
+    {
+        #pragma omp single
+        {
+            prev_nthreads = ghost_omp_nthread();
+        }
+    }
+
     ghost_omp_nthread_set(nthreads);
     prev_omp_nested = ghost_omp_get_nested();
     ghost_omp_set_nested(0); 
@@ -646,6 +656,7 @@ static ghost_error ghost_kacz_BMC_u_plain_cm_CHUNKHEIGHT_NVECS_tmpl(ghost_densem
     
     //reset values TODO reset n_threads
     #ifdef GHOST_HAVE_OPENMP
+    ghost_omp_nthread_set(prev_nthreads);
     ghost_omp_set_nested(prev_omp_nested);    
     #endif
     
