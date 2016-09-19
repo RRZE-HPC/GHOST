@@ -126,7 +126,6 @@ set (HEADERS
     include/ghost/bitmap.h
     include/ghost/blas_mangle.h
     include/ghost/carp.h
-    include/ghost/complex.h
     include/ghost/context.h
     include/ghost/core.h
     include/ghost/cu_bench.h

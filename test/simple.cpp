@@ -41,7 +41,7 @@ int main(int argc, char **argv) {
     ghost_context *ctx;
     ghost_sparsemat *A;
     ghost_densemat *y, *x;
-    ghost_complex<double> zero = 0.;
+    std::complex<double> zero = 0.;
 
     vector<ghost_sparsemat_traits> mtraits_vec;
     vector<ghost_densemat_traits> vtraits_vec;
@@ -80,28 +80,28 @@ int main(int argc, char **argv) {
     mat_funcs_diag[(ghost_datatype)(GHOST_DT_REAL|GHOST_DT_DOUBLE)] = matsrc;
     matsrc.func = diag<float>;
     mat_funcs_diag[(ghost_datatype)(GHOST_DT_REAL|GHOST_DT_FLOAT)] = matsrc;
-    matsrc.func = diag<ghost_complex<double>>;
+    matsrc.func = diag<std::complex<double>>;
     mat_funcs_diag[(ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE)] = matsrc;
-    matsrc.func = diag<ghost_complex<float>>;
+    matsrc.func = diag<std::complex<float>>;
     mat_funcs_diag[(ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_FLOAT)] = matsrc;
     
     map<pair<ghost_datatype,ghost_datatype>,ref_func_t> ref_funcs_diag;
     ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_d,dt_d)] = diag_ref<double,double>;
-    ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_d,dt_s)] = diag_ref<double,float>;
-    ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_d,dt_z)] = diag_ref<double,ghost_complex<double>>;
-    ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_d,dt_c)] = diag_ref<double,ghost_complex<float>>;
-    ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_s,dt_d)] = diag_ref<float,double>;
+    //ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_d,dt_s)] = diag_ref<double,float>;
+    //ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_d,dt_z)] = diag_ref<double,std::complex<double>>;
+    //ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_d,dt_c)] = diag_ref<double,std::complex<float>>;
+    //ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_s,dt_d)] = diag_ref<float,double>;
     ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_s,dt_s)] = diag_ref<float,float>;
-    ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_s,dt_z)] = diag_ref<float,ghost_complex<double>>;
-    ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_s,dt_c)] = diag_ref<float,ghost_complex<float>>;
-    ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_z,dt_d)] = diag_ref<ghost_complex<double>,double>;
-    ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_z,dt_s)] = diag_ref<ghost_complex<double>,float>;
-    ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_z,dt_z)] = diag_ref<ghost_complex<double>,ghost_complex<double>>;
-    ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_z,dt_c)] = diag_ref<ghost_complex<double>,ghost_complex<float>>;
-    ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_c,dt_d)] = diag_ref<ghost_complex<float>,double>;
-    ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_c,dt_s)] = diag_ref<ghost_complex<float>,float>;
-    ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_c,dt_z)] = diag_ref<ghost_complex<float>,ghost_complex<double>>;
-    ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_c,dt_c)] = diag_ref<ghost_complex<float>,ghost_complex<float>>;
+    //ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_s,dt_z)] = diag_ref<float,std::complex<double>>;
+    //ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_s,dt_c)] = diag_ref<float,std::complex<float>>;
+    //ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_z,dt_d)] = diag_ref<std::complex<double>,double>;
+    //ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_z,dt_s)] = diag_ref<std::complex<double>,float>;
+    ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_z,dt_z)] = diag_ref<std::complex<double>,std::complex<double>>;
+    //ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_z,dt_c)] = diag_ref<std::complex<double>,std::complex<float>>;
+    //ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_c,dt_d)] = diag_ref<std::complex<float>,double>;
+    //ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_c,dt_s)] = diag_ref<std::complex<float>,float>;
+    //ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_c,dt_z)] = diag_ref<std::complex<float>,std::complex<double>>;
+    ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_c,dt_c)] = diag_ref<std::complex<float>,std::complex<float>>;
 
     GHOST_TEST_CALL(ghost_init(argc,argv));
     
@@ -114,6 +114,8 @@ int main(int argc, char **argv) {
         GHOST_TEST_CALL(A->fromRowFunc(A,&mat_funcs_diag[mtraits_it->datatype]));
 
         for (vector<ghost_densemat_traits>::iterator vtraits_it = vtraits_vec.begin(); vtraits_it != vtraits_vec.end(); ++vtraits_it) {
+            if (!ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(vtraits_it->datatype,mtraits_it->datatype)]) continue;
+
             GHOST_TEST_CALL(ghost_densemat_create(&x, ctx, *vtraits_it));
             GHOST_TEST_CALL(ghost_densemat_create(&y, ctx, *vtraits_it));
             GHOST_TEST_CALL(x->fromRand(x));

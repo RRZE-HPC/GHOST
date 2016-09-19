@@ -49,7 +49,7 @@ typedef int ghost_mpi_datatype;
                 if (dt2 & GHOST_DT_DOUBLE) {\
                     ret = func<complexclass<double>,double>(__VA_ARGS__);\
                 } else {\
-                    ret = func<complexclass<double>,float>(__VA_ARGS__);\
+                    WARNING_LOG("Incompatible data types!");\
                 }\
             }\
         } else {\
@@ -61,7 +61,7 @@ typedef int ghost_mpi_datatype;
                 }\
             } else {\
                 if (dt2 & GHOST_DT_DOUBLE) {\
-                    ret = func<complexclass<float>,double>(__VA_ARGS__);\
+                    WARNING_LOG("Incompatible data types!");\
                 } else {\
                     ret = func<complexclass<float>,float>(__VA_ARGS__);\
                 }\
@@ -73,7 +73,7 @@ typedef int ghost_mpi_datatype;
                 if (dt2 & GHOST_DT_DOUBLE) {\
                     ret = func<double,complexclass<double> >(__VA_ARGS__);\
                 } else {\
-                    ret = func<double,complexclass<float> >(__VA_ARGS__);\
+                    WARNING_LOG("Incompatible data types!");\
                 }\
             } else {\
                 if (dt2 & GHOST_DT_DOUBLE) {\
@@ -85,7 +85,7 @@ typedef int ghost_mpi_datatype;
         } else {\
             if (dt2 & GHOST_DT_COMPLEX) {\
                 if (dt2 & GHOST_DT_DOUBLE) {\
-                    ret = func<float,complexclass<double> >(__VA_ARGS__);\
+                    WARNING_LOG("Incompatible data types!");\
                 } else {\
                     ret = func<float,complexclass<float> >(__VA_ARGS__);\
                 }\
@@ -374,7 +374,7 @@ ghost_datatype name = (ghost_datatype)(GHOST_DT_FLOAT|GHOST_DT_REAL); \
  * @see GHOST_REGISTER_DT_D with float complex instead of double.
  */
 #define GHOST_REGISTER_DT_C(name) \
-    typedef ghost_complex<float> name ## _t; \
+    typedef std::complex<float> name ## _t; \
 ghost_datatype name = (ghost_datatype)(GHOST_DT_FLOAT|GHOST_DT_COMPLEX);
 #else
 /**
@@ -390,7 +390,7 @@ ghost_datatype name = (ghost_datatype)(GHOST_DT_FLOAT|GHOST_DT_COMPLEX);
  * @see GHOST_REGISTER_DT_D with double complex instead of double.
  */
 #define GHOST_REGISTER_DT_Z(name) \
-    typedef ghost_complex<double> name ## _t; \
+    typedef std::complex<double> name ## _t; \
 ghost_datatype name = (ghost_datatype)(GHOST_DT_DOUBLE|GHOST_DT_COMPLEX);
 #else
 /**

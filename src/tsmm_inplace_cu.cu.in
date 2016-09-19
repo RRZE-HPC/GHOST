@@ -20,7 +20,6 @@
 #include <complex.h>
 
 #include "ghost/cu_complex.h"
-#include "ghost/complex.h"
 
 #GHOST_SUBST NCOLSIN ${BLOCKDIM1}
 #GHOST_SUBST NCOLSOUT ${BLOCKDIM2}

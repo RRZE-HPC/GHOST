@@ -19,7 +19,6 @@
 #include <complex.h>
 
 #include "ghost/cu_complex.h"
-#include "ghost/complex.h"
 
 extern __shared__ char shmem[];
 

@@ -2,7 +2,6 @@
 #undef GHOST_HAVE_MPI
 #undef GHOST_HAVE_INSTR_LIKWID
 #include "ghost/types.h"
-#include "ghost/complex.h"
 #include "ghost/instr.h"
 #include "ghost/log.h"
 #include "ghost/error.h"

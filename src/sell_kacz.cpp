@@ -1,5 +1,4 @@
 #include "ghost/types.h"
-#include "ghost/complex.h"
 #include "ghost/locality.h"
 #include "ghost/util.h"
 #include "ghost/timing.h"

@@ -19,7 +19,6 @@
 #include <complex.h>
 
 #include "ghost/cu_complex.h"
-#include "ghost/complex.h"
 #include "ghost/math.h"
 
 #define THREADSPERBLOCK 256

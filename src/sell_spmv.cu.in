@@ -2,7 +2,6 @@
 #include "ghost/config.h"
 //#undef GHOST_HAVE_MPI
 #include "ghost/types.h"
-#include "ghost/complex.h"
 #include "ghost/instr.h"
 #include "ghost/log.h"
 #include "ghost/error.h"
@@ -13,6 +12,7 @@
 #include <cuda_runtime.h>
 #include <cuda.h>
 #include <complex.h>
+#include <complex>
 
 #include "ghost/cu_complex.h"
 #include "ghost/cu_sell_kernel.h"
@@ -685,7 +685,7 @@ extern "C" ghost_error ghost_cu_sell_spmv_selector(ghost_densemat *lhs, ghost_sp
         INFO_LOG("Calling CUBLAS CRS SpMV for SELL-1 matrix");
         return ghost_cu_sell1_spmv_selector(lhs,mat,rhs,traits);
     } 
-    SELECT_TMPL_4DATATYPES(mat->traits.datatype,rhs->traits.datatype,ghost_complex,ret,ghost_cu_sell_spmv_tmpl,mat,lhs,rhs,traits);
+    SELECT_TMPL_4DATATYPES(mat->traits.datatype,rhs->traits.datatype,std::complex,ret,ghost_cu_sell_spmv_tmpl,mat,lhs,rhs,traits);
 
     return ret;
 }

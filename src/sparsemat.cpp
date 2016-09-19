@@ -11,11 +11,10 @@
 #include <algorithm>
 #include <sstream>
 #include <iomanip>
-
+#include <complex>
 
 #include "ghost/types.h"
 #include "ghost/util.h"
-#include "ghost/complex.h"
 #include "ghost/sparsemat.h"
 
 using namespace std;
@@ -200,7 +199,7 @@ extern "C" ghost_error ghost_sell_stringify_selector(ghost_sparsemat *mat, char 
 {
     ghost_error ret;
 
-    SELECT_TMPL_1DATATYPE(mat->traits.datatype,ghost_complex,ret,SELL_stringify_tmpl,mat,str,dense);
+    SELECT_TMPL_1DATATYPE(mat->traits.datatype,std::complex,ret,SELL_stringify_tmpl,mat,str,dense);
 
     return ret;
 }
