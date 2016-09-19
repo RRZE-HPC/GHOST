@@ -18,8 +18,12 @@
 #GHOST_SUBST CHUNKHEIGHT ${CHUNKHEIGHT}
 
 //Fix for gcc compile error
+#ifdef __GNUC__
+#ifndef __INTEL_COMPILER
 #define _mm256_set_m128d(va, vb) \
 _mm256_insertf128_pd(_mm256_castpd128_pd256(vb), va, 1)
+#endif
+#endif
 
 //AVX
 #define complex_mul(a,b) _mm256_addsub_pd(_mm256_mul_pd(_mm256_shuffle_pd(b,b,0),a),_mm256_mul_pd(_mm256_shuffle_pd(b,b,0xF),_mm256_shuffle_pd(a,a,5)))
