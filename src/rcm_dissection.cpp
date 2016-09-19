@@ -73,7 +73,7 @@ if(n_threads>1)
             for(int i=0; i<n_zones; ++i){
                     int ctr_nnz = 0;
                     for(int row=zone_ptr[i]; row<zone_ptr[i+1]; ++row){
-                        ctr_nnz += mat->sell->rowLen[row];
+                        ctr_nnz += mat->rowLen[row];
                     }
             load[i] = static_cast<int>( static_cast<double>(uniform_nnz)/ctr_nnz * (zone_ptr[i+1] - zone_ptr[i]) );
 
@@ -153,8 +153,8 @@ else{
 //checks whether the partitioning was correct, its just for debugging
 ghost_error checker_rcm(ghost_sparsemat *mat)
 {
-  ghost_lidx *row_ptr = mat->sell->chunkStart;
-  ghost_lidx *col_ptr = mat->sell->col;
+  ghost_lidx *row_ptr = mat->chunkStart;
+  ghost_lidx *col_ptr = mat->col;
 
   ghost_lidx *upper_col_ptr = new ghost_lidx[mat->nzones];
   ghost_lidx *lower_col_ptr = new ghost_lidx[mat->nzones];
@@ -243,8 +243,8 @@ extern "C" ghost_error ghost_rcm_dissect(ghost_sparsemat *mat){
         upper_col_ptr[i] = -1;
     }
     
-    ghost_lidx *row_ptr = mat->sell->chunkStart;
-    ghost_lidx *col_ptr = mat->sell->col;
+    ghost_lidx *row_ptr = mat->chunkStart;
+    ghost_lidx *col_ptr = mat->col;
     
     //approximate
     ghost_lidx local_size = (int) (mat->nrows / n_zones);

@@ -167,91 +167,13 @@ typedef struct {
 ghost_kacz_setting;
     
 /**
- * @brief A CUDA SELL-C-sigma matrix.
- */
-typedef struct 
-{
-    /**
-     * @brief The values.
-     */
-    char * val;
-    /**
-     * @brief The column indices.
-     */
-    ghost_lidx * col;
-    /**
-     * @brief The length of each row.
-     */
-    ghost_lidx * rowLen;
-    /**
-     * @brief Needed if T>1.
-     */
-    ghost_lidx * rowLenPadded;
-    /**
-     * @brief Pointer to start of each chunk.
-     */
-    ghost_lidx * chunkStart;
-    /**
-     * @brief The length of each chunk.
-     */
-    ghost_lidx * chunkLen;
-}
-ghost_cu_sell;
-
-/**
- * @brief Struct defining a SELL-C-sigma matrix.
- */
-typedef struct 
-{
-    /**
-     * @brief The values.
-     */
-    char *val;
-    /**
-     * @brief The column indices.
-     */
-    ghost_lidx *col;
-    /**
-     * @brief Pointer to start of each chunk.
-     */
-    ghost_lidx *chunkStart;
-    /**
-     * @brief Minimal row length in a chunk.
-     */
-    ghost_lidx *chunkMin;
-    /**
-     * @brief The length of each chunk.
-     */
-    ghost_lidx *chunkLen;
-    /**
-     * @brief Needed if T>1.
-     */
-    ghost_lidx *chunkLenPadded;
-    /**
-     * @brief Length of each row.
-     *
-     * Especially useful in SELL-1 kernels.
-     */
-    ghost_lidx *rowLen;
-    /**
-     * @brief Needed if T>1.
-     */
-    ghost_lidx *rowLenPadded; 
-    /**
-     * @brief The CUDA matrix.
-     */
-    ghost_cu_sell *cumat;
-}
-ghost_sell;
-
-/**
  * @brief Get the SELL data of a general sparsemat.
  *
  * @param mat The sparsemat.
  *
  * @return Pointer to the SELL data.
  */
-#define SELL(mat) (mat->sell)
+#define SELL(mat) (mat)
 
 /**
  * @brief Create only a single chunk, i.e., use the ELLPACK storage format.
@@ -574,7 +496,69 @@ struct ghost_sparsemat
      * 
      * This is a relict from times where we had CRS and SELL and may be removed in the future.
      */
-    ghost_sell *sell;
+    //ghost_sell *sell;
+    /**
+     * @brief The values.
+     */
+    char *val;
+    /**
+     * @brief The column indices.
+     */
+    ghost_lidx *col;
+    /**
+     * @brief Pointer to start of each chunk.
+     */
+    ghost_lidx *chunkStart;
+    /**
+     * @brief Minimal row length in a chunk.
+     */
+    ghost_lidx *chunkMin;
+    /**
+     * @brief The length of each chunk.
+     */
+    ghost_lidx *chunkLen;
+    /**
+     * @brief Needed if T>1.
+     */
+    ghost_lidx *chunkLenPadded;
+    /**
+     * @brief Length of each row.
+     *
+     * Especially useful in SELL-1 kernels.
+     */
+    ghost_lidx *rowLen;
+    /**
+     * @brief Needed if T>1.
+     */
+    ghost_lidx *rowLenPadded; 
+    /**
+     * @brief The CUDA matrix.
+     */
+    //ghost_cu_sell *cumat;
+    /**
+     * @brief The values.
+     */
+    char * cu_val;
+    /**
+     * @brief The column indices.
+     */
+    ghost_lidx * cu_col;
+    /**
+     * @brief The length of each row.
+     */
+    ghost_lidx * cu_rowLen;
+    /**
+     * @brief Needed if T>1.
+     */
+    ghost_lidx * cu_rowLenPadded;
+    /**
+     * @brief Pointer to start of each chunk.
+     */
+    ghost_lidx * cu_chunkStart;
+    /**
+     * @brief The length of each chunk.
+     */
+    ghost_lidx * cu_chunkLen;
     /**
      * @brief Size (in bytes) of one matrix element.
      */

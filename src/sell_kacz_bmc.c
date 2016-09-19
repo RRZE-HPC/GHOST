@@ -9,12 +9,12 @@
   for (ghost_lidx row=start; row<end; ++row){                          \
          double rownorm = 0.;                                          \
          double scal = 0;                                              \
-	 ghost_lidx  idx = sellmat->chunkStart[row];                   \
+	 ghost_lidx  idx = mat->chunkStart[row];                   \
                                                                        \
          if(bval != NULL)                                              \
           scal  = -bval[row];                                          \
-        for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            \
-                 scal += (double)mval[idx] * xval[sellmat->col[idx]];  \
+        for (ghost_lidx j=0; j<mat->rowLen[row]; ++j) {            \
+                 scal += (double)mval[idx] * xval[mat->col[idx]];  \
                 if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)                                 \
                  rownorm += mval[idx]*mval[idx];                       \
                  idx += 1;                                             \
@@ -23,11 +23,11 @@
          scal /= (double)rownorm;                                      \
         }                                                              \
         scal *= omega;                                                 \
-	idx -= sellmat->rowLen[row];                                   \
+	idx -= mat->rowLen[row];                                   \
                                                                        \
  	_Pragma("simd vectorlength(4)")                                \
-         for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {           \
-		xval[sellmat->col[idx]] = xval[sellmat->col[idx]] - scal * (double)mval[idx];\
+         for (ghost_lidx j=0; j<mat->rowLen[row]; j++) {           \
+		xval[mat->col[idx]] = xval[mat->col[idx]] - scal * (double)mval[idx];\
                 idx += 1;                                              \
           }                                                            \
       }                                                                \
@@ -36,12 +36,12 @@
   for (ghost_lidx row=start; row>end; --row){                          \
          double rownorm = 0.;                                          \
          double scal = 0;                                              \
-	 ghost_lidx  idx = sellmat->chunkStart[row];                   \
+	 ghost_lidx  idx = mat->chunkStart[row];                   \
                                                                        \
          if(bval != NULL)                                              \
           scal  = -bval[row];                                          \
-        for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            \
-                 scal += (double)mval[idx] * xval[sellmat->col[idx]];  \
+        for (ghost_lidx j=0; j<mat->rowLen[row]; ++j) {            \
+                 scal += (double)mval[idx] * xval[mat->col[idx]];  \
                 if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)                                 \
                  rownorm += mval[idx]*mval[idx];                       \
                  idx += 1;                                             \
@@ -50,11 +50,11 @@
          scal /= (double)rownorm;                                      \
         }                                                              \
         scal *= omega;                                                 \
-	idx -= sellmat->rowLen[row];                                   \
+	idx -= mat->rowLen[row];                                   \
                                                                        \
  	_Pragma("simd vectorlength(4)")                                \
-         for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {           \
-		xval[sellmat->col[idx]] = xval[sellmat->col[idx]] - scal * (double)mval[idx];\
+         for (ghost_lidx j=0; j<mat->rowLen[row]; j++) {           \
+		xval[mat->col[idx]] = xval[mat->col[idx]] - scal * (double)mval[idx];\
                 idx += 1;                                              \
           }                                                            \
       }                                                                \
@@ -64,12 +64,12 @@
   for (ghost_lidx row=start; row!=end; row+=stride){                   \
          double rownorm = 0.;                                          \
          double scal = 0;                                              \
-	 ghost_lidx  idx = sellmat->chunkStart[row];                   \
+	 ghost_lidx  idx = mat->chunkStart[row];                   \
                                                                        \
          if(bval != NULL)                                              \
           scal  = -bval[row];                                          \
-        for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            \
-                 scal += (double)mval[idx] * xval[sellmat->col[idx]];  \
+        for (ghost_lidx j=0; j<mat->rowLen[row]; ++j) {            \
+                 scal += (double)mval[idx] * xval[mat->col[idx]];  \
                 if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)                                 \
                  rownorm += mval[idx]*mval[idx];                       \
                  idx += 1;                                             \
@@ -78,11 +78,11 @@
          scal /= (double)rownorm;                                      \
         }                                                              \
         scal *= omega;                                                 \
-	idx -= sellmat->rowLen[row];                                   \
+	idx -= mat->rowLen[row];                                   \
                                                                        \
  	_Pragma("simd vectorlength(4)")                                \
-         for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {           \
-		xval[sellmat->col[idx]] = xval[sellmat->col[idx]] - scal * (double)mval[idx];\
+         for (ghost_lidx j=0; j<mat->rowLen[row]; j++) {           \
+		xval[mat->col[idx]] = xval[mat->col[idx]] - scal * (double)mval[idx];\
                 idx += 1;                                              \
           }                                                            \
       }                                                                \
@@ -100,7 +100,7 @@
   for(rowinchunk=start_rem; rowinchunk<CHUNKHEIGHT; ++rowinchunk) {						\
      	double rownorm = 0.;                                          						\
        	double scal[NVECS] = {0};                                     						\
- 	idx = sellmat->chunkStart[start_chunk-1] + rowinchunk;                 					\
+ 	idx = mat->chunkStart[start_chunk-1] + rowinchunk;                 					\
 	row = rowinchunk + (start_chunk-1)*CHUNKHEIGHT;								\
           	                                                            					\
        	if(bval != NULL) {                                            						\
@@ -108,9 +108,9 @@
         		scal[block]  = -bval[NVECS*row+block];         						\
 		}						       						\
 	}							       						\
-        for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            						\
+        for (ghost_lidx j=0; j<mat->rowLen[row]; ++j) {            						\
 		for(int block=0; block<NVECS; ++block) {	       						\
-               		scal[block] += (double)mval[idx] * xval[NVECS*sellmat->col[idx]+block];  		\
+               		scal[block] += (double)mval[idx] * xval[NVECS*mat->col[idx]+block];  		\
 		}						       						\
                	if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)                         	       						\
       			rownorm += mval[idx]*mval[idx];        	       						\
@@ -122,12 +122,12 @@
                 	scal[block] *= omega;                                  					\
 	 	}						               					\
         }                                                              						\
-	idx -= CHUNKHEIGHT*sellmat->rowLen[row];                                   				\
+	idx -= CHUNKHEIGHT*mat->rowLen[row];                                   				\
                                                                        						\
  	_Pragma("simd vectorlength(4)")                                						\
-         for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {           						\
+         for (ghost_lidx j=0; j<mat->rowLen[row]; j++) {           						\
 		for(int block=0; block<NVECS; ++block) {	       						\
-        		xval[NVECS*sellmat->col[idx]+block] = xval[NVECS*sellmat->col[idx]+block] - scal[block] * (double)mval[idx];\
+        		xval[NVECS*mat->col[idx]+block] = xval[NVECS*mat->col[idx]+block] - scal[block] * (double)mval[idx];\
         	}						       						\
 	      idx += CHUNKHEIGHT;                                                				\
          }                                                            						\
@@ -137,7 +137,7 @@
 	for(rowinchunk=0; rowinchunk<CHUNKHEIGHT; ++rowinchunk) { 						\
          	double rownorm = 0.;                                          					\
          	double scal[NVECS] = {0};                                     					\
-	 	idx = sellmat->chunkStart[chunk] + rowinchunk;                 					\
+	 	idx = mat->chunkStart[chunk] + rowinchunk;                 					\
 		row = rowinchunk + chunk*CHUNKHEIGHT;								\
            	                                                            					\
          	if(bval != NULL) {                                            					\
@@ -145,9 +145,9 @@
           			scal[block]  = -bval[NVECS*row+block];         					\
 			}						       					\
 		}							       					\
-        	for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            					\
+        	for (ghost_lidx j=0; j<mat->rowLen[row]; ++j) {            					\
 			for(int block=0; block<NVECS; ++block) {	       					\
-                 		scal[block] += (double)mval[idx] * xval[NVECS*sellmat->col[idx]+block];  	\
+                 		scal[block] += (double)mval[idx] * xval[NVECS*mat->col[idx]+block];  	\
 			}						       					\
                 	if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)                         	       					\
                			rownorm += mval[idx]*mval[idx];        	       					\
@@ -159,12 +159,12 @@
                 		scal[block] *= omega;                                  				\
 	 		}						               				\
         	}                                                              					\
-		idx -= CHUNKHEIGHT*sellmat->rowLen[row];                                   			\
+		idx -= CHUNKHEIGHT*mat->rowLen[row];                                   			\
                                                                        						\
  		_Pragma("simd vectorlength(4)")                                					\
-         	for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {           					\
+         	for (ghost_lidx j=0; j<mat->rowLen[row]; j++) {           					\
 			for(int block=0; block<NVECS; ++block) {	       					\
-        			xval[NVECS*sellmat->col[idx]+block] = xval[NVECS*sellmat->col[idx]+block] - scal[block] * (double)mval[idx];\
+        			xval[NVECS*mat->col[idx]+block] = xval[NVECS*mat->col[idx]+block] - scal[block] * (double)mval[idx];\
         		}							       				\
 	      	idx += CHUNKHEIGHT;                                                				\
           	}                                                            					\
@@ -173,7 +173,7 @@
   for(rowinchunk=0; rowinchunk<end_rem; ++rowinchunk) {								\
      	double rownorm = 0.;                                          						\
        	double scal[NVECS] = {0};                                     						\
- 	idx = sellmat->chunkStart[end_chunk] + rowinchunk;                 					\
+ 	idx = mat->chunkStart[end_chunk] + rowinchunk;                 					\
 	row = rowinchunk + (end_chunk)*CHUNKHEIGHT;								\
           	                                                            					\
        	if(bval != NULL) {                                            						\
@@ -181,9 +181,9 @@
         		scal[block]  = -bval[NVECS*row+block];         						\
 		}						       						\
 	}							       						\
-        for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            						\
+        for (ghost_lidx j=0; j<mat->rowLen[row]; ++j) {            						\
 		for(int block=0; block<NVECS; ++block) {	       						\
-               		scal[block] += (double)mval[idx] * xval[NVECS*sellmat->col[idx]+block];  		\
+               		scal[block] += (double)mval[idx] * xval[NVECS*mat->col[idx]+block];  		\
 		}						       						\
                	if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)                         	       						\
       			rownorm += mval[idx]*mval[idx];        	       						\
@@ -195,12 +195,12 @@
                 	scal[block] *= omega;                                  					\
 	 	}						               					\
         }                                                              						\
-	idx -= CHUNKHEIGHT*sellmat->rowLen[row];                                   				\
+	idx -= CHUNKHEIGHT*mat->rowLen[row];                                   				\
                                                                        						\
  	_Pragma("simd vectorlength(4)")                                						\
-         for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {           						\
+         for (ghost_lidx j=0; j<mat->rowLen[row]; j++) {           						\
 		for(int block=0; block<NVECS; ++block) {	       						\
-        		xval[NVECS*sellmat->col[idx]+block] = xval[NVECS*sellmat->col[idx]+block] - scal[block] * (double)mval[idx];\
+        		xval[NVECS*mat->col[idx]+block] = xval[NVECS*mat->col[idx]+block] - scal[block] * (double)mval[idx];\
         	}						       						\
 	      idx += CHUNKHEIGHT;                                                				\
          }                                                            						\
@@ -217,7 +217,7 @@
   for(rowinchunk=start_rem; rowinchunk>=0; --rowinchunk) {							\
      	double rownorm = 0.;                                          						\
        	double scal[NVECS] = {0};                                     						\
- 	idx = sellmat->chunkStart[start_chunk+1] + rowinchunk;                 					\
+ 	idx = mat->chunkStart[start_chunk+1] + rowinchunk;                 					\
 	row = rowinchunk + (start_chunk+1)*CHUNKHEIGHT;								\
           	                                                            					\
        	if(bval != NULL) {                                            						\
@@ -225,9 +225,9 @@
         		scal[block]  = -bval[NVECS*row+block];         						\
 		}						       						\
 	}							       						\
-        for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            						\
+        for (ghost_lidx j=0; j<mat->rowLen[row]; ++j) {            						\
 		for(int block=0; block<NVECS; ++block) {	       						\
-               		scal[block] += (double)mval[idx] * xval[NVECS*sellmat->col[idx]+block];  		\
+               		scal[block] += (double)mval[idx] * xval[NVECS*mat->col[idx]+block];  		\
 		}						       						\
                	if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)                         	       						\
       			rownorm += mval[idx]*mval[idx];        	       						\
@@ -239,12 +239,12 @@
                 	scal[block] *= omega;                                  					\
 	 	}						               					\
         }                                                              						\
-	idx -= CHUNKHEIGHT*sellmat->rowLen[row];                                   				\
+	idx -= CHUNKHEIGHT*mat->rowLen[row];                                   				\
                                                                        						\
  	_Pragma("simd vectorlength(4)")                                						\
-         for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {           						\
+         for (ghost_lidx j=0; j<mat->rowLen[row]; j++) {           						\
 		for(int block=0; block<NVECS; ++block) {	       						\
-        		xval[NVECS*sellmat->col[idx]+block] = xval[NVECS*sellmat->col[idx]+block] - scal[block] * (double)mval[idx];\
+        		xval[NVECS*mat->col[idx]+block] = xval[NVECS*mat->col[idx]+block] - scal[block] * (double)mval[idx];\
         	}						       						\
 	      idx += CHUNKHEIGHT;                                                				\
          }                                                            						\
@@ -254,7 +254,7 @@
 	for(rowinchunk=CHUNKHEIGHT-1; rowinchunk>=0; --rowinchunk) { 						\
          	double rownorm = 0.;                                          					\
          	double scal[NVECS] = {0};                                     					\
-	 	idx = sellmat->chunkStart[chunk] + rowinchunk;                 					\
+	 	idx = mat->chunkStart[chunk] + rowinchunk;                 					\
 		row = rowinchunk + chunk*CHUNKHEIGHT;								\
            	                                                            					\
          	if(bval != NULL) {                                            					\
@@ -262,9 +262,9 @@
           			scal[block]  = -bval[NVECS*row+block];         					\
 			}						       					\
 		}							       					\
-        	for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            					\
+        	for (ghost_lidx j=0; j<mat->rowLen[row]; ++j) {            					\
 			for(int block=0; block<NVECS; ++block) {	       					\
-                 		scal[block] += (double)mval[idx] * xval[NVECS*sellmat->col[idx]+block];  	\
+                 		scal[block] += (double)mval[idx] * xval[NVECS*mat->col[idx]+block];  	\
 			}						       					\
                 	if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)                         	       					\
                			rownorm += mval[idx]*mval[idx];        	       					\
@@ -276,12 +276,12 @@
                 		scal[block] *= omega;                                  				\
 	 		}						               				\
         	}                                                              					\
-		idx -= CHUNKHEIGHT*sellmat->rowLen[row];                                   			\
+		idx -= CHUNKHEIGHT*mat->rowLen[row];                                   			\
                                                                        						\
  		_Pragma("simd vectorlength(4)")                                					\
-         	for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {           					\
+         	for (ghost_lidx j=0; j<mat->rowLen[row]; j++) {           					\
 			for(int block=0; block<NVECS; ++block) {	       					\
-        			xval[NVECS*sellmat->col[idx]+block] = xval[NVECS*sellmat->col[idx]+block] - scal[block] * (double)mval[idx];\
+        			xval[NVECS*mat->col[idx]+block] = xval[NVECS*mat->col[idx]+block] - scal[block] * (double)mval[idx];\
         		}							       				\
 	      	idx += CHUNKHEIGHT;                                                				\
           	}                                                            					\
@@ -290,7 +290,7 @@
   for(rowinchunk=CHUNKHEIGHT-1; rowinchunk>end_rem; --rowinchunk) {						\
      	double rownorm = 0.;                                          						\
        	double scal[NVECS] = {0};                                     						\
- 	idx = sellmat->chunkStart[end_chunk] + rowinchunk;                 					\
+ 	idx = mat->chunkStart[end_chunk] + rowinchunk;                 					\
 	row = rowinchunk + (end_chunk)*CHUNKHEIGHT;								\
           	                                                            					\
        	if(bval != NULL) {                                            						\
@@ -298,9 +298,9 @@
         		scal[block]  = -bval[NVECS*row+block];         						\
 		}						       						\
 	}							       						\
-        for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            						\
+        for (ghost_lidx j=0; j<mat->rowLen[row]; ++j) {            						\
 		for(int block=0; block<NVECS; ++block) {	       						\
-               		scal[block] += (double)mval[idx] * xval[NVECS*sellmat->col[idx]+block];  		\
+               		scal[block] += (double)mval[idx] * xval[NVECS*mat->col[idx]+block];  		\
 		}						       						\
                	if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)                         	       						\
       			rownorm += mval[idx]*mval[idx];        	       						\
@@ -312,12 +312,12 @@
                 	scal[block] *= omega;                                  					\
 	 	}						               					\
         }                                                              						\
-	idx -= CHUNKHEIGHT*sellmat->rowLen[row];                                   				\
+	idx -= CHUNKHEIGHT*mat->rowLen[row];                                   				\
                                                                        						\
  	_Pragma("simd vectorlength(4)")                                						\
-         for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {           						\
+         for (ghost_lidx j=0; j<mat->rowLen[row]; j++) {           						\
 		for(int block=0; block<NVECS; ++block) {	       						\
-        		xval[NVECS*sellmat->col[idx]+block] = xval[NVECS*sellmat->col[idx]+block] - scal[block] * (double)mval[idx];\
+        		xval[NVECS*mat->col[idx]+block] = xval[NVECS*mat->col[idx]+block] - scal[block] * (double)mval[idx];\
         	}						       						\
 	      idx += CHUNKHEIGHT;                                                				\
          }                                                            						\
@@ -349,16 +349,16 @@
 /*  for (ghost_lidx row=start; row>end; --row){                          \
          double rownorm = 0.;                                          \
          double scal[NVECS] = {0};                                     \
-	 ghost_lidx  idx = sellmat->chunkStart[row];                   \
+	 ghost_lidx  idx = mat->chunkStart[row];                   \
                                                                        \
          if(bval != NULL) {                                            \
           	for(int block=0; block<NVECS; ++block) {               \
           		scal[block]  = -bval[NVECS*row+block];         \
 		}						       \
 	}							       \
-        for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            \
+        for (ghost_lidx j=0; j<mat->rowLen[row]; ++j) {            \
 		for(int block=0; block<NVECS; ++block) {	       \
-                 	scal[block] += (double)mval[idx] * xval[NVECS*sellmat->col[idx]+block];  \
+                 	scal[block] += (double)mval[idx] * xval[NVECS*mat->col[idx]+block];  \
 		}						       \
                 if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)                         	       \
                		rownorm += mval[idx]*mval[idx];        	       \
@@ -370,12 +370,12 @@
                 scal[block] *= omega;                                  \
 	 }						               \
         }                                                              \
-	idx -= sellmat->rowLen[row];                                   \
+	idx -= mat->rowLen[row];                                   \
                                                                        \
  	_Pragma("simd vectorlength(4)")                                \
-         for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {           \
+         for (ghost_lidx j=0; j<mat->rowLen[row]; j++) {           \
 		for(int block=0; block<NVECS; ++block) {	       \
-        		xval[NVECS*sellmat->col[idx]+block] = xval[NVECS*sellmat->col[idx]+block] - scal[block] * (double)mval[idx];\
+        		xval[NVECS*mat->col[idx]+block] = xval[NVECS*mat->col[idx]+block] - scal[block] * (double)mval[idx];\
         	}						       \
 	      idx += 1;                                                \
           }                                                            \
@@ -385,16 +385,16 @@
   for (ghost_lidx row=start; row!=end; row+=stride){                   \
          double rownorm = 0.;                                          \
          double scal[NVECS] = {0};                                     \
-	 ghost_lidx  idx = sellmat->chunkStart[row];                   \
+	 ghost_lidx  idx = mat->chunkStart[row];                   \
                                                                        \
          if(bval != NULL) {                                            \
           	for(int block=0; block<NVECS; ++block) {               \
           		scal[block]  = -bval[NVECS*row+block];         \
 		}						       \
 	}							       \
-        for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            \
+        for (ghost_lidx j=0; j<mat->rowLen[row]; ++j) {            \
 		for(int block=0; block<NVECS; ++block) {	       \
-                 	scal[block] += (double)mval[idx] * xval[NVECS*sellmat->col[idx]+block];  \
+                 	scal[block] += (double)mval[idx] * xval[NVECS*mat->col[idx]+block];  \
 		}						       \
                 if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)                         	       \
                		rownorm += mval[idx]*mval[idx];        	       \
@@ -406,12 +406,12 @@
                 scal[block] *= omega;                                  \
 	 }						               \
         }                                                              \
-	idx -= sellmat->rowLen[row];                                   \
+	idx -= mat->rowLen[row];                                   \
                                                                        \
  	_Pragma("simd vectorlength(4)")                                \
-         for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {           \
+         for (ghost_lidx j=0; j<mat->rowLen[row]; j++) {           \
 		for(int block=0; block<NVECS; ++block) {	       \
-        		xval[NVECS*sellmat->col[idx]+block] = xval[NVECS*sellmat->col[idx]+block] - scal[block] * (double)mval[idx];\
+        		xval[NVECS*mat->col[idx]+block] = xval[NVECS*mat->col[idx]+block] - scal[block] * (double)mval[idx];\
         	}						       \
 	      idx += 1;                                                \
           }                                                            \
@@ -420,8 +420,7 @@
 */
 ghost_error ghost_initialize_kacz_bmc(ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts)
 {
-    ghost_sell *sellmat = SELL(mat);
-    double *mval = (double *)sellmat->val;
+    double *mval = (double *)mat->val;
     double *bval = (double *)(b->val);
     double rownorm = 0;
     ghost_lidx idx;
@@ -430,16 +429,16 @@ ghost_error ghost_initialize_kacz_bmc(ghost_sparsemat *mat, ghost_densemat *b, g
    if(opts.normalize == GHOST_KACZ_NORMALIZE_YES) {
        for(int row=0; row < mat->nrows; ++row) {
            rownorm = 0;
-           idx =  sellmat->chunkStart[row];
-           for (int j=0; j<sellmat->rowLen[row]; ++j) {
+           idx =  mat->chunkStart[row];
+           for (int j=0; j<mat->rowLen[row]; ++j) {
              rownorm += mval[idx]*mval[idx];
 	     idx += 1;
            }
            
            bval[row] = (double)(bval[row])/rownorm;
 
-          idx =  sellmat->chunkStart[row];
-          for (int j=0; j<sellmat->rowLen[row]; ++j) {
+          idx =  mat->chunkStart[row];
+          for (int j=0; j<mat->rowLen[row]; ++j) {
              mval[idx] = (double)(mval[idx])/sqrt(rownorm);
 	     idx += 1;
            }
@@ -472,14 +471,13 @@ ghost_error ghost_kacz_bmc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densem
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
 */   
-    ghost_sell *sellmat = SELL(mat); 
     double *bval = NULL;
   
    if(b!= NULL)
      bval = (double *)(b->val);
 
     double *xval = (double *)(x->val);
-    double *mval = (double *)sellmat->val;
+    double *mval = (double *)mat->val;
     double omega = *(double *)opts.omega;
     ghost_lidx *zone_ptr = (ghost_lidx*) mat->zone_ptr;
     //ghost_lidx nzones    = mat->nzones;
@@ -664,13 +662,13 @@ ghost_error ghost_kacz_bmc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densem
          double rownorm = sigma_r*sigma_r + sigma_i*sigma_i;           \
          double scal_r = sigma_r*x_r[row] - sigma_i*x_i[row];          \
 	 double scal_i = sigma_r*x_i[row] + sigma_i*x_r[row];          \
-	 ghost_lidx  idx = sellmat->chunkStart[row];                   \
+	 ghost_lidx  idx = mat->chunkStart[row];                   \
                                                                        \
         if(bval != NULL)                                               \
           scal_r  += bval[row];                                        \
-        for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            \
-                 scal_r -= (double)mval[idx] * x_r[sellmat->col[idx]]; \
-		 scal_i -= (double)mval[idx] * x_i[sellmat->col[idx]]; \
+        for (ghost_lidx j=0; j<mat->rowLen[row]; ++j) {            \
+                 scal_r -= (double)mval[idx] * x_r[mat->col[idx]]; \
+		 scal_i -= (double)mval[idx] * x_i[mat->col[idx]]; \
                  if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)                                \
            	       rownorm += mval[idx]*mval[idx];                 \
                  idx += 1;                                             \
@@ -682,14 +680,14 @@ ghost_error ghost_kacz_bmc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densem
         }                                                              \
         scal_r *= omega;                                               \
 	scal_i *= omega;					       \
-	idx -= sellmat->rowLen[row];                                   \
+	idx -= mat->rowLen[row];                                   \
                                                                        \
         x_r[row] = x_r[row] - scal_r*sigma_r + scal_i*sigma_i;         \
 	x_i[row] = x_i[row] - scal_r*sigma_i - scal_i*sigma_r;         \
  	_Pragma("simd vectorlength(4)")                                \
-         for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {           \
-		x_r[sellmat->col[idx]] = x_r[sellmat->col[idx]] + scal_r * (double)mval[idx];\
-		x_i[sellmat->col[idx]] = x_i[sellmat->col[idx]] + scal_i * (double)mval[idx];\
+         for (ghost_lidx j=0; j<mat->rowLen[row]; j++) {           \
+		x_r[mat->col[idx]] = x_r[mat->col[idx]] + scal_r * (double)mval[idx];\
+		x_i[mat->col[idx]] = x_i[mat->col[idx]] + scal_i * (double)mval[idx];\
                 idx += 1;                                              \
          }                                                             \
       } 
@@ -700,13 +698,13 @@ ghost_error ghost_kacz_bmc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densem
          double rownorm = sigma_r*sigma_r + sigma_i*sigma_i;           \
          double scal_r = sigma_r*x_r[row] - sigma_i*x_i[row];          \
 	 double scal_i = sigma_r*x_i[row] + sigma_i*x_r[row];          \
-	 ghost_lidx  idx = sellmat->chunkStart[row];                   \
+	 ghost_lidx  idx = mat->chunkStart[row];                   \
                                                                        \
         if(bval != NULL)                                               \
           scal_r  += bval[row];                                        \
-        for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            \
-                 scal_r -= (double)mval[idx] * x_r[sellmat->col[idx]]; \
-		 scal_i -= (double)mval[idx] * x_i[sellmat->col[idx]]; \
+        for (ghost_lidx j=0; j<mat->rowLen[row]; ++j) {            \
+                 scal_r -= (double)mval[idx] * x_r[mat->col[idx]]; \
+		 scal_i -= (double)mval[idx] * x_i[mat->col[idx]]; \
                  if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)                                \
            	       rownorm += mval[idx]*mval[idx];                 \
                  idx += 1;                                             \
@@ -718,14 +716,14 @@ ghost_error ghost_kacz_bmc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densem
         }                                                              \
         scal_r *= omega;                                               \
 	scal_i *= omega;					       \
-	idx -= sellmat->rowLen[row];                                   \
+	idx -= mat->rowLen[row];                                   \
                                                                        \
         x_r[row] = x_r[row] - scal_r*sigma_r + scal_i*sigma_i;         \
 	x_i[row] = x_i[row] - scal_r*sigma_i - scal_i*sigma_r;         \
  	_Pragma("simd vectorlength(4)")                                \
-         for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {           \
-		x_r[sellmat->col[idx]] = x_r[sellmat->col[idx]] + scal_r * (double)mval[idx];\
-		x_i[sellmat->col[idx]] = x_i[sellmat->col[idx]] + scal_i * (double)mval[idx];\
+         for (ghost_lidx j=0; j<mat->rowLen[row]; j++) {           \
+		x_r[mat->col[idx]] = x_r[mat->col[idx]] + scal_r * (double)mval[idx];\
+		x_i[mat->col[idx]] = x_i[mat->col[idx]] + scal_i * (double)mval[idx];\
                 idx += 1;                                              \
          }                                                             \
       } 
@@ -736,13 +734,13 @@ ghost_error ghost_kacz_bmc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densem
          double rownorm = sigma_r*sigma_r + sigma_i*sigma_i;           \
          double scal_r = sigma_r*x_r[row] - sigma_i*x_i[row];          \
 	 double scal_i = sigma_r*x_i[row] + sigma_i*x_r[row];          \
-	 ghost_lidx  idx = sellmat->chunkStart[row];                   \
+	 ghost_lidx  idx = mat->chunkStart[row];                   \
                                                                        \
         if(bval != NULL)                                               \
           scal_r  += bval[row];                                        \
-        for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {            \
-                 scal_r -= (double)mval[idx] * x_r[sellmat->col[idx]]; \
-		 scal_i -= (double)mval[idx] * x_i[sellmat->col[idx]]; \
+        for (ghost_lidx j=0; j<mat->rowLen[row]; ++j) {            \
+                 scal_r -= (double)mval[idx] * x_r[mat->col[idx]]; \
+		 scal_i -= (double)mval[idx] * x_i[mat->col[idx]]; \
                  if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)                                \
            	       rownorm += mval[idx]*mval[idx];                 \
                  idx += 1;                                             \
@@ -754,14 +752,14 @@ ghost_error ghost_kacz_bmc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densem
         }                                                              \
         scal_r *= omega;                                               \
 	scal_i *= omega;					       \
-	idx -= sellmat->rowLen[row];                                   \
+	idx -= mat->rowLen[row];                                   \
                                                                        \
         x_r[row] = x_r[row] - scal_r*sigma_r + scal_i*sigma_i;         \
 	x_i[row] = x_i[row] - scal_r*sigma_i - scal_i*sigma_r;         \
  	_Pragma("simd vectorlength(4)")                                \
-         for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {           \
-		x_r[sellmat->col[idx]] = x_r[sellmat->col[idx]] + scal_r * (double)mval[idx];\
-		x_i[sellmat->col[idx]] = x_i[sellmat->col[idx]] + scal_i * (double)mval[idx];\
+         for (ghost_lidx j=0; j<mat->rowLen[row]; j++) {           \
+		x_r[mat->col[idx]] = x_r[mat->col[idx]] + scal_r * (double)mval[idx];\
+		x_i[mat->col[idx]] = x_i[mat->col[idx]] + scal_i * (double)mval[idx];\
                 idx += 1;                                              \
          }                                                             \
       }                                                                \
@@ -785,7 +783,6 @@ ghost_error ghost_kacz_shift_bmc(ghost_densemat *x_real, ghost_densemat *x_imag,
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
    
-    ghost_sell *sellmat = SELL(mat); 
     double *bval = NULL;
   
    if(b!= NULL)
@@ -793,7 +790,7 @@ ghost_error ghost_kacz_shift_bmc(ghost_densemat *x_real, ghost_densemat *x_imag,
 
     double *x_r = (double *)(x_real->val);
     double *x_i = (double *)(x_imag->val);
-    double *mval = (double *)sellmat->val;
+    double *mval = (double *)mat->val;
     double omega = *(double *)opts.omega;
     ghost_lidx *zone_ptr = (ghost_lidx*) mat->zone_ptr;
     //ghost_lidx nzones    = mat->nzones;

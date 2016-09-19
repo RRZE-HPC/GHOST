@@ -60,9 +60,9 @@ if (do_fallback) {\
                 "and block %dx%d (nrows in block %d), smem %d",grid.x,grid.y,block.x,block.y,nrowsinblock,smem);\
         SELL_kernel_rm_fallback_tmpl<dt1,dt2,dt2_b><<<grid,block,smem>>>(\
                 (dt2 *)lhsval,(int)(lhs->stride),(dt2 *)rhsval,\
-                (int)rhs->stride,traits.flags,mat->nrows,nrowsinblock,SELL(mat)->cumat->rowLen,\
-                SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,\
-                SELL(mat)->cumat->chunkStart,(dt2 *)cu_shift,(dt2)scale,\
+                (int)rhs->stride,traits.flags,mat->nrows,nrowsinblock,mat->cu_rowLen,\
+                mat->cu_col,(dt1 *)mat->cu_val,\
+                mat->cu_chunkStart,(dt2 *)cu_shift,(dt2)scale,\
                 (dt2)beta,(dt2 *)cu_localdot,mat->traits.C,\
                 rhs->traits.ncols,(dt2 *)zval,zstride,sdelta,seta,traits.flags&(GHOST_SPMV_AXPBY|GHOST_SPMV_AXPY),\
                 traits.flags&GHOST_SPMV_SCALE,\
@@ -77,9 +77,9 @@ if (do_fallback) {\
                 "and block %dx%d smem %zu",grid.x,grid.y,block.x,block.y,smem);\
         SELL_kernel_cm_fallback_tmpl<dt1,dt2,dt2_b><<<grid,block,smem>>>(\
                 (dt2 *)lhsval,(int)(lhs->stride),(dt2 *)rhsval,\
-                (int)rhs->stride,traits.flags,mat->nrows,SELL(mat)->cumat->rowLen,\
-                SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,\
-                SELL(mat)->cumat->chunkStart,(dt2 *)cu_shift,(dt2)scale,\
+                (int)rhs->stride,traits.flags,mat->nrows,mat->cu_rowLen,\
+                mat->cu_col,(dt1 *)mat->cu_val,\
+                mat->cu_chunkStart,(dt2 *)cu_shift,(dt2)scale,\
                 (dt2)beta,(dt2 *)cu_localdot,mat->traits.C,\
                 rhs->traits.ncols,(dt2 *)zval,zstride,sdelta,seta,traits.flags&(GHOST_SPMV_AXPBY|GHOST_SPMV_AXPY),\
                 traits.flags&GHOST_SPMV_SCALE,\

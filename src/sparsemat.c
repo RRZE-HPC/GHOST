@@ -78,7 +78,6 @@ ghost_error ghost_sparsemat_create(ghost_sparsemat ** mat, ghost_context *contex
     (*mat)->remotePart = NULL;
     (*mat)->name = "Sparse matrix";
     (*mat)->col_orig = NULL;
-    (*mat)->sell = NULL;
     (*mat)->nzDist = NULL;
     (*mat)->fromFile = &ghost_sparsemat_from_bincrs;
     (*mat)->fromMM = &ghost_sparsemat_from_mm;
@@ -122,7 +121,6 @@ ghost_error ghost_sparsemat_create(ghost_sparsemat ** mat, ghost_context *contex
     // functions ghost_sparsemat_from_* and SELL_fromRowFunc.
     (*mat)->elSize = 0;
     
-    GHOST_CALL_GOTO(ghost_malloc((void **)&(*mat)->sell,sizeof(ghost_sell)),err,ret);
     DEBUG_LOG(1,"Setting functions for SELL matrix");
     if (!((*mat)->traits.flags & (GHOST_SPARSEMAT_HOST | GHOST_SPARSEMAT_DEVICE)))
     { // no placement specified
@@ -154,15 +152,14 @@ ghost_error ghost_sparsemat_create(ghost_sparsemat ** mat, ghost_context *contex
     }
     #endif
     
-    (*mat)->sell->val = NULL;
-    (*mat)->sell->col = NULL;
-    (*mat)->sell->chunkMin = NULL;
-    (*mat)->sell->chunkLen = NULL;
-    (*mat)->sell->chunkLenPadded = NULL;
-    (*mat)->sell->rowLen = NULL;
-    (*mat)->sell->rowLenPadded = NULL;
-    (*mat)->sell->chunkStart = NULL;
-    (*mat)->sell->cumat = NULL;
+    (*mat)->val = NULL;
+    (*mat)->col = NULL;
+    (*mat)->chunkMin = NULL;
+    (*mat)->chunkLen = NULL;
+    (*mat)->chunkLenPadded = NULL;
+    (*mat)->rowLen = NULL;
+    (*mat)->rowLenPadded = NULL;
+    (*mat)->chunkStart = NULL;
     
     if ((*mat)->traits.C == GHOST_SELL_CHUNKHEIGHT_ELLPACK) {
         (*mat)->traits.C = PAD((*mat)->nrows,GHOST_PAD_MAX);
@@ -175,7 +172,6 @@ ghost_error ghost_sparsemat_create(ghost_sparsemat ** mat, ghost_context *contex
     err:
     ERROR_LOG("Error. Free'ing resources");
     free(*mat); *mat = NULL;
-    free((*mat)->sell); (*mat)->sell = NULL;
     
     out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_SETUP);
@@ -1537,27 +1533,24 @@ void ghost_sparsemat_destroy(ghost_sparsemat *mat)
     }
     
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TEARDOWN);
-    if (mat->sell) {
-        #ifdef GHOST_HAVE_CUDA
-        if (mat->traits.flags & GHOST_SPARSEMAT_DEVICE && SELL(mat)->cumat) {
-            ghost_cu_free(SELL(mat)->cumat->rowLen);
-            ghost_cu_free(SELL(mat)->cumat->rowLenPadded);
-            ghost_cu_free(SELL(mat)->cumat->col);
-            ghost_cu_free(SELL(mat)->cumat->val);
-            ghost_cu_free(SELL(mat)->cumat->chunkStart);
-            ghost_cu_free(SELL(mat)->cumat->chunkLen);
-            free(SELL(mat)->cumat);
-        }
-        #endif
-        free(SELL(mat)->val); SELL(mat)->val = NULL;
-        free(SELL(mat)->col); SELL(mat)->col = NULL;
-        free(SELL(mat)->chunkStart); SELL(mat)->chunkStart = NULL;
-        free(SELL(mat)->chunkMin); SELL(mat)->chunkMin = NULL;
-        free(SELL(mat)->chunkLen); SELL(mat)->chunkLen = NULL;
-        free(SELL(mat)->chunkLenPadded); SELL(mat)->chunkLenPadded = NULL;
-        free(SELL(mat)->rowLen); SELL(mat)->rowLen = NULL;
-        free(SELL(mat)->rowLenPadded); SELL(mat)->rowLenPadded = NULL;
+    #ifdef GHOST_HAVE_CUDA
+    if (mat->traits.flags & GHOST_SPARSEMAT_DEVICE) {
+        ghost_cu_free(mat->cu_rowLen);
+        ghost_cu_free(mat->cu_rowLenPadded);
+        ghost_cu_free(mat->cu_col);
+        ghost_cu_free(mat->cu_val);
+        ghost_cu_free(mat->cu_chunkStart);
+        ghost_cu_free(mat->cu_chunkLen);
     }
+    #endif
+    free(SELL(mat)->val); SELL(mat)->val = NULL;
+    free(SELL(mat)->col); SELL(mat)->col = NULL;
+    free(SELL(mat)->chunkStart); SELL(mat)->chunkStart = NULL;
+    free(SELL(mat)->chunkMin); SELL(mat)->chunkMin = NULL;
+    free(SELL(mat)->chunkLen); SELL(mat)->chunkLen = NULL;
+    free(SELL(mat)->chunkLenPadded); SELL(mat)->chunkLenPadded = NULL;
+    free(SELL(mat)->rowLen); SELL(mat)->rowLen = NULL;
+    free(SELL(mat)->rowLenPadded); SELL(mat)->rowLenPadded = NULL;
     
     
     if (mat->localPart) {
@@ -1576,7 +1569,6 @@ void ghost_sparsemat_destroy(ghost_sparsemat *mat)
         free(mat->zone_ptr);
     }
     
-    free(mat->sell); mat->sell = NULL;
     free(mat->col_orig); mat->col_orig = NULL;
     
     free(mat);
@@ -1744,9 +1736,6 @@ static size_t SELL_byteSize (ghost_sparsemat *mat)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
-    if (mat->sell == NULL) {
-        return 0;
-    }
     return (size_t)((mat->nrowsPadded/mat->traits.C)*sizeof(ghost_lidx) + 
     mat->nEnts*(sizeof(ghost_lidx)+mat->elSize));
 }
@@ -2125,8 +2114,6 @@ static ghost_error SELL_split(ghost_sparsemat *mat)
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     
     
-    ghost_sell *fullSELL = SELL(mat);
-    ghost_sell *localSELL = NULL, *remoteSELL = NULL;
     DEBUG_LOG(1,"Splitting the SELL matrix into a local and remote part");
     ghost_gidx i,j;
     int me;
@@ -2160,7 +2147,7 @@ static ghost_error SELL_split(ghost_sparsemat *mat)
     }
     GHOST_INSTR_STOP("init_compressed_cols");
     
-    GHOST_CALL_GOTO(ghost_context_comm_init(mat->context,mat->col_orig,mat,fullSELL->col),err,ret);
+    GHOST_CALL_GOTO(ghost_context_comm_init(mat->context,mat->col_orig,mat,mat->col),err,ret);
     
     #ifndef GHOST_IDX_UNIFORM
     if (!(mat->traits.flags & GHOST_SPARSEMAT_SAVE_ORIG_COLS)) {
@@ -2173,49 +2160,49 @@ static ghost_error SELL_split(ghost_sparsemat *mat)
         GHOST_INSTR_START("split");
         
         ghost_sparsemat_create(&(mat->localPart),mat->context,&mat->splittraits[0],1);
-        localSELL = mat->localPart->sell;
+        ghost_sparsemat *localMat = mat->localPart;
         mat->localPart->traits.symmetry = mat->traits.symmetry;
         
         ghost_sparsemat_create(&(mat->remotePart),mat->context,&mat->splittraits[1],1);
-        remoteSELL = mat->remotePart->sell; 
+        ghost_sparsemat *remoteMat = mat->remotePart; 
         
         mat->localPart->traits.T = mat->traits.T;
         mat->remotePart->traits.T = mat->traits.T;
         
         ghost_lidx nChunks = mat->nrowsPadded/mat->traits.C;
-        GHOST_CALL_GOTO(ghost_malloc((void **)&localSELL->chunkStart, (nChunks+1)*sizeof(ghost_lidx)),err,ret);
-        GHOST_CALL_GOTO(ghost_malloc((void **)&localSELL->chunkMin, (nChunks)*sizeof(ghost_lidx)),err,ret);
-        GHOST_CALL_GOTO(ghost_malloc((void **)&localSELL->chunkLen, (nChunks)*sizeof(ghost_lidx)),err,ret);
-        GHOST_CALL_GOTO(ghost_malloc((void **)&localSELL->chunkLenPadded, (nChunks)*sizeof(ghost_lidx)),err,ret);
-        GHOST_CALL_GOTO(ghost_malloc((void **)&localSELL->rowLen, (mat->nrowsPadded)*sizeof(ghost_lidx)),err,ret);
-        GHOST_CALL_GOTO(ghost_malloc((void **)&localSELL->rowLenPadded, (mat->nrowsPadded)*sizeof(ghost_lidx)),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&localMat->chunkStart, (nChunks+1)*sizeof(ghost_lidx)),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&localMat->chunkMin, (nChunks)*sizeof(ghost_lidx)),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&localMat->chunkLen, (nChunks)*sizeof(ghost_lidx)),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&localMat->chunkLenPadded, (nChunks)*sizeof(ghost_lidx)),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&localMat->rowLen, (mat->nrowsPadded)*sizeof(ghost_lidx)),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&localMat->rowLenPadded, (mat->nrowsPadded)*sizeof(ghost_lidx)),err,ret);
         
-        GHOST_CALL_GOTO(ghost_malloc((void **)&remoteSELL->chunkStart, (nChunks+1)*sizeof(ghost_lidx)),err,ret);
-        GHOST_CALL_GOTO(ghost_malloc((void **)&remoteSELL->chunkMin, (nChunks)*sizeof(ghost_lidx)),err,ret);
-        GHOST_CALL_GOTO(ghost_malloc((void **)&remoteSELL->chunkLen, (nChunks)*sizeof(ghost_lidx)),err,ret);
-        GHOST_CALL_GOTO(ghost_malloc((void **)&remoteSELL->chunkLenPadded, (nChunks)*sizeof(ghost_lidx)),err,ret);
-        GHOST_CALL_GOTO(ghost_malloc((void **)&remoteSELL->rowLen, (mat->nrowsPadded)*sizeof(ghost_lidx)),err,ret);
-        GHOST_CALL_GOTO(ghost_malloc((void **)&remoteSELL->rowLenPadded, (mat->nrowsPadded)*sizeof(ghost_lidx)),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&remoteMat->chunkStart, (nChunks+1)*sizeof(ghost_lidx)),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&remoteMat->chunkMin, (nChunks)*sizeof(ghost_lidx)),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&remoteMat->chunkLen, (nChunks)*sizeof(ghost_lidx)),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&remoteMat->chunkLenPadded, (nChunks)*sizeof(ghost_lidx)),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&remoteMat->rowLen, (mat->nrowsPadded)*sizeof(ghost_lidx)),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&remoteMat->rowLenPadded, (mat->nrowsPadded)*sizeof(ghost_lidx)),err,ret);
         
         #pragma omp parallel for schedule(runtime)
         for (i=0; i<mat->nrowsPadded; i++) {
-            localSELL->rowLen[i] = 0;
-            remoteSELL->rowLen[i] = 0;
-            localSELL->rowLenPadded[i] = 0;
-            remoteSELL->rowLenPadded[i] = 0;
+            localMat->rowLen[i] = 0;
+            remoteMat->rowLen[i] = 0;
+            localMat->rowLenPadded[i] = 0;
+            remoteMat->rowLenPadded[i] = 0;
         }
         
         #pragma omp parallel for schedule(runtime)
         for(chunk = 0; chunk < mat->nrowsPadded/mat->traits.C; chunk++) {
-            localSELL->chunkLen[chunk] = 0;
-            remoteSELL->chunkLen[chunk] = 0;
-            localSELL->chunkLenPadded[chunk] = 0;
-            remoteSELL->chunkLenPadded[chunk] = 0;
-            localSELL->chunkMin[chunk] = 0;
-            remoteSELL->chunkMin[chunk] = 0;
+            localMat->chunkLen[chunk] = 0;
+            remoteMat->chunkLen[chunk] = 0;
+            localMat->chunkLenPadded[chunk] = 0;
+            remoteMat->chunkLenPadded[chunk] = 0;
+            localMat->chunkMin[chunk] = 0;
+            remoteMat->chunkMin[chunk] = 0;
         }
-        localSELL->chunkStart[0] = 0;
-        remoteSELL->chunkStart[0] = 0;
+        localMat->chunkStart[0] = 0;
+        remoteMat->chunkStart[0] = 0;
         
         mat->localPart->nnz = 0;
         mat->remotePart->nnz = 0;
@@ -2225,54 +2212,54 @@ static ghost_error SELL_split(ghost_sparsemat *mat)
         
         for(chunk = 0; chunk < mat->nrowsPadded/mat->traits.C; chunk++) {
             
-            for (i=0; i<fullSELL->chunkLen[chunk]; i++) {
+            for (i=0; i<mat->chunkLen[chunk]; i++) {
                 for (j=0; j<mat->traits.C; j++) {
                     row = chunk*mat->traits.C+j;
-                    idx = fullSELL->chunkStart[chunk]+i*mat->traits.C+j;
+                    idx = mat->chunkStart[chunk]+i*mat->traits.C+j;
                     
-                    if (i < fullSELL->rowLen[row]) {
-                        if (fullSELL->col[idx] < mat->context->lnrows[me]) {
-                            localSELL->rowLen[row]++;
+                    if (i < mat->rowLen[row]) {
+                        if (mat->col[idx] < mat->context->lnrows[me]) {
+                            localMat->rowLen[row]++;
                             mat->localPart->nnz++;
                         } else {
-                            remoteSELL->rowLen[row]++;
+                            remoteMat->rowLen[row]++;
                             mat->remotePart->nnz++;
                         }
-                        localSELL->rowLenPadded[row] = PAD(localSELL->rowLen[row],mat->localPart->traits.T);
-                        remoteSELL->rowLenPadded[row] = PAD(remoteSELL->rowLen[row],mat->remotePart->traits.T);
+                        localMat->rowLenPadded[row] = PAD(localMat->rowLen[row],mat->localPart->traits.T);
+                        remoteMat->rowLenPadded[row] = PAD(remoteMat->rowLen[row],mat->remotePart->traits.T);
                     }
                 }
             }
             
             for (j=0; j<mat->traits.C; j++) {
                 row = chunk*mat->traits.C+j;
-                localSELL->chunkLen[chunk] = MAX(localSELL->chunkLen[chunk],localSELL->rowLen[row]);
-                remoteSELL->chunkLen[chunk] = MAX(remoteSELL->chunkLen[chunk],remoteSELL->rowLen[row]);
+                localMat->chunkLen[chunk] = MAX(localMat->chunkLen[chunk],localMat->rowLen[row]);
+                remoteMat->chunkLen[chunk] = MAX(remoteMat->chunkLen[chunk],remoteMat->rowLen[row]);
             }
-            lnEnts_l += localSELL->chunkLen[chunk]*mat->traits.C;
-            lnEnts_r += remoteSELL->chunkLen[chunk]*mat->traits.C;
-            localSELL->chunkStart[chunk+1] = lnEnts_l;
-            remoteSELL->chunkStart[chunk+1] = lnEnts_r;
+            lnEnts_l += localMat->chunkLen[chunk]*mat->traits.C;
+            lnEnts_r += remoteMat->chunkLen[chunk]*mat->traits.C;
+            localMat->chunkStart[chunk+1] = lnEnts_l;
+            remoteMat->chunkStart[chunk+1] = lnEnts_r;
             
-            localSELL->chunkLenPadded[chunk] = PAD(localSELL->chunkLen[chunk],mat->localPart->traits.T);
-            remoteSELL->chunkLenPadded[chunk] = PAD(remoteSELL->chunkLen[chunk],mat->remotePart->traits.T);
+            localMat->chunkLenPadded[chunk] = PAD(localMat->chunkLen[chunk],mat->localPart->traits.T);
+            remoteMat->chunkLenPadded[chunk] = PAD(remoteMat->chunkLen[chunk],mat->remotePart->traits.T);
             
         }
         
         
         
         /*
-         *           for (i=0; i<fullSELL->nEnts;i++) {
-         *           if (fullSELL->col[i]<mat->context->lnrows[me]) lnEnts_l++;
+         *           for (i=0; i<mat->nEnts;i++) {
+         *           if (mat->col[i]<mat->context->lnrows[me]) lnEnts_l++;
     }
     lnEnts_r = mat->context->lnEnts[me]-lnEnts_l;*/
         
         
-        GHOST_CALL_GOTO(ghost_malloc((void **)&localSELL->val,lnEnts_l*mat->elSize),err,ret); 
-        GHOST_CALL_GOTO(ghost_malloc((void **)&localSELL->col,lnEnts_l*sizeof(ghost_lidx)),err,ret); 
+        GHOST_CALL_GOTO(ghost_malloc((void **)&localMat->val,lnEnts_l*mat->elSize),err,ret); 
+        GHOST_CALL_GOTO(ghost_malloc((void **)&localMat->col,lnEnts_l*sizeof(ghost_lidx)),err,ret); 
         
-        GHOST_CALL_GOTO(ghost_malloc((void **)&remoteSELL->val,lnEnts_r*mat->elSize),err,ret); 
-        GHOST_CALL_GOTO(ghost_malloc((void **)&remoteSELL->col,lnEnts_r*sizeof(ghost_lidx)),err,ret); 
+        GHOST_CALL_GOTO(ghost_malloc((void **)&remoteMat->val,lnEnts_r*mat->elSize),err,ret); 
+        GHOST_CALL_GOTO(ghost_malloc((void **)&remoteMat->col,lnEnts_r*sizeof(ghost_lidx)),err,ret); 
         
         mat->localPart->nrows = mat->nrows;
         mat->localPart->nrowsPadded = mat->nrowsPadded;
@@ -2286,22 +2273,22 @@ static ghost_error SELL_split(ghost_sparsemat *mat)
         
         #pragma omp parallel for schedule(runtime) private (i,j,idx)
         for(chunk = 0; chunk < mat->localPart->nrowsPadded/mat->localPart->traits.C; chunk++) {
-            for (i=0; i<localSELL->chunkLenPadded[chunk]; i++) {
+            for (i=0; i<localMat->chunkLenPadded[chunk]; i++) {
                 for (j=0; j<mat->localPart->traits.C; j++) {
-                    idx = localSELL->chunkStart[chunk]+i*mat->localPart->traits.C+j;
-                    memset(&((char *)(localSELL->val))[idx*mat->elSize],0,mat->elSize);
-                    localSELL->col[idx] = 0;
+                    idx = localMat->chunkStart[chunk]+i*mat->localPart->traits.C+j;
+                    memset(&((char *)(localMat->val))[idx*mat->elSize],0,mat->elSize);
+                    localMat->col[idx] = 0;
                 }
             }
         }
         
         #pragma omp parallel for schedule(runtime) private (i,j,idx)
         for(chunk = 0; chunk < mat->remotePart->nrowsPadded/mat->remotePart->traits.C; chunk++) {
-            for (i=0; i<remoteSELL->chunkLenPadded[chunk]; i++) {
+            for (i=0; i<remoteMat->chunkLenPadded[chunk]; i++) {
                 for (j=0; j<mat->remotePart->traits.C; j++) {
-                    idx = remoteSELL->chunkStart[chunk]+i*mat->remotePart->traits.C+j;
-                    memset(&((char *)(remoteSELL->val))[idx*mat->elSize],0,mat->elSize);
-                    remoteSELL->col[idx] = 0;
+                    idx = remoteMat->chunkStart[chunk]+i*mat->remotePart->traits.C+j;
+                    memset(&((char *)(remoteMat->val))[idx*mat->elSize],0,mat->elSize);
+                    remoteMat->col[idx] = 0;
                 }
             }
         }
@@ -2319,26 +2306,26 @@ static ghost_error SELL_split(ghost_sparsemat *mat)
                 col_r[j] = 0;
             }
             
-            for (i=0; i<fullSELL->chunkLen[chunk]; i++) {
+            for (i=0; i<mat->chunkLen[chunk]; i++) {
                 for (j=0; j<mat->traits.C; j++) {
                     row = chunk*mat->traits.C+j;
-                    idx = fullSELL->chunkStart[chunk]+i*mat->traits.C+j;
+                    idx = mat->chunkStart[chunk]+i*mat->traits.C+j;
                     
-                    if (i<fullSELL->rowLen[row]) {
-                        if (fullSELL->col[idx] < mat->context->lnrows[me]) {
-                            if (col_l[j] < localSELL->rowLen[row]) {
-                                ghost_lidx lidx = localSELL->chunkStart[chunk]+col_l[j]*mat->localPart->traits.C+j;
-                                localSELL->col[lidx] = fullSELL->col[idx];
-                                memcpy(&localSELL->val[lidx*mat->elSize],&fullSELL->val[idx*mat->elSize],mat->elSize);
+                    if (i<mat->rowLen[row]) {
+                        if (mat->col[idx] < mat->context->lnrows[me]) {
+                            if (col_l[j] < localMat->rowLen[row]) {
+                                ghost_lidx lidx = localMat->chunkStart[chunk]+col_l[j]*mat->localPart->traits.C+j;
+                                localMat->col[lidx] = mat->col[idx];
+                                memcpy(&localMat->val[lidx*mat->elSize],&mat->val[idx*mat->elSize],mat->elSize);
                                 current_l++;
                             }
                             col_l[j]++;
                         }
                         else{
-                            if (col_r[j] < remoteSELL->rowLen[row]) {
-                                ghost_lidx ridx = remoteSELL->chunkStart[chunk]+col_r[j]*mat->remotePart->traits.C+j;
-                                remoteSELL->col[ridx] = fullSELL->col[idx];
-                                memcpy(&remoteSELL->val[ridx*mat->elSize],&fullSELL->val[idx*mat->elSize],mat->elSize);
+                            if (col_r[j] < remoteMat->rowLen[row]) {
+                                ghost_lidx ridx = remoteMat->chunkStart[chunk]+col_r[j]*mat->remotePart->traits.C+j;
+                                remoteMat->col[ridx] = mat->col[idx];
+                                memcpy(&remoteMat->val[ridx*mat->elSize],&mat->val[idx*mat->elSize],mat->elSize);
                                 current_r++;
                             }
                             col_r[j]++;
@@ -2388,20 +2375,19 @@ static ghost_error SELL_upload(ghost_sparsemat* mat)
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
     if (!(mat->traits.flags & GHOST_SPARSEMAT_HOST)) {
         DEBUG_LOG(1,"Creating matrix on CUDA device");
-        GHOST_CALL_RETURN(ghost_malloc((void **)&SELL(mat)->cumat,sizeof(ghost_cu_sell)));
-        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&SELL(mat)->cumat->rowLen,(mat->nrows)*sizeof(ghost_lidx)));
-        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&SELL(mat)->cumat->rowLenPadded,(mat->nrows)*sizeof(ghost_lidx)));
-        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&SELL(mat)->cumat->col,(mat->nEnts)*sizeof(ghost_lidx)));
-        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&SELL(mat)->cumat->val,(mat->nEnts)*mat->elSize));
-        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&SELL(mat)->cumat->chunkStart,(mat->nrowsPadded/mat->traits.C+1)*sizeof(ghost_lidx)));
-        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&SELL(mat)->cumat->chunkLen,(mat->nrowsPadded/mat->traits.C)*sizeof(ghost_lidx)));
+        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&mat->cu_rowLen,(mat->nrows)*sizeof(ghost_lidx)));
+        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&mat->cu_rowLenPadded,(mat->nrows)*sizeof(ghost_lidx)));
+        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&mat->cu_col,(mat->nEnts)*sizeof(ghost_lidx)));
+        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&mat->cu_val,(mat->nEnts)*mat->elSize));
+        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&mat->cu_chunkStart,(mat->nrowsPadded/mat->traits.C+1)*sizeof(ghost_lidx)));
+        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&mat->cu_chunkLen,(mat->nrowsPadded/mat->traits.C)*sizeof(ghost_lidx)));
         
-        GHOST_CALL_RETURN(ghost_cu_upload(SELL(mat)->cumat->rowLen, SELL(mat)->rowLen, mat->nrows*sizeof(ghost_lidx)));
-        GHOST_CALL_RETURN(ghost_cu_upload(SELL(mat)->cumat->rowLenPadded, SELL(mat)->rowLenPadded, mat->nrows*sizeof(ghost_lidx)));
-        GHOST_CALL_RETURN(ghost_cu_upload(SELL(mat)->cumat->col, SELL(mat)->col, mat->nEnts*sizeof(ghost_lidx)));
-        GHOST_CALL_RETURN(ghost_cu_upload(SELL(mat)->cumat->val, SELL(mat)->val, mat->nEnts*mat->elSize));
-        GHOST_CALL_RETURN(ghost_cu_upload(SELL(mat)->cumat->chunkStart, SELL(mat)->chunkStart, (mat->nrowsPadded/mat->traits.C+1)*sizeof(ghost_lidx)));
-        GHOST_CALL_RETURN(ghost_cu_upload(SELL(mat)->cumat->chunkLen, SELL(mat)->chunkLen, (mat->nrowsPadded/mat->traits.C)*sizeof(ghost_lidx)));
+        GHOST_CALL_RETURN(ghost_cu_upload(mat->cu_rowLen, SELL(mat)->rowLen, mat->nrows*sizeof(ghost_lidx)));
+        GHOST_CALL_RETURN(ghost_cu_upload(mat->cu_rowLenPadded, SELL(mat)->rowLenPadded, mat->nrows*sizeof(ghost_lidx)));
+        GHOST_CALL_RETURN(ghost_cu_upload(mat->cu_col, SELL(mat)->col, mat->nEnts*sizeof(ghost_lidx)));
+        GHOST_CALL_RETURN(ghost_cu_upload(mat->cu_val, SELL(mat)->val, mat->nEnts*mat->elSize));
+        GHOST_CALL_RETURN(ghost_cu_upload(mat->cu_chunkStart, SELL(mat)->chunkStart, (mat->nrowsPadded/mat->traits.C+1)*sizeof(ghost_lidx)));
+        GHOST_CALL_RETURN(ghost_cu_upload(mat->cu_chunkLen, SELL(mat)->chunkLen, (mat->nrowsPadded/mat->traits.C)*sizeof(ghost_lidx)));
     }
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_COMMUNICATION);
     #else

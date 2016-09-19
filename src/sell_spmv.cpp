@@ -31,7 +31,6 @@ static ghost_error ghost_sell_spmv_plain_rm(ghost_densemat *lhs,
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     PERFWARNING_LOG("In plain row-major SEL SpMV with scatteredvecs=%d, blocksz=%d",scatteredvecs,rhs->traits.ncols);
-    ghost_sell *sell = (ghost_sell *)(mat->sell);
     v_t *local_dot_product = NULL, *partsums = NULL;
     ghost_lidx i,j,c,rcol,lcol,zcol,cidx;
     ghost_lidx v;
@@ -81,11 +80,11 @@ static ghost_error ghost_sell_spmv_plain_rm(ghost_densemat *lhs,
                 }
             }
 
-            for (j=0; j<sell->chunkLen[c]; j++) { // loop inside chunk
+            for (j=0; j<mat->chunkLen[c]; j++) { // loop inside chunk
                 for (i=0; i<ch; i++) {
-                    matrixval = (v_t)(((m_t*)(sell->val))
-                            [sell->chunkStart[c]+j*ch+i]);
-                    rhsrow = ((v_t *)rhs->val)+rhs->stride*sell->col[sell->chunkStart[c]+j*ch+i];
+                    matrixval = (v_t)(((m_t*)(mat->val))
+                            [mat->chunkStart[c]+j*ch+i]);
+                    rhsrow = ((v_t *)rhs->val)+rhs->stride*mat->col[mat->chunkStart[c]+j*ch+i];
                     rcol = 0;
                     for (cidx = 0; cidx<rhs->traits.ncols; cidx++) {
                         tmp[i][cidx] +=  matrixval * rhsrow[rcol];
@@ -200,7 +199,6 @@ static ghost_error ghost_sell_spmv_plain_cm(ghost_densemat *lhs,
         ghost_spmv_opts traits)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
-    ghost_sell *sell = (ghost_sell *)(mat->sell);
     v_t *local_dot_product = NULL, *partsums = NULL;
     ghost_lidx i,j,c;
     ghost_lidx v;
@@ -256,10 +254,10 @@ static ghost_error ghost_sell_spmv_plain_cm(ghost_densemat *lhs,
                     tmp[i] = (v_t)0;
                 }
 
-                for (j=0; j<sell->chunkLen[c]; j++) { // loop inside chunk
+                for (j=0; j<mat->chunkLen[c]; j++) { // loop inside chunk
                     for (i=0; i<ch; i++) {
-                        tmp[i] += (v_t)(((m_t*)(sell->val))[sell->chunkStart[c]+
-                                j*ch+i]) * rhsv[sell->col[sell->chunkStart[c]+
+                        tmp[i] += (v_t)(((m_t*)(mat->val))[mat->chunkStart[c]+
+                                j*ch+i]) * rhsv[mat->col[mat->chunkStart[c]+
                             j*ch+i]];
                     }
                 }

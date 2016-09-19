@@ -59,7 +59,7 @@ static ghost_error ghost_cu_sell1spmv_tmpl(ghost_sparsemat *mat, ghost_densemat 
         zero<dt1>(beta);
     }
      
-    CUSPARSE_CALL_RETURN(sell1kernel(cusparse_handle,CUSPARSE_OPERATION_NON_TRANSPOSE,mat->nrows,rhs->traits.nrowshalo,mat->nnz,&scale,descr,(dt1 *)SELL(mat)->cumat->val, SELL(mat)->cumat->chunkStart, SELL(mat)->cumat->col, (dt1 *)rhs->cu_val, &beta, (dt1 *)lhs->cu_val));
+    CUSPARSE_CALL_RETURN(sell1kernel(cusparse_handle,CUSPARSE_OPERATION_NON_TRANSPOSE,mat->nrows,rhs->traits.nrowshalo,mat->nnz,&scale,descr,(dt1 *)mat->cu_val, mat->cu_chunkStart, mat->cu_col, (dt1 *)rhs->cu_val, &beta, (dt1 *)lhs->cu_val));
    
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
     return GHOST_SUCCESS;
@@ -88,7 +88,7 @@ static ghost_error ghost_cu_sell1spmmv_cm_tmpl(ghost_sparsemat *mat, ghost_dense
     } else if (!(traits.flags & GHOST_SPMV_AXPBY)) {
         zero<dt1>(beta);
     }
-    CUSPARSE_CALL_RETURN(sell1kernel(cusparse_handle,CUSPARSE_OPERATION_NON_TRANSPOSE,mat->nrows,rhs->traits.ncols,rhs->traits.nrowshalo,mat->nnz,&scale,descr,(dt1 *)SELL(mat)->cumat->val, SELL(mat)->cumat->chunkStart, SELL(mat)->cumat->col, (dt1 *)rhs->cu_val, rhs->stride, &beta, (dt1 *)lhs->cu_val, lhs->stride));
+    CUSPARSE_CALL_RETURN(sell1kernel(cusparse_handle,CUSPARSE_OPERATION_NON_TRANSPOSE,mat->nrows,rhs->traits.ncols,rhs->traits.nrowshalo,mat->nnz,&scale,descr,(dt1 *)mat->cu_val, mat->cu_chunkStart, mat->cu_col, (dt1 *)rhs->cu_val, rhs->stride, &beta, (dt1 *)lhs->cu_val, lhs->stride));
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
     return GHOST_SUCCESS;
@@ -118,7 +118,7 @@ static ghost_error ghost_cu_sell1spmmv_rm_tmpl(ghost_sparsemat *mat, ghost_dense
         zero<dt1>(beta);
     }
     
-    CUSPARSE_CALL_RETURN(sell1kernel(cusparse_handle,CUSPARSE_OPERATION_NON_TRANSPOSE,CUSPARSE_OPERATION_TRANSPOSE,mat->nrows,rhs->traits.ncols,rhs->traits.nrowshalo,mat->nnz,&scale,descr,(dt1 *)SELL(mat)->cumat->val, SELL(mat)->cumat->chunkStart, SELL(mat)->cumat->col, (dt1 *)rhs->cu_val, rhs->stride, &beta, (dt1 *)lhs->cu_val,lhs->stride));
+    CUSPARSE_CALL_RETURN(sell1kernel(cusparse_handle,CUSPARSE_OPERATION_NON_TRANSPOSE,CUSPARSE_OPERATION_TRANSPOSE,mat->nrows,rhs->traits.ncols,rhs->traits.nrowshalo,mat->nnz,&scale,descr,(dt1 *)mat->cu_val, mat->cu_chunkStart, mat->cu_col, (dt1 *)rhs->cu_val, rhs->stride, &beta, (dt1 *)lhs->cu_val,lhs->stride));
     
     
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);

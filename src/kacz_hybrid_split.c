@@ -17,8 +17,8 @@ typedef enum {
 ghost_error find_zone_extrema(ghost_sparsemat *mat, int **extrema, ghost_lidx a, ghost_lidx b) 
 {
     //for SELL-1-1
-    ghost_lidx *chunk_ptr = mat->sell->chunkStart;
-    ghost_lidx *col_ptr = mat->sell->col;//virtual_col would be used
+    ghost_lidx *chunk_ptr = mat->chunkStart;
+    ghost_lidx *col_ptr = mat->col;//virtual_col would be used
     ghost_error ret = GHOST_SUCCESS;
     
     GHOST_CALL_GOTO(ghost_malloc((void **)extrema,sizeof(int)*4),err,ret);
@@ -38,8 +38,8 @@ ghost_error find_zone_extrema(ghost_sparsemat *mat, int **extrema, ghost_lidx a,
         
         min_lower = MIN( min_lower, virtual_col(chunk_ptr[chunk])+rowinchunk);
         max_lower = MAX( max_lower, virtual_col(chunk_ptr[chunk])+rowinchunk);
-        min_upper = MIN( min_upper, virtual_col(chunk_ptr[chunk]+rowinchunk+chunkheight*(mat->sell->chunkLen[chunk]-1)) );
-        max_upper = MAX( max_upper, virtual_col(chunk_ptr[chunk]+rowinchunk+chunkheight*(mat->sell->chunkLen[chunk]-1)) );
+        min_upper = MIN( min_upper, virtual_col(chunk_ptr[chunk]+rowinchunk+chunkheight*(mat->chunkLen[chunk]-1)) );
+        max_upper = MAX( max_upper, virtual_col(chunk_ptr[chunk]+rowinchunk+chunkheight*(mat->chunkLen[chunk]-1)) );
         
     }
     
@@ -65,10 +65,10 @@ ghost_error checker(ghost_sparsemat *mat)
     ghost_lidx *zones = mat->zone_ptr;
     
     //for SELL-1-1
-    ghost_lidx *row_ptr = mat->sell->chunkStart;
+    ghost_lidx *row_ptr = mat->chunkStart;
     
     //TODO give virtual columns
-    ghost_lidx *col_ptr = mat->sell->col;
+    ghost_lidx *col_ptr = mat->col;
     
     int *extrema_pure, *extrema_red, *extrema_black, *extrema_trans, *extrema_trans_1, *extrema_trans_2;
     int pure_min, pure_max, red_min, red_max, black_min, black_max, trans_min, trans_max;
@@ -173,8 +173,8 @@ ghost_error mat_bandwidth(ghost_sparsemat *mat, int *lower_bw, int *upper_bw, in
 {
     int lower = 0;
     int upper = 0;
-    ghost_lidx* chunk_ptr = mat->sell->chunkStart; 
-    ghost_lidx* col_ptr = mat->sell->col;//TODO give virtual colums
+    ghost_lidx* chunk_ptr = mat->chunkStart; 
+    ghost_lidx* col_ptr = mat->col;//TODO give virtual colums
     int start_col, end_col;
     ghost_lidx chunk;
     ghost_lidx rowinchunk;
@@ -203,7 +203,7 @@ upper = 0;
         end_col   = 0;
         idx = chunk_ptr[chunk]+rowinchunk;
         
-        for(int j=0; j<mat->sell->chunkLen[chunk]; ++j) {
+        for(int j=0; j<mat->chunkLen[chunk]; ++j) {
             if(j==0 || virtual_col(idx)!=0) { //TODO somehow fix it, since filling dummy columns with 0
                 start_col = MIN(start_col, virtual_col(idx));
                 end_col   = MAX(end_col,   virtual_col(idx));
@@ -224,8 +224,8 @@ ghost_error split_transition(ghost_sparsemat *mat)
 {
     ghost_error ret = GHOST_SUCCESS;
     
-    //ghost_lidx *row_ptr = mat->sell->chunkStart;
-    //ghost_lidx *col_ptr = mat->sell->col;
+    //ghost_lidx *row_ptr = mat->chunkStart;
+    //ghost_lidx *col_ptr = mat->col;
     
     
     //height might vary from nrows if we have multicoloring
@@ -390,8 +390,8 @@ ghost_error split_analytical(ghost_sparsemat *mat)
     mat->kacz_setting.active_threads = current_threads;
     
     
-    ghost_lidx *chunk_ptr = mat->sell->chunkStart;
-    ghost_lidx *col_ptr = mat->sell->col;
+    ghost_lidx *chunk_ptr = mat->chunkStart;
+    ghost_lidx *col_ptr = mat->col;
     ghost_lidx chunkheight = mat->traits.C;
     
     mat->nzones = 4*current_threads;
@@ -470,7 +470,7 @@ ghost_error split_analytical(ghost_sparsemat *mat)
         
         
         /*ghost_lidx lower = virtual_col(chunk_ptr[chunk_lower]+rowinchunk_lower); 	// TODO : A scanning might be required	
-         * ghost_lidx upper = virtual_col(chunk_ptr[chunk_upper]+rowinchunk_upper+chunkheight*(mat->sell->chunkLen[chunk_upper]-1));
+         * ghost_lidx upper = virtual_col(chunk_ptr[chunk_upper]+rowinchunk_upper+chunkheight*(mat->chunkLen[chunk_upper]-1));
          */
         if(lower <= upper) {
             //printf("check lower = %d and upper =%d\n",virtual_col(row_ptr[zone_ptr[4*i+2]]) , virtual_col(row_ptr[zone_ptr[4*i-1]]-1));
@@ -506,8 +506,8 @@ ghost_error split_analytical(ghost_sparsemat *mat)
  *     ghost_error ret = GHOST_SUCCESS;
  * 
  *     //for SELL-1-1
- *     ghost_lidx *row_ptr = mat->sell->chunkStart;
- *     ghost_lidx *col_ptr = mat->sell->col;
+ *     ghost_lidx *row_ptr = mat->chunkStart;
+ *     ghost_lidx *col_ptr = mat->col;
  *           
  *      int nthread[1];
  * #ifdef GHOST_HAVE_OPENMP

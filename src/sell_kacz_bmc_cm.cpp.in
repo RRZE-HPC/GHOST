@@ -24,14 +24,14 @@ _Pragma("omp parallel for") \
 for (ghost_lidx row=start; row<end; ++row){ \
     MT rownorm = 0.; \
     MT scal = 0; \
-    ghost_lidx idx = sellmat->chunkStart[row]; \
+    ghost_lidx idx = mat->chunkStart[row]; \
     if(bval != NULL) { \
         scal = -bval[row]; \
     } \
     \
-    for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) { \
+    for (ghost_lidx j=0; j<mat->rowLen[row]; ++j) { \
         MT mval_idx = (MT)mval[idx+j]; \
-        scal += mval_idx * xval[sellmat->col[idx+j]]; \
+        scal += mval_idx * xval[mat->col[idx+j]]; \
         rownorm += std::norm(mval_idx); \
     } \
     \
@@ -39,8 +39,8 @@ for (ghost_lidx row=start; row<end; ++row){ \
     scal *= omega; \
     \
     _Pragma("simd vectorlength(4)") \
-    for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) { \
-        xval[sellmat->col[idx+j]] = xval[sellmat->col[idx+j]] - scal*std::conj(mval[idx+j]);\
+    for (ghost_lidx j=0; j<mat->rowLen[row]; j++) { \
+        xval[mat->col[idx+j]] = xval[mat->col[idx+j]] - scal*std::conj(mval[idx+j]);\
     } \
 } \
 
@@ -49,14 +49,14 @@ _Pragma("omp parallel for") \
 for (ghost_lidx row=start; row>end; --row){ \
     MT rownorm = 0.; \
     MT scal = 0; \
-    ghost_lidx idx = sellmat->chunkStart[row]; \
+    ghost_lidx idx = mat->chunkStart[row]; \
     if(bval != NULL) { \
         scal = -bval[row]; \
     } \
     \
-    for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) { \
+    for (ghost_lidx j=0; j<mat->rowLen[row]; ++j) { \
         MT mval_idx = (MT)mval[idx+j]; \
-        scal += mval_idx * xval[sellmat->col[idx+j]]; \
+        scal += mval_idx * xval[mat->col[idx+j]]; \
         rownorm += std::norm(mval_idx); \
     } \
     \
@@ -64,8 +64,8 @@ for (ghost_lidx row=start; row>end; --row){ \
     scal *= omega; \
     \
     _Pragma("simd vectorlength(4)") \
-    for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) { \
-        xval[sellmat->col[idx+j]] = xval[sellmat->col[idx+j]] - scal*std::conj(mval[idx+j]);\
+    for (ghost_lidx j=0; j<mat->rowLen[row]; j++) { \
+        xval[mat->col[idx+j]] = xval[mat->col[idx+j]] - scal*std::conj(mval[idx+j]);\
     } \
 } \
 
@@ -74,14 +74,14 @@ for (ghost_lidx row=start; row>end; --row){ \
 for (ghost_lidx row=start; row!=end; row+=stride){ \
     MT rownorm = 0.; \
     MT scal = 0; \
-    ghost_lidx idx = sellmat->chunkStart[row]; \
+    ghost_lidx idx = mat->chunkStart[row]; \
     if(bval != NULL) { \
         scal = -bval[row]; \
     } \
     \
-    for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) { \
+    for (ghost_lidx j=0; j<mat->rowLen[row]; ++j) { \
         MT mval_idx = (MT)mval[idx+j]; \
-        scal += mval_idx * xval[sellmat->col[idx+j]]; \
+        scal += mval_idx * xval[mat->col[idx+j]]; \
         rownorm += std::norm(mval_idx); \
     } \
     \
@@ -89,8 +89,8 @@ for (ghost_lidx row=start; row!=end; row+=stride){ \
     scal *= omega; \
     \
     _Pragma("simd vectorlength(4)") \
-    for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) { \
-        xval[sellmat->col[idx+j]] = xval[sellmat->col[idx+j]] - scal*std::conj(mval[idx+j]);\
+    for (ghost_lidx j=0; j<mat->rowLen[row]; j++) { \
+        xval[mat->col[idx+j]] = xval[mat->col[idx+j]] - scal*std::conj(mval[idx+j]);\
     } \
 } 
 
@@ -101,17 +101,17 @@ _Pragma("omp parallel for") \
 for (ghost_lidx row=start; row<end; ++row){ \
     MT rownorm = 0.; \
     MT scal[NVECS] = {0}; \
-    ghost_lidx idx = sellmat->chunkStart[row]; \
+    ghost_lidx idx = mat->chunkStart[row]; \
     \
     if(bval != NULL) { \
         for(int block=0; block<NVECS; ++block) { \
             scal[block] = -bval[NVECS*row+block]; \
         } \
     } \
-    for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) { \
+    for (ghost_lidx j=0; j<mat->rowLen[row]; ++j) { \
         MT mval_idx = (MT)mval[idx]; \
         for(int block=0; block<NVECS; ++block) { \
-            scal[block] += mval_idx * xval[NVECS*sellmat->col[idx]+block]; \
+            scal[block] += mval_idx * xval[NVECS*mat->col[idx]+block]; \
         } \
         rownorm += std::norm(mval_idx); \
         idx+=1; \
@@ -120,12 +120,12 @@ for (ghost_lidx row=start; row<end; ++row){ \
         scal[block] /= (MT)rownorm; \
         scal[block] *= omega; \
     } \
-    idx -= sellmat->rowLen[row]; \
+    idx -= mat->rowLen[row]; \
     \
     _Pragma("simd vectorlength(4)") \
-    for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) { \
+    for (ghost_lidx j=0; j<mat->rowLen[row]; j++) { \
         for(int block=0; block<NVECS; ++block) { \
-            xval[NVECS*sellmat->col[idx]+block] = xval[NVECS*sellmat->col[idx]+block] - scal[block] * std::conj(mval[idx]);\
+            xval[NVECS*mat->col[idx]+block] = xval[NVECS*mat->col[idx]+block] - scal[block] * std::conj(mval[idx]);\
         } \
         idx += 1; \
     } \
@@ -136,17 +136,17 @@ _Pragma("omp parallel for") \
 for (ghost_lidx row=start; row>end; --row){ \
     MT rownorm = 0.; \
     MT scal[NVECS] = {0}; \
-    ghost_lidx idx = sellmat->chunkStart[row]; \
+    ghost_lidx idx = mat->chunkStart[row]; \
     \
     if(bval != NULL) { \
         for(int block=0; block<NVECS; ++block) { \
             scal[block] = -bval[NVECS*row+block]; \
         } \
     } \
-    for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) { \
+    for (ghost_lidx j=0; j<mat->rowLen[row]; ++j) { \
         MT mval_idx = (MT)mval[idx]; \
         for(int block=0; block<NVECS; ++block) { \
-            scal[block] += mval_idx * xval[NVECS*sellmat->col[idx]+block]; \
+            scal[block] += mval_idx * xval[NVECS*mat->col[idx]+block]; \
         } \
         rownorm += std::norm(mval_idx); \
         idx+=1; \
@@ -155,12 +155,12 @@ for (ghost_lidx row=start; row>end; --row){ \
         scal[block] /= (MT)rownorm; \
         scal[block] *= omega; \
     } \
-    idx -= sellmat->rowLen[row]; \
+    idx -= mat->rowLen[row]; \
     \
     _Pragma("simd vectorlength(4)") \
-    for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) { \
+    for (ghost_lidx j=0; j<mat->rowLen[row]; j++) { \
         for(int block=0; block<NVECS; ++block) { \
-            xval[NVECS*sellmat->col[idx]+block] = xval[NVECS*sellmat->col[idx]+block] - scal[block] * std::conj(mval[idx]);\
+            xval[NVECS*mat->col[idx]+block] = xval[NVECS*mat->col[idx]+block] - scal[block] * std::conj(mval[idx]);\
         } \
         idx += 1; \
     } \
@@ -179,17 +179,17 @@ idx=0, row=0; \
 for(rowinchunk=start_rem; rowinchunk<MIN(CHUNKHEIGHT,(end_chunk-start_chunk)*CHUNKHEIGHT+end_rem); ++rowinchunk) { \
     MT rownorm = 0.; \
     MT scal[NVECS] = {0}; \
-    idx = sellmat->chunkStart[start_chunk] + rowinchunk; \
+    idx = mat->chunkStart[start_chunk] + rowinchunk; \
     row = rowinchunk + (start_chunk)*CHUNKHEIGHT; \
     if(bval != NULL) { \
         for(int block=0; block<NVECS; ++block) { \
             scal[block] = -bval[NVECS*row+block]; \
         } \
     } \
-    for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) { \
+    for (ghost_lidx j=0; j<mat->rowLen[row]; ++j) { \
         MT mval_idx = mval[idx]; \
         for(int block=0; block<NVECS; ++block) { \
-            scal[block] += mval_idx * xval[NVECS*sellmat->col[idx]+block]; \
+            scal[block] += mval_idx * xval[NVECS*mat->col[idx]+block]; \
         } \
         rownorm += std::norm(mval_idx); \
         idx+=CHUNKHEIGHT; \
@@ -199,12 +199,12 @@ for(rowinchunk=start_rem; rowinchunk<MIN(CHUNKHEIGHT,(end_chunk-start_chunk)*CHU
         scal[block] *= omega; \
     } \
     \
-    idx -= CHUNKHEIGHT*sellmat->rowLen[row]; \
+    idx -= CHUNKHEIGHT*mat->rowLen[row]; \
     \
     _Pragma("simd vectorlength(4)") \
-    for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) { \
+    for (ghost_lidx j=0; j<mat->rowLen[row]; j++) { \
         for(int block=0; block<NVECS; ++block) { \
-            xval[NVECS*sellmat->col[idx]+block] = xval[NVECS*sellmat->col[idx]+block] - scal[block] * std::conj(mval[idx]);\
+            xval[NVECS*mat->col[idx]+block] = xval[NVECS*mat->col[idx]+block] - scal[block] * std::conj(mval[idx]);\
         } \
         idx += CHUNKHEIGHT; \
     } \
@@ -214,17 +214,17 @@ for (chunk=start_chunk+1; chunk<end_chunk; ++chunk){ \
     for(rowinchunk=0; rowinchunk<CHUNKHEIGHT; ++rowinchunk) { \
         MT rownorm = 0.; \
         MT scal[NVECS] = {0}; \
-        idx = sellmat->chunkStart[chunk] + rowinchunk; \
+        idx = mat->chunkStart[chunk] + rowinchunk; \
         row = rowinchunk + chunk*CHUNKHEIGHT; \
         if(bval != NULL) { \
             for(int block=0; block<NVECS; ++block) { \
                 scal[block] = -bval[NVECS*row+block]; \
             } \
         } \
-        for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) { \
+        for (ghost_lidx j=0; j<mat->rowLen[row]; ++j) { \
             MT mval_idx = (MT)mval[idx]; \
             for(int block=0; block<NVECS; ++block) { \
-                scal[block] += (MT)mval_idx * xval[NVECS*sellmat->col[idx]+block]; \
+                scal[block] += (MT)mval_idx * xval[NVECS*mat->col[idx]+block]; \
             } \
             rownorm += std::norm(mval_idx); \
             idx+=CHUNKHEIGHT; \
@@ -233,12 +233,12 @@ for (chunk=start_chunk+1; chunk<end_chunk; ++chunk){ \
             scal[block] /= (MT)rownorm; \
             scal[block] *= omega; \
         } \
-        idx -= CHUNKHEIGHT*sellmat->rowLen[row]; \
+        idx -= CHUNKHEIGHT*mat->rowLen[row]; \
         \
         _Pragma("simd vectorlength(4)") \
-        for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) { \
+        for (ghost_lidx j=0; j<mat->rowLen[row]; j++) { \
             for(int block=0; block<NVECS; ++block) { \
-                xval[NVECS*sellmat->col[idx]+block] = xval[NVECS*sellmat->col[idx]+block] - scal[block] * std::conj(mval[idx]);\
+                xval[NVECS*mat->col[idx]+block] = xval[NVECS*mat->col[idx]+block] - scal[block] * std::conj(mval[idx]);\
             } \
             idx += CHUNKHEIGHT; \
         } \
@@ -248,17 +248,17 @@ if(start_chunk<end_chunk) { \
     for(rowinchunk=0; rowinchunk<end_rem; ++rowinchunk) { \
         MT rownorm = 0.; \
         MT scal[NVECS] = {0}; \
-        idx = sellmat->chunkStart[end_chunk] + rowinchunk; \
+        idx = mat->chunkStart[end_chunk] + rowinchunk; \
         row = rowinchunk + (end_chunk)*CHUNKHEIGHT; \
         if(bval != NULL) { \
             for(int block=0; block<NVECS; ++block) { \
                 scal[block] = -bval[NVECS*row+block]; \
             } \
         } \
-        for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) { \
+        for (ghost_lidx j=0; j<mat->rowLen[row]; ++j) { \
             MT mval_idx = (MT)mval[idx]; \
             for(int block=0; block<NVECS; ++block) { \
-                scal[block] += (MT)mval_idx * xval[NVECS*sellmat->col[idx]+block]; \
+                scal[block] += (MT)mval_idx * xval[NVECS*mat->col[idx]+block]; \
             } \
             rownorm += std::norm(mval_idx); \
             idx+=CHUNKHEIGHT; \
@@ -267,12 +267,12 @@ if(start_chunk<end_chunk) { \
             scal[block] /= (MT)rownorm; \
             scal[block] *= omega; \
         } \
-        idx -= CHUNKHEIGHT*sellmat->rowLen[row]; \
+        idx -= CHUNKHEIGHT*mat->rowLen[row]; \
         \
         _Pragma("simd vectorlength(4)") \
-        for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) { \
+        for (ghost_lidx j=0; j<mat->rowLen[row]; j++) { \
             for(int block=0; block<NVECS; ++block) { \
-                xval[NVECS*sellmat->col[idx]+block] = xval[NVECS*sellmat->col[idx]+block] - scal[block] * std::conj(mval[idx]);\
+                xval[NVECS*mat->col[idx]+block] = xval[NVECS*mat->col[idx]+block] - scal[block] * std::conj(mval[idx]);\
             } \
             idx += CHUNKHEIGHT; \
         } \
@@ -289,17 +289,17 @@ idx=0, row=0; \
 for(rowinchunk=start_rem; rowinchunk>=MAX(0,(end_chunk-start_chunk)*CHUNKHEIGHT+end_rem+1); --rowinchunk) { \
     MT rownorm = 0.; \
     MT scal[NVECS] = {0}; \
-    idx = sellmat->chunkStart[start_chunk] + rowinchunk; \
+    idx = mat->chunkStart[start_chunk] + rowinchunk; \
     row = rowinchunk + (start_chunk)*CHUNKHEIGHT; \
     if(bval != NULL) { \
         for(int block=0; block<NVECS; ++block) { \
             scal[block] = -bval[NVECS*row+block]; \
         } \
     } \
-    for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) { \
+    for (ghost_lidx j=0; j<mat->rowLen[row]; ++j) { \
         MT mval_idx = (MT)mval[idx]; \
         for(int block=0; block<NVECS; ++block) { \
-            scal[block] += mval_idx * xval[NVECS*sellmat->col[idx]+block]; \
+            scal[block] += mval_idx * xval[NVECS*mat->col[idx]+block]; \
         } \
         rownorm += std::norm(mval_idx); \
         idx+=CHUNKHEIGHT; \
@@ -308,12 +308,12 @@ for(rowinchunk=start_rem; rowinchunk>=MAX(0,(end_chunk-start_chunk)*CHUNKHEIGHT+
         scal[block] /= (MT)rownorm; \
         scal[block] *= omega; \
     } \
-    idx -= CHUNKHEIGHT*sellmat->rowLen[row]; \
+    idx -= CHUNKHEIGHT*mat->rowLen[row]; \
     \
     _Pragma("simd vectorlength(4)") \
-    for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) { \
+    for (ghost_lidx j=0; j<mat->rowLen[row]; j++) { \
         for(int block=0; block<NVECS; ++block) { \
-            xval[NVECS*sellmat->col[idx]+block] = xval[NVECS*sellmat->col[idx]+block] - scal[block] * std::conj(mval[idx]);\
+            xval[NVECS*mat->col[idx]+block] = xval[NVECS*mat->col[idx]+block] - scal[block] * std::conj(mval[idx]);\
         } \
         idx += CHUNKHEIGHT; \
     } \
@@ -323,17 +323,17 @@ for (chunk=start_chunk-1; chunk>end_chunk; --chunk){ \
     for(rowinchunk=CHUNKHEIGHT-1; rowinchunk>=0; --rowinchunk) { \
         MT rownorm = 0.; \
         MT scal[NVECS] = {0}; \
-        idx = sellmat->chunkStart[chunk] + rowinchunk; \
+        idx = mat->chunkStart[chunk] + rowinchunk; \
         row = rowinchunk + chunk*CHUNKHEIGHT; \
         if(bval != NULL) { \
             for(int block=0; block<NVECS; ++block) { \
                 scal[block] = -bval[NVECS*row+block]; \
             } \
         } \
-        for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) { \
+        for (ghost_lidx j=0; j<mat->rowLen[row]; ++j) { \
             MT mval_idx = (MT)mval[idx]; \
             for(int block=0; block<NVECS; ++block) { \
-                scal[block] += mval_idx * xval[NVECS*sellmat->col[idx]+block]; \
+                scal[block] += mval_idx * xval[NVECS*mat->col[idx]+block]; \
             } \
             rownorm += std::norm(mval_idx); \
             idx+=CHUNKHEIGHT; \
@@ -342,12 +342,12 @@ for (chunk=start_chunk-1; chunk>end_chunk; --chunk){ \
             scal[block] /= (MT)rownorm; \
             scal[block] *= omega; \
         } \
-        idx -= CHUNKHEIGHT*sellmat->rowLen[row]; \
+        idx -= CHUNKHEIGHT*mat->rowLen[row]; \
         \
         _Pragma("simd vectorlength(4)") \
-        for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) { \
+        for (ghost_lidx j=0; j<mat->rowLen[row]; j++) { \
             for(int block=0; block<NVECS; ++block) { \
-                xval[NVECS*sellmat->col[idx]+block] = xval[NVECS*sellmat->col[idx]+block] - scal[block] * std::conj(mval[idx]);\
+                xval[NVECS*mat->col[idx]+block] = xval[NVECS*mat->col[idx]+block] - scal[block] * std::conj(mval[idx]);\
             } \
             idx += CHUNKHEIGHT; \
         } \
@@ -357,17 +357,17 @@ if(start_chunk>end_chunk) { \
     for(rowinchunk=CHUNKHEIGHT-1; rowinchunk>end_rem; --rowinchunk) { \
         MT rownorm = 0.; \
         MT scal[NVECS] = {0}; \
-        idx = sellmat->chunkStart[end_chunk] + rowinchunk; \
+        idx = mat->chunkStart[end_chunk] + rowinchunk; \
         row = rowinchunk + (end_chunk)*CHUNKHEIGHT; \
         if(bval != NULL) { \
             for(int block=0; block<NVECS; ++block) { \
                 scal[block] = -bval[NVECS*row+block]; \
             } \
         } \
-        for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) { \
+        for (ghost_lidx j=0; j<mat->rowLen[row]; ++j) { \
             MT mval_idx = (MT)mval[idx]; \
             for(int block=0; block<NVECS; ++block) { \
-                scal[block] += (MT)mval_idx * xval[NVECS*sellmat->col[idx]+block]; \
+                scal[block] += (MT)mval_idx * xval[NVECS*mat->col[idx]+block]; \
             } \
             rownorm += std::norm(mval_idx); \
             idx+=CHUNKHEIGHT; \
@@ -376,12 +376,12 @@ if(start_chunk>end_chunk) { \
             scal[block] /= (MT)rownorm; \
             scal[block] *= omega; \
         } \
-        idx -= CHUNKHEIGHT*sellmat->rowLen[row]; \
+        idx -= CHUNKHEIGHT*mat->rowLen[row]; \
         \
         _Pragma("simd vectorlength(4)") \
-        for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) { \
+        for (ghost_lidx j=0; j<mat->rowLen[row]; j++) { \
             for(int block=0; block<NVECS; ++block) { \
-                xval[NVECS*sellmat->col[idx]+block] = xval[NVECS*sellmat->col[idx]+block] - scal[block] * std::conj(mval[idx]);\
+                xval[NVECS*mat->col[idx]+block] = xval[NVECS*mat->col[idx]+block] - scal[block] * std::conj(mval[idx]);\
             } \
             idx += CHUNKHEIGHT; \
         } \
@@ -433,14 +433,13 @@ static ghost_error ghost_kacz_BMC_u_plain_cm_CHUNKHEIGHT_NVECS_tmpl(ghost_densem
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
     
-    ghost_sell *sellmat = SELL(mat); 
     MT *bval = NULL;
     
     if(b!= NULL)
         bval = (MT *)(b->val);
     
     MT *xval = (MT *)(x->val);
-    MT *mval = (MT *)sellmat->val;
+    MT *mval = (MT *)mat->val;
     MT omega = *(MT *)opts.omega;
     ghost_lidx *zone_ptr = (ghost_lidx*) mat->zone_ptr;
     //ghost_lidx nzones = mat->nzones;

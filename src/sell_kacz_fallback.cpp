@@ -6,7 +6,7 @@ VT *scal; \
 VT *rownorm; \
 scal = (VT*) malloc(sizeof(VT)*NBLOCKS*NSHIFTS); \
 rownorm = (VT*) malloc(sizeof(VT)*NSHIFTS); \
-idx = sellmat->chunkStart[start_chunk] + rowinchunk; \
+idx = mat->chunkStart[start_chunk] + rowinchunk; \
 if(bval != NULL) { \
     for(int shift=0; shift<NSHIFTS; ++shift) { \
         for(int block=0; block<NBLOCKS; ++block) { \
@@ -22,9 +22,9 @@ if(mat->context->perm_local && mat->context->perm_local->method == GHOST_PERMUTA
 else { \
     diag_idx = row; \
 } \
-for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) { \
+for (ghost_lidx j=0; j<mat->rowLen[row]; ++j) { \
     VT mval_idx = mval[idx]; \
-    ghost_lidx col_idx = sellmat->col[idx]; \
+    ghost_lidx col_idx = mat->col[idx]; \
     for(int shift=0; shift<NSHIFTS; ++shift) { \
         if(diag_idx == col_idx){ \
             mval_idx -= sigma[shift]; \
@@ -52,11 +52,11 @@ for(int shift=0; shift<NSHIFTS; ++shift) { \
     } \
 } \
 \
-idx -= CHUNKHEIGHT*sellmat->rowLen[row]; \
+idx -= CHUNKHEIGHT*mat->rowLen[row]; \
 \
-for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) { \
+for (ghost_lidx j=0; j<mat->rowLen[row]; j++) { \
     MT mval_idx = mval[idx]; \
-    ghost_lidx col_idx = sellmat->col[idx]; \
+    ghost_lidx col_idx = mat->col[idx]; \
     for(int shift=0; shift<NSHIFTS; ++shift) { \
         for(int block=0; block<NBLOCKS; ++block) { \
             xval[col_idx*NBLOCKS*NSHIFTS+ shift*NBLOCKS + block] += scal[shift*NBLOCKS+block]*std::conj(mval_idx);\
@@ -179,7 +179,6 @@ if(tid == nthreads-1) \
      NBLOCKS = x->traits.ncols/NSHIFTS;
      
      
-     ghost_sell *sellmat = SELL(mat); 
      int CHUNKHEIGHT = mat->traits.C;
      
      MT *bval = NULL; 
@@ -188,7 +187,7 @@ if(tid == nthreads-1) \
          bval = (MT *)(b->val);
      
      VT *xval = (VT *)(x->val);
-     MT *mval = (MT *)sellmat->val;
+     MT *mval = (MT *)mat->val;
      MT omega = *(MT *)opts.omega;
      ghost_lidx *zone_ptr = (ghost_lidx*) mat->zone_ptr;
      ghost_lidx *color_ptr= (ghost_lidx*) mat->color_ptr;

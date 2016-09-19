@@ -54,7 +54,7 @@ static ghost_error ghost_carp_init_tmpl(ghost_sparsemat *mat, ghost_densemat *rh
         m_t *scal;
         ghost_malloc((void **)&scal,mat->nrows*sizeof(m_t));
         ghost_lidx row,idx;
-        m_t* mval = ((m_t*)mat->sell->val);
+        m_t* mval = ((m_t*)mat->val);
         v_t* bval = ((v_t*)rhs->val);
         
         #ifdef GHOST_HAVE_OPENMP 
@@ -65,15 +65,15 @@ static ghost_error ghost_carp_init_tmpl(ghost_sparsemat *mat, ghost_densemat *rh
             for(ghost_lidx chunkinrow=0; chunkinrow<mat->traits.C; ++chunkinrow) {
                 //TODO convert this into function for outer loop vectorisation
                 row = chunk*mat->traits.C + chunkinrow;
-                idx = mat->sell->chunkStart[chunk] + chunkinrow;              
+                idx = mat->chunkStart[chunk] + chunkinrow;              
                 scal[row] = 0;
-                for(ghost_lidx j=0; j<mat->sell->chunkLen[chunk]; ++j) {
+                for(ghost_lidx j=0; j<mat->chunkLen[chunk]; ++j) {
                     scal[row] += mval[idx]*mval[idx];
                     idx+=chunkHeight;
                 }    
                 scal[row] = sqrt(scal[row]);
-                idx -= mat->sell->chunkLen[chunk]*chunkHeight;               
-                for(ghost_lidx j=0; j<mat->sell->chunkLen[chunk]; ++j) {
+                idx -= mat->chunkLen[chunk]*chunkHeight;               
+                for(ghost_lidx j=0; j<mat->chunkLen[chunk]; ++j) {
                     mval[idx] = ((m_t)mval[idx])/scal[row];
                     idx+=chunkHeight;
                 }     
@@ -85,15 +85,15 @@ static ghost_error ghost_carp_init_tmpl(ghost_sparsemat *mat, ghost_densemat *rh
         ghost_lidx chunk = nchunks; 
         for(ghost_lidx chunkinrow=0; chunkinrow<remchunk; ++chunkinrow) {
             row = chunk*mat->traits.C + chunkinrow;
-            idx = mat->sell->chunkStart[chunk] + chunkinrow;              
+            idx = mat->chunkStart[chunk] + chunkinrow;              
             scal[row] = 0;
-            for(ghost_lidx j=0; j<mat->sell->chunkLen[chunk]; ++j) {
+            for(ghost_lidx j=0; j<mat->chunkLen[chunk]; ++j) {
                 scal[row] += mval[idx]*mval[idx];
                 idx+=chunkHeight;
             }    
             scal[row] = sqrt(scal[row]);
-            idx -= mat->sell->chunkLen[chunk]*chunkHeight;               
-            for(ghost_lidx j=0; j<mat->sell->chunkLen[chunk]; ++j) {
+            idx -= mat->chunkLen[chunk]*chunkHeight;               
+            for(ghost_lidx j=0; j<mat->chunkLen[chunk]; ++j) {
                 mval[idx] = ((m_t)mval[idx])/scal[row];
                 idx+=chunkHeight;
             }
@@ -253,11 +253,10 @@ static ghost_error kacz_fallback(ghost_densemat *x, ghost_sparsemat *mat, ghost_
     ghost_lidx rowinchunk;
     ghost_lidx j;
     ghost_lidx color;
-    ghost_sell *sellmat = SELL(mat);
     ghost_lidx fchunk, lchunk;
     v_t *bval = (v_t *)(b->val);
     v_t *xval = (v_t *)(x->val);
-    m_t *mval = (m_t *)sellmat->val;
+    m_t *mval = (m_t *)mat->val;
     v_t omega = *(v_t *)opts.omega;
     
     ghost_lidx firstcolor, lastcolor, stride;
@@ -286,20 +285,20 @@ static ghost_error kacz_fallback(ghost_densemat *x, ghost_sparsemat *mat, ghost_
                     row = rowinchunk + c*mat->traits.C;
                     rownorm[rowinchunk] = 0.;
                     
-                    ghost_lidx idx = sellmat->chunkStart[c]+rowinchunk;
+                    ghost_lidx idx = mat->chunkStart[c]+rowinchunk;
                     v_t scal = -bval[row];
                     
-                    for (j=0; j<sellmat->rowLen[row]; j++) {
-                        scal += (v_t)mval[idx] * xval[sellmat->col[idx]];
+                    for (j=0; j<mat->rowLen[row]; j++) {
+                        scal += (v_t)mval[idx] * xval[mat->col[idx]];
                         rownorm[rowinchunk] += mval[idx]*mval[idx];
                         idx += mat->traits.C;
                     }
                     
-                    idx -= mat->traits.C*sellmat->rowLen[row];
+                    idx -= mat->traits.C*mat->rowLen[row];
                     scal /= (v_t)rownorm[rowinchunk];
                     
-                    for (j=0; j<sellmat->rowLen[row]; j++) {
-                        xval[sellmat->col[idx]] = xval[sellmat->col[idx]] - omega * scal * (v_t)mval[idx];
+                    for (j=0; j<mat->rowLen[row]; j++) {
+                        xval[mat->col[idx]] = xval[mat->col[idx]] - omega * scal * (v_t)mval[idx];
                         idx += mat->traits.C;
                     }
                 }

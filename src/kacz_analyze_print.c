@@ -54,7 +54,7 @@ ghost_error kacz_analyze_print(ghost_sparsemat *mat)
         
                 if(rows[tid]!=0) {
 			for(int j=mat->zone_ptr[4*tid+zone]; j<mat->zone_ptr[4*tid+zone+1]; ++j) {
-                		nnz[tid] += mat->sell->rowLen[j];   
+                		nnz[tid] += mat->rowLen[j];   
         		}
                 }
 
