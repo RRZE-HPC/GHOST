@@ -242,18 +242,29 @@ ghost_error ghost_sellspmv__a_plain_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res
                     zcol = (double *)z->val+z->stride*v;
                 }
 
+#if CHUNKHEIGHT == 1
+#pragma simd
+#endif
                 for (j=0; j<SELL(mat)->chunkLen[c]; j++) { // loop inside chunk
 #if CHUNKHEIGHT > 1
 #pragma simd
-#endif
                     for (r=0; r<CHUNKHEIGHT; r++) {
+#else
+                        r=0;
+#endif
                         double matval = mval[offs+j*CHUNKHEIGHT+r];
                         ghost_lidx matcol = SELL(mat)->col[offs+j*CHUNKHEIGHT+r];
                         tmp[r] += matval*rcol[matcol];
                     }
+#if CHUNKHEIGHT > 1
                 }
+#endif
 
+#if CHUNKHEIGHT > 1
                 for (r=0; (r<CHUNKHEIGHT) && (c*CHUNKHEIGHT+r < mat->nrows); r++) {
+#else
+                    r = 0;
+#endif
                     row = c*CHUNKHEIGHT+r;
 
                     if ((traits.flags & GHOST_SPMV_SHIFT) && shift) {
@@ -284,7 +295,9 @@ ghost_error ghost_sellspmv__a_plain_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res
                         partsums[((pad+3*res->traits.ncols)*tid)+3*v+2] += 
                             rcol[row]*rcol[row];
                     }
+#if CHUNKHEIGHT > 1
                 }
+#endif
             }
         }
     }
