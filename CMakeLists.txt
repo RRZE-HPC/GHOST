@@ -110,7 +110,6 @@ set (SOURCES
     src/sell_kacz_rb.c
     src/carp_rb.c
     src/sell_kacz_rb_versions.c 
-    src/sparsemat_write.cpp
     src/sparsemat_perm_blockColor.cpp 
     src/kacz_hybrid_split.c
     src/sell_kacz_bmc.c 
