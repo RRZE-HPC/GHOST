@@ -54,7 +54,7 @@ ghost_error ghost_sellspmv__a_avx_d_d_cm_CHUNKHEIGHT_x(ghost_densemat *res, ghos
 #pragma omp parallel shared(partsums)
     {
         double *lval = NULL, *rval = NULL;
-        double *mval = (double *)SELL(mat)->val;
+        double *mval = (double *)mat->val;
         ghost_lidx j,c,v;
         ghost_lidx offs;
         __m256d val;
@@ -78,12 +78,12 @@ ghost_error ghost_sellspmv__a_avx_d_d_cm_CHUNKHEIGHT_x(ghost_densemat *res, ghos
                 #GHOST_UNROLL#tmp@ = _mm256_setzero_pd();#CHUNKHEIGHT/4
                 lval = (double *)res->val+v*res->stride;
                 rval = (double *)invec->val+v*invec->stride;
-                offs = SELL(mat)->chunkStart[c];
+                offs = mat->chunkStart[c];
 
-                for (j=0; j<SELL(mat)->chunkLenPadded[c]; j++) 
+                for (j=0; j<mat->chunkLenPadded[c]; j++) 
                 { // loop inside chunk
 
-                    #GHOST_UNROLL#val    = _mm256_load_pd(&mval[offs]);rhs = _mm256_set_pd(rval[SELL(mat)->col[offs+3]],rval[SELL(mat)->col[offs+2]],rval[SELL(mat)->col[offs+1]],rval[SELL(mat)->col[offs+0]]);tmp@    = _mm256_add_pd(tmp@,_mm256_mul_pd(val,rhs));offs+=4;#CHUNKHEIGHT/4
+                    #GHOST_UNROLL#val    = _mm256_load_pd(&mval[offs]);rhs = _mm256_set_pd(rval[mat->col[offs+3]],rval[mat->col[offs+2]],rval[mat->col[offs+1]],rval[mat->col[offs+0]]);tmp@    = _mm256_add_pd(tmp@,_mm256_mul_pd(val,rhs));offs+=4;#CHUNKHEIGHT/4
                 }
 
                 if (traits.flags & (GHOST_SPMV_SHIFT | GHOST_SPMV_VSHIFT)) {
@@ -187,7 +187,7 @@ ghost_error ghost_sellspmv__a_avx_z_z_cm_CHUNKHEIGHT_x(ghost_densemat *res, ghos
 #if defined(GHOST_BUILD_AVX) && CHUNKHEIGHT>=2
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     ghost_lidx i;
-    complex double *mval = (complex double *)SELL(mat)->val;
+    complex double *mval = (complex double *)mat->val;
     complex double *local_dot_product = NULL;
     complex double *partsums = NULL;
     
@@ -250,12 +250,12 @@ ghost_error ghost_sellspmv__a_avx_z_z_cm_CHUNKHEIGHT_x(ghost_densemat *res, ghos
                 #GHOST_UNROLL#tmp@ = _mm256_setzero_pd();#CHUNKHEIGHT/2
                 lval = (complex double *)res->val+v*res->stride;
                 rval = (complex double *)invec->val+v*invec->stride;
-                offs = SELL(mat)->chunkStart[c];
+                offs = mat->chunkStart[c];
 
-                for (j=0; j<SELL(mat)->chunkLenPadded[c]; j++) 
+                for (j=0; j<mat->chunkLenPadded[c]; j++) 
                 { // loop inside chunk
 
-                    #GHOST_UNROLL#val    = _mm256_load_pd((double *)&mval[offs]);rhstmp = _mm_load_pd((double *)&rval[(SELL(mat)->col[offs++])]);rhs = _mm256_insertf128_pd(rhs,rhstmp,0);rhstmp = _mm_load_pd((double *)&rval[(SELL(mat)->col[offs++])]);rhs = _mm256_insertf128_pd(rhs,rhstmp,1);tmp@ = _mm256_add_pd(tmp@,complex_mul(val,rhs));#CHUNKHEIGHT/2
+                    #GHOST_UNROLL#val    = _mm256_load_pd((double *)&mval[offs]);rhstmp = _mm_load_pd((double *)&rval[(mat->col[offs++])]);rhs = _mm256_insertf128_pd(rhs,rhstmp,0);rhstmp = _mm_load_pd((double *)&rval[(mat->col[offs++])]);rhs = _mm256_insertf128_pd(rhs,rhstmp,1);tmp@ = _mm256_add_pd(tmp@,complex_mul(val,rhs));#CHUNKHEIGHT/2
                 }
 
                 if (traits.flags & (GHOST_SPMV_SHIFT | GHOST_SPMV_VSHIFT)) {
@@ -364,7 +364,7 @@ ghost_error ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_x(ghost_densemat *res, ghos
 {
 #if defined(GHOST_BUILD_AVX)
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
-    const double * const restrict mval = (double *)SELL(mat)->val;
+    const double * const restrict mval = (double *)mat->val;
     double *local_dot_product = NULL;
     double *partsums = NULL;
     int nthreads = 1, i;
@@ -463,14 +463,14 @@ ghost_error ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_x(ghost_densemat *res, ghos
             if (z) {
                zval = ((double *)(z->val))+z->stride*c;
             }
-            offs = SELL(mat)->chunkStart[c/CHUNKHEIGHT]+c%CHUNKHEIGHT;
+            offs = mat->chunkStart[c/CHUNKHEIGHT]+c%CHUNKHEIGHT;
 
             for (donecols=0; donecols < ncolspadded; donecols+=4) {
                 tmp[donecols/4] = _mm256_setzero_pd();
             
-                for (j=0; j<SELL(mat)->rowLen[c]; j++) { // loop inside chunk
+                for (j=0; j<mat->rowLen[c]; j++) { // loop inside chunk
                     matval=_mm256_set1_pd(mval[offs+j*CHUNKHEIGHT]);
-                    ghost_lidx matcol = SELL(mat)->col[offs+j*CHUNKHEIGHT];
+                    ghost_lidx matcol = mat->col[offs+j*CHUNKHEIGHT];
 
                     rhs = _mm256_load_pd((double *)((double *)(invec->val)+invec->stride*(matcol)+donecols));
                     tmp[donecols/4] = _mm256_add_pd(tmp[donecols/4],_mm256_mul_pd(rhs,matval));
@@ -634,7 +634,7 @@ ghost_error ghost_sellspmv__a_avx_z_z_rm_CHUNKHEIGHT_x(ghost_densemat *res, ghos
 {
 #if defined(GHOST_BUILD_AVX)
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
-    const double * const restrict mval = (double *)SELL(mat)->val;
+    const double * const restrict mval = (double *)mat->val;
     complex double *local_dot_product = NULL;
     complex double *partsums = NULL;
     int nthreads = 1, i;
@@ -737,16 +737,16 @@ ghost_error ghost_sellspmv__a_avx_z_z_rm_CHUNKHEIGHT_x(ghost_densemat *res, ghos
             if (z) {
                zval = ((complex double *)(z->val))+z->stride*c;
             }
-            offs = SELL(mat)->chunkStart[c/CHUNKHEIGHT]+c%CHUNKHEIGHT;
+            offs = mat->chunkStart[c/CHUNKHEIGHT]+c%CHUNKHEIGHT;
 
             for (donecols=0; donecols < ncolspadded; donecols+=2) {
                 tmp[donecols/2] = _mm256_setzero_pd();
             }
             
-            for (j=0; j<SELL(mat)->rowLen[c]; j++) { // loop inside chunk
+            for (j=0; j<mat->rowLen[c]; j++) { // loop inside chunk
                 matval=_mm256_insertf128_pd(matval,_mm_load_pd(&mval[2*(offs+j*CHUNKHEIGHT)]),0);
                 matval=_mm256_insertf128_pd(matval,_mm_load_pd(&mval[2*(offs+j*CHUNKHEIGHT)]),1);
-                ghost_lidx matcol = SELL(mat)->col[offs+j*CHUNKHEIGHT];
+                ghost_lidx matcol = mat->col[offs+j*CHUNKHEIGHT];
 
                 for (donecols=0; donecols < ncolspadded/2; donecols++) {
                     rhs = _mm256_load_pd((double *)((complex double *)(invec->val)+invec->stride*(matcol)+donecols*2));

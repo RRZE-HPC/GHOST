@@ -167,15 +167,6 @@ typedef struct {
 ghost_kacz_setting;
     
 /**
- * @brief Get the SELL data of a general sparsemat.
- *
- * @param mat The sparsemat.
- *
- * @return Pointer to the SELL data.
- */
-#define SELL(mat) (mat)
-
-/**
  * @brief Create only a single chunk, i.e., use the ELLPACK storage format.
  */
 #define GHOST_SELL_CHUNKHEIGHT_ELLPACK 0

@@ -150,7 +150,7 @@ static ghost_error ghost_sparsemat_string_tmpl(ghost_sparsemat *mat, char **str,
     }
 
     ghost_lidx chunk,i,j,row=0,col;
-    m_t *val = (m_t *)SELL(mat)->val;
+    m_t *val = (m_t *)mat->val;
 
     stringstream buffer;
     buffer << std::setprecision(2)
@@ -159,10 +159,10 @@ static ghost_error ghost_sparsemat_string_tmpl(ghost_sparsemat *mat, char **str,
 
     for (chunk = 0; chunk < mat->nrowsPadded/mat->traits.C; chunk++) {
         for (i=0; i<mat->traits.C && row<mat->nrows; i++, row++) {
-            ghost_lidx rowOffs = SELL(mat)->chunkStart[chunk]+i;
+            ghost_lidx rowOffs = mat->chunkStart[chunk]+i;
             if (dense) {
                 for (col=0, j=0; col<mat->ncols; col++) {
-                    if (j< SELL(mat)->rowLen[row]) {
+                    if (j< mat->rowLen[row]) {
                         if (mat->traits.flags & GHOST_SPARSEMAT_SAVE_ORIG_COLS) {
                             if (mat->col_orig[rowOffs+j*mat->traits.C] == col) {
                                 buffer << val[rowOffs+j*mat->traits.C] << "  ";
@@ -171,7 +171,7 @@ static ghost_error ghost_sparsemat_string_tmpl(ghost_sparsemat *mat, char **str,
                                 buffer << ".         ";
                             }
                         } else {
-                            if (SELL(mat)->col[rowOffs+j*mat->traits.C] == col) {
+                            if (mat->col[rowOffs+j*mat->traits.C] == col) {
                                 buffer << val[rowOffs+j*mat->traits.C] << "  ";
                                 j++;
                             } else {

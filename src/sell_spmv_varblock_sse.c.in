@@ -18,7 +18,7 @@ ghost_error ghost_sellspmv__a_sse_d_d_cm_CHUNKHEIGHT_x(ghost_densemat *res, ghos
     
     ghost_lidx i;
     double *lval = NULL, *rval = NULL;
-    double *mval = (double *)SELL(mat)->val;
+    double *mval = (double *)mat->val;
     double *local_dot_product = NULL;
     double *partsums = NULL;
     
@@ -73,12 +73,12 @@ ghost_error ghost_sellspmv__a_sse_d_d_cm_CHUNKHEIGHT_x(ghost_densemat *res, ghos
                 #GHOST_UNROLL#tmp@ = _mm_setzero_pd();#CHUNKHEIGHT/2
                 lval = (double *)res->val+v*res->stride;
                 rval = (double *)invec->val+v*invec->stride;
-                offs = SELL(mat)->chunkStart[c];
+                offs = mat->chunkStart[c];
 
-                for (j=0; j<(SELL(mat)->chunkStart[c+1]-SELL(mat)->chunkStart[c])/CHUNKHEIGHT; j++) 
+                for (j=0; j<(mat->chunkStart[c+1]-mat->chunkStart[c])/CHUNKHEIGHT; j++) 
                 { // loop inside chunk
 
-                    #GHOST_UNROLL#val = _mm_load_pd(&mval[offs]);rhs = _mm_loadl_pd(rhs,&rval[(SELL(mat)->col[offs++])]);rhs = _mm_loadh_pd(rhs,&rval[(SELL(mat)->col[offs++])]);tmp@ = _mm_add_pd(tmp@,_mm_mul_pd(val,rhs));#CHUNKHEIGHT/2
+                    #GHOST_UNROLL#val = _mm_load_pd(&mval[offs]);rhs = _mm_loadl_pd(rhs,&rval[(mat->col[offs++])]);rhs = _mm_loadh_pd(rhs,&rval[(mat->col[offs++])]);tmp@ = _mm_add_pd(tmp@,_mm_mul_pd(val,rhs));#CHUNKHEIGHT/2
                 }
 
                 if (traits.flags & (GHOST_SPMV_SHIFT | GHOST_SPMV_VSHIFT)) {
@@ -171,7 +171,7 @@ ghost_error ghost_sellspmvDEFUNC__a_sse_d_d_rm_CHUNKHEIGHT_x(ghost_densemat *res
     
     ghost_lidx j,c,col;
     ghost_lidx offs;
-    double *mval = (double *)SELL(mat)->val;
+    double *mval = (double *)mat->val;
     double *local_dot_product = NULL;
     double *partsums = NULL;
     __m128d rhs;
@@ -226,10 +226,10 @@ ghost_error ghost_sellspmvDEFUNC__a_sse_d_d_rm_CHUNKHEIGHT_x(ghost_densemat *res
 
             for (donecols = 0; donecols < ncolspadded; donecols+=2) {
                 #GHOST_UNROLL#tmp@ = _mm_setzero_pd();#CHUNKHEIGHT
-                offs = SELL(mat)->chunkStart[c];
+                offs = mat->chunkStart[c];
 
-                for (j=0; j<SELL(mat)->chunkLen[c]; j++) { // loop inside chunk
-                    #GHOST_UNROLL#rhs = _mm_load_pd((double *)invec->val+SELL(mat)->col[offs]*invec->stride+donecols);tmp@ = _mm_add_pd(tmp@,_mm_mul_pd(_mm_load1_pd(&mval[offs++]),rhs));#CHUNKHEIGHT
+                for (j=0; j<mat->chunkLen[c]; j++) { // loop inside chunk
+                    #GHOST_UNROLL#rhs = _mm_load_pd((double *)invec->val+mat->col[offs]*invec->stride+donecols);tmp@ = _mm_add_pd(tmp@,_mm_mul_pd(_mm_load1_pd(&mval[offs++]),rhs));#CHUNKHEIGHT
                 }
               
                 if (traits.flags & (GHOST_SPMV_SHIFT | GHOST_SPMV_VSHIFT)) {

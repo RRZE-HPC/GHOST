@@ -17,7 +17,7 @@ ghost_error ghost_sellspmv__a_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
 #if defined(GHOST_BUILD_SSE)
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
 
-    double *mval = (double *)SELL(mat)->val;
+    double *mval = (double *)mat->val;
     double *local_dot_product = NULL;
     double *partsums = NULL;
     int nthreads = 1, i;
@@ -78,13 +78,13 @@ ghost_error ghost_sellspmv__a_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
         { // loop over chunks
             double *lval = (double *)res->val+c*res->stride;
             double *rval = (double *)invec->val+c*invec->stride;
-            offs = SELL(mat)->chunkStart[c/CHUNKHEIGHT]+c%CHUNKHEIGHT;
+            offs = mat->chunkStart[c/CHUNKHEIGHT]+c%CHUNKHEIGHT;
 
             #GHOST_UNROLL#tmp@ = _mm_setzero_pd();#(NVECS+1)/2
-            for (j=0; j<SELL(mat)->rowLen[c]; j++) { // loop inside chunk
-                    #GHOST_UNROLL#rhs = _mm_load_pd((double *)invec->val+SELL(mat)->col[offs+j*CHUNKHEIGHT]*invec->stride+@*2);tmp@ = _mm_add_pd(tmp@,_mm_mul_pd(_mm_load1_pd(&mval[offs+j*CHUNKHEIGHT]),rhs));#NVECS/2
+            for (j=0; j<mat->rowLen[c]; j++) { // loop inside chunk
+                    #GHOST_UNROLL#rhs = _mm_load_pd((double *)invec->val+mat->col[offs+j*CHUNKHEIGHT]*invec->stride+@*2);tmp@ = _mm_add_pd(tmp@,_mm_mul_pd(_mm_load1_pd(&mval[offs+j*CHUNKHEIGHT]),rhs));#NVECS/2
 #if NVECS%2
-                    rhs = _mm_set_pd(0.,*((double *)invec->val+SELL(mat)->col[offs+j*CHUNKHEIGHT]*invec->stride+~NVECS/2~*2));tmp~NVECS/2~ = _mm_add_pd(tmp~NVECS/2~,_mm_mul_pd(_mm_load1_pd(&mval[offs+j*CHUNKHEIGHT]),rhs));
+                    rhs = _mm_set_pd(0.,*((double *)invec->val+mat->col[offs+j*CHUNKHEIGHT]*invec->stride+~NVECS/2~*2));tmp~NVECS/2~ = _mm_add_pd(tmp~NVECS/2~,_mm_mul_pd(_mm_load1_pd(&mval[offs+j*CHUNKHEIGHT]),rhs));
 #endif
             }
             if (traits.flags & GHOST_SPMV_SHIFT) {
@@ -176,7 +176,7 @@ ghost_error ghost_sellspmv__u_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
 #if defined(GHOST_BUILD_SSE)
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
 
-    double *mval = (double *)SELL(mat)->val;
+    double *mval = (double *)mat->val;
     double *local_dot_product = NULL;
     double *partsums = NULL;
     int nthreads = 1, i;
@@ -237,13 +237,13 @@ ghost_error ghost_sellspmv__u_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
         { // loop over chunks
             double *lval = (double *)res->val+c*res->stride;
             double *rval = (double *)invec->val+c*invec->stride;
-            offs = SELL(mat)->chunkStart[c/CHUNKHEIGHT]+c%CHUNKHEIGHT;
+            offs = mat->chunkStart[c/CHUNKHEIGHT]+c%CHUNKHEIGHT;
 
             #GHOST_UNROLL#tmp@ = _mm_setzero_pd();#(NVECS+1)/2
-            for (j=0; j<SELL(mat)->rowLen[c]; j++) { // loop inside chunk
-                    #GHOST_UNROLL#rhs = _mm_loadu_pd((double *)invec->val+SELL(mat)->col[offs+j*CHUNKHEIGHT]*invec->stride+@*2);tmp@ = _mm_add_pd(tmp@,_mm_mul_pd(_mm_load1_pd(&mval[offs+j*CHUNKHEIGHT]),rhs));#NVECS/2
+            for (j=0; j<mat->rowLen[c]; j++) { // loop inside chunk
+                    #GHOST_UNROLL#rhs = _mm_loadu_pd((double *)invec->val+mat->col[offs+j*CHUNKHEIGHT]*invec->stride+@*2);tmp@ = _mm_add_pd(tmp@,_mm_mul_pd(_mm_load1_pd(&mval[offs+j*CHUNKHEIGHT]),rhs));#NVECS/2
 #if NVECS%2
-                    rhs = _mm_set_pd(0.,*((double *)invec->val+SELL(mat)->col[offs+j*CHUNKHEIGHT]*invec->stride+~NVECS/2~*2));tmp~NVECS/2~ = _mm_add_pd(tmp~NVECS/2~,_mm_mul_pd(_mm_load1_pd(&mval[offs+j*CHUNKHEIGHT]),rhs));
+                    rhs = _mm_set_pd(0.,*((double *)invec->val+mat->col[offs+j*CHUNKHEIGHT]*invec->stride+~NVECS/2~*2));tmp~NVECS/2~ = _mm_add_pd(tmp~NVECS/2~,_mm_mul_pd(_mm_load1_pd(&mval[offs+j*CHUNKHEIGHT]),rhs));
 #endif
             }
             if (traits.flags & GHOST_SPMV_SHIFT) {

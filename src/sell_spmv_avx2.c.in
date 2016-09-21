@@ -21,7 +21,7 @@ ghost_error ghost_sellspmv__a_avx2_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res,
 #if defined(GHOST_BUILD_AVX2) && CHUNKHEIGHT>=4
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     ghost_lidx i;
-    double *mval = (double *)SELL(mat)->val;
+    double *mval = (double *)mat->val;
     double *local_dot_product = NULL;
     double *partsums = NULL;
     
@@ -58,7 +58,7 @@ ghost_error ghost_sellspmv__a_avx2_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res,
         double *lval = NULL, *rval = NULL;
         ghost_lidx j,c,v;
         ghost_lidx offs;
-        ghost_lidx *col = SELL(mat)->col;
+        ghost_lidx *col = mat->col;
         __m256d val;
         __m256d rhs = _mm256_setzero_pd();
         __m256d shift;
@@ -80,13 +80,13 @@ ghost_error ghost_sellspmv__a_avx2_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res,
                 #GHOST_UNROLL#tmp@ = _mm256_setzero_pd();#CHUNKHEIGHT/4
                 lval = (double *)res->val+v*res->stride;
                 rval = (double *)invec->val+v*invec->stride;
-                offs = SELL(mat)->chunkStart[c];
+                offs = mat->chunkStart[c];
 
-                for (j=0; j<SELL(mat)->chunkLenPadded[c]; j++) 
+                for (j=0; j<mat->chunkLenPadded[c]; j++) 
                 { // loop inside chunk
 
                     #GHOST_UNROLL#val    = _mm256_load_pd(&mval[offs]);rhs = _mm256_i32gather_pd(rval,_mm_load_si128((__m128i *)(col+offs)),8);tmp@    = _mm256_fmadd_pd(val,rhs,tmp@);offs+=4;#CHUNKHEIGHT/4
-//                    #GHOST_UNROLL#val    = _mm256_load_pd(&mval[offs]);rhstmp = _mm_loadl_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);rhstmp = _mm_loadh_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);rhs    = _mm256_insertf128_pd(rhs,rhstmp,0);rhstmp = _mm_loadl_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);rhstmp = _mm_loadh_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);rhs    = _mm256_insertf128_pd(rhs,rhstmp,1);tmp@    = _mm256_add_pd(tmp@,_mm256_mul_pd(val,rhs));#CHUNKHEIGHT/4
+//                    #GHOST_UNROLL#val    = _mm256_load_pd(&mval[offs]);rhstmp = _mm_loadl_pd(rhstmp,&rval[(mat->col[offs++])]);rhstmp = _mm_loadh_pd(rhstmp,&rval[(mat->col[offs++])]);rhs    = _mm256_insertf128_pd(rhs,rhstmp,0);rhstmp = _mm_loadl_pd(rhstmp,&rval[(mat->col[offs++])]);rhstmp = _mm_loadh_pd(rhstmp,&rval[(mat->col[offs++])]);rhs    = _mm256_insertf128_pd(rhs,rhstmp,1);tmp@    = _mm256_add_pd(tmp@,_mm256_mul_pd(val,rhs));#CHUNKHEIGHT/4
                 }
 
                 if (traits.flags & (GHOST_SPMV_SHIFT | GHOST_SPMV_VSHIFT)) {
@@ -193,7 +193,7 @@ ghost_error ghost_sellspmv__a_avx2_z_z_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res,
 #if NVECS%2
     __m256i mask = _mm256_set_epi64x(0,0,~0,~0);
 #endif
-    const double * const restrict mval = (double *)SELL(mat)->val;
+    const double * const restrict mval = (double *)mat->val;
     complex double *local_dot_product = NULL;
     complex double *partsums = NULL;
     int nthreads = 1, i;
@@ -279,17 +279,17 @@ ghost_error ghost_sellspmv__a_avx2_z_z_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res,
             if (z) {
                zval = ((complex double *)(z->val))+z->stride*c;
             }
-            offs = SELL(mat)->chunkStart[c/CHUNKHEIGHT]+c%CHUNKHEIGHT;
+            offs = mat->chunkStart[c/CHUNKHEIGHT]+c%CHUNKHEIGHT;
 
             #GHOST_UNROLL#tmp@ = _mm256_setzero_pd();#(NVECS+1)/2
             
-            for (j=0; j<SELL(mat)->rowLen[c]; j++) { // loop inside chunk
+            for (j=0; j<mat->rowLen[c]; j++) { // loop inside chunk
                 matval=_mm256_insertf128_pd(matval,_mm_load_pd(&mval[2*(offs+j*CHUNKHEIGHT)]),0);
                 matval=_mm256_insertf128_pd(matval,_mm_load_pd(&mval[2*(offs+j*CHUNKHEIGHT)]),1);
                     
-                #GHOST_UNROLL#rhs = _mm256_load_pd(((double *)(invec->val))+invec->stride*(SELL(mat)->col[offs+j*CHUNKHEIGHT])*2+(@*4));tmp@ = _mm256_add_pd(tmp@,complex_mul(rhs,matval));#NVECS/2
+                #GHOST_UNROLL#rhs = _mm256_load_pd(((double *)(invec->val))+invec->stride*(mat->col[offs+j*CHUNKHEIGHT])*2+(@*4));tmp@ = _mm256_add_pd(tmp@,complex_mul(rhs,matval));#NVECS/2
 #if NVECS%2
-                rhs = _mm256_maskload_pd(((double *)(invec->val))+invec->stride*(SELL(mat)->col[offs+j*CHUNKHEIGHT])*2+((NVECS/2)*4),mask);
+                rhs = _mm256_maskload_pd(((double *)(invec->val))+invec->stride*(mat->col[offs+j*CHUNKHEIGHT])*2+((NVECS/2)*4),mask);
                 tmp~NVECS/2~ = _mm256_add_pd(tmp~NVECS/2~,complex_mul(rhs,matval));
 #endif
             }
@@ -412,7 +412,7 @@ ghost_error ghost_sellspmv__a_avx2_z_z_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res,
 #if defined(GHOST_BUILD_AVX2) && CHUNKHEIGHT>=2
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     ghost_lidx i;
-    complex double *mval = (complex double *)SELL(mat)->val;
+    complex double *mval = (complex double *)mat->val;
     complex double *local_dot_product = NULL;
     complex double *partsums = NULL;
     
@@ -487,12 +487,12 @@ ghost_error ghost_sellspmv__a_avx2_z_z_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res,
                 if (z) {
                    zval = ((complex double *)(z->val))+v*z->stride;
                 }
-                offs = SELL(mat)->chunkStart[c];
+                offs = mat->chunkStart[c];
 
-                for (j=0; j<SELL(mat)->chunkLenPadded[c]; j++) 
+                for (j=0; j<mat->chunkLenPadded[c]; j++) 
                 { // loop inside chunk
 
-                    #GHOST_UNROLL#val    = _mm256_load_pd((double *)&mval[offs]);rhstmp = _mm_load_pd((double *)&rval[(SELL(mat)->col[offs++])]);rhs = _mm256_insertf128_pd(rhs,rhstmp,0);rhstmp = _mm_load_pd((double *)&rval[(SELL(mat)->col[offs++])]);rhs = _mm256_insertf128_pd(rhs,rhstmp,1);tmp@ = _mm256_add_pd(tmp@,complex_mul(val,rhs));#CHUNKHEIGHT/2
+                    #GHOST_UNROLL#val    = _mm256_load_pd((double *)&mval[offs]);rhstmp = _mm_load_pd((double *)&rval[(mat->col[offs++])]);rhs = _mm256_insertf128_pd(rhs,rhstmp,0);rhstmp = _mm_load_pd((double *)&rval[(mat->col[offs++])]);rhs = _mm256_insertf128_pd(rhs,rhstmp,1);tmp@ = _mm256_add_pd(tmp@,complex_mul(val,rhs));#CHUNKHEIGHT/2
                 }
 
                 if (traits.flags & (GHOST_SPMV_SHIFT | GHOST_SPMV_VSHIFT)) {

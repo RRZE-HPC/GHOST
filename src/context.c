@@ -549,8 +549,8 @@ ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, gh
         for (rowinchunk=0; rowinchunk<mat->traits.C; rowinchunk++) {
             globalrow = chunk*mat->traits.C+rowinchunk;
             if (globalrow < ctx->lnrows[me]) {
-                for (entinrow=0; entinrow<SELL(mat)->rowLen[globalrow]; entinrow++) {
-                    globalent = SELL(mat)->chunkStart[chunk] + entinrow*mat->traits.C + rowinchunk;
+                for (entinrow=0; entinrow<mat->rowLen[globalrow]; entinrow++) {
+                    globalent = mat->chunkStart[chunk] + entinrow*mat->traits.C + rowinchunk;
 		    if (col_orig[globalent] >= ctx->lfRow[me] && col_orig[globalent]<(ctx->lfRow[me]+ctx->lnrows[me])) {
                         ctx->entsInCol[col_orig[globalent]-ctx->lfRow[me]]++;
                     }

@@ -18,7 +18,7 @@ ghost_error ghost_sellspmvSTRIPPED__a_mic_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densema
 #if defined(GHOST_BUILD_MIC) && CHUNKHEIGHT>=16
     ghost_lidx c,j,i;
     ghost_lidx offs;
-    double *mval = (double *)SELL(mat)->val;
+    double *mval = (double *)mat->val;
     __m512d val;
     __m512d rhs;
     __m512i idx;
@@ -31,11 +31,11 @@ ghost_error ghost_sellspmvSTRIPPED__a_mic_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densema
             #GHOST_UNROLL#tmp@ = _mm512_setzero_pd();#CHUNKHEIGHT/8
             double *lval = (double *)res->val;
             double *rval = (double *)invec->val;
-            offs = SELL(mat)->chunkStart[c];
+            offs = mat->chunkStart[c];
 
-            for (j=0; j<SELL(mat)->chunkLen[c]; j++) 
+            for (j=0; j<mat->chunkLen[c]; j++) 
             { // loop inside chunk
-                #GHOST_UNROLL#val = _mm512_load_pd(&mval[offs]);idx = _mm512_load_epi32(&SELL(mat)->col[offs]);rhs = _mm512_i32logather_pd(idx,rval,8);tmp~2*@~ = _mm512_add_pd(tmp~2*@~,_mm512_mul_pd(val,rhs));offs += 8;val = _mm512_load_pd(&mval[offs]);idx = _mm512_permute4f128_epi32(idx,_MM_PERM_BADC);rhs = _mm512_i32logather_pd(idx,rval,8);tmp~2*@+1~ = _mm512_add_pd(tmp~2*@+1~,_mm512_mul_pd(val,rhs));offs += 8;#CHUNKHEIGHT/16
+                #GHOST_UNROLL#val = _mm512_load_pd(&mval[offs]);idx = _mm512_load_epi32(&mat->col[offs]);rhs = _mm512_i32logather_pd(idx,rval,8);tmp~2*@~ = _mm512_add_pd(tmp~2*@~,_mm512_mul_pd(val,rhs));offs += 8;val = _mm512_load_pd(&mval[offs]);idx = _mm512_permute4f128_epi32(idx,_MM_PERM_BADC);rhs = _mm512_i32logather_pd(idx,rval,8);tmp~2*@+1~ = _mm512_add_pd(tmp~2*@+1~,_mm512_mul_pd(val,rhs));offs += 8;#CHUNKHEIGHT/16
             }
             #GHOST_UNROLL#_mm512_store_pd(&lval[c*CHUNKHEIGHT+8*@],_mm512_add_pd(tmp@,_mm512_load_pd(&lval[c*CHUNKHEIGHT+8*@])));#CHUNKHEIGHT/8
         }
@@ -56,7 +56,7 @@ ghost_error ghost_sellspmv__a_mic_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     ghost_lidx c,j,v,i;
     ghost_lidx offs;
-    double *mval = (double *)SELL(mat)->val;
+    double *mval = (double *)mat->val;
     __m512d val;
     __m512d rhs;
     __m512i idx;
@@ -107,11 +107,11 @@ ghost_error ghost_sellspmv__a_mic_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
                 #GHOST_UNROLL#tmp@ = _mm512_setzero_pd();#CHUNKHEIGHT/8
                 double *lval = (double *)res->val+v*res->stride;
                 double *rval = (double *)invec->val+v*invec->stride;
-                offs = SELL(mat)->chunkStart[c];
+                offs = mat->chunkStart[c];
 
-                for (j=0; j<(SELL(mat)->chunkStart[c+1]-SELL(mat)->chunkStart[c])/CHUNKHEIGHT; j++) 
+                for (j=0; j<(mat->chunkStart[c+1]-mat->chunkStart[c])/CHUNKHEIGHT; j++) 
                 { // loop inside chunk
-                    #GHOST_UNROLL#val = _mm512_load_pd(&mval[offs]);idx = _mm512_load_epi32(&SELL(mat)->col[offs]);rhs = _mm512_i32logather_pd(idx,rval,8);tmp~2*@~ = _mm512_add_pd(tmp~2*@~,_mm512_mul_pd(val,rhs));offs += 8;val = _mm512_load_pd(&mval[offs]);idx = _mm512_permute4f128_epi32(idx,_MM_PERM_BADC);rhs = _mm512_i32logather_pd(idx,rval,8);tmp~2*@+1~ = _mm512_add_pd(tmp~2*@+1~,_mm512_mul_pd(val,rhs));offs += 8;#CHUNKHEIGHT/16
+                    #GHOST_UNROLL#val = _mm512_load_pd(&mval[offs]);idx = _mm512_load_epi32(&mat->col[offs]);rhs = _mm512_i32logather_pd(idx,rval,8);tmp~2*@~ = _mm512_add_pd(tmp~2*@~,_mm512_mul_pd(val,rhs));offs += 8;val = _mm512_load_pd(&mval[offs]);idx = _mm512_permute4f128_epi32(idx,_MM_PERM_BADC);rhs = _mm512_i32logather_pd(idx,rval,8);tmp~2*@+1~ = _mm512_add_pd(tmp~2*@+1~,_mm512_mul_pd(val,rhs));offs += 8;#CHUNKHEIGHT/16
                 }
                 if (traits.flags & (GHOST_SPMV_SHIFT | GHOST_SPMV_VSHIFT)) {
                     if (traits.flags & GHOST_SPMV_SHIFT) {
@@ -186,7 +186,7 @@ ghost_error ghost_sellspmv__a_mic_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
 {
 #if defined(GHOST_BUILD_MIC) && NVECS>=8
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
-    double *mval = (double *)SELL(mat)->val;
+    double *mval = (double *)mat->val;
     double *local_dot_product = NULL;
     double *partsums = NULL;
     int nthreads = 1, i;
@@ -238,11 +238,11 @@ ghost_error ghost_sellspmv__a_mic_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
             double *rval = (double *)invec->val[c*CHUNKHEIGHT];
 
             #GHOST_UNROLL#tmp@ = _mm512_setzero_pd();#CHUNKHEIGHT*NVECS/8
-            offs = SELL(mat)->chunkStart[c];
+            offs = mat->chunkStart[c];
 
-            for (j=0; j<SELL(mat)->chunkLen[c]; j++) { // loop inside chunk
+            for (j=0; j<mat->chunkLen[c]; j++) { // loop inside chunk
                 
-                #GHOST_UNROLL#rhs = _mm512_load_pd((double *)invec->val[SELL(mat)->col[offs]]+(@%(NVECS/8))*8);tmp@ = _mm512_add_pd(tmp@,_mm512_mul_pd(_mm512_set1_pd(mval[offs]),rhs));if(!((@+1)%(NVECS/8)))offs++;#CHUNKHEIGHT*NVECS/8
+                #GHOST_UNROLL#rhs = _mm512_load_pd((double *)invec->val[mat->col[offs]]+(@%(NVECS/8))*8);tmp@ = _mm512_add_pd(tmp@,_mm512_mul_pd(_mm512_set1_pd(mval[offs]),rhs));if(!((@+1)%(NVECS/8)))offs++;#CHUNKHEIGHT*NVECS/8
             }
             if (traits.flags & GHOST_SPMV_SHIFT) {
                 #GHOST_UNROLL#tmp@ = _mm512_sub_pd(tmp@,_mm512_mul_pd(_mm512_set1_pd(sshift[0]),_mm512_load_pd(rval+@*8)));#CHUNKHEIGHT*NVECS/8

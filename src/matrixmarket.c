@@ -479,36 +479,36 @@ ghost_error ghost_sparsemat_to_mm(char *path, ghost_sparsemat *mat)
             globrow = mat->context->lfRow[rank]+1;
 
             for (row=1; row<=mat->nrows; row++, globrow++) {
-                for (entinrow=0; entinrow<SELL(mat)->rowLen[row-1]; entinrow++) {
-                    sellidx = SELL(mat)->chunkStart[(row-1)/mat->traits.C] + entinrow*mat->traits.C + (row-1)%mat->traits.C;
+                for (entinrow=0; entinrow<mat->rowLen[row-1]; entinrow++) {
+                    sellidx = mat->chunkStart[(row-1)/mat->traits.C] + entinrow*mat->traits.C + (row-1)%mat->traits.C;
                     if (mat->traits.flags & GHOST_SPARSEMAT_SAVE_ORIG_COLS) {
                         int col = (int)mat->col_orig[sellidx]+1;
                         if (mat->traits.datatype & GHOST_DT_REAL) {
                             if (mat->traits.datatype & GHOST_DT_DOUBLE) {
-                                fprintf(fp,"%d %d %10.3g\n",globrow,col,((double *)SELL(mat)->val)[sellidx]);
+                                fprintf(fp,"%d %d %10.3g\n",globrow,col,((double *)mat->val)[sellidx]);
                             } else {
-                                fprintf(fp,"%d %d %10.3g\n",globrow,col,((float *)SELL(mat)->val)[sellidx]);
+                                fprintf(fp,"%d %d %10.3g\n",globrow,col,((float *)mat->val)[sellidx]);
                             }
                         } else {
                             if (mat->traits.datatype & GHOST_DT_DOUBLE) {
-                                fprintf(fp,"%d %d %10.3g %10.3g\n",globrow,col,creal(((complex double *)SELL(mat)->val)[sellidx]),cimag(((complex double *)SELL(mat)->val)[sellidx]));
+                                fprintf(fp,"%d %d %10.3g %10.3g\n",globrow,col,creal(((complex double *)mat->val)[sellidx]),cimag(((complex double *)mat->val)[sellidx]));
                             } else {
-                                fprintf(fp,"%d %d %10.3g %10.3g\n",globrow,col,crealf(((complex float *)SELL(mat)->val)[sellidx]),cimagf(((complex float *)SELL(mat)->val)[sellidx]));
+                                fprintf(fp,"%d %d %10.3g %10.3g\n",globrow,col,crealf(((complex float *)mat->val)[sellidx]),cimagf(((complex float *)mat->val)[sellidx]));
                             }
                         }
                     } else {
-                        ghost_lidx col = SELL(mat)->col[sellidx]+1;
+                        ghost_lidx col = mat->col[sellidx]+1;
                         if (mat->traits.datatype & GHOST_DT_REAL) {
                             if (mat->traits.datatype & GHOST_DT_DOUBLE) {
-                                fprintf(fp,"%d %d %10.3g\n",globrow,col,((double *)SELL(mat)->val)[sellidx]);
+                                fprintf(fp,"%d %d %10.3g\n",globrow,col,((double *)mat->val)[sellidx]);
                             } else {
-                                fprintf(fp,"%d %d %10.3g\n",globrow,col,((float *)SELL(mat)->val)[sellidx]);
+                                fprintf(fp,"%d %d %10.3g\n",globrow,col,((float *)mat->val)[sellidx]);
                             }
                         } else {
                             if (mat->traits.datatype & GHOST_DT_DOUBLE) {
-                                fprintf(fp,"%d %d %10.3g %10.3g\n",globrow,col,creal(((complex double *)SELL(mat)->val)[sellidx]),cimag(((complex double *)SELL(mat)->val)[sellidx]));
+                                fprintf(fp,"%d %d %10.3g %10.3g\n",globrow,col,creal(((complex double *)mat->val)[sellidx]),cimag(((complex double *)mat->val)[sellidx]));
                             } else {
-                                fprintf(fp,"%d %d %10.3g %10.3g\n",globrow,col,crealf(((complex float *)SELL(mat)->val)[sellidx]),cimagf(((complex float *)SELL(mat)->val)[sellidx]));
+                                fprintf(fp,"%d %d %10.3g %10.3g\n",globrow,col,crealf(((complex float *)mat->val)[sellidx]),cimagf(((complex float *)mat->val)[sellidx]));
                             }
                         }
                     }

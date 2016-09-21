@@ -15,7 +15,7 @@ ghost_error ghost_sellspmv__a_plain_z_z_rm_CHUNKHEIGHT_x(ghost_densemat *res, gh
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
 
-    complex double *mval = (complex double *)SELL(mat)->val;
+    complex double *mval = (complex double *)mat->val;
     complex double *local_dot_product = NULL;
     complex double *partsums = NULL;
     int nthreads = 1, i;
@@ -57,16 +57,16 @@ ghost_error ghost_sellspmv__a_plain_z_z_rm_CHUNKHEIGHT_x(ghost_densemat *res, gh
 #pragma omp for schedule(runtime)
         for (c=0; c<mat->nrowsPadded/CHUNKHEIGHT; c++) 
         { // loop over chunks
-            offs = SELL(mat)->chunkStart[c];
+            offs = mat->chunkStart[c];
                     
             memset(tmp,0,sizeof(tmp));
-            for (j=0; j<SELL(mat)->chunkLen[c]; j++) { // loop inside chunk
+            for (j=0; j<mat->chunkLen[c]; j++) { // loop inside chunk
                 for (v=0; v<res->traits.ncols; v++) {
 #pragma simd
                     for (r=0; r<CHUNKHEIGHT; r++) {
                         row = c*CHUNKHEIGHT+r;
                         complex double matval = mval[offs+j*CHUNKHEIGHT+r];
-                        ghost_lidx matcol = SELL(mat)->col[offs+j*CHUNKHEIGHT+r];
+                        ghost_lidx matcol = mat->col[offs+j*CHUNKHEIGHT+r];
                         tmp[r][v] += matval*rhsval[invec->stride*matcol+v];
                     }
                 }
