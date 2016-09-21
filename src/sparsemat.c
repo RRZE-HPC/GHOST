@@ -39,6 +39,8 @@ const ghost_sparsemat_traits GHOST_SPARSEMAT_TRAITS_INITIALIZER = {
 static const char * ghost_sparsemat_formatName(ghost_sparsemat *mat);
 static ghost_error ghost_sparsemat_split(ghost_sparsemat *mat);
 static ghost_error ghost_sparsemat_upload(ghost_sparsemat *mat);
+static ghost_error ghost_sparsemat_fromfunc_common(ghost_lidx *rl, ghost_lidx *rlp, ghost_lidx *cl, ghost_lidx *clp, ghost_lidx **chunkptr, char **val, ghost_gidx **col, ghost_sparsemat_src_rowfunc *src, ghost_sparsemat *mat, ghost_lidx C, ghost_lidx P);
+static ghost_error ghost_sparsemat_fromfunc_common_dummy(ghost_lidx *rl, ghost_lidx *rlp, ghost_lidx *cl, ghost_lidx *clp, ghost_lidx **chunkptr, char **val, ghost_gidx **col, ghost_sparsemat_src_rowfunc *src, ghost_sparsemat *mat, ghost_lidx C, ghost_lidx P);
 
 const ghost_spmv_opts GHOST_SPMV_OPTS_INITIALIZER = {
     .flags = GHOST_SPMV_DEFAULT,
@@ -278,7 +280,7 @@ ghost_error set_kacz_ratio(ghost_sparsemat *mat, void *matrixSource, ghost_spars
     return GHOST_SUCCESS;
 }
 
-ghost_error ghost_sparsemat_fromfunc_common_dummy(ghost_lidx *rl, ghost_lidx *rlp, ghost_lidx *cl, ghost_lidx *clp, ghost_lidx **chunkptr, char **val, ghost_gidx **col, ghost_sparsemat_src_rowfunc *src, ghost_sparsemat *mat, ghost_lidx C, ghost_lidx P)
+static ghost_error ghost_sparsemat_fromfunc_common_dummy(ghost_lidx *rl, ghost_lidx *rlp, ghost_lidx *cl, ghost_lidx *clp, ghost_lidx **chunkptr, char **val, ghost_gidx **col, ghost_sparsemat_src_rowfunc *src, ghost_sparsemat *mat, ghost_lidx C, ghost_lidx P)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     ghost_error ret = GHOST_SUCCESS;
@@ -713,7 +715,7 @@ ghost_error ghost_sparsemat_fromfunc_common_dummy(ghost_lidx *rl, ghost_lidx *rl
 }
 
 
-ghost_error ghost_sparsemat_fromfunc_common(ghost_lidx *rl, ghost_lidx *rlp, ghost_lidx *cl, ghost_lidx *clp, ghost_lidx **chunkptr, char **val, ghost_gidx **col, ghost_sparsemat_src_rowfunc *src, ghost_sparsemat *mat, ghost_lidx C, ghost_lidx P)
+static ghost_error ghost_sparsemat_fromfunc_common(ghost_lidx *rl, ghost_lidx *rlp, ghost_lidx *cl, ghost_lidx *clp, ghost_lidx **chunkptr, char **val, ghost_gidx **col, ghost_sparsemat_src_rowfunc *src, ghost_sparsemat *mat, ghost_lidx C, ghost_lidx P)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     ghost_error ret = GHOST_SUCCESS;

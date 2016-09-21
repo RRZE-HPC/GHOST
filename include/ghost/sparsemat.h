@@ -672,64 +672,6 @@ struct ghost_sparsemat
      * with distance i from diagonal
      */
     ghost_gidx *nzDist;
-    /**
-     * Compute a sparse matrix-vector product.
-     * This function should not be called directly, see ghost_spmv().
-     */
-    //ghost_spmv_kernel spmv;
-    /**
-     * Solve using Kacz kernel.
-     * This function should not be called directly, see ghost_carp().
-     */
-    //ghost_kacz_kernel kacz;
-    /**
-     * Solve using Kacz kernel with shift.
-     * This function should not be called directly, see ghost_carp_shift().
-     */
-    //ghost_kacz_shift_kernel kacz_shift;
-     /**
-     * Documented in ghost_sparsemat_string()
-     */
-    //ghost_error (*string) (ghost_sparsemat *mat, char **str, int dense);
-    /**
-     * @ingroup stringification
-     *
-     * @brief Return the name of the storage format.
-     *
-     * @param mat The matrix.
-     *
-     * @return A string containing the storage format name. 
-     */
-    //const char *  (*formatName) (ghost_sparsemat *mat);
-    /**
-     * Documented in ghost_sparsemat_init_bin() 
-     */
-    //ghost_error (*fromFile)(ghost_sparsemat *mat, char *path);
-    /**
-     * Documented in ghost_sparsemat_init_mm()
-     */
-    //ghost_error (*fromMM)(ghost_sparsemat *mat, char *path);
-    /**
-     * Documented in ghost_sparsemat_init_crs()
-     */
-    //ghost_error (*fromCRS)(ghost_sparsemat *mat, ghost_gidx offs, ghost_lidx n, ghost_gidx *col, void *val, ghost_lidx *rpt);
-    /**
-     * Documented in ghost_sparsemat_init_rowfunc() 
-     */
-    //ghost_error (*fromRowFunc)(ghost_sparsemat *, 
-    //        ghost_sparsemat_src_rowfunc *src);
-    /**
-     * @brief Upload the matrix to the CUDA device.
-     *
-     * @param mat The matrix.
-     */
-    //ghost_error (*upload)(ghost_sparsemat * mat);
-    /**
-     * @brief Split the matrix into a local and a remote part.
-     *
-     * @param mat The matrix.
-     */
-    //ghost_error       (*split)(ghost_sparsemat *mat);
 };
 
 
@@ -1150,16 +1092,7 @@ extern "C" {
      */
     ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, ghost_sparsemat *mat, ghost_lidx *col);
 
-    ghost_error ghost_sparsemat_from_bincrs(ghost_sparsemat *mat, char *path);
-    ghost_error ghost_sparsemat_from_mm(ghost_sparsemat *mat, char *path);
-    ghost_error ghost_sparsemat_from_crs(ghost_sparsemat *mat, ghost_gidx offs, ghost_lidx n, ghost_gidx *col, void *val, ghost_lidx *rpt);
-
     ghost_error ghost_sparsemat_perm_global_cols(ghost_gidx *cols, ghost_lidx ncols, ghost_context *context);
-
-
-    ghost_error ghost_sparsemat_fromfunc_common(ghost_lidx *rl, ghost_lidx *rlp, ghost_lidx *cl, ghost_lidx *clp, ghost_lidx **chunkptr, char **val, ghost_gidx **col, ghost_sparsemat_src_rowfunc *src, ghost_sparsemat *mat, ghost_lidx C, ghost_lidx P);
-
-    ghost_error ghost_sparsemat_fromfunc_common_dummy(ghost_lidx *rl, ghost_lidx *rlp, ghost_lidx *cl, ghost_lidx *clp, ghost_lidx **chunkptr, char **val, ghost_gidx **col, ghost_sparsemat_src_rowfunc *src, ghost_sparsemat *mat, ghost_lidx C, ghost_lidx P);
 
  static inline int ghost_sparsemat_rowfunc_crs(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *col, void *val, void *crsdata)
 {
