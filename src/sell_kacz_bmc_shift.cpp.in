@@ -195,7 +195,7 @@ for (ghost_lidx row=start; row>end; --row) { \
 
 #endif
 
-#if (NSHIFTS%2==0 && CHUNKHEIGHT==1) 
+#if defined(GHOST_BUILD_AVX) && (NSHIFTS%2==0 && CHUNKHEIGHT==1) 
 
 #define FORWARD_SHIFT_LOOP(start,end,MT,VT) \
 _Pragma("omp parallel for") \
@@ -327,7 +327,7 @@ for (ghost_lidx row=start; row>end; --row){ \
 }
 
 
-#elif (NVECS%2==0 && CHUNKHEIGHT==1) 
+#elif defined(GHOST_BUILD_AVX) && (NVECS%2==0 && CHUNKHEIGHT==1) 
 
 #define FORWARD_SHIFT_LOOP(start,end,MT,VT) \
 _Pragma("omp parallel for") \
