@@ -1,13 +1,13 @@
 #include "ghost/config.h"
 #include "ghost/types.h"
 #include "ghost/util.h"
-#include "ghost/densemat_rm.h"
 #include "ghost/log.h"
 #include "ghost/timing.h"
 #include "ghost/locality.h"
 #include "ghost/instr.h"
 #include "ghost/rand.h"
 #include "ghost/cu_sell_kernel.h"
+#include "ghost/math.h"
 
 #include <cuda_runtime.h>
 #include <stdio.h>
@@ -1046,8 +1046,9 @@ extern "C" ghost_error FUNCNAME(fromScalar)(ghost_densemat *vec, void *a)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     ghost_error ret = GHOST_SUCCESS;
+    
     int needInit = 0;
-    ghost_densemat_rm_malloc(vec,&needInit);
+    ghost_densemat_malloc(vec,&needInit);
     
     void *vecval;
     ghost_densemat *veccompact;
@@ -1107,6 +1108,9 @@ extern "C" ghost_error FUNCNAME(fromRand)(ghost_densemat *vec)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     ghost_error ret = GHOST_SUCCESS;
+    
+    int needInit = 0;
+    ghost_densemat_malloc(vec,&needInit);
 
     void *raw = NULL;
     ghost_densemat *onevec;
@@ -1118,13 +1122,11 @@ extern "C" ghost_error FUNCNAME(fromRand)(ghost_densemat *vec)
     float fminusahalf[] = {-0.5,0.};
     
     ghost_timing_wcmilli(&time);
-    int needInit = 0;
-    ghost_densemat_rm_malloc(vec,&needInit);
     curandGenerator_t gen;
     GHOST_CALL_GOTO(ghost_cu_rand_generator_get(&gen),err,ret);
 
     vec->clone(vec,&onevec,vec->traits.nrows,0,vec->traits.ncols,0);
-    onevec->fromScalar(onevec,one);
+    ghost_densemat_init_val(onevec,one);
 
     one[1] = 0.;
     ghost_densemat *compactvec;
@@ -1154,9 +1156,9 @@ extern "C" ghost_error FUNCNAME(fromRand)(ghost_densemat *vec)
     ghost_cu_memcpy2d(compactvec->cu_val,compactvec->traits.ncolspadded*vec->elSize,raw,vec->traits.ncols*vec->elSize,compactvec->traits.ncols*vec->elSize,compactvec->traits.nrows);
 
     if (compactvec->traits.datatype & GHOST_DT_DOUBLE) {
-        compactvec->axpby(compactvec,onevec,minusahalf,one);
+        ghost_axpby(compactvec,onevec,minusahalf,one);
     } else {
-        compactvec->axpby(compactvec,onevec,fminusahalf,fone);
+        ghost_axpby(compactvec,onevec,fminusahalf,fone);
     }
     if (compactvec != vec) {
         vec->fromVec(vec,compactvec,0,0);

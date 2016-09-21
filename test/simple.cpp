@@ -118,8 +118,8 @@ int main(int argc, char **argv) {
 
             GHOST_TEST_CALL(ghost_densemat_create(&x, ctx, *vtraits_it));
             GHOST_TEST_CALL(ghost_densemat_create(&y, ctx, *vtraits_it));
-            GHOST_TEST_CALL(x->fromRand(x));
-            GHOST_TEST_CALL(y->fromScalar(y,&zero));
+            GHOST_TEST_CALL(ghost_densemat_init_rand(x));
+            GHOST_TEST_CALL(ghost_densemat_init_val(y,&zero));
           
             printf("Test SpMV with %s matrix (SELL-%d-%d) and %s vectors (%s)\n",ghost_datatype_string(A->traits.datatype),A->traits.C,A->traits.sortScope,ghost_datatype_string(x->traits.datatype),ghost_densemat_storage_string(x->traits.storage));
             GHOST_TEST_CALL(ghost_spmv(y,A,x,GHOST_SPMV_OPTS_INITIALIZER));

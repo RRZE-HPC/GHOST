@@ -285,8 +285,8 @@ ghost_densemat *w_in, const char *transw_in, void *alpha, void *beta, int reduce
 
             if (!strncasecmp(transv_in,"C",1) && v->traits.datatype & GHOST_DT_COMPLEX) {
                 INFO_LOG("Conjugating input densemats. They have been cloned before, so this is safe.");
-                v->conj(v);
-                w->conj(w);
+                ghost_conj(v);
+                ghost_conj(w);
             }
 
             cutransw = cutransv; 

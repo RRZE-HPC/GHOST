@@ -48,7 +48,7 @@
 using namespace std;
 
 template<typename v_t>
-static ghost_error FUNCNAME(normalize_tmpl(ghost_densemat *vec, ghost_mpi_comm mpicomm))
+static ghost_error FUNCNAME(normalize_tmpl(ghost_densemat *vec))
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error ret = GHOST_SUCCESS;
@@ -56,13 +56,13 @@ static ghost_error FUNCNAME(normalize_tmpl(ghost_densemat *vec, ghost_mpi_comm m
     v_t *s = NULL;
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&s,vec->traits.ncols*sizeof(v_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_dot(s,vec,vec,mpicomm),err,ret);
+    GHOST_CALL_GOTO(ghost_dot(s,vec,vec),err,ret);
 
     for (v=0; v<vec->traits.ncols; v++) {
         s[v] = (v_t)sqrt(s[v]);
         s[v] = (v_t)(((v_t)1.)/s[v]);
     }
-    GHOST_CALL_GOTO(vec->vscale(vec,s),err,ret);
+    GHOST_CALL_GOTO(FUNCNAME(vscale_selector)(vec,s),err,ret);
 
     goto out;
 err:
@@ -764,11 +764,11 @@ extern "C" ghost_error FUNCNAME(string_selector(ghost_densemat *vec, char **str)
     return ret;
 }
 
-extern "C" ghost_error FUNCNAME(normalize_selector(ghost_densemat *vec, ghost_mpi_comm mpicomm))
+extern "C" ghost_error FUNCNAME(normalize_selector(ghost_densemat *vec))
 { 
     ghost_error ret = GHOST_SUCCESS;
 
-    SELECT_TMPL_1DATATYPE(vec->traits.datatype,std::complex,ret,FUNCNAME(normalize_tmpl),vec,mpicomm);
+    SELECT_TMPL_1DATATYPE(vec->traits.datatype,std::complex,ret,FUNCNAME(normalize_tmpl),vec);
 
     return ret;
 }

@@ -166,8 +166,8 @@ ghost_error ghost_carp_perf_init_tmpl(ghost_sparsemat *mat, ghost_carp_opts *opt
             vtraits_row.ncols = block_size[i];
             ghost_densemat_create(&test_x, mat->context, vtraits_col);
             ghost_densemat_create(&test_rhs, mat->context, vtraits_row);
-            test_x->fromScalar(test_x,&zero);
-            test_rhs->fromScalar(test_rhs,&one);
+            ghost_densemat_init_val(test_x,&zero);
+            ghost_densemat_init_val(test_rhs,&one);
             ghost_barrier();
             ghost_timing_wcmilli(&start);
             

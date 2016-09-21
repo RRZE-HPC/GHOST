@@ -5,6 +5,7 @@
 #include "ghost/cu_complex.h"
 #include "ghost/util.h"
 #include "ghost/sparsemat.h"
+#include "ghost/math.h"
 
 #include <complex.h>
 #include <cuda_runtime.h>
@@ -148,26 +149,26 @@ static ghost_error ghost_cu_sell1spmv_augfunc_tmpl(ghost_densemat * lhs, ghost_d
                 minusshift[col] = -1.*(*(dt2 *)&scale)*(((dt2 *)shift)[col]);
             }
         }
-        lhs->vaxpy(lhs,rhs,minusshift);
+        ghost_vaxpy(lhs,rhs,minusshift);
     }
     
     if (traits.flags & GHOST_SPMV_DOT) {
         PERFWARNING_LOG("Dot product computation will be not be done on-the-fly!");
         memset(localdot,0,lhs->traits.ncols*3*sizeof(dt1));
         if (traits.flags & GHOST_SPMV_DOT_YY) {
-            lhs->localdot_vanilla(lhs,&localdot[0],lhs);
+            ghost_localdot(&localdot[0],lhs,lhs);
         }
         if (traits.flags & GHOST_SPMV_DOT_XY) {
-            rhs->localdot_vanilla(rhs,&localdot[lhs->traits.ncols],lhs);
+            ghost_localdot(&localdot[lhs->traits.ncols],rhs,lhs);
         }
         if (traits.flags & GHOST_SPMV_DOT_XX) {
-            rhs->localdot_vanilla(rhs,&localdot[2*lhs->traits.ncols],rhs);
+            ghost_localdot(&localdot[2*lhs->traits.ncols],rhs,rhs);
         }
             
     }
     if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
         PERFWARNING_LOG("AXPBY will not be done on-the-fly!");
-        z->axpby(z,lhs,&seta,&sdelta);
+        ghost_axpby(z,lhs,&seta,&sdelta);
     }
    
     return GHOST_SUCCESS; 

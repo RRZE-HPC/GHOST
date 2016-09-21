@@ -677,3 +677,54 @@ ghost_error switch_permutation_method( ghost_densemat **vec, ghost_context *ctx,
   
    return GHOST_SUCCESS;
 }   
+
+int ghost_idx_of_densemat_storage(ghost_densemat_storage s)
+{
+    if (s == GHOST_DENSEMAT_COLMAJOR) {
+        return GHOST_CM_IDX;
+    } else {
+        return GHOST_RM_IDX;
+    }
+}
+
+ghost_error ghost_densemat_init_rand(ghost_densemat *x)
+{
+    ghost_error ret;
+
+    typedef ghost_error (*ghost_densemat_init_rand_kernel)(ghost_densemat*);
+    ghost_densemat_init_rand_kernel kernels[2][2];
+    kernels[GHOST_HOST_IDX][GHOST_RM_IDX] = &ghost_densemat_rm_fromRand_selector;
+    kernels[GHOST_HOST_IDX][GHOST_CM_IDX] = &ghost_densemat_cm_fromRand_selector;
+    kernels[GHOST_DEVICE_IDX][GHOST_RM_IDX] = &ghost_densemat_cu_rm_fromRand;
+    kernels[GHOST_DEVICE_IDX][GHOST_CM_IDX] = &ghost_densemat_cu_cm_fromRand;
+
+    SELECT_BLAS1_KERNEL(kernels,x->traits.location,x->traits.compute_at,x->traits.storage,ret,x);
+
+    return ret;
+}
+
+ghost_error ghost_densemat_init_val(ghost_densemat *x, void *val)
+{
+    ghost_error ret;
+
+    typedef ghost_error (*ghost_densemat_init_scalar_kernel)(ghost_densemat*, void*);
+    ghost_densemat_init_scalar_kernel kernels[2][2];
+    kernels[GHOST_HOST_IDX][GHOST_RM_IDX] = &ghost_densemat_rm_fromScalar_selector;
+    kernels[GHOST_HOST_IDX][GHOST_CM_IDX] = &ghost_densemat_cm_fromScalar_selector;
+    kernels[GHOST_DEVICE_IDX][GHOST_RM_IDX] = &ghost_densemat_cu_rm_fromScalar;
+    kernels[GHOST_DEVICE_IDX][GHOST_CM_IDX] = &ghost_densemat_cu_cm_fromScalar;
+
+    SELECT_BLAS1_KERNEL(kernels,x->traits.location,x->traits.compute_at,x->traits.storage,ret,x,val);
+
+    return ret;
+}
+
+ghost_error ghost_densemat_malloc(ghost_densemat *x, int *needInit)
+{
+    if (x->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
+        return ghost_densemat_cm_malloc(x, needInit);
+    } else {
+        return ghost_densemat_rm_malloc(x, needInit);
+    }
+}
+

@@ -157,7 +157,7 @@ ghost_error ghost_sellspmv__a_mic_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
     }
     if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
         PERFWARNING_LOG("AXPBY will not be done on-the-fly!");
-        z->axpby(z,res,&seta,&sdelta);
+        ghost_axpby(z,res,&seta,&sdelta);
     }
     if (traits.flags & GHOST_SPMV_DOT) {
         for (v=0; v<invec->traits.ncols; v++) {
@@ -270,7 +270,7 @@ ghost_error ghost_sellspmv__a_mic_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
     }
     if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
         PERFWARNING_LOG("AXPBY will not be done on-the-fly!");
-        z->axpby(z,res,&seta,&sdelta);
+        ghost_axpby(z,res,&seta,&sdelta);
     }
     if (traits.flags & GHOST_SPMV_DOT) {
         ghost_lidx col;

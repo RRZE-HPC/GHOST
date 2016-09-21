@@ -103,7 +103,7 @@ extern "C" ghost_error ghost_cu_bench_stream(ghost_bench_stream_test_t test, dou
                 ghost_densemat_create(&b_dm,NULL,dmtraits);
                 ghost_densemat_view_plain(a_dm,da,1);
                 ghost_densemat_view_plain(b_dm,db,1);
-                ghost_dot(&s,a_dm,b_dm,MPI_COMM_NULL);
+                ghost_localdot(&s,a_dm,b_dm);
                 ghost_densemat_destroy(a_dm);
                 ghost_densemat_destroy(b_dm);
                 break;

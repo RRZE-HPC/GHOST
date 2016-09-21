@@ -12,6 +12,9 @@
 #include "bindensemat.h"
 #include "context.h"
 
+#define GHOST_CM_IDX 0
+#define GHOST_RM_IDX 1
+
 #define GHOST_DENSEMAT_CHECK_SIMILARITY(vec1,vec2)\
     if (vec1->traits.nrows != vec2->traits.nrows) {\
         ERROR_LOG("Number of rows do not match!");\
@@ -25,9 +28,28 @@
         ERROR_LOG("Storage orders do not match!");\
         return GHOST_ERR_INVALID_ARG;\
     }\
-    if (vec1->traits.location != vec2->traits.location) {\
+    if (!(vec1->traits.location & vec2->traits.location)) {\
         ERROR_LOG("Locations do not match!");\
         return GHOST_ERR_INVALID_ARG;\
+    }
+
+#define SELECT_BLAS1_KERNEL(kernels,commonlocation,compute_at,storage,ret,...) \
+    if (commonlocation == (GHOST_LOCATION_HOST | GHOST_LOCATION_DEVICE)) {\
+        if (compute_at == GHOST_LOCATION_HOST) {\
+            if (storage == GHOST_DENSEMAT_COLMAJOR) {\
+                ret = kernels[GHOST_HOST_IDX][GHOST_CM_IDX](__VA_ARGS__);\
+            } else {\
+                ret = kernels[GHOST_HOST_IDX][GHOST_RM_IDX](__VA_ARGS__);\
+            }\
+        } else {\
+            if (storage == GHOST_DENSEMAT_COLMAJOR) {\
+                ret = kernels[GHOST_DEVICE_IDX][GHOST_CM_IDX](__VA_ARGS__);\
+            } else {\
+                ret = kernels[GHOST_DEVICE_IDX][GHOST_RM_IDX](__VA_ARGS__);\
+            }\
+        }\
+    } else {\
+        ret = kernels[ghost_idx_of_location(commonlocation)][ghost_idx_of_densemat_storage(storage)](__VA_ARGS__);\
     }
 
 /**
@@ -286,6 +308,13 @@ typedef struct
      *        if COLUMN - column permutations are done by densemat->permute 
      */
     ghost_densemat_permuted permutemethod;
+
+    /**
+     * @brief If the densemat is the result of a computation, decide where to execute the computation.
+     *
+     * This is only relevant if all involved data is stored on both HOST and DEVICE.
+     */
+    ghost_location compute_at;
 }
 ghost_densemat_traits;
 
@@ -392,17 +421,17 @@ struct ghost_densemat
     /**
      * Documented in ghost_axpy()
      */
-    ghost_error (*axpy) (ghost_densemat *y, ghost_densemat *x, void *a);
+    //ghost_error (*axpy) (ghost_densemat *y, ghost_densemat *x, void *a);
     /**
      * Documented in ghost_axpby()
      */
-    ghost_error (*axpby) (ghost_densemat *y, ghost_densemat *x, void *a, 
-            void *b);
+    //ghost_error (*axpby) (ghost_densemat *y, ghost_densemat *x, void *a, 
+    //        void *b);
     /**
      * Documented in ghost_axpbypcz()
      */
-    ghost_error (*axpbypcz) (ghost_densemat *y, ghost_densemat *x, void *a, 
-            void *b,ghost_densemat *z, void *c);
+    //ghost_error (*axpbypcz) (ghost_densemat *y, ghost_densemat *x, void *a, 
+    //        void *b,ghost_densemat *z, void *c);
     /**
      * @brief Clones a given number of columns of a source densemat at a 
      * given column and row offset.
@@ -429,7 +458,7 @@ struct ghost_densemat
     /**
      * Documented in ghost_conj()
      */
-    ghost_error (*conj) (ghost_densemat *vec);
+    //ghost_error (*conj) (ghost_densemat *vec);
     /**
      * @brief Collects vec from all MPI ranks and combines them into globalVec.
      * The row permutation (if present) if vec's context is used.
@@ -452,7 +481,7 @@ struct ghost_densemat
      * Fallback dot product of two vectors.
      * This function should not be called directly, see ghost_dot() and ghost_localdot() instead.
      */
-    ghost_error (*localdot_vanilla) (ghost_densemat *a, void *res, ghost_densemat *b);
+    //ghost_error (*localdot_vanilla) (ghost_densemat *a, void *res, ghost_densemat *b);
     /**
      * @ingroup gputransfer
      * 
@@ -495,7 +524,7 @@ struct ghost_densemat
     /**
      * Documented in ghost_densemat_init_rand()
      */
-    ghost_error (*fromRand) (ghost_densemat *vec);
+    //ghost_error (*fromRand) (ghost_densemat *vec);
     /**
      * Documented in ghost_densemat_init_real()
      */
@@ -527,7 +556,7 @@ struct ghost_densemat
     /**
      * Documented in ghost_densemat_init_val()
      */
-    ghost_error (*fromScalar) (ghost_densemat *vec, void *val);
+    //ghost_error (*fromScalar) (ghost_densemat *vec, void *val);
     /**
      * @brief Initialize a halo communication data structure.
      *
@@ -563,7 +592,7 @@ struct ghost_densemat
     /**
      * Documented in ghost_normalize()
      */
-    ghost_error (*normalize) (ghost_densemat *vec, ghost_mpi_comm mpicomm);
+    //ghost_error (*normalize) (ghost_densemat *vec, ghost_mpi_comm mpicomm);
     /**
      * @brief Compute the norm of a densemat: sum_i [conj(vec_i) * vec_i]^pow
      *
@@ -592,7 +621,7 @@ struct ghost_densemat
     /**
      * Documented in ghost_scale()
      */
-    ghost_error (*scale) (ghost_densemat *vec, void *scale);
+    //ghost_error (*scale) (ghost_densemat *vec, void *scale);
     /**
      * @brief Write a densemat to a file.
      *
@@ -644,21 +673,21 @@ struct ghost_densemat
     /**
      * Documented in ghost_vscale()
      */
-    ghost_error (*vscale) (ghost_densemat *, void *);
+    //ghost_error (*vscale) (ghost_densemat *, void *);
     /**
      * Documented in ghost_vaxpy()
      */
-    ghost_error (*vaxpy) (ghost_densemat *, ghost_densemat *, void *);
+    //ghost_error (*vaxpy) (ghost_densemat *, ghost_densemat *, void *);
     /**
      * Documented in ghost_vaxpby()
      */
-    ghost_error (*vaxpby) (ghost_densemat *, ghost_densemat *, void *, 
-            void *);
+    //ghost_error (*vaxpby) (ghost_densemat *, ghost_densemat *, void *, 
+    //        void *);
     /**
      * Documented in ghost_vaxpbypcz()
      */
-    ghost_error (*vaxpbypcz) (ghost_densemat *, ghost_densemat *, void *, 
-            void *, ghost_densemat *, void *);
+    //ghost_error (*vaxpbypcz) (ghost_densemat *, ghost_densemat *, void *, 
+    //        void *, ghost_densemat *, void *);
 };
 
 #ifdef __cplusplus
@@ -810,6 +839,26 @@ extern "C" {
      *  currently setting the GHOST_DENSEMAT_PERMUTED flag)
      */ 
     ghost_error switch_permutation_method( ghost_densemat **vec, ghost_context *ctx, bool isPermuted); 
+    
+    int ghost_idx_of_densemat_storage(ghost_densemat_storage s); 
+    
+    /**
+     * @ingroup denseinit
+     * @brief Initializes a densemat from random values.
+     * @param x The densemat.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error ghost_densemat_init_rand(ghost_densemat *x);
+    
+    /**
+     * @ingroup denseinit
+     * @brief Initializes a densemat from a scalar value.
+     * @param x The densemat.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error ghost_densemat_init_val(ghost_densemat *x, void *v);
+
+    ghost_error ghost_densemat_malloc(ghost_densemat *x, int *needInit);
 
 #ifdef __cplusplus
 }

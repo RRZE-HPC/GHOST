@@ -298,7 +298,7 @@ static ghost_error FUNCNAME(viewScatteredVec(ghost_densemat *src, ghost_densemat
     return GHOST_SUCCESS;
 }
 
-static ghost_error FUNCNAME(axpy(ghost_densemat *vec, ghost_densemat *vec2, void *scale))
+ghost_error FUNCNAME(axpy(ghost_densemat *vec, ghost_densemat *vec2, void *scale))
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error ret = GHOST_SUCCESS;
@@ -311,7 +311,7 @@ static ghost_error FUNCNAME(axpy(ghost_densemat *vec, ghost_densemat *vec2, void
         memcpy(&s[i*vec->elSize],scale,vec->elSize);
     }
 
-    ret = vec->vaxpy(vec,vec2,s);
+    ret = ghost_vaxpy(vec,vec2,s);
 
     goto out;
 err:
@@ -322,7 +322,7 @@ out:
     return ret;
 }
 
-static ghost_error FUNCNAME(axpby(ghost_densemat *vec, ghost_densemat *vec2, void *scale, void *_b))
+ghost_error FUNCNAME(axpby(ghost_densemat *vec, ghost_densemat *vec2, void *scale, void *_b))
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error ret = GHOST_SUCCESS;
@@ -338,7 +338,7 @@ static ghost_error FUNCNAME(axpby(ghost_densemat *vec, ghost_densemat *vec2, voi
         memcpy(&b[i*vec->elSize],_b,vec->elSize);
     }
 
-    ret = vec->vaxpby(vec,vec2,s,b);
+    ret = ghost_vaxpby(vec,vec2,s,b);
 
     goto out;
 err:
@@ -350,7 +350,7 @@ out:
     return ret;
 }
 
-static ghost_error FUNCNAME(axpbypcz(ghost_densemat *vec, ghost_densemat *vec2, void *scale, void *_b, ghost_densemat *vec3, void *_c))
+ghost_error FUNCNAME(axpbypcz(ghost_densemat *vec, ghost_densemat *vec2, void *scale, void *_b, ghost_densemat *vec3, void *_c))
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error ret = GHOST_SUCCESS;
@@ -369,7 +369,7 @@ static ghost_error FUNCNAME(axpbypcz(ghost_densemat *vec, ghost_densemat *vec2, 
         memcpy(&c[i*vec->elSize],_c,vec->elSize);
     }
 
-    ret = vec->vaxpbypcz(vec,vec2,s,b,vec3,c);
+    ret = ghost_vaxpbypcz(vec,vec2,s,b,vec3,c);
 
     goto out;
 err:
@@ -381,7 +381,7 @@ out:
     return ret;
 }
 
-static ghost_error FUNCNAME(scale(ghost_densemat *vec, void *scale))
+ghost_error FUNCNAME(scale(ghost_densemat *vec, void *scale))
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error ret = GHOST_SUCCESS;
@@ -394,7 +394,7 @@ static ghost_error FUNCNAME(scale(ghost_densemat *vec, void *scale))
         memcpy(&s[i*vec->elSize],scale,vec->elSize);
     }
 
-    ret = vec->vscale(vec,s);
+    ret = ghost_vscale(vec,s);
 
     goto out;
 err:

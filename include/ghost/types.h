@@ -282,7 +282,15 @@ typedef enum {
 }
 ghost_location;
 
+
+#define GHOST_HOST_IDX 0
+#define GHOST_DEVICE_IDX 1
+
+
 #ifdef __cplusplus
+inline ghost_location operator&(const ghost_location &a, const ghost_location &b) {
+    return static_cast<ghost_location>(static_cast<int>(a) & static_cast<int>(b));
+}
 inline ghost_location operator|(const ghost_location &a, const ghost_location &b) {
     return static_cast<ghost_location>(static_cast<int>(a) | static_cast<int>(b));
 }
@@ -577,6 +585,8 @@ extern "C" {
     ghost_error ghost_mpi_datatype_get(ghost_mpi_datatype *dt, ghost_datatype datatype);
     ghost_error ghost_mpi_datatypes_create();
     ghost_error ghost_mpi_datatypes_destroy();
+
+    int ghost_idx_of_location(ghost_location l); 
 
 #ifdef __cplusplus
 }
