@@ -471,7 +471,7 @@ extern "C" ghost_error ghost_sell_spmv_selector(ghost_densemat *lhs,
             for (p.impl = opt_impl; (int)p.impl >= GHOST_IMPLEMENTATION_PLAIN; p.impl  = (ghost_implementation)((int)p.impl-1)) {
 #ifdef GHOST_BUILD_MIC
                 // TODO iterate only over possible implementations
-                if (p.impl != GHOST_IMPLEMENATION_MIC && p.impl != GHOST_IMPLEMENTATION_PLAIN) {
+                if (p.impl != GHOST_IMPLEMENTATION_MIC && p.impl != GHOST_IMPLEMENTATION_PLAIN) {
                     continue;
                 }
 #endif
