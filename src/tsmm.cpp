@@ -148,7 +148,7 @@ ghost_error ghost_tsmm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w_i
     // possible implementations
     std::vector<ghost_implementation> try_impl;
 #ifdef GHOST_HAVE_CUDA
-    if (x->traits.location & GHOST_LOCATION_DEVICE) {
+    if (x->traits.location & GHOST_LOCATION_DEVICE && x->traits.compute_at != GHOST_LOCATION_HOST) {
         try_impl.push_back(GHOST_IMPLEMENTATION_CUDA);
     } else {
 #endif
@@ -195,7 +195,7 @@ ghost_error ghost_tsmm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w_i
     }
 
 #ifdef GHOST_HAVE_CUDA
-    if (x->traits.location & GHOST_LOCATION_DEVICE) {
+    if (x->traits.location & GHOST_LOCATION_DEVICE && x->traits.compute_at != GHOST_LOCATION_HOST) {
         try_dt[0] = GHOST_DT_ANY;
         opt_align = GHOST_UNALIGNED;
     }

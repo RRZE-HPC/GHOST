@@ -217,8 +217,9 @@ ghost_densemat *w_in, const char *transw_in, void *alpha, void *beta, int reduce
         printf("\nv\n%s\n%s\nw\n%s\n%s\nx\n%s\n%s\n\n",vstr,vvstr,wstr,wvstr,xstr,xvstr);
         WARNING_LOG("GEMM %dx%d * %dx%d = %dx%d",*m,*k,*k,*n,*m,*n);
         WARNING_LOG("%s %s",transv,transw);*/
-    if (((v->traits.location & w->traits.location) & x->traits.location) & GHOST_LOCATION_DEVICE) {
+    if (((v->traits.location & w->traits.location) & x->traits.location) & GHOST_LOCATION_DEVICE && x->traits.compute_at != GHOST_LOCATION_HOST) {
 #ifdef GHOST_HAVE_CUDA
+        INFO_LOG("Calling CUBLAS GEMM");
         cublasHandle_t ghost_cublas_handle;
         ghost_blas_idx culdv,culdw,culdx;
         
@@ -372,6 +373,7 @@ ghost_densemat *w_in, const char *transw_in, void *alpha, void *beta, int reduce
     } else
     if ((v->traits.location == w->traits.location) && (v->traits.location ==  x->traits.location) && 
             (v->traits.location & GHOST_LOCATION_HOST)) {
+        INFO_LOG("Calling BLAS GEMM");
         // BLAS cannot handle different storage layouts at once:
         if( x->traits.storage != v->traits.storage )
         {
