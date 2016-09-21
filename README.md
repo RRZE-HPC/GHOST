@@ -49,7 +49,7 @@ you can decide to enable (some of) the following optional dependencies:
 # Documentation #
 ---
 
-The main point of documentation is located in the Doxygen pages: [mkreutzer.bitbucket.org/ghost_doc/](http://mkreutzer.bitbucket.org/ghost_doc/).
+The main point of documentation is located in the Doxygen pages: [https://mkreutzer.bitbucket.io/ghost_doc/](https://mkreutzer.bitbucket.io/ghost_doc/).
 
 Our preprint available at the arXiv describes a lot of the concepts of GHOST: [arxiv.org/abs/1507.08101](http://arxiv.org/abs/1507.08101).
 

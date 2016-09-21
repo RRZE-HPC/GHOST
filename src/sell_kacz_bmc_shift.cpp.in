@@ -18,8 +18,12 @@
 #GHOST_SUBST CHUNKHEIGHT ${CHUNKHEIGHT}
 
 //Fix for gcc compile error
+#ifdef __GNUC__
+#ifndef __INTEL_COMPILER
 #define _mm256_set_m128d(va, vb) \
 _mm256_insertf128_pd(_mm256_castpd128_pd256(vb), va, 1)
+#endif
+#endif
 
 //AVX
 #define complex_mul(a,b) _mm256_addsub_pd(_mm256_mul_pd(_mm256_shuffle_pd(b,b,0),a),_mm256_mul_pd(_mm256_shuffle_pd(b,b,0xF),_mm256_shuffle_pd(a,a,5)))
@@ -191,7 +195,7 @@ for (ghost_lidx row=start; row>end; --row) { \
 
 #endif
 
-#if (NSHIFTS%2==0 && CHUNKHEIGHT==1) 
+#if defined(GHOST_BUILD_AVX) && (NSHIFTS%2==0 && CHUNKHEIGHT==1) 
 
 #define FORWARD_SHIFT_LOOP(start,end,MT,VT) \
 _Pragma("omp parallel for") \
@@ -323,7 +327,7 @@ for (ghost_lidx row=start; row>end; --row){ \
 }
 
 
-#elif (NVECS%2==0 && CHUNKHEIGHT==1) 
+#elif defined(GHOST_BUILD_AVX) && (NVECS%2==0 && CHUNKHEIGHT==1) 
 
 #define FORWARD_SHIFT_LOOP(start,end,MT,VT) \
 _Pragma("omp parallel for") \
