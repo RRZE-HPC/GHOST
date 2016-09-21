@@ -38,5 +38,4 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *c
 
 int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *col, void *val, void *arg);
 
-ghost_error ghost_sparsemat_to_mm(char *path, ghost_sparsemat *mat);
 #endif

@@ -36,12 +36,9 @@ const ghost_sparsemat_traits GHOST_SPARSEMAT_TRAITS_INITIALIZER = {
     .opt_blockvec_width = 0
 };
 
-static const char * SELL_formatName(ghost_sparsemat *mat);
-static size_t SELL_byteSize (ghost_sparsemat *mat);
-static ghost_error SELL_split(ghost_sparsemat *mat);
-static ghost_error SELL_upload(ghost_sparsemat *mat);
-static ghost_error SELL_toBinCRS(ghost_sparsemat *mat, char *matrixPath);
-static ghost_error SELL_fromRowFunc(ghost_sparsemat *mat, ghost_sparsemat_src_rowfunc *src);
+static const char * ghost_sparsemat_formatName(ghost_sparsemat *mat);
+static ghost_error ghost_sparsemat_split(ghost_sparsemat *mat);
+static ghost_error ghost_sparsemat_upload(ghost_sparsemat *mat);
 
 const ghost_spmv_opts GHOST_SPMV_OPTS_INITIALIZER = {
     .flags = GHOST_SPMV_DEFAULT,
@@ -79,11 +76,6 @@ ghost_error ghost_sparsemat_create(ghost_sparsemat ** mat, ghost_context *contex
     (*mat)->name = "Sparse matrix";
     (*mat)->col_orig = NULL;
     (*mat)->nzDist = NULL;
-    (*mat)->fromFile = &ghost_sparsemat_from_bincrs;
-    (*mat)->fromMM = &ghost_sparsemat_from_mm;
-    (*mat)->fromCRS = &ghost_sparsemat_from_crs;
-    (*mat)->formatName = NULL;
-    (*mat)->upload = NULL;
     (*mat)->bandwidth = 0;
     (*mat)->lowerBandwidth = 0;
     (*mat)->upperBandwidth = 0;
@@ -118,10 +110,9 @@ ghost_error ghost_sparsemat_create(ghost_sparsemat ** mat, ghost_context *contex
     #endif
     
     // Note: Datatpye check and elSize computation moved to creation
-    // functions ghost_sparsemat_from_* and SELL_fromRowFunc.
+    // functions ghost_sparsemat_init_*
     (*mat)->elSize = 0;
     
-    DEBUG_LOG(1,"Setting functions for SELL matrix");
     if (!((*mat)->traits.flags & (GHOST_SPARSEMAT_HOST | GHOST_SPARSEMAT_DEVICE)))
     { // no placement specified
         DEBUG_LOG(2,"Setting matrix placement");
@@ -136,21 +127,21 @@ ghost_error ghost_sparsemat_create(ghost_sparsemat ** mat, ghost_context *contex
     ghost_type ghost_type;
     GHOST_CALL_RETURN(ghost_type_get(&ghost_type));
     
-    (*mat)->upload = &SELL_upload;
-    (*mat)->toFile = &SELL_toBinCRS;
-    (*mat)->fromRowFunc = &SELL_fromRowFunc;
-    (*mat)->formatName = &SELL_formatName;
-    (*mat)->byteSize   = &SELL_byteSize;
-    (*mat)->spmv     = &ghost_sell_spmv_selector;
-    (*mat)->kacz     = &ghost_sell_kacz_selector;
-    (*mat)->kacz_shift   = &ghost_sell_kacz_shift_selector;
-    (*mat)->string    = &ghost_sell_stringify_selector;
-    (*mat)->split = &SELL_split;
-    #ifdef GHOST_HAVE_CUDA
-    if ((ghost_type == GHOST_TYPE_CUDA) && ((*mat)->traits.flags & GHOST_SPARSEMAT_DEVICE)) {
-        (*mat)->spmv   = &ghost_cu_sell_spmv_selector;
-    }
-    #endif
+    //(*mat)->upload = &ghost_sparsemat_upload;
+    //(*mat)->toFile = &SELL_toBinCRS;
+    //(*mat)->fromRowFunc = &SELL_fromRowFunc;
+    //(*mat)->formatName = &SELL_formatName;
+    //(*mat)->byteSize   = &SELL_byteSize;
+    //(*mat)->spmv     = &ghost_sell_spmv_selector;
+    //(*mat)->kacz     = &ghost_sell_kacz_selector;
+    //(*mat)->kacz_shift   = &ghost_sell_kacz_shift_selector;
+    //(*mat)->string    = &ghost_sell_stringify_selector;
+    //(*mat)->split = &ghost_sparsemat_split;
+    //#ifdef GHOST_HAVE_CUDA
+    //if ((ghost_type == GHOST_TYPE_CUDA) && ((*mat)->traits.flags & GHOST_SPARSEMAT_DEVICE)) {
+    //    (*mat)->spmv   = &ghost_cu_sell_spmv_selector;
+    //}
+    //#endif
     
     (*mat)->val = NULL;
     (*mat)->col = NULL;
@@ -1350,18 +1341,18 @@ ghost_error ghost_sparsemat_info_string(char **str, ghost_sparsemat *mat)
     ghost_line_string(str,"Local number of rows (padded)",NULL,"%"PRLIDX,mat->nrowsPadded);
     ghost_line_string(str,"Local number of nonzeros",NULL,"%"PRLIDX,mat->nnz);
     
-    ghost_line_string(str,"Full   matrix format",NULL,"%s",mat->formatName(mat));
+    ghost_line_string(str,"Full   matrix format",NULL,"%s",ghost_sparsemat_formatName(mat));
     if (mat->localPart) {
-        ghost_line_string(str,"Local  matrix format",NULL,"%s",mat->localPart->formatName(mat->localPart));
+        ghost_line_string(str,"Local  matrix format",NULL,"%s",ghost_sparsemat_formatName(mat->localPart));
         ghost_line_string(str,"Local  matrix symmetry",NULL,"%s",ghost_sparsemat_symmetry_string(mat->localPart->traits.symmetry));
-        ghost_line_string(str,"Local  matrix size","MB","%u",mat->localPart->byteSize(mat->localPart)/(1024*1024));
+        ghost_line_string(str,"Local  matrix size","MB","%u",ghost_sparsemat_bytesize(mat->localPart)/(1024*1024));
     }
     if (mat->remotePart) {
-        ghost_line_string(str,"Remote matrix format",NULL,"%s",mat->remotePart->formatName(mat->remotePart));
-        ghost_line_string(str,"Remote matrix size","MB","%u",mat->remotePart->byteSize(mat->remotePart)/(1024*1024));
+        ghost_line_string(str,"Remote matrix format",NULL,"%s",ghost_sparsemat_formatName(mat->remotePart));
+        ghost_line_string(str,"Remote matrix size","MB","%u",ghost_sparsemat_bytesize(mat->remotePart)/(1024*1024));
     }
     
-    ghost_line_string(str,"Full   matrix size","MB","%u",mat->byteSize(mat)/(1024*1024));
+    ghost_line_string(str,"Full   matrix size","MB","%u",ghost_sparsemat_bytesize(mat)/(1024*1024));
     
     if (mat->traits.flags & GHOST_SPARSEMAT_PERMUTE) {
         ghost_line_string(str,"Permuted",NULL,"Yes");
@@ -1575,7 +1566,7 @@ void ghost_sparsemat_destroy(ghost_sparsemat *mat)
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TEARDOWN);
 }
 
-ghost_error ghost_sparsemat_from_bincrs(ghost_sparsemat *mat, char *path)
+ghost_error ghost_sparsemat_init_bin(ghost_sparsemat *mat, char *path)
 {
     PERFWARNING_LOG("The current implementation of binCRS read-in is "
     "inefficient in terms of memory consumption!");
@@ -1611,7 +1602,7 @@ ghost_error ghost_sparsemat_from_bincrs(ghost_sparsemat *mat, char *path)
     
     src.maxrowlen = dim[1];
     
-    GHOST_CALL_GOTO(mat->fromRowFunc(mat,&src),err,ret);
+    GHOST_CALL_GOTO(ghost_sparsemat_init_rowfunc(mat,&src),err,ret);
     
     if (src.func(GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_FINALIZE,NULL,NULL,NULL,src.arg)) {
         ERROR_LOG("Error in matrix creation function");
@@ -1628,7 +1619,7 @@ ghost_error ghost_sparsemat_from_bincrs(ghost_sparsemat *mat, char *path)
     
 }
 
-ghost_error ghost_sparsemat_from_mm(ghost_sparsemat *mat, char *path)
+ghost_error ghost_sparsemat_init_mm(ghost_sparsemat *mat, char *path)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION|GHOST_FUNCTYPE_IO);
     
@@ -1668,7 +1659,7 @@ ghost_error ghost_sparsemat_from_mm(ghost_sparsemat *mat, char *path)
     
     src.maxrowlen = dim[1];
     
-    GHOST_CALL_GOTO(mat->fromRowFunc(mat,&src),err,ret);
+    GHOST_CALL_GOTO(ghost_sparsemat_init_rowfunc(mat,&src),err,ret);
     if (src.func(GHOST_SPARSEMAT_ROWFUNC_MM_ROW_FINALIZE,NULL,NULL,NULL,src.arg)) {
         ERROR_LOG("Error in matrix creation function");
         ret = GHOST_ERR_UNKNOWN;
@@ -1690,7 +1681,7 @@ ghost_error ghost_sparsemat_from_mm(ghost_sparsemat *mat, char *path)
 
 extern inline int ghost_sparsemat_rowfunc_crs(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *col, void *val, void *arg);
 
-ghost_error ghost_sparsemat_from_crs(ghost_sparsemat *mat, ghost_gidx offs, ghost_lidx n, ghost_gidx *col, void *val, ghost_lidx *rpt)
+ghost_error ghost_sparsemat_init_crs(ghost_sparsemat *mat, ghost_gidx offs, ghost_lidx n, ghost_gidx *col, void *val, ghost_lidx *rpt)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     
@@ -1712,7 +1703,7 @@ ghost_error ghost_sparsemat_from_crs(ghost_sparsemat *mat, ghost_gidx offs, ghos
     src.arg = &args;
     src.maxrowlen = n;
     
-    GHOST_CALL_GOTO(mat->fromRowFunc(mat,&src),err,ret);
+    GHOST_CALL_GOTO(ghost_sparsemat_init_rowfunc(mat,&src),err,ret);
     
     goto out;
     err:
@@ -1723,7 +1714,7 @@ ghost_error ghost_sparsemat_from_crs(ghost_sparsemat *mat, ghost_gidx offs, ghos
     
 }
 
-static const char * SELL_formatName(ghost_sparsemat *mat)
+static const char * ghost_sparsemat_formatName(ghost_sparsemat *mat)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
@@ -1732,7 +1723,7 @@ static const char * SELL_formatName(ghost_sparsemat *mat)
     return "SELL";
 }
 
-static size_t SELL_byteSize (ghost_sparsemat *mat)
+size_t ghost_sparsemat_bytesize (ghost_sparsemat *mat)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
@@ -1769,7 +1760,7 @@ static inline int ghost_sparsemat_rowfunc_after_split_func(ghost_gidx row, ghost
     for(int i =0; i<(*rowlen); ++i) {
         ghost_gidx curr_col = (ghost_gidx) data_col[data_chunk_ptr[(row-offs)/C] + (row-offs)%C + C*i];
         col[i] = curr_col; 
-        for(int t=0; t<dtsize; ++t) {
+        for(size_t t=0; t<dtsize; ++t) {
             ((char*)val)[dtsize*i+t] = (char) data_val[(data_chunk_ptr[(row-offs)/C] + (row-offs)%C + C*i)*dtsize + t];
         }
         
@@ -1930,7 +1921,7 @@ ghost_error initHaloAvg(ghost_sparsemat *mat)
     return ret;        
 }
 
-static ghost_error SELL_fromRowFunc(ghost_sparsemat *mat, ghost_sparsemat_src_rowfunc *src)
+ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_src_rowfunc *src)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     ghost_error ret = GHOST_SUCCESS;
@@ -1968,7 +1959,7 @@ static ghost_error SELL_fromRowFunc(ghost_sparsemat *mat, ghost_sparsemat_src_ro
             goto err;
         }
         
-        GHOST_CALL_GOTO(mat->split(mat),err,ret);
+        GHOST_CALL_GOTO(ghost_sparsemat_split(mat),err,ret);
         
         //copy all values since the values will be modified in next call
         ghost_lidx *sell_col;
@@ -2061,7 +2052,7 @@ static ghost_error SELL_fromRowFunc(ghost_sparsemat *mat, ghost_sparsemat_src_ro
         if (ret != GHOST_SUCCESS) {
             goto err;
         }
-        GHOST_CALL_GOTO(mat->split(mat),err,ret);
+        GHOST_CALL_GOTO(ghost_sparsemat_split(mat),err,ret);
     }
     
     if(mat->traits.flags & GHOST_SOLVER_KACZ) {
@@ -2081,7 +2072,7 @@ static ghost_error SELL_fromRowFunc(ghost_sparsemat *mat, ghost_sparsemat_src_ro
     
     #ifdef GHOST_HAVE_CUDA
     if (!(mat->traits.flags & GHOST_SPARSEMAT_HOST))
-        mat->upload(mat);
+        ghost_sparsemat_upload(mat);
     #endif
     
     goto out;
@@ -2103,7 +2094,7 @@ static ghost_error SELL_fromRowFunc(ghost_sparsemat *mat, ghost_sparsemat_src_ro
     
 }
 
-static ghost_error SELL_split(ghost_sparsemat *mat)
+static ghost_error ghost_sparsemat_split(ghost_sparsemat *mat)
 {
     
     if (!mat) {
@@ -2340,8 +2331,8 @@ static ghost_error SELL_split(ghost_sparsemat *mat)
         
         #ifdef GHOST_HAVE_CUDA
         if (!(mat->traits.flags & GHOST_SPARSEMAT_HOST)) {
-            mat->localPart->upload(mat->localPart);
-            mat->remotePart->upload(mat->remotePart);
+            ghost_sparsemat_upload(mat->localPart);
+            ghost_sparsemat_upload(mat->remotePart);
         }
         #endif
         GHOST_INSTR_STOP("split");
@@ -2357,7 +2348,7 @@ static ghost_error SELL_split(ghost_sparsemat *mat)
     return ret;
 }
 
-static ghost_error SELL_toBinCRS(ghost_sparsemat *mat, char *matrixPath)
+ghost_error ghost_sparsemat_to_bin(ghost_sparsemat *mat, char *matrixPath)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_IO);
     UNUSED(mat);
@@ -2369,7 +2360,7 @@ static ghost_error SELL_toBinCRS(ghost_sparsemat *mat, char *matrixPath)
     return GHOST_ERR_NOT_IMPLEMENTED;
 }
 
-static ghost_error SELL_upload(ghost_sparsemat* mat) 
+static ghost_error ghost_sparsemat_upload(ghost_sparsemat* mat) 
 {
     #ifdef GHOST_HAVE_CUDA
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);

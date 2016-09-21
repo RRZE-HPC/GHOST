@@ -431,7 +431,7 @@ struct ghost_sparsemat_traits {
     /**
      * @brief The sorting scope if sorting should be applied.
      */
-    ghost_gidx sortScope;
+    ghost_lidx sortScope;
     /**
      * @brief The data type.
      */
@@ -699,7 +699,7 @@ struct ghost_sparsemat
      /**
      * Documented in ghost_sparsemat_string()
      */
-    ghost_error (*string) (ghost_sparsemat *mat, char **str, int dense);
+    //ghost_error (*string) (ghost_sparsemat *mat, char **str, int dense);
     /**
      * @ingroup stringification
      *
@@ -709,52 +709,36 @@ struct ghost_sparsemat
      *
      * @return A string containing the storage format name. 
      */
-    const char *  (*formatName) (ghost_sparsemat *mat);
+    //const char *  (*formatName) (ghost_sparsemat *mat);
     /**
      * Documented in ghost_sparsemat_init_bin() 
      */
-    ghost_error (*fromFile)(ghost_sparsemat *mat, char *path);
+    //ghost_error (*fromFile)(ghost_sparsemat *mat, char *path);
     /**
      * Documented in ghost_sparsemat_init_mm()
      */
-    ghost_error (*fromMM)(ghost_sparsemat *mat, char *path);
+    //ghost_error (*fromMM)(ghost_sparsemat *mat, char *path);
     /**
      * Documented in ghost_sparsemat_init_crs()
      */
-    ghost_error (*fromCRS)(ghost_sparsemat *mat, ghost_gidx offs, ghost_lidx n, ghost_gidx *col, void *val, ghost_lidx *rpt);
+    //ghost_error (*fromCRS)(ghost_sparsemat *mat, ghost_gidx offs, ghost_lidx n, ghost_gidx *col, void *val, ghost_lidx *rpt);
     /**
      * Documented in ghost_sparsemat_init_rowfunc() 
      */
-    ghost_error (*fromRowFunc)(ghost_sparsemat *, 
-            ghost_sparsemat_src_rowfunc *src);
-    /**
-     * @brief Write a matrix to a binary CRS file.
-     *
-     * @param mat The matrix. 
-     * @param path Path of the file.
-     */
-    ghost_error (*toFile)(ghost_sparsemat *mat, char *path);
+    //ghost_error (*fromRowFunc)(ghost_sparsemat *, 
+    //        ghost_sparsemat_src_rowfunc *src);
     /**
      * @brief Upload the matrix to the CUDA device.
      *
      * @param mat The matrix.
      */
-    ghost_error (*upload)(ghost_sparsemat * mat);
-    /**
-     * @brief Get the entire memory footprint of the matrix.
-     *
-     * @param mat The matrix.
-     *
-     * @return The memory footprint of the matrix in bytes or zero if the 
-     * matrix is not valid.
-     */
-    size_t     (*byteSize)(ghost_sparsemat *mat);
+    //ghost_error (*upload)(ghost_sparsemat * mat);
     /**
      * @brief Split the matrix into a local and a remote part.
      *
      * @param mat The matrix.
      */
-    ghost_error       (*split)(ghost_sparsemat *mat);
+    //ghost_error       (*split)(ghost_sparsemat *mat);
 };
 
 
@@ -985,6 +969,93 @@ extern "C" {
      */
     ghost_error ghost_sell_stringify_selector(ghost_sparsemat *mat, 
             char **str, int dense);
+    /**
+     * @ingroup stringification
+     * @brief Creates a string of the sparsemat's contents.
+     * @param mat The matrix.
+     * @param str Where to store the string.
+     * @param dense If 0, only the elements stored in the sparse matrix will 
+     * be included. If 1, the matrix will be interpreted as a dense matrix.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     *
+     * The string has to be freed by the caller.
+     */
+    ghost_error ghost_sparsemat_string(char **str, ghost_sparsemat *mat, int dense);
+    /**
+     * @ingroup sparseinit
+     * @brief Initializes a sparsemat from a row-based callback function.
+     * @param mat The matrix.
+     * @param src The source.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     * 
+     * Requires the matrix to have a valid and compatible datatype.
+     */
+    ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_src_rowfunc *src);
+
+    /**
+     * @ingroup sparseinit
+     * @brief Initializes a sparsemat from a binary CRS file.
+     * @param mat The matrix.
+     * @param src The source file.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     * 
+     * Allows the matrix' datatype to be @c GHOST_DT_NONE. In this case the
+     * datatype for the matrix is read from file. Otherwise the matrix 
+     * datatype has to be valid and compatible.
+     */
+    ghost_error ghost_sparsemat_init_bin(ghost_sparsemat *mat, char *path);
+
+    /**
+     * @ingroup sparseinit
+     * @brief Initializes a sparsemat from a Matrix Market file.
+     * @param mat The matrix.
+     * @param src The source file.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     * 
+     * Allows the matrix' datatype to be @c GHOST_DT_NONE or one of the
+     * incomplete datatypes @c GHOST_DT_FLOAT and @c GHOST_DT_DOUBLE. 
+     * If the matrix' datatype on entry is @c GHOST_DT_FLOAT or @c GHOST_DT_DOUBLE,
+     * the file will be interpreted either in single or double precision, 
+     * respectively. In this case, the datatype will be completed with
+     * @c GHOST_DT_REAL or @c GHOST_DT_COMPLEX as specified in the input file.
+     * If the matrix' datatype on entry is @c GHOST_DT_NONE, @c GHOST_DT_DOUBLE
+     * is assumed.
+     * Otherwise the matrix datatype has to be valid and compatible.
+     */
+    ghost_error ghost_sparsemat_init_mm(ghost_sparsemat *mat, char *path);
+
+    /**
+     * @ingroup sparseinit
+     * @brief Initializes a sparsemat from local CRS data.
+     * @param mat The matrix.
+     * @param offs The global index of this rank's first row.
+     * @param n The local number of rows.
+     * @param col The (global) column indices.
+     * @param val The values.
+     * @param rpt The row pointers.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     * 
+     * Requires the matrix to have a valid and compatible datatype.
+     */
+    ghost_error ghost_sparsemat_init_crs(ghost_sparsemat *mat, ghost_gidx offs, ghost_lidx n, ghost_gidx *col, void *val, ghost_lidx *rpt);
+    
+    /**
+     * @brief Write a matrix to a binary CRS file.
+     *
+     * @param mat The matrix. 
+     * @param path Path of the file.
+     */
+    ghost_error ghost_sparsemat_to_bin(ghost_sparsemat *mat, char *path);
+    
+    /**
+     * @brief Get the entire memory footprint of the matrix.
+     *
+     * @param mat The matrix.
+     *
+     * @return The memory footprint of the matrix in bytes or zero if the 
+     * matrix is not valid.
+     */
+    size_t ghost_sparsemat_bytesize(ghost_sparsemat *mat);
     
     /**
      * @brief Select and call the right CUDA SELL SpMV kernel. 
@@ -1072,13 +1143,7 @@ extern "C" {
      */ 
     ghost_error kacz_analyze_print(ghost_sparsemat *mat);
     
-    /**
-    * @brief Writes a matrix to file 
-    *
-    *@param A sparse matrix to write
-    *@param name Name of file 
-   */                
-    ghost_error sparsemat_write(ghost_sparsemat *A, char *name);
+    ghost_error ghost_sparsemat_to_mm(char *path, ghost_sparsemat *mat);
 
     /**
      * @brief Assemble communication information in the given context.

@@ -127,12 +127,14 @@ ghost_error ghost_kacz_rb(ghost_densemat *x, ghost_sparsemat *mat, ghost_densema
         
         for (ghost_lidx j=0; j<mat->rowLen[row]; ++j) {
                  scal += (double)mval[idx] * xval[mat->col[idx]];
-                if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)
+                if(opts.normalize==GHOST_KACZ_NORMALIZE_NO) {
                  rownorm += mval[idx]*mval[idx]; 
+                }
                  idx += 1;
           }
-        if(opts.normalize==GHOST_KACZ_NORMALIZE_NO) 
+        if(opts.normalize==GHOST_KACZ_NORMALIZE_NO) {
           scal /= (double)rownorm;
+        }
          scal *= omega;
 
 	idx -= mat->rowLen[row];
@@ -179,13 +181,15 @@ ghost_error ghost_kacz_rb(ghost_densemat *x, ghost_sparsemat *mat, ghost_densema
  
          for (ghost_lidx j=0; j<mat->rowLen[row]; ++j) {
                  scal += (double)mval[idx] * xval[mat->col[idx]];
-                if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)
+                if(opts.normalize==GHOST_KACZ_NORMALIZE_NO) {
                  rownorm += mval[idx]*mval[idx];
+                }
                  idx += 1;
           }
    
-        if(opts.normalize==GHOST_KACZ_NORMALIZE_NO) 
+        if(opts.normalize==GHOST_KACZ_NORMALIZE_NO) {
          scal /= (double)rownorm;
+        }
         scal *= omega;
 	
  	idx -= mat->rowLen[row];
@@ -306,8 +310,9 @@ ghost_error ghost_kacz_rb_with_shift(ghost_densemat *x, ghost_sparsemat *mat, gh
         
         for (ghost_lidx j=0; j<mat->rowLen[row]; ++j) {
                  scal += (double)mval[idx] * xval[mat->col[idx]];
-                if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)
+                if(opts.normalize==GHOST_KACZ_NORMALIZE_NO) {
                  rownorm += mval[idx]*mval[idx]; 
+                }
                  idx += 1;
           }
         scal -= (*shift_r) * xval[row];
@@ -348,8 +353,9 @@ ghost_error ghost_kacz_rb_with_shift(ghost_densemat *x, ghost_sparsemat *mat, gh
  
          for (ghost_lidx j=0; j<mat->rowLen[row]; ++j) {
                  scal += (double)mval[idx] * xval[mat->col[idx]];
-                if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)
+                if(opts.normalize==GHOST_KACZ_NORMALIZE_NO) {
                  rownorm += mval[idx]*mval[idx];
+                }
                  idx += 1;
           }
         scal -= (*shift_r) * xval[row];  

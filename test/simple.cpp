@@ -111,7 +111,7 @@ int main(int argc, char **argv) {
         // create sparsemat with traits and set according source function
         GHOST_TEST_CALL(ghost_context_create(&ctx,N,N,GHOST_CONTEXT_DEFAULT,&matsrc,GHOST_SPARSEMAT_SRC_FUNC,MPI_COMM_WORLD,1.));
         GHOST_TEST_CALL(ghost_sparsemat_create(&A, ctx, &(*mtraits_it), 1));
-        GHOST_TEST_CALL(A->fromRowFunc(A,&mat_funcs_diag[mtraits_it->datatype]));
+            GHOST_TEST_CALL(ghost_sparsemat_init_rowfunc(A,&mat_funcs_diag[mtraits_it->datatype]));
 
         for (vector<ghost_densemat_traits>::iterator vtraits_it = vtraits_vec.begin(); vtraits_it != vtraits_vec.end(); ++vtraits_it) {
             if (!ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(vtraits_it->datatype,mtraits_it->datatype)]) continue;
@@ -121,7 +121,7 @@ int main(int argc, char **argv) {
             GHOST_TEST_CALL(x->fromRand(x));
             GHOST_TEST_CALL(y->fromScalar(y,&zero));
           
-            printf("Test SpMV with %s matrix (%s) and %s vectors (%s)\n",ghost_datatype_string(A->traits.datatype),A->formatName(A),ghost_datatype_string(x->traits.datatype),ghost_densemat_storage_string(x->traits.storage));
+            printf("Test SpMV with %s matrix (SELL-%d-%d) and %s vectors (%s)\n",ghost_datatype_string(A->traits.datatype),A->traits.C,A->traits.sortScope,ghost_datatype_string(x->traits.datatype),ghost_densemat_storage_string(x->traits.storage));
             GHOST_TEST_CALL(ghost_spmv(y,A,x,GHOST_SPMV_OPTS_INITIALIZER));
 
             size_t vecdtsize;
