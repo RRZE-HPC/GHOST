@@ -469,6 +469,12 @@ extern "C" ghost_error ghost_sell_spmv_selector(ghost_densemat *lhs,
     for (pos_chunkheight = 0; pos_chunkheight < n_chunkheight; pos_chunkheight++) {  
         for (pos_blocksz = 0; pos_blocksz < n_blocksz; pos_blocksz++) {  
             for (p.impl = opt_impl; (int)p.impl >= GHOST_IMPLEMENTATION_PLAIN; p.impl  = (ghost_implementation)((int)p.impl-1)) {
+#ifdef GHOST_BUILD_MIC
+                // TODO iterate only over possible implementations
+                if (p.impl != GHOST_IMPLEMENATION_MIC && p.impl != GHOST_IMPLEMENTATION_PLAIN) {
+                    continue;
+                }
+#endif
                 /*if (p.impl == GHOST_IMPLEMENTATION_SSE && p.storage == GHOST_DENSEMAT_ROWMAJOR && try_blocksz[pos_blocksz] % 2) {
                     PERFWARNING_LOG("Remainder loops not yet implemented for SSE, fallback to plain");
                     p.impl  = (ghost_implementation)((int)p.impl-1);
