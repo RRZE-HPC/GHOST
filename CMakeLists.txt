@@ -2,8 +2,8 @@ cmake_minimum_required (VERSION 2.8)
 project (GHOST)
 
 set(GHOST_VERSION_MAJOR 1)
-set(GHOST_VERSION_MINOR 0)
-set(GHOST_VERSION_REVISION 5)
+set(GHOST_VERSION_MINOR 1)
+set(GHOST_VERSION_REVISION 0)
 set(GHOST_VERSION_IDENTIFIER)
 set(GHOST_VERSION "${GHOST_VERSION_MAJOR}.${GHOST_VERSION_MINOR}.${GHOST_VERSION_REVISION}")
 if (DEFINED GHOST_VERSION_IDENTIFIER)
@@ -97,7 +97,6 @@ set (SOURCES
     src/sparsemat_perm_zoltan.c
     src/spmv.c
     src/spmv_overlap.c 
-    src/spmv_nompi.c 
     src/spmv_task.c
     src/spmv_vector.c 
     src/task.c
@@ -114,7 +113,6 @@ set (SOURCES
     src/kacz_hybrid_split.c
     src/sell_kacz_bmc.c 
     src/sell_kacz_mc.c
-    src/sell_kacz_selector.c
     src/kacz_analyze_print.c
     src/sell_kacz_fallback.cpp 
    )

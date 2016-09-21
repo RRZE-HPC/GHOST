@@ -127,22 +127,6 @@ ghost_error ghost_sparsemat_create(ghost_sparsemat ** mat, ghost_context *contex
     ghost_type ghost_type;
     GHOST_CALL_RETURN(ghost_type_get(&ghost_type));
     
-    //(*mat)->upload = &ghost_sparsemat_upload;
-    //(*mat)->toFile = &SELL_toBinCRS;
-    //(*mat)->fromRowFunc = &SELL_fromRowFunc;
-    //(*mat)->formatName = &SELL_formatName;
-    //(*mat)->byteSize   = &SELL_byteSize;
-    //(*mat)->spmv     = &ghost_sell_spmv_selector;
-    //(*mat)->kacz     = &ghost_sell_kacz_selector;
-    //(*mat)->kacz_shift   = &ghost_sell_kacz_shift_selector;
-    //(*mat)->string    = &ghost_sell_stringify_selector;
-    //(*mat)->split = &ghost_sparsemat_split;
-    //#ifdef GHOST_HAVE_CUDA
-    //if ((ghost_type == GHOST_TYPE_CUDA) && ((*mat)->traits.flags & GHOST_SPARSEMAT_DEVICE)) {
-    //    (*mat)->spmv   = &ghost_cu_sell_spmv_selector;
-    //}
-    //#endif
-    
     (*mat)->val = NULL;
     (*mat)->col = NULL;
     (*mat)->chunkMin = NULL;

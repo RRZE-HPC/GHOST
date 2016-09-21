@@ -676,17 +676,17 @@ struct ghost_sparsemat
      * Compute a sparse matrix-vector product.
      * This function should not be called directly, see ghost_spmv().
      */
-    ghost_spmv_kernel spmv;
+    //ghost_spmv_kernel spmv;
     /**
      * Solve using Kacz kernel.
      * This function should not be called directly, see ghost_carp().
      */
-    ghost_kacz_kernel kacz;
+    //ghost_kacz_kernel kacz;
     /**
      * Solve using Kacz kernel with shift.
      * This function should not be called directly, see ghost_carp_shift().
      */
-    ghost_kacz_shift_kernel kacz_shift;
+    //ghost_kacz_shift_kernel kacz_shift;
      /**
      * Documented in ghost_sparsemat_string()
      */

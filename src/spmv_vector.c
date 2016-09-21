@@ -6,6 +6,7 @@
 #include "ghost/instr.h"
 #include "ghost/sparsemat.h"
 #include "ghost/spmv_solvers.h"
+#include "ghost/math.h"
 
 #ifdef GHOST_HAVE_MPI
 #include <mpi.h>
@@ -45,7 +46,7 @@ ghost_error ghost_spmv_vectormode(ghost_densemat* res, ghost_sparsemat* mat, gho
     GHOST_INSTR_STOP("comm");
 
     GHOST_INSTR_START("comp");
-    GHOST_CALL_GOTO(mat->spmv(res,mat,invec,traits),err,ret);    
+    GHOST_CALL_GOTO(ghost_spmv_nocomm(res,mat,invec,traits),err,ret);    
     GHOST_INSTR_STOP("comp");
 
     goto out;

@@ -6,6 +6,7 @@
 #include "ghost/instr.h"
 #include "ghost/sparsemat.h"
 #include "ghost/spmv_solvers.h"
+#include "ghost/math.h"
 
 #ifdef GHOST_HAVE_MPI
 #include <mpi.h>
@@ -42,14 +43,14 @@ ghost_error ghost_spmv_goodfaith(ghost_densemat* res, ghost_sparsemat* mat, ghos
     GHOST_CALL_RETURN(invec->halocommStart(invec,mat->context,&comm));
     
     GHOST_INSTR_START("local");
-    GHOST_CALL_GOTO(mat->localPart->spmv(res,mat->localPart,invec,localtraits),err,ret);
+    GHOST_CALL_GOTO(ghost_spmv_nocomm(res,mat->localPart,invec,localtraits),err,ret);
     GHOST_INSTR_STOP("local");
 
     GHOST_CALL_RETURN(invec->halocommFinalize(invec,mat->context,&comm));
     GHOST_INSTR_STOP("comm+localcomp");
     
     GHOST_INSTR_START("remote");
-    GHOST_CALL_GOTO(mat->remotePart->spmv(res,mat->remotePart,invec,remotetraits),err,ret);
+    GHOST_CALL_GOTO(ghost_spmv_nocomm(res,mat->remotePart,invec,remotetraits),err,ret);
     GHOST_INSTR_STOP("remote");
 
     goto out;

@@ -18,12 +18,12 @@ ghost_error ghost_spmv(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat
     } else if (traits.flags & GHOST_SPMV_MODE_TASK) {
         solver = &ghost_spmv_taskmode; 
     } else if (traits.flags & GHOST_SPMV_MODE_NOCOMM) {
-        solver = &ghost_spmv_nompi; 
+        solver = &ghost_spmv_nocomm; 
     } else {
 #ifdef GHOST_HAVE_MPI
         solver = &ghost_spmv_vectormode;
 #else
-        solver = &ghost_spmv_nompi; 
+        solver = &ghost_spmv_nocomm; 
 #endif
     }
 
@@ -115,3 +115,17 @@ ghost_error ghost_spmv(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat
 }
 
 
+ghost_error ghost_spmv_nocomm(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat *invec, ghost_spmv_opts traits)
+{
+    ghost_type ghost_type;
+    GHOST_CALL_RETURN(ghost_type_get(&ghost_type));
+
+    #ifdef GHOST_HAVE_CUDA
+    if ((ghost_type == GHOST_TYPE_CUDA) && mat->traits.flags & GHOST_SPARSEMAT_DEVICE) {
+        return ghost_cu_sell_spmv_selector(res,mat,invec,traits);
+    }
+    #endif
+
+    return ghost_sell_spmv_selector(res,mat,invec,traits);
+
+}

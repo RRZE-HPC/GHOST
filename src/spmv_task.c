@@ -10,6 +10,7 @@
 #include "ghost/instr.h"
 #include "ghost/sparsemat.h"
 #include "ghost/spmv_solvers.h"
+#include "ghost/math.h"
 
 #ifdef GHOST_HAVE_MPI
 #include <mpi.h>
@@ -68,7 +69,7 @@ static void *computeLocal(void *vargs)
     *ret = GHOST_SUCCESS;
 
     compArgs *args = (compArgs *)vargs;
-    GHOST_CALL_GOTO(args->mat->spmv(args->res,args->mat,args->invec,args->spmvtraits),err,*ret);
+    GHOST_CALL_GOTO(ghost_spmv_nocomm(args->res,args->mat,args->invec,args->spmvtraits),err,*ret);
 
     goto out;
 err:
@@ -165,7 +166,7 @@ ghost_error ghost_spmv_taskmode(ghost_densemat* res, ghost_sparsemat* mat, ghost
 
     GHOST_INSTR_START("remote");
     if (remoteExists) {
-        mat->remotePart->spmv(res,mat->remotePart,invec,remotetraits);
+        ghost_spmv_nocomm(res,mat->remotePart,invec,remotetraits);
     }
     GHOST_INSTR_STOP("remote");
        

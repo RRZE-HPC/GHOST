@@ -162,6 +162,7 @@ extern "C" {
      * If this should be done, ::GHOST_SPMV_CHAIN_AXPBY has to be set in the flags.
      */
     ghost_error ghost_spmv(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat *invec, ghost_spmv_opts opts);
+    ghost_error ghost_spmv_nocomm(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat *invec, ghost_spmv_opts opts);
     ghost_error ghost_gemm_valid(ghost_densemat *x, ghost_densemat *v, const char * transv, 
     ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce,ghost_context *ctx,ghost_gemm_flags flags, int printerror); 
     /**
