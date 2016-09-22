@@ -520,6 +520,7 @@ if (GHOST_USE_ZOLTAN)
     if (NOT ZOLTAN_LIBRARIES)
         message(FATAL_ERROR "ZOLTAN_INCLUDE_DIR not set correctly!")
     endif()
+    set(ZOLTAN_LIBRARIES ${ZOLTAN_LIBRARIES} -lm)
 endif()
 
 
