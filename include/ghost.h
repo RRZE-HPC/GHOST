@@ -14,7 +14,6 @@
 #include "ghost/context.h"
 #include "ghost/task.h"
 #include "ghost/math.h"
-#include "ghost/funcptr_wrappers.h"
 #include "ghost/timing.h"
 #include "ghost/locality.h"
 #include "ghost/rand.h"

@@ -27,44 +27,6 @@
 
 #define ROWMAJOR
 #include "ghost/densemat_iter_macros.h"
-//#include "ghost/densemat_common.c.def"
-
-
-ghost_error ghost_densemat_rm_setfuncs(ghost_densemat *vec)
-{
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_SETUP);
-    ghost_error ret = GHOST_SUCCESS;
-/*
-    vec->reduce = &ghost_densemat_rm_reduce;
-    vec->compress = &vec_rm_compress;
-    vec->string = &ghost_densemat_rm_string_selector;
-    vec->fromFunc = &ghost_densemat_rm_fromFunc;
-    vec->fromVec = &ghost_densemat_rm_fromVec_selector;
-    vec->fromFile = &ghost_densemat_rm_fromFile;
-    vec->fromReal = &ghost_densemat_rm_fromReal_selector;
-    vec->fromComplex = &ghost_densemat_rm_fromComplex_selector;
-    vec->toFile = &ghost_densemat_rm_toFile;
-    vec->distribute = &ghost_distributeVector;
-    vec->collect = &ghost_collectVectors;
-    vec->permute = &ghost_densemat_rm_permute_selector;
-    vec->clone = &ghost_cloneVector;
-    vec->entry = &ghost_densemat_rm_entry;
-    vec->viewVec = &ghost_densemat_rm_view;
-    vec->viewPlain = &ghost_densemat_rm_viewPlain;
-    vec->viewScatteredVec = &ghost_densemat_rm_viewScatteredVec;
-    vec->viewScatteredCols = &ghost_densemat_rm_viewScatteredCols;
-    vec->viewCols = &ghost_densemat_rm_viewCols;
-    vec->syncValues = &ghost_densemat_rm_syncValues;
-    vec->halocommInit = &densemat_rm_halocommInit;
-    vec->halocommFinalize = &densemat_rm_halocommFinalize;
-    vec->halocommStart = &ghost_densemat_halocommStart_common;
-    vec->averageHalo = &ghost_densemat_rm_averagehalo_selector;
-    vec->upload = &ghost_densemat_rm_upload;
-    vec->download = &ghost_densemat_rm_download;
-*/
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_SETUP);
-    return ret;
-}
 
 ghost_error ghost_densemat_rm_distributeVector(ghost_densemat *vec, ghost_densemat *nodeVec, ghost_context *ctx)
 {

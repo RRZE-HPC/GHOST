@@ -15,7 +15,6 @@
 #include "tsmm.h"
 #include "tsmm_inplace.h"
 #include "dot.h"
-#include "funcptr_wrappers.h"
 
 #include <stdarg.h>
 

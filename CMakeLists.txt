@@ -136,7 +136,6 @@ set (HEADERS
     include/ghost/dot.h
     include/ghost/error.h
     include/ghost/errorhandler.h
-    include/ghost/funcptr_wrappers.h
     include/ghost/helper.h
     include/ghost/instr.h
     include/ghost/locality.h	

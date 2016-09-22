@@ -154,12 +154,10 @@ ghost_error ghost_densemat_create(ghost_densemat **vec, ghost_context *ctx, ghos
         }
     }
     if ((*vec)->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
-        ghost_densemat_rm_setfuncs(*vec);
         (*vec)->stride = (*vec)->traits.ncolspadded;
         (*vec)->nblock = (*vec)->traits.nrows;
         (*vec)->blocklen = (*vec)->traits.ncols;
     } else {
-        ghost_densemat_cm_setfuncs(*vec);
         (*vec)->stride = (*vec)->traits.nrowshalopadded;
         (*vec)->nblock = (*vec)->traits.ncols;
         (*vec)->blocklen = (*vec)->traits.nrows;

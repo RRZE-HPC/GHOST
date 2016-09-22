@@ -19,15 +19,6 @@
 extern "C" {
 #endif
 
-    /**
-     * @brief Set the function pointers of a column-major densemat.
-     *
-     * @param[inout] vec The dense matrix.
-     *
-     * @return ::GHOST_SUCCESS on success or an error indicator.
-     */
-    ghost_error ghost_densemat_cm_setfuncs(ghost_densemat *vec);
-
     ghost_error ghost_densemat_cm_malloc(ghost_densemat *vec, int* needInit);
     ghost_error ghost_densemat_cm_string_selector(ghost_densemat *vec, char **str);
     ghost_error ghost_densemat_cm_normalize_selector(ghost_densemat *vec);
