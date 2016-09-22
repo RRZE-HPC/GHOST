@@ -1,5 +1,6 @@
 #include "ghost/config.h"
 #include "ghost/math.h"
+#include "ghost/densemat_iter_macros.h"
 
 #ifdef ROWMAJOR
 #ifdef COLMAJOR
@@ -409,7 +410,7 @@ static ghost_error FUNCNAME(entry(ghost_densemat * vec, void *val, ghost_lidx r,
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     ghost_densemat *singleent;
-    GHOST_CALL_RETURN(vec->viewVec(vec,&singleent,1,r,1,c));
+    GHOST_CALL_RETURN(ghost_densemat_create_and_view_densemat(vec,&singleent,1,r,1,c));
     memcpy(val,singleent->val,singleent->elSize);
 
     ghost_densemat_destroy(singleent);
@@ -436,10 +437,10 @@ static ghost_error FUNCNAME(reduce(ghost_densemat * vec_in, ghost_mpi_comm comm,
         vectraits.location = GHOST_LOCATION_HOST;
 
         ghost_densemat_create(&vec,NULL,vectraits);
-        vec->fromVec(vec,vec_in,0,0);
+        ghost_densemat_init_densemat(vec,vec_in,0,0);
     } else {
         vec = vec_in;
-        vec->download(vec);
+        ghost_densemat_download(vec);
     }
 
     ghost_mpi_op sumOp;
@@ -463,9 +464,9 @@ static ghost_error FUNCNAME(reduce(ghost_densemat * vec_in, ghost_mpi_comm comm,
         }
     }
         
-    vec->upload(vec);
+    ghost_densemat_upload(vec);
     if (vec != vec_in) {
-        vec_in->fromVec(vec_in,vec,0,0);
+        ghost_densemat_init_densemat(vec_in,vec,0,0);
     }
 
     goto out;
@@ -559,7 +560,7 @@ static ghost_error FUNCNAME(syncValues(ghost_densemat *vec, ghost_mpi_comm comm,
 #ifdef GHOST_HAVE_MPI
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
 
-    vec->download(vec);
+    ghost_densemat_download(vec);
 
     if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         PERFWARNING_LOG("Element-wise sync of scattered densemat!");
@@ -568,7 +569,7 @@ static ghost_error FUNCNAME(syncValues(ghost_densemat *vec, ghost_mpi_comm comm,
         MPI_CALL_RETURN(MPI_Bcast(vec->val,1,vec->fullmpidt,root,comm));
     }
 
-    vec->upload(vec);
+    ghost_densemat_upload(vec);
      
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_COMMUNICATION);
 #else
@@ -627,8 +628,8 @@ static ghost_error FUNCNAME(toFile(ghost_densemat *vec, char *path, ghost_mpi_co
             ghost_densemat_traits writevectraits = vec->traits;
             writevectraits.storage = GHOST_DENSEMAT_ROWMAJOR;
             ghost_densemat_create(&writevec,NULL,writevectraits);
-            writevec->fromVec(writevec,vec,0,0);
-            writevec->toFile(writevec,path,mpicomm);
+            ghost_densemat_init_densemat(writevec,vec,0,0);
+            ghost_densemat_to_file(writevec,path,mpicomm);
             ghost_densemat_destroy(writevec);
         } else {
             INFO_LOG("Fast write");
@@ -767,8 +768,8 @@ static ghost_error FUNCNAME(fromFile(ghost_densemat *vec, char *path, ghost_mpi_
         ghost_densemat_traits readvectraits = vec->traits;
         readvectraits.storage = (ghost_densemat_storage)order;
         ghost_densemat_create(&readvec,NULL,readvectraits);
-        readvec->fromFile(readvec,path,mpicomm);
-        vec->fromVec(vec,readvec,0,0);
+        ghost_densemat_init_file(readvec,path,mpicomm);
+        ghost_densemat_init_densemat(vec,readvec,0,0);
         ghost_densemat_destroy(readvec);
     }
 
@@ -782,8 +783,8 @@ static ghost_error FUNCNAME(fromFile(ghost_densemat *vec, char *path, ghost_mpi_
         ghost_densemat_traits readvectraits = vec->traits;
         readvectraits.storage = GHOST_DENSEMAT_ROWMAJOR;
         ghost_densemat_create(&readvec,NULL,readvectraits);
-        readvec->fromFile(readvec,path,mpicomm);
-        vec->fromVec(vec,readvec,0,0);
+        ghost_densemat_init_file(readvec,path,mpicomm);
+        ghost_densemat_init_densemat(vec,readvec,0,0);
         readvec->destroy(readvec);
     }
 
@@ -833,7 +834,7 @@ static ghost_error FUNCNAME(fromFunc(ghost_densemat *vec, int (*fp)(ghost_gidx, 
         
         // host+device case: uploading will be done in fromVec()
         if (vec->traits.location & GHOST_LOCATION_DEVICE) {
-            vec->upload(vec);
+            ghost_densemat_upload(vec);
         }
     } else {
         INFO_LOG("Need to create dummy HOST densemat!");
@@ -842,8 +843,8 @@ static ghost_error FUNCNAME(fromFunc(ghost_densemat *vec, int (*fp)(ghost_gidx, 
         htraits.location = GHOST_LOCATION_HOST;
         htraits.flags &= (ghost_densemat_flags)~GHOST_DENSEMAT_VIEW;
         GHOST_CALL_RETURN(ghost_densemat_create(&hostVec,NULL,htraits));
-        GHOST_CALL_RETURN(hostVec->fromFunc(hostVec,fp,arg));
-        GHOST_CALL_RETURN(vec->fromVec(vec,hostVec,0,0));
+        GHOST_CALL_RETURN(ghost_densemat_init_func(hostVec,fp,arg));
+        GHOST_CALL_RETURN(ghost_densemat_init_densemat(vec,hostVec,0,0));
         ghost_densemat_destroy(hostVec);
     }
 

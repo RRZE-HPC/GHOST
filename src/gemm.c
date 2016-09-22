@@ -90,14 +90,14 @@ ghost_densemat *w_in, const char *transw_in, void *alpha, void *beta, int reduce
     if (v == x && !(flags & GHOST_GEMM_NOT_CLONE_ALIASED)) {
         WARNING_LOG("x equals v! v will be cloned.");
         ghost_densemat *vc;
-        v->clone(v,&vc,v->traits.nrows,0,v->traits.ncols,0);
+        ghost_densemat_clone(v,&vc,v->traits.nrows,0,v->traits.ncols,0);
         v = vc;
     }
 
     if (w == x && !(flags & GHOST_GEMM_NOT_CLONE_ALIASED)) {
         WARNING_LOG("x equals w! w will be cloned.");
         ghost_densemat *wc;
-        w->clone(w,&wc,w->traits.nrows,0,w->traits.ncols,0);
+        ghost_densemat_clone(w,&wc,w->traits.nrows,0,w->traits.ncols,0);
         w = wc;
     }
 
@@ -428,7 +428,7 @@ ghost_densemat *w_in, const char *transw_in, void *alpha, void *beta, int reduce
     }
 
     if ((reduce != GHOST_GEMM_NO_REDUCE) && (ctx)) {
-        x->reduce(x,ctx->mpicomm,reduce);
+        ghost_densemat_reduce(x,ctx->mpicomm,reduce);
     }
     if (w != w_in) {
         INFO_LOG("Destroy clone of w");
@@ -469,7 +469,7 @@ ghost_densemat *w_in, const char *transw, void *alpha, void *beta, int reduce, g
     // her data layout.
     if (x_in->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         INFO_LOG("The result vector x is scattered. It will be cloned and compressed before the computation and transformed back afterwards.");
-        GHOST_CALL_GOTO(x_in->clone(x_in,&x,x_in->traits.nrows,0,x_in->traits.ncols,0),err,ret);
+        GHOST_CALL_GOTO(ghost_densemat_clone(x_in,&x,x_in->traits.nrows,0,x_in->traits.ncols,0),err,ret);
     } else {
         x = x_in;
     }
@@ -495,7 +495,7 @@ ghost_densemat *w_in, const char *transw, void *alpha, void *beta, int reduce, g
         WARNING_LOG("The vector v is scattered. It will be cloned to a compressed "
                 "vector before computation but not be changed itself.");
         ghost_densemat *vc;
-        v->clone(v,&vc,v->traits.nrows,0,v->traits.ncols,0);
+        ghost_densemat_clone(v,&vc,v->traits.nrows,0,v->traits.ncols,0);
         v = vc;
     }
     if (w->traits.flags & GHOST_DENSEMAT_SCATTERED)
@@ -503,7 +503,7 @@ ghost_densemat *w_in, const char *transw, void *alpha, void *beta, int reduce, g
         WARNING_LOG("The vector w is scattered. It will be cloned to a compressed "
                 "vector before computation but not be changed itself.");
         ghost_densemat *wc;
-        w->clone(w,&wc,w->traits.nrows,0,w->traits.ncols,0);
+        ghost_densemat_clone(w,&wc,w->traits.nrows,0,w->traits.ncols,0);
         w = wc;
     }
     
@@ -557,7 +557,7 @@ ghost_densemat *w_in, const char *transw, void *alpha, void *beta, int reduce, g
     
     if (x != x_in) {
         INFO_LOG("Transform x back");
-        GHOST_CALL_GOTO(x_in->fromVec(x_in,x,0,0),err,ret);
+        GHOST_CALL_GOTO(ghost_densemat_init_densemat(x_in,x,0,0),err,ret);
         ghost_densemat_destroy(x);
     }
     

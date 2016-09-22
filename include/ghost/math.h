@@ -289,6 +289,17 @@ extern "C" {
      * This function does nothing for real-valued densemats.
      */
     ghost_error ghost_conj(ghost_densemat *x);
+    
+    /**
+     * @brief Compute the norm of a densemat: sum_i [conj(vec_i) * vec_i]^pow
+     *
+     * @param norm Where to store the norm. Must be a pointer to the densemat's data type.
+     * @param vec The densemat.
+     * @param pow The power. Must be a pointer to the densemat's data type.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error ghost_norm(void *norm, ghost_densemat *vec, void *pow);
 
     int ghost_kacz_perf(double *perf, double time, void *arg);
     int ghost_spmv_perf(double *perf, double time, void *arg);

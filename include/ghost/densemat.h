@@ -406,288 +406,6 @@ struct ghost_densemat
      */
     char * cu_val;
 
-    /**
-     * @brief Average each entry over all it's halo siblings.
-     *
-     * This function collects the values for each entry which have been
-     * communicated to other processes.
-     * Then, it computes the average over all and stores the value.
-     * This is used, e.g., in ::ghost_carp().
-     *
-     * @param vec The densemat. 
-     * @param ctx The context in which the densemat lives. 
-     */
-    ghost_error (*averageHalo) (ghost_densemat *vec, ghost_context *ctx);
-    /**
-     * Documented in ghost_axpy()
-     */
-    //ghost_error (*axpy) (ghost_densemat *y, ghost_densemat *x, void *a);
-    /**
-     * Documented in ghost_axpby()
-     */
-    //ghost_error (*axpby) (ghost_densemat *y, ghost_densemat *x, void *a, 
-    //        void *b);
-    /**
-     * Documented in ghost_axpbypcz()
-     */
-    //ghost_error (*axpbypcz) (ghost_densemat *y, ghost_densemat *x, void *a, 
-    //        void *b,ghost_densemat *z, void *c);
-    /**
-     * @brief Clones a given number of columns of a source densemat at a 
-     * given column and row offset.
-     *
-     * @param vec The source densemat.
-     * @param dst Where to store the new vector.
-     * @param nr The number of rows to clone.
-     * @param roffs The first row to clone.
-     * @param nc The number of columns to clone.
-     * @param coffs The first column to clone.
-     *
-     * @return ::GHOST_SUCCESS on success or an error indicator.
-     */
-    ghost_error (*clone) (ghost_densemat *vec, ghost_densemat **dst, 
-            ghost_lidx nr, ghost_lidx roffs, ghost_lidx nc, 
-            ghost_lidx coffs);
-    /**
-     * @brief Compresses a densemat, i.e., make it non-scattered.
-     * If the densemat is a view, it will no longer be one afterwards.
-     *
-     * @param vec The densemat.
-     */
-    ghost_error (*compress) (ghost_densemat *vec);
-    /**
-     * Documented in ghost_conj()
-     */
-    //ghost_error (*conj) (ghost_densemat *vec);
-    /**
-     * @brief Collects vec from all MPI ranks and combines them into globalVec.
-     * The row permutation (if present) if vec's context is used.
-     *
-     * @param vec The distributed densemat.
-     * @param globvec The global densemat.
-     * @param ctx The context.
-     */
-    ghost_error (*collect) (ghost_densemat *vec, ghost_densemat *globvec, ghost_context *ctx);
- 
-    /**
-     * @brief Distributes a global densemat into node-local vetors.
-     *
-     * @param vec The global densemat.
-     * @param localVec The local densemat.
-     */
-    ghost_error (*distribute) (ghost_densemat *vec, 
-            ghost_densemat *localVec, ghost_context *ctx);
-    /**
-     * Fallback dot product of two vectors.
-     * This function should not be called directly, see ghost_dot() and ghost_localdot() instead.
-     */
-    //ghost_error (*localdot_vanilla) (ghost_densemat *a, void *res, ghost_densemat *b);
-    /**
-     * @ingroup gputransfer
-     * 
-     * @brief Downloads a densemat from a compute device, excluding halo elements. 
-     *
-     * The densemat must be present on both host and device.
-     * Does nothing if the densemat is not present on the device.
-     *
-     * @param vec The densemat.
-     *
-     * @return ::GHOST_SUCCESS on success or an error indicator.
-     */
-    ghost_error (*download) (ghost_densemat *vec);
-    /**
-     * @ingroup gputransfer
-     * 
-     * @brief Downloads only a densemat's local elements (i.e., without halo
-     * elements) from a compute device. Does nothing if the densemat is not
-     * present on the device.
-     *
-     * @param vec The densemat.
-     *
-     * @return ::GHOST_SUCCESS on success or an error indicator.
-     */
-    ghost_error (*entry) (ghost_densemat *vec, void *entry, ghost_lidx i, 
-            ghost_lidx j);
-    /**
-     * Documented in ghost_densemat_init_func()
-     */
-    ghost_error (*fromFunc) (ghost_densemat *vec, ghost_densemat_srcfunc, void *arg);
-    /**
-     * Documented in ghost_densemat_init_densemat()
-     */
-    ghost_error (*fromVec) (ghost_densemat *vec, ghost_densemat *src, 
-            ghost_lidx roffs, ghost_lidx coffs);
-    /**
-     * Documented in ghost_densemat_init_file)
-     */
-    ghost_error (*fromFile) (ghost_densemat *vec, char *filename, ghost_mpi_comm mpicomm);
-    /**
-     * Documented in ghost_densemat_init_rand()
-     */
-    //ghost_error (*fromRand) (ghost_densemat *vec);
-    /**
-     * Documented in ghost_densemat_init_real()
-     */
-    ghost_error (*fromReal) (ghost_densemat *vec, ghost_densemat *re, ghost_densemat *im);
-    /**
-     * Documented in ghost_densemat_init_complex()
-     */
-    ghost_error (*fromComplex) (ghost_densemat *re, ghost_densemat *im, ghost_densemat *src);
-    /**
-     * @brief Sets the densemat to have the same values on all processes.
-     *
-     * @param vec The densemat.
-     * @param comm The communicator in which to synchronize.
-     * @param root The process from which to take the values.
-     *
-     * @return ::GHOST_SUCCESS on success or an error indicator.
-     */
-    ghost_error (*syncValues) (ghost_densemat *vec, ghost_mpi_comm comm, int root);
-    /**
-     * @brief Reduces the densemats using addition in a given communicator.
-     *
-     * @param vec The densemat.
-     * @param comm The communicator.
-     * @param dest The destination rank or GHOST_ALLREDUCE
-     *
-     * @return ::GHOST_SUCCESS on success or an error indicator.
-     */
-    ghost_error (*reduce) (ghost_densemat *vec, ghost_mpi_comm comm, int dest);
-    /**
-     * Documented in ghost_densemat_init_val()
-     */
-    //ghost_error (*fromScalar) (ghost_densemat *vec, void *val);
-    /**
-     * @brief Initialize a halo communication data structure.
-     *
-     * @param vec The densemat.
-     * @param ctx The context in which to communicate.
-     * @param comm The halo communication data structure.
-     *
-     * @return ::GHOST_SUCCESS on success or an error indicator.
-     */
-    ghost_error (*halocommInit) (ghost_densemat *vec, ghost_context *ctx, ghost_densemat_halo_comm *comm);
-    /**
-     * @brief Start halo communication asynchronously.
-     *
-     * @param vec The densemat.
-     * @param ctx The context in which to communicate.
-     * @param comm The halo communication data structure.
-     *
-     * @return ::GHOST_SUCCESS on success or an error indicator.
-     */
-    ghost_error (*halocommStart) (ghost_densemat *vec, ghost_context *ctx, ghost_densemat_halo_comm *comm);
-    /**
-     * @brief Finalize halo communication.
-     *
-     * This includes waiting for the communication to finish and freeing the data in the comm data structure.
-     *
-     * @param vec The densemat.
-     * @param ctx The context in which to communicate.
-     * @param comm The halo communication data structure.
-     *
-     * @return ::GHOST_SUCCESS on success or an error indicator.
-     */
-    ghost_error (*halocommFinalize) (ghost_densemat *vec, ghost_context *ctx, ghost_densemat_halo_comm *comm);
-    /**
-     * Documented in ghost_normalize()
-     */
-    //ghost_error (*normalize) (ghost_densemat *vec, ghost_mpi_comm mpicomm);
-    /**
-     * @brief Compute the norm of a densemat: sum_i [conj(vec_i) * vec_i]^pow
-     *
-     * @param vec The densemat.
-     * @param norm Where to store the norm. Must be a pointer to the densemat's data type.
-     * @param pow The power. Must be a pointer to the densemat's data type.
-     *
-     * @return ::GHOST_SUCCESS on success or an error indicator.
-     */
-    ghost_error (*norm) (ghost_densemat *vec, void *norm, void *pow);
-    /**
-     * Documented in ghost_densemat_permute()
-     */
-    ghost_error (*permute) (ghost_densemat *vec, ghost_context *ctx, ghost_permutation_direction dir);
-    /**
-     * @ingroup stringification
-     *
-     * @brief Create a string from the vector.
-     *
-     * @param vec The densemat.
-     * @param str Where to store the string.
-     *
-     * @return ::GHOST_SUCCESS on success or an error indicator.
-     */
-    ghost_error (*string) (ghost_densemat *vec, char **str);
-    /**
-     * Documented in ghost_scale()
-     */
-    //ghost_error (*scale) (ghost_densemat *vec, void *scale);
-    /**
-     * @brief Write a densemat to a file.
-     *
-     * @param vec The densemat.
-     * @param filename The path to the file.
-     * @param mpicomm If equal to MPI_COMM_SELF, each process will write a separate file.
-     * Else, a combined file will be written with MPI I/O.
-     *
-     * @return ::GHOST_SUCCESS on success or an error indicator.
-     */
-    ghost_error (*toFile) (ghost_densemat *vec, char *filename, 
-            ghost_mpi_comm mpicomm);
-    /**
-     * @ingroup gputransfer
-     * 
-     * @brief Uploads a densemat to a compute device, excluding halo elements. 
-     * The densemat must be present on both host and device.
-     *
-     * @param vec The densemat.
-     */
-    ghost_error (*upload) (ghost_densemat *vec);
-    /**
-     * Documented in ghost_densemat_view_plain()
-     */
-    ghost_error (*viewPlain) (ghost_densemat *vec, void *data, 
-            ghost_lidx lda);
-    /**
-     * Documented in ghost_densemat_create_and_view_densemat_scattered()
-     */
-    ghost_error (*viewScatteredVec) (ghost_densemat *src, 
-            ghost_densemat **dst, ghost_lidx nr, ghost_lidx *roffs,  
-            ghost_lidx nc, ghost_lidx *coffs);
-    /**
-     * Documented in ghost_densemat_create_and_view_densemat_cols_scattered()
-     */
-    ghost_error (*viewScatteredCols) (ghost_densemat *src, 
-            ghost_densemat **dst, ghost_lidx nc, ghost_lidx *coffs);
-    /**
-     * Documented in ghost_densemat_create_and_view_densemat_cols()
-     */
-    ghost_error (*viewCols) (ghost_densemat *src, ghost_densemat **dst, 
-            ghost_lidx nc, ghost_lidx coffs);
-    /**
-     * Documented in ghost_densemat_create_and_view_densemat()
-     */
-    ghost_error (*viewVec) (ghost_densemat *src, ghost_densemat **dst, 
-            ghost_lidx nr, ghost_lidx roffs, ghost_lidx nc, 
-            ghost_lidx coffs);
-    /**
-     * Documented in ghost_vscale()
-     */
-    //ghost_error (*vscale) (ghost_densemat *, void *);
-    /**
-     * Documented in ghost_vaxpy()
-     */
-    //ghost_error (*vaxpy) (ghost_densemat *, ghost_densemat *, void *);
-    /**
-     * Documented in ghost_vaxpby()
-     */
-    //ghost_error (*vaxpby) (ghost_densemat *, ghost_densemat *, void *, 
-    //        void *);
-    /**
-     * Documented in ghost_vaxpbypcz()
-     */
-    //ghost_error (*vaxpbypcz) (ghost_densemat *, ghost_densemat *, void *, 
-    //        void *, ghost_densemat *, void *);
 };
 
 #ifdef __cplusplus
@@ -790,17 +508,15 @@ extern "C" {
      */
     ghost_error ghost_densemat_halocommInit_common(ghost_densemat *vec, ghost_context *ctx, ghost_densemat_halo_comm *comm);
     /**
-     * @brief Common (storage-independent) functions for ghost_densemat::halocommStart()
-     *
-     * This function should not be called by a user.
+     * @brief Start halo communication asynchronously.
      *
      * @param vec The densemat.
      * @param ctx The context in which to communicate.
-     * @param comm The comm data structure.
+     * @param comm The halo communication data structure.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error ghost_densemat_halocommStart_common(ghost_densemat *vec, ghost_context *ctx, ghost_densemat_halo_comm *comm);
+    ghost_error ghost_densemat_halocomm_start(ghost_densemat *vec, ghost_context *ctx, ghost_densemat_halo_comm *comm);
     /**
      * @brief Common (storage-independent) functions for ghost_densemat::halocommFinalize()
      *
@@ -858,7 +574,304 @@ extern "C" {
      */
     ghost_error ghost_densemat_init_val(ghost_densemat *x, void *v);
 
+    /**
+     * @brief Allocate sparse for a densemat
+     *
+     * @param x The densemat
+     * @param needInit This will be set to one of the padding elements require initialization
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
     ghost_error ghost_densemat_malloc(ghost_densemat *x, int *needInit);
+    /**
+     * @ingroup denseinit
+     * @brief Initializes a densemat from a given callback function.
+     * @param x The densemat.
+     * @param func The callback function pointer. 
+     * @param arg The argument which should be forwarded to the callback.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error ghost_densemat_init_func(ghost_densemat *x, ghost_densemat_srcfunc func, void *arg);
+
+    /**
+     * @ingroup denseinit
+     * @brief Initializes a densemat from another densemat at a given column and row offset.
+     * @param x The densemat.
+     * @param y The source.
+     * @param roffs The first row to clone.
+     * @param coffs The first column to clone.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error ghost_densemat_init_densemat(ghost_densemat *x, ghost_densemat *y, ghost_lidx roffs, ghost_lidx coffs);
+
+    /**
+     * @ingroup denseinit
+     * @brief Initializes a densemat from a file.
+     * @param x The densemat.
+     * @param path Path to the file.
+     * @param mpicomm If equal to MPI_COMM_SELF, each process will read from a separate file.
+     * Else, a combined file will be read with MPI I/O.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error ghost_densemat_init_file(ghost_densemat *x, char *path, ghost_mpi_comm mpicomm);
+
+    /**
+     * @ingroup denseinit
+     * @brief Initializes a complex densemat from two real ones (one holding the real, the other one the imaginary part).
+     * @param vec The densemat.
+     * @param re The real source densemat.
+     * @param im The imaginary source densemat.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error ghost_densemat_init_real(ghost_densemat *vec, ghost_densemat *re, ghost_densemat *im);
+
+    /**
+     * @ingroup denseinit
+     * @brief Initializes two real densemats from a complex one.
+     * @param re The resulting real densemat holding the real part of the source.
+     * @param im The resulting real densemat holding the imaginary part of the source.
+     * @param src The complex source densemat.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error ghost_densemat_init_complex(ghost_densemat *re, ghost_densemat *im, ghost_densemat *src);
+
+    /**
+     * @ingroup denseinit
+     * @ingroup denseview
+     * @brief View plain data which is stored with a given stride 
+     * @param x The densemat.
+     * @param data Memory location of the data.
+     * @param stride Stride of the data.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error ghost_densemat_view_plain(ghost_densemat *x, void *data, ghost_lidx stride);
+
+    /**
+     * @ingroup denseinit
+     * @ingroup denseview
+     * @brief Create a ghost_densemat as a view of compact data of another ghost_densemat
+     * @param x The resulting scattered view.
+     * @param src The source densemat with the data to be viewed.
+     * @param nr The number of rows of the new densemat.
+     * @param roffs The row offset into the source densemat.
+     * @param nc The number of columsn of the new densemat.
+     * @param coffs The column offset into the source densemat.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error ghost_densemat_create_and_view_densemat(ghost_densemat **x, ghost_densemat *src, ghost_lidx nr, ghost_lidx roffs, ghost_lidx nc, ghost_lidx coffs);
+
+    /**
+     * @ingroup denseinit
+     * @ingroup denseview
+     * @brief Create a ghost_densemat as a view of arbitrarily scattered data of another ghost_densemat
+     * @param x The resulting scattered view.
+     * @param src The source densemat with the data to be viewed.
+     * @param nr The number of rows of the new densemat.
+     * @param ridx The row indices to be viewed.
+     * @param nc The number of columsn of the new densemat.
+     * @param cidx The column indices to be viewed.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error ghost_densemat_create_and_view_densemat_scattered(ghost_densemat **x, ghost_densemat *src, ghost_lidx nr, ghost_lidx *ridx, ghost_lidx nc, ghost_lidx *cidx);
+
+    /**
+     * @ingroup denseinit
+     * @ingroup denseview
+     * @brief Create a ghost_densemat as a view of compact columns of another ghost_densemat
+     * @param x The resulting scattered view.
+     * @param src The source densemat with the data to be viewed.
+     * @param nc The number of columsn of the new densemat.
+     * @param coffs The column offset into the source densemat.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error ghost_densemat_create_and_view_densemat_cols(ghost_densemat **x, ghost_densemat *src, ghost_lidx nc, ghost_lidx coffs);
+
+    /**
+     * @ingroup denseinit
+     * @ingroup denseview
+     * @brief Create a ghost_densemat as a view of full but scattered columns of another ghost_densemat
+     * @param x The resulting scattered view.
+     * @param src The source densemat with the data to be viewed.
+     * @param nc The number of columsn of the new densemat.
+     * @param cidx The column indices to be viewed.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error ghost_densemat_create_and_view_densemat_cols_scattered(ghost_densemat **x, ghost_densemat *src, ghost_lidx nc, ghost_lidx *cidx);
+
+    /**
+     * @ingroup denseinit
+     * @ingroup denseview
+     * @brief Create a ghost_densemat as a clone of another ghost_densemat at a given offset
+     * @param x The clone.
+     * @param src The source densemat.
+     * @param nr The number of rows of the new densemat.
+     * @param roffs The row offset into the source densemat.
+     * @param nc The number of columsn of the new densemat.
+     * @param coffs The column offset into the source densemat.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error ghost_densemat_clone(ghost_densemat **x, ghost_densemat *src, ghost_lidx nr, ghost_lidx roffs, ghost_lidx nc, ghost_lidx coffs);
+
+    /**
+     * @ingroup stringification
+     * @brief Creates a string of the densemat's contents.
+     * @param x The densemat.
+     * @param str Where to store the string.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     *
+     * The string has to be freed by the caller.
+     */
+    ghost_error ghost_densemat_string(char **str, ghost_densemat *x);
+
+    /**
+     * @brief Permute a densemat in a given direction.
+     * @param x The densemat.
+     * @param ctx The context if a global permutation is present.
+     * @param dir The permutation direction.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error ghost_densemat_permute(ghost_densemat *x, ghost_context *ctx, ghost_permutation_direction dir);
+    
+    /**
+     * @ingroup gputransfer
+     * 
+     * @brief Downloads a densemat from a compute device, excluding halo elements. 
+     *
+     * The densemat must be present on both host and device.
+     * Does nothing if the densemat is not present on the device.
+     *
+     * @param vec The densemat.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error ghost_densemat_download(ghost_densemat *vec);
+    
+    /**
+     * @ingroup gputransfer
+     * 
+     * @brief Uploads a densemat to a compute device, excluding halo elements. 
+     * The densemat must be present on both host and device.
+     *
+     * @param vec The densemat.
+     */
+    ghost_error ghost_densemat_upload(ghost_densemat *vec);
+    
+    /**
+     * @brief Reduces the densemats using addition in a given communicator.
+     *
+     * @param vec The densemat.
+     * @param comm The communicator.
+     * @param dest The destination rank or GHOST_ALLREDUCE
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error ghost_densemat_reduce(ghost_densemat *vec, ghost_mpi_comm comm, int dest);
+
+    /**
+     * @brief Initialize a halo communication data structure.
+     *
+     * @param vec The densemat.
+     * @param ctx The context in which to communicate.
+     * @param comm The halo communication data structure.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error ghost_densemat_halocomm_init (ghost_densemat *vec, ghost_context *ctx, ghost_densemat_halo_comm *comm);
+    /**
+     * @brief Start halo communication asynchronously.
+     *
+     * @param vec The densemat.
+     * @param ctx The context in which to communicate.
+     * @param comm The halo communication data structure.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error ghost_densemat_halocomm_start (ghost_densemat *vec, ghost_context *ctx, ghost_densemat_halo_comm *comm);
+    /**
+     * @brief Finalize halo communication.
+     *
+     * This includes waiting for the communication to finish and freeing the data in the comm data structure.
+     *
+     * @param vec The densemat.
+     * @param ctx The context in which to communicate.
+     * @param comm The halo communication data structure.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error  ghost_densemat_halocomm_finalize (ghost_densemat *vec, ghost_context *ctx, ghost_densemat_halo_comm *comm);
+    
+    /**
+     * @brief Average each entry over all it's halo siblings.
+     *
+     * This function collects the values for each entry which have been
+     * communicated to other processes.
+     * Then, it computes the average over all and stores the value.
+     * This is used, e.g., in ::ghost_carp().
+     *
+     * @param vec The densemat. 
+     * @param ctx The context in which the densemat lives. 
+     */
+    ghost_error ghost_densemat_halo_avg (ghost_densemat *vec, ghost_context *ctx);
+    
+    /**
+     * @brief Write a densemat to a file.
+     *
+     * @param vec The densemat.
+     * @param filename The path to the file.
+     * @param mpicomm If equal to MPI_COMM_SELF, each process will write a separate file.
+     * Else, a combined file will be written with MPI I/O.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error ghost_densemat_to_file(ghost_densemat *vec, char *filename, ghost_mpi_comm mpicomm);
+    
+    /**
+     * @brief Get a single entry of a ghost_densemat.
+     *
+     * @param entry Where to store the entry.
+     * @param vec The densemat.
+     * @param i The row.
+     * @param j The column.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error ghost_densemat_entry(void *entry, ghost_densemat *vec, ghost_lidx i, ghost_lidx j);
+    
+    /**
+     * @brief Sets the densemat to have the same values on all processes.
+     *
+     * @param vec The densemat.
+     * @param comm The communicator in which to synchronize.
+     * @param root The process from which to take the values.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error ghost_densemat_sync_vals(ghost_densemat *vec, ghost_mpi_comm comm, int root);
+    
+    /**
+     * @brief Compresses a densemat, i.e., make it non-scattered.
+     * If the densemat is a view, it will no longer be one afterwards.
+     *
+     * @param vec The densemat.
+     */
+    ghost_error ghost_densemat_compress(ghost_densemat *vec);
+    /**
+     * @brief Collects vec from all MPI ranks and combines them into globalVec.
+     * The row permutation (if present) if vec's context is used.
+     *
+     * @param vec The distributed densemat.
+     * @param globvec The global densemat.
+     * @param ctx The context.
+     */
+    ghost_error ghost_densemat_collect(ghost_densemat *vec, ghost_densemat *globvec, ghost_context *ctx);
+ 
+    /**
+     * @brief Distributes a global densemat into node-local vetors.
+     *
+     * @param vec The global densemat.
+     * @param localVec The local densemat.
+     */
+    ghost_error ghost_densemat_distribute(ghost_densemat *vec, ghost_densemat *localVec, ghost_context *ctx);
 
 #ifdef __cplusplus
 }

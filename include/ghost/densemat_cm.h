@@ -28,7 +28,6 @@ extern "C" {
      */
     ghost_error ghost_densemat_cm_setfuncs(ghost_densemat *vec);
 
-
     ghost_error ghost_densemat_cm_malloc(ghost_densemat *vec, int* needInit);
     ghost_error ghost_densemat_cm_string_selector(ghost_densemat *vec, char **str);
     ghost_error ghost_densemat_cm_normalize_selector(ghost_densemat *vec);
@@ -50,6 +49,12 @@ extern "C" {
     ghost_error ghost_densemat_cm_axpby(ghost_densemat *vec1, ghost_densemat *vec2, void *, void *); 
     ghost_error ghost_densemat_cm_axpbypcz(ghost_densemat *vec1, ghost_densemat *vec2, void *, void *, ghost_densemat *vec3, void *); 
     ghost_error ghost_densemat_cm_scale(ghost_densemat *vec, void *); 
+    ghost_error ghost_densemat_cm_distributeVector(ghost_densemat *vec, ghost_densemat *nodeVec, ghost_context *ctx);
+    ghost_error ghost_densemat_cm_collectVectors(ghost_densemat *vec, ghost_densemat *totalVec, ghost_context *ctx); 
+    ghost_error ghost_densemat_cm_cloneVector(ghost_densemat *src, ghost_densemat **dst, ghost_lidx nr, ghost_lidx roffs, ghost_lidx nc, ghost_lidx coffs);
+    ghost_error ghost_densemat_cm_compress(ghost_densemat *vec);
+    ghost_error ghost_densemat_cm_halocommInit(ghost_densemat *vec, ghost_context *ctx, ghost_densemat_halo_comm *comm);
+    ghost_error ghost_densemat_cm_halocommFinalize(ghost_densemat *vec, ghost_context *ctx, ghost_densemat_halo_comm *comm);
 #ifdef __cplusplus
 }
 #endif

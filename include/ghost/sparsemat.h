@@ -483,12 +483,6 @@ struct ghost_sparsemat
      */
     char *name;
     /**
-     * @brief Pointer to actual SELL sparse matrix data
-     * 
-     * This is a relict from times where we had CRS and SELL and may be removed in the future.
-     */
-    //ghost_sell *sell;
-    /**
      * @brief The values.
      */
     char *val;

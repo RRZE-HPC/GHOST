@@ -27,6 +27,12 @@
 #include <cuda_runtime.h>
 #endif
 
+#define COLMAJOR
+#include "ghost/densemat_common.c.def"
+#undef COLMAJOR
+#define ROWMAJOR
+#include "ghost/densemat_common.c.def"
+
 const ghost_densemat_traits GHOST_DENSEMAT_TRAITS_INITIALIZER = {
     .nrows = 0,
     .nrowsorig = 0,
@@ -497,7 +503,7 @@ out:
 
 }
 
-ghost_error ghost_densemat_halocommStart_common(ghost_densemat *vec, ghost_context *ctx, ghost_densemat_halo_comm *comm)
+ghost_error ghost_densemat_halocomm_start(ghost_densemat *vec, ghost_context *ctx, ghost_densemat_halo_comm *comm)
 {
 #ifdef GHOST_HAVE_MPI
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION)
@@ -650,7 +656,7 @@ ghost_error switch_permutation_method( ghost_densemat **vec, ghost_context *ctx,
     if((*vec)->traits.permutemethod != NONE) {
       if((*vec)->traits.flags & (ghost_densemat_flags)GHOST_DENSEMAT_PERMUTED || isPermuted) 
       {
-        (*vec)->permute(*vec,ctx,GHOST_PERMUTATION_PERM2ORIG);
+        ghost_densemat_permute(*vec,ctx,GHOST_PERMUTATION_PERM2ORIG);
         permuted = true;
       }
       if((*vec)->perm_local) {
@@ -669,7 +675,7 @@ ghost_error switch_permutation_method( ghost_densemat **vec, ghost_context *ctx,
       (*vec) = temp_vec;
 
       if(permuted) {
-        (*vec)->permute(*vec,ctx,GHOST_PERMUTATION_ORIG2PERM);
+        ghost_densemat_permute(*vec,ctx,GHOST_PERMUTATION_ORIG2PERM);
       }
     } else {
       WARNING_LOG("Permutation Method cannot be switched since matrix has permutemethod == NONE")
@@ -692,11 +698,13 @@ ghost_error ghost_densemat_init_rand(ghost_densemat *x)
     ghost_error ret;
 
     typedef ghost_error (*ghost_densemat_init_rand_kernel)(ghost_densemat*);
-    ghost_densemat_init_rand_kernel kernels[2][2];
+    ghost_densemat_init_rand_kernel kernels[2][2] = {{NULL,NULL},{NULL,NULL}};
     kernels[GHOST_HOST_IDX][GHOST_RM_IDX] = &ghost_densemat_rm_fromRand_selector;
     kernels[GHOST_HOST_IDX][GHOST_CM_IDX] = &ghost_densemat_cm_fromRand_selector;
+#ifdef GHOST_HAVE_CUDA
     kernels[GHOST_DEVICE_IDX][GHOST_RM_IDX] = &ghost_densemat_cu_rm_fromRand;
     kernels[GHOST_DEVICE_IDX][GHOST_CM_IDX] = &ghost_densemat_cu_cm_fromRand;
+#endif
 
     SELECT_BLAS1_KERNEL(kernels,x->traits.location,x->traits.compute_at,x->traits.storage,ret,x);
 
@@ -708,11 +716,13 @@ ghost_error ghost_densemat_init_val(ghost_densemat *x, void *val)
     ghost_error ret;
 
     typedef ghost_error (*ghost_densemat_init_scalar_kernel)(ghost_densemat*, void*);
-    ghost_densemat_init_scalar_kernel kernels[2][2];
+    ghost_densemat_init_scalar_kernel kernels[2][2] = {{NULL,NULL},{NULL,NULL}};
     kernels[GHOST_HOST_IDX][GHOST_RM_IDX] = &ghost_densemat_rm_fromScalar_selector;
     kernels[GHOST_HOST_IDX][GHOST_CM_IDX] = &ghost_densemat_cm_fromScalar_selector;
+#ifdef GHOST_HAVE_CUDA
     kernels[GHOST_DEVICE_IDX][GHOST_RM_IDX] = &ghost_densemat_cu_rm_fromScalar;
     kernels[GHOST_DEVICE_IDX][GHOST_CM_IDX] = &ghost_densemat_cu_cm_fromScalar;
+#endif
 
     SELECT_BLAS1_KERNEL(kernels,x->traits.location,x->traits.compute_at,x->traits.storage,ret,x,val);
 
@@ -728,3 +738,138 @@ ghost_error ghost_densemat_malloc(ghost_densemat *x, int *needInit)
     }
 }
 
+#define PASTER(x,y) x ## _ ## y
+#define EVALUATOR(x,y) PASTER(x,y)
+#define CM_FUNCNAME(fun) EVALUATOR(ghost_densemat_cm,fun)
+#define RM_FUNCNAME(fun) EVALUATOR(ghost_densemat_rm,fun)
+
+#define CALL_DENSEMAT_FUNC(vec,func,...) \
+    if (vec->traits.storage == GHOST_DENSEMAT_COLMAJOR) {\
+        return CM_FUNCNAME(func)(__VA_ARGS__);\
+    } else {\
+        return RM_FUNCNAME(func)(__VA_ARGS__);\
+    }
+
+ghost_error ghost_densemat_init_func(ghost_densemat *x, ghost_densemat_srcfunc func, void *arg)
+{
+    CALL_DENSEMAT_FUNC(x,fromFunc,x,func,arg);
+}
+    
+ghost_error ghost_densemat_string(char **str, ghost_densemat *x)
+{
+    CALL_DENSEMAT_FUNC(x,string_selector,x,str);
+}
+
+ghost_error ghost_densemat_permute(ghost_densemat *x, ghost_context *ctx, ghost_permutation_direction dir)
+{
+    CALL_DENSEMAT_FUNC(x,permute_selector,x,ctx,dir);
+}
+    
+ghost_error ghost_densemat_reduce(ghost_densemat *vec, ghost_mpi_comm comm, int dest)
+{
+    CALL_DENSEMAT_FUNC(vec,reduce,vec,comm,dest);
+}
+    
+ghost_error ghost_densemat_to_file(ghost_densemat *vec, char *filename, ghost_mpi_comm mpicomm)
+{
+    CALL_DENSEMAT_FUNC(vec,toFile,vec,filename,mpicomm);
+}
+    
+ghost_error ghost_densemat_halocomm_init (ghost_densemat *vec, ghost_context *ctx, ghost_densemat_halo_comm *comm)
+{
+    CALL_DENSEMAT_FUNC(vec,halocommInit,vec,ctx,comm);
+}
+
+ghost_error  ghost_densemat_halocomm_finalize (ghost_densemat *vec, ghost_context *ctx, ghost_densemat_halo_comm *comm)
+{
+    CALL_DENSEMAT_FUNC(vec,halocommFinalize,vec,ctx,comm);
+}
+    
+ghost_error ghost_densemat_download(ghost_densemat *vec)
+{
+    CALL_DENSEMAT_FUNC(vec,download,vec);
+}
+    
+ghost_error ghost_densemat_upload(ghost_densemat *vec)
+{
+    CALL_DENSEMAT_FUNC(vec,upload,vec);
+}
+    
+ghost_error ghost_densemat_halo_avg (ghost_densemat *vec, ghost_context *ctx)
+{
+    CALL_DENSEMAT_FUNC(vec,averagehalo_selector,vec,ctx);
+}
+    
+ghost_error ghost_densemat_create_and_view_densemat(ghost_densemat **x, ghost_densemat *src, ghost_lidx nr, ghost_lidx roffs, ghost_lidx nc, ghost_lidx coffs)
+{
+    CALL_DENSEMAT_FUNC((*x),view,x,src,nr,roffs,nc,coffs);
+}
+    
+ghost_error ghost_densemat_create_and_view_densemat_scattered(ghost_densemat **x, ghost_densemat *src, ghost_lidx nr, ghost_lidx *ridx, ghost_lidx nc, ghost_lidx *cidx)
+{
+    CALL_DENSEMAT_FUNC((*x),viewScatteredVec,src,x,nr,ridx,nc,cidx);
+}
+    
+ghost_error ghost_densemat_create_and_view_densemat_cols(ghost_densemat **x, ghost_densemat *src, ghost_lidx nc, ghost_lidx coffs)
+{
+    CALL_DENSEMAT_FUNC((*x),viewCols,src,x,nc,coffs);
+}
+    
+ghost_error ghost_densemat_create_and_view_densemat_cols_scattered(ghost_densemat **x, ghost_densemat *src, ghost_lidx nc, ghost_lidx *cidx)
+{
+    CALL_DENSEMAT_FUNC((*x),viewScatteredCols,src,x,nc,cidx);
+}
+    
+ghost_error ghost_densemat_init_file(ghost_densemat *x, char *path, ghost_mpi_comm mpicomm)
+{
+    CALL_DENSEMAT_FUNC(x,fromFile,x,path,mpicomm);
+}
+    
+ghost_error ghost_densemat_init_densemat(ghost_densemat *x, ghost_densemat *y, ghost_lidx roffs, ghost_lidx coffs)
+{
+    CALL_DENSEMAT_FUNC(x,fromVec_selector,x,y,roffs,coffs);
+}
+    
+ghost_error ghost_densemat_init_real(ghost_densemat *vec, ghost_densemat *re, ghost_densemat *im)
+{
+    CALL_DENSEMAT_FUNC(vec,fromReal_selector,vec,re,im);
+}
+
+ghost_error ghost_densemat_init_complex(ghost_densemat *re, ghost_densemat *im, ghost_densemat *src)
+{
+    CALL_DENSEMAT_FUNC(re,fromComplex_selector,re,im,src);
+}
+
+ghost_error ghost_densemat_clone(ghost_densemat **x, ghost_densemat *src, ghost_lidx nr, ghost_lidx roffs, ghost_lidx nc, ghost_lidx coffs)
+{
+    CALL_DENSEMAT_FUNC((*x),cloneVector,x,src,nr,roffs,nc,coffs);
+}
+    
+ghost_error ghost_densemat_entry(void *entry, ghost_densemat *vec, ghost_lidx i, ghost_lidx j)
+{
+    CALL_DENSEMAT_FUNC(vec,entry,vec,entry,i,j);
+}
+    
+ghost_error ghost_densemat_sync_vals(ghost_densemat *vec, ghost_mpi_comm comm, int root)
+{
+    CALL_DENSEMAT_FUNC(vec,syncValues,vec,comm,root);
+}
+    
+ghost_error ghost_densemat_view_plain(ghost_densemat *x, void *data, ghost_lidx stride)
+{
+    CALL_DENSEMAT_FUNC(x,viewPlain,x,data,stride);
+}
+
+ghost_error ghost_densemat_compress (ghost_densemat *vec)
+{
+    CALL_DENSEMAT_FUNC(vec,compress,vec);
+}
+
+ghost_error ghost_densemat_collect(ghost_densemat *vec, ghost_densemat *globvec, ghost_context *ctx)
+{
+    CALL_DENSEMAT_FUNC(vec,collectVectors,vec,globvec,ctx);
+}
+    
+ghost_error ghost_densemat_distribute(ghost_densemat *vec, ghost_densemat *localVec, ghost_context *ctx){
+    CALL_DENSEMAT_FUNC(vec,distributeVector,vec,localVec,ctx);
+}

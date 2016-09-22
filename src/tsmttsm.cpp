@@ -290,7 +290,7 @@ end_of_loop:
 
         ret = kernel(x,v,w,alpha,beta,conjv);
         if (reduce != GHOST_GEMM_NO_REDUCE && ctx) {
-            x->reduce(x,ctx->mpicomm,reduce);
+            ghost_densemat_reduce(x,ctx->mpicomm,reduce);
         }
     } else if (flags & GHOST_GEMM_KAHAN) { 
         WARNING_LOG("Could not find TSMTTSM-Kahan kernel. Trying non-Kahan version!");

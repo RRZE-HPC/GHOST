@@ -27,20 +27,14 @@
 
 #define ROWMAJOR
 #include "ghost/densemat_iter_macros.h"
-#include "ghost/densemat_common.c.def"
+//#include "ghost/densemat_common.c.def"
 
-static ghost_error ghost_distributeVector(ghost_densemat *vec, ghost_densemat *nodeVec, ghost_context *ctx);
-static ghost_error ghost_collectVectors(ghost_densemat *vec, ghost_densemat *totalVec, ghost_context *ctx); 
-static ghost_error ghost_cloneVector(ghost_densemat *src, ghost_densemat **new, ghost_lidx nr, ghost_lidx roffs, ghost_lidx nc, ghost_lidx coffs);
-static ghost_error vec_rm_compress(ghost_densemat *vec);
-static ghost_error densemat_rm_halocommInit(ghost_densemat *vec, ghost_context *ctx, ghost_densemat_halo_comm *comm);
-static ghost_error densemat_rm_halocommFinalize(ghost_densemat *vec, ghost_context *ctx, ghost_densemat_halo_comm *comm);
 
 ghost_error ghost_densemat_rm_setfuncs(ghost_densemat *vec)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_SETUP);
     ghost_error ret = GHOST_SUCCESS;
-
+/*
     vec->reduce = &ghost_densemat_rm_reduce;
     vec->compress = &vec_rm_compress;
     vec->string = &ghost_densemat_rm_string_selector;
@@ -67,12 +61,12 @@ ghost_error ghost_densemat_rm_setfuncs(ghost_densemat *vec)
     vec->averageHalo = &ghost_densemat_rm_averagehalo_selector;
     vec->upload = &ghost_densemat_rm_upload;
     vec->download = &ghost_densemat_rm_download;
-
+*/
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_SETUP);
     return ret;
 }
 
-static ghost_error ghost_distributeVector(ghost_densemat *vec, ghost_densemat *nodeVec, ghost_context *ctx)
+ghost_error ghost_densemat_rm_distributeVector(ghost_densemat *vec, ghost_densemat *nodeVec, ghost_context *ctx)
 {
     DEBUG_LOG(1,"Distributing vector");
     int me;
@@ -126,14 +120,14 @@ static ghost_error ghost_distributeVector(ghost_densemat *vec, ghost_densemat *n
     //    *nodeVec = vec->clone(vec);
 #endif
 
-    nodeVec->upload(nodeVec);
+    ghost_densemat_upload(nodeVec);
 
     DEBUG_LOG(1,"Vector distributed successfully");
 
     return GHOST_SUCCESS;
 }
 
-static ghost_error ghost_collectVectors(ghost_densemat *vec, ghost_densemat *totalVec, ghost_context *ctx) 
+ghost_error ghost_densemat_rm_collectVectors(ghost_densemat *vec, ghost_densemat *totalVec, ghost_context *ctx) 
 {
     ghost_lidx c;
 #ifdef GHOST_HAVE_MPI
@@ -191,7 +185,7 @@ static ghost_error ghost_collectVectors(ghost_densemat *vec, ghost_densemat *tot
 
 }
 
-static ghost_error ghost_cloneVector(ghost_densemat *src, ghost_densemat **new, ghost_lidx nr, ghost_lidx roffs, ghost_lidx nc, ghost_lidx coffs)
+ghost_error ghost_densemat_rm_cloneVector(ghost_densemat *src, ghost_densemat **new, ghost_lidx nr, ghost_lidx roffs, ghost_lidx nc, ghost_lidx coffs)
 {
     ghost_densemat_traits newTraits = src->traits;
     newTraits.ncols = nc;
@@ -209,11 +203,11 @@ static ghost_error ghost_cloneVector(ghost_densemat *src, ghost_densemat **new, 
       (*new)->perm_local->perm = src->perm_local->perm;
     }
  
-    (*new)->fromVec(*new,src,roffs,coffs);
+    ghost_densemat_init_densemat(*new,src,roffs,coffs);
     return GHOST_SUCCESS;
 }
 
-static ghost_error vec_rm_compress(ghost_densemat *vec)
+ghost_error ghost_densemat_rm_compress(ghost_densemat *vec)
 {
     if (!(vec->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
         return GHOST_SUCCESS;
@@ -272,7 +266,7 @@ static ghost_error vec_rm_compress(ghost_densemat *vec)
     return GHOST_SUCCESS;
 }
 
-static ghost_error densemat_rm_halocommInit(ghost_densemat *vec, ghost_context *ctx, ghost_densemat_halo_comm *comm)
+ghost_error ghost_densemat_rm_halocommInit(ghost_densemat *vec, ghost_context *ctx, ghost_densemat_halo_comm *comm)
 {
 #ifdef GHOST_HAVE_MPI
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
@@ -358,7 +352,7 @@ out:
 
 }
 
-static ghost_error densemat_rm_halocommFinalize(ghost_densemat *vec, ghost_context *ctx, ghost_densemat_halo_comm *comm)
+ghost_error ghost_densemat_rm_halocommFinalize(ghost_densemat *vec, ghost_context *ctx, ghost_densemat_halo_comm *comm)
 {
 #ifdef GHOST_HAVE_MPI
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);

@@ -120,11 +120,13 @@ out:
         ghost_location commonlocation = vec1->traits.location & vec2->traits.location;
         
         typedef ghost_error (*ghost_dot_kernel)(ghost_densemat*, void*, ghost_densemat*);
-        ghost_dot_kernel kernels[2][2];
+        ghost_dot_kernel kernels[2][2] = {{NULL,NULL},{NULL,NULL}};
         kernels[GHOST_HOST_IDX][GHOST_RM_IDX] = &ghost_densemat_rm_dotprod_selector;
         kernels[GHOST_HOST_IDX][GHOST_CM_IDX] = &ghost_densemat_cm_dotprod_selector;
+#ifdef GHOST_HAVE_CUDA
         kernels[GHOST_DEVICE_IDX][GHOST_RM_IDX] = &ghost_densemat_cu_rm_dotprod;
         kernels[GHOST_DEVICE_IDX][GHOST_CM_IDX] = &ghost_densemat_cu_cm_dotprod;
+#endif
 
         SELECT_BLAS1_KERNEL(kernels,commonlocation,vec1->traits.compute_at,vec1->traits.storage,ret,vec1,res,vec2);
     }

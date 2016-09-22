@@ -41,8 +41,8 @@ static void *communicate(void *vargs)
     ghost_error *ret = NULL;
     GHOST_CALL_GOTO(ghost_malloc((void **)&ret,sizeof(ghost_error)),err,*ret);
     *ret = GHOST_SUCCESS;
-    GHOST_CALL_GOTO(args->rhs->halocommStart(args->rhs,args->ctx,args->comm),err,*ret);
-    GHOST_CALL_GOTO(args->rhs->halocommFinalize(args->rhs,args->ctx,args->comm),err,*ret);
+    GHOST_CALL_GOTO(ghost_densemat_halocomm_start(args->rhs,args->ctx,args->comm),err,*ret);
+    GHOST_CALL_GOTO(ghost_densemat_halocomm_finalize(args->rhs,args->ctx,args->comm),err,*ret);
 
     goto out;
 err:
@@ -143,7 +143,7 @@ ghost_error ghost_spmv_taskmode(ghost_densemat* res, ghost_sparsemat* mat, ghost
     
     GHOST_INSTR_START("haloassembly");
     
-    GHOST_CALL_GOTO(invec->halocommInit(invec,mat->context,&comm),err,ret);
+    GHOST_CALL_GOTO(ghost_densemat_halocomm_init(invec,mat->context,&comm),err,ret);
     
     GHOST_INSTR_STOP("haloassembly");
 

@@ -40,9 +40,9 @@ ghost_error ghost_spmv_vectormode(ghost_densemat* res, ghost_sparsemat* mat, gho
     
     GHOST_INSTR_START("comm");
     ghost_densemat_halo_comm comm = GHOST_DENSEMAT_HALO_COMM_INITIALIZER;
-    GHOST_CALL_GOTO(invec->halocommInit(invec,mat->context,&comm),err,ret);
-    GHOST_CALL_GOTO(invec->halocommStart(invec,mat->context,&comm),err,ret);
-    GHOST_CALL_GOTO(invec->halocommFinalize(invec,mat->context,&comm),err,ret);
+    GHOST_CALL_GOTO(ghost_densemat_halocomm_init(invec,mat->context,&comm),err,ret);
+    GHOST_CALL_GOTO(ghost_densemat_halocomm_start(invec,mat->context,&comm),err,ret);
+    GHOST_CALL_GOTO(ghost_densemat_halocomm_finalize(invec,mat->context,&comm),err,ret);
     GHOST_INSTR_STOP("comm");
 
     GHOST_INSTR_START("comp");

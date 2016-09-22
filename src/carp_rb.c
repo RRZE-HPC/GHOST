@@ -19,9 +19,9 @@ ghost_error ghost_carp_rb(ghost_sparsemat *mat, ghost_densemat *x, ghost_densema
     opts.direction = GHOST_KACZ_DIRECTION_FORWARD;
 
 
-    GHOST_CALL_RETURN(x->halocommInit(x,mat->context,&comm));
-    GHOST_CALL_RETURN(x->halocommStart(x,mat->context,&comm));
-    GHOST_CALL_RETURN(x->halocommFinalize(x,mat->context,&comm));
+    GHOST_CALL_RETURN(ghost_densemat_halocomm_init(x,mat->context,&comm));
+    GHOST_CALL_RETURN(ghost_densemat_halocomm_start(x,mat->context,&comm));
+    GHOST_CALL_RETURN(ghost_densemat_halocomm_finalize(x,mat->context,&comm));
     
     if(flag_rb!= 0){
  	GHOST_CALL_RETURN(ghost_kacz_rb(x,mat,b,opts));
@@ -30,13 +30,13 @@ ghost_error ghost_carp_rb(ghost_sparsemat *mat, ghost_densemat *x, ghost_densema
      } 
      MPI_Barrier(mat->context->mpicomm);
     
-     GHOST_CALL_RETURN(x->averageHalo(x,mat->context));
+     GHOST_CALL_RETURN(ghost_densemat_halo_avg(x,mat->context));
 
      opts.direction = GHOST_KACZ_DIRECTION_BACKWARD;
 
-     GHOST_CALL_RETURN(x->halocommInit(x,mat->context,&comm));
-     GHOST_CALL_RETURN(x->halocommStart(x,mat->context,&comm));
-     GHOST_CALL_RETURN(x->halocommFinalize(x,mat->context,&comm));
+     GHOST_CALL_RETURN(ghost_densemat_halocomm_init(x,mat->context,&comm));
+     GHOST_CALL_RETURN(ghost_densemat_halocomm_start(x,mat->context,&comm));
+     GHOST_CALL_RETURN(ghost_densemat_halocomm_finalize(x,mat->context,&comm));
 
     
      if(flag_rb!=0){
@@ -45,7 +45,7 @@ ghost_error ghost_carp_rb(ghost_sparsemat *mat, ghost_densemat *x, ghost_densema
        	GHOST_CALL_RETURN(ghost_kacz_mc(x,mat,b,opts));   
      }
 
-    GHOST_CALL_RETURN(x->averageHalo(x,mat->context));
+    GHOST_CALL_RETURN(ghost_densemat_halo_avg(x,mat->context));
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_SOLVER);
     return GHOST_SUCCESS;

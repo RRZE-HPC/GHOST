@@ -37,16 +37,16 @@ ghost_error ghost_spmv_goodfaith(ghost_densemat* res, ghost_sparsemat* mat, ghos
     
     ghost_densemat_halo_comm comm = GHOST_DENSEMAT_HALO_COMM_INITIALIZER;
 
-    GHOST_CALL_RETURN(invec->halocommInit(invec,mat->context,&comm));
+    GHOST_CALL_RETURN(ghost_densemat_halocomm_init(invec,mat->context,&comm));
 
     GHOST_INSTR_START("comm+localcomp");
-    GHOST_CALL_RETURN(invec->halocommStart(invec,mat->context,&comm));
+    GHOST_CALL_RETURN(ghost_densemat_halocomm_start(invec,mat->context,&comm));
     
     GHOST_INSTR_START("local");
     GHOST_CALL_GOTO(ghost_spmv_nocomm(res,mat->localPart,invec,localtraits),err,ret);
     GHOST_INSTR_STOP("local");
 
-    GHOST_CALL_RETURN(invec->halocommFinalize(invec,mat->context,&comm));
+    GHOST_CALL_RETURN(ghost_densemat_halocomm_finalize(invec,mat->context,&comm));
     GHOST_INSTR_STOP("comm+localcomp");
     
     GHOST_INSTR_START("remote");
