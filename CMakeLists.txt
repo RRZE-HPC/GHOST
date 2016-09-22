@@ -620,8 +620,8 @@ endif()
 
 include_directories(BEFORE ${HWLOC_INCLUDE_DIR} ${PROJECT_BINARY_DIR}/ghost ${PROJECT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/include)
 
-if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel") 
-    if (GHOST_USE_SPMP)
+if (GHOST_USE_SPMP)
+    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
         set(GHOST_HAVE_SPMP 1)
         set(GITHUB_GIT_URL "github.com" CACHE STRING "The github GIT URL. This has to be changed in certain situations if located behind a firewall.")
         include(ExternalProject)
@@ -638,9 +638,9 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" ST
         target_link_libraries(ghost "${PROJECT_BINARY_DIR}/SpMP/src/SpMP/libspmp.a")
         include_directories(SYSTEM ${PROJECT_BINARY_DIR}/SpMP/src)
         add_dependencies(ghost SpMP)
+    else()
+        message(FATAL_ERROR "SpMP will not build with a compiler which is not Clang/GNU/Intel. Please disable SpMP or use a different compiler!")
     endif()
-else()
-    message(FATAL_ERROR "SpMP will not build with a compiler which is not Clang/GNU/Intel. Please disable SpMP or use a different compiler!")
 endif()
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Cray")
