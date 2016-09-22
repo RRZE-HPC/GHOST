@@ -301,21 +301,23 @@ extern "C" ghost_error FUNCNAME(vaxpy)(ghost_densemat *v1, ghost_densemat *v2, v
     {
         if (v1->traits.datatype & GHOST_DT_DOUBLE)
         {
-            complex double *one;
-            GHOST_CALL_RETURN(ghost_malloc((void **)&one,v1->traits.ncols*sizeof(complex double)));
+            std::complex<double> *one;
+            GHOST_CALL_RETURN(ghost_malloc((void **)&one,v1->traits.ncols*sizeof(std::complex<double>)));
             int v;
             for (v=0; v<v1->traits.ncols; v++) {
-                one[v] = 1.+I*0.;
+                one[v].real(1.);
+                one[v].imag(0.);
             }
             ret =  FUNCNAME(vaxpby)(v1,v2,a,one);
         } 
         else 
         {
-            complex float *one;
-            GHOST_CALL_RETURN(ghost_malloc((void **)&one,v1->traits.ncols*sizeof(complex float)));
+            std::complex<float> *one;
+            GHOST_CALL_RETURN(ghost_malloc((void **)&one,v1->traits.ncols*sizeof(std::complex<float>)));
             int v;
             for (v=0; v<v1->traits.ncols; v++) {
-                one[v] = 1.+I*0.;
+                one[v].real(1.);
+                one[v].imag(0.);
             }
             ret =  FUNCNAME(vaxpby)(v1,v2,a,one);
         }
@@ -602,29 +604,29 @@ extern "C" ghost_error FUNCNAME(dotprod)(ghost_densemat *vec, void *res, ghost_d
         if (vec->traits.datatype & GHOST_DT_COMPLEX) {
             if (vec->traits.datatype & GHOST_DT_DOUBLE) {
                 cuDoubleComplex * partres;
-                ghost_cu_malloc((void **)&partres,vec->traits.ncols*grid.x*sizeof(complex double));
-                FUNCNAME(dot_kernel)<cuDoubleComplex><<< grid,block,block.x/32*sizeof(complex double)*block.y >>>(
+                ghost_cu_malloc((void **)&partres,vec->traits.ncols*grid.x*sizeof(std::complex<double>));
+                FUNCNAME(dot_kernel)<cuDoubleComplex><<< grid,block,block.x/32*sizeof(std::complex<double>)*block.y >>>(
                         (cuDoubleComplex *)partres,
                         (cuDoubleComplex *)veccompact->cu_val, (cuDoubleComplex *)vec2compact->cu_val,
                         vec->traits.nrows,vec->traits.ncols,veccompact->stride,vec2compact->stride);
                 int col;
                 for (col=0; col<vec->traits.ncols; col++) {
-                    ghost_deviceReduceSum<cuDoubleComplex><<<1,1024,32*sizeof(complex double)>>>(&partres[col*grid.x],&partres[col],grid.x);
+                    ghost_deviceReduceSum<cuDoubleComplex><<<1,1024,32*sizeof(std::complex<double>)>>>(&partres[col*grid.x],&partres[col],grid.x);
                 }
-                ghost_cu_download(res,partres,vec->traits.ncols*sizeof(complex double));
+                ghost_cu_download(res,partres,vec->traits.ncols*sizeof(std::complex<double>));
                 ghost_cu_free(partres);
             } else {
                 cuFloatComplex * partres;
-                ghost_cu_malloc((void **)&partres,vec->traits.ncols*grid.x*sizeof(complex float));
-                FUNCNAME(dot_kernel)<cuFloatComplex><<< grid,block,block.x/32*sizeof(complex float)*block.y >>>(
+                ghost_cu_malloc((void **)&partres,vec->traits.ncols*grid.x*sizeof(std::complex<float>));
+                FUNCNAME(dot_kernel)<cuFloatComplex><<< grid,block,block.x/32*sizeof(std::complex<float>)*block.y >>>(
                         (cuFloatComplex *)partres,
                         (cuFloatComplex *)veccompact->cu_val, (cuFloatComplex *)vec2compact->cu_val,
                         vec->traits.nrows,vec->traits.ncols,veccompact->stride,vec2compact->stride);
                 int col;
                 for (col=0; col<vec->traits.ncols; col++) {
-                    ghost_deviceReduceSum<cuFloatComplex><<<1,1024,32*sizeof(complex float)>>>(&partres[col*grid.x],&partres[col],grid.x);
+                    ghost_deviceReduceSum<cuFloatComplex><<<1,1024,32*sizeof(std::complex<float>)>>>(&partres[col*grid.x],&partres[col],grid.x);
                 }
-                ghost_cu_download(res,partres,vec->traits.ncols*sizeof(complex float));
+                ghost_cu_download(res,partres,vec->traits.ncols*sizeof(std::complex<float>));
                 ghost_cu_free(partres);
             }
         } else {
