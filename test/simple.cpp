@@ -133,8 +133,8 @@ int main(int argc, char **argv) {
             GHOST_TEST_CALL(ghost_type_get(&ghost_type));
             if (ghost_type == GHOST_TYPE_CUDA)
             {
-               GHOST_TEST_CALL(x->download(x));
-               GHOST_TEST_CALL(y->download(y));
+               GHOST_TEST_CALL(ghost_densemat_download(x));
+               GHOST_TEST_CALL(ghost_densemat_download(y));
             }
 #endif
 
