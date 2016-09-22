@@ -432,7 +432,7 @@ if (GHOST_USE_CUDA)
         set(GHOST_HAVE_CUDA 1)
         cuda_include_directories(${PROJECT_SOURCE_DIR}/include
             ${PROJECT_BINARY_DIR} ${PROJECT_BINARY_DIR}/ghost ${HWLOC_INCLUDE_DIR} ${LIKWID_INCLUE_DIR} ${MPI_INCLUDE_PATH})
-        list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fPIC;-arch=sm_35)
+        list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fPIC;-arch=sm_35;-std=c++11)
         if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
             list(APPEND CUDA_NVCC_FLAGS -O0)
         endif()
