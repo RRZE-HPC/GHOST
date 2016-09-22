@@ -85,7 +85,7 @@ for(rowinchunk=start_rem; rowinchunk<MIN(CHUNKHEIGHT,(end_chunk-start_chunk)*CHU
     row = rowinchunk + (start_chunk)*CHUNKHEIGHT; \
     LOOP_IN_CHUNK(row); \
 } \
-_Pragma("omp parallel for private(chunk, rowinchunk, idx, row, NBLOCKS, NSHIFTS, CHUNKHEIGHT)") \
+_Pragma("omp parallel for private(chunk, rowinchunk, idx, row)") \
 for (chunk=start_chunk+1; chunk<end_chunk; ++chunk){ \
     for(rowinchunk=0; rowinchunk<CHUNKHEIGHT; ++rowinchunk) { \
         row = rowinchunk + chunk*CHUNKHEIGHT; \
@@ -111,7 +111,7 @@ for(rowinchunk=start_rem; rowinchunk>=MAX(0,(end_chunk-start_chunk)*CHUNKHEIGHT+
     row = rowinchunk + (start_chunk)*CHUNKHEIGHT; \
     LOOP_IN_CHUNK(row) \
 } \
-_Pragma("omp parallel for private(chunk, rowinchunk, idx, row, NBLOCKS, NSHIFTS, CHUNKHEIGHT)") \
+_Pragma("omp parallel for private(chunk, rowinchunk, idx, row)") \
 for (chunk=start_chunk-1; chunk>end_chunk; --chunk){ \
     for(rowinchunk=CHUNKHEIGHT-1; rowinchunk>=0; --rowinchunk) { \
         row = rowinchunk + chunk*CHUNKHEIGHT; \
@@ -192,7 +192,7 @@ if(tid == nthreads-1) \
      ghost_lidx *zone_ptr = (ghost_lidx*) mat->zone_ptr;
      ghost_lidx *color_ptr= (ghost_lidx*) mat->color_ptr;
      ghost_lidx nthreads = mat->kacz_setting.active_threads;
-     int prev_nthreads;
+     //int prev_nthreads;
      int prev_omp_nested;
      
      #ifdef GHOST_HAVE_OPENMP
@@ -237,7 +237,7 @@ if(tid == nthreads-1) \
          #endif
          
          #ifdef GHOST_HAVE_OPENMP  
-         #pragma omp parallel private (start_rem, start_chunk, end_chunk, end_rem, chunk, rowinchunk, idx, row, NBLOCKS, NSHIFTS, CHUNKHEIGHT)
+         #pragma omp parallel private (start_rem, start_chunk, end_chunk, end_rem, chunk, rowinchunk, idx, row)
          {
              #endif 
              ghost_lidx tid = ghost_omp_threadnum();
@@ -280,7 +280,7 @@ if(tid == nthreads-1) \
      } else {
          
          #ifdef GHOST_HAVE_OPENMP  
-         #pragma omp parallel private(start_rem, start_chunk, end_chunk, end_rem, chunk, rowinchunk, idx, row, NBLOCKS, NSHIFTS, CHUNKHEIGHT)
+         #pragma omp parallel private(start_rem, start_chunk, end_chunk, end_rem, chunk, rowinchunk, idx, row)
          {
              #endif 
              ghost_lidx tid = ghost_omp_threadnum();

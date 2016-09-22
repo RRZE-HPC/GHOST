@@ -977,12 +977,12 @@ ghost_error ghost_kacz_BMCshift_u_plain_rm_CHUNKHEIGHT_NVECS(ghost_densemat *x, 
         //return GHOST_ERR_DATATYPE;
     }
     
-    #if CHUNKHEIGHT>1
-    ghost_lidx start_rem, start_chunk, end_chunk, end_rem; 
-    ghost_lidx chunk = 0; 
-    ghost_lidx rowinchunk = 0; 
-    ghost_lidx idx=0, row=0; 
-    #endif
+//    #if CHUNKHEIGHT>1
+//    ghost_lidx start_rem, start_chunk, end_chunk, end_rem; 
+//    ghost_lidx chunk = 0; 
+//    ghost_lidx rowinchunk = 0; 
+//    ghost_lidx idx=0, row=0; 
+//    #endif
     
     if(mat->nzones == 0 || mat->zone_ptr == NULL) {
         ERROR_LOG("Splitting of matrix by Block Multicoloring has not be done!");
@@ -1046,7 +1046,7 @@ ghost_error ghost_kacz_BMCshift_u_plain_rm_CHUNKHEIGHT_NVECS(ghost_densemat *x, 
         
         #ifdef GHOST_HAVE_OPENMP 
         #if CHUNKHEIGHT > 1
-        #pragma omp parallel private(start_rem, start_chunk, end_chunk, end_rem, chunk, rowinchunk, idx, row)
+        #pragma omp parallel /*private(start_rem, start_chunk, end_chunk, end_rem, chunk, rowinchunk, idx, row)*/
         #else
         #pragma omp parallel
         #endif
@@ -1093,7 +1093,7 @@ ghost_error ghost_kacz_BMCshift_u_plain_rm_CHUNKHEIGHT_NVECS(ghost_densemat *x, 
         
         #ifdef GHOST_HAVE_OPENMP 
         #if CHUNKHEIGHT > 1
-        #pragma omp parallel private(start_rem, start_chunk, end_chunk, end_rem, chunk, rowinchunk, idx, row)
+        #pragma omp parallel /*private(start_rem, start_chunk, end_chunk, end_rem, chunk, rowinchunk, idx, row)*/
         #else
         #pragma omp parallel
         #endif

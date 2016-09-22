@@ -7,6 +7,7 @@
 #include "ghost/omp.h"
 #include "ghost/sparsemat.h"
 #include "ghost/sell_spmv_sse_gen.h"
+#include "ghost/math.h"
 #include <immintrin.h>
 
 #GHOST_SUBST NVECS ${BLOCKDIM1}

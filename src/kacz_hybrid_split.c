@@ -350,10 +350,10 @@ ghost_error split_analytical(ghost_sparsemat *mat)
 {
     //for KACZ_ANALYZE
     #ifdef GHOST_KACZ_ANALYZE 
-    ghost_lidx line_size, n_lines, rem_lines;
-    int start=0 , end=0;
-    ghost_lidx *rows;
-    ghost_lidx *nnz;
+    //ghost_lidx line_size, n_lines, rem_lines;
+    //int start=0 , end=0;
+    //ghost_lidx *rows;
+    //ghost_lidx *nnz;
     #endif
     
     int height = mat->nrows;
@@ -390,9 +390,9 @@ ghost_error split_analytical(ghost_sparsemat *mat)
     mat->kacz_setting.active_threads = current_threads;
     
     
-    ghost_lidx *chunk_ptr = mat->chunkStart;
-    ghost_lidx *col_ptr = mat->col;
-    ghost_lidx chunkheight = mat->traits.C;
+    //ghost_lidx *chunk_ptr = mat->chunkStart;
+    //ghost_lidx *col_ptr = mat->col;
+    //ghost_lidx chunkheight = mat->traits.C;
     
     mat->nzones = 4*current_threads;
     ghost_malloc((void **)&mat->zone_ptr,(mat->nzones+2)*sizeof(ghost_lidx)); //one extra zone added for convenience
@@ -455,10 +455,10 @@ ghost_error split_analytical(ghost_sparsemat *mat)
     
     for(int i=1; i<current_threads; ++i) {	 
         
-        ghost_lidx chunk_lower      = zone_ptr[4*i+2]/chunkheight;
-        ghost_lidx rowinchunk_lower = zone_ptr[4*i+2]%chunkheight;
-        ghost_lidx chunk_upper 	    = (zone_ptr[4*i-1]-1)/chunkheight;     
-        ghost_lidx rowinchunk_upper = (zone_ptr[4*i-1]-1)%chunkheight;
+        //ghost_lidx chunk_lower      = zone_ptr[4*i+2]/chunkheight;
+        //ghost_lidx rowinchunk_lower = zone_ptr[4*i+2]%chunkheight;
+        //ghost_lidx chunk_upper 	    = (zone_ptr[4*i-1]-1)/chunkheight;     
+        //ghost_lidx rowinchunk_upper = (zone_ptr[4*i-1]-1)%chunkheight;
         
         int *extrema_lower_trans = NULL, *extrema_upper_trans = NULL;
         

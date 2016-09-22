@@ -2,6 +2,10 @@
 #include "ghost/math.h"
 #include "ghost/densemat_iter_macros.h"
 
+#undef PREFIX
+#undef GHOST_DENSEMAT_SCATTERED_ROWS
+#undef GHOST_DENSEMAT_SCATTERED_COLS
+
 #ifdef ROWMAJOR
 #ifdef COLMAJOR
 #error "Only one of ROWMAJOR or COLMAJOR must be defined!"
@@ -410,7 +414,7 @@ static ghost_error FUNCNAME(entry(ghost_densemat * vec, void *val, ghost_lidx r,
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     ghost_densemat *singleent;
-    GHOST_CALL_RETURN(ghost_densemat_create_and_view_densemat(vec,&singleent,1,r,1,c));
+    GHOST_CALL_RETURN(ghost_densemat_create_and_view_densemat(&singleent,vec,1,r,1,c));
     memcpy(val,singleent->val,singleent->elSize);
 
     ghost_densemat_destroy(singleent);

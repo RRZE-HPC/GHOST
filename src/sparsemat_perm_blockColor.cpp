@@ -169,13 +169,10 @@ free(tmpval);
         char * tmpval = NULL;
         ghost_lidx rowlen;
         
-        
-        //TODO delete it
-        ghost_lidx max_col = 0;
         int me;
         ghost_rank(&me, mat->context->mpicomm);
         
-        #pragma omp parallel private (tmpval,tmpcol,rowlen) reduction(+:nnz) reduction(max:max_col)
+        #pragma omp parallel private (tmpval,tmpcol,rowlen) reduction(+:nnz)
         {
             ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize);
             ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx));

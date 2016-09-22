@@ -649,7 +649,6 @@ ghost_error switch_permutation_method( ghost_densemat **vec, ghost_context *ctx,
     int rank;
     GHOST_CALL_RETURN(ghost_rank(&rank, ctx->mpicomm));
     bool permuted = false;
-    char *vecstr;
 
     if((*vec)->traits.permutemethod != NONE) {
       if((*vec)->traits.flags & (ghost_densemat_flags)GHOST_DENSEMAT_PERMUTED || isPermuted) 
@@ -800,7 +799,7 @@ ghost_error ghost_densemat_halo_avg (ghost_densemat *vec, ghost_context *ctx)
     
 ghost_error ghost_densemat_create_and_view_densemat(ghost_densemat **x, ghost_densemat *src, ghost_lidx nr, ghost_lidx roffs, ghost_lidx nc, ghost_lidx coffs)
 {
-    CALL_DENSEMAT_FUNC((*x),view,x,src,nr,roffs,nc,coffs);
+    CALL_DENSEMAT_FUNC((*x),view,src,x,nr,roffs,nc,coffs);
 }
     
 ghost_error ghost_densemat_create_and_view_densemat_scattered(ghost_densemat **x, ghost_densemat *src, ghost_lidx nr, ghost_lidx *ridx, ghost_lidx nc, ghost_lidx *cidx)
@@ -840,7 +839,7 @@ ghost_error ghost_densemat_init_complex(ghost_densemat *re, ghost_densemat *im, 
 
 ghost_error ghost_densemat_clone(ghost_densemat **x, ghost_densemat *src, ghost_lidx nr, ghost_lidx roffs, ghost_lidx nc, ghost_lidx coffs)
 {
-    CALL_DENSEMAT_FUNC((*x),cloneVector,x,src,nr,roffs,nc,coffs);
+    CALL_DENSEMAT_FUNC((*x),cloneVector,src,x,nr,roffs,nc,coffs);
 }
     
 ghost_error ghost_densemat_entry(void *entry, ghost_densemat *vec, ghost_lidx i, ghost_lidx j)

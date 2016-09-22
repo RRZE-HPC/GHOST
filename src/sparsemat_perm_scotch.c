@@ -37,17 +37,6 @@ static int MPI_Allreduce64_in_place ( void *buf, int64_t count,
 #endif
 #endif
 
-#if defined(GHOST_HAVE_SCOTCH) && defined(GHOST_HAVE_MPI)
-typedef struct {
-    ghost_gidx idx, pidx;
-} ghost_permutation_ent_t;
-                    
-static int perm_ent_cmp(const void *a, const void *b)
-{
-    return ((ghost_permutation_ent_t *)a)->pidx - ((ghost_permutation_ent_t *)b)->pidx;
-}
-#endif
-
 ghost_error ghost_sparsemat_perm_scotch(ghost_sparsemat *mat, void *matrixSource, ghost_sparsemat_src srcType)
 {
 #ifndef GHOST_HAVE_SCOTCH
