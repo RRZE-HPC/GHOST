@@ -4,7 +4,6 @@
 #include "ghost/cu_sell_kernel.h"
 #include "ghost/bench.h"
 #include "ghost/densemat.h"
-#include "ghost/funcptr_wrappers.h"
 #include "ghost/dot.h"
 
 #define NITER 20

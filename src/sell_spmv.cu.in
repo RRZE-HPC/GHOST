@@ -455,13 +455,13 @@ static ghost_error ghost_cu_sell_spmv_tmpl(ghost_sparsemat *mat, ghost_densemat 
     ghost_densemat *lhscompact, *rhscompact, *zcompact;
     if (lhs->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         PERFWARNING_LOG("Cloning (and compressing) lhs before operation");
-        GHOST_CALL_RETURN(lhs->clone(lhs,&lhscompact,lhs->traits.nrows,0,lhs->traits.ncols,0));
+        GHOST_CALL_RETURN(ghost_densemat_clone(&lhscompact,lhs,lhs->traits.nrows,0,lhs->traits.ncols,0));
     } else {
         lhscompact = lhs;
     }
     if (rhs->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         PERFWARNING_LOG("Cloning (and compressing) rhs before operation");
-        GHOST_CALL_RETURN(rhs->clone(rhs,&rhscompact,rhs->traits.nrows,0,rhs->traits.ncols,0));
+        GHOST_CALL_RETURN(ghost_densemat_clone(&rhscompact,rhs,rhs->traits.nrows,0,rhs->traits.ncols,0));
     } else {
         rhscompact = rhs;
     }
@@ -478,7 +478,7 @@ static ghost_error ghost_cu_sell_spmv_tmpl(ghost_sparsemat *mat, ghost_densemat 
     GHOST_SPMV_PARSE_TRAITS(traits,scale,beta,shift,localdot,z,sdelta,seta,v_dt_host,v_dt_device);
     if (z && (z->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
         PERFWARNING_LOG("Cloning (and compressing) z before operation");
-        GHOST_CALL_RETURN(z->clone(z,&zcompact,z->traits.nrows,0,z->traits.ncols,0));
+        GHOST_CALL_RETURN(ghost_densemat_clone(&zcompact,z,z->traits.nrows,0,z->traits.ncols,0));
     } else {
         zcompact = z;
     }
@@ -626,12 +626,12 @@ static ghost_error ghost_cu_sell_spmv_tmpl(ghost_sparsemat *mat, ghost_densemat 
     CUDA_CALL_RETURN(cudaGetLastError());
     if (lhscompact != lhs) {
         DEBUG_LOG(1,"Transform lhs back");
-        GHOST_CALL_RETURN(lhs->fromVec(lhs,lhscompact,0,0));
+        GHOST_CALL_RETURN(ghost_densemat_init_densemat(lhs,lhscompact,0,0));
         ghost_densemat_destroy(lhscompact);
     }
     if (rhscompact != rhs) {
         DEBUG_LOG(1,"Transform rhs back");
-        GHOST_CALL_RETURN(rhs->fromVec(rhs,rhscompact,0,0));
+        GHOST_CALL_RETURN(ghost_densemat_init_densemat(rhs,rhscompact,0,0));
         ghost_densemat_destroy(rhscompact);
     }
     cudaDeviceSynchronize();
