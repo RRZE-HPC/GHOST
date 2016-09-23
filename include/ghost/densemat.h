@@ -33,24 +33,6 @@
         return GHOST_ERR_INVALID_ARG;\
     }
 
-#define SELECT_BLAS1_KERNEL(kernels,commonlocation,compute_at,storage,ret,...) \
-    if (commonlocation == (GHOST_LOCATION_HOST | GHOST_LOCATION_DEVICE)) {\
-        if (compute_at == GHOST_LOCATION_HOST) {\
-            if (storage == GHOST_DENSEMAT_COLMAJOR) {\
-                ret = kernels[GHOST_HOST_IDX][GHOST_CM_IDX](__VA_ARGS__);\
-            } else {\
-                ret = kernels[GHOST_HOST_IDX][GHOST_RM_IDX](__VA_ARGS__);\
-            }\
-        } else {\
-            if (storage == GHOST_DENSEMAT_COLMAJOR) {\
-                ret = kernels[GHOST_DEVICE_IDX][GHOST_CM_IDX](__VA_ARGS__);\
-            } else {\
-                ret = kernels[GHOST_DEVICE_IDX][GHOST_RM_IDX](__VA_ARGS__);\
-            }\
-        }\
-    } else {\
-        ret = kernels[ghost_idx_of_location(commonlocation)][ghost_idx_of_densemat_storage(storage)](__VA_ARGS__);\
-    }
 
 /**
  * @brief Callback function to construct a ghost_densemat
