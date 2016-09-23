@@ -623,14 +623,25 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" ST
         include(ExternalProject)
         set(SPMP_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
         set_property(DIRECTORY PROPERTY EP_STEP_TARGETS build)
-        ExternalProject_Add(SpMP
-            PREFIX ${PROJECT_BINARY_DIR}/SpMP
-            GIT_REPOSITORY http://${GITHUB_GIT_URL}/IntelLabs/SpMP.git
-            CONFIGURE_COMMAND ${PROJECT_SOURCE_DIR}/cmake/configure_spmp.sh ${PROJECT_BINARY_DIR}/SpMP/src/SpMP/synk/loadimba.cpp
-            BUILD_COMMAND make CC=${CMAKE_CXX_COMPILER} CCFLAGS=${SPMP_CXX_FLAGS} 
-            BUILD_IN_SOURCE 1
-            INSTALL_COMMAND ""
-            )
+        if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
+            ExternalProject_Add(SpMP
+                PREFIX ${PROJECT_BINARY_DIR}/SpMP
+                GIT_REPOSITORY http://${GITHUB_GIT_URL}/mkre/SpMP.git
+                CONFIGURE_COMMAND ""
+                BUILD_COMMAND make 
+                BUILD_IN_SOURCE 1
+                INSTALL_COMMAND ""
+                )
+        else() # GNU or Clang: Set CUSTOM_CXX variable in SpMP make
+            ExternalProject_Add(SpMP
+                PREFIX ${PROJECT_BINARY_DIR}/SpMP
+                GIT_REPOSITORY http://${GITHUB_GIT_URL}/mkre/SpMP.git
+                CONFIGURE_COMMAND ""
+                BUILD_COMMAND make CUSTOM_CXX=${CMAKE_CXX_COMPILER} 
+                BUILD_IN_SOURCE 1
+                INSTALL_COMMAND ""
+                )
+        endif()
         target_link_libraries(ghost "${PROJECT_BINARY_DIR}/SpMP/src/SpMP/libspmp.a")
         include_directories(SYSTEM ${PROJECT_BINARY_DIR}/SpMP/src)
         add_dependencies(ghost SpMP)
