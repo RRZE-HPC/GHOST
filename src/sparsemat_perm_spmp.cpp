@@ -64,7 +64,7 @@ ghost_error ghost_sparsemat_perm_spmp(ghost_sparsemat *mat, void *matrixSource, 
 #else 
     int *intcolperm = NULL, *intcolinvperm = NULL;
     SpMP::CSR *csrT = NULL;
-    SpMP::CSR *csrTT = NULL; //delete after transpose checking
+    //SpMP::CSR *csrTT = NULL; //delete after transpose checking
 #endif
     int localent = 0;
     

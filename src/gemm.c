@@ -8,6 +8,7 @@
 #include "ghost/tsmttsm.h"
 #include "ghost/tsmm.h"
 
+#include "ghost/compatibility_check.h"
 #include <strings.h>
 #ifdef GHOST_HAVE_CUDA
 #include <cublas_v2.h>
@@ -457,6 +458,18 @@ ghost_densemat *w_in, const char *transw, void *alpha, void *beta, int reduce, g
 #endif
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error ret = GHOST_SUCCESS;
+  
+    //////////////// check compatibility /////////////
+    ghost_compatible_vec_vec check = GHOST_COMPATIBLE_VEC_VEC_INITIALIZER;
+    check.A = v_in;
+    check.transA = transv[0];
+    check.B = w_in;
+    check.transB = transw[0];
+    check.OUT = x_in;
+   
+    ret = ghost_check_vec_vec_compatibility(&check,ctx);
+    ///////////////////////////////////////////////////
+ 
     int donespecial = 0;
       
     ghost_densemat *x = NULL;

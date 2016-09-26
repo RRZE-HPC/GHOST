@@ -101,13 +101,13 @@ ghost_densemat_permuted;
 typedef struct
 {
     /**
-     * @brief Gets an original index and returns the corresponding permuted position.
+     * @brief Gets an original row index and returns the corresponding permuted position.
      *
      * NULL if no permutation applied to the matrix.
      */
     ghost_gidx *perm;
     /**
-     * @brief Gets an index in the permuted system and returns the original index.
+     * @brief Gets a row index in the permuted system and returns the original index.
      *
      * NULL if no permutation applied to the matrix.
      */
@@ -278,7 +278,7 @@ typedef struct
     ghost_location location;
     /**
      * @brief Gives the information on which permutation is 
-     *        carried out on the densemat,
+     *        carried out on the densemat rows,
      *        Possible values NONE, ROW, COLUMN
      *
      *        if NONE- no permutation would be possible by densemat->permute (default)
@@ -809,7 +809,8 @@ extern "C" {
      * (this is required for time-being since operators like SpMV, CARP is not 
      *  currently setting the GHOST_DENSEMAT_PERMUTED flag)
      */ 
-    ghost_error switch_permutation_method( ghost_densemat **vec, ghost_context *ctx, bool isPermuted); 
+    ghost_error switch_permutation_method( ghost_densemat *vec, ghost_context *ctx, bool force_permute); 
+    ghost_error convert_permutation_method( ghost_densemat *vec, ghost_context *ctx, ghost_densemat_permuted dest_method, bool permute); 
 
 #ifdef __cplusplus
 }

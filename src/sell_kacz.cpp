@@ -12,8 +12,10 @@
 #include "ghost/sell_kacz_bmc_rm_gen.h"
 #include "ghost/sell_kacz_bmc_normal_gen.h"
 #include "ghost/sell_kacz_bmc_shift_gen.h"
+#include "ghost/compatibility_check.h"
 #include <complex>
 #include <unordered_map>
+#include <vector>
 
 using namespace std;
 
@@ -145,51 +147,55 @@ ghost_error ghost_carp_perf_init_tmpl(ghost_sparsemat *mat, ghost_carp_opts *opt
         
         std::complex<double> zero=0;
         std::complex<double> one=1;
+        std::vector<int> block_size;
+        int total_sizes = 0;
+       //TODO block values should be precompiled, now 1,4,8,16,32,64,128,256
+        int curr_block_size = 64; // since most of the matrix violate LC after 64
+          
         
-        int total_sizes = 6;
-        int *block_size;
-        ghost_malloc((void **)&block_size, total_sizes*sizeof(int));
-        //TODO block values should be precompiled, now 1,4,8,16,32,64,128,256
-        if(total_sizes > 1) {
-            block_size[0] = 1;
+        while(curr_block_size > 0)
+        {
+          curr_block_size = ghost_get_next_cfg_densemat_dim(curr_block_size);    
+          block_size.push_back(curr_block_size);
+          curr_block_size -= 1;
+          total_sizes += 1;
         }
-        if(total_sizes > 2) {
-            block_size[1] = 4;
+
+        if(block_size.back() !=1) {
+          WARNING_LOG("Please compile block size = 1")
         }
-        if(total_sizes>3) {
-            for(int i=2; i<total_sizes; ++i) {
-                block_size[i] = block_size[i-1]*2; 
-            }
-        }
+
         int nIter = 1;//things like alpha=0 wouldn't be considered, but the LC 
         for (int i=0; i<total_sizes; ++i) { 
-            vtraits_col.ncols = block_size[i];
-            vtraits_row.ncols = block_size[i];
-            ghost_densemat_create(&test_x, mat->context, vtraits_col);
-            ghost_densemat_create(&test_rhs, mat->context, vtraits_row);
-            test_x->fromScalar(test_x,&zero);
-            test_rhs->fromScalar(test_rhs,&one);
-            ghost_barrier();
-            ghost_timing_wcmilli(&start);
-            
-            for(int iter=0; iter<nIter; ++iter) {
-                ghost_carp(mat, test_x, test_rhs, *opts);
-            }
-            
-            ghost_barrier();
-            ghost_timing_wcmilli(&end);
-            double flop = ((nIter*mat->context->gnnz)*vtraits_col.ncols*1*8*1e-6)/(end-start);
-            if(flop > max_flop) {
-                max_flop = std::max(max_flop,flop);
-            } else {
-                //Some LC broken
-                opts->best_block_size = block_size[i-1];
-                free(block_size);
-                return ret;
+            if(block_size[i] != 0) {
+                vtraits_col.ncols = block_size[i];
+                vtraits_row.ncols = block_size[i];
+                ghost_densemat_create(&test_x, mat->context, vtraits_col);
+                ghost_densemat_create(&test_rhs, mat->context, vtraits_row);
+                test_x->fromScalar(test_x,&zero);
+                test_rhs->fromScalar(test_rhs,&one);
+                ghost_barrier();
+                ghost_timing_wcmilli(&start);
+                
+                for(int iter=0; iter<nIter; ++iter) {
+                    ghost_carp(mat, test_x, test_rhs, *opts);
+                }
+                
+                ghost_barrier();
+                ghost_timing_wcmilli(&end);
+                double flop = ((nIter*mat->context->gnnz)*vtraits_col.ncols*1*8*1e-6)/(end-start);
+                if(flop > max_flop) {
+                    max_flop = std::max(max_flop,flop);
+                } else {
+                    //Some LC broken
+                    opts->best_block_size = block_size[i-1];
+                    //free(block_size);
+                    return ret;
+                }
             }
         }
         opts->best_block_size = block_size[total_sizes-1];
-        free(block_size);
+        //free(block_size);
     }
     return ret;
 }
@@ -229,8 +235,7 @@ ghost_kacz_kernels = unordered_map<ghost_kacz_parameters,ghost_kacz_kernel>();
 
 template<typename m_t, typename v_t, bool forward>
 static ghost_error kacz_fallback(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts)
-{
-    
+{ 
     ghost_lidx rank;
     ghost_rank(&rank,mat->context->mpicomm);
     
@@ -319,6 +324,16 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error ret = GHOST_SUCCESS;
+    
+    //////////////// check compatibility /////////////
+    ghost_compatible_mat_vec check = GHOST_COMPATIBLE_MAT_VEC_INITIALIZER;
+    check.mat = mat;
+    check.right1 = x;
+    check.left1 = rhs;
+    
+    ret = ghost_check_mat_vec_compatibility(&check,mat->context);
+    ///////////////////////////////////////////////////
+ 
     ghost_kacz_parameters p;
     
     //if rectangular matrix

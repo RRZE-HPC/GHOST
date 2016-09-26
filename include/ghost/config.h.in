@@ -61,6 +61,9 @@
 /*kacz analytics*/
 #cmakedefine GHOST_KACZ_ANALYZE
 
+/* Allow ghost to permute for compatibility */
+#cmakedefine GHOST_COMPATIBLE_PERM
+
 #endif
 
 

@@ -19,6 +19,7 @@
 #include "ghost/sell_spmv_varblock_avx_gen.h"
 #include "ghost/sell_spmv_varblock_sse_gen.h"
 #include "ghost/sell_spmv_varblock_plain_gen.h"
+#include "ghost/compatibility_check.h"
 
 #include <unordered_map>
 
@@ -384,6 +385,19 @@ extern "C" ghost_error ghost_sell_spmv_selector(ghost_densemat *lhs,
         ghost_densemat *rhs, 
         ghost_spmv_opts traits)
 {
+    ghost_error ret = GHOST_SUCCESS;
+
+
+    //////////////// check compatibility /////////////
+    ghost_compatible_mat_vec check = GHOST_COMPATIBLE_MAT_VEC_INITIALIZER;
+    check.mat = mat;
+    check.right1 = rhs;
+    check.left1 = lhs;
+    
+    ret = ghost_check_mat_vec_compatibility(&check,mat->context);
+    ///////////////////////////////////////////////////
+ 
+
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     if (rhs->traits.storage != lhs->traits.storage) {
         ERROR_LOG("Different storage layout for in- and output densemats!");
@@ -423,8 +437,6 @@ extern "C" ghost_error ghost_sell_spmv_selector(ghost_densemat *lhs,
 #include "sell_spmv_varblock_sse.def"
 #include "sell_spmv_varblock_plain.def"
     }
-
-    ghost_error ret = GHOST_SUCCESS;
 
     ghost_spmv_kernel kernel = NULL;
     ghost_sellspmv_parameters p;

@@ -41,7 +41,7 @@ const ghost_densemat_traits GHOST_DENSEMAT_TRAITS_INITIALIZER = {
     .storage = GHOST_DENSEMAT_STORAGE_DEFAULT,
     .location = GHOST_LOCATION_DEFAULT,
     .datatype = (ghost_datatype)(GHOST_DT_DOUBLE|GHOST_DT_REAL),
-    .permutemethod = NONE
+    .permutemethod = NONE,
 };
 
 const ghost_densemat_halo_comm GHOST_DENSEMAT_HALO_COMM_INITIALIZER = {
@@ -74,10 +74,9 @@ ghost_error ghost_densemat_create(ghost_densemat **vec, ghost_context *ctx, ghos
     (*vec)->rowmask = NULL;
     (*vec)->val = NULL;
     (*vec)->cu_val = NULL;
-   
     if (ctx) {
-        if (ctx->perm_global || ctx->perm_local) {
-           // (*vec)->traits.flags |= (ghost_densemat_flags)GHOST_DENSEMAT_PERMUTED;//why this??
+        if ((ctx->perm_global || ctx->perm_local)&&((*vec)->traits.permutemethod!=NONE)) {
+            (*vec)->traits.flags |= (ghost_densemat_flags)GHOST_DENSEMAT_PERMUTED;
         }
         if ((*vec)->traits.gnrows == 0) {
             (*vec)->traits.gnrows = ctx->gnrows;
@@ -98,16 +97,19 @@ ghost_error ghost_densemat_create(ghost_densemat **vec, ghost_context *ctx, ghos
 
    if(ctx==NULL || ctx->perm_local == NULL) {
 		      (*vec)->perm_local = NULL;
-    } else if((*vec)->traits.permutemethod == COLUMN) {
-	        GHOST_CALL_GOTO(ghost_malloc((void **)&((*vec)->perm_local),sizeof(ghost_densemat_permutation)),err,ret); 
-      		(*vec)->perm_local->perm    = ctx->perm_local->colPerm;
-		      (*vec)->perm_local->invPerm = ctx->perm_local->colInvPerm;
+    } else if((*vec)->traits.permutemethod != NONE){
+       GHOST_CALL_GOTO(ghost_malloc((void **)&((*vec)->perm_local),sizeof(ghost_densemat_permutation)),err,ret); 
+	     if((*vec)->traits.permutemethod == COLUMN) {
+      	  	(*vec)->perm_local->perm    = ctx->perm_local->colPerm;
+		        (*vec)->perm_local->invPerm = ctx->perm_local->colInvPerm;
+      } else {
+	          (*vec)->perm_local->perm    = ctx->perm_local->perm;
+  	        (*vec)->perm_local->invPerm = ctx->perm_local->invPerm;
+      } 
     } else {
-	        GHOST_CALL_GOTO(ghost_malloc((void **)&((*vec)->perm_local),sizeof(ghost_densemat_permutation)),err,ret); 
-		      (*vec)->perm_local->perm    = ctx->perm_local->perm;
-		      (*vec)->perm_local->invPerm = ctx->perm_local->invPerm;
-    }
-
+      (*vec)->perm_local = NULL;
+    } 
+   
     //Right now there are no Global row and column permutation, once there, modify this
     if(ctx==NULL || ctx->perm_global == NULL) {
 		      (*vec)->perm_global = NULL;
@@ -190,7 +192,7 @@ static ghost_error getNrowsFromContext(ghost_densemat *vec, ghost_context *ctx)
         if(ctx->flags & GHOST_PERM_NO_DISTINCTION){
           if(vec->traits.permutemethod==COLUMN) {
 		        vec->traits.nrows = ctx->nrowspadded; 
-          } else if(vec->traits.permutemethod==ROW) {
+          } else { //NONE also goes here
             vec->traits.nrows = ctx->lnrows[rank];
           } 
           vec->traits.maxnrows = MAX(ctx->nrowspadded, ctx->lnrows[rank]); //required for rectanglar matrices
@@ -640,12 +642,15 @@ ghost_lidx ghost_densemat_row_padding()
 //else it takes the value of GHOST_DENSEMAT_PERMUTED
 //TODO: this is just for time being since the flag have to be set 
 //after each operator like SpMV or CARP 
-ghost_error switch_permutation_method( ghost_densemat **vec, ghost_context *ctx, bool isPermuted) 
+ghost_error switch_permutation_method_( ghost_densemat **vec, ghost_context *ctx) 
 {
+
+  bool isPermuted = false;
+  if(ctx!=NULL) 
+  {
     int rank;
     GHOST_CALL_RETURN(ghost_rank(&rank, ctx->mpicomm));
     bool permuted = false;
-    char *vecstr;
 
     if((*vec)->traits.permutemethod != NONE) {
       if((*vec)->traits.flags & (ghost_densemat_flags)GHOST_DENSEMAT_PERMUTED || isPermuted) 
@@ -669,11 +674,130 @@ ghost_error switch_permutation_method( ghost_densemat **vec, ghost_context *ctx,
       (*vec) = temp_vec;
 
       if(permuted) {
+        //Remove flag since, it is created by densemat_create 
+        (*vec)->traits.flags &= (ghost_densemat_flags)(~GHOST_DENSEMAT_PERMUTED); 
         (*vec)->permute(*vec,ctx,GHOST_PERMUTATION_ORIG2PERM);
       }
     } else {
       WARNING_LOG("Permutation Method cannot be switched since matrix has permutemethod == NONE")
     }
-  
+  }
+  else {
+    WARNING_LOG("Without context I can't do any permutations");
+  }
+  return GHOST_SUCCESS;
+}
+
+ghost_error switch_permutation_method( ghost_densemat *vec, ghost_context *ctx, bool force_permute) 
+{
+
+  if(ctx!=NULL) 
+  {
+    if((ctx->perm_local) && (ctx->perm_local->perm!=ctx->perm_local->colPerm)) {
+        int rank;
+        GHOST_CALL_RETURN(ghost_rank(&rank, ctx->mpicomm));
+        bool permuted = false;
+
+        if(vec->traits.permutemethod != NONE) {
+          if(vec->traits.flags & (ghost_densemat_flags)GHOST_DENSEMAT_PERMUTED) 
+          {
+            vec->permute(vec,ctx,GHOST_PERMUTATION_PERM2ORIG);
+            permuted = true;
+          } 
+          if(vec->traits.permutemethod == ROW)
+          {
+            vec->traits.permutemethod = COLUMN;
+            vec->perm_local->perm = ctx->perm_local->colPerm;
+            vec->perm_local->invPerm = ctx->perm_local->colInvPerm;
+          }
+          else 
+          {
+            vec->traits.permutemethod = ROW;
+            vec->perm_local->perm = ctx->perm_local->perm;
+            vec->perm_local->invPerm = ctx->perm_local->invPerm;
+          }
+          getNrowsFromContext(vec, ctx);
+    
+          if(force_permute || permuted) {
+              vec->permute(vec,ctx,GHOST_PERMUTATION_ORIG2PERM);
+          } 
+        } else {
+          WARNING_LOG("Permutation Method cannot be switched since matrix has permutemethod == NONE")
+        }
+    }
+  }
+  else {
+    WARNING_LOG("Without context I can't do any permutations");
+  }
+  return GHOST_SUCCESS;
+}
+
+//This is used to convert from permutemethod=NONE to permutemethod=ROW/COLUMN
+ghost_error convert_permutation_method_( ghost_densemat **vec, ghost_context *ctx, ghost_densemat_permuted dest_method) 
+{
+  if(ctx != NULL) 
+  {
+    int rank;
+    GHOST_CALL_RETURN(ghost_rank(&rank, ctx->mpicomm));
+    char *vecstr;
+
+    if((*vec)->traits.permutemethod != NONE) {
+       WARNING_LOG("Densemat seems to have a permutemethod (SIDE)");
+    }
+    (*vec)->traits.permutemethod = dest_method;
+    ghost_densemat *temp_vec; 
+    ghost_densemat_create(&temp_vec,ctx,(*vec)->traits);//no allocation
+    temp_vec->val = (*vec)->val;
+    free(*vec);//not the value
+    (*vec) = temp_vec;
+    // Permute to Row permutation #TODO it might not be necessary if the vector is 
+    // output vector(which is overwritten)
+ 
+   //Remove flag since, it is created by densemat_create 
+    (*vec)->traits.flags &= (ghost_densemat_flags)(~GHOST_DENSEMAT_PERMUTED); 
+    (*vec)->permute(*vec,ctx,GHOST_PERMUTATION_ORIG2PERM);
+  } 
+  else {
+    WARNING_LOG("Without context I can't do any permutations");
+  }
    return GHOST_SUCCESS;
-}   
+}
+
+//This is used to convert from permutemethod=NONE to permutemethod=ROW/COLUMN
+ghost_error convert_permutation_method( ghost_densemat *vec, ghost_context *ctx, ghost_densemat_permuted dest_method, bool permute) 
+{
+  if(ctx != NULL) 
+  {
+    if(ctx->perm_local)
+    {
+      if(vec->traits.permutemethod != NONE) {
+         WARNING_LOG("Densemat seems to have a permutemethod (SIDE)");
+      }
+      vec->traits.permutemethod = dest_method;
+      ghost_malloc((void **)&(vec->perm_local),sizeof(ghost_densemat_permutation)); 
+	
+      if(vec->traits.permutemethod == COLUMN) {
+      		vec->perm_local->perm    = ctx->perm_local->colPerm;
+		      vec->perm_local->invPerm = ctx->perm_local->colInvPerm;
+      } else if(vec->traits.permutemethod == ROW) {
+	        vec->perm_local->perm    = ctx->perm_local->perm;
+		      vec->perm_local->invPerm = ctx->perm_local->invPerm;
+      } else {
+          WARNING_LOG("Converting NONE to NONE");
+      } 
+       getNrowsFromContext(vec, ctx); 
+ 
+      // Permute to Row permutation #TODO it might not be necessary if the vector is 
+      // output vector(which is overwritten)
+ 
+      //Remove flag since, it is created by densemat_create 
+      if(permute) {
+       vec->permute(vec,ctx,GHOST_PERMUTATION_ORIG2PERM);
+      }
+    }
+  } 
+  else {
+    WARNING_LOG("Without context I can't do any permutations");
+  }
+   return GHOST_SUCCESS;
+}

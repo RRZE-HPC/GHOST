@@ -7,6 +7,7 @@
 #include "ghost/machine.h"
 #include "ghost/dot.h"
 #include "ghost/timing.h"
+#include "ghost/compatibility_check.h"
 
 #include <unordered_map>
 
@@ -40,6 +41,15 @@ ghost_error ghost_dot(void *res, ghost_densemat *vec1, ghost_densemat *vec2, gho
 
     ghost_error ret = GHOST_SUCCESS;
 
+    //////////////// check compatibility /////////////
+    ghost_compatible_vec_vec check = GHOST_COMPATIBLE_VEC_VEC_INITIALIZER;
+    check.A = vec1;
+    check.transA = 'T';
+    check.B = vec2;   
+
+    ret = ghost_check_vec_vec_compatibility(&check,vec1->context);
+    ///////////////////////////////////////////////////
+ 
     if (ghost_dot_kernels.empty()) {
 #include "dot_avx.def"
 #include "dot_plain.def"

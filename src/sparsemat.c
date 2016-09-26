@@ -2067,8 +2067,8 @@ static ghost_error SELL_fromRowFunc(ghost_sparsemat *mat, ghost_sparsemat_src_ro
         
     } else {
         
-        mat->context->nrowspadded = PAD(mat->context->lnrows[me],ghost_densemat_row_padding());
-        GHOST_CALL_GOTO(ghost_sparsemat_fromfunc_common(SELL(mat)->rowLen,SELL(mat)->rowLenPadded,SELL(mat)->chunkLen,SELL(mat)->chunkLenPadded,&(SELL(mat)->chunkStart),&(SELL(mat)->val),&(mat->col_orig),src,mat,mat->traits.C,mat->traits.T),err,ret);
+        mat->context->nrowspadded = mat->nrows;//PAD(mat->context->lnrows[me],ghost_densemat_row_padding());
+       GHOST_CALL_GOTO(ghost_sparsemat_fromfunc_common(SELL(mat)->rowLen,SELL(mat)->rowLenPadded,SELL(mat)->chunkLen,SELL(mat)->chunkLenPadded,&(SELL(mat)->chunkStart),&(SELL(mat)->val),&(mat->col_orig),src,mat,mat->traits.C,mat->traits.T),err,ret);
         if (ret != GHOST_SUCCESS) {
             goto err;
         }
