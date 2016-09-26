@@ -33,9 +33,15 @@ option(GHOST_SPARSEMAT_GLOBALSTATS "Gather some global statistics on sparse matr
 option(GHOST_SPARSEMAT_STATS "Gather statistics about sparse matrices (slows down matrix construction)" 0)
 option(GHOST_KACZ_ANALYZE "Gather data about load balancing for KACZ method (might slow down initial splitting)" 0)  
 set(GHOST_LOG_RANK "-1" CACHE STRING "The MPI rank for which the log messages will be printed. -1 for full verbosity.")
-set(GHOST_GEN_DENSEMAT_DIM "1,2,4,8" CACHE STRING "The block vector sizes for which generated kernels are being created (comma-separated list)")
-set(GHOST_GEN_SELL_C "1,32" CACHE STRING "The SELL chunk heights for which generated kernels are being created (comma-separated list)")
-set(GHOST_GEN_TSM_UNROLL "2" CACHE STRING "Outer loop unrolling dimensions to be generated for tall&skinny GEMM kernels")
+#set(GHOST_GEN_DENSEMAT_DIM "1,2,4,8" CACHE STRING "The block vector sizes for which generated kernels are being created (comma-separated list)")
+#set(GHOST_GEN_SELL_C "1,32" CACHE STRING "The SELL chunk heights for which generated kernels are being created (comma-separated list)")
+set(GHOST_AUTOGEN_SPMMV "32,1;1,4;32,*;1,*" CACHE STRING "SpM(M)V kernels to be auto-generated. Semicolon-separated list of 2-tuples: (CHUNKHEIGHT, NVECS)")
+set(GHOST_AUTOGEN_TSMM "1,1,1;*,1,1;1,*,1" CACHE STRING "TSMM kernels to be auto-generated. Semicolon-separated list of 3-tuples: (K, N, UNROLL)")
+set(GHOST_AUTOGEN_TSMM-INPLACE "1,1;*,1;1,*;*,*" CACHE STRING "TSMM-inplace kernels to be auto-generated. Semicolon-separated list of 2-tuples: (K, N)")
+set(GHOST_AUTOGEN_TSMTTSM "1,1,1;*,1,1;1,*,1;*,*,*,1" CACHE STRING "TSMTTSM kernels to be auto-generated. Semicolon-separated list of 3-tuples: (M, N, UNROLL)")
+set(GHOST_AUTOGEN_DOT "1;4" CACHE STRING "DOT kernels to be auto-generated. Semicolon-separated list of 1-tuples: (NVECS)")
+set(GHOST_AUTOGEN_KACZ "32,1;32,4;1,4" CACHE STRING "KACZ kernels to be auto-generated. Semicolon-separated list of 2-tuples: (CHUNKHEIGHT, NVECS)")
+#set(GHOST_GEN_TSM_UNROLL "2" CACHE STRING "Outer loop unrolling dimensions to be generated for tall&skinny GEMM kernels")
 set(GHOST_GEN_CUSELLSPMV "true,true,true,true,true,true,true;true,false,false,false,false,false,false;false,false,false,false,false,false,false" CACHE STRING "The permutations of SELL SpMV CUDA kernels to instantiate (semicolon-separated list of comma-separated lists). AXP(B)Y,SCALE,(V)SHIFT,DOT_YY,DOT_XY,DOT_XX,CHAIN_AXPBY")
 set(GHOST_VERBOSITY 1 CACHE STRING "Level of verbosity information. Valid values: 0 (be totally silent), 1 (print warnings, errors and further important information), 2, 3, 4 (increasing level of verbosity)")
 set(GHOST_INSTRUMENT "" CACHE STRING "Type of instrumentation (semicolon separated list). Valid values: TIMING, LIKWID, IACA")
@@ -187,6 +193,8 @@ foreach (SELL_CHUNKHEIGHT ${GHOST_GEN_SELL_C_LIST})
     set(SELL_CU_SPMV_SWITCHCASCADE "${SELL_CU_SPMV_SWITCHCASCADE}            default:\\\n                PERFWARNING_LOG(\"Non-configured ncols %d!\",rhs->traits.ncols);\\\n                do_fallback = true;\\\n        }\\\n        break;\\\n")
 endforeach()
 set(SELL_CU_SPMV_SWITCHCASCADE "${SELL_CU_SPMV_SWITCHCASCADE}    default:\\\n        PERFWARNING_LOG(\"Non-configured chunk height: %d!\",mat->traits.C);\\\n        do_fallback = true;\\\n}\\\n")
+configure_file ("${CMAKE_SOURCE_DIR}/src/sell_spmv.cu.in" "${PROJECT_BINARY_DIR}/src_generated/sell_spmv.cu")
+list(APPEND CU_GENERATED_SOURCES "${PROJECT_BINARY_DIR}/src_generated/sell_spmv.cu")
 
 set (PP_SCRIPT ${PROJECT_SOURCE_DIR}/bin/ghost_unroll.pl)
 set (PP_HEADER_SCRIPT ${PROJECT_SOURCE_DIR}/bin/ghost_extractfunc.pl)
@@ -194,6 +202,111 @@ set (PP_KERNELMAP_SCRIPT ${PROJECT_SOURCE_DIR}/bin/ghost_mapfunc.pl)
 set (UNROLLED_SRC_DIR ${PROJECT_BINARY_DIR}/src_unrolled/)
 set (GENERATED_INC_DIR ${PROJECT_BINARY_DIR}/ghost/)
 
+# stolen from http://stackoverflow.com/questions/12521452
+function (getListOfVarsStartingWith _prefix _varResult)
+    get_cmake_property(_vars CACHE_VARIABLES)
+    string (REGEX MATCHALL "(^|;)${_prefix}[A-Za-z0-9_-]*" _matchedVars "${_vars}")
+    set (_resultVars "")
+    foreach (_variable ${_matchedVars})
+        get_property(_type CACHE "${_variable}" PROPERTY TYPE)
+        if (NOT "${_type}" STREQUAL "STATIC") 
+            list (APPEND _resultVars "${_variable}")
+        endif()
+    endforeach()
+    set (${_varResult} ${_resultVars} PARENT_SCOPE)
+endfunction()
+
+getListOfVarsStartingWith(GHOST_AUTOGEN GHOST_AUTOGEN_FUNC_LIST)
+
+file(GLOB TEMPLATE_SRCFILES "${CMAKE_SOURCE_DIR}/src/autogen/*.in")
+foreach(TEMPLATE_SRCFILE ${TEMPLATE_SRCFILES})
+    set(GENERATED_FILES "")
+    set(UNROLLED_FILES "")
+    get_filename_component(TEMPLATE_SRCFILE_BASE ${TEMPLATE_SRCFILE} NAME_WE)
+    get_filename_component(TEMPLATE_SRCFILE_FULLEXT ${TEMPLATE_SRCFILE} EXT)
+    string(REPLACE ".in" "" TEMPLATE_SRCFILE_EXT ${TEMPLATE_SRCFILE_FULLEXT})
+
+    file(STRINGS ${TEMPLATE_SRCFILE} TEMPLATE_HEADER LIMIT_COUNT 1)
+    string(STRIP ${TEMPLATE_HEADER} TEMPLATE_HEADER)
+    if (NOT "${TEMPLATE_HEADER}" STRGREATER "/*!GHOST_AUTOGEN_")
+        #        message(FATAL_ERROR "AUTOGEN header missing or wrong in file ${TEMPLATE_SRCFILE}. Is ${TEMPLATE_HEADER}, should be /*!GHOST_AUTOGEN_*")
+    else ()
+        foreach (GHOST_AUTOGEN_FUNC ${GHOST_AUTOGEN_FUNC_LIST})
+            string(CONCAT FUNC_HEADER "/*!" ${GHOST_AUTOGEN_FUNC})
+            foreach (COMBINATION ${${GHOST_AUTOGEN_FUNC}})
+                if ("${TEMPLATE_HEADER} " MATCHES "${FUNC_HEADER} ") # File matches AUTOGEN function
+                    string(REGEX MATCH " .* " TEMPLATE_CONF ${TEMPLATE_HEADER}) # match string between spaces which contains the conf
+                    string(STRIP ${TEMPLATE_CONF} TEMPLATE_CONF)
+                    
+                    # check if wildcards match: replace any non-wildcards with "." and compare strings
+                    string(REGEX REPLACE "[a-zA-Z0-9]+" "." TEMPLATE_CONF_PATTERN ${TEMPLATE_CONF})
+                    string(REGEX REPLACE "[a-zA-Z0-9]+" "." COMBINATION_PATTERN ${COMBINATION})
+
+                    if (${TEMPLATE_CONF_PATTERN} STREQUAL ${COMBINATION_PATTERN})
+                        string(REPLACE "," ";" TEMPLATE_CONF_LIST ${TEMPLATE_CONF})
+                        string(REPLACE "," ";" COMBINATION_LIST ${COMBINATION})
+                        list(LENGTH TEMPLATE_CONF_LIST numPars)
+                        math(EXPR numPars_ "${numPars} - 1")
+                        foreach(parIdx RANGE ${numPars_})
+                            list(GET TEMPLATE_CONF_LIST ${parIdx} PARAMETER)
+                            list(GET COMBINATION_LIST ${parIdx} VALUE)
+                            set(${PARAMETER} ${VALUE}) # set a variable called PARAMETER to VALUE
+                        endforeach()
+
+                        string(REGEX REPLACE "\\*" "var" COMBINATION_FILENAME ${COMBINATION})
+                        string(REGEX REPLACE "," "_" COMBINATION_FILENAME ${COMBINATION_FILENAME})
+                        set(GENERATED_FILE ${PROJECT_BINARY_DIR}/src_generated/${TEMPLATE_SRCFILE_BASE}__${COMBINATION_FILENAME}${TEMPLATE_SRCFILE_EXT})
+                        configure_file (
+                            ${TEMPLATE_SRCFILE}
+                            ${GENERATED_FILE}
+                            )
+                        list(APPEND GENERATED_FILES ${GENERATED_FILE})
+                    endif()
+                endif()
+            endforeach()
+        endforeach()
+    endif()
+                        
+    foreach (GENERATED_FILE ${GENERATED_FILES})
+        message(STATUS "Unrolling ${GENERATED_FILE}")
+        get_filename_component(TO_UNROLL_FILENAME ${GENERATED_FILE} NAME)
+        get_filename_component(TO_UNROLL_FILENAME_WE ${GENERATED_FILE} NAME_WE)
+        set(UNROLLED_FILE ${UNROLLED_SRC_DIR}/${TO_UNROLL_FILENAME})
+        add_custom_command(
+            OUTPUT ${UNROLLED_FILE}
+            DEPENDS ${GENERATED_FILE} ${UNROLL_SCRIPT} 
+            COMMAND mkdir -p ${UNROLLED_SRC_DIR} && perl ${PP_SCRIPT} ${GENERATED_FILE} > ${UNROLLED_FILE}
+            )
+        list(APPEND UNROLLED_FILES ${UNROLLED_FILE})
+    endforeach()
+
+    set(GENERATED_HEADER ${GENERATED_INC_DIR}/${TEMPLATE_SRCFILE_BASE}_gen.h)
+    set(GENERATED_KERNELMAP ${GENERATED_INC_DIR}/${TEMPLATE_SRCFILE_BASE}.def)
+    message(STATUS "${TEMPLATE_SRCFILE_BASE} ${GENERATED_HEADER} ${GENERATED_KERNELMAP}")
+    message(STATUS "GEN header ${GENERATED_HEADER} from file ${UNROLLED_FILES}")
+    add_custom_command(
+        OUTPUT ${GENERATED_HEADER}
+        DEPENDS ${UNROLLED_FILES} ${PP_HEADER_SCRIPT} 
+        COMMAND mkdir -p ${GENERATED_INC_DIR} && perl ${PP_HEADER_SCRIPT} ${UNROLLED_FILES} > ${GENERATED_HEADER}
+        )
+    list(APPEND HEADERS ${GENERATED_HEADER})
+    add_custom_command(
+        OUTPUT ${GENERATED_KERNELMAP}
+        DEPENDS ${GENERATED_HEADER} ${PP_KERNELMAP_SCRIPT} 
+        COMMAND mkdir -p ${GENERATED_INC_DIR} && perl ${PP_KERNELMAP_SCRIPT} ${GENERATED_HEADER} > ${GENERATED_KERNELMAP}
+        )
+    if (${TEMPLATE_SRCFILE_EXT} STREQUAL ".cu")
+        list(APPEND CU_GENERATED_SOURCES ${UNROLLED_FILES})
+    else()
+        list(APPEND SOURCES ${UNROLLED_FILES})
+    endif()
+    list(APPEND GLOB_UNROLLED_FILES ${UNROLLED_FILE})
+    list(APPEND GLOB_GENERATED_FILES ${GENERATED_FILE})
+    list(APPEND GLOB_GENERATED_HEADERS ${GENERATED_HEADER})
+    list(APPEND GLOB_GENERATED_KERNELMAPS ${GENERATED_KERNELMAP})
+endforeach()
+
+#[[
 file(GLOB TEMPLATE_SRCFILES "${CMAKE_SOURCE_DIR}/src/*.in")
 foreach(TEMPLATE_SRCFILE ${TEMPLATE_SRCFILES})
     set(GENERATED_FILES "")
@@ -311,6 +424,7 @@ configure_file (
     list(APPEND GLOB_GENERATED_KERNELMAPS ${GENERATED_KERNELMAP})
     set(GLOB_UNROLLED_FILES ${GLOB_UNROLLED_FILES} ${UNROLLED_FILES})
 endforeach()
+]]
 
 add_custom_target(autogen DEPENDS ${GLOB_UNROLLED_FILES} ${GLOB_GENERATED_FILES} ${GLOB_GENERATED_HEADERS} ${GLOB_GENERATED_KERNELMAPS})
 

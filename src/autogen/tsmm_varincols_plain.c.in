@@ -1,0 +1,90 @@
+/*!GHOST_AUTOGEN_TSMM *,N,1 */
+#include "ghost/config.h"
+#include "ghost/types.h"
+#include "ghost/math.h"
+#include "ghost/instr.h"
+#include "ghost/util.h"
+#include "ghost/omp.h"
+#include "ghost/locality.h"
+#include "ghost/tsmm_varincols_plain_gen.h"
+#include <math.h>
+#include <float.h>
+
+#GHOST_SUBST OUTCOLS ${N}
+
+ghost_error ghost_tsmm__u_plain_d_OUTCOLS_x_1_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
+    ghost_error ret = GHOST_SUCCESS;
+
+    ghost_lidx m = v->traits.ncols;
+    ghost_lidx n = v->traits.nrows;
+
+    
+    INFO_LOG("In TSMM with fixed K %"PRLIDX" and arbitrary M %"PRLIDX": %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,OUTCOLS,m,n,OUTCOLS,n,m,m,OUTCOLS);
+
+    const double * const restrict vval = (const double *) v->val;
+    const double * const restrict wval = (const double *) w->val;
+    double * const restrict xval = (double *) x->val;
+
+    const ghost_lidx ldv = v->stride;
+    const ghost_lidx ldw = w->stride;
+    const ghost_lidx ldx = x->stride;
+
+    const double dalpha = *(double *)alpha;
+    const double dbeta = *(double *)beta;
+    ghost_lidx i,j,s;
+    
+#pragma omp parallel for private(j,s) schedule(runtime)
+    for (i=0; i<n; i++) {
+        for (s=0; s<OUTCOLS; s++) {
+            xval[i*ldx+s] = dbeta*xval[i*ldx+s];
+#pragma simd
+            for (j=0; j<m; j++) {
+                xval[i*ldx+s] += dalpha*vval[i*ldv+j]*wval[s*ldw+j];
+            }
+        }
+    }
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
+    return ret;
+}
+
+ghost_error ghost_tsmm__u_plain_z_OUTCOLS_x_1_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
+    ghost_error ret = GHOST_SUCCESS;
+
+    ghost_lidx m = v->traits.ncols;
+    ghost_lidx n = v->traits.nrows;
+
+    
+    INFO_LOG("In TSMM with fixed K %"PRLIDX" and arbitrary M %"PRLIDX": %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,OUTCOLS,m,n,OUTCOLS,n,m,m,OUTCOLS);
+
+    const double complex * const restrict vval = (const double complex*) v->val;
+    const double complex * const restrict wval = (const double complex*) w->val;
+    double complex * const restrict xval = (double complex*) x->val;
+
+    const ghost_lidx ldv = v->stride;
+    const ghost_lidx ldw = w->stride;
+    const ghost_lidx ldx = x->stride;
+
+    const double complex dalpha = *(double complex *)alpha;
+    const double complex dbeta = *(double complex *)beta;
+    ghost_lidx i,j,s;
+    
+#pragma omp parallel for private(j,s) schedule(runtime)
+    for (i=0; i<n; i++) {
+        for (s=0; s<OUTCOLS; s++) {
+            xval[i*ldx+s] = dbeta*xval[i*ldx+s];
+#pragma simd
+            for (j=0; j<m; j++) {
+                xval[i*ldx+s] += dalpha*vval[i*ldv+j]*wval[s*ldw+j];
+            }
+        }
+    }
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
+    return ret;
+}
+

@@ -1,0 +1,51 @@
+/*!GHOST_AUTOGEN_TSMM K,N,1 */
+#include "ghost/config.h"
+#include "ghost/cu_complex.h"
+#include "ghost/densemat.h"
+#include "ghost/math.h"
+#include "ghost/tsmm_cu_gen.h"
+#include "ghost/tsmm_cu_kernel.h"
+#include "ghost/types.h"
+#include "ghost/util.h"
+
+#GHOST_SUBST CFGN ${N}
+#GHOST_SUBST CFGK ${K}
+
+ghost_error ghost_tsmm__u_cuda_x_CFGN_CFGK_1_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
+{
+  GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH | GHOST_FUNCTYPE_KERNEL);
+  ghost_error ret = GHOST_SUCCESS;
+
+
+  if (x->traits.datatype & GHOST_DT_COMPLEX) {
+    if (x->traits.datatype & GHOST_DT_DOUBLE) {
+      ghost_tsmm_cu_rm_cm<cuDoubleComplex, CFGK, CFGN>(
+          (cuDoubleComplex *)x->cu_val, (const cuDoubleComplex *)v->cu_val,
+          (const cuDoubleComplex *)w->cu_val, *(cuDoubleComplex *)alpha,
+          *(cuDoubleComplex *)beta, x->traits.nrows, x->stride, v->stride,
+          w->stride);
+    } else {
+      ghost_tsmm_cu_rm_cm<cuFloatComplex, CFGK, CFGN>(
+          (cuFloatComplex *)x->cu_val, (const cuFloatComplex *)v->cu_val,
+          (const cuFloatComplex *)w->cu_val, *(cuFloatComplex *)alpha,
+          *(cuFloatComplex *)beta, x->traits.nrows, x->stride, v->stride,
+          w->stride);
+    }
+  } else {
+    if (x->traits.datatype & GHOST_DT_DOUBLE) {
+      ghost_tsmm_cu_rm_cm<double, CFGK, CFGN>(
+          (double *)x->cu_val, (const double *)v->cu_val,
+          (const double *)w->cu_val, *(double *)alpha, *(double *)beta,
+          x->traits.nrows, x->stride, v->stride, w->stride);
+    } else {
+      ghost_tsmm_cu_rm_cm<float, CFGK, CFGN>(
+          (float *)x->cu_val, (const float *)v->cu_val,
+          (const float *)w->cu_val, *(float *)alpha, *(float *)beta,
+          x->traits.nrows, x->stride, v->stride, w->stride);
+    }
+  }
+
+  GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH | GHOST_FUNCTYPE_KERNEL);
+  CUDA_CALL_RETURN(cudaGetLastError());
+  return ret;
+}

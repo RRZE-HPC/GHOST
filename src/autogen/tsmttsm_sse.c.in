@@ -1,0 +1,176 @@
+/*!GHOST_AUTOGEN_TSMTTSM M,N,1 */
+#include "ghost/config.h"
+#include "ghost/types.h"
+#include "ghost/math.h"
+#include "ghost/instr.h"
+#include "ghost/util.h"
+#include "ghost/tsmttsm_sse_gen.h"
+#include <immintrin.h>
+
+#GHOST_SUBST CFGK ${N}
+#GHOST_SUBST CFGM ${M}
+
+ghost_error ghost_tsmttsm__a_sse_d_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conmv)
+{
+    UNUSED(conmv);
+#ifdef GHOST_BUILD_SSE
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
+    ghost_error ret = GHOST_SUCCESS;
+
+    ghost_lidx n = v->traits.nrows;
+    INFO_LOG("In SSE TSMTTSM with two fixed block sizes [CFGK][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
+    
+    const double * const restrict vval = (const double *) v->val;
+    const double * const restrict wval = (const double *) w->val;
+    double * const restrict xval = (double *) x->val;
+
+    const ghost_lidx ldv = v->stride;
+    const ghost_lidx ldw = w->stride;
+    ghost_lidx ldx = x->stride;
+    ghost_lidx ldxpad = ldx;
+
+    __m128d betavec, alphavec;
+    
+    double dalpha = *(double *)alpha;
+    double dbeta = *(double *)beta;
+    double *xpad = NULL;
+   
+    betavec = _mm_set1_pd(dbeta);
+    alphavec = _mm_set1_pd(dalpha);
+    
+    ghost_lidx i,m;
+    if (!IS_ALIGNED(xval,16) || ((x->stride*x->elSize) % 16)) {
+        ldxpad = PAD(x->stride,2);
+        ghost_malloc_align((void **)&xpad,ldxpad*x->traits.ncols*sizeof(double),16);
+    } else {
+        xpad = xval;
+    }
+
+
+
+    ghost_lidx k;
+    for (k=0; k<CFGK; k++) {
+        for (m=0; m+2<=CFGM; m+=2) {
+            _mm_store_pd(&xpad[k*ldxpad+m],_mm_mul_pd(_mm_load_pd(&xval[k*ldx+m]),betavec));
+        }
+        for (; m<CFGM; m++) {
+            xpad[k*ldxpad+m] = dbeta*xval[k*ldx+m];
+        }
+    }
+#pragma omp parallel private(m,k)
+    {
+#if 0
+        m=0;
+       
+        double print[2]; 
+        double *x_priv;
+        ghost_lidx ldxpriv = PAD(CFGM,2);
+        if (ldxpriv != CFGM) {
+            INFO_LOG("Pad xpriv from %d to %d",CFGM,ldxpriv);
+        }
+        ghost_malloc_align((void **)&x_priv,ldxpriv*CFGK*sizeof(double),32);
+        memset(x_priv,0,ldxpriv*CFGK*sizeof(double));
+        __m128d wvec,wvecshuf,vvec,tmp1,tmp2;
+
+#pragma omp for schedule(runtime)
+        for (i=0; i<n; i++) {
+            for (k=0; k<CFGK; k+=2) {
+                wvec = _mm_mul_pd(alphavec,_mm_load_pd(&wval[i*ldv+k]));
+                wvecshuf = _mm_shuffle_pd(wvec,wvec,1);
+#pragma unroll_and_jam
+                for (m=0; m<CFGM; m+=2) {
+                    vvec = _mm_load_pd(&vval[i*ldv+m]);
+                    tmp1 = _mm_mul_pd(vvec,wvec);
+                    tmp2 = _mm_mul_pd(vvec,wvecshuf);
+                    //_mm_store_pd(&x_priv[k*ldxpriv+m],    _mm_add_pd(_mm_load_pd(&x_priv[k*ldxpriv+m]),_mm_blend_pd(tmp2,tmp1,1)));
+                    //_mm_store_pd(&x_priv[(k+1)*ldxpriv+m],_mm_add_pd(_mm_load_pd(&x_priv[(k+1)*ldxpriv+m]),_mm_blend_pd(tmp1,tmp2,1)));
+                    _mm_store_pd(&x_priv[k*ldxpriv+m],    _mm_add_pd(_mm_load_pd(&x_priv[k*ldxpriv+m]),_mm_shuffle_pd(tmp1,tmp2,2)));
+                    _mm_store_pd(&x_priv[(k+1)*ldxpriv+m],_mm_add_pd(_mm_load_pd(&x_priv[(k+1)*ldxpriv+m]),_mm_shuffle_pd(tmp2,tmp1,2)));
+                }
+            }
+        }
+#endif
+
+        m=0;
+        #GHOST_UNROLL#__m128d vvec@;#2
+        #GHOST_UNROLL#__m128d wvec@;#2
+
+        double *x_priv;
+        ghost_lidx ldxpriv = PAD(CFGM,2);
+        if (ldxpriv != CFGM) {
+            INFO_LOG("Pad xpriv from %d to %d",CFGM,ldxpriv);
+        }
+        ghost_malloc_align((void **)&x_priv,ldxpriv*CFGK*sizeof(double),32);
+        memset(x_priv,0,ldxpriv*CFGK*sizeof(double));
+
+#pragma omp for schedule(runtime)
+        for (i=0; i<n; i++) {
+            for (k=0; k+2<=CFGK; k+=2) {
+                #GHOST_UNROLL#wvec@ = _mm_mul_pd(_mm_set1_pd(wval[i*ldw+(k+@)]),alphavec);#2
+               
+                for (m=0; m+2<=CFGM; m+=2) {
+                    #GHOST_UNROLL#vvec@ = _mm_mul_pd(_mm_load_pd(&vval[i*ldv+m]),wvec@);#2
+                    #GHOST_UNROLL#_mm_store_pd(&x_priv[(k+@)*ldxpriv+m],_mm_add_pd(_mm_load_pd(&x_priv[(k+@)*ldxpriv+m]),vvec@));#2
+
+                }
+                for (; m<CFGM; m++) {
+                    x_priv[(k+0)*ldxpriv+m] += dalpha*vval[i*ldv+m]*wval[i*ldw+(k+0)];
+                    x_priv[(k+1)*ldxpriv+m] += dalpha*vval[i*ldv+m]*wval[i*ldw+(k+1)];
+                }
+            }
+            for (; k<CFGK; k++) {
+                wvec0 = _mm_mul_pd(_mm_set1_pd(wval[i*ldw+(k+0)]),alphavec);
+                for (m=0; m+2<=CFGM; m+=2) {
+                    vvec0 = _mm_mul_pd(_mm_load_pd(&vval[i*ldv+m]),wvec0);
+                    _mm_store_pd(&x_priv[(k+0)*ldxpriv+m],_mm_add_pd(_mm_load_pd(&x_priv[(k+0)*ldxpriv+m]),vvec0));
+                }
+                for (; m<CFGM; m++) {
+                    x_priv[k*ldxpriv+m] += dalpha*vval[i*ldv+m]*wval[i*ldw+k];
+                }
+            }
+        }
+        
+#pragma omp critical
+        {
+            m=0;
+            for (k=0; k+2<=CFGK; k+=2) {
+                for (m=0; m+2<=CFGM; m+=2) {
+                    #GHOST_UNROLL#_mm_store_pd(&xpad[(k+@)*ldxpad+m],_mm_add_pd(_mm_load_pd(&xpad[(k+@)*ldxpad+m]),_mm_load_pd(&x_priv[(k+@)*ldxpriv+m])));#2
+                }
+                for (; m<CFGM; m++) {
+                    xpad[(k+0)*ldxpad+m] += x_priv[(k+0)*ldxpriv+m];
+                    xpad[(k+1)*ldxpad+m] += x_priv[(k+1)*ldxpriv+m];
+                }
+            }
+            for (; k<CFGK; k++) {
+                for (m=0; m+2<=CFGM; m+=2) {
+                    _mm_store_pd(&xpad[(k+0)*ldxpad+m],_mm_add_pd(_mm_load_pd(&xpad[(k+0)*ldxpad+m]),_mm_load_pd(&x_priv[(k+0)*ldxpriv+m])));
+                }
+                for (; m<CFGM; m++) {
+                    xpad[k*ldxpad+m] += x_priv[k*ldxpriv+m];
+                }
+            }
+        }
+        free(x_priv);
+    }
+   
+    if (xpad != xval) {
+        for (k=0; k<CFGK; k++) {
+            for (m=0; m<CFGM; m++) {
+                xval[k*ldx+m] = xpad[k*ldxpad+m];
+            }
+        }
+        free(xpad);
+    }
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
+    return ret;
+#else
+    UNUSED(x);
+    UNUSED(v);
+    UNUSED(w);
+    UNUSED(alpha);
+    UNUSED(beta);
+    ERROR_LOG("No SSE available!");
+    return GHOST_ERR_UNKNOWN;
+#endif
+}

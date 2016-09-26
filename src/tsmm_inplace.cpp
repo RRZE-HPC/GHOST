@@ -5,7 +5,8 @@
 #include "ghost/tsmm_inplace.h"
 #include "ghost/tsmm_inplace_cu.h"
 #include "ghost/tsmm_inplace_plain_gen.h"
-#include "ghost/tsmm_inplace_var1_plain_gen.h"
+#include "ghost/tsmm_inplace_varincols_plain_gen.h"
+#include "ghost/tsmm_inplace_varoutcols_plain_gen.h"
 #include "ghost/tsmm_inplace_var2_plain_gen.h"
 #include "ghost/tsmm_inplace_var2_cu_gen.h"
 #include "ghost/tsmm_inplace_cu_gen.h"
@@ -123,7 +124,8 @@ ghost_error ghost_tsmm_inplace(ghost_densemat *x, ghost_densemat *w, void *alpha
     
     if (ghost_tsmm_inplace_kernels.empty()) {
 #include "tsmm_inplace_plain.def"
-#include "tsmm_inplace_var1_plain.def"
+#include "tsmm_inplace_varincols_plain.def"
+#include "tsmm_inplace_varoutcols_plain.def"
 #include "tsmm_inplace_var2_plain.def"
 #ifdef GHOST_HAVE_CUDA
 #include "tsmm_inplace_cu.def"

@@ -1,0 +1,170 @@
+/*!GHOST_AUTOGEN_SPMMV CHUNKHEIGHT,* */
+#include "ghost/config.h"
+#include "ghost/types.h"
+#include "ghost/util.h"
+#include "ghost/instr.h"
+#include "ghost/omp.h"
+#include "ghost/machine.h"
+#include "ghost/math.h"
+#include "ghost/sparsemat.h"
+#include "ghost/sell_spmv_varblock_plain_gen.h"
+
+#GHOST_SUBST CHUNKHEIGHT ${CHUNKHEIGHT}
+
+ghost_error ghost_sellspmv__a_plain_z_z_rm_CHUNKHEIGHT_x(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat* invec, ghost_spmv_opts traits)
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+
+    complex double *mval = (complex double *)mat->val;
+    complex double *local_dot_product = NULL;
+    complex double *partsums = NULL;
+    int nthreads = 1, i;
+    ghost_lidx v;
+   
+    complex double *shift = NULL, scale = 1., beta = 1.; 
+    complex double delta = 0., eta = 0.;
+    ghost_densemat *z = NULL;
+    unsigned clsize;
+    ghost_machine_cacheline_size(&clsize);
+    int pad = (int) clsize/sizeof(complex double);
+
+    GHOST_SPMV_PARSE_TRAITS(traits,scale,beta,shift,local_dot_product,z,delta,eta,complex double,
+            complex double);
+
+    if (traits.flags & GHOST_SPMV_DOT) {
+#pragma omp parallel
+        nthreads = ghost_omp_nthread();
+
+        GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,
+                    (3*res->traits.ncols+pad)*nthreads*sizeof(complex double))); 
+        for (i=0; i<(3*res->traits.ncols+pad)*nthreads; i++) {
+            partsums[i] = 0.;
+        }
+    }
+   
+#pragma omp parallel shared (partsums) private(v)
+    {
+        ghost_lidx j,c,r,row;
+        ghost_lidx offs;
+        complex double tmp[CHUNKHEIGHT][res->traits.ncols];
+        complex double *rhsval = (complex double *)invec->val;
+        complex double *zval = NULL;
+        if (z) {
+            zval = (complex double *)z->val;
+        }
+        int tid = ghost_omp_threadnum();
+
+#pragma omp for schedule(runtime)
+        for (c=0; c<mat->nrowsPadded/CHUNKHEIGHT; c++) 
+        { // loop over chunks
+            offs = mat->chunkStart[c];
+                    
+            memset(tmp,0,sizeof(tmp));
+            for (j=0; j<mat->chunkLen[c]; j++) { // loop inside chunk
+                for (v=0; v<res->traits.ncols; v++) {
+#pragma simd
+                    for (r=0; r<CHUNKHEIGHT; r++) {
+                        row = c*CHUNKHEIGHT+r;
+                        complex double matval = mval[offs+j*CHUNKHEIGHT+r];
+                        ghost_lidx matcol = mat->col[offs+j*CHUNKHEIGHT+r];
+                        tmp[r][v] += matval*rhsval[invec->stride*matcol+v];
+                    }
+                }
+            }
+
+            for (r=0; (r<CHUNKHEIGHT) && (c*CHUNKHEIGHT+r < mat->nrows); r++) {
+                row = c*CHUNKHEIGHT+r;
+                complex double *lrow = ((complex double *)(res->val))+res->stride*row;
+                complex double *rrow = rhsval+invec->stride*row;
+                complex double *zrow = NULL;
+                if (z) {
+                    zrow = zval+z->stride*row;
+                }
+                if ((traits.flags & GHOST_SPMV_SHIFT) && shift) {
+#pragma simd
+                    for (v=0; v<res->traits.ncols; v++) {
+                        tmp[r][v] = tmp[r][v]-shift[0]*rrow[v];
+                    }
+                }
+                if ((traits.flags & GHOST_SPMV_VSHIFT) && shift) {
+#pragma simd
+                    for (v=0; v<res->traits.ncols; v++) {
+                        tmp[r][v] = tmp[r][v]-shift[v]*rrow[v];
+                    }
+                }
+                if (traits.flags & GHOST_SPMV_SCALE) {
+#pragma simd
+                    for (v=0; v<res->traits.ncols; v++) {
+                        tmp[r][v] = tmp[r][v]*scale;
+                    }
+                }
+                if (traits.flags & GHOST_SPMV_AXPY) {
+#pragma simd
+                    for (v=0; v<res->traits.ncols; v++) {
+                        lrow[v] += tmp[r][v];
+                    }
+                } else if (traits.flags & GHOST_SPMV_AXPBY) {
+#pragma simd
+                    for (v=0; v<res->traits.ncols; v++) {
+                        lrow[v] = beta*lrow[v] + tmp[r][v];
+                    }
+                } else {
+                    if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
+#pragma simd
+                        for (v=0; v<res->traits.ncols; v++) {
+                            lrow[v] = tmp[r][v];
+                        }
+                    } else {
+#pragma vector nontemporal
+#pragma simd
+                        for (v=0; v<res->traits.ncols; v++) {
+                            lrow[v] = tmp[r][v];
+                        }
+                    }
+                }
+                if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
+#pragma simd
+                    for (v=0; v<res->traits.ncols; v++) {
+                        zrow[v] = delta*zrow[v] + eta*lrow[v];
+                    }
+                }
+                    
+                if (traits.flags & GHOST_SPMV_DOT) {
+#pragma simd
+                    for (v=0; v<res->traits.ncols; v++) {
+                        partsums[((pad+3*res->traits.ncols)*tid)+3*v+0] += 
+                            conj(lrow[v])*lrow[v];
+                        partsums[((pad+3*res->traits.ncols)*tid)+3*v+1] += 
+                            conj(rrow[v])*lrow[v];
+                        partsums[((pad+3*res->traits.ncols)*tid)+3*v+2] += 
+                            conj(rrow[v])*rrow[v];
+                    }
+                }
+            }
+        }
+    }
+    if (traits.flags & GHOST_SPMV_DOT) {
+        if (!local_dot_product) {
+            ERROR_LOG("The location of the local dot products is NULL!");
+            return GHOST_ERR_INVALID_ARG;
+        }
+        for (v=0; v<res->traits.ncols; v++) {
+            local_dot_product[v                       ] = 0.; 
+            local_dot_product[v  +   res->traits.ncols] = 0.;
+            local_dot_product[v  + 2*res->traits.ncols] = 0.;
+            for (i=0; i<nthreads; i++) {
+                local_dot_product[v                      ] += 
+                    partsums[(pad+3*res->traits.ncols)*i + 3*v + 0];
+                local_dot_product[v +   res->traits.ncols] += 
+                    partsums[(pad+3*res->traits.ncols)*i + 3*v + 1];
+                local_dot_product[v + 2*res->traits.ncols] += 
+                    partsums[(pad+3*res->traits.ncols)*i + 3*v + 2];
+            }
+        }
+        free(partsums);
+    }
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+    return GHOST_SUCCESS;
+}
+
