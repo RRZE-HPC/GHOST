@@ -256,6 +256,11 @@ typedef struct
 
     ghost_kacz_method method;
 
+    /**
+     * @brief The number of shifts (zero if no shift should be applied).
+     */
+    int nshifts;
+
 }
 ghost_kacz_parameters;
 

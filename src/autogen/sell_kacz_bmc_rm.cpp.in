@@ -1,4 +1,4 @@
-/*!GHOST_AUTOGEN_KACZ CHUNKHEIGHT,NVECS */
+/*!GHOST_AUTOGEN_KACZ CHUNKHEIGHT,NVECS,0 */
 #include "ghost/config.h"
 #include "ghost/types.h"
 #include "ghost/util.h"
@@ -659,7 +659,7 @@ static ghost_error ghost_kacz_BMC_u_plain_rm_CHUNKHEIGHT_NVECS_tmpl(ghost_densem
     return GHOST_SUCCESS;
 }
 
-ghost_error ghost_kacz__BMC_u_plain_x_x_rm_CHUNKHEIGHT_NVECS(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts)
+ghost_error ghost_kacz__BMC_u_plain_x_x_rm_CHUNKHEIGHT_NVECS_0(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts)
 {
     ghost_error ret = GHOST_SUCCESS;
     

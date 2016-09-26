@@ -81,6 +81,7 @@ while (<>) {
             } else {
                 print "pars.blocksz = ".$funcpars[7].";\n";
             }
+            print "pars.nshifts = ".$funcpars[8].";\n";
             print $funcname."_kernels[pars] = ".$funcname_full.";\n"; 
             if ($funcpars[7] ne "x") {
                 print "ghost_gidx nnz;\n";

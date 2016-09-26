@@ -1,4 +1,4 @@
-/*!GHOST_AUTOGEN_KACZ CHUNKHEIGHT,NVECS */
+/*!GHOST_AUTOGEN_KACZ CHUNKHEIGHT,NVECS,0 */
 #include "ghost/config.h"
 #include "ghost/types.h"
 #include "ghost/util.h"
@@ -32,7 +32,7 @@ for (int rowinchunk = start; rowinchunk < end; rowinchunk++) { \
     }\
 }\
 
-ghost_error ghost_kacz__MC_u_plain_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts)
+ghost_error ghost_kacz__MC_u_plain_d_d_cm_CHUNKHEIGHT_NVECS_0(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     

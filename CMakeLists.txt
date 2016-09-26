@@ -40,7 +40,7 @@ set(GHOST_AUTOGEN_TSMM "1,1,1;*,1,1;1,*,1" CACHE STRING "TSMM kernels to be auto
 set(GHOST_AUTOGEN_TSMM-INPLACE "1,1;*,1;1,*;*,*" CACHE STRING "TSMM-inplace kernels to be auto-generated. Semicolon-separated list of 2-tuples: (K, N)")
 set(GHOST_AUTOGEN_TSMTTSM "1,1,1;*,1,1;1,*,1;*,*,*,1" CACHE STRING "TSMTTSM kernels to be auto-generated. Semicolon-separated list of 3-tuples: (M, N, UNROLL)")
 set(GHOST_AUTOGEN_DOT "1;4" CACHE STRING "DOT kernels to be auto-generated. Semicolon-separated list of 1-tuples: (NVECS)")
-set(GHOST_AUTOGEN_KACZ "32,1;32,4;1,4" CACHE STRING "KACZ kernels to be auto-generated. Semicolon-separated list of 2-tuples: (CHUNKHEIGHT, NVECS)")
+set(GHOST_AUTOGEN_KACZ "32,1,0;32,4,0;1,4,0;1,4,4" CACHE STRING "KACZ kernels to be auto-generated. Semicolon-separated list of 3-tuples: (CHUNKHEIGHT, NVECS, NSHIFTS)")
 #set(GHOST_GEN_TSM_UNROLL "2" CACHE STRING "Outer loop unrolling dimensions to be generated for tall&skinny GEMM kernels")
 set(GHOST_GEN_CUSELLSPMV "true,true,true,true,true,true,true;true,false,false,false,false,false,false;false,false,false,false,false,false,false" CACHE STRING "The permutations of SELL SpMV CUDA kernels to instantiate (semicolon-separated list of comma-separated lists). AXP(B)Y,SCALE,(V)SHIFT,DOT_YY,DOT_XY,DOT_XX,CHAIN_AXPBY")
 set(GHOST_VERBOSITY 1 CACHE STRING "Level of verbosity information. Valid values: 0 (be totally silent), 1 (print warnings, errors and further important information), 2, 3, 4 (increasing level of verbosity)")
@@ -238,11 +238,18 @@ foreach(TEMPLATE_SRCFILE ${TEMPLATE_SRCFILES})
                     string(REGEX MATCH " .* " TEMPLATE_CONF ${TEMPLATE_HEADER}) # match string between spaces which contains the conf
                     string(STRIP ${TEMPLATE_CONF} TEMPLATE_CONF)
                     
+                    # check if fixed parameters match: replace any non-fixed parameters with ".+" and match this against the combination
+                    # every non-fixed will now match _any_ number and fixed numbers have to match the specific number
+                    string(REGEX REPLACE "[a-zA-Z\\*]+" ".+" TEMPLATE_CONF_FIXEDPARS ${TEMPLATE_CONF})
+                    string(REGEX MATCH ${TEMPLATE_CONF_FIXEDPARS} FIXEDMATCH ${COMBINATION})
+                    
                     # check if wildcards match: replace any non-wildcards with "." and compare strings
                     string(REGEX REPLACE "[a-zA-Z0-9]+" "." TEMPLATE_CONF_PATTERN ${TEMPLATE_CONF})
                     string(REGEX REPLACE "[a-zA-Z0-9]+" "." COMBINATION_PATTERN ${COMBINATION})
+                    
 
-                    if (${TEMPLATE_CONF_PATTERN} STREQUAL ${COMBINATION_PATTERN})
+                    if (NOT ${FIXEDMATCH} STREQUAL "" AND
+                            ${TEMPLATE_CONF_PATTERN} STREQUAL ${COMBINATION_PATTERN})
                         string(REPLACE "," ";" TEMPLATE_CONF_LIST ${TEMPLATE_CONF})
                         string(REPLACE "," ";" COMBINATION_LIST ${COMBINATION})
                         list(LENGTH TEMPLATE_CONF_LIST numPars)

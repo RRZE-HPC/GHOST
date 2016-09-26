@@ -1,4 +1,4 @@
-/*!GHOST_AUTOGEN_KACZ CHUNKHEIGHT,NVECS */
+/*!GHOST_AUTOGEN_KACZ 1,NVECS,NSHIFTS */
 #include "ghost/config.h"
 #include "ghost/types.h"
 #include "ghost/util.h"
@@ -14,8 +14,8 @@
 #include <immintrin.h> 
 
 #GHOST_SUBST NVECS ${NVECS}
-#GHOST_SUBST NSHIFTS 1
-#GHOST_SUBST CHUNKHEIGHT ${CHUNKHEIGHT}
+#GHOST_SUBST NSHIFTS ${NSHIFTS}
+#GHOST_SUBST CHUNKHEIGHT 1
 
 //Fix for gcc compile error
 #ifdef __GNUC__
@@ -948,7 +948,7 @@ if(start_chunk>end_chunk) { \
 
 */
 
-ghost_error ghost_kacz_BMCshift_u_plain_rm_CHUNKHEIGHT_NVECS(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts)
+ghost_error ghost_kacz_BMCshift_u_plain_rm_CHUNKHEIGHT_NVECS_NSHIFTS(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     
@@ -1155,13 +1155,13 @@ ghost_error ghost_kacz_BMCshift_u_plain_rm_CHUNKHEIGHT_NVECS(ghost_densemat *x, 
     return GHOST_SUCCESS;
 }
 
-ghost_error ghost_kacz__BMCshift_u_plain_x_x_rm_CHUNKHEIGHT_NVECS(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts)
+ghost_error ghost_kacz__BMCshift_u_plain_x_x_rm_CHUNKHEIGHT_NVECS_NSHIFTS(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts)
 {
     ghost_error ret = GHOST_SUCCESS;
     
     //SELECT_TMPL_1DATATYPE(mat->traits.datatype,std::complex,ret,ghost_kacz_BMCshift_u_plain_cm_CHUNKHEIGHT_NVECS_tmpl,x,mat,b,opts);
     // TODO mixed datatypes
-    ghost_kacz_BMCshift_u_plain_rm_CHUNKHEIGHT_NVECS(x,mat,b, opts);
+    ghost_kacz_BMCshift_u_plain_rm_CHUNKHEIGHT_NVECS_NSHIFTS(x,mat,b, opts);
     //SELECT_TMPL_2DATATYPES_base_derived(mat->traits.datatype,x->traits.datatype,std::complex,ret,ghost_kacz_BMCshift_u_plain_rm_CHUNKHEIGHT_NVECS_tmpl,x,mat,b,opts);
     
     return ret;
