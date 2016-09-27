@@ -560,7 +560,6 @@ ghost_error ghost_init(int argc, char **argv)
         } 
     hwloc_bitmap_foreach_end();
 
-    ghost_taskq_create();
     ghost_pumap_create(mycpuset);
 
     ghost_rand_create();

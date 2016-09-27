@@ -63,6 +63,11 @@ ghost_error ghost_task_string(char **str, ghost_task *t)
 ghost_error ghost_task_enqueue(ghost_task *t)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING);
+
+    if (!taskq) {
+        ghost_taskq_create();
+    }
+
     pthread_mutex_lock(t->stateMutex);
     t->state = GHOST_TASK_INVALID;
     pthread_mutex_unlock(t->stateMutex);
