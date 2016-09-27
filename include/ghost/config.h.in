@@ -29,6 +29,7 @@
 
 /* hardware features */
 #cmakedefine GHOST_BUILD_MIC
+#cmakedefine GHOST_BUILD_AVX512
 #cmakedefine GHOST_BUILD_AVX2
 #cmakedefine GHOST_BUILD_AVX
 #cmakedefine GHOST_BUILD_SSE

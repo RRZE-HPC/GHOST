@@ -12,6 +12,12 @@
 #GHOST_SUBST NVECS ${BLOCKDIM1}
 #GHOST_SUBST CHUNKHEIGHT ${CHUNKHEIGHT}
 
+#ifdef GHOST_BUILD_AVX512
+#define STREAMINGSTORE _mm512_stream_pd
+#else
+#define STREAMINGSTORE _mm512_storenrngo_pd
+#endif
+
 ghost_error ghost_sellspmvSTRIPPED__a_mic_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat* invec, ghost_spmv_opts traits)
 {
     
@@ -59,7 +65,11 @@ ghost_error ghost_sellspmv__a_mic_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
     double *mval = (double *)SELL(mat)->val;
     __m512d val;
     __m512d rhs;
+#ifdef GHOST_BUILD_AVX512
+    __m256i idx;
+#else
     __m512i idx;
+#endif
     double *local_dot_product = NULL;
     double *partsums = NULL;
     ghost_densemat *z = NULL;
@@ -111,7 +121,11 @@ ghost_error ghost_sellspmv__a_mic_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
 
                 for (j=0; j<(SELL(mat)->chunkStart[c+1]-SELL(mat)->chunkStart[c])/CHUNKHEIGHT; j++) 
                 { // loop inside chunk
+#ifdef GHOST_BUILD_AVX512
+                    #GHOST_UNROLL#val = _mm512_load_pd(&mval[offs]);idx = _mm256_load_si256((__m256i *)(&SELL(mat)->col[offs]));rhs = _mm512_i32gather_pd(idx,rval,8); tmp@ = _mm512_fmadd_pd(val,rhs,tmp@); offs+=8;#CHUNKHEIGHT/8
+#else
                     #GHOST_UNROLL#val = _mm512_load_pd(&mval[offs]);idx = _mm512_load_epi32(&SELL(mat)->col[offs]);rhs = _mm512_i32logather_pd(idx,rval,8);tmp~2*@~ = _mm512_add_pd(tmp~2*@~,_mm512_mul_pd(val,rhs));offs += 8;val = _mm512_load_pd(&mval[offs]);idx = _mm512_permute4f128_epi32(idx,_MM_PERM_BADC);rhs = _mm512_i32logather_pd(idx,rval,8);tmp~2*@+1~ = _mm512_add_pd(tmp~2*@+1~,_mm512_mul_pd(val,rhs));offs += 8;#CHUNKHEIGHT/16
+#endif
                 }
                 if (traits.flags & (GHOST_SPMV_SHIFT | GHOST_SPMV_VSHIFT)) {
                     if (traits.flags & GHOST_SPMV_SHIFT) {
@@ -129,7 +143,7 @@ ghost_error ghost_sellspmv__a_mic_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
                 } else if (traits.flags & GHOST_SPMV_AXPBY) {
                     #GHOST_UNROLL#_mm512_store_pd(&lval[c*CHUNKHEIGHT+8*@],_mm512_add_pd(tmp@,_mm512_mul_pd(beta,_mm512_load_pd(&lval[c*CHUNKHEIGHT+8*@]))));#CHUNKHEIGHT/8
                 } else {
-                    #GHOST_UNROLL#_mm512_storenrngo_pd(&lval[c*CHUNKHEIGHT+8*@],tmp@);#CHUNKHEIGHT/8
+                    #GHOST_UNROLL#STREAMINGSTORE(&lval[c*CHUNKHEIGHT+8*@],tmp@);#CHUNKHEIGHT/8
                 }
                 if (traits.flags & GHOST_SPMV_DOT) {
                     if ((c+1)*CHUNKHEIGHT <= mat->nrows) {
@@ -257,7 +271,7 @@ ghost_error ghost_sellspmv__a_mic_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
             } else if (traits.flags & GHOST_SPMV_AXPBY) {
                 #GHOST_UNROLL#_mm512_store_pd(lval+@*8,_mm512_add_pd(tmp@,_mm512_mul_pd(_mm512_load_pd(lval+@*8),beta)));#CHUNKHEIGHT*NVECS/8
             } else {
-                #GHOST_UNROLL#_mm512_storenrngo_pd(lval+@*8,tmp@);#CHUNKHEIGHT*NVECS/8
+                #GHOST_UNROLL#STREAMINGSTORE(lval+@*8,tmp@);#CHUNKHEIGHT*NVECS/8
             }
             if (traits.flags & GHOST_SPMV_DOT) {
                 for (col = 0; col<invec->traits.ncols; col++) {

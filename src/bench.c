@@ -7,6 +7,12 @@
 
 #include <immintrin.h>
 
+#ifdef GHOST_BUILD_AVX512
+#define MIC_STREAMINGSTORE _mm512_stream_pd
+#else
+#define MIC_STREAMINGSTORE _mm512_storenrngo_pd
+#endif
+
 #define N PAD((ghost_lidx)1e8,16)
 #define NITER 40
 
@@ -95,7 +101,7 @@ static void ghost_triad_kernel(double * __restrict__ a, const double * __restric
     for (i=0; i<N; i+=8) {
         bv = _mm512_load_pd(&b[i]);
         cv = _mm512_load_pd(&c[i]);
-        _mm512_storenrngo_pd(&a[i],_mm512_add_pd(bv,_mm512_mul_pd(cv,sv)));
+        MIC_STREAMINGSTORE(&a[i],_mm512_add_pd(bv,_mm512_mul_pd(cv,sv)));
     }
 #elif defined(GHOST_BUILD_AVX)
     __m256d bv;
@@ -138,7 +144,7 @@ static void ghost_copy_kernel(double * __restrict__ a, const double * __restrict
 #pragma omp parallel for private(bv)
     for (i=0; i<N; i+=8) {
         bv = _mm512_load_pd(&b[i]);
-        _mm512_storenrngo_pd(&a[i],bv);
+        MIC_STREAMINGSTORE(&a[i],bv);
     }
 #elif defined(GHOST_BUILD_AVX)
     __m256d bv;
@@ -174,7 +180,7 @@ static void ghost_store_kernel(double * __restrict__ a, const double s)
     __m512d sv = _mm512_set1_pd(s);;
 #pragma omp parallel for
     for (i=0; i<N; i+=8) {
-        _mm512_storenrngo_pd(&a[i],sv);
+        MIC_STREAMINGSTORE(&a[i],sv);
     }
 #elif defined(GHOST_BUILD_AVX)
     __m256d sv = _mm256_set1_pd(s);
