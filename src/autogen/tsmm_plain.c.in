@@ -19,7 +19,7 @@ ghost_error ghost_tsmm__a_plain_d_OUTCOLS_INCOLS_OUTERUNROLL_1_rm(ghost_densemat
 
     ghost_lidx k = w->traits.ncols;
     ghost_lidx m = v->traits.ncols;
-    ghost_lidx n = v->traits.nrows;
+    ghost_lidx n = DM_NROWS(v);
     
     if (n%OUTERUNROLL) {
         n+=(OUTERUNROLL-n%OUTERUNROLL);
@@ -81,7 +81,7 @@ ghost_error ghost_tsmm__u_plain_d_OUTCOLS_INCOLS_OUTERUNROLL_1_rm(ghost_densemat
 
     ghost_lidx k = w->traits.ncols;
     ghost_lidx m = v->traits.ncols;
-    ghost_lidx n = v->traits.nrows;
+    ghost_lidx n = DM_NROWS(v);
     
     if (n%OUTERUNROLL) {
         n+=(OUTERUNROLL-n%OUTERUNROLL);
@@ -172,7 +172,7 @@ ghost_error ghost_tsmm__a_plain_d_OUTCOLS_INCOLS_OUTERUNROLL_1_cm(ghost_densemat
 
     ghost_lidx k = w->traits.ncols;
     ghost_lidx m = v->traits.ncols;
-    ghost_lidx n = v->traits.nrows;
+    ghost_lidx n = DM_NROWS(v);
     
     if (n%OUTERUNROLL) {
         n+=(OUTERUNROLL-n%OUTERUNROLL);
@@ -294,7 +294,7 @@ ghost_error ghost_tsmm__u_plain_d_OUTCOLS_INCOLS_OUTERUNROLL_1_cm(ghost_densemat
 
     ghost_lidx k = w->traits.ncols;
     ghost_lidx m = v->traits.ncols;
-    ghost_lidx n = v->traits.nrows;
+    ghost_lidx n = DM_NROWS(v);
     
     if (n%OUTERUNROLL) {
         n+=(OUTERUNROLL-n%OUTERUNROLL);
@@ -415,7 +415,7 @@ ghost_error ghost_tsmm__u_plain_z_OUTCOLS_INCOLS_1_1_rm(ghost_densemat *x, ghost
 
     ghost_lidx k = w->traits.ncols;
     ghost_lidx m = v->traits.ncols;
-    ghost_lidx n = v->traits.nrows;
+    ghost_lidx n = DM_NROWS(v);
 
     INFO_LOG("In TSMM with two fixed block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 

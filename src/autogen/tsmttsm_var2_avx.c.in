@@ -31,7 +31,7 @@ ghost_error ghost_tsmttsm__a_avx_d_x_x_1_rm(ghost_densemat *x, ghost_densemat *v
     const ghost_lidx ldw = w->stride;
     const ghost_lidx ldx = x->stride;
 
-    ghost_lidx n = v->traits.nrows;
+    ghost_lidx n = DM_NROWS(v);
     INFO_LOG("In AVX TSMTTSM with two non-fixed block sizes %dx%d <- %dx%d * %dx%d",ldv,ldw,ldv,n,n,ldw);
     
 
@@ -47,10 +47,10 @@ ghost_error ghost_tsmttsm__a_avx_d_x_x_1_rm(ghost_densemat *x, ghost_densemat *v
 
     ghost_lidx k;
     for (k=0; k<x->traits.ncols; k++) {
-        for (m=0; m+4<=x->traits.nrows; m+=4) {
+        for (m=0; m+4<=DM_NROWS(x); m+=4) {
             _mm256_storeu_pd(&xval[k*ldx+m],_mm256_mul_pd(_mm256_loadu_pd(&xval[k*ldx+m]),betavec));
         }
-        for (; m<x->traits.nrows; m++) {
+        for (; m<DM_NROWS(x); m++) {
             xval[k*ldx+m] = dbeta*xval[k*ldx+m];
         }
     }
@@ -75,12 +75,12 @@ ghost_error ghost_tsmttsm__a_avx_d_x_x_1_rm(ghost_densemat *x, ghost_densemat *v
                 for (k=0; k+4<=x->traits.ncols; k+=4) {
                     #GHOST_UNROLL#wvec@ = _mm256_mul_pd(_mm256_set1_pd(wval[i*ldw+(k+@)]),alphavec);#4
                    
-                    for (m=0; m+4<=x->traits.nrows; m+=4) {
+                    for (m=0; m+4<=DM_NROWS(x); m+=4) {
                         #GHOST_UNROLL#vvec@ = _mm256_mul_pd(_mm256_loadu_pd(&vval[i*ldv+m]),wvec@);#4
                         #GHOST_UNROLL#_mm256_store_pd(&x_priv[(k+@)*ldxpriv+m],_mm256_add_pd(_mm256_load_pd(&x_priv[(k+@)*ldxpriv+m]),vvec@));#4
 
                     }
-                    for (; m<x->traits.nrows; m++) {
+                    for (; m<DM_NROWS(x); m++) {
                         x_priv[(k+0)*ldxpriv+m] += dalpha*vval[i*ldv+m]*wval[i*ldw+(k+0)];
                         x_priv[(k+1)*ldxpriv+m] += dalpha*vval[i*ldv+m]*wval[i*ldw+(k+1)];
                         x_priv[(k+2)*ldxpriv+m] += dalpha*vval[i*ldv+m]*wval[i*ldw+(k+2)];
@@ -89,11 +89,11 @@ ghost_error ghost_tsmttsm__a_avx_d_x_x_1_rm(ghost_densemat *x, ghost_densemat *v
                 }
                 for (; k<x->traits.ncols; k++) {
                     wvec0 = _mm256_mul_pd(_mm256_set1_pd(wval[i*ldw+(k+0)]),alphavec);
-                    for (m=0; m+4<=x->traits.nrows; m+=4) {
+                    for (m=0; m+4<=DM_NROWS(x); m+=4) {
                         vvec0 = _mm256_mul_pd(_mm256_loadu_pd(&vval[i*ldv+m]),wvec0);
                         _mm256_store_pd(&x_priv[(k+0)*ldxpriv+m],_mm256_add_pd(_mm256_load_pd(&x_priv[(k+0)*ldxpriv+m]),vvec0));
                     }
-                    for (; m<x->traits.nrows; m++) {
+                    for (; m<DM_NROWS(x); m++) {
                         x_priv[k*ldxpriv+m] += dalpha*vval[i*ldv+m]*wval[i*ldw+k];
                     }
                 }
@@ -105,12 +105,12 @@ ghost_error ghost_tsmttsm__a_avx_d_x_x_1_rm(ghost_densemat *x, ghost_densemat *v
                 for (k=0; k+4<=x->traits.ncols; k+=4) {
                     #GHOST_UNROLL#wvec@ = _mm256_set1_pd(wval[i*ldw+(k+@)]);#4
                    
-                    for (m=0; m+4<=x->traits.nrows; m+=4) {
+                    for (m=0; m+4<=DM_NROWS(x); m+=4) {
                         #GHOST_UNROLL#vvec@ = _mm256_mul_pd(_mm256_loadu_pd(&vval[i*ldv+m]),wvec@);#4
                         #GHOST_UNROLL#_mm256_store_pd(&x_priv[(k+@)*ldxpriv+m],_mm256_add_pd(_mm256_load_pd(&x_priv[(k+@)*ldxpriv+m]),vvec@));#4
 
                     }
-                    for (; m<x->traits.nrows; m++) {
+                    for (; m<DM_NROWS(x); m++) {
                         x_priv[(k+0)*ldxpriv+m] += vval[i*ldv+m]*wval[i*ldw+(k+0)];
                         x_priv[(k+1)*ldxpriv+m] += vval[i*ldv+m]*wval[i*ldw+(k+1)];
                         x_priv[(k+2)*ldxpriv+m] += vval[i*ldv+m]*wval[i*ldw+(k+2)];
@@ -119,11 +119,11 @@ ghost_error ghost_tsmttsm__a_avx_d_x_x_1_rm(ghost_densemat *x, ghost_densemat *v
                 }
                 for (; k<x->traits.ncols; k++) {
                     wvec0 = _mm256_set1_pd(wval[i*ldw+(k+0)]);
-                    for (m=0; m+4<=x->traits.nrows; m+=4) {
+                    for (m=0; m+4<=DM_NROWS(x); m+=4) {
                         vvec0 = _mm256_mul_pd(_mm256_loadu_pd(&vval[i*ldv+m]),wvec0);
                         _mm256_store_pd(&x_priv[(k+0)*ldxpriv+m],_mm256_add_pd(_mm256_load_pd(&x_priv[(k+0)*ldxpriv+m]),vvec0));
                     }
-                    for (; m<x->traits.nrows; m++) {
+                    for (; m<DM_NROWS(x); m++) {
                         x_priv[k*ldxpriv+m] += vval[i*ldv+m]*wval[i*ldw+k];
                     }
                 }
@@ -135,10 +135,10 @@ ghost_error ghost_tsmttsm__a_avx_d_x_x_1_rm(ghost_densemat *x, ghost_densemat *v
         {
             m=0;
             for (k=0; k+4<=x->traits.ncols; k+=4) {
-                for (m=0; m+4<=x->traits.nrows; m+=4) {
+                for (m=0; m+4<=DM_NROWS(x); m+=4) {
                     #GHOST_UNROLL#_mm256_storeu_pd(&xval[(k+@)*ldx+m],_mm256_add_pd(_mm256_loadu_pd(&xval[(k+@)*ldx+m]),_mm256_load_pd(&x_priv[(k+@)*ldxpriv+m])));#4
                 }
-                for (; m<x->traits.nrows; m++) {
+                for (; m<DM_NROWS(x); m++) {
                     xval[(k+0)*ldx+m] += x_priv[(k+0)*ldxpriv+m];
                     xval[(k+1)*ldx+m] += x_priv[(k+1)*ldxpriv+m];
                     xval[(k+2)*ldx+m] += x_priv[(k+2)*ldxpriv+m];
@@ -146,10 +146,10 @@ ghost_error ghost_tsmttsm__a_avx_d_x_x_1_rm(ghost_densemat *x, ghost_densemat *v
                 }
             }
             for (; k<x->traits.ncols; k++) {
-                for (m=0; m+4<=x->traits.nrows; m+=4) {
+                for (m=0; m+4<=DM_NROWS(x); m+=4) {
                     _mm256_storeu_pd(&xval[(k+0)*ldx+m],_mm256_add_pd(_mm256_loadu_pd(&xval[(k+0)*ldx+m]),_mm256_load_pd(&x_priv[(k+0)*ldxpriv+m])));
                 }
-                for (; m<x->traits.nrows; m++) {
+                for (; m<DM_NROWS(x); m++) {
                     xval[k*ldx+m] += x_priv[k*ldxpriv+m];
                 }
             }

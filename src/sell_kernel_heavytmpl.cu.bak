@@ -13,7 +13,7 @@
 
 #include "ghost/cu_complex.h"
 
-#define SELL_CUDA_NBLOCKS (int)ceil(mat->nrowsPadded/(double)(SELL_CUDA_THREADSPERBLOCK/mat->T)) 
+#define SELL_CUDA_NBLOCKS (int)ceil(SPM_NROWSPAD(mat)/(double)(SELL_CUDA_THREADSPERBLOCK/mat->T)) 
 //#define SELLT_STRIDE_ONE
 
 extern __shared__ char shared[];
@@ -21,7 +21,7 @@ extern __shared__ char shared[];
 #define CALL(func,dt1,dt2,b1,b2,b3,b4,b5,...){\
     dt2 shift, scale, beta;\
     GHOST_SPMV_PARSE_ARGS(flags,argp,scale,beta,shift,localdot,dt2);\
-    func<dt1,dt2,b1,b2,b3,b4,b5><<<__VA_ARGS__>>>((dt2 *)lhs->cu_val,(dt2 *)rhs->cu_val,flags,mat->nrows,mat->nrowsPadded,mat->cumat->rowLen,mat->cumat->col,(dt1 *)mat->cumat->val,mat->cumat->chunkStart,mat->cumat->chunkLen,mat->chunkHeight,mat->T,shift,scale,beta,(dt2 *)cu_localdot);\
+    func<dt1,dt2,b1,b2,b3,b4,b5><<<__VA_ARGS__>>>((dt2 *)lhs->cu_val,(dt2 *)rhs->cu_val,flags,SPM_NROWS(mat),SPM_NROWSPAD(mat),mat->cumat->rowLen,mat->cumat->col,(dt1 *)mat->cumat->val,mat->cumat->chunkStart,mat->cumat->chunkLen,mat->chunkHeight,mat->T,shift,scale,beta,(dt2 *)cu_localdot);\
    }\
 
 #define SWITCH_BOOLS(func,dt1,dt2,...)\
@@ -161,7 +161,7 @@ extern __shared__ char shared[];
     if ((mat->T > 128) || (mat->T == 0) || (mat->T & (mat->T-1)))\
     WARNING_LOG("Invalid T: %d (must be power of two and T <= 128)",mat->T);\
     GHOST_INSTR_START(spmv_cuda)\
-    if (mat->chunkHeight == mat->nrowsPadded) {\
+    if (mat->chunkHeight == SPM_NROWSPAD(mat)) {\
         if (mat->T > 1) {\
             INFO_LOG("ELLPACK-T kernel not available. Switching to SELL-T kernel although we have only one chunk. Performance may suffer.");\
             size_t reqSmem;\

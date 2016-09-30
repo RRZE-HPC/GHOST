@@ -29,7 +29,7 @@ ghost_error ghost_dot__u_avx_d_rm_NVECS(void *res, ghost_densemat *vec1, ghost_d
         double *v2 = (double *)vec2->val;
 
 #pragma omp for schedule(runtime)
-        for (row=0; row<vec1->traits.nrows; row++) {
+        for (row=0; row<DM_NROWS(vec1); row++) {
             #GHOST_UNROLL#partres@ = _mm256_add_pd(partres@,_mm256_mul_pd(_mm256_loadu_pd(&v1[vec1->stride*row+@*4]),_mm256_loadu_pd(&v2[vec2->stride*row+@*4])));#(NVECS+3)/4
         }
 
@@ -69,7 +69,7 @@ ghost_error ghost_dot__a_avx_d_rm_NVECS(void *res, ghost_densemat *vec1, ghost_d
         double *v2 = (double *)vec2->val;
 
 #pragma omp for schedule(runtime)
-        for (row=0; row<vec1->traits.nrows; row++) {
+        for (row=0; row<DM_NROWS(vec1); row++) {
             #GHOST_UNROLL#partres@ = _mm256_add_pd(partres@,_mm256_mul_pd(_mm256_load_pd(&v1[vec1->stride*row+@*4]),_mm256_load_pd(&v2[vec2->stride*row+@*4])));#(NVECS+3)/4
         }
 

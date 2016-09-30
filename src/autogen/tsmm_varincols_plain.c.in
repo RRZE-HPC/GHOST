@@ -18,7 +18,7 @@ ghost_error ghost_tsmm__u_plain_d_OUTCOLS_x_1_1_rm(ghost_densemat *x, ghost_dens
     ghost_error ret = GHOST_SUCCESS;
 
     ghost_lidx m = v->traits.ncols;
-    ghost_lidx n = v->traits.nrows;
+    ghost_lidx n = DM_NROWS(v);
 
     
     INFO_LOG("In TSMM with fixed K %"PRLIDX" and arbitrary M %"PRLIDX": %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,OUTCOLS,m,n,OUTCOLS,n,m,m,OUTCOLS);
@@ -56,7 +56,7 @@ ghost_error ghost_tsmm__u_plain_z_OUTCOLS_x_1_1_rm(ghost_densemat *x, ghost_dens
     ghost_error ret = GHOST_SUCCESS;
 
     ghost_lidx m = v->traits.ncols;
-    ghost_lidx n = v->traits.nrows;
+    ghost_lidx n = DM_NROWS(v);
 
     
     INFO_LOG("In TSMM with fixed K %"PRLIDX" and arbitrary M %"PRLIDX": %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,OUTCOLS,m,n,OUTCOLS,n,m,m,OUTCOLS);

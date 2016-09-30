@@ -65,25 +65,25 @@ ghost_error ghost_tsmm_inplace__u_cuda_x_x_x(ghost_densemat *x, ghost_densemat *
     block.x = x->traits.ncols;
     block.y = CEILDIV(threadsperblock,block.x);
     block.z = 1;
-    grid.x = CEILDIV(x->traits.nrows,block.y);
+    grid.x = CEILDIV(DM_NROWS(x),block.y);
     grid.y = 1;
     grid.z = 1;
     
     if (x->traits.datatype & GHOST_DT_COMPLEX) {
         if (x->traits.datatype & GHOST_DT_DOUBLE) {
             ghost_tsmm_inplace_cu_rm_cm_fallback<cuDoubleComplex><<< grid,block,reqSmem >>>(
-                    (cuDoubleComplex *)x->cu_val,(const cuDoubleComplex *)w->cu_val,*(cuDoubleComplex *)alpha,*(cuDoubleComplex *)beta,x->traits.nrows,x->stride,w->stride,w->traits.ncols,w->traits.nrows);
+                    (cuDoubleComplex *)x->cu_val,(const cuDoubleComplex *)w->cu_val,*(cuDoubleComplex *)alpha,*(cuDoubleComplex *)beta,DM_NROWS(x),x->stride,w->stride,w->traits.ncols,DM_NROWS(w));
         } else {
             ghost_tsmm_inplace_cu_rm_cm_fallback<cuFloatComplex><<< grid,block,reqSmem >>>(
-                    (cuFloatComplex *)x->cu_val,(const cuFloatComplex *)w->cu_val,*(cuFloatComplex *)alpha,*(cuFloatComplex *)beta,x->traits.nrows,x->stride,w->stride,w->traits.ncols,w->traits.nrows);
+                    (cuFloatComplex *)x->cu_val,(const cuFloatComplex *)w->cu_val,*(cuFloatComplex *)alpha,*(cuFloatComplex *)beta,DM_NROWS(x),x->stride,w->stride,w->traits.ncols,DM_NROWS(w));
         }
     } else {
         if (x->traits.datatype & GHOST_DT_DOUBLE) {
             ghost_tsmm_inplace_cu_rm_cm_fallback<double><<< grid,block,reqSmem >>>(
-                   (double *)x->cu_val,(const double *)w->cu_val,*(double *)alpha,*(double *)beta,x->traits.nrows,x->stride,w->stride,w->traits.ncols,w->traits.nrows);
+                   (double *)x->cu_val,(const double *)w->cu_val,*(double *)alpha,*(double *)beta,DM_NROWS(x),x->stride,w->stride,w->traits.ncols,DM_NROWS(w));
         } else {
             ghost_tsmm_inplace_cu_rm_cm_fallback<float><<< grid,block,reqSmem >>>(
-                   (float *)x->cu_val,(const float *)w->cu_val,*(float *)alpha,*(float *)beta,x->traits.nrows,x->stride,w->stride,w->traits.ncols,w->traits.nrows);
+                   (float *)x->cu_val,(const float *)w->cu_val,*(float *)alpha,*(float *)beta,DM_NROWS(x),x->stride,w->stride,w->traits.ncols,DM_NROWS(w));
         }
     }
 

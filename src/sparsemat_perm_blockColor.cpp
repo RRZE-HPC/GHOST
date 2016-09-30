@@ -38,14 +38,14 @@ extern "C" ghost_error ghost_sparsemat_blockColor(ghost_sparsemat *mat, void *ma
     uint32_t *adolc_data = NULL;
     #endif
     
-    ghost_gidx ncols_halo_padded = mat->context->nrowspadded ;
-    if (mat->context->flags & GHOST_PERM_NO_DISTINCTION) {
-        ncols_halo_padded = mat->context->nrowspadded + mat->context->halo_elements+1;
-    }
+    ghost_gidx ncols_halo_padded = mat->context->col_map->nrowspadded ;
+//    if (mat->context->flags & GHOST_PERM_NO_DISTINCTION) {
+//        ncols_halo_padded = mat->context->nrowspadded + mat->context->halo_elements+1;
+//    }
     
     #ifdef GHOST_HAVE_COLPACK
     ColPack::BipartiteGraphPartialColoringInterface *GC;
-    adolc = new uint32_t*[mat->nrows];
+    adolc = new uint32_t*[SPM_NROWS(mat)];
     #endif
     
     int *nthread = new int[1];  
@@ -69,12 +69,12 @@ extern "C" ghost_error ghost_sparsemat_blockColor(ghost_sparsemat *mat, void *ma
     
     GHOST_CALL_GOTO(ghost_rank(&me,mat->context->mpicomm),err,ret);
     
-    nrows = mat->context->lnrows[me];
+    nrows = mat->context->row_map->lnrows[me];
     
     
     //  ghost_lidx *row_ptr = mat->sell->chunkStart;
     //  ghost_lidx *col_ptr = mat->sell->col;
-    //  ghost_lidx nrows = mat->nrows;
+    //  ghost_lidx nrows = SPM_NROWS(mat);
     
     
     //  ghost_lidx n_t_zones = n_zones-1; 
@@ -93,30 +93,30 @@ extern "C" ghost_error ghost_sparsemat_blockColor(ghost_sparsemat *mat, void *ma
      *       ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize); 
      *       int ctr = 0;
      *  #pragma omp parallel for reduction(max:lower_bw) reduction(max:upper_bw) reduction(+:ctr)
-     *       for (int i=0; i<mat->context->lnrows[me]; i++) {
+     *       for (int i=0; i<mat->context->row_map->lnrows[me]; i++) {
      *        	if (mat->context->perm_global && mat->context->perm_local) {
-     *                 	src->func(mat->context->perm_global->invPerm[mat->context->perm_local->invPerm[i]],&rowlen,tmpcol,tmpval,src->arg);
+     *                 	src->func(mat->context->row_map->glb_perm_inv[mat->context->row_map->loc_perm_inv[i]],&rowlen,tmpcol,tmpval,src->arg);
 } else if (mat->context->perm_global) {
-    src->func(mat->context->perm_global->invPerm[i],&rowlen,tmpcol,tmpval,src->arg);
+    src->func(mat->context->row_map->glb_perm_inv[i],&rowlen,tmpcol,tmpval,src->arg);
 } else if (mat->context->perm_local) {
-    src->func(mat->context->lfRow[me]+mat->context->perm_local->invPerm[i],&rowlen,tmpcol,tmpval,src->arg);
+    src->func(mat->context->row_map->goffs[me]+mat->context->row_map->loc_perm_inv[i],&rowlen,tmpcol,tmpval,src->arg);
 } else {
-    src->func(mat->context->lfRow[me]+i,&rowlen,tmpcol,tmpval,src->arg);
+    src->func(mat->context->row_map->goffs[me]+i,&rowlen,tmpcol,tmpval,src->arg);
 }
 
-ghost_gidx start_col = mat->nrows + mat->context->nrowspadded;
+ghost_gidx start_col = SPM_NROWS(mat) + mat->context->nrowspadded;
 ghost_gidx end_col   = 0;
 
 if(mat->context->perm_local){
-    if(mat->context->perm_local->colPerm == NULL) {
+    if(mat->context->col_map->loc_perm == NULL) {
         for(int j=0; j<rowlen; ++j) {
-            start_col = MIN(start_col, mat->context->perm_local->perm[tmpcol[j]]);
-            end_col   = MAX(end_col, mat->context->perm_local->perm[tmpcol[j]]);
+            start_col = MIN(start_col, mat->context->row_map->loc_perm[tmpcol[j]]);
+            end_col   = MAX(end_col, mat->context->row_map->loc_perm[tmpcol[j]]);
 }
 } else {
     for(int j=0; j<rowlen; ++j) {
-        start_col = MIN(start_col, mat->context->perm_local->colPerm[tmpcol[j]]);
-        end_col   = MAX(end_col, mat->context->perm_local->colPerm[tmpcol[j]]);
+        start_col = MIN(start_col, mat->context->col_map->loc_perm[tmpcol[j]]);
+        end_col   = MAX(end_col, mat->context->col_map->loc_perm[tmpcol[j]]);
 }
 }
 } else {
@@ -134,8 +134,8 @@ free(tmpcol);
 free(tmpval);
 }
 }*/
-    //std::cout<<"nrows ="<<mat->nrows<<std::endl;
-    //std::cout<<"check"<<row_ptr[mat->nrows-1]<<std::endl;
+    //std::cout<<"nrows ="<<SPM_NROWS(mat)<<std::endl;
+    //std::cout<<"check"<<row_ptr[SPM_NROWS(mat)-1]<<std::endl;
     
     total_bw = mat->bandwidth;
     max_col_idx = mat->maxColRange;
@@ -178,21 +178,21 @@ free(tmpval);
             ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx));
             
             #pragma omp for
-            for (int i=0; i<mat->context->lnrows[me]; i++) {
-                if (mat->context->perm_global && mat->context->perm_local) {
-                    src->func(mat->context->perm_global->invPerm[mat->context->perm_local->invPerm[i]],&rowlen,tmpcol,tmpval,src->arg);
-                } else if (mat->context->perm_global) {
-                    src->func(mat->context->perm_global->invPerm[i],&rowlen,tmpcol,tmpval,src->arg);
-                } else if (mat->context->perm_local) {
-                    src->func(mat->context->lfRow[me]+mat->context->perm_local->invPerm[i],&rowlen,tmpcol,tmpval,src->arg);
+            for (int i=0; i<mat->context->row_map->lnrows[me]; i++) {
+                if (mat->context->row_map->glb_perm && mat->context->row_map->loc_perm) {
+                    src->func(mat->context->row_map->glb_perm_inv[mat->context->row_map->loc_perm_inv[i]],&rowlen,tmpcol,tmpval,src->arg);
+                } else if (mat->context->row_map->glb_perm) {
+                    src->func(mat->context->row_map->glb_perm_inv[i],&rowlen,tmpcol,tmpval,src->arg);
+                } else if (mat->context->row_map->loc_perm) {
+                    src->func(mat->context->row_map->goffs[me]+mat->context->row_map->loc_perm_inv[i],&rowlen,tmpcol,tmpval,src->arg);
                 } else {
-                    src->func(mat->context->lfRow[me]+i,&rowlen,tmpcol,tmpval,src->arg);
+                    src->func(mat->context->row_map->goffs[me]+i,&rowlen,tmpcol,tmpval,src->arg);
                 }
                 nnz += rowlen;
                 //TODO delete after test
                 for(int j=0 ;j<rowlen; ++j)
                 {
-                    //			max_col = MAX(max_col,mat->context->perm_local->colPerm[tmpcol[j]]);	
+                    //			max_col = MAX(max_col,mat->context->col_map->loc_perm[tmpcol[j]]);	
                 }	
                 
             }
@@ -209,7 +209,7 @@ free(tmpval);
         
         ghost_lidx rowlen;
         
-        GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,(mat->context->lnrows[me]+1) * sizeof(ghost_gidx)),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,(mat->context->row_map->lnrows[me]+1) * sizeof(ghost_gidx)),err,ret);
         
         rpt[0] = 0;
         
@@ -222,18 +222,18 @@ free(tmpval);
             ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize);
             
             #pragma omp for ordered reduction(+:ctr_nrows_MC) 
-            for (int i=0; i<mat->context->lnrows[me]; i++) {
+            for (int i=0; i<mat->context->row_map->lnrows[me]; i++) {
                 #pragma omp ordered
                 {
-                    if (mat->context->perm_global && mat->context->perm_local) {
-                        //                 	src->func(mat->context->perm_global->invPerm[mat->context->perm_local->invPerm[i]],&rowlen,tmpcol,tmpval,src->arg);
-                        src->func(mat->context->perm_global->invPerm[mat->context->perm_local->invPerm[i]],&rowlen,&col[rpt[i]],tmpval,src->arg);
-                    } else if (mat->context->perm_global) {
-                        src->func(mat->context->perm_global->invPerm[i],&rowlen,&col[rpt[i]],tmpval,src->arg);
-                    } else if (mat->context->perm_local) {
-                        src->func(mat->context->lfRow[me]+mat->context->perm_local->invPerm[i],&rowlen,&col[rpt[i]],tmpval,src->arg);
+                    if (mat->context->row_map->glb_perm && mat->context->row_map->loc_perm) {
+                        //                 	src->func(mat->context->row_map->glb_perm_inv[mat->context->row_map->loc_perm_inv[i]],&rowlen,tmpcol,tmpval,src->arg);
+                        src->func(mat->context->row_map->glb_perm_inv[mat->context->row_map->loc_perm_inv[i]],&rowlen,&col[rpt[i]],tmpval,src->arg);
+                    } else if (mat->context->row_map->glb_perm) {
+                        src->func(mat->context->row_map->glb_perm_inv[i],&rowlen,&col[rpt[i]],tmpval,src->arg);
+                    } else if (mat->context->row_map->loc_perm) {
+                        src->func(mat->context->row_map->goffs[me]+mat->context->row_map->loc_perm_inv[i],&rowlen,&col[rpt[i]],tmpval,src->arg);
                     } else {
-                        src->func(mat->context->lfRow[me]+i,&rowlen,&col[rpt[i]],tmpval,src->arg);
+                        src->func(mat->context->row_map->goffs[me]+i,&rowlen,&col[rpt[i]],tmpval,src->arg);
                     }
                     
                     
@@ -244,16 +244,16 @@ free(tmpval);
                 ghost_lidx start_col =  INT_MAX;
                 ghost_lidx end_col   =  0;
                 
-                if(mat->context->perm_local) {
-                    if(mat->context->perm_local->colPerm == NULL) {
+                if(mat->context->row_map->loc_perm) {
+                    if(mat->context->col_map->loc_perm == NULL) {
                         for(int j=rpt[i]; j<rpt[i+1]; ++j) {
-                            start_col = MIN(start_col, mat->context->perm_local->perm[col[j]]);
-                            end_col   = MAX(end_col, mat->context->perm_local->perm[col[j]]);
+                            start_col = MIN(start_col, mat->context->row_map->loc_perm[col[j]]);
+                            end_col   = MAX(end_col, mat->context->row_map->loc_perm[col[j]]);
                         } 
                     } else {
                         for(int j=rpt[i]; j<rpt[i+1]; ++j) {
-                            start_col = MIN(start_col, mat->context->perm_local->colPerm[col[j]]);
-                            end_col   = MAX(end_col, mat->context->perm_local->colPerm[col[j]]);
+                            start_col = MIN(start_col, mat->context->col_map->loc_perm[col[j]]);
+                            end_col   = MAX(end_col, mat->context->col_map->loc_perm[col[j]]);
                         }
                     }
                 } else {
@@ -309,44 +309,43 @@ else if(k>0 && zone[i]<0 && (col_ptr[row_ptr[i]] >= rhs_split[k-1] && col_ptr[ro
 }
 */
     
-    if (!mat->context->perm_local) {
+    if (!mat->context->row_map->loc_perm) {
         //this branch if no local permutations are carried out before
         WARNING_LOG("The matrix has not been RCM permuted, BLOCK coloring works better for matrix with small bandwidths");
-        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local,sizeof(ghost_permutation)), err, ret);
         old_perm = false;
-        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->perm,sizeof(ghost_gidx)*mat->nrows), err, ret);
-        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->invPerm,sizeof(ghost_gidx)*mat->nrows), err, ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)mat->context->row_map->loc_perm,sizeof(ghost_gidx)*SPM_NROWS(mat)), err, ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)mat->context->row_map->loc_perm_inv,sizeof(ghost_gidx)*SPM_NROWS(mat)), err, ret);
         
-        mat->context->perm_local->method = GHOST_PERMUTATION_UNSYMMETRIC;
+//        mat->context->perm_local->method = GHOST_PERMUTATION_UNSYMMETRIC;
         
         //anyway separate both permutations 
-        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->colPerm,sizeof(ghost_gidx)*ncols_halo_padded), err, ret);
-        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->colInvPerm,sizeof(ghost_gidx)*ncols_halo_padded), err, ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)mat->context->col_map->loc_perm,sizeof(ghost_gidx)*ncols_halo_padded), err, ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)mat->context->col_map->loc_perm_inv,sizeof(ghost_gidx)*ncols_halo_padded), err, ret);
         
         #pragma omp parallel for         
         for(int i=0; i<ncols_halo_padded; ++i) { 
-            mat->context->perm_local->colPerm[i] = i;
-            mat->context->perm_local->colInvPerm[i] = i;
+            mat->context->col_map->loc_perm[i] = i;
+            mat->context->col_map->loc_perm_inv[i] = i;
         } 
         
-    } else if(mat->context->perm_local->method == GHOST_PERMUTATION_SYMMETRIC) {
+    } else if(mat->context->row_map->loc_perm != mat->context->col_map->loc_perm) {
         //this branch if no unsymmetric permutations have been carried out before
         
-        if(mat->nrows != mat->context->nrowspadded) {
+        if(SPM_NROWS(mat) != mat->context->col_map->nrowspadded) {
             ERROR_LOG("Trying to do symmetric permutation on non-squared matrix");
         }
         
         //now make it unsymmetric
-        mat->context->perm_local->method = GHOST_PERMUTATION_UNSYMMETRIC;
+  //      mat->context->perm_local->method = GHOST_PERMUTATION_UNSYMMETRIC;
         
         //anyway separate both permutations 
-        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->colPerm,sizeof(ghost_gidx)*ncols_halo_padded), err, ret);
-        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->colInvPerm,sizeof(ghost_gidx)*ncols_halo_padded), err, ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)mat->context->col_map->loc_perm,sizeof(ghost_gidx)*ncols_halo_padded), err, ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)mat->context->col_map->loc_perm_inv,sizeof(ghost_gidx)*ncols_halo_padded), err, ret);
         
         #pragma omp parallel for         
         for(int i=0; i<ncols_halo_padded; ++i) {
-            mat->context->perm_local->colPerm[i] =  mat->context->perm_local->perm[i];
-            mat->context->perm_local->colInvPerm[i] =  mat->context->perm_local->invPerm[i];
+            mat->context->col_map->loc_perm[i] =  mat->context->row_map->loc_perm[i];
+            mat->context->col_map->loc_perm_inv[i] =  mat->context->row_map->loc_perm_inv[i];
         } 
     }
     
@@ -360,7 +359,7 @@ else if(k>0 && zone[i]<0 && (col_ptr[row_ptr[i]] >= rhs_split[k-1] && col_ptr[ro
         mat->zone_ptr[i] = 0;
     }
     
-    for (int i=0;i<mat->nrows;i++) {
+    for (int i=0;i<SPM_NROWS(mat);i++) {
         mat->zone_ptr[zone[i]+1]++;
     }
     
@@ -371,19 +370,19 @@ else if(k>0 && zone[i]<0 && (col_ptr[row_ptr[i]] >= rhs_split[k-1] && col_ptr[ro
     mat->zone_ptr[mat->nzones+1] = nrows;
     
     if(old_perm){
-        for (int i=0;i<mat->nrows;i++) {
-            mat->context->perm_local->perm[mat->context->perm_local->invPerm[i]] = curcol[zone[i]] + mat->zone_ptr[zone[i]];
+        for (int i=0;i<SPM_NROWS(mat);i++) {
+            mat->context->row_map->loc_perm[mat->context->row_map->loc_perm_inv[i]] = curcol[zone[i]] + mat->zone_ptr[zone[i]];
             curcol[zone[i]]++;
         }
     } else {  
-        for (int i=0;i<mat->nrows;i++) {
-            mat->context->perm_local->perm[i] = curcol[zone[i]] + mat->zone_ptr[zone[i]];
+        for (int i=0;i<SPM_NROWS(mat);i++) {
+            mat->context->row_map->loc_perm[i] = curcol[zone[i]] + mat->zone_ptr[zone[i]];
             curcol[zone[i]]++;
         }
     }
     
-    for (int i=0;i<mat->nrows;i++) {
-        mat->context->perm_local->invPerm[mat->context->perm_local->perm[i]] = i;
+    for (int i=0;i<SPM_NROWS(mat);i++) {
+        mat->context->row_map->loc_perm_inv[mat->context->row_map->loc_perm[i]] = i;
     }
     
     #ifdef GHOST_HAVE_COLPACK         
@@ -406,12 +405,12 @@ else if(k>0 && zone[i]<0 && (col_ptr[row_ptr[i]] >= rhs_split[k-1] && col_ptr[ro
         ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize);
         
         for(int i=0; i< ctr_nrows_MC; ++i) {
-            if (mat->context->perm_global && mat->context->perm_local) {
-                src->func(mat->context->perm_global->invPerm[mat->context->perm_local->invPerm[offs+i]],&rowlen,tmpcol,tmpval,src->arg);
-            } else if (mat->context->perm_global) {
-                src->func(mat->context->perm_global->invPerm[offs+i],&rowlen,tmpcol,tmpval,src->arg);
-            } else if (mat->context->perm_local) {
-                src->func(mat->context->lfRow[me]+mat->context->perm_local->invPerm[offs+i],&rowlen,tmpcol,tmpval,src->arg);
+            if (mat->context->row_map->glb_perm && mat->context->row_map->loc_perm) {
+                src->func(mat->context->row_map->glb_perm_inv[mat->context->row_map->loc_perm_inv[offs+i]],&rowlen,tmpcol,tmpval,src->arg);
+            } else if (mat->context->row_map->glb_perm) {
+                src->func(mat->context->row_map->glb_perm_inv[offs+i],&rowlen,tmpcol,tmpval,src->arg);
+            } else if (mat->context->row_map->loc_perm) {
+                src->func(mat->context->row_map->goffs[me]+mat->context->row_map->loc_perm_inv[offs+i],&rowlen,tmpcol,tmpval,src->arg);
             }
             
             adolc[i] = &(adolc_data[pos]);
@@ -459,13 +458,13 @@ else if(k>0 && zone[i]<0 && (col_ptr[row_ptr[i]] >= rhs_split[k-1] && col_ptr[ro
     }
     
     for (int i=0;i<ctr_nrows_MC;i++) {
-        int idx = mat->context->perm_local->invPerm[i+offs];
-        mat->context->perm_local->perm[idx]  = curcol[colvec[i]] + mat->color_ptr[colvec[i]];
+        int idx = mat->context->row_map->loc_perm_inv[i+offs];
+        mat->context->row_map->loc_perm[idx]  = curcol[colvec[i]] + mat->color_ptr[colvec[i]];
         curcol[colvec[i]]++;
     }
     
-    for (int i=0;i<mat->nrows;i++) {
-        mat->context->perm_local->invPerm[mat->context->perm_local->perm[i]] = i;
+    for (int i=0;i<SPM_NROWS(mat);i++) {
+        mat->context->row_map->loc_perm_inv[mat->context->row_map->loc_perm[i]] = i;
     }
     
     #else
@@ -480,7 +479,7 @@ else if(k>0 && zone[i]<0 && (col_ptr[row_ptr[i]] >= rhs_split[k-1] && col_ptr[ro
     #endif 
     
     double MC_percent;
-    MC_percent = ((double)ctr_nrows_MC/mat->context->lnrows[me])*100.;
+    MC_percent = ((double)ctr_nrows_MC/mat->context->row_map->lnrows[me])*100.;
     //TODO : quantify this and give a break point
     if( MC_percent > 5  ) {
         WARNING_LOG("%3.2f %% rows would be Multicolored, try reducing number of threads", MC_percent);

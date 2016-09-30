@@ -38,7 +38,6 @@ GHOST_REGISTER_DT_Z(dt_z)
 GHOST_REGISTER_DT_C(dt_c)
 
 int main(int argc, char **argv) {
-    ghost_context *ctx;
     ghost_sparsemat *A;
     ghost_densemat *y, *x;
     std::complex<double> zero = 0.;
@@ -75,7 +74,9 @@ int main(int argc, char **argv) {
 
     map<ghost_datatype,ghost_sparsemat_src_rowfunc> mat_funcs_diag;
     ghost_sparsemat_src_rowfunc matsrc = GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER;
-    matsrc.maxrowlen = N;
+    matsrc.maxrowlen = 1;
+    matsrc.gnrows = N;
+    matsrc.gncols = N;
     matsrc.func = diag<double>;
     mat_funcs_diag[(ghost_datatype)(GHOST_DT_REAL|GHOST_DT_DOUBLE)] = matsrc;
     matsrc.func = diag<float>;
@@ -109,15 +110,14 @@ int main(int argc, char **argv) {
     for (vector<ghost_sparsemat_traits>::iterator mtraits_it = mtraits_vec.begin(); mtraits_it != mtraits_vec.end(); ++mtraits_it) {
         
         // create sparsemat with traits and set according source function
-        GHOST_TEST_CALL(ghost_context_create(&ctx,N,N,GHOST_CONTEXT_DEFAULT,&matsrc,GHOST_SPARSEMAT_SRC_FUNC,MPI_COMM_WORLD,1.));
-        GHOST_TEST_CALL(ghost_sparsemat_create(&A, ctx, &(*mtraits_it), 1));
-            GHOST_TEST_CALL(ghost_sparsemat_init_rowfunc(A,&mat_funcs_diag[mtraits_it->datatype]));
+        GHOST_TEST_CALL(ghost_sparsemat_create(&A, NULL, &(*mtraits_it), 1));
+        GHOST_TEST_CALL(ghost_sparsemat_init_rowfunc(A,&mat_funcs_diag[mtraits_it->datatype],MPI_COMM_WORLD,1.));
 
         for (vector<ghost_densemat_traits>::iterator vtraits_it = vtraits_vec.begin(); vtraits_it != vtraits_vec.end(); ++vtraits_it) {
             if (!ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(vtraits_it->datatype,mtraits_it->datatype)]) continue;
 
-            GHOST_TEST_CALL(ghost_densemat_create(&x, ctx, *vtraits_it));
-            GHOST_TEST_CALL(ghost_densemat_create(&y, ctx, *vtraits_it));
+            GHOST_TEST_CALL(ghost_densemat_create(&x, A->context, *vtraits_it));
+            GHOST_TEST_CALL(ghost_densemat_create(&y, A->context, *vtraits_it));
             GHOST_TEST_CALL(ghost_densemat_init_rand(x));
             GHOST_TEST_CALL(ghost_densemat_init_val(y,&zero));
           
@@ -141,7 +141,7 @@ int main(int argc, char **argv) {
 
             ghost_lidx i;
 
-            for (i=0; i<y->traits.nrows; i++) {
+            for (i=0; i<DM_NROWS(y); i++) {
                 GHOST_TEST_CALL(ghost_densemat_entry(&yent,y,i,0));
                 GHOST_TEST_CALL(ghost_densemat_entry(&xent,x,i,0));
                 ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(vtraits_it->datatype,mtraits_it->datatype)](yent_ref,i,xent);
@@ -153,8 +153,6 @@ int main(int argc, char **argv) {
         }
             
         ghost_sparsemat_destroy(A);
-        ghost_context_destroy(ctx);
-        ctx = NULL;
 
     }
 

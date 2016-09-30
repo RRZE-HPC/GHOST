@@ -27,7 +27,7 @@ ghost_error ghost_dot__u_plain_d_cm_NVECS(void *res, ghost_densemat *vec1, ghost
             v2 = (double *)vec2->val+vec2->stride*col;
 
 #pragma omp for schedule(runtime)
-            for (row=0; row<vec1->traits.nrows; row++) {
+            for (row=0; row<DM_NROWS(vec1); row++) {
                 sum += v1[row]*v2[row];
             }
 
@@ -59,7 +59,7 @@ ghost_error ghost_dot__u_plain_z_cm_NVECS(void *res, ghost_densemat *vec1, ghost
             v2 = (complex double *)vec2->val+vec2->stride*col;
 
 #pragma omp for schedule(runtime)
-            for (row=0; row<vec1->traits.nrows; row++) {
+            for (row=0; row<DM_NROWS(vec1); row++) {
                 sum += conj(v1[row])*v2[row];
             }
 
@@ -93,7 +93,7 @@ ghost_error ghost_dot__u_plain_z_rm_NVECS(void *res, ghost_densemat *vec1, ghost
         v2 = (complex double *)vec2->val;
 
 #pragma omp for schedule(runtime)
-        for (row=0; row<vec1->traits.nrows; row++) {
+        for (row=0; row<DM_NROWS(vec1); row++) {
             #GHOST_UNROLL#sum@ += conj(v1[row*vec1->stride+@])*v2[row*vec2->stride+@];#NVECS
         }
 

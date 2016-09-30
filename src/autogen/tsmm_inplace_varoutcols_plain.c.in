@@ -14,7 +14,7 @@ ghost_error ghost_tsmm_inplace__a_plain_d_NCOLSIN_x(ghost_densemat *x, ghost_den
     ghost_error ret = GHOST_SUCCESS;
 
     ghost_lidx m = x->traits.ncols;
-    ghost_lidx n = x->traits.nrows;
+    ghost_lidx n = DM_NROWS(x);
     ghost_lidx ncolsout = w->traits.ncols;
 
     double dalpha = *(double *)alpha;

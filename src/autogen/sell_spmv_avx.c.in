@@ -71,7 +71,7 @@ ghost_error ghost_sellspmvUNROLLEDDOESNOTWORK__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(gh
         }
 
 #pragma omp for schedule(runtime)
-        for (c=0; c<mat->nrowsPadded/CHUNKHEIGHT; c++) 
+        for (c=0; c<SPM_NROWSPAD(mat)/CHUNKHEIGHT; c++) 
         { // loop over chunks
 //            for (v=0; v<NVECS; v++)
             {
@@ -110,13 +110,13 @@ ghost_error ghost_sellspmvUNROLLEDDOESNOTWORK__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(gh
                 }
 
                 if (traits.flags & GHOST_SPMV_DOT) {
-                    if ((c+1)*CHUNKHEIGHT <= mat->nrows) {
+                    if ((c+1)*CHUNKHEIGHT <= SPM_NROWS(mat)) {
                         #GHOST_UNROLL#dot1[v] = _mm256_add_pd(dot1[v],_mm256_mul_pd(_mm256_load_pd(&lval[c*CHUNKHEIGHT+(4*@)]),_mm256_load_pd(&lval[c*CHUNKHEIGHT+(4*@)])));#CHUNKHEIGHT/4
                         #GHOST_UNROLL#dot2[v] = _mm256_add_pd(dot2[v],_mm256_mul_pd(_mm256_load_pd(&rval[c*CHUNKHEIGHT+(4*@)]),_mm256_load_pd(&lval[c*CHUNKHEIGHT+(4*@)])));#CHUNKHEIGHT/4
                         #GHOST_UNROLL#dot3[v] = _mm256_add_pd(dot3[v],_mm256_mul_pd(_mm256_load_pd(&rval[c*CHUNKHEIGHT+(4*@)]),_mm256_load_pd(&rval[c*CHUNKHEIGHT+(4*@)])));#CHUNKHEIGHT/4
                     } else {
                         ghost_lidx rem;
-                        for (rem=0; rem<mat->nrows-c*CHUNKHEIGHT; rem++) {
+                        for (rem=0; rem<SPM_NROWS(mat)-c*CHUNKHEIGHT; rem++) {
                             partsums[((padding+3*NVECS)*tid)+3*v+0] += lval[c*CHUNKHEIGHT+rem]*lval[c*CHUNKHEIGHT+rem];
                             partsums[((padding+3*NVECS)*tid)+3*v+1] += lval[c*CHUNKHEIGHT+rem]*rval[c*CHUNKHEIGHT+rem];
                             partsums[((padding+3*NVECS)*tid)+3*v+2] += rval[c*CHUNKHEIGHT+rem]*rval[c*CHUNKHEIGHT+rem];
@@ -242,7 +242,7 @@ ghost_error ghost_sellspmv__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
         }
 
 #pragma omp for schedule(runtime)
-        for (c=0; c<mat->nrowsPadded/CHUNKHEIGHT; c++) 
+        for (c=0; c<SPM_NROWSPAD(mat)/CHUNKHEIGHT; c++) 
         { // loop over chunks
             for (v=0; v<NVECS; v++)
             {
@@ -278,13 +278,13 @@ ghost_error ghost_sellspmv__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
                 }
 
                 if (traits.flags & GHOST_SPMV_DOT) {
-                    if ((c+1)*CHUNKHEIGHT <= mat->nrows) {
+                    if ((c+1)*CHUNKHEIGHT <= SPM_NROWS(mat)) {
                         #GHOST_UNROLL#dot1[v] = _mm256_add_pd(dot1[v],_mm256_mul_pd(_mm256_load_pd(&lval[c*CHUNKHEIGHT+(4*@)]),_mm256_load_pd(&lval[c*CHUNKHEIGHT+(4*@)])));#CHUNKHEIGHT/4
                         #GHOST_UNROLL#dot2[v] = _mm256_add_pd(dot2[v],_mm256_mul_pd(_mm256_load_pd(&rval[c*CHUNKHEIGHT+(4*@)]),_mm256_load_pd(&lval[c*CHUNKHEIGHT+(4*@)])));#CHUNKHEIGHT/4
                         #GHOST_UNROLL#dot3[v] = _mm256_add_pd(dot3[v],_mm256_mul_pd(_mm256_load_pd(&rval[c*CHUNKHEIGHT+(4*@)]),_mm256_load_pd(&rval[c*CHUNKHEIGHT+(4*@)])));#CHUNKHEIGHT/4
                     } else {
                         ghost_lidx rem;
-                        for (rem=0; rem<mat->nrows-c*CHUNKHEIGHT; rem++) {
+                        for (rem=0; rem<SPM_NROWS(mat)-c*CHUNKHEIGHT; rem++) {
                             partsums[((padding+3*NVECS)*tid)+3*v+0] += lval[c*CHUNKHEIGHT+rem]*lval[c*CHUNKHEIGHT+rem];
                             partsums[((padding+3*NVECS)*tid)+3*v+1] += lval[c*CHUNKHEIGHT+rem]*rval[c*CHUNKHEIGHT+rem];
                             partsums[((padding+3*NVECS)*tid)+3*v+2] += rval[c*CHUNKHEIGHT+rem]*rval[c*CHUNKHEIGHT+rem];
@@ -422,7 +422,7 @@ ghost_error ghost_sellspmv__a_avx_z_z_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
         }
 
 #pragma omp for schedule(runtime)
-        for (c=0; c<mat->nrowsPadded/CHUNKHEIGHT; c++) 
+        for (c=0; c<SPM_NROWSPAD(mat)/CHUNKHEIGHT; c++) 
         { // loop over chunks
             for (v=0; v<NVECS; v++)
             {
@@ -469,31 +469,31 @@ ghost_error ghost_sellspmv__a_avx_z_z_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
                 }
 
                 if (traits.flags & GHOST_SPMV_DOT_YY) {
-                    if ((c+1)*CHUNKHEIGHT <= mat->nrows) {
+                    if ((c+1)*CHUNKHEIGHT <= SPM_NROWS(mat)) {
                         #GHOST_UNROLL#dot1[v] = _mm256_add_pd(dot1[v],complex_mul_conj1(_mm256_load_pd((double *)&lval[c*CHUNKHEIGHT+(2*@)]),_mm256_load_pd((double *)&lval[c*CHUNKHEIGHT+(2*@)])));#CHUNKHEIGHT/2
                     } else {
                         ghost_lidx rem;
-                        for (rem=0; rem<mat->nrows-c*CHUNKHEIGHT; rem++) {
+                        for (rem=0; rem<SPM_NROWS(mat)-c*CHUNKHEIGHT; rem++) {
                             partsums[((padding+3*NVECS)*tid)+3*v+0] += conj(lval[c*CHUNKHEIGHT+rem])*lval[c*CHUNKHEIGHT+rem];
                         }
                     }
                 }
                 if (traits.flags & GHOST_SPMV_DOT_XY) {
-                    if ((c+1)*CHUNKHEIGHT <= mat->nrows) {
+                    if ((c+1)*CHUNKHEIGHT <= SPM_NROWS(mat)) {
                         #GHOST_UNROLL#dot2[v] = _mm256_add_pd(dot2[v],complex_mul_conj1(_mm256_load_pd((double *)&rval[c*CHUNKHEIGHT+(2*@)]),_mm256_load_pd((double *)&lval[c*CHUNKHEIGHT+(2*@)])));#CHUNKHEIGHT/2
                     } else {
                         ghost_lidx rem;
-                        for (rem=0; rem<mat->nrows-c*CHUNKHEIGHT; rem++) {
+                        for (rem=0; rem<SPM_NROWS(mat)-c*CHUNKHEIGHT; rem++) {
                             partsums[((padding+3*NVECS)*tid)+3*v+1] += conj(rval[c*CHUNKHEIGHT+rem])*lval[c*CHUNKHEIGHT+rem];
                         }
                     }
                 }
                 if (traits.flags & GHOST_SPMV_DOT_XX) {
-                    if ((c+1)*CHUNKHEIGHT <= mat->nrows) {
+                    if ((c+1)*CHUNKHEIGHT <= SPM_NROWS(mat)) {
                         #GHOST_UNROLL#dot3[v] = _mm256_add_pd(dot3[v],complex_mul_conj1(_mm256_load_pd((double *)&rval[c*CHUNKHEIGHT+(2*@)]),_mm256_load_pd((double *)&rval[c*CHUNKHEIGHT+(2*@)])));#CHUNKHEIGHT/2
                     } else {
                         ghost_lidx rem;
-                        for (rem=0; rem<mat->nrows-c*CHUNKHEIGHT; rem++) {
+                        for (rem=0; rem<SPM_NROWS(mat)-c*CHUNKHEIGHT; rem++) {
                             partsums[((padding+3*NVECS)*tid)+3*v+2] += conj(rval[c*CHUNKHEIGHT+rem])*rval[c*CHUNKHEIGHT+rem];
                         }
                     }
@@ -627,7 +627,7 @@ ghost_error ghost_sellspmv__u_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
 #endif
 
 #pragma omp for schedule(runtime)
-        for (c=0; c<mat->nrows; c++) 
+        for (c=0; c<SPM_NROWS(mat); c++) 
         { // loop over chunks
             lval = ((double *)(res->val))+res->stride*c;
             rval = &rptr[invec->stride*c];
@@ -812,7 +812,7 @@ ghost_error ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
 #endif
 
 #pragma omp for schedule(runtime)
-        for (c=0; c<mat->nrows; c++) 
+        for (c=0; c<SPM_NROWS(mat); c++) 
         { // loop over chunks
             lval = ((double *)(res->val))+res->stride*c;
             rval = &rptr[invec->stride*c];
@@ -1009,7 +1009,7 @@ ghost_error ghost_sellspmv__a_avx_z_z_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
         #GHOST_UNROLL#__m256d dot3_@ = _mm256_setzero_pd();#(NVECS+1)/2
 
 #pragma omp for schedule(runtime)
-        for (c=0; c<mat->nrows; c++) 
+        for (c=0; c<SPM_NROWS(mat); c++) 
         { // loop over chunks
             complex double *lval = ((complex double *)(res->val))+res->stride*c;
             complex double *rval = ((complex double *)(invec->val))+invec->stride*c;
@@ -1205,7 +1205,7 @@ ghost_error ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_x(ghost_densemat *res, ghos
         ghost_lidx donecols;
 
 #pragma omp for schedule(runtime)
-        for (c=0; c<mat->nrowsPadded/CHUNKHEIGHT; c++) 
+        for (c=0; c<SPM_NROWSPAD(mat)/CHUNKHEIGHT; c++) 
         { // loop over chunks
             double *lval = ((double *)(res->val))+res->stride*c*CHUNKHEIGHT;
             double *rval = ((double *)(invec->val))+invec->stride*CHUNKHEIGHT;
@@ -1237,7 +1237,7 @@ ghost_error ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_x(ghost_densemat *res, ghos
                     } else {
                         #GHOST_UNROLL#_mm256_store_pd(&lval[invec->traits.ncolspadded*@+donecols],tmp@);#CHUNKHEIGHT
                     }
-                    if ((c+1)*CHUNKHEIGHT < mat->nrows) {
+                    if ((c+1)*CHUNKHEIGHT < SPM_NROWS(mat)) {
                         if (traits.flags & GHOST_SPMV_DOT) {
                             for (col = donecols; col<donecols+4; col++) {
                                 #GHOST_UNROLL#partsums[((padding+3*invec->traits.ncols)*tid)+3*col+0] += lval[col+@*invec->traits.ncolspadded]*lval[col+@*invec->traits.ncolspadded];#CHUNKHEIGHT
@@ -1248,7 +1248,7 @@ ghost_error ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_x(ghost_densemat *res, ghos
                     } else {
                         ghost_lidx row = c*CHUNKHEIGHT;
                         ghost_lidx rowinchunk = 0;
-                        for (; row<mat->nrows; row++) {
+                        for (; row<SPM_NROWS(mat); row++) {
                             if (traits.flags & GHOST_SPMV_DOT) {
                                 for (col = donecols; col<donecols+4; col++) {
                                     partsums[((padding+3*invec->traits.ncols)*tid)+3*col+0] += lval[col+rowinchunk*invec->traits.ncolspadded]*lval[col+rowinchunk*invec->traits.ncolspadded];
@@ -1359,7 +1359,7 @@ ghost_error ghost_sellspmv_v2__avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res,
         #GHOST_UNROLL#__m256d tmp@;#CHUNKHEIGHT*NVECS/4
 
 #pragma omp for schedule(runtime)
-        for (c=0; c<mat->nrowsPadded/CHUNKHEIGHT; c++) 
+        for (c=0; c<SPM_NROWSPAD(mat)/CHUNKHEIGHT; c++) 
         { // loop over chunks
             double *lval = (double *)res->val[c*CHUNKHEIGHT];
             double *rval = (double *)invec->val[c*CHUNKHEIGHT];

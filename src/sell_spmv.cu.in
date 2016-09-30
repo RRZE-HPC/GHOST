@@ -60,7 +60,7 @@ if (do_fallback) {\
                 "and block %dx%d (nrows in block %d), smem %d",grid.x,grid.y,block.x,block.y,nrowsinblock,smem);\
         SELL_kernel_rm_fallback_tmpl<dt1,dt2,dt2_b><<<grid,block,smem>>>(\
                 (dt2 *)lhsval,(int)(lhs->stride),(dt2 *)rhsval,\
-                (int)rhs->stride,traits.flags,mat->nrows,nrowsinblock,mat->cu_rowLen,\
+                (int)rhs->stride,traits.flags,SPM_NROWS(mat),nrowsinblock,mat->cu_rowLen,\
                 mat->cu_col,(dt1 *)mat->cu_val,\
                 mat->cu_chunkStart,(dt2 *)cu_shift,(dt2)scale,\
                 (dt2)beta,(dt2 *)cu_localdot,mat->traits.C,\
@@ -77,7 +77,7 @@ if (do_fallback) {\
                 "and block %dx%d smem %zu",grid.x,grid.y,block.x,block.y,smem);\
         SELL_kernel_cm_fallback_tmpl<dt1,dt2,dt2_b><<<grid,block,smem>>>(\
                 (dt2 *)lhsval,(int)(lhs->stride),(dt2 *)rhsval,\
-                (int)rhs->stride,traits.flags,mat->nrows,mat->cu_rowLen,\
+                (int)rhs->stride,traits.flags,SPM_NROWS(mat),mat->cu_rowLen,\
                 mat->cu_col,(dt1 *)mat->cu_val,\
                 mat->cu_chunkStart,(dt2 *)cu_shift,(dt2)scale,\
                 (dt2)beta,(dt2 *)cu_localdot,mat->traits.C,\
@@ -455,13 +455,13 @@ static ghost_error ghost_cu_sell_spmv_tmpl(ghost_sparsemat *mat, ghost_densemat 
     ghost_densemat *lhscompact, *rhscompact, *zcompact;
     if (lhs->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         PERFWARNING_LOG("Cloning (and compressing) lhs before operation");
-        GHOST_CALL_RETURN(ghost_densemat_clone(&lhscompact,lhs,lhs->traits.nrows,0,lhs->traits.ncols,0));
+DM_NROWS(        GHOST_CALL_RETURN(ghost_densemat_clone(&lhscompact,lhs,lhs),0,lhs->traits.ncols,0));
     } else {
         lhscompact = lhs;
     }
     if (rhs->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         PERFWARNING_LOG("Cloning (and compressing) rhs before operation");
-        GHOST_CALL_RETURN(ghost_densemat_clone(&rhscompact,rhs,rhs->traits.nrows,0,rhs->traits.ncols,0));
+DM_NROWS(        GHOST_CALL_RETURN(ghost_densemat_clone(&rhscompact,rhs,rhs),0,rhs->traits.ncols,0));
     } else {
         rhscompact = rhs;
     }
@@ -478,7 +478,7 @@ static ghost_error ghost_cu_sell_spmv_tmpl(ghost_sparsemat *mat, ghost_densemat 
     GHOST_SPMV_PARSE_TRAITS(traits,scale,beta,shift,localdot,z,sdelta,seta,v_dt_host,v_dt_device);
     if (z && (z->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
         PERFWARNING_LOG("Cloning (and compressing) z before operation");
-        GHOST_CALL_RETURN(ghost_densemat_clone(&zcompact,z,z->traits.nrows,0,z->traits.ncols,0));
+DM_NROWS(        GHOST_CALL_RETURN(ghost_densemat_clone(&zcompact,z,z),0,z->traits.ncols,0));
     } else {
         zcompact = z;
     }
@@ -553,7 +553,7 @@ static ghost_error ghost_cu_sell_spmv_tmpl(ghost_sparsemat *mat, ghost_densemat 
             block.x -= 32;
         }
 
-        grid.x = CEILDIV(mat->nrowsPadded,block.x);
+        grid.x = CEILDIV(SPM_NROWSPAD(mat),block.x);
         grid.y = CEILDIV(rhs->traits.ncols,MAX_COLS_PER_BLOCK_COLMAJOR);
         if (traits.flags & GHOST_SPMV_DOT) {
             GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
@@ -570,7 +570,7 @@ static ghost_error ghost_cu_sell_spmv_tmpl(ghost_sparsemat *mat, ghost_densemat 
     } else {
         if (rhs->traits.ncols > 8) { // 16 rows per block, 9...16 columns per block, 144...256 threads per block
             const int nrowsinblock = 16;
-            grid.x = CEILDIV(mat->nrows,nrowsinblock);
+            grid.x = CEILDIV(SPM_NROWS(mat),nrowsinblock);
             grid.y = CEILDIV(rhs->traits.ncols,nrowsinblock);
             block.x = nrowsinblock*CEILDIV(rhs->traits.ncols,grid.y);
             if (traits.flags & GHOST_SPMV_DOT) {
@@ -580,7 +580,7 @@ static ghost_error ghost_cu_sell_spmv_tmpl(ghost_sparsemat *mat, ghost_densemat 
             SELL_CU_SPMV_SELECTOR(SELL_kernel_CU_rm_tmpl,m_dt,v_dt_device,v_dt_base,nrowsinblock,grid,block,0)
         } else if (rhs->traits.ncols > 4) { // 32 rows per block, 5...8 columns per block, 160...256 threads per block
             const int nrowsinblock = 32;
-            grid.x = CEILDIV(mat->nrows,nrowsinblock);
+            grid.x = CEILDIV(SPM_NROWS(mat),nrowsinblock);
             grid.y = 1;
             block.x = nrowsinblock*rhs->traits.ncols;
             if (traits.flags & GHOST_SPMV_DOT) {
@@ -590,7 +590,7 @@ static ghost_error ghost_cu_sell_spmv_tmpl(ghost_sparsemat *mat, ghost_densemat 
             SELL_CU_SPMV_SELECTOR(SELL_kernel_CU_rm_tmpl,m_dt,v_dt_device,v_dt_base,nrowsinblock,grid,block,0)
         } else if (rhs->traits.ncols > 2) { // 64 rows per block, 3...4 columns per block, 192...256 threads per block
             const int nrowsinblock = 64;
-            grid.x = CEILDIV(mat->nrows,nrowsinblock);
+            grid.x = CEILDIV(SPM_NROWS(mat),nrowsinblock);
             grid.y = 1;
             block.x = nrowsinblock*rhs->traits.ncols;
             if (traits.flags & GHOST_SPMV_DOT) {
@@ -601,7 +601,7 @@ static ghost_error ghost_cu_sell_spmv_tmpl(ghost_sparsemat *mat, ghost_densemat 
             SELL_CU_SPMV_SELECTOR(SELL_kernel_CU_rm_tmpl,m_dt,v_dt_device,v_dt_base,nrowsinblock,grid,block,smem)
         } else if (rhs->traits.ncols > 1) { // 64 rows per block, 3...4 columns per block, 192...256 threads per block
             const int nrowsinblock = 128;
-            grid.x = CEILDIV(mat->nrows,nrowsinblock);
+            grid.x = CEILDIV(SPM_NROWS(mat),nrowsinblock);
             grid.y = 1;
             block.x = nrowsinblock*rhs->traits.ncols;
             if (traits.flags & GHOST_SPMV_DOT) {
@@ -612,7 +612,7 @@ static ghost_error ghost_cu_sell_spmv_tmpl(ghost_sparsemat *mat, ghost_densemat 
             SELL_CU_SPMV_SELECTOR(SELL_kernel_CU_rm_tmpl,m_dt,v_dt_device,v_dt_base,nrowsinblock,grid,block,smem)
         } else {
             const int nrowsinblock = 256;
-            grid.x = CEILDIV(mat->nrows,nrowsinblock);
+            grid.x = CEILDIV(SPM_NROWS(mat),nrowsinblock);
             grid.y = 1;
             block.x = nrowsinblock*rhs->traits.ncols;
             if (traits.flags & GHOST_SPMV_DOT) {

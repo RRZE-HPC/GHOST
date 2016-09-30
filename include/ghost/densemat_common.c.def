@@ -43,7 +43,8 @@ ghost_error FUNCNAME(malloc(ghost_densemat *vec, int* needsInit))
     }
 
     if ((vec->traits.location & GHOST_LOCATION_HOST) && !vec->val) {
-        DEBUG_LOG(2,"Allocating host side of densemat with %"PRLIDX"x%"PRLIDX" padded elements",vec->traits.maxnrowshalopadded,vec->traits.ncolspadded);
+        ghost_gidx allocrows = MAX(vec->context->row_map->nrowspadded,vec->context->col_map->nrowspadded);
+        ERROR_LOG("Allocating host side of densemat with %"PRLIDX"x%"PRLIDX" padded elements",allocrows,vec->traits.ncolspadded);
         ghost_type mytype;
         ghost_type_get(&mytype);
 
@@ -53,11 +54,11 @@ ghost_error FUNCNAME(malloc(ghost_densemat *vec, int* needsInit))
         // use pinned memory always
         if (mytype == GHOST_TYPE_CUDA) {
             GHOST_CALL_RETURN(ghost_malloc_pinned((void **)&vec->val,
-                        (size_t)vec->traits.ncolspadded*vec->traits.maxnrowshalopadded*
+                        (size_t)vec->traits.ncolspadded*allocrows*
                         vec->elSize));
         } else {
           GHOST_CALL_RETURN(ghost_malloc_align((void **)&vec->val,
-                        (size_t)vec->traits.ncolspadded*vec->traits.maxnrowshalopadded*
+                        (size_t)vec->traits.ncolspadded*allocrows*
                         vec->elSize,GHOST_DATA_ALIGNMENT));
         }
         if( needsInit )
@@ -70,8 +71,8 @@ ghost_error FUNCNAME(malloc(ghost_densemat *vec, int* needsInit))
 #ifdef GHOST_HAVE_CUDA_PINNEDMEM
         WARNING_LOG("CUDA pinned memory is disabled");
 #endif
-        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&vec->cu_val,vec->traits.maxnrowshalopadded*vec->traits.ncolspadded*vec->elSize));
-        DEBUG_LOG(1,"Malloc %zu bytes on CUDA device: %p",vec->traits.maxnrowshalopadded*vec->traits.ncolspadded*vec->elSize,vec->cu_val);
+        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&vec->cu_val,allocrows*vec->traits.ncolspadded*vec->elSize));
+        DEBUG_LOG(1,"Malloc %zu bytes on CUDA device: %p",allocrows*vec->traits.ncolspadded*vec->elSize,vec->cu_val);
         if( needsInit )
           *needsInit |= 2;
 #endif
@@ -83,13 +84,11 @@ ghost_error FUNCNAME(malloc(ghost_densemat *vec, int* needsInit))
 static ghost_error FUNCNAME(view(ghost_densemat *src, ghost_densemat **new, ghost_lidx nr, ghost_lidx roffs, ghost_lidx nc, ghost_lidx coffs))
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
-    DEBUG_LOG(1,"Viewing a %"PRLIDX"x%"PRLIDX" densemat from a %"PRLIDX"x%"PRLIDX" densemat with offset %"PRLIDX"x%"PRLIDX,nr,nc,src->traits.nrows,src->traits.ncols,roffs,coffs);
+    DEBUG_LOG(1,"Viewing a %"PRLIDX"x%"PRLIDX" densemat from a %"PRLIDX"x%"PRLIDX" densemat with offset %"PRLIDX"x%"PRLIDX,nr,nc,DM_NROWS(src),src->traits.ncols,roffs,coffs);
 
     ghost_densemat_traits newTraits = src->traits;
     newTraits.ncols = nc;
     newTraits.ncolspadded = nc;
-    newTraits.nrows = nr;
-    newTraits.nrowspadded = nr;
     newTraits.flags |= (ghost_densemat_flags)GHOST_DENSEMAT_VIEW;
 
     ghost_densemat_create(new,NULL,newTraits);
@@ -150,7 +149,7 @@ static ghost_error FUNCNAME(viewPlain(ghost_densemat *vec, void *data, ghost_lid
     }
     vec->stride = lda;
     vec->traits.ncolsorig = vec->traits.ncols;
-    vec->traits.nrowsorig = vec->traits.nrows;
+    DM_NROWS(vec->src) = DM_NROWS(vec);
 #ifdef GHOST_HAVE_MPI
     MPI_CALL_RETURN(MPI_Type_free(&(vec->fullmpidt)));
     MPI_CALL_RETURN(MPI_Type_vector(vec->nblock,vec->blocklen,vec->stride,vec->mpidt,&(vec->fullmpidt)));
@@ -164,7 +163,7 @@ static ghost_error FUNCNAME(viewPlain(ghost_densemat *vec, void *data, ghost_lid
 static ghost_error FUNCNAME(viewCols(ghost_densemat *src, ghost_densemat **new, ghost_lidx nc, ghost_lidx coffs))
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
-    DEBUG_LOG(1,"Viewing a %"PRLIDX"x%"PRLIDX" contiguous dense matrix",src->traits.nrows,nc);
+    DEBUG_LOG(1,"Viewing a %"PRLIDX"x%"PRLIDX" contiguous dense matrix",DM_NROWS(src),nc);
     ghost_densemat_traits newTraits = src->traits;
     newTraits.ncols = nc;
     newTraits.ncolspadded = nc;
@@ -212,7 +211,7 @@ static ghost_error FUNCNAME(viewScatteredCols(ghost_densemat *src, ghost_densema
         return GHOST_ERR_INVALID_ARG;
     }
 
-    DEBUG_LOG(1,"Viewing a %"PRLIDX"x%"PRLIDX" scattered dense matrix",src->traits.nrows,nc);
+    DEBUG_LOG(1,"Viewing a %"PRLIDX"x%"PRLIDX" scattered dense matrix",DM_NROWS(src),nc);
     ghost_lidx v;
     ghost_densemat_traits newTraits = src->traits;
     newTraits.ncols = nc;
@@ -241,7 +240,7 @@ static ghost_error FUNCNAME(viewScatteredCols(ghost_densemat *src, ghost_densema
         for (v=0; v<nc; v++) {
             ghost_bitmap_set((*new)->colmask,coffs[v]-coffs[0]);
         }
-        ghost_bitmap_set_range((*new)->rowmask,0,(*new)->traits.nrowsorig-1);
+        ghost_bitmap_set_range((*new)->rowmask,0,DM_NROWS((*new)->src)-1);
         coloffset = coffs[0];
     }
 
@@ -255,15 +254,11 @@ static ghost_error FUNCNAME(viewScatteredCols(ghost_densemat *src, ghost_densema
 static ghost_error FUNCNAME(viewScatteredVec(ghost_densemat *src, ghost_densemat **new, ghost_lidx nr, ghost_lidx *roffs, ghost_lidx nc, ghost_lidx *coffs))
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
-    DEBUG_LOG(1,"Viewing a %"PRLIDX"x%"PRLIDX" scattered dense matrix",src->traits.nrows,nc);
+    DEBUG_LOG(1,"Viewing a %"PRLIDX"x%"PRLIDX" scattered dense matrix",DM_NROWS(src),nc);
     ghost_lidx i;
     ghost_densemat_traits newTraits = src->traits;
     newTraits.ncols = nc;
     newTraits.ncolspadded = nc;
-    newTraits.nrows = nr;
-    newTraits.nrowspadded = nr;
-    newTraits.ncolsorig = src->traits.ncolsorig;
-    newTraits.nrowsorig = src->traits.nrowsorig;
     newTraits.flags |= (ghost_densemat_flags)GHOST_DENSEMAT_VIEW;
     newTraits.flags |= (ghost_densemat_flags)GHOST_DENSEMAT_SCATTERED;
 
@@ -278,7 +273,7 @@ static ghost_error FUNCNAME(viewScatteredVec(ghost_densemat *src, ghost_densemat
 #endif
 
     ghost_bitmap_clr_range((*new)->colmask,0,(*new)->traits.ncolsorig);
-    ghost_bitmap_clr_range((*new)->rowmask,0,(*new)->traits.nrowsorig);
+    ghost_bitmap_clr_range((*new)->rowmask,0,DM_NROWS((*new)->src));
 
     if (src->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         ghost_lidx rowoffset, coloffset;
@@ -599,13 +594,14 @@ static ghost_error FUNCNAME(toFile(ghost_densemat *vec, char *path, ghost_mpi_co
     int64_t ncols = (int64_t)vec->traits.ncols;
     int64_t nrows;
     if (mpicomm == MPI_COMM_SELF) {
-        nrows = vec->traits.nrows;
+        nrows = DM_NROWS(vec);
     } else {
-        nrows = vec->traits.gnrows;
+        nrows = DM_GNROWS(vec);
     }
 
 #ifdef GHOST_HAVE_MPI
     int rank = 0;
+    GHOST_CALL_RETURN(ghost_rank(&rank,mpicomm));
     
     MPI_File fileh;
     MPI_Status status;
@@ -621,7 +617,7 @@ static ghost_error FUNCNAME(toFile(ghost_densemat *vec, char *path, ghost_mpi_co
     }    
    
     if (mpicomm != MPI_COMM_SELF) {
-        MPI_CALL_RETURN(MPI_File_seek(fileh,GHOST_BINDENSEMAT_SIZE_HEADER+vec->elSize*vec->traits.goffs*vec->traits.ncols,MPI_SEEK_SET)); 
+        MPI_CALL_RETURN(MPI_File_seek(fileh,GHOST_BINDENSEMAT_SIZE_HEADER+vec->elSize*vec->context->row_map->offs*vec->traits.ncols,MPI_SEEK_SET)); 
     }
 
     if (DENSEMAT_COMPACT(vec)) {
@@ -746,19 +742,19 @@ static ghost_error FUNCNAME(fromFile(ghost_densemat *vec, char *path, ghost_mpi_
         return GHOST_ERR_IO;
     }
     
-    if (mpicomm == MPI_COMM_SELF && (vec->traits.nrows != nrows)) {
+    if (mpicomm == MPI_COMM_SELF && (DM_NROWS(vec) != nrows)) {
         ERROR_LOG("The number of rows does not match between the file and the densemat!");
         return GHOST_ERR_IO;
     }
   
-    if ((mpicomm != MPI_COMM_SELF) && (vec->traits.gnrows != nrows)) {
-        ERROR_LOG("The number of rows does not match between the file (%"PRId64") and the densemat (%"PRGIDX")!",nrows,vec->traits.gnrows);
+    if ((mpicomm != MPI_COMM_SELF) && (DM_GNROWS(vec) != nrows)) {
+        ERROR_LOG("The number of rows does not match between the file (%"PRId64") and the densemat (%"PRGIDX")!",nrows,DM_GNROWS(vec));
         return GHOST_ERR_IO;
     }
 
 #ifdef GHOST_HAVE_MPI 
     if (mpicomm != MPI_COMM_SELF) {
-        MPI_CALL_RETURN(MPI_File_seek(fileh,vec->elSize*vec->traits.goffs*vec->traits.ncols,MPI_SEEK_CUR)); 
+        MPI_CALL_RETURN(MPI_File_seek(fileh,vec->elSize*vec->context->row_map->offs*vec->traits.ncols,MPI_SEEK_CUR)); 
     }
 
     if (DENSEMAT_COMPACT(vec) && (order == myorder)) {
@@ -803,34 +799,34 @@ static ghost_error FUNCNAME(fromFile(ghost_densemat *vec, char *path, ghost_mpi_
 static ghost_error FUNCNAME(fromFunc(ghost_densemat *vec, int (*fp)(ghost_gidx, ghost_lidx, void *, void *), void *arg))
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
-    ghost_gidx offset = vec->traits.goffs;
+    ghost_gidx offset = vec->context->row_map->offs;
     int needInit = 0;
     GHOST_CALL_RETURN(FUNCNAME(malloc(vec,&needInit)));
 
     if (vec->traits.location & GHOST_LOCATION_HOST) { // vector is stored on host
-        if ((!vec->perm_local && !vec->perm_global)) {
+        if ((!vec->map->loc_perm && !vec->map->glb_perm)) {
             if( needInit ) {
               DENSEMAT_ITER_INIT(vec,fp(offset+row,col,valptr,arg));
             } else {
               DENSEMAT_ITER(vec,fp(offset+row,col,valptr,arg));
             }
-        } else if (vec->perm_local && !vec->perm_global) {
+        } else if (vec->map->loc_perm && !vec->map->glb_perm) {
             if( needInit ) {
-              DENSEMAT_ITER_INIT(vec,fp(offset+vec->perm_local->invPerm[row],col,valptr,arg));
+              DENSEMAT_ITER_INIT(vec,fp(offset+vec->map->loc_perm_inv[row],col,valptr,arg));
             } else {
-              DENSEMAT_ITER(vec,fp(offset+vec->perm_local->invPerm[row],col,valptr,arg));
+              DENSEMAT_ITER(vec,fp(offset+vec->map->loc_perm_inv[row],col,valptr,arg));
             }
-        } else if (!vec->perm_local && vec->perm_global) {
+        } else if (!vec->map->loc_perm && vec->map->glb_perm) {
             if( needInit ) {
-              DENSEMAT_ITER_INIT(vec,fp(vec->perm_global->invPerm[row],col,valptr,arg));
+              DENSEMAT_ITER_INIT(vec,fp(vec->map->glb_perm_inv[row],col,valptr,arg));
             } else {
-              DENSEMAT_ITER(vec,fp(vec->perm_global->invPerm[row],col,valptr,arg));
+              DENSEMAT_ITER(vec,fp(vec->map->glb_perm_inv[row],col,valptr,arg));
             }
-        } else if (vec->perm_local && vec->perm_global) {
+        } else if (vec->map->loc_perm && vec->map->glb_perm) {
             if( needInit ) {
-              DENSEMAT_ITER_INIT(vec,fp(vec->perm_global->invPerm[vec->perm_local->invPerm[row]],col,valptr,arg));
+              DENSEMAT_ITER_INIT(vec,fp(vec->map->glb_perm_inv[vec->map->loc_perm_inv[row]],col,valptr,arg));
             } else {
-              DENSEMAT_ITER(vec,fp(vec->perm_global->invPerm[vec->perm_local->invPerm[row]],col,valptr,arg));
+              DENSEMAT_ITER(vec,fp(vec->map->glb_perm_inv[vec->map->loc_perm_inv[row]],col,valptr,arg));
             }
         }
 

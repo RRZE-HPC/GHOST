@@ -56,7 +56,7 @@ ghost_error ghost_kacz_mc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densema
      int *new_color;
      new_color = (int*) malloc(2);
      new_color[0]=0;
-     new_color[1]=mat->nrows ;
+     new_color[1]=SPM_NROWS(mat) ;
      mat->color_ptr = new_color;        
   } 
  } 

@@ -65,9 +65,12 @@ set (SOURCES
     src/densemat_rm.cpp
     src/dot.cpp 
     src/errorhandler.cpp
+    src/rcm_dissection.cpp
+    src/sell_kacz_fallback.cpp 
     src/sell_kacz.cpp
     src/sell_spmv.cpp
     src/sparsemat.cpp
+    src/sparsemat_perm_blockColor.cpp 
     src/sparsemat_perm_colpack.cpp
     src/sparsemat_perm_spmp.cpp
     src/timing.cpp
@@ -79,6 +82,7 @@ set (SOURCES
     src/bitmap.c
     src/blas_util.c
     src/carp.c
+    src/carp_rb.c
     src/context.c
     src/core.c
     src/cu_util.c
@@ -88,8 +92,11 @@ set (SOURCES
     src/error.c
     src/gemm.c
     src/instr.c
+    src/kacz_analyze_print.c
+    src/kacz_hybrid_split.c
     src/locality.c
     src/machine.c
+    src/map.c
     src/math.c
     src/matrixmarket.c
     src/mmio.c
@@ -97,6 +104,10 @@ set (SOURCES
     src/perm.c
     src/pumap.c
     src/rand.c
+    src/sell_kacz_rb.c
+    src/sell_kacz_rb_versions.c 
+    src/sell_kacz_bmc.c 
+    src/sell_kacz_mc.c
     src/sparsemat.c
     src/sparsemat_perm_scotch.c
     src/sparsemat_perm_sort.c
@@ -111,16 +122,6 @@ set (SOURCES
     src/timing.c
     src/types.c
     src/util.c
-    src/rcm_dissection.cpp
-    src/sell_kacz_rb.c
-    src/carp_rb.c
-    src/sell_kacz_rb_versions.c 
-    src/sparsemat_perm_blockColor.cpp 
-    src/kacz_hybrid_split.c
-    src/sell_kacz_bmc.c 
-    src/sell_kacz_mc.c
-    src/kacz_analyze_print.c
-    src/sell_kacz_fallback.cpp 
    )
 
 set (HEADERS
@@ -147,12 +148,14 @@ set (HEADERS
     include/ghost/locality.h	
     include/ghost/log.h
     include/ghost/machine.h
+    include/ghost/map.h
     include/ghost/math.h
     include/ghost/matrixmarket.h
     include/ghost/omp.h
     include/ghost/pumap.h
     include/ghost/rand.h
     include/ghost/sparsemat.h
+    include/ghost/sparsemat_src.h
     include/ghost/spmv.h
     include/ghost/spmv_solvers.h
     include/ghost/task.h

@@ -21,13 +21,13 @@ ghost_error ghost_tsmttsm__u_cuda_x_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_dens
         ret = ghost_tsmttsm_cu_rm<cuDoubleComplex, CFGM, CFGK, 1>(
             (cuDoubleComplex *)x->cu_val, (const cuDoubleComplex *)v->cu_val,
             (const cuDoubleComplex *)w->cu_val, *(cuDoubleComplex *)alpha,
-            *(cuDoubleComplex *)beta, v->traits.nrows, x->stride, v->stride,
+            *(cuDoubleComplex *)beta, DM_NROWS(v), x->stride, v->stride,
             w->stride);
       } else {
         ret = ghost_tsmttsm_cu_rm<cuFloatComplex, CFGM, CFGK, 1>(
             (cuFloatComplex *)x->cu_val, (const cuFloatComplex *)v->cu_val,
             (const cuFloatComplex *)w->cu_val, *(cuFloatComplex *)alpha,
-            *(cuFloatComplex *)beta, v->traits.nrows, x->stride, v->stride,
+            *(cuFloatComplex *)beta, DM_NROWS(v), x->stride, v->stride,
             w->stride);
       }
     } else {
@@ -35,13 +35,13 @@ ghost_error ghost_tsmttsm__u_cuda_x_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_dens
         ret = ghost_tsmttsm_cu_rm<cuDoubleComplex, CFGM, CFGK, 0>(
             (cuDoubleComplex *)x->cu_val, (const cuDoubleComplex *)v->cu_val,
             (const cuDoubleComplex *)w->cu_val, *(cuDoubleComplex *)alpha,
-            *(cuDoubleComplex *)beta, v->traits.nrows, x->stride, v->stride,
+            *(cuDoubleComplex *)beta, DM_NROWS(v), x->stride, v->stride,
             w->stride);
       } else {
         ret = ghost_tsmttsm_cu_rm<cuFloatComplex, CFGM, CFGK, 0>(
             (cuFloatComplex *)x->cu_val, (const cuFloatComplex *)v->cu_val,
             (const cuFloatComplex *)w->cu_val, *(cuFloatComplex *)alpha,
-            *(cuFloatComplex *)beta, v->traits.nrows, x->stride, v->stride,
+            *(cuFloatComplex *)beta, DM_NROWS(v), x->stride, v->stride,
             w->stride);
       }
     }
@@ -50,12 +50,12 @@ ghost_error ghost_tsmttsm__u_cuda_x_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_dens
       ret = ghost_tsmttsm_cu_rm<double, CFGM, CFGK, 0>(
           (double *)x->cu_val, (const double *)v->cu_val,
           (const double *)w->cu_val, *(double *)alpha, *(double *)beta,
-          v->traits.nrows, x->stride, v->stride, w->stride);
+          DM_NROWS(v), x->stride, v->stride, w->stride);
     } else {
       ret = ghost_tsmttsm_cu_rm<float, CFGM, CFGK, 0>(
           (float *)x->cu_val, (const float *)v->cu_val,
           (const float *)w->cu_val, *(float *)alpha, *(float *)beta,
-          v->traits.nrows, x->stride, v->stride, w->stride);
+          DM_NROWS(v), x->stride, v->stride, w->stride);
     }
   }
   GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH | GHOST_FUNCTYPE_KERNEL);

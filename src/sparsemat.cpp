@@ -28,7 +28,7 @@ ghost_error ghost_sparsemat_registerrow(ghost_sparsemat *mat, ghost_gidx row, gh
     
     ghost_lidx c;
     ghost_gidx col;
-    ghost_gidx firstcol = mat->ncols-1, lastcol = 0;
+    ghost_gidx firstcol = SPM_NCOLS(mat)-1, lastcol = 0;
     vector<ghost_gidx>lowerDists;
     vector<ghost_gidx>upperDists;
     ghost_gidx lowerDistsAcc = 0, upperDistsAcc = 0;
@@ -43,7 +43,7 @@ ghost_error ghost_sparsemat_registerrow(ghost_sparsemat *mat, ghost_gidx row, gh
             lowerDistsAcc += row-col;
             lowerEnts++;
 #ifdef GHOST_SPARSEMAT_GLOBALSTATS
-            mat->nzDist[mat->context->gnrows-1-(row-col)]++;
+            mat->nzDist[mat->context->row_map->gnrows-1-(row-col)]++;
 #endif
         } else if (col > row) {
             mat->upperBandwidth = MAX(mat->upperBandwidth, col-row);
@@ -51,13 +51,13 @@ ghost_error ghost_sparsemat_registerrow(ghost_sparsemat *mat, ghost_gidx row, gh
             upperDistsAcc += col-row;
             upperEnts++;
 #ifdef GHOST_SPARSEMAT_GLOBALSTATS
-            mat->nzDist[mat->context->gnrows-1+col-row]++;
+            mat->nzDist[mat->context->row_map->gnrows-1+col-row]++;
 #endif
         } else {
             lowerDists.push_back(0);
             upperDists.push_back(0);
 #ifdef GHOST_SPARSEMAT_GLOBALSTATS
-            mat->nzDist[mat->context->gnrows-1]++;
+            mat->nzDist[mat->context->row_map->gnrows-1]++;
 #endif
         }
         firstcol = MIN(col,firstcol);
@@ -96,7 +96,7 @@ ghost_error ghost_sparsemat_registerrow_finalize(ghost_sparsemat *mat)
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL); 
 
     ghost_gidx gnrows;
-    double avgRowlen = mat->nnz*1.0/(double)mat->nrows;
+    double avgRowlen = SPM_NNZ(mat)*1.0/(double)SPM_NROWS(mat);
 
 #ifdef GHOST_HAVE_MPI
     MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&mat->lowerBandwidth,1,ghost_mpi_dt_gidx,MPI_MAX,mat->context->mpicomm));
@@ -104,7 +104,7 @@ ghost_error ghost_sparsemat_registerrow_finalize(ghost_sparsemat *mat)
     MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&mat->avgRowBand,1,MPI_DOUBLE,MPI_SUM,mat->context->mpicomm));
     MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&mat->avgAvgRowBand,1,MPI_DOUBLE,MPI_SUM,mat->context->mpicomm));
 #ifdef GHOST_SPARSEMAT_GLOBALSTATS
-    MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,mat->nzDist,2*mat->context->gnrows-1,ghost_mpi_dt_idx,MPI_SUM,mat->context->mpicomm));
+    MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,mat->nzDist,2*mat->context->row_map->gnrows-1,ghost_mpi_dt_idx,MPI_SUM,mat->context->mpicomm));
 #endif
 #endif
     mat->bandwidth = mat->lowerBandwidth+mat->upperBandwidth+1;
@@ -127,9 +127,9 @@ ghost_error ghost_sparsemat_registerrow_finalize(ghost_sparsemat *mat)
     for (map<ghost_lidx,ghost_gidx>::const_iterator it = rowlengths[mat].begin(); it != rowlengths[mat].end(); it++) {
         mat->variance += (it->first-avgRowlen)*(it->first-avgRowlen)*it->second;
     }
-    mat->variance /= mat->nrows;
+    mat->variance /= SPM_NROWS(mat);
     mat->deviation = sqrt(mat->variance);
-    mat->cv = mat->deviation*1./(mat->nnz*1.0/(double)mat->nrows);
+    mat->cv = mat->deviation*1./(SPM_NNZ(mat)*1.0/(double)SPM_NROWS(mat));
 
     mat->nMaxRows = rowlengths[mat][mat->maxRowLen];
     
@@ -157,11 +157,11 @@ static ghost_error ghost_sparsemat_string_tmpl(ghost_sparsemat *mat, char **str,
            << std::right
            << std::scientific;
 
-    for (chunk = 0; chunk < mat->nrowsPadded/mat->traits.C; chunk++) {
-        for (i=0; i<mat->traits.C && row<mat->nrows; i++, row++) {
+    for (chunk = 0; chunk < SPM_NROWSPAD(mat)/mat->traits.C; chunk++) {
+        for (i=0; i<mat->traits.C && row<SPM_NROWS(mat); i++, row++) {
             ghost_lidx rowOffs = mat->chunkStart[chunk]+i;
             if (dense) {
-                for (col=0, j=0; col<mat->ncols; col++) {
+                for (col=0, j=0; col<SPM_NCOLS(mat); col++) {
                     if (j< mat->rowLen[row]) {
                         if (mat->traits.flags & GHOST_SPARSEMAT_SAVE_ORIG_COLS) {
                             if (mat->col_orig[rowOffs+j*mat->traits.C] == col) {
@@ -183,7 +183,7 @@ static ghost_error ghost_sparsemat_string_tmpl(ghost_sparsemat *mat, char **str,
                     }
                 }
             }
-            if (i<mat->nrows-1) {
+            if (i<SPM_NROWS(mat)-1) {
                 buffer << endl;
             }
         }

@@ -10,7 +10,7 @@ typedef enum {
 
 //returns the virtual column index; ie takes into account the permutation of halo elements also
 #define virtual_col(col_idx)\
-(mat->context->flags & GHOST_PERM_NO_DISTINCTION)?( (col_ptr[col_idx]<mat->context->nrowspadded)?col_ptr[col_idx]:mat->context->perm_local->colPerm[col_ptr[col_idx]] ):col_ptr[col_idx]\
+(mat->context->flags & GHOST_PERM_NO_DISTINCTION)?( (col_ptr[col_idx]<mat->context->col_map->nrowspadded)?col_ptr[col_idx]:mat->context->col_map->loc_perm[col_ptr[col_idx]] ):col_ptr[col_idx]\
 
 
 
@@ -182,7 +182,7 @@ ghost_error mat_bandwidth(ghost_sparsemat *mat, int *lower_bw, int *upper_bw, in
     ghost_lidx idx = 0;
     
     /*   for(int i=a; i<b; ++i){
-     *	   start_col = mat->nrows + mat->context->nrowspadded;
+     *	   start_col = SPM_NROWS(mat) + mat->context->col_map->nrowspadded;
      *	   end_col   = 0;
      *	for(int j=chunk_ptr[i]; j<chunk_ptr[i+1]; ++j) {
      *           start_col = MIN(start_col, virtual_col(j));
@@ -199,7 +199,7 @@ upper = 0;
     for(int i=a; i<b; ++i){
         chunk = i/chunkheight;   //can avoid this by doing reminder loops
         rowinchunk = i%chunkheight;
-        start_col = mat->nrows + mat->context->nrowspadded;
+        start_col = SPM_NROWS(mat) + mat->context->col_map->nrowspadded;
         end_col   = 0;
         idx = chunk_ptr[chunk]+rowinchunk;
         
@@ -356,7 +356,7 @@ ghost_error split_analytical(ghost_sparsemat *mat)
     //ghost_lidx *nnz;
     #endif
     
-    int height = mat->nrows;
+    int height = SPM_NROWS(mat);
     int width  = mat->maxColRange+1;
     double diagonal_slope = (double)(height)/width;
     //int separation = (int)ceil(diagonal_slope*mat->bandwidth);

@@ -99,7 +99,7 @@ ghost_error ghost_spmv_taskmode(ghost_densemat* res, ghost_sparsemat* mat, ghost
 /*    int remoteExists;
     ghost_nrank(&remoteExists,mat->context->mpicomm);
     remoteExists -= 1;*/
-    int remoteExists = mat->remotePart->nnz > 0;
+    int remoteExists = mat->remotePart->nEnts > 0;
     MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&remoteExists,1,MPI_INT,MPI_MAX,mat->context->mpicomm));
    
     if (remoteExists) {

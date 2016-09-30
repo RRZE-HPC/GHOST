@@ -57,7 +57,7 @@ ghost_error ghost_kacz__MC_u_plain_d_d_cm_CHUNKHEIGHT_NVECS_0(ghost_densemat *x,
             int *new_color;
             new_color = (int*) malloc(2);
             new_color[0]=0;
-            new_color[1]=mat->nrows ;
+            new_color[1]=SPM_NROWS(mat);
             mat->color_ptr = new_color;        
         } 
     } 

@@ -12,9 +12,9 @@ ghost_error ghost_tsmm_inplace__a_plain_d_x_x(ghost_densemat *x, ghost_densemat 
     ghost_error ret = GHOST_SUCCESS;
 
     ghost_lidx m = x->traits.ncols;
-    ghost_lidx n = x->traits.nrows;
+    ghost_lidx n = DM_NROWS(x);
     ghost_lidx ncolsout = w->traits.ncols;
-    ghost_lidx ncolsin = w->traits.nrows;
+    ghost_lidx ncolsin = DM_NROWS(w);
 
     double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
@@ -77,9 +77,9 @@ ghost_error ghost_tsmm_inplace__a_plain_z_x_x(ghost_densemat *x, ghost_densemat 
     ghost_error ret = GHOST_SUCCESS;
 
     ghost_lidx m = x->traits.ncols;
-    ghost_lidx n = x->traits.nrows;
+    ghost_lidx n = DM_NROWS(x);
     ghost_lidx ncolsout = w->traits.ncols;
-    ghost_lidx ncolsin = w->traits.nrows;
+    ghost_lidx ncolsin = DM_NROWS(w);
 
     double complex dalpha = *(double complex *)alpha;
     double complex dbeta = *(double complex *)beta;
@@ -123,9 +123,9 @@ ghost_error ghost_tsmm_inplace__a_plain_s_x_x(ghost_densemat *x, ghost_densemat 
     ghost_error ret = GHOST_SUCCESS;
 
     ghost_lidx m = x->traits.ncols;
-    ghost_lidx n = x->traits.nrows;
+    ghost_lidx n = DM_NROWS(x);
     ghost_lidx ncolsout = w->traits.ncols;
-    ghost_lidx ncolsin = w->traits.nrows;
+    ghost_lidx ncolsin = DM_NROWS(w);
 
     float dalpha = *(float *)alpha;
     float dbeta = *(float *)beta;
@@ -189,9 +189,9 @@ ghost_error ghost_tsmm_inplace__a_plain_c_x_x(ghost_densemat *x, ghost_densemat 
     ghost_error ret = GHOST_SUCCESS;
 
     ghost_lidx m = x->traits.ncols;
-    ghost_lidx n = x->traits.nrows;
+    ghost_lidx n = DM_NROWS(x);
     ghost_lidx ncolsout = w->traits.ncols;
-    ghost_lidx ncolsin = w->traits.nrows;
+    ghost_lidx ncolsin = DM_NROWS(w);
 
     float complex dalpha = *(float complex *)alpha;
     float complex dbeta = *(float complex *)beta;

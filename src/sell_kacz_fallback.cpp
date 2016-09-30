@@ -16,8 +16,8 @@ if(bval != NULL) { \
 } \
 bool is_diag = false; \
 ghost_lidx diag_idx = 0; \
-if(mat->context->perm_local && mat->context->perm_local->method == GHOST_PERMUTATION_UNSYMMETRIC) {\
-    diag_idx = mat->context->perm_local->colPerm[mat->context->perm_local->invPerm[row]]; \
+if(mat->context->row_map->loc_perm && mat->context->col_map->loc_perm != mat->context->row_map->loc_perm) {\
+    diag_idx = mat->context->col_map->loc_perm[mat->context->row_map->loc_perm_inv[row]]; \
 } \
 else { \
     diag_idx = row; \

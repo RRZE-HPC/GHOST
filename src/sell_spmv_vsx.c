@@ -12,7 +12,7 @@ static void SELL_kernel_VSX (ghost_sparsemat *mat, ghost_densemat * lhs, ghost_d
 
 
 #pragma omp parallel for schedule(runtime) private(j,tmp,val,rhs,offs)
-    for (c=0; c<mat->nrowsPadded>>1; c++) 
+    for (c=0; c<SPM_NROWSPAD(mat)>>1; c++) 
     { // loop over chunks
         tmp = vec_splats(0.);
         offs = mat->chunkStart[c];

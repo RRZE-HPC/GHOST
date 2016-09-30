@@ -33,7 +33,7 @@ ghost_error ghost_tsmttsm__u_plain_d_CFGK_CFGM_OUTERUNROLL_cm(ghost_densemat *x,
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
 
-    ghost_lidx n = v->traits.nrows;
+    ghost_lidx n = DM_NROWS(v);
     if (n%OUTERUNROLL) {
         n+=(OUTERUNROLL-n%OUTERUNROLL);
         INFO_LOG("Padding large dimension to %d\n",n);
@@ -143,7 +143,7 @@ ghost_error ghost_tsmttsm__a_plain_z_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_den
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
 
-    ghost_lidx n = v->traits.nrows;
+    ghost_lidx n = DM_NROWS(v);
     INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
     
     complex double * restrict vval = (complex double *) v->val, * restrict wval = (complex double *) w->val, * restrict xval = (complex double *) x->val;
@@ -238,7 +238,7 @@ ghost_error ghost_tsmttsm__a_plain_d_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_den
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
 
-    ghost_lidx n = v->traits.nrows;
+    ghost_lidx n = DM_NROWS(v);
     INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
     
     double * restrict vval = (double *) v->val, * restrict wval = (double *) w->val, * restrict xval = (double *) x->val;
@@ -307,7 +307,7 @@ ghost_error ghost_tsmttsm__a_plain_d_CFGK_CFGM_4_cm(ghost_densemat *x, ghost_den
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
 
-    ghost_lidx n = v->traits.nrows;
+    ghost_lidx n = DM_NROWS(v);
     if (n%4) {
         n+=(4-n%4);
         INFO_LOG("Padding large dimension to %d",n);

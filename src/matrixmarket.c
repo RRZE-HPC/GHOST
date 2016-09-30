@@ -421,12 +421,12 @@ ghost_error ghost_sparsemat_to_mm(char *path, ghost_sparsemat *mat)
     int nrank,rank;
     FILE *fp;
     
-    if (mat->context->gnrows > INT_MAX) {
+    if (mat->context->row_map->gnrows > INT_MAX) {
         ERROR_LOG("The number of matrix rows exceeds INT_MAX and I cannot write a MatrixMarket file!");
         return GHOST_ERR_INVALID_ARG;
     }
     
-    if (mat->context->gncols > INT_MAX) {
+    if (mat->context->col_map->gnrows > INT_MAX) {
         ERROR_LOG("The number of matrix columns exceeds INT_MAX and I cannot write a MatrixMarket file!");
         return GHOST_ERR_INVALID_ARG;
     }
@@ -459,7 +459,7 @@ ghost_error ghost_sparsemat_to_mm(char *path, ghost_sparsemat *mat)
         }
         
         mm_write_banner(fp,matcode);
-        mm_write_mtx_crd_size(fp,(int)mat->context->gnrows,(int)mat->context->gncols,(int)mat->context->gnnz);
+        mm_write_mtx_crd_size(fp,(int)mat->context->row_map->gnrows,(int)mat->context->col_map->gnrows,(int)mat->context->gnnz);
         
         fclose(fp);
     }
@@ -476,9 +476,9 @@ ghost_error ghost_sparsemat_to_mm(char *path, ghost_sparsemat *mat)
                 return GHOST_ERR_INVALID_ARG;
             }
 
-            globrow = mat->context->lfRow[rank]+1;
+            globrow = mat->context->row_map->goffs[rank]+1;
 
-            for (row=1; row<=mat->nrows; row++, globrow++) {
+            for (row=1; row<=SPM_NROWS(mat); row++, globrow++) {
                 for (entinrow=0; entinrow<mat->rowLen[row-1]; entinrow++) {
                     sellidx = mat->chunkStart[(row-1)/mat->traits.C] + entinrow*mat->traits.C + (row-1)%mat->traits.C;
                     if (mat->traits.flags & GHOST_SPARSEMAT_SAVE_ORIG_COLS) {

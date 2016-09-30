@@ -86,8 +86,8 @@ static ghost_error ghost_densemat_rm_averagehalo_tmpl(ghost_densemat *vec, ghost
   // #pragma omp parallel for schedule(runtime) private(j,k,ctr)
       for(int j=ctx->avg_ptr[2*i]; j<ctx->avg_ptr[2*i+1]; ++j) {       
         int ctr = ctx->mapAvg[j];
-        if(ctx->perm_local && ctx->perm_local->colInvPerm[j]<ctx->lnrows[rank]) {
-          if(ctx->entsInCol[ctx->perm_local->colInvPerm[j]] != 0) {//this is necessary since there can be cases where only halos are present
+        if(ctx->col_map->loc_perm_inv && ctx->col_map->loc_perm_inv[j]<ctx->row_map->lnrows[rank]) {
+          if(ctx->entsInCol[ctx->col_map->loc_perm[j]] != 0) {//this is necessary since there can be cases where only halos are present
             for(int k=0; k<vec->traits.ncols; ++k) {
               sum[ctr*vec->traits.ncols+k] = ((T *)vec->val)[j*vec->traits.ncols+k];
             }

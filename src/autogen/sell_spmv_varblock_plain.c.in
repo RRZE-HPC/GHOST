@@ -55,7 +55,7 @@ ghost_error ghost_sellspmv__a_plain_z_z_rm_CHUNKHEIGHT_x(ghost_densemat *res, gh
         int tid = ghost_omp_threadnum();
 
 #pragma omp for schedule(runtime)
-        for (c=0; c<mat->nrowsPadded/CHUNKHEIGHT; c++) 
+        for (c=0; c<SPM_NROWSPAD(mat)/CHUNKHEIGHT; c++) 
         { // loop over chunks
             offs = mat->chunkStart[c];
                     
@@ -72,7 +72,7 @@ ghost_error ghost_sellspmv__a_plain_z_z_rm_CHUNKHEIGHT_x(ghost_densemat *res, gh
                 }
             }
 
-            for (r=0; (r<CHUNKHEIGHT) && (c*CHUNKHEIGHT+r < mat->nrows); r++) {
+            for (r=0; (r<CHUNKHEIGHT) && (c*CHUNKHEIGHT+r < SPM_NROWS(mat)); r++) {
                 row = c*CHUNKHEIGHT+r;
                 complex double *lrow = ((complex double *)(res->val))+res->stride*row;
                 complex double *rrow = rhsval+invec->stride*row;

@@ -47,7 +47,7 @@ ghost_error ghost_tsmm__u_avx_z_OUTCOLS_INCOLS_OUTERUNROLL_1_rm(ghost_densemat *
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
 
-    ghost_lidx n = v->traits.nrows;
+    ghost_lidx n = DM_NROWS(v);
 
     INFO_LOG("In AVX TSMM with two fixed block sizes [OUTCOLS][INCOLS] %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,x->traits.ncols,n,v->traits.ncols,v->traits.ncols,x->traits.ncols);
     
@@ -75,10 +75,10 @@ ghost_error ghost_tsmm__u_avx_z_OUTCOLS_INCOLS_OUTERUNROLL_1_rm(ghost_densemat *
     ghost_lidx i,m,k,j,s;
 
     double * restrict wre = NULL, * restrict wim = NULL;
-    ghost_malloc_align((void **)&wre,sizeof(double)*w->traits.nrows*w->traits.ncols,32);
-    ghost_malloc_align((void **)&wim,sizeof(double)*w->traits.nrows*w->traits.ncols,32);
+    ghost_malloc_align((void **)&wre,sizeof(double)*DM_NROWS(w)*w->traits.ncols,32);
+    ghost_malloc_align((void **)&wim,sizeof(double)*DM_NROWS(w)*w->traits.ncols,32);
     for (s=0; s<w->traits.ncols; s++) {
-        for (j=0; j<w->traits.nrows; j++) {
+        for (j=0; j<DM_NROWS(w); j++) {
             wre[j*w->traits.ncols+s] = creal(wval[s*ldw+j]);
             wim[j*w->traits.ncols+s] = cimag(wval[s*ldw+j]);
         }
@@ -227,7 +227,7 @@ ghost_error ghost_tsmm__a_avx_z_OUTCOLS_INCOLS_OUTERUNROLL_1_rm(ghost_densemat *
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
 
-    ghost_lidx n = v->traits.nrows;
+    ghost_lidx n = DM_NROWS(v);
 
     INFO_LOG("In AVX TSMM with two fixed block sizes [OUTCOLS][INCOLS] %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,x->traits.ncols,n,v->traits.ncols,v->traits.ncols,x->traits.ncols);
     
@@ -255,10 +255,10 @@ ghost_error ghost_tsmm__a_avx_z_OUTCOLS_INCOLS_OUTERUNROLL_1_rm(ghost_densemat *
     ghost_lidx i,m,k,j,s;
 
     double * restrict wre = NULL, * restrict wim = NULL;
-    ghost_malloc_align((void **)&wre,sizeof(double)*w->traits.nrows*w->traits.ncols,32);
-    ghost_malloc_align((void **)&wim,sizeof(double)*w->traits.nrows*w->traits.ncols,32);
+    ghost_malloc_align((void **)&wre,sizeof(double)*DM_NROWS(w)*w->traits.ncols,32);
+    ghost_malloc_align((void **)&wim,sizeof(double)*DM_NROWS(w)*w->traits.ncols,32);
     for (s=0; s<w->traits.ncols; s++) {
-        for (j=0; j<w->traits.nrows; j++) {
+        for (j=0; j<DM_NROWS(w); j++) {
             wre[j*w->traits.ncols+s] = creal(wval[s*ldw+j]);
             wim[j*w->traits.ncols+s] = cimag(wval[s*ldw+j]);
         }
@@ -397,7 +397,7 @@ ghost_error ghost_tsmm__a_avx_d_OUTCOLS_INCOLS_OUTERUNROLL_4_rm(ghost_densemat *
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
 
-    ghost_lidx n = v->traits.nrows;
+    ghost_lidx n = DM_NROWS(v);
 
     INFO_LOG("In AVX TSMM with two fixed block sizes [OUTCOLS][INCOLS] %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,x->traits.ncols,n,v->traits.ncols,v->traits.ncols,x->traits.ncols);
     
@@ -424,11 +424,11 @@ ghost_error ghost_tsmm__a_avx_d_OUTCOLS_INCOLS_OUTERUNROLL_4_rm(ghost_densemat *
 
     double * restrict wnonpad = NULL;
     ghost_lidx ncols_wnonpad = PAD(w->traits.ncols,4);
-    ghost_lidx nrows_wnonpad = PAD(w->traits.nrows,4);
+    ghost_lidx nrows_wnonpad = PAD(DM_NROWS(w),4);
     ghost_malloc_align((void **)&wnonpad,sizeof(double)*nrows_wnonpad*ncols_wnonpad,32);
     memset(wnonpad,0,sizeof(double)*nrows_wnonpad*ncols_wnonpad);
     for (s=0; s<w->traits.ncols; s++) {
-        for (j=0; j<w->traits.nrows; j++) {
+        for (j=0; j<DM_NROWS(w); j++) {
             wnonpad[s*nrows_wnonpad+j] = dalpha*wval[s*ldw+j];
         }
     }
@@ -516,7 +516,7 @@ ghost_error ghost_tsmm__u_avx_d_OUTCOLS_INCOLS_OUTERUNROLL_1_rm(ghost_densemat *
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
 
-    ghost_lidx n = v->traits.nrows;
+    ghost_lidx n = DM_NROWS(v);
 
     INFO_LOG("In AVX TSMM with two fixed block sizes [OUTCOLS][INCOLS] %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,x->traits.ncols,n,v->traits.ncols,v->traits.ncols,x->traits.ncols);
     
@@ -543,14 +543,14 @@ ghost_error ghost_tsmm__u_avx_d_OUTCOLS_INCOLS_OUTERUNROLL_1_rm(ghost_densemat *
     double * restrict wnonpad = NULL;
     ghost_lidx ncols_wnonpad = w->traits.ncols;
 #ifdef KREMAINDER
-    ghost_lidx nrows_wnonpad = w->traits.nrows;
+    ghost_lidx nrows_wnonpad = DM_NROWS(w);
 #else
-    ghost_lidx nrows_wnonpad = PAD(w->traits.nrows,4);
+    ghost_lidx nrows_wnonpad = PAD(DM_NROWS(w),4);
 #endif
     ghost_malloc_align((void **)&wnonpad,sizeof(double)*nrows_wnonpad*ncols_wnonpad,32);
     memset(wnonpad,0,sizeof(double)*nrows_wnonpad*ncols_wnonpad);
     for (s=0; s<w->traits.ncols; s++) {
-        for (j=0; j<w->traits.nrows; j++) {
+        for (j=0; j<DM_NROWS(w); j++) {
             wnonpad[s*nrows_wnonpad+j] = dalpha*wval[s*ldw+j];
         }
     }

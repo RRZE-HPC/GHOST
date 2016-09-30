@@ -48,10 +48,10 @@ static ghost_error ghost_carp_init_tmpl(ghost_sparsemat *mat, ghost_densemat *rh
     if(opts->normalize == GHOST_KACZ_NORMALIZE_YES) {
         opts->initialized = true;
         ghost_lidx chunkHeight = mat->traits.C;
-        ghost_lidx nchunks = mat->nrows/chunkHeight;
-        ghost_lidx remchunk = mat->nrows%chunkHeight;
+        ghost_lidx nchunks = SPM_NROWS(mat)/chunkHeight;
+        ghost_lidx remchunk = SPM_NROWS(mat)%chunkHeight;
         m_t *scal;
-        ghost_malloc((void **)&scal,mat->nrows*sizeof(m_t));
+        ghost_malloc((void **)&scal,SPM_NROWS(mat)*sizeof(m_t));
         ghost_lidx row,idx;
         m_t* mval = ((m_t*)mat->val);
         v_t* bval = ((v_t*)rhs->val);
@@ -320,7 +320,7 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
     ghost_kacz_parameters p;
     
     //if rectangular matrix
-    if(x->traits.permutemethod != COLUMN && mat->nrows != mat->context->nrowspadded) {
+    if(x->map != x->context->col_map && SPM_NROWS(mat) != mat->context->col_map->nrows) {
         ERROR_LOG("Output vector is not COLUMN(Right sided) vector, please set permutemethod to column in traits field")
     }
     
@@ -328,9 +328,9 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
     //deal with NULL pointer of b
     if(rhs==NULL) {
         if(opts.num_shifts != 0)       
-            ghost_densemat_create_and_view_densemat(&b, x, x->traits.nrows, 0, x->traits.ncols/opts.num_shifts, 0);
+            ghost_densemat_create_and_view_densemat(&b, x, DM_NROWS(x), 0, x->traits.ncols/opts.num_shifts, 0);
         else       
-            ghost_densemat_create_and_view_densemat(&b, x, x->traits.nrows, 0, x->traits.ncols, 0);
+            ghost_densemat_create_and_view_densemat(&b, x, DM_NROWS(x), 0, x->traits.ncols, 0);
         
         b->val = NULL; 
     } else {

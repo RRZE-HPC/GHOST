@@ -17,7 +17,7 @@ ghost_error ghost_tsmm__u_plain_d_x_x_1_1_rm(ghost_densemat *x, ghost_densemat *
 
     ghost_lidx k = w->traits.ncols;
     ghost_lidx m = v->traits.ncols;
-    ghost_lidx n = v->traits.nrows;
+    ghost_lidx n = DM_NROWS(v);
 
     
     INFO_LOG("In TSMM with arbitrary block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
@@ -84,7 +84,7 @@ ghost_error ghost_tsmm__u_plain_d_x_x_1_1_cm(ghost_densemat *x, ghost_densemat *
 
     ghost_lidx k = w->traits.ncols;
     ghost_lidx m = v->traits.ncols;
-    ghost_lidx n = v->traits.nrows;
+    ghost_lidx n = DM_NROWS(v);
 
     
     INFO_LOG("In TSMM with arbitrary block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
@@ -151,7 +151,7 @@ ghost_error ghost_tsmm__u_plain_z_x_x_1_1_cm(ghost_densemat *x, ghost_densemat *
 
     ghost_lidx k = w->traits.ncols;
     ghost_lidx m = v->traits.ncols;
-    ghost_lidx n = v->traits.nrows;
+    ghost_lidx n = DM_NROWS(v);
 
     
     INFO_LOG("In TSMM with arbitrary block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
@@ -215,7 +215,7 @@ ghost_error ghost_tsmm__u_plain_z_x_x_1_1_rm(ghost_densemat *x, ghost_densemat *
 
     ghost_lidx k = w->traits.ncols;
     ghost_lidx m = v->traits.ncols;
-    ghost_lidx n = v->traits.nrows;
+    ghost_lidx n = DM_NROWS(v);
 
     
     INFO_LOG("In TSMM with arbitrary block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);

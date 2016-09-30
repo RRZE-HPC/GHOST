@@ -72,7 +72,7 @@ static ghost_error ghost_sell_spmv_plain_rm(ghost_densemat *lhs,
         m_t matrixval;
 
 #pragma omp for schedule(runtime) 
-        for (c=0; c<mat->nrowsPadded/ch; c++) { // loop over chunks
+        for (c=0; c<SPM_NROWSPAD(mat)/ch; c++) { // loop over chunks
 
             for (i=0; i<ch; i++) {
                 for (rcol=0; rcol<rhs->traits.ncols; rcol++) {
@@ -98,7 +98,7 @@ static ghost_error ghost_sell_spmv_plain_rm(ghost_densemat *lhs,
                 }
             }
 
-            for (i=0; (i<ch) && (c*ch+i < mat->nrows); i++) {
+            for (i=0; (i<ch) && (c*ch+i < SPM_NROWS(mat)); i++) {
                 lhsrow = ((v_t *)lhs->val)+lhs->stride*(c*ch+i);
                 rhsrow = ((v_t *)rhs->val)+rhs->stride*(c*ch+i);
                 if (z) {
@@ -237,7 +237,7 @@ static ghost_error ghost_sell_spmv_plain_cm(ghost_densemat *lhs,
 
 
 #pragma omp for schedule(runtime) 
-        for (c=0; c<mat->nrowsPadded/ch; c++) { // loop over chunks
+        for (c=0; c<SPM_NROWSPAD(mat)/ch; c++) { // loop over chunks
                     
             ghost_lidx rcol = 0, lcol = 0, zcol = 0;
 
@@ -262,7 +262,7 @@ static ghost_error ghost_sell_spmv_plain_cm(ghost_densemat *lhs,
                     }
                 }
                 for (i=0; i<ch; i++) {
-                    if (c*ch+i < mat->nrows) {
+                    if (c*ch+i < SPM_NROWS(mat)) {
                         if ((traits.flags & GHOST_SPMV_SHIFT) && shift) {
                             tmp[i] = tmp[i]-shift[0]*rhsv[c*ch+i];
                         }
@@ -391,18 +391,18 @@ extern "C" ghost_error ghost_sell_spmv_selector(ghost_densemat *lhs,
         ERROR_LOG("The number of columns for the densemats does not match!");
         return GHOST_ERR_INVALID_ARG;
     }
-    if (!(mat->context->flags & GHOST_PERM_NO_DISTINCTION) && rhs->traits.nrows != lhs->traits.nrows) { //if No distinction is set it can be rectangular matrix
+    if (!(mat->context->flags & GHOST_PERM_NO_DISTINCTION) && DM_NROWS(rhs) != DM_NROWS(lhs)) { //if No distinction is set it can be rectangular matrix
         ERROR_LOG("The number of rows for the densemats does not match!");
         return GHOST_ERR_INVALID_ARG;
     }
-    if (!(mat->context->flags & GHOST_PERM_NO_DISTINCTION) && lhs->traits.nrows != mat->nrows) {
+    if (!(mat->context->flags & GHOST_PERM_NO_DISTINCTION) && DM_NROWS(lhs) != SPM_NROWS(mat)) {
         ERROR_LOG("Different number of rows for the densemats and matrix!");
         return GHOST_ERR_INVALID_ARG;
     }
     if (((rhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) && 
-                (rhs->traits.nrowsorig != rhs->traits.nrows)) || 
+                (DM_NROWS(rhs->src) != DM_NROWS(rhs))) || 
             ((lhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) && 
-            (lhs->traits.nrowsorig != lhs->traits.nrows))) {
+            (DM_NROWS(lhs->src) != DM_NROWS(lhs)))) {
         ERROR_LOG("Col-major densemats with masked out rows currently not "
                 "supported!");
         return GHOST_ERR_NOT_IMPLEMENTED;

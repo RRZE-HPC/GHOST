@@ -11,6 +11,7 @@
 #include "spmv.h"
 #include "context.h"
 #include "densemat.h"
+#include "sparsemat_src.h"
 
 #include <stdarg.h>
 
@@ -67,19 +68,6 @@ ghost_sparsemat_rowfunc_crs_arg;
     
 typedef struct ghost_sparsemat_traits ghost_sparsemat_traits;
 typedef struct ghost_sparsemat ghost_sparsemat;
-
-/**
- * @brief Callback function to construct a ghost_sparsemat
- *
- * @param[in] row The global row index.
- * @param[out] nnz The number of values in this row.
- * @param[out] val The values in the specified row.
- * @param[out] col The column indices of the given values.
- * @param[inout] arg Additional arguments.
- *
- * @return  
- */
-typedef int (*ghost_sparsemat_rowfunc)(ghost_gidx row, ghost_lidx *nnz, ghost_gidx *col, void *val, void *arg);
 
 typedef struct{
     ghost_spmv_flags flags;
@@ -273,40 +261,6 @@ typedef ghost_error (*ghost_spmv_kernel)(ghost_densemat*, ghost_sparsemat *, gho
 typedef ghost_error (*ghost_kacz_kernel)(ghost_densemat*, ghost_sparsemat *, ghost_densemat*, ghost_kacz_opts);
 typedef ghost_error (*ghost_kacz_shift_kernel)(ghost_densemat*, ghost_densemat*, ghost_sparsemat *, ghost_densemat*, double, double, ghost_kacz_opts);
 
-
-/**
- * @brief Flags to be passed to a row-wise matrix assembly function.
- */
-typedef enum {
-    /**
-     * @brief Default behaviour.
-     */
-    GHOST_SPARSEMAT_ROWFUNC_DEFAULT = 0
-} ghost_sparsemat_rowfunc_flags;
-
-/**
- * @brief Defines a rowfunc-based sparsemat source.
- */
-typedef struct {
-    /**
-     * @brief The callback function which assembled the matrix row-wise.
-     * @note The function func may be called several times for each row concurrently by multiple threads.
-     */
-    ghost_sparsemat_rowfunc func;
-    /**
-     * @brief Maximum row length of the matrix.
-     */
-    ghost_lidx maxrowlen;
-    /**
-     * @brief 0 for C, 1 for Fortran-like indexing.
-     */
-    int base;
-    /**
-     * @brief Flags to the row function.
-     */
-    ghost_sparsemat_rowfunc_flags flags;
-    void *arg;
-} ghost_sparsemat_src_rowfunc;
 
 /**
  * @brief Flags to a sparse matrix.
@@ -590,21 +544,21 @@ struct ghost_sparsemat
     /**
      * @brief The number of rows.
      */
-    ghost_lidx nrows;
+    //ghost_lidx nrows;
     /**
      * @brief The padded number of rows.
      *
      * In the SELL data format, the number of rows is padded to a multiple of C.
      */
-    ghost_lidx nrowsPadded;
+    //ghost_lidx nrowsPadded;
     /**
      * @brief The number of columns.
      */
-    ghost_gidx ncols;
+    //ghost_gidx ncols;
     /**
      * @brief The number of non-zero entries in the matrix.
      */
-    ghost_lidx nnz;
+    //ghost_lidx nnz;
     /**
      * @brief The number of stored entries in the matrix.
      *
@@ -673,6 +627,12 @@ struct ghost_sparsemat
     ghost_gidx *nzDist;
 };
 
+#define SPM_NROWS(mat) mat->context->row_map->nrows
+#define SPM_NNZ(mat) mat->context->nnz
+#define SPM_NCOLS(mat) mat->context->col_map->nrows
+#define SPM_GNCOLS(mat) mat->context->col_map->gnrows
+#define SPM_NROWSPAD(mat) mat->context->row_map->nrowspadded
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -684,7 +644,7 @@ extern "C" {
      * @brief Create a sparse matrix. 
      *
      * @param[out] mat Where to store the matrix
-     * @param[in] ctx The context the matrix lives in.
+     * @param[in] ctx An existing context or ::GHOST_CONTEXT_INITIALIZER.
      * @param[in] traits The matrix traits. They can be specified for the full 
      * matrix, the local and the remote part.
      * @param[in] nTraits The number of traits. 
@@ -775,7 +735,7 @@ extern "C" {
     ghost_error ghost_sparsemat_perm_sort(ghost_sparsemat *mat, 
             void *matrixSource, ghost_sparsemat_src srcType, ghost_gidx scope);
 
-    ghost_error ghost_sparsemat_perm_spmp(ghost_sparsemat *mat, void *matrixSource, ghost_sparsemat_src srcType);
+    ghost_error ghost_sparsemat_perm_spmp(ghost_sparsemat *mat, ghost_sparsemat_src_rowfunc *src);
 
     /**
      * @brief Create a matrix permutation based on 2-way coloring using ColPack.
@@ -918,30 +878,36 @@ extern "C" {
      * @brief Initializes a sparsemat from a row-based callback function.
      * @param mat The matrix.
      * @param src The source.
+     * @param mpicomm The MPI communicator in which to create this sparsemat.
+     * @param weight The weight of each rank in the given MPI communicator.
      * @return ::GHOST_SUCCESS on success or an error indicator.
      * 
      * Requires the matrix to have a valid and compatible datatype.
      */
-    ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_src_rowfunc *src);
+    ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_src_rowfunc *src, ghost_mpi_comm mpicomm, double weight);
 
     /**
      * @ingroup sparseinit
      * @brief Initializes a sparsemat from a binary CRS file.
      * @param mat The matrix.
-     * @param src The source file.
+     * @param path The source file.
+     * @param mpicomm The MPI communicator in which to create this sparsemat.
+     * @param weight The weight of each rank in the given MPI communicator.
      * @return ::GHOST_SUCCESS on success or an error indicator.
      * 
      * Allows the matrix' datatype to be @c GHOST_DT_NONE. In this case the
      * datatype for the matrix is read from file. Otherwise the matrix 
      * datatype has to be valid and compatible.
      */
-    ghost_error ghost_sparsemat_init_bin(ghost_sparsemat *mat, char *path);
+    ghost_error ghost_sparsemat_init_bin(ghost_sparsemat *mat, char *path, ghost_mpi_comm mpicomm, double weight);
 
     /**
      * @ingroup sparseinit
      * @brief Initializes a sparsemat from a Matrix Market file.
      * @param mat The matrix.
-     * @param src The source file.
+     * @param path The source file.
+     * @param mpicomm The MPI communicator in which to create this sparsemat.
+     * @param weight The weight of each rank in the given MPI communicator.
      * @return ::GHOST_SUCCESS on success or an error indicator.
      * 
      * Allows the matrix' datatype to be @c GHOST_DT_NONE or one of the
@@ -954,7 +920,7 @@ extern "C" {
      * is assumed.
      * Otherwise the matrix datatype has to be valid and compatible.
      */
-    ghost_error ghost_sparsemat_init_mm(ghost_sparsemat *mat, char *path);
+    ghost_error ghost_sparsemat_init_mm(ghost_sparsemat *mat, char *path, ghost_mpi_comm mpicomm, double weight);
 
     /**
      * @ingroup sparseinit
@@ -965,11 +931,13 @@ extern "C" {
      * @param col The (global) column indices.
      * @param val The values.
      * @param rpt The row pointers.
+     * @param mpicomm The MPI communicator in which to create this sparsemat.
+     * @param weight The weight of each rank in the given MPI communicator.
      * @return ::GHOST_SUCCESS on success or an error indicator.
      * 
      * Requires the matrix to have a valid and compatible datatype.
      */
-    ghost_error ghost_sparsemat_init_crs(ghost_sparsemat *mat, ghost_gidx offs, ghost_lidx n, ghost_gidx *col, void *val, ghost_lidx *rpt);
+    ghost_error ghost_sparsemat_init_crs(ghost_sparsemat *mat, ghost_gidx offs, ghost_lidx n, ghost_gidx *col, void *val, ghost_lidx *rpt, ghost_mpi_comm mpicomm, double weight);
     
     /**
      * @brief Write a matrix to a binary CRS file.
@@ -1115,10 +1083,6 @@ ghost_error set_kacz_ratio(ghost_sparsemat *mat, void *matrixSource, ghost_spars
 #ifdef __cplusplus
 } 
 #endif
-
-
-extern const ghost_sparsemat_src_rowfunc 
-GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER;
 
 
 #endif

@@ -22,13 +22,13 @@ ghost_error ghost_tsmm__u_cuda_x_CFGN_CFGK_1_1_rm(ghost_densemat *x, ghost_dense
       ghost_tsmm_cu_rm_cm<cuDoubleComplex, CFGK, CFGN>(
           (cuDoubleComplex *)x->cu_val, (const cuDoubleComplex *)v->cu_val,
           (const cuDoubleComplex *)w->cu_val, *(cuDoubleComplex *)alpha,
-          *(cuDoubleComplex *)beta, x->traits.nrows, x->stride, v->stride,
+          *(cuDoubleComplex *)beta, DM_NROWS(x), x->stride, v->stride,
           w->stride);
     } else {
       ghost_tsmm_cu_rm_cm<cuFloatComplex, CFGK, CFGN>(
           (cuFloatComplex *)x->cu_val, (const cuFloatComplex *)v->cu_val,
           (const cuFloatComplex *)w->cu_val, *(cuFloatComplex *)alpha,
-          *(cuFloatComplex *)beta, x->traits.nrows, x->stride, v->stride,
+          *(cuFloatComplex *)beta, DM_NROWS(x), x->stride, v->stride,
           w->stride);
     }
   } else {
@@ -36,12 +36,12 @@ ghost_error ghost_tsmm__u_cuda_x_CFGN_CFGK_1_1_rm(ghost_densemat *x, ghost_dense
       ghost_tsmm_cu_rm_cm<double, CFGK, CFGN>(
           (double *)x->cu_val, (const double *)v->cu_val,
           (const double *)w->cu_val, *(double *)alpha, *(double *)beta,
-          x->traits.nrows, x->stride, v->stride, w->stride);
+          DM_NROWS(x), x->stride, v->stride, w->stride);
     } else {
       ghost_tsmm_cu_rm_cm<float, CFGK, CFGN>(
           (float *)x->cu_val, (const float *)v->cu_val,
           (const float *)w->cu_val, *(float *)alpha, *(float *)beta,
-          x->traits.nrows, x->stride, v->stride, w->stride);
+          DM_NROWS(x), x->stride, v->stride, w->stride);
     }
   }
 

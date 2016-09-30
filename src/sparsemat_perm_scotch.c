@@ -65,7 +65,7 @@ ghost_error ghost_sparsemat_perm_scotch(ghost_sparsemat *mat, void *matrixSource
     SCOTCH_Ordering *order = NULL;
 #endif
 
-    if (mat->context->perm_global) {
+    if (mat->context->row_map->glb_perm) {
         WARNING_LOG("Existing permutations will be overwritten!");
     }
 
@@ -77,7 +77,7 @@ ghost_error ghost_sparsemat_perm_scotch(ghost_sparsemat *mat, void *matrixSource
 
     GHOST_CALL_GOTO(ghost_rank(&me, mat->context->mpicomm),err,ret);
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, mat->context->mpicomm),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,(mat->context->lnrows[me]+1) * sizeof(ghost_gidx)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,(mat->context->row_map->lnrows[me]+1) * sizeof(ghost_gidx)),err,ret);
     
     GHOST_INSTR_START("scotch_readin")
     ghost_sparsemat_src_rowfunc *src = (ghost_sparsemat_src_rowfunc *)matrixSource;
@@ -92,8 +92,8 @@ ghost_error ghost_sparsemat_perm_scotch(ghost_sparsemat *mat, void *matrixSource
         ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx));
         
 #pragma omp for
-        for (i=0; i<mat->context->lnrows[me]; i++) {
-            src->func(mat->context->lfRow[me]+i,&rowlen,tmpcol,tmpval,NULL);
+        for (i=0; i<mat->context->row_map->lnrows[me]; i++) {
+            src->func(mat->context->row_map->goffs[me]+i,&rowlen,tmpcol,tmpval,NULL);
             nnz += rowlen;
         }
         free(tmpval); tmpval = NULL;
@@ -106,14 +106,14 @@ ghost_error ghost_sparsemat_perm_scotch(ghost_sparsemat *mat, void *matrixSource
         ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize);
         ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx));
 #pragma omp for ordered
-        for (i=0; i<mat->context->lnrows[me]; i++) {
+        for (i=0; i<mat->context->row_map->lnrows[me]; i++) {
 #pragma omp ordered
             {
-                src->func(mat->context->lfRow[me]+i,&rowlen,&col[rpt[i]],tmpval,NULL);
+                src->func(mat->context->row_map->goffs[me]+i,&rowlen,&col[rpt[i]],tmpval,NULL);
                 /* remove the diagonal entry ("self-edge") */
                 for (j=0;j<rowlen;j++)
                 {
-                  if (col[rpt[i]+j]==mat->context->lfRow[me]+i)
+                  if (col[rpt[i]+j]==mat->context->row_map->goffs[me]+i)
                   {
                     for (k=j; k<rowlen-1;k++)
                     {
@@ -130,21 +130,17 @@ ghost_error ghost_sparsemat_perm_scotch(ghost_sparsemat *mat, void *matrixSource
         free(tmpcol); tmpcol = NULL;
     }
             
-    nnz=rpt[mat->context->lnrows[me]];
+    nnz=rpt[mat->context->row_map->lnrows[me]];
     GHOST_INSTR_STOP("scotch_readin")
 
-    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_global,sizeof(ghost_permutation)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_global->perm,sizeof(ghost_gidx)*mat->context->lnrows[me]),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_global->invPerm,sizeof(ghost_gidx)*mat->context->lnrows[me]),err,ret);
-    mat->context->perm_global->colPerm = NULL;
-    mat->context->perm_global->colInvPerm = NULL;
-    mat->context->perm_global->method = GHOST_PERMUTATION_SYMMETRIC;
+    GHOST_CALL_GOTO(ghost_malloc((void **)mat->context->row_map->glb_perm,sizeof(ghost_gidx)*mat->context->row_map->lnrows[me]),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)mat->context->row_map->glb_perm_inv,sizeof(ghost_gidx)*mat->context->row_map->lnrows[me]),err,ret);
+    mat->context->col_map->glb_perm = NULL;
+    mat->context->col_map->glb_perm_inv = NULL;
+    //mat->context->perm_global->method = GHOST_PERMUTATION_SYMMETRIC;
 
-#ifdef GHOST_HAVE_CUDA
-    GHOST_CALL_GOTO(ghost_cu_malloc((void **)&mat->context->perm_global->cu_perm,sizeof(ghost_gidx)*mat->context->lnrows[me]),err,ret);
-#endif
-    memset(mat->context->perm_global->perm,0,sizeof(ghost_gidx)*mat->context->lnrows[me]);
-    memset(mat->context->perm_global->invPerm,0,sizeof(ghost_gidx)*mat->context->lnrows[me]);
+    memset(mat->context->row_map->glb_perm,0,sizeof(ghost_gidx)*mat->context->row_map->lnrows[me]);
+    memset(mat->context->row_map->glb_perm_inv,0,sizeof(ghost_gidx)*mat->context->row_map->lnrows[me]);
 
 #ifdef GHOST_HAVE_MPI
     GHOST_INSTR_START("scotch_createperm")
@@ -161,7 +157,7 @@ ghost_error ghost_sparsemat_perm_scotch(ghost_sparsemat *mat, void *matrixSource
         ret = GHOST_ERR_SCOTCH;
         goto err;
     }
-    SCOTCH_CALL_GOTO(SCOTCH_dgraphBuild(dgraph, 0, (ghost_gidx)mat->context->lnrows[me], mat->context->lnrows[me], rpt, rpt+1, NULL, NULL, nnz, nnz, col, NULL, NULL),err,ret);
+    SCOTCH_CALL_GOTO(SCOTCH_dgraphBuild(dgraph, 0, (ghost_gidx)mat->context->row_map->lnrows[me], mat->context->row_map->lnrows[me], rpt, rpt+1, NULL, NULL, nnz, nnz, col, NULL, NULL),err,ret);
 //    SCOTCH_CALL_GOTO(SCOTCH_dgraphCheck(dgraph),err,ret);
 
     SCOTCH_CALL_GOTO(SCOTCH_stratInit(strat),err,ret);
@@ -196,23 +192,23 @@ ghost_error ghost_sparsemat_perm_scotch(ghost_sparsemat *mat, void *matrixSource
     }
     SCOTCH_CALL_GOTO(SCOTCH_dgraphOrderInit(dgraph,dorder),err,ret);
     SCOTCH_CALL_GOTO(SCOTCH_dgraphOrderCompute(dgraph,dorder,strat),err,ret);
-    SCOTCH_CALL_GOTO(SCOTCH_dgraphOrderPerm(dgraph,dorder,mat->context->perm_global->perm),err,ret);
+    SCOTCH_CALL_GOTO(SCOTCH_dgraphOrderPerm(dgraph,dorder,mat->context->row_map->glb_perm),err,ret);
     GHOST_INSTR_STOP("scotch_createperm")
     
 
     GHOST_INSTR_START("scotch_combineperm")
-    ghost_global_perm_inv(mat->context->perm_global->invPerm,mat->context->perm_global->perm,mat->context);
+    ghost_global_perm_inv(mat->context->row_map->glb_perm_inv,mat->context->row_map->glb_perm,mat->context);
     GHOST_INSTR_STOP("scotch_combineperm")
 
 #else
 
     ghost_malloc((void **)&col_loopless,nnz*sizeof(ghost_gidx));
-    ghost_malloc((void **)&rpt_loopless,(mat->nrows+1)*sizeof(ghost_gidx));
+    ghost_malloc((void **)&rpt_loopless,(SPM_NROWS(mat)+1)*sizeof(ghost_gidx));
     rpt_loopless[0] = 0;
     ghost_gidx nnz_loopless = 0;
 
     // eliminate loops by deleting diagonal entries
-    for (i=0; i<mat->nrows; i++) {
+    for (i=0; i<SPM_NROWS(mat); i++) {
         for (j=rpt[i]; j<rpt[i+1]; j++) {
             if (col[j] != i) {
                 col_loopless[nnz_loopless] = col[j];
@@ -236,7 +232,7 @@ ghost_error ghost_sparsemat_perm_scotch(ghost_sparsemat *mat, void *matrixSource
         goto err;
     }
     SCOTCH_CALL_GOTO(SCOTCH_stratInit(strat),err,ret);
-    SCOTCH_CALL_GOTO(SCOTCH_graphBuild(graph, 0, (ghost_gidx)mat->nrows, rpt_loopless, rpt_loopless+1, NULL, NULL, nnz_loopless, col_loopless, NULL),err,ret);
+    SCOTCH_CALL_GOTO(SCOTCH_graphBuild(graph, 0, (ghost_gidx)SPM_NROWS(mat), rpt_loopless, rpt_loopless+1, NULL, NULL, nnz_loopless, col_loopless, NULL),err,ret);
     SCOTCH_CALL_GOTO(SCOTCH_graphCheck(graph),err,ret);
     
     order = SCOTCH_orderAlloc();
@@ -245,29 +241,24 @@ ghost_error ghost_sparsemat_perm_scotch(ghost_sparsemat *mat, void *matrixSource
         ret = GHOST_ERR_SCOTCH;
         goto err;
     }
-    SCOTCH_CALL_GOTO(SCOTCH_graphOrderInit(graph,order,mat->context->perm_global->perm,NULL,NULL,NULL,NULL),err,ret);
+    SCOTCH_CALL_GOTO(SCOTCH_graphOrderInit(graph,order,mat->context->row_map->glb_perm,NULL,NULL,NULL,NULL),err,ret);
     SCOTCH_CALL_GOTO(SCOTCH_stratGraphOrder(strat,mat->traits->scotchStrat),err,ret);
     SCOTCH_CALL_GOTO(SCOTCH_graphOrderCompute(graph,order,strat),err,ret);
     SCOTCH_CALL_GOTO(SCOTCH_graphOrderCheck(graph,order),err,ret);
 
-    for (i=0; i<mat->nrows; i++) {
-        mat->context->perm_global->invPerm[mat->context->perm_global->perm[i]] = i;
+    for (i=0; i<SPM_NROWS(mat); i++) {
+        mat->context->row_map->glb_perm_inv[mat->context->row_map->glb_perm[i]] = i;
     }
 
 #endif
    
-#ifdef GHOST_HAVE_CUDA
-    ghost_cu_upload(mat->context->perm_global->cu_perm,mat->context->perm_global->perm,mat->nrows*sizeof(ghost_gidx));
-#endif
     goto out;
 err:
     ERROR_LOG("Deleting permutations");
-    free(mat->context->perm_global->perm); mat->context->perm_global->perm = NULL;
-    free(mat->context->perm_global->invPerm); mat->context->perm_global->invPerm = NULL;
-#ifdef GHOST_HAVE_CUDA
-    ghost_cu_free(mat->context->perm_global->cu_perm); mat->context->perm_global->cu_perm = NULL;
-#endif
-    free(mat->context->perm_global); mat->context->perm_global = NULL;
+    free(mat->context->row_map->glb_perm); mat->context->row_map->glb_perm = NULL;
+    free(mat->context->row_map->glb_perm_inv); mat->context->row_map->glb_perm_inv = NULL;
+    free(mat->context->row_map->glb_perm); mat->context->row_map->glb_perm = NULL;
+    free(mat->context->row_map->glb_perm_inv); mat->context->row_map->glb_perm_inv = NULL;
 
 out:
     free(rpt);

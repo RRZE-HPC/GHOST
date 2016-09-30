@@ -16,7 +16,7 @@ ghost_error ghost_tsmttsm__a_plain_d_x_CFGM_1_rm(ghost_densemat *x, ghost_densem
     ghost_error ret = GHOST_SUCCESS;
     ghost_lidx K = w->traits.ncols;
 
-    ghost_lidx n = v->traits.nrows;
+    ghost_lidx n = DM_NROWS(v);
     
     INFO_LOG("In TSMTTSM with fixed m CFGM and arbitrary k %d: %dx%d <- %dx%d * %dx%d",K,CFGM,K,CFGM,n,n,K);
     
@@ -83,7 +83,7 @@ ghost_error ghost_tsmttsm__a_plain_z_x_CFGM_1_rm(ghost_densemat *x, ghost_densem
     ghost_error ret = GHOST_SUCCESS;
     ghost_lidx K = w->traits.ncols;
 
-    ghost_lidx n = v->traits.nrows;
+    ghost_lidx n = DM_NROWS(v);
     
     INFO_LOG("In TSMTTSM with fixed m CFGM and arbitrary k %d: %dx%d <- %dx%d * %dx%d",K,CFGM,K,CFGM,n,n,K);
     

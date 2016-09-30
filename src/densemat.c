@@ -34,12 +34,12 @@
 #include "ghost/densemat_common.c.def"
 
 const ghost_densemat_traits GHOST_DENSEMAT_TRAITS_INITIALIZER = {
-    .nrows = 0,
-    .nrowsorig = 0,
-    .nrowshalo = 0,
-    .nrowspadded = 0,
-    .gnrows = 0,
-    .goffs = 0,
+    //.nrows = 0,
+    //.nrowsorig = 0,
+    //.nrowshalo = 0,
+    //.nrowspadded = 0,
+    //.gnrows = 0,
+    //.goffs = 0,
     .ncols = 1,
     .ncolsorig = 0,
     .ncolspadded = 0,
@@ -80,28 +80,28 @@ ghost_error ghost_densemat_create(ghost_densemat **vec, ghost_context *ctx, ghos
     (*vec)->rowmask = NULL;
     (*vec)->val = NULL;
     (*vec)->cu_val = NULL;
-   
+  /* 
     if (ctx) {
-        if (ctx->perm_global || ctx->perm_local) {
+//        if (ctx->perm_global || ctx->perm_local) {
            // (*vec)->traits.flags |= (ghost_densemat_flags)GHOST_DENSEMAT_PERMUTED;//why this??
-        }
+//        }
         if ((*vec)->traits.gnrows == 0) {
             (*vec)->traits.gnrows = ctx->gnrows;
         }
         if ((*vec)->traits.goffs == 0) {
             int me;
             ghost_rank(&me,ctx->mpicomm);
-            (*vec)->traits.goffs = ctx->lfRow[me];
+            (*vec)->traits.goffs = ctx->row_map->goffs[me];
         }
     }
-
+*/
     if (!((*vec)->traits.flags & GHOST_DENSEMAT_VIEW)) {
         (*vec)->src = *vec;
     } else {
         (*vec)->src = NULL;
     }
 
-
+/*
    if(ctx==NULL || ctx->perm_local == NULL) {
 		      (*vec)->perm_local = NULL;
     } else if((*vec)->traits.permutemethod == COLUMN) {
@@ -122,10 +122,43 @@ ghost_error ghost_densemat_create(ghost_densemat **vec, ghost_context *ctx, ghos
 		      (*vec)->perm_global->perm    = ctx->perm_global->colPerm;
 		      (*vec)->perm_global->invPerm = ctx->perm_global->colInvPerm;
     }
+    */
 
 
     GHOST_CALL_GOTO(ghost_datatype_size(&(*vec)->elSize,(*vec)->traits.datatype),err,ret);
-    getNrowsFromContext((*vec),ctx);
+    //getNrowsFromContext((*vec),ctx);
+    
+    if ((*vec)->traits.flags & GHOST_DENSEMAT_VIEW) {
+        (*vec)->traits.ncolspadded = (*vec)->traits.ncols;
+    } else {
+        if ((*vec)->traits.flags & GHOST_DENSEMAT_PAD_COLS) {
+            ghost_lidx padding = (*vec)->elSize;
+            if (DM_NROWS((*vec)) > 1) {
+#ifdef GHOST_BUILD_MIC
+                padding = 64; // 64 byte padding
+#elif defined(GHOST_BUILD_AVX) || defined(GHOST_BUILD_AVX2)
+                padding = 32; // 32 byte padding
+                if ((*vec)->traits.ncols == 2) {
+                    padding = 16; // SSE in this case: only 16 byte alignment required
+                }
+                if ((*vec)->traits.ncols == 1) {
+                    padding = (*vec)->elSize; // (pseudo-) row-major: no padding
+                }
+#elif defined (GHOST_BUILD_SSE)
+                padding = 16; // 16 byte padding
+                if ((*vec)->traits.ncols == 1) {
+                    padding = (*vec)->elSize; // (pseudo-) row-major: no padding
+                }
+#endif
+            }
+           
+            padding /= (*vec)->elSize;
+
+            (*vec)->traits.ncolspadded = PAD((*vec)->traits.ncols,padding);
+        } else {
+            (*vec)->traits.ncolspadded = (*vec)->traits.ncols;
+        }
+    }
 
     DEBUG_LOG(1,"Initializing vector");
 
@@ -153,14 +186,20 @@ ghost_error ghost_densemat_create(ghost_densemat **vec, ghost_context *ctx, ghos
             (*vec)->traits.storage = GHOST_DENSEMAT_COLMAJOR;
         }
     }
+
+
+
+    // TODO assign correctly
+    (*vec)->map = (*vec)->context->row_map;
+
     if ((*vec)->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
         (*vec)->stride = (*vec)->traits.ncolspadded;
-        (*vec)->nblock = (*vec)->traits.nrows;
+        (*vec)->nblock = DM_NROWS((*vec));
         (*vec)->blocklen = (*vec)->traits.ncols;
     } else {
-        (*vec)->stride = (*vec)->traits.nrowshalopadded;
+        (*vec)->stride = (*vec)->context->col_map->nrowspadded;
         (*vec)->nblock = (*vec)->traits.ncols;
-        (*vec)->blocklen = (*vec)->traits.nrows;
+        (*vec)->blocklen = DM_NROWS((*vec));
     }
 #ifdef GHOST_HAVE_MPI
     GHOST_CALL_RETURN(ghost_mpi_datatype_get(&(*vec)->mpidt,(*vec)->traits.datatype));
@@ -185,36 +224,39 @@ out:
 
 static ghost_error getNrowsFromContext(ghost_densemat *vec, ghost_context *ctx)
 {
+    ERROR_LOG("Deprecated!");
+#if 0
     DEBUG_LOG(1,"Computing the number of vector rows from the context");
     
     if (ctx != NULL) {
         int rank;
         GHOST_CALL_RETURN(ghost_rank(&rank, ctx->mpicomm));
         //make distinction between Left and Right side vectors (since now we have rectangular matrix)
-        if(ctx->flags & GHOST_PERM_NO_DISTINCTION){
+        DM_NROWS(vec) = MAX(ctx->row_map->nrows,ctx->col_map->nrows);
+/*        if(ctx->flags & GHOST_PERM_NO_DISTINCTION){
           if(vec->traits.permutemethod==COLUMN) {
-		        vec->traits.nrows = ctx->nrowspadded; 
+		        DM_NROWS(vec) = ctx->nrowspadded; 
           } else if(vec->traits.permutemethod==ROW) {
-            vec->traits.nrows = ctx->lnrows[rank];
+            DM_NROWS(vec) = ctx->row_map->lnrows[rank];
           } 
-          vec->traits.maxnrows = MAX(ctx->nrowspadded, ctx->lnrows[rank]); //required for rectanglar matrices
+          vec->traits.maxnrows = MAX(ctx->nrowspadded, ctx->row_map->lnrows[rank]); //required for rectanglar matrices
         } else {
-        	vec->traits.nrows = ctx->lnrows[rank];
-          vec->traits.maxnrows = ctx->lnrows[rank];
+        	DM_NROWS(vec) = ctx->row_map->lnrows[rank];
+          vec->traits.maxnrows = ctx->row_map->lnrows[rank];
 	      }
+*/
     } else {
-        vec->traits.maxnrows = vec->traits.nrows;
+//        vec->traits.maxnrows = DM_NROWS(vec);
     }
-
     if (vec->traits.flags & GHOST_DENSEMAT_VIEW) {
         //INFO_LOG("No padding for view!");
         // already copied!
-        //vec->traits.nrowspadded = vec->traits.nrows;
+        //DM_NROWS(vec)padded = DM_NROWS(vec);
         //vec->traits.ncolspadded = vec->traits.ncols;
     } else {
         if (vec->traits.flags & GHOST_DENSEMAT_PAD_COLS) {
             ghost_lidx padding = vec->elSize;
-            if (vec->traits.nrows > 1) {
+            if (DM_NROWS(vec) > 1) {
 #ifdef GHOST_BUILD_MIC
                 padding = 64; // 64 byte padding
 #elif defined(GHOST_BUILD_AVX) || defined(GHOST_BUILD_AVX2)
@@ -248,24 +290,24 @@ static ghost_error getNrowsFromContext(ghost_densemat *vec, ghost_context *ctx)
        // padding=500000; 
 #endif
  
-        vec->traits.nrowspadded = PAD(vec->traits.nrows,padding);
-        vec->traits.maxnrowspadded = PAD(vec->traits.maxnrows,padding);
+        DM_NROWS(vec)padded = PAD(DM_NROWS(vec),padding);
+ //       vec->traits.maxnrowspadded = PAD(vec->traits.maxnrows,padding);
     }
       
     if (vec->traits.ncolsorig == 0) {
         vec->traits.ncolsorig = vec->traits.ncols;
     }
-    if (vec->traits.nrowsorig == 0) {
-        vec->traits.nrowsorig = vec->traits.nrows;
+    if (DM_NROWS(vec)orig == 0) {
+        DM_NROWS(vec)orig = DM_NROWS(vec);
     }
 
     if (ctx != NULL) {
 /*        int rank;
         GHOST_CALL_RETURN(ghost_rank(&rank, ctx->mpicomm)); 
         if(ctx->flags & GHOST_PERM_NO_DISTINCTION) {
-	      	vec->traits.nrows = ctx->nrowspadded;
+	      	DM_NROWS(vec) = ctx->nrowspadded;
       	} else {
-        	vec->traits.nrows = ctx->lnrows[rank];
+        	DM_NROWS(vec) = ctx->row_map->lnrows[rank];
 	      }
 */
 	 if (!(vec->traits.flags & GHOST_DENSEMAT_NO_HALO)) {
@@ -273,24 +315,25 @@ static ghost_error getNrowsFromContext(ghost_densemat *vec, ghost_context *ctx)
                 ERROR_LOG("You have to make sure to read in the matrix _before_ creating the right hand side vector in a distributed context! This is because we have to know the number of halo elements of the vector.");
                 return GHOST_ERR_UNKNOWN;
             }
-            vec->traits.nrowshalo = vec->traits.nrowspadded+ctx->halo_elements;
+            DM_NROWS(vec)halo = DM_NROWS(vec)padded+ctx->halo_elements;
             vec->traits.maxnrowshalo = vec->traits.maxnrowspadded+ctx->halo_elements;
         } else {
-            vec->traits.nrowshalo = vec->traits.nrowspadded;
+            DM_NROWS(vec)halo = DM_NROWS(vec)padded;
             vec->traits.maxnrowshalo = vec->traits.maxnrowspadded;
         }
     } else {
         // context->hput_pos[0] = nrows if only one process, so we need a dummy element 
-        vec->traits.nrowshalo = vec->traits.nrowspadded; 
+        DM_NROWS(vec)halo = DM_NROWS(vec)padded; 
         vec->traits.maxnrowshalo = vec->traits.maxnrowspadded;
     }
  
 
-    vec->traits.nrowshalopadded = PAD(vec->traits.nrowshalo,ghost_machine_simd_width()/4);
+    DM_NROWS(vec)halopadded = PAD(DM_NROWS(vec)halo,ghost_machine_simd_width()/4);
     vec->traits.maxnrowshalopadded = PAD(vec->traits.maxnrowshalo,ghost_machine_simd_width()/4);
    
     DEBUG_LOG(1,"The vector has %"PRLIDX" w/ %"PRLIDX" halo elements (padded: %"PRLIDX") rows",
-            vec->traits.nrows,vec->traits.nrowshalo-vec->traits.nrows,vec->traits.nrowspadded);
+            DM_NROWS(vec),DM_NROWS(vec)halo-DM_NROWS(vec),DM_NROWS(vec)padded);
+#endif
     return GHOST_SUCCESS; 
 }
 
@@ -384,25 +427,24 @@ ghost_error ghost_densemat_info_string(char **str, ghost_densemat *densemat)
     memset(*str,'\0',1);
     
     ghost_header_string(str,"Dense matrix @ local rank %d (glob %d)",mynoderank,myrank);
-    ghost_line_string(str,"Dimension",NULL,"%"PRLIDX"x%"PRLIDX,densemat->traits.nrows,densemat->traits.ncols);
-    ghost_line_string(str,"Dimension w/ halo",NULL,"%"PRLIDX"x%"PRLIDX,densemat->traits.nrowshalo,densemat->traits.ncols);
-    ghost_line_string(str,"Padded dimension",NULL,"%"PRLIDX"x%"PRLIDX,densemat->traits.nrowspadded,densemat->traits.ncolspadded);
+    ghost_line_string(str,"Dimension",NULL,"%"PRLIDX"x%"PRLIDX,DM_NROWS(densemat),densemat->traits.ncols);
+    ghost_line_string(str,"Padded dimension",NULL,"%"PRLIDX"x%"PRLIDX,DM_NROWSPAD(densemat),densemat->traits.ncolspadded);
     ghost_line_string(str,"Number of blocks",NULL,"%"PRLIDX,densemat->nblock);
     ghost_line_string(str,"Stride between blocks",NULL,"%"PRLIDX,densemat->stride);
     ghost_line_string(str,"View",NULL,"%s",densemat->traits.flags&GHOST_DENSEMAT_VIEW?"Yes":"No");
     ghost_line_string(str,"Scattered",NULL,"%s",densemat->traits.flags&GHOST_DENSEMAT_SCATTERED?"Yes":"No");
     if (densemat->traits.flags&GHOST_DENSEMAT_VIEW) {
-        ghost_line_string(str,"Dimension of viewed densemat",NULL,"%"PRLIDX"x%"PRLIDX,densemat->traits.nrowsorig,densemat->traits.ncolsorig);
+        ghost_line_string(str,"Dimension of viewed densemat",NULL,"%"PRLIDX"x%"PRLIDX,DM_NROWS(densemat->src),densemat->src->traits.ncols);
         if (densemat->traits.flags & GHOST_DENSEMAT_SCATTERED) {
-            char colmask[densemat->traits.ncolsorig];
-            char colmaskstr[densemat->traits.ncolsorig+1];
-            ghost_densemat_mask2charfield(densemat->colmask,densemat->traits.ncolsorig,colmask);
-            charfield2string(colmaskstr,colmask,densemat->traits.ncolsorig);
+            char colmask[densemat->src->traits.ncols];
+            char colmaskstr[densemat->src->traits.ncols+1];
+            ghost_densemat_mask2charfield(densemat->colmask,densemat->src->traits.ncols,colmask);
+            charfield2string(colmaskstr,colmask,densemat->src->traits.ncols);
             ghost_line_string(str,"Viewed columns",NULL,"%s",colmaskstr);
-            char rowmask[densemat->traits.nrowsorig];
-            char rowmaskstr[densemat->traits.nrowsorig+1];
-            ghost_densemat_mask2charfield(densemat->rowmask,densemat->traits.nrowsorig,rowmask);
-            charfield2string(rowmaskstr,rowmask,densemat->traits.nrowsorig);
+            char rowmask[DM_NROWS(densemat->src)];
+            char rowmaskstr[DM_NROWS(densemat->src)+1];
+            ghost_densemat_mask2charfield(densemat->rowmask,DM_NROWS(densemat->src),rowmask);
+            charfield2string(rowmaskstr,rowmask,DM_NROWS(densemat->src));
             ghost_line_string(str,"Viewed rows",NULL,"%s",rowmaskstr);
         }
 
@@ -624,8 +666,8 @@ void ghost_densemat_destroy( ghost_densemat* vec )
            belong to the context of the matrix which defines the permutation
            applied.
          */
-        if (vec->perm_local) {free(vec->perm_local); vec->perm_local=NULL;}
-        if (vec->perm_global){free(vec->perm_global); vec->perm_global=NULL;}
+        //if (vec->perm_local) {free(vec->perm_local); vec->perm_local=NULL;}
+        //if (vec->perm_global){free(vec->perm_global); vec->perm_global=NULL;}
         free(vec);
     }
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TEARDOWN);
@@ -650,7 +692,7 @@ ghost_error switch_permutation_method( ghost_densemat **vec, ghost_context *ctx,
     GHOST_CALL_RETURN(ghost_rank(&rank, ctx->mpicomm));
     bool permuted = false;
 
-    if((*vec)->traits.permutemethod != NONE) {
+    /*if((*vec)->traits.permutemethod != NONE) {
       if((*vec)->traits.flags & (ghost_densemat_flags)GHOST_DENSEMAT_PERMUTED || isPermuted) 
       {
         ghost_densemat_permute(*vec,ctx,GHOST_PERMUTATION_PERM2ORIG);
@@ -676,9 +718,11 @@ ghost_error switch_permutation_method( ghost_densemat **vec, ghost_context *ctx,
       }
     } else {
       WARNING_LOG("Permutation Method cannot be switched since matrix has permutemethod == NONE")
-    }
+    }*/
+
+    ERROR_LOG("Not implemented!");
   
-   return GHOST_SUCCESS;
+   return GHOST_ERR_NOT_IMPLEMENTED;
 }   
 
 int ghost_idx_of_densemat_storage(ghost_densemat_storage s)
@@ -837,11 +881,6 @@ ghost_error ghost_densemat_init_complex(ghost_densemat *re, ghost_densemat *im, 
     CALL_DENSEMAT_FUNC(re,fromComplex_selector,re,im,src);
 }
 
-ghost_error ghost_densemat_clone(ghost_densemat **x, ghost_densemat *src, ghost_lidx nr, ghost_lidx roffs, ghost_lidx nc, ghost_lidx coffs)
-{
-    CALL_DENSEMAT_FUNC((*x),cloneVector,src,x,nr,roffs,nc,coffs);
-}
-    
 ghost_error ghost_densemat_entry(void *entry, ghost_densemat *vec, ghost_lidx i, ghost_lidx j)
 {
     CALL_DENSEMAT_FUNC(vec,entry,vec,entry,i,j);
@@ -869,4 +908,24 @@ ghost_error ghost_densemat_collect(ghost_densemat *vec, ghost_densemat *globvec,
     
 ghost_error ghost_densemat_distribute(ghost_densemat *vec, ghost_densemat *localVec, ghost_context *ctx){
     CALL_DENSEMAT_FUNC(vec,distributeVector,vec,localVec,ctx);
+}
+
+ghost_error ghost_densemat_clone(ghost_densemat **dst, ghost_densemat *src, ghost_lidx nr, ghost_lidx roffs, ghost_lidx nc, ghost_lidx coffs)
+{
+    ghost_densemat_traits newTraits = src->traits;
+    newTraits.ncols = nc;
+    newTraits.ncolsorig = nc;
+    newTraits.flags &= ~(ghost_densemat_flags)GHOST_DENSEMAT_VIEW;
+    newTraits.flags &= ~(ghost_densemat_flags)GHOST_DENSEMAT_SCATTERED;
+
+    ghost_densemat_create(dst,src->context,newTraits);
+
+    //since context is not present we should copy the perm pointer
+/*    if(src->perm_local) {
+      ghost_malloc((void **)&((*dst)->perm_local),sizeof(ghost_densemat_permutation)); 
+      (*dst)->perm_local->perm = src->perm_local->perm;
+    }*/
+ 
+    ghost_densemat_init_densemat(*dst,src,roffs,coffs);
+    return GHOST_SUCCESS;
 }

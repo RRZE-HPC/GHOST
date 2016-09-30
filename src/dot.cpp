@@ -107,7 +107,7 @@ out:
     if (!kernel) {
         ghost_dot_perf_args dot_perfargs;
         dot_perfargs.ncols = vec1->traits.ncols;
-        dot_perfargs.globnrows = vec1->traits.gnrows;
+        dot_perfargs.globnrows = DM_GNROWS(vec1);
         dot_perfargs.dt = vec1->traits.datatype;
         if (vec1 == vec2) {
             dot_perfargs.samevec = true;

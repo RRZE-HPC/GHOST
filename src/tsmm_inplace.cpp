@@ -177,7 +177,7 @@ ghost_error ghost_tsmm_inplace(ghost_densemat *x, ghost_densemat *w, void *alpha
     }
     
     ghost_lidx try_ncolsout[2] = {w->traits.ncols,-1};
-    ghost_lidx try_ncolsin[2] = {w->traits.nrows,-1};
+DM_NROWS(    ghost_lidx try_ncolsin[2] = {w),-1};
     ghost_datatype try_dt[2] = {x->traits.datatype,GHOST_DT_ANY};
 
 #ifdef GHOST_HAVE_CUDA
@@ -235,7 +235,7 @@ end_of_loop:
 #ifdef GHOST_INSTR_TIMING
     ghost_gemm_perf_args tsmm_inplace_perfargs;
     tsmm_inplace_perfargs.n = w->traits.ncols;
-    tsmm_inplace_perfargs.k = w->traits.nrows;
+DM_NROWS(    tsmm_inplace_perfargs.k = w);
     tsmm_inplace_perfargs.m = x->traits.gnrows;
     tsmm_inplace_perfargs.dt = x->traits.datatype;
     tsmm_inplace_perfargs.betaiszero = ghost_iszero(beta,x->traits.datatype);

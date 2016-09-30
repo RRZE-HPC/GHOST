@@ -16,7 +16,7 @@
 #define GHOST_RM_IDX 1
 
 #define GHOST_DENSEMAT_CHECK_SIMILARITY(vec1,vec2)\
-    if (vec1->traits.nrows != vec2->traits.nrows) {\
+    if (DM_NROWS(vec1) != DM_NROWS(vec2)) {\
         ERROR_LOG("Number of rows do not match!");\
         return GHOST_ERR_INVALID_ARG;\
     }\
@@ -202,54 +202,54 @@ typedef struct
     /**
      * @brief The global number of rows (equal to nrows for non-distributed densemats).
      */
-    ghost_gidx gnrows;
+    //ghost_gidx gnrows;
     /**
      * @brief The offset into the global densemat (zero non-distributed densemats).
      */
-    ghost_gidx goffs;
+    //ghost_gidx goffs;
     /**
      * @brief The number of rows.
      */
-    ghost_lidx nrows;
+    //ghost_lidx nrows;
     /**
      * @brief The Maximum of nrows of Left and Right sided densemat 
      * required if matrix is rectangular
      */
-    ghost_lidx maxnrows;
+    //ghost_lidx maxnrows;
     /**
      * @brief The number of rows of the densemat which is viewed by this 
      * densemat.
      */
-    ghost_lidx nrowsorig;
+    //ghost_lidx nrowsorig;
     /**
      * @brief The number of rows including padding and halo elements.
      */
-    ghost_lidx nrowshalo;
+    //ghost_lidx nrowshalo;
     /**
      * @brief The Maximum of nrowshalo of Left and Right sided densemat 
      * required if matrix is rectangular
      */
-    ghost_lidx maxnrowshalo;
+    //ghost_lidx maxnrowshalo;
     /**
      * @brief The padded number of rows (may differ from nrows for col-major 
      * densemats).
      */
-    ghost_lidx nrowspadded;
+    //ghost_lidx nrowspadded;
     /**
      * @brief The Maximum of nrowspadded of Left and Right sided densemat 
      * required if matrix is rectangular
      */
-    ghost_lidx maxnrowspadded;
+    //ghost_lidx maxnrowspadded;
     /**
      * @brief The number of rows including padding, halo, and halo-padding elements
      * There is another padding after the halo elements to guarantee aligned access to successive columns for col-major densemats.
      */
-    ghost_lidx nrowshalopadded;
+    //ghost_lidx nrowshalopadded;
      /**
      * @brief The Maximum of nrowspadded of Left and Right sided densemat 
      * required if matrix is rectangular
      */
-    ghost_lidx maxnrowshalopadded;
+    //ghost_lidx maxnrowshalopadded;
     /**
      * @brief The number of columns.
      */
@@ -318,10 +318,8 @@ struct ghost_densemat
      * @brief The densemat's traits.
      */
     ghost_densemat_traits traits;
-
     /**
      * @brief The context in which the densemat is living.
-     * TODO: This field may be deleted in a future revision.
      */
     ghost_context *context;
     /**
@@ -361,12 +359,12 @@ struct ghost_densemat
      * @brief Densemat local permutation
      *
      */
-    ghost_densemat_permutation *perm_local;
+    //ghost_densemat_permutation *perm_local;
      /**
      * @brief Densemat global permutation
      *
      */
-    ghost_densemat_permutation *perm_global;
+    //ghost_densemat_permutation *perm_global;
      /**
      * @brief Masked out columns for scattered views
      */
@@ -388,7 +386,18 @@ struct ghost_densemat
      */
     char * cu_val;
 
+    /**
+     * @brief The active map. 
+     *
+     * May be one of ghost_densemat::context::col_map->or ghost_densemat::context::row_map->
+     */
+    ghost_map *map;
+
 };
+
+#define DM_NROWS(dm) dm->map->nrows
+#define DM_GNROWS(dm) dm->map->gnrows
+#define DM_NROWSPAD(dm) dm->map->nrowspadded
 
 #ifdef __cplusplus
 static inline ghost_densemat_flags operator|(const ghost_densemat_flags &a, const ghost_densemat_flags &b) {

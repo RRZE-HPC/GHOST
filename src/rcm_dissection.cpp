@@ -9,14 +9,14 @@
 
 //returns the virtual column index; ie takes into account the permutation of halo elements also
 #define virtual_col(col_idx)\
-   (mat->context->flags & GHOST_PERM_NO_DISTINCTION && mat->context->perm_local )?( (col_ptr[col_idx]<mat->context->nrowspadded)?col_ptr[col_idx]:mat->context->perm_local->colPerm[col_ptr[col_idx]] ):col_ptr[col_idx]\
+   (mat->context->flags & GHOST_PERM_NO_DISTINCTION && mat->context->col_map->loc_perm)?( (col_ptr[col_idx]<mat->context->col_map->nrowspadded)?col_ptr[col_idx]:mat->context->col_map->loc_perm[col_ptr[col_idx]] ):col_ptr[col_idx]\
 
 
 ghost_error find_transition_zone(ghost_sparsemat *mat, int n_threads)
 { 
 if(n_threads>1)
 {
-   int nrows    = mat->nrows;
+   int nrows    = SPM_NROWS(mat);
    int ncols    = mat->maxColRange+1;
    int n_zones  = 2* n_threads;//odd zone = even zone
    int total_bw = mat->bandwidth;
@@ -62,7 +62,7 @@ if(n_threads>1)
                 
 	} else {
        
-            int nnz = mat->nnz;
+            int nnz = SPM_NNZ(mat);
             int* load;
             load  =  new int[n_zones];
  
@@ -115,8 +115,8 @@ else{
   mat->nzones = 2;
   mat->zone_ptr = new int[mat->nzones+1];
   mat->zone_ptr[0] = 0;
-  mat->zone_ptr[1] = static_cast<int>(static_cast<double>(mat->nrows)/mat->nzones);
-  mat->zone_ptr[2] = mat->nrows;
+  mat->zone_ptr[1] = static_cast<int>(static_cast<double>(SPM_NROWS(mat))/mat->nzones);
+  mat->zone_ptr[2] = SPM_NROWS(mat);
 }
 
 //make it compatible for bmc kernel, so only one kernel is enough
@@ -233,7 +233,7 @@ extern "C" ghost_error ghost_rcm_dissect(ghost_sparsemat *mat){
     std::vector<int> compressed_transition;
      
     int n_t_zones = n_zones-1;
-    int nrows     =  mat->nrows;
+    int nrows     =  SPM_NROWS(mat);
 
     int* lower_col_ptr = new int[n_t_zones];
     int* upper_col_ptr = new int[n_t_zones];
@@ -247,7 +247,7 @@ extern "C" ghost_error ghost_rcm_dissect(ghost_sparsemat *mat){
     ghost_lidx *col_ptr = mat->col;
     
     //approximate
-    ghost_lidx local_size = (int) (mat->nrows / n_zones);
+    ghost_lidx local_size = (int) (SPM_NROWS(mat) / n_zones);
     std::cout<<"local_size = "<<local_size<<std::endl;
 
     int *rhs_split;
@@ -338,7 +338,7 @@ ghost_error ghost_rcm_dissect_not_used(ghost_sparsemat *mat, int n_zones){
     std::vector<int> compressed_transition;
     int n_zones_out;
     transition_zone = find_transition_zone_not_used(mat, n_zones);
-    std::cout<<"% of Transition_zone = "<< 100*(static_cast<double> (transition_zone.size())/mat->nrows)<<std::endl;
+    std::cout<<"% of Transition_zone = "<< 100*(static_cast<double> (transition_zone.size())/SPM_NROWS(mat))<<std::endl;
     compressed_transition = compress_vec(transition_zone);
     std::cout<<"Transition_zones are :\n";
     for(int i=0; i!=compressed_transition.size(); ++i)

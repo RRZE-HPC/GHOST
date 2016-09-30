@@ -19,7 +19,7 @@ ghost_error ghost_tsmm__a_avx_d_x_x_1_1_rm(ghost_densemat *x, ghost_densemat *v,
 
     ghost_lidx k = w->traits.ncols;
     ghost_lidx m = v->traits.ncols;
-    ghost_lidx n = v->traits.nrows;
+    ghost_lidx n = DM_NROWS(v);
 
     INFO_LOG("In AVX TSMM with arbitrary block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
@@ -41,11 +41,11 @@ ghost_error ghost_tsmm__a_avx_d_x_x_1_1_rm(ghost_densemat *x, ghost_densemat *v,
 
     double * restrict wtran = NULL;
     ghost_lidx ncols_wtran = PAD(w->traits.ncols,4);
-    ghost_lidx nrows_wtran = PAD(w->traits.nrows,4);
+    ghost_lidx nrows_wtran = PAD(DM_NROWS(w),4);
     GHOST_CALL_GOTO(ghost_malloc_align((void **)&wtran,sizeof(double)*nrows_wtran*ncols_wtran,32),err,ret);
     memset(wtran,0,sizeof(double)*nrows_wtran*ncols_wtran);
     for (s=0; s<w->traits.ncols; s++) {
-        for (j=0; j<w->traits.nrows; j++) {
+        for (j=0; j<DM_NROWS(w); j++) {
             wtran[j*ncols_wtran+s] = wval[s*ldw+j];
         }
     }
@@ -118,7 +118,7 @@ ghost_error ghost_tsmm__u_avx_d_x_x_1_1_rm(ghost_densemat *x, ghost_densemat *v,
 
     ghost_lidx k = w->traits.ncols;
     ghost_lidx m = v->traits.ncols;
-    ghost_lidx n = v->traits.nrows;
+    ghost_lidx n = DM_NROWS(v);
 
     INFO_LOG("In AVX TSMM with arbitrary block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
@@ -140,11 +140,11 @@ ghost_error ghost_tsmm__u_avx_d_x_x_1_1_rm(ghost_densemat *x, ghost_densemat *v,
 
     double * restrict wtran = NULL;
     ghost_lidx ncols_wtran = PAD(w->traits.ncols,4);
-    ghost_lidx nrows_wtran = PAD(w->traits.nrows,4);
+    ghost_lidx nrows_wtran = PAD(DM_NROWS(w),4);
     GHOST_CALL_GOTO(ghost_malloc_align((void **)&wtran,sizeof(double)*nrows_wtran*ncols_wtran,32),err,ret);
     memset(wtran,0,sizeof(double)*nrows_wtran*ncols_wtran);
     for (s=0; s<w->traits.ncols; s++) {
-        for (j=0; j<w->traits.nrows; j++) {
+        for (j=0; j<DM_NROWS(w); j++) {
             wtran[j*ncols_wtran+s] = wval[s*ldw+j];
         }
     } 

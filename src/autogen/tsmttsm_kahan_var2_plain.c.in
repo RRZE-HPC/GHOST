@@ -12,7 +12,7 @@ ghost_error ghost_tsmttsm_kahan__a_plain_d_x_x_1_rm(ghost_densemat *x, ghost_den
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
     ghost_lidx K = w->traits.ncols;
-    ghost_lidx n = v->traits.nrows;
+    ghost_lidx n = DM_NROWS(v);
     ghost_lidx m = v->traits.ncols;
     double *finalc;
     
@@ -144,7 +144,7 @@ ghost_error ghost_tsmttsm_kahan__a_plain_z_x_x_1_rm(ghost_densemat *x, ghost_den
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
     ghost_lidx K = w->traits.ncols;
-    ghost_lidx n = v->traits.nrows;
+    ghost_lidx n = DM_NROWS(v);
     ghost_lidx m = v->traits.ncols;
     complex double *finalc;
 

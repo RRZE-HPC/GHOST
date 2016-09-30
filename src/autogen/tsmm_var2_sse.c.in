@@ -19,7 +19,7 @@ ghost_error ghost_tsmm__a_sse_d_x_x_1_1_rm(ghost_densemat *x, ghost_densemat *v,
 
     ghost_lidx k = w->traits.ncols;
     ghost_lidx m = v->traits.ncols;
-    ghost_lidx n = v->traits.nrows;
+    ghost_lidx n = DM_NROWS(v);
 
     INFO_LOG("In SSE TSMM with arbitrary block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
@@ -41,10 +41,10 @@ ghost_error ghost_tsmm__a_sse_d_x_x_1_1_rm(ghost_densemat *x, ghost_densemat *v,
 
     double * restrict wtran = NULL;
     ghost_lidx ncols_wtran = PAD(w->traits.ncols,2);
-    GHOST_CALL_GOTO(ghost_malloc_align((void **)&wtran,sizeof(double)*w->traits.nrows*ncols_wtran,32),err,ret);
-    memset(wtran,0,sizeof(double)*w->traits.nrows*ncols_wtran);
+    GHOST_CALL_GOTO(ghost_malloc_align((void **)&wtran,sizeof(double)*DM_NROWS(w)*ncols_wtran,32),err,ret);
+    memset(wtran,0,sizeof(double)*DM_NROWS(w)*ncols_wtran);
     for (s=0; s<w->traits.ncols; s++) {
-        for (j=0; j<w->traits.nrows; j++) {
+        for (j=0; j<DM_NROWS(w); j++) {
             wtran[j*ncols_wtran+s] = wval[s*ldw+j];
         }
     } 
@@ -117,7 +117,7 @@ ghost_error ghost_tsmm__u_sse_d_x_x_1_1_rm(ghost_densemat *x, ghost_densemat *v,
 
     ghost_lidx k = w->traits.ncols;
     ghost_lidx m = v->traits.ncols;
-    ghost_lidx n = v->traits.nrows;
+    ghost_lidx n = DM_NROWS(v);
 
     INFO_LOG("In SSE TSMM with arbitrary block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
@@ -139,10 +139,10 @@ ghost_error ghost_tsmm__u_sse_d_x_x_1_1_rm(ghost_densemat *x, ghost_densemat *v,
 
     double * restrict wtran = NULL;
     ghost_lidx ncols_wtran = PAD(w->traits.ncols,2);
-    GHOST_CALL_GOTO(ghost_malloc_align((void **)&wtran,sizeof(double)*w->traits.nrows*ncols_wtran,32),err,ret);
-    memset(wtran,0,sizeof(double)*w->traits.nrows*ncols_wtran);
+    GHOST_CALL_GOTO(ghost_malloc_align((void **)&wtran,sizeof(double)*DM_NROWS(w)*ncols_wtran,32),err,ret);
+    memset(wtran,0,sizeof(double)*DM_NROWS(w)*ncols_wtran);
     for (s=0; s<w->traits.ncols; s++) {
-        for (j=0; j<w->traits.nrows; j++) {
+        for (j=0; j<DM_NROWS(w); j++) {
             wtran[j*ncols_wtran+s] = wval[s*ldw+j];
         }
     } 

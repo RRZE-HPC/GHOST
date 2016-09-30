@@ -16,7 +16,7 @@ ghost_error ghost_initialize_kacz(ghost_sparsemat *mat, ghost_densemat *b, ghost
 
   //normalize if necessary
    if(opts.normalize == GHOST_KACZ_NORMALIZE_YES) {
-       for(int row=0; row < mat->nrows; ++row) {
+       for(int row=0; row < SPM_NROWS(mat); ++row) {
            rownorm = 0;
            idx =  mat->chunkStart[row];
            for (int j=0; j<mat->rowLen[row]; ++j) {
