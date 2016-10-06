@@ -126,6 +126,11 @@ ghost_error ghost_thpool_key(pthread_key_t *key)
     }
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING); 
 
+    // only valid if thpool was created!
+    if (!thpool) {
+      ERROR_LOG("ghost_thpool not initialized, yet!");
+      return GHOST_ERR_UNKNOWN;
+    }
     *key = ghost_thread_key;
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING); 

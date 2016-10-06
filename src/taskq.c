@@ -39,7 +39,7 @@
 
 
 /**
- * @brief The task queue created by ghost_taskq_init().
+ * @brief The task queue created by ghost_taskq_create().
  */
 ghost_taskq *taskq = NULL;
 
