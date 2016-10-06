@@ -36,9 +36,9 @@ set(GHOST_LOG_RANK "-1" CACHE STRING "The MPI rank for which the log messages wi
 #set(GHOST_GEN_DENSEMAT_DIM "1,2,4,8" CACHE STRING "The block vector sizes for which generated kernels are being created (comma-separated list)")
 #set(GHOST_GEN_SELL_C "1,32" CACHE STRING "The SELL chunk heights for which generated kernels are being created (comma-separated list)")
 set(GHOST_AUTOGEN_SPMMV "32,1;1,4;32,*;1,*" CACHE STRING "SpM(M)V kernels to be auto-generated. Semicolon-separated list of 2-tuples: (CHUNKHEIGHT, NVECS)")
-set(GHOST_AUTOGEN_TSMM "1,1,1;*,1,1;1,*,1" CACHE STRING "TSMM kernels to be auto-generated. Semicolon-separated list of 3-tuples: (K, N, UNROLL)")
-set(GHOST_AUTOGEN_TSMM-INPLACE "1,1;*,1;1,*;*,*" CACHE STRING "TSMM-inplace kernels to be auto-generated. Semicolon-separated list of 2-tuples: (K, N)")
-set(GHOST_AUTOGEN_TSMTTSM "1,1,1;*,1,1;1,*,1;*,*,*,1" CACHE STRING "TSMTTSM kernels to be auto-generated. Semicolon-separated list of 3-tuples: (M, N, UNROLL)")
+set(GHOST_AUTOGEN_TSMM "4,4,1" CACHE STRING "TSMM kernels to be auto-generated. Semicolon-separated list of 3-tuples: (K, N, UNROLL)")
+set(GHOST_AUTOGEN_TSMM-INPLACE "4,4" CACHE STRING "TSMM-inplace kernels to be auto-generated. Semicolon-separated list of 2-tuples: (K, N)")
+set(GHOST_AUTOGEN_TSMTTSM "4,4,1" CACHE STRING "TSMTTSM kernels to be auto-generated. Semicolon-separated list of 3-tuples: (M, N, UNROLL)")
 set(GHOST_AUTOGEN_DOT "1;4" CACHE STRING "DOT kernels to be auto-generated. Semicolon-separated list of 1-tuples: (NVECS)")
 set(GHOST_AUTOGEN_KACZ "32,1,0;32,4,0;1,4,0;1,4,4" CACHE STRING "KACZ kernels to be auto-generated. Semicolon-separated list of 3-tuples: (CHUNKHEIGHT, NVECS, NSHIFTS)")
 #set(GHOST_GEN_TSM_UNROLL "2" CACHE STRING "Outer loop unrolling dimensions to be generated for tall&skinny GEMM kernels")
@@ -47,6 +47,20 @@ set(GHOST_VERBOSITY 1 CACHE STRING "Level of verbosity information. Valid values
 set(GHOST_INSTRUMENT "" CACHE STRING "Type of instrumentation (semicolon separated list). Valid values: TIMING, LIKWID, IACA")
 set(GHOST_INSTRUMENT_FUNCTYPES "(functype) & GHOST_FUNCTYPE_ANY" CACHE STRING "Logical selection of function types to instrument. Possible values are defined in func_util.h and functype should be put in parentheses.")
 option(GHOST_INSTRUMENT_BARRIER "Place a barrier after each instrumented function (may be necessary for correct timings)" 0)
+
+set(GHOST_AUTOGEN_SPMMV_BASE "*,*" CACHE INTERNAL "SpM(M)V kernels to be always auto-generated. Semicolon-separated list of 2-tuples: (CHUNKHEIGHT, NVECS)")
+set(GHOST_AUTOGEN_TSMM_BASE "*,*,1" CACHE INTERNAL "TSMM kernels to be auto-generated. Semicolon-separated list of 3-tuples: (K, N, UNROLL)")
+set(GHOST_AUTOGEN_TSMM-INPLACE_BASE "*,*" CACHE INTERNAL "TSMM-inplace kernels to be auto-generated. Semicolon-separated list of 2-tuples: (K, N)")
+set(GHOST_AUTOGEN_TSMTTSM_BASE "*,*,1" CACHE INTERNAL "TSMTTSM kernels to be auto-generated. Semicolon-separated list of 3-tuples: (M, N, UNROLL)")
+set(GHOST_AUTOGEN_DOT_BASE "*" CACHE INTERNAL "DOT kernels to be auto-generated. Semicolon-separated list of 1-tuples: (NVECS)")
+set(GHOST_AUTOGEN_KACZ_BASE "*,*,*" CACHE INTERNAL "KACZ kernels to be auto-generated. Semicolon-separated list of 3-tuples: (CHUNKHEIGHT, NVECS, NSHIFTS)")
+
+set(GHOST_AUTOGEN_SPMMV ${GHOST_AUTOGEN_SPMMV_BASE} ${GHOST_AUTOGEN_SPMMV})
+set(GHOST_AUTOGEN_TSMM ${GHOST_AUTOGEN_TSMM_BASE} ${GHOST_AUTOGEN_TSMM})
+set(GHOST_AUTOGEN_TSMM-INPLACE ${GHOST_AUTOGEN_TSMM-INPLACE_BASE} ${GHOST_AUTOGEN_TSMM-INPLACE})
+set(GHOST_AUTOGEN_TSMTTSM ${GHOST_AUTOGEN_TSMTTSM_BASE} ${GHOST_AUTOGEN_TSMTTSM})
+set(GHOST_AUTOGEN_DOT ${GHOST_AUTOGEN_DOT_BASE} ${GHOST_AUTOGEN_DOT})
+set(GHOST_AUTOGEN_KACZ ${GHOST_AUTOGEN_KACZ_BASE} ${GHOST_AUTOGEN_KACZ})
 
 find_package(PkgConfig)
 
