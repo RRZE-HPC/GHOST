@@ -16,22 +16,21 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/")
 include(CheckCCompilerFlag)
 include(${PROJECT_SOURCE_DIR}/cmake/OptimizeForArchitecture.cmake)
 
-option(GHOST_USE_MPI "Build with MPI" 1)
-option(GHOST_USE_OPENMP "Build with OpenMP" 1)
-option(GHOST_USE_CUDA "Build with CUDA" 1)
-option(GHOST_USE_SCOTCH "Use PT-Scotch for matrix re-ordering" 0)
-option(GHOST_USE_COLPACK "Use ColPack for matrix coloring" 0)
-option(GHOST_USE_ZOLTAN "Use Zoltan for matrix re-ordering" 0)
-option(GHOST_USE_SPMP "Use SpMP for matrix preprocessing" 0)
-option(GHOST_IDX64_LOCAL "Enable 64-bit indices for local quantities" 0)
-option(GHOST_IDX64_GLOBAL "Enable 64-bit indices for global quantities" 1)
-option(GHOST_OPTIMIZE_HOSTARCH "Create optimized code for the host's architecture" 1)
-option(GHOST_BUILD_MIC "Build for Intel MIC" 0)
-option(GHOST_LOG_ONLYFIRST "Print all errors, warnings and info only once for each occurence" 1)
-option(GHOST_TRACK_DATATRANSFERS "Track MPI and CUDA data transfers" 0)
-option(GHOST_SPARSEMAT_GLOBALSTATS "Gather some global statistics on sparse matrices (should be disabled for large-scale runs)" 0)
-option(GHOST_SPARSEMAT_STATS "Gather statistics about sparse matrices (slows down matrix construction)" 0)
-option(GHOST_KACZ_ANALYZE "Gather data about load balancing for KACZ method (might slow down initial splitting)" 0)  
+set(GHOST_USE_MPI 1 CACHE BOOL "Build with MPI")
+set(GHOST_USE_OPENMP 1 CACHE BOOL "Build with OpenMP")
+set(GHOST_USE_SCOTCH 0 CACHE BOOL "Use PT-Scotch for matrix re-ordering")
+set(GHOST_USE_COLPACK 0 CACHE BOOL "Use ColPack for matrix coloring")
+set(GHOST_USE_ZOLTAN 0 CACHE BOOL "Use Zoltan for matrix re-ordering")
+set(GHOST_USE_SPMP 0 CACHE BOOL "Use SpMP for matrix preprocessing")
+set(GHOST_IDX64_LOCAL 0 CACHE BOOL "Enable 64-bit indices for local quantities")
+set(GHOST_IDX64_GLOBAL 1 CACHE BOOL "Enable 64-bit indices for global quantities")
+set(GHOST_OPTIMIZE_HOSTARCH 1 CACHE BOOL "Create optimized code for the host's architecture")
+set(GHOST_BUILD_MIC 0 CACHE BOOL "Build for Intel MIC")
+set(GHOST_LOG_ONLYFIRST 1 CACHE BOOL "Print all errors, warnings and info only once for each occurence")
+set(GHOST_TRACK_DATATRANSFERS 0 CACHE BOOL "Track MPI and CUDA data transfers")
+set(GHOST_SPARSEMAT_GLOBALSTATS 0 CACHE BOOL "Gather some global statistics on sparse matrices (should be disabled for large-scale runs)")
+set(GHOST_SPARSEMAT_STATS 0 CACHE BOOL "Gather statistics about sparse matrices (slows down matrix construction)")
+set(GHOST_KACZ_ANALYZE 0 CACHE BOOL "Gather data about load balancing for KACZ method (might slow down initial splitting)")  
 set(GHOST_LOG_RANK "-1" CACHE STRING "The MPI rank for which the log messages will be printed. -1 for full verbosity.")
 #set(GHOST_GEN_DENSEMAT_DIM "1,2,4,8" CACHE STRING "The block vector sizes for which generated kernels are being created (comma-separated list)")
 #set(GHOST_GEN_SELL_C "1,32" CACHE STRING "The SELL chunk heights for which generated kernels are being created (comma-separated list)")
@@ -557,52 +556,51 @@ else ()
     set(GHOST_HAVE_MPI 0)
 endif()
 
-
-
-if (GHOST_USE_CUDA)
+if (NOT DEFINED GHOST_USE_CUDA OR GHOST_USE_CUDA)
     option(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
     find_package(CUDA)
-    if (NOT CUDA_FOUND)
-        message(STATUS "Could not find CUDA!")
-        set(GHOST_USE_CUDA 0)
-        set(CUDA_LIBRARIES "")
-    else ()
-        set(GHOST_HAVE_CUDA 1)
-        cuda_include_directories(${PROJECT_SOURCE_DIR}/include
-            ${PROJECT_BINARY_DIR} ${PROJECT_BINARY_DIR}/ghost ${HWLOC_INCLUDE_DIR} ${LIKWID_INCLUE_DIR} ${MPI_INCLUDE_PATH})
-        list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fPIC;-arch=sm_35;-std=c++11)
-        if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
-            list(APPEND CUDA_NVCC_FLAGS -O0)
-        endif()
-        if (GHOST_USE_OPENMP)
-            list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fopenmp)
-        endif()
-        if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-            list(APPEND CUDA_NVCC_FLAGS -G -g)
-        endif()
-        file(GLOB CU_SOURCES "${PROJECT_SOURCE_DIR}/src/*.cu")
-        cuda_compile(CU_OBJS ${CU_SOURCES})
-        cuda_compile(CU_GENERATED_OBJS ${CU_GENERATED_SOURCES})
-        
-        set (SOURCES 
-            ${SOURCES}
-            ${CU_GENERATED_OBJS}
-            ${CU_OBJS})
-        include_directories(SYSTEM ${CUDA_INCLUDE_DIRS})
-        set (HEADERS ${HEADERS}
-            include/ghost/cu_densemat_cm.h
-            include/ghost/cu_densemat_rm.h
-            )
-        mark_as_advanced(
-            CUDA_BUILD_CUBIN
-            CUDA_BUILD_EMULATION
-            CUDA_HOST_COMPILER
-            CUDA_SDK_ROOT_DIR
-            CUDA_SEPARABLE_COMPILATION
-            CUDA_VERBOSE_BUILD
-            )
-    set(CUDA_LIBRARIES ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${CUDA_cusparse_LIBRARY})
+endif()
+
+if (NOT CUDA_FOUND)
+    set(GHOST_USE_CUDA 0 CACHE BOOL "Build with CUDA")
+    set(CUDA_LIBRARIES "")
+else ()
+    set(GHOST_USE_CUDA 1 CACHE BOOL "Build with CUDA")
+    set(GHOST_HAVE_CUDA 1)
+    cuda_include_directories(${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_BINARY_DIR} ${PROJECT_BINARY_DIR}/ghost ${HWLOC_INCLUDE_DIR} ${LIKWID_INCLUE_DIR} ${MPI_INCLUDE_PATH})
+    list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fPIC;-arch=sm_35;-std=c++11)
+    if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+        list(APPEND CUDA_NVCC_FLAGS -O0)
     endif()
+    if (GHOST_USE_OPENMP)
+        list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fopenmp)
+    endif()
+    if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+        list(APPEND CUDA_NVCC_FLAGS -G -g)
+    endif()
+    file(GLOB CU_SOURCES "${PROJECT_SOURCE_DIR}/src/*.cu")
+    cuda_compile(CU_OBJS ${CU_SOURCES})
+    cuda_compile(CU_GENERATED_OBJS ${CU_GENERATED_SOURCES})
+    
+    set (SOURCES 
+        ${SOURCES}
+        ${CU_GENERATED_OBJS}
+        ${CU_OBJS})
+    include_directories(SYSTEM ${CUDA_INCLUDE_DIRS})
+    set (HEADERS ${HEADERS}
+        include/ghost/cu_densemat_cm.h
+        include/ghost/cu_densemat_rm.h
+        )
+    mark_as_advanced(
+        CUDA_BUILD_CUBIN
+        CUDA_BUILD_EMULATION
+        CUDA_HOST_COMPILER
+        CUDA_SDK_ROOT_DIR
+        CUDA_SEPARABLE_COMPILATION
+        CUDA_VERBOSE_BUILD
+        )
+set(CUDA_LIBRARIES ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${CUDA_cusparse_LIBRARY})
 endif()
 
 add_library(ghost ${SOURCES})
