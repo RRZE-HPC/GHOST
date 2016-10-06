@@ -92,6 +92,8 @@ typedef enum {
 }  
 ghost_densemat_flags;
 
+#if 0
+
 /**
  * @brief enums to configure densemat permutations.
  */
@@ -119,6 +121,8 @@ typedef struct
 }
 ghost_densemat_permutation;
  
+#endif
+
 #define GHOST_DENSEMAT_SCATTERED (GHOST_DENSEMAT_SCATTERED_LD|GHOST_DENSEMAT_SCATTERED_TR)
 
 /**
@@ -289,7 +293,7 @@ typedef struct
      *        if ROW - row permutations are done by densemat->permute
      *        if COLUMN - column permutations are done by densemat->permute 
      */
-    ghost_densemat_permuted permutemethod;
+    //ghost_densemat_permuted permutemethod;
 
     /**
      * @brief If the densemat is the result of a computation, decide where to execute the computation.

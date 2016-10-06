@@ -124,9 +124,7 @@ ghost_error ghost_carp_perf_init_tmpl(ghost_sparsemat *mat, ghost_carp_opts *opt
         ghost_densemat_traits vtraits_col = GHOST_DENSEMAT_TRAITS_INITIALIZER;
         ghost_densemat_traits vtraits_row = GHOST_DENSEMAT_TRAITS_INITIALIZER;
         vtraits_col.storage = GHOST_DENSEMAT_ROWMAJOR;
-        vtraits_col.permutemethod = COLUMN;
         vtraits_row.storage = GHOST_DENSEMAT_ROWMAJOR;
-        vtraits_row.permutemethod = ROW;
         vtraits_row.datatype = (ghost_datatype)mat->traits.datatype;
         double start,end;
         double max_flop = 0;
@@ -166,6 +164,8 @@ ghost_error ghost_carp_perf_init_tmpl(ghost_sparsemat *mat, ghost_carp_opts *opt
             vtraits_row.ncols = block_size[i];
             ghost_densemat_create(&test_x, mat->context, vtraits_col);
             ghost_densemat_create(&test_rhs, mat->context, vtraits_row);
+            test_x->map = test_x->context->col_map;
+            test_rhs->map = test_x->context->row_map;
             ghost_densemat_init_val(test_x,&zero);
             ghost_densemat_init_val(test_rhs,&one);
             ghost_barrier();
@@ -321,7 +321,7 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
     
     //if rectangular matrix
     if(x->map != x->context->col_map && SPM_NROWS(mat) != mat->context->col_map->nrows) {
-        ERROR_LOG("Output vector is not COLUMN(Right sided) vector, please set permutemethod to column in traits field")
+        ERROR_LOG("Output vector is not COLUMN(Right sided) vector, please set the map to the column map")
     }
     
     ghost_densemat *b;
