@@ -115,7 +115,7 @@ ghost_error checker(ghost_sparsemat *mat)
         
         //check black color in transition zones
         if( (zones[4*i+3] != zones[4*i+4]) &&(zones[4*(i-1)+3] != zones[4*(i-1)+4]) && black_min <= black_max) {//col_ptr[row_ptr[zones[4*i+3]]] <= col_ptr[row_ptr[zones[4*i]]-1] ) {
-            printf("check  lower = %"PRGIDX", upper = %"PRGIDX"\n",virtual_col(row_ptr[zones[4*i+3]]),virtual_col(row_ptr[zones[4*i]]-1) );
+            printf("check  lower = %"PRLIDX", upper = %"PRLIDX"\n",virtual_col(row_ptr[zones[4*i+3]]),virtual_col(row_ptr[zones[4*i]]-1) );
             ret = GHOST_ERR_BLOCKCOLOR;
             printf("ERR 3\n");
             //	    break;

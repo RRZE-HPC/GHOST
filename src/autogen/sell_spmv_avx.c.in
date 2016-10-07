@@ -365,7 +365,9 @@ ghost_error ghost_sellspmv__a_avx_z_z_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
     
     complex double sscale = 1., sbeta = 1.;
     complex double *sshift = NULL;
-    __m256d scale, beta,delta,eta;
+    __m256d scale, beta;
+    __m256d delta = _mm256_setzero_pd();
+    __m256d eta = _mm256_setzero_pd();
     complex double sdelta = 0., seta = 0.;
     ghost_densemat *z = NULL;
 
@@ -946,7 +948,10 @@ ghost_error ghost_sellspmv__a_avx_z_z_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
     complex double *sshift = NULL;
     complex double sdelta = 0., seta = 0.;
     ghost_densemat *z = NULL;
-    __m256d scale, beta, shift, delta, eta;
+    __m256d scale, beta;
+    __m256d shift = _mm256_setzero_pd();
+    __m256d delta = _mm256_setzero_pd();
+    __m256d eta = _mm256_setzero_pd();
 
     GHOST_SPMV_PARSE_TRAITS(traits,sscale,sbeta,sshift,local_dot_product,z,sdelta,seta,complex double,complex double);
     
