@@ -17,9 +17,9 @@ ghost_error find_transition_zone(ghost_sparsemat *mat, int n_threads)
 if(n_threads>1)
 {
    int nrows    = SPM_NROWS(mat);
-   int ncols    = mat->maxColRange+1;
+   int ncols    = mat->context->maxColRange+1;
    int n_zones  = 2* n_threads;//odd zone = even zone
-   int total_bw = mat->bandwidth;
+   int total_bw = mat->context->bandwidth;
    double diagonal_slope = static_cast<double>(nrows)/ncols;
    int min_local_height  = static_cast<int>((diagonal_slope*total_bw));// + 1 ;//min. required height by transition zone
    int max_local_height  = static_cast<int>(static_cast<double>(nrows)/n_zones);

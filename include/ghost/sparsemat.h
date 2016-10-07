@@ -566,23 +566,6 @@ struct ghost_sparsemat
      */
     ghost_lidx nEnts;
     /**
-     * @brief The bandwidth of the lower triangular part of the matrix.
-     */
-    ghost_gidx lowerBandwidth;
-    /**
-     * @brief The bandwidth of the upper triangular part of the matrix.
-     */
-    ghost_gidx upperBandwidth;
-    /**
-     * @brief The bandwidth of the matrix.
-     */
-    ghost_gidx bandwidth;
-    /**
-     * @brief The maximum column index in the matrix
-     * (Required for example if we permute the (local + remote) part of matrix
-     */
-    ghost_gidx maxColRange; 
-    /**
      * @brief Store the ratio between nrows and bandwidth
      */ 	
     double kaczRatio;
@@ -735,22 +718,23 @@ extern "C" {
     ghost_error ghost_sparsemat_perm_sort(ghost_sparsemat *mat, 
             void *matrixSource, ghost_sparsemat_src srcType, ghost_gidx scope);
 
-    ghost_error ghost_sparsemat_perm_spmp(ghost_sparsemat *mat, ghost_sparsemat_src_rowfunc *src);
+    ghost_error ghost_sparsemat_perm_spmp(ghost_sparsemat *mat_out, ghost_context *ctx, ghost_sparsemat_src_rowfunc *src);
 
     /**
      * @brief Create a matrix permutation based on 2-way coloring using ColPack.
      *
-     * @param[inout] mat The sparse matrix.
+     * @param[out] mat_out The sparse matrix in which to store color information.
+     * @param[in] ctx The context.
      * @param[in] matrixSource The matrix source. This will be casted depending 
      * on \p srcType.
      * @param[in] srcType Type of the matrix source.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error ghost_sparsemat_perm_color(ghost_sparsemat *mat, 
+    ghost_error ghost_sparsemat_perm_color(ghost_sparsemat *mat_out, ghost_context *ctx, 
             void *matrixSource, ghost_sparsemat_src srcType);
 
-    ghost_error ghost_sparsemat_blockColor(ghost_sparsemat *mat, void *matrixSource, ghost_sparsemat_src srcType);
+    ghost_error ghost_sparsemat_blockColor(ghost_sparsemat *mat_out, ghost_context *ctx, void *matrixSource, ghost_sparsemat_src srcType);
  
     ghost_error ghost_sparsemat_perm_zoltan(ghost_sparsemat *mat, void *matrixSource, ghost_sparsemat_src srcType);
     /**

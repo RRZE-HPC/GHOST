@@ -286,6 +286,23 @@ struct ghost_context
      * This is used to destroy the context once the last matrix in this context gets destroyed.
      */
     int nmats;
+    /**
+     * @brief The bandwidth of the lower triangular part of the matrix.
+     */
+    ghost_gidx lowerBandwidth;
+    /**
+     * @brief The bandwidth of the upper triangular part of the matrix.
+     */
+    ghost_gidx upperBandwidth;
+    /**
+     * @brief The bandwidth of the matrix.
+     */
+    ghost_gidx bandwidth;
+    /**
+     * @brief The maximum column index in the matrix
+     * (Required for example if we permute the (local + remote) part of matrix
+     */
+    ghost_gidx maxColRange; 
  
 };
 

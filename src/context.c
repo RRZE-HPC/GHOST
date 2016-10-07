@@ -55,6 +55,10 @@ ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, gho
     (*context)->nwishpartners = 0;
     (*context)->entsInCol = NULL;
     
+    (*context)->bandwidth = 0;
+    (*context)->lowerBandwidth = 0;
+    (*context)->upperBandwidth = 0;
+    
     (*context)->avg_ptr = NULL;
     (*context)->mapAvg = NULL;
     (*context)->mappedDuelist = NULL;

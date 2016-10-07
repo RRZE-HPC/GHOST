@@ -38,7 +38,7 @@ ghost_error ghost_sparsemat_registerrow(ghost_sparsemat *mat, ghost_gidx row, gh
     for (c=0; c<rowlen; c++) {
         col = cols[c*stride];
         if (col < row) {
-            mat->lowerBandwidth = MAX(mat->lowerBandwidth, row-col);
+            mat->context->lowerBandwidth = MAX(mat->context->lowerBandwidth, row-col);
             lowerDists.push_back(row-col);
             lowerDistsAcc += row-col;
             lowerEnts++;
@@ -46,7 +46,7 @@ ghost_error ghost_sparsemat_registerrow(ghost_sparsemat *mat, ghost_gidx row, gh
             mat->nzDist[mat->context->row_map->gnrows-1-(row-col)]++;
 #endif
         } else if (col > row) {
-            mat->upperBandwidth = MAX(mat->upperBandwidth, col-row);
+            mat->context->upperBandwidth = MAX(mat->context->upperBandwidth, col-row);
             upperDists.push_back(col-row);
             upperDistsAcc += col-row;
             upperEnts++;
@@ -99,15 +99,15 @@ ghost_error ghost_sparsemat_registerrow_finalize(ghost_sparsemat *mat)
     double avgRowlen = SPM_NNZ(mat)*1.0/(double)SPM_NROWS(mat);
 
 #ifdef GHOST_HAVE_MPI
-    MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&mat->lowerBandwidth,1,ghost_mpi_dt_gidx,MPI_MAX,mat->context->mpicomm));
-    MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&mat->upperBandwidth,1,ghost_mpi_dt_gidx,MPI_MAX,mat->context->mpicomm));
+    MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&mat->context->lowerBandwidth,1,ghost_mpi_dt_gidx,MPI_MAX,mat->context->mpicomm));
+    MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&mat->context->upperBandwidth,1,ghost_mpi_dt_gidx,MPI_MAX,mat->context->mpicomm));
     MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&mat->avgRowBand,1,MPI_DOUBLE,MPI_SUM,mat->context->mpicomm));
     MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&mat->avgAvgRowBand,1,MPI_DOUBLE,MPI_SUM,mat->context->mpicomm));
 #ifdef GHOST_SPARSEMAT_GLOBALSTATS
     MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,mat->nzDist,2*mat->context->row_map->gnrows-1,ghost_mpi_dt_idx,MPI_SUM,mat->context->mpicomm));
 #endif
 #endif
-    mat->bandwidth = mat->lowerBandwidth+mat->upperBandwidth+1;
+    mat->context->bandwidth = mat->context->lowerBandwidth+mat->context->upperBandwidth+1;
 
     nth_element(upperPerc90Dists.begin(),upperPerc90Dists.begin()+int(upperPerc90Dists.size()*.5),upperPerc90Dists.end());
     nth_element(lowerPerc90Dists.begin(),lowerPerc90Dists.begin()+int(lowerPerc90Dists.size()*.5),lowerPerc90Dists.end());

@@ -231,7 +231,7 @@ ghost_error split_transition(ghost_sparsemat *mat)
     //height might vary from nrows if we have multicoloring
     ghost_lidx height = mat->zone_ptr[mat->nzones];
     //width might vary from ncols  if we consider remote permutations also
-    //ghost_lidx width  = mat->maxColRange+1;
+    //ghost_lidx width  = mat->context->maxColRange+1;
     
     
     int n_zones = mat->kacz_setting.active_threads;//nthread[0];
@@ -357,10 +357,10 @@ ghost_error split_analytical(ghost_sparsemat *mat)
     #endif
     
     int height = SPM_NROWS(mat);
-    int width  = mat->maxColRange+1;
+    int width  = mat->context->maxColRange+1;
     double diagonal_slope = (double)(height)/width;
-    //int separation = (int)ceil(diagonal_slope*mat->bandwidth);
-    int possible_threads = (int) ((double)height/mat->bandwidth); //height/separation
+    //int separation = (int)ceil(diagonal_slope*mat->context->bandwidth);
+    int possible_threads = (int) ((double)height/mat->context->bandwidth); //height/separation
     
     ghost_error ret = GHOST_SUCCESS;
     int *nthread ;
@@ -399,7 +399,7 @@ ghost_error split_analytical(ghost_sparsemat *mat)
     ghost_lidx *zone_ptr = mat->zone_ptr;
     
     int pure_gap = (int)( ((double)height/current_threads));
-    int pure_thickness = (int)( ( ((double)height/current_threads)-mat->bandwidth*diagonal_slope)) + 1;   
+    int pure_thickness = (int)( ( ((double)height/current_threads)-mat->context->bandwidth*diagonal_slope)) + 1;   
     
     int red_ctr = 0; ;
     int black_ctr = 0; ;
@@ -416,8 +416,8 @@ ghost_error split_analytical(ghost_sparsemat *mat)
     zone_ptr[4*current_threads+1] = height+pure_thickness;//dummy
     
     for(int i=0; i<current_threads; ++i) {
-        black_start = zone_ptr[4*i] + (int) ceil(mat->bandwidth*diagonal_slope);
-        red_end     = zone_ptr[4*(i+1)+1] - (int) ceil(mat->bandwidth*diagonal_slope);
+        black_start = zone_ptr[4*i] + (int) ceil(mat->context->bandwidth*diagonal_slope);
+        red_end     = zone_ptr[4*(i+1)+1] - (int) ceil(mat->context->bandwidth*diagonal_slope);
         if(black_start<zone_ptr[4*i+1]) {
             black_start = zone_ptr[4*i+1];
             black_ctr  += 1;

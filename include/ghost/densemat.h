@@ -92,15 +92,15 @@ typedef enum {
 }  
 ghost_densemat_flags;
 
-#if 0
 
 /**
  * @brief enums to configure densemat permutations.
  */
+#if 0
 typedef enum {
-    NONE ,
-    ROW  ,
-    COLUMN
+    GHOST_DENSEMAT_NOT_PERMUTED ,
+    GHOST_DENSEMAT_ROW_PERMUTED  ,
+    GHOST_DENSEMAT_COL_PERMUTED
 }
 ghost_densemat_permuted;
 
@@ -198,6 +198,13 @@ typedef struct
 }
 ghost_densemat_halo_comm;
 
+typedef enum
+{
+    GHOST_MAP_DEFAULT,
+    GHOST_MAP_ROW,
+    GHOST_MAP_COL
+} ghost_maptype;
+
 /**
  * @brief Traits of the densemat.
  */
@@ -280,6 +287,10 @@ typedef struct
      * @brief The data type.
      */
     ghost_datatype datatype;
+    /**
+     * @brief The initial map (may be changed afterwards).
+     */
+    ghost_maptype initial_map;
     /**
      * @brief Location of the densemat.
      */

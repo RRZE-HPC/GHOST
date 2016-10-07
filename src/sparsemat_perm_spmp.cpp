@@ -27,7 +27,7 @@ static int cmp_coo_ent(const void* a, const void* b)
 
 #endif
 
-ghost_error ghost_sparsemat_perm_spmp(ghost_sparsemat *mat, ghost_sparsemat_src_rowfunc *src)
+ghost_error ghost_sparsemat_perm_spmp(ghost_sparsemat *mat_out, ghost_context *ctx, ghost_sparsemat_src_rowfunc *src)
 {
 #if !defined(GHOST_HAVE_SPMP)
     UNUSED(mat);
@@ -51,7 +51,6 @@ ghost_error ghost_sparsemat_perm_spmp(ghost_sparsemat *mat, ghost_sparsemat_src_
     int *useperm = NULL, *useinvperm = NULL;
     int localnnz = 0;
     SpMP::CSR *csr = NULL, *csrperm = NULL;
-    ghost_lidx ncols_halo_padded;
 
 #ifdef NONSYM_RCM_MIRROR
     int *symcol = NULL, *symrpt = NULL;
@@ -66,36 +65,22 @@ ghost_error ghost_sparsemat_perm_spmp(ghost_sparsemat *mat, ghost_sparsemat_src_
 #endif
     int localent = 0;
 
-    if (mat->context->flags & GHOST_PERM_NO_DISTINCTION) {
-        ghost_sparsemat *dummymat;
-        ghost_sparsemat_traits mtraits = mat->traits;
-        mtraits.flags = mtraits.flags & static_cast<ghost_sparsemat_flags>(~(static_cast<int>(GHOST_SPARSEMAT_RCM)));
-        mtraits.flags = mtraits.flags & static_cast<ghost_sparsemat_flags>(~(static_cast<int>(GHOST_SPARSEMAT_PERMUTE)));
-        mtraits.C = 1;
-        ghost_sparsemat_create(&dummymat,NULL,&mtraits,1);
-        ghost_sparsemat_init_rowfunc(dummymat,src,mat->context->mpicomm,mat->context->weight);
-    
-        GHOST_CALL_GOTO(ghost_malloc((void **)&col,SPM_NNZ(dummymat)*sizeof(ghost_gidx)),err,ret);
-        for (i=0; i<SPM_NNZ(dummymat); i++) {
-            col[i] = (ghost_gidx)dummymat->col[i];
-        }
-        rpt = dummymat->chunkStart;
-        ncols_halo_padded = dummymat->context->col_map->nrows;
-    } else {
-        ncols_halo_padded = SPM_NROWS(mat);
+    ghost_lidx ncols_halo_padded = ctx->row_map->nrows;
+    if (ctx->flags & GHOST_PERM_NO_DISTINCTION) {
+        ncols_halo_padded = ctx->col_map->nrowspadded;
     }
 
     ERROR_LOG("ncols_halo_padded = %d",ncols_halo_padded);
 
 
-    GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,(SPM_NROWS(mat)+1)*sizeof(int)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&localrpt,(SPM_NROWS(mat)+1)*sizeof(int)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->row_map->loc_perm,sizeof(ghost_gidx)*SPM_NROWS(mat)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->row_map->loc_perm_inv,sizeof(ghost_gidx)*SPM_NROWS(mat)),err,ret);   
-    //mat->context->perm_local->method = GHOST_PERMUTATION_SYMMETRIC ;
+    GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,(ctx->row_map->nrows+1)*sizeof(int)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&localrpt,(ctx->row_map->nrows+1)*sizeof(int)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&mat_out->context->row_map->loc_perm,sizeof(ghost_gidx)*ctx->row_map->nrows),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&mat_out->context->row_map->loc_perm_inv,sizeof(ghost_gidx)*ctx->row_map->nrows),err,ret);   
+    //mat_out->context->perm_local->method = GHOST_PERMUTATION_SYMMETRIC ;
 
 #ifdef GHOST_HAVE_CUDA
-    GHOST_CALL_GOTO(ghost_cu_malloc((void **)mat->context->perm_local->cu_perm,sizeof(ghost_gidx)*SPM_NROWS(mat)),err,ret);
+    GHOST_CALL_GOTO(ghost_cu_malloc((void **)mat_out->context->perm_local->cu_perm,sizeof(ghost_gidx)*ctx->row_map->nrows),err,ret);
 #endif
 
     rpt[0] = 0;
@@ -103,19 +88,19 @@ ghost_error ghost_sparsemat_perm_spmp(ghost_sparsemat *mat, ghost_sparsemat_src_
 
 #pragma omp parallel private (tmpval,tmpcol,i,rowlen) reduction(+:nnz)
     {
-        ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize);
+        ghost_malloc((void **)&tmpval,src->maxrowlen*mat_out->elSize);
         ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx));
 
-        if (mat->context->row_map->glb_perm) {
+        if (mat_out->context->row_map->glb_perm) {
 #pragma omp for
-            for (i=0; i<mat->context->row_map->nrows; i++) {
-                src->func(mat->context->row_map->glb_perm_inv[i],&rowlen,tmpcol,tmpval,src->arg);
+            for (i=0; i<mat_out->context->row_map->nrows; i++) {
+                src->func(mat_out->context->row_map->glb_perm_inv[i],&rowlen,tmpcol,tmpval,src->arg);
                 nnz += rowlen;
             }
         } else {
 #pragma omp for
-            for (i=0; i<mat->context->row_map->nrows; i++) {
-                src->func(mat->context->row_map->offs+i,&rowlen,tmpcol,tmpval,src->arg);
+            for (i=0; i<mat_out->context->row_map->nrows; i++) {
+                src->func(mat_out->context->row_map->offs+i,&rowlen,tmpcol,tmpval,src->arg);
                 nnz += rowlen;
             }
         }
@@ -130,24 +115,24 @@ ghost_error ghost_sparsemat_perm_spmp(ghost_sparsemat *mat, ghost_sparsemat_src_
     int rank;
     ghost_rank(&rank,MPI_COMM_WORLD);
 
-    ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize);
-    for (i=0; i<mat->context->row_map->nrows; i++) {
-        if (mat->context->flags & GHOST_PERM_NO_DISTINCTION) {
+    ghost_malloc((void **)&tmpval,src->maxrowlen*mat_out->elSize);
+    for (i=0; i<mat_out->context->row_map->nrows; i++) {
+        if (mat_out->context->flags & GHOST_PERM_NO_DISTINCTION) {
             for (j=rpt[i]; j<rpt[i+1]; j++) {
                 localcol[localent] = col[j] ;
                 localent++;
             }
             localrpt[i+1] = localent;
         } else {
-            if (mat->context->row_map->glb_perm) {
-                src->func(mat->context->row_map->glb_perm_inv[i],&rowlen,&col[rpt[i]],tmpval,src->arg);
+            if (mat_out->context->row_map->glb_perm) {
+                src->func(mat_out->context->row_map->glb_perm_inv[i],&rowlen,&col[rpt[i]],tmpval,src->arg);
             } else {
-                src->func(mat->context->row_map->offs+i,&rowlen,&col[rpt[i]],tmpval,src->arg);
+                src->func(mat_out->context->row_map->offs+i,&rowlen,&col[rpt[i]],tmpval,src->arg);
             } 
             rpt[i+1] = rpt[i] + rowlen;
             for (j=rpt[i]; j<rpt[i+1]; j++) {
-                if (col[j] >= mat->context->row_map->offs && col[j] < (mat->context->row_map->offs+mat->context->row_map->nrows)) {
-                    localcol[localent] = col[j] - mat->context->row_map->offs;
+                if (col[j] >= mat_out->context->row_map->offs && col[j] < (mat_out->context->row_map->offs+mat_out->context->row_map->nrows)) {
+                    localcol[localent] = col[j] - mat_out->context->row_map->offs;
                     localent++;
                 }
             }
@@ -161,12 +146,12 @@ ghost_error ghost_sparsemat_perm_spmp(ghost_sparsemat *mat, ghost_sparsemat_src_
     GHOST_CALL_GOTO(ghost_malloc((void **)&val,sizeof(double)*localnnz),err,ret);
     memset(val,0,sizeof(double)*localnnz);
 
-    ERROR_LOG(">> nnz %d %dx%d",localnnz,SPM_NROWS(mat),ncols_halo_padded);
+    ERROR_LOG(">> nnz %d %dx%d",localnnz,ctx->row_map->nrows,ncols_halo_padded);
 
-    csr = new SpMP::CSR(SPM_NROWS(mat),ncols_halo_padded,localrpt,localcol,val);
+    csr = new SpMP::CSR(ctx->row_map->nrows,ncols_halo_padded,localrpt,localcol,val);
 
-    GHOST_CALL_GOTO(ghost_malloc((void **)&intperm,sizeof(int)*SPM_NROWS(mat)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&intinvperm,sizeof(int)*SPM_NROWS(mat)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&intperm,sizeof(int)*ctx->row_map->nrows),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&intinvperm,sizeof(int)*ctx->row_map->nrows),err,ret);
 
     if (csr->isSymmetric(false,false)) { 
         csr->getRCMPermutation(intperm, intinvperm);
@@ -178,7 +163,7 @@ ghost_error ghost_sparsemat_perm_spmp(ghost_sparsemat *mat, ghost_sparsemat_src_
 
         WARNING_LOG("The local matrix is not symmetric! RCM will be done based on the mirrored upper triangular matrix!");
 
-        GHOST_CALL_GOTO(ghost_malloc((void **)&symrpt,sizeof(int)*(SPM_NROWS(mat)+1)),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&symrpt,sizeof(int)*(ctx->row_map->nrows+1)),err,ret);
         GHOST_CALL_GOTO(ghost_malloc((void **)&syments,sizeof(coo_ent)*(localnnz*2)),err,ret);
 
         for (i=0; i<localnnz*2; i++) {
@@ -187,7 +172,7 @@ ghost_error ghost_sparsemat_perm_spmp(ghost_sparsemat *mat, ghost_sparsemat_src_
         }
 
         symrpt[0] = 0;
-        for (i=0; i<SPM_NROWS(mat); i++) {
+        for (i=0; i<ctx->row_map->nrows; i++) {
             symrpt[i+1] = 0;
             for (j=localrpt[i]; j<localrpt[i+1]; j++) {
                 if (localcol[j] >= i) {
@@ -215,14 +200,14 @@ ghost_error ghost_sparsemat_perm_spmp(ghost_sparsemat *mat, ghost_sparsemat_src_
             symcol[i] = syments[i].col;
 
         }
-        for (i=0; i<SPM_NROWS(mat); i++) {
+        for (i=0; i<ctx->row_map->nrows; i++) {
             symrpt[i+1] += symrpt[i];
         }
         GHOST_CALL_GOTO(ghost_malloc((void **)&symval,sizeof(double)*symnnz),err,ret);
         memset(symval,0,sizeof(double)*symnnz);
 
         delete csr;
-        csr = new SpMP::CSR(SPM_NROWS(mat),SPM_NROWS(mat),symrpt,symcol,symval);
+        csr = new SpMP::CSR(ctx->row_map->nrows,ctx->row_map->nrows,symrpt,symcol,symval);
         csr->getRCMPermutation(intperm, intinvperm);
 
         useperm = intperm;
@@ -237,7 +222,7 @@ ghost_error ghost_sparsemat_perm_spmp(ghost_sparsemat *mat, ghost_sparsemat_src_
 
                 INFO_LOG("Checking TRANSPOSE");
 
-                for(int i=0; i<SPM_NROWS(mat); ++i) {
+                for(int i=0; i<ctx->row_map->nrows; ++i) {
                 if(csr->rowptr[i] != csrTT->rowptr[i]) {
                 ERROR_LOG("FAILED at %d row , csr_rowptr =%d and csrTT_rowptr =%d",i,csr->rowptr[i], csrTT->rowptr[i]);
                 }
@@ -254,14 +239,14 @@ ghost_error ghost_sparsemat_perm_spmp(ghost_sparsemat *mat, ghost_sparsemat_src_
 
                 INFO_LOG("TRANSPOSE check finished");         
                 */
-        //int m = SPM_NROWS(mat);
+        //int m = ctx->row_map->nrows;
         //int n = ncols_halo_padded;
 
 
         /*        for(int i=0; i<n; ++i) {
                   csrT->rowptr[i] = csr      
 
-                  bfs_matrix = new SpMP::CSR(SPM_NROWS(mat)+SPM_NCOLS(mat),SPM_NROWS(mat)+SPM_NCOLS(mat),localrpt,localcol,val);
+                  bfs_matrix = new SpMP::CSR(ctx->row_map->nrows+SPM_NCOLS(mat),ctx->row_map->nrows+SPM_NCOLS(mat),localrpt,localcol,val);
                   */
         GHOST_CALL_GOTO(ghost_malloc((void **)&intcolperm,sizeof(int)*ncols_halo_padded),err,ret);
         GHOST_CALL_GOTO(ghost_malloc((void **)&intcolinvperm,sizeof(int)*ncols_halo_padded),err,ret);
@@ -276,18 +261,18 @@ ghost_error ghost_sparsemat_perm_spmp(ghost_sparsemat *mat, ghost_sparsemat_src_
         useperm = intperm;
         useinvperm = intinvperm; 
 
-        //mat->context->perm_local->method = GHOST_PERMUTATION_UNSYMMETRIC;
+        //mat_out->context->perm_local->method = GHOST_PERMUTATION_UNSYMMETRIC;
         ERROR_LOG("alloc col_perm with %d entries",ncols_halo_padded); 
-        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->col_map->loc_perm,sizeof(ghost_gidx)*ncols_halo_padded),err,ret);
-        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->col_map->loc_perm_inv,sizeof(ghost_gidx)*ncols_halo_padded),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&mat_out->context->col_map->loc_perm,sizeof(ghost_gidx)*ncols_halo_padded),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&mat_out->context->col_map->loc_perm_inv,sizeof(ghost_gidx)*ncols_halo_padded),err,ret);
 
 
         /*    printf("Row perm\n");
-              for(int i=0; i<SPM_NROWS(mat);++i) {
+              for(int i=0; i<ctx->row_map->nrows;++i) {
               printf("%d\n",intperm[i]);
               }
               printf("Row inv perm\n");
-              for(int i=0; i<SPM_NROWS(mat);++i) {
+              for(int i=0; i<ctx->row_map->nrows;++i) {
               printf("%d\n",intinvperm[i]);
               }
               printf("Col perm\n");
@@ -302,8 +287,8 @@ ghost_error ghost_sparsemat_perm_spmp(ghost_sparsemat *mat, ghost_sparsemat_src_
 
 #pragma omp parallel for
         for (i=0; i<ncols_halo_padded; i++) {
-            mat->context->col_map->loc_perm[i] = intcolperm[i];
-            mat->context->col_map->loc_perm_inv[i] = intcolinvperm[i];
+            mat_out->context->col_map->loc_perm[i] = intcolperm[i];
+            mat_out->context->col_map->loc_perm_inv[i] = intcolinvperm[i];
         }
 
 #endif
@@ -312,7 +297,7 @@ ghost_error ghost_sparsemat_perm_spmp(ghost_sparsemat *mat, ghost_sparsemat_src_
 
     INFO_LOG("Original bandwidth, avg. width: %d, %g",csr->getBandwidth(),csr->getAverageWidth());
 
-    if(mat->context->col_map->loc_perm == NULL) {
+    if(mat_out->context->col_map->loc_perm == NULL) {
         csrperm = csr->permute(useperm,useinvperm);
     }
     else {
@@ -328,17 +313,17 @@ ghost_error ghost_sparsemat_perm_spmp(ghost_sparsemat *mat, ghost_sparsemat_src_
 
 
 #pragma omp parallel for
-    for (i=0; i<SPM_NROWS(mat); i++) {
-        mat->context->row_map->loc_perm[i] = useperm[i];
-        mat->context->row_map->loc_perm_inv[i] = useinvperm[i];
+    for (i=0; i<ctx->row_map->nrows; i++) {
+        mat_out->context->row_map->loc_perm[i] = useperm[i];
+        mat_out->context->row_map->loc_perm_inv[i] = useinvperm[i];
     }
-    if (!mat->context->col_map->loc_perm) { //symmetric permutation, col perm is still NULL
-        mat->context->col_map->loc_perm = mat->context->row_map->loc_perm;
-        mat->context->col_map->loc_perm_inv = mat->context->row_map->loc_perm_inv;
+    if (!mat_out->context->col_map->loc_perm) { //symmetric permutation, col perm is still NULL
+        mat_out->context->col_map->loc_perm = mat_out->context->row_map->loc_perm;
+        mat_out->context->col_map->loc_perm_inv = mat_out->context->row_map->loc_perm_inv;
     }
 
 #ifdef GHOST_HAVE_CUDA
-    ghost_cu_upload(mat->context->row_map->cu_loc_perm,mat->context->row_map->loc_perm,SPM_NROWS(mat)*sizeof(ghost_gidx));
+    ghost_cu_upload(mat_out->context->row_map->cu_loc_perm,mat_out->context->row_map->loc_perm,ctx->row_map->nrows*sizeof(ghost_gidx));
 #endif
 
 
@@ -346,13 +331,13 @@ ghost_error ghost_sparsemat_perm_spmp(ghost_sparsemat *mat, ghost_sparsemat_src_
 
 err:
     ERROR_LOG("Deleting permutations");
-    free(mat->context->row_map->loc_perm); mat->context->row_map->loc_perm = NULL;
-    free(mat->context->row_map->loc_perm_inv); mat->context->row_map->loc_perm_inv = NULL;
-    free(mat->context->col_map->loc_perm); mat->context->col_map->loc_perm = NULL;
-    free(mat->context->col_map->loc_perm_inv); mat->context->col_map->loc_perm_inv = NULL;
+    free(mat_out->context->row_map->loc_perm); mat_out->context->row_map->loc_perm = NULL;
+    free(mat_out->context->row_map->loc_perm_inv); mat_out->context->row_map->loc_perm_inv = NULL;
+    free(mat_out->context->col_map->loc_perm); mat_out->context->col_map->loc_perm = NULL;
+    free(mat_out->context->col_map->loc_perm_inv); mat_out->context->col_map->loc_perm_inv = NULL;
 
 #ifdef GHOST_HAVE_CUDA
-    ghost_cu_free(mat->context->row_map->cu_loc_perm); mat->context->row_map->cu_loc_perm = NULL;
+    ghost_cu_free(mat_out->context->row_map->cu_loc_perm); mat_out->context->row_map->cu_loc_perm = NULL;
 #endif
 
 out:

@@ -47,6 +47,7 @@ const ghost_densemat_traits GHOST_DENSEMAT_TRAITS_INITIALIZER = {
     .storage = GHOST_DENSEMAT_STORAGE_DEFAULT,
     .location = GHOST_LOCATION_DEFAULT,
     .datatype = (ghost_datatype)(GHOST_DT_DOUBLE|GHOST_DT_REAL),
+    .initial_map = GHOST_MAP_DEFAULT
 };
 
 const ghost_densemat_halo_comm GHOST_DENSEMAT_HALO_COMM_INITIALIZER = {
@@ -189,7 +190,11 @@ ghost_error ghost_densemat_create(ghost_densemat **vec, ghost_context *ctx, ghos
 
 
     // TODO assign correctly
-    (*vec)->map = (*vec)->context->row_map;
+    if (traits.initial_map == GHOST_MAP_DEFAULT || traits.initial_map == GHOST_MAP_ROW) {
+        (*vec)->map = (*vec)->context->row_map;
+    } else {
+        (*vec)->map = (*vec)->context->col_map;
+    }
 
     if ((*vec)->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
         (*vec)->stride = (*vec)->traits.ncolspadded;
