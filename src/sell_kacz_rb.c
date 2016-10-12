@@ -45,7 +45,7 @@ ghost_error ghost_kacz_rb(ghost_densemat *x, ghost_sparsemat *mat, ghost_densema
     const int NVECS = 1;
 
     //TODO check for RCM and give a Warning
-    if (mat->nzones == 0 || mat->zone_ptr == NULL){
+    if (mat->context->nzones == 0 || mat->context->zone_ptr == NULL){
         ERROR_LOG("Splitting of matrix to Red and Black ( odd and even) have not be done!");
     }
   
@@ -62,8 +62,8 @@ ghost_error ghost_kacz_rb(ghost_densemat *x, ghost_sparsemat *mat, ghost_densema
     double *xval = (double *)(x->val);
     double *mval = (double *)mat->val;
     double omega = *(double *)opts.omega;
-    ghost_lidx *zone_ptr = mat->zone_ptr;
-    ghost_lidx nzones    = mat->nzones;
+    ghost_lidx *zone_ptr = mat->context->zone_ptr;
+    ghost_lidx nzones    = mat->context->nzones;
     ghost_lidx nthreads  = nzones/2;
 
    // disables dynamic thread adjustments 
@@ -233,7 +233,7 @@ ghost_error ghost_kacz_rb_with_shift(ghost_densemat *x, ghost_sparsemat *mat, gh
     const int NVECS = 1;
 
     //TODO check for RCM and give a Warning
-    if (mat->nzones == 0 || mat->zone_ptr == NULL){
+    if (mat->context->nzones == 0 || mat->context->zone_ptr == NULL){
         ERROR_LOG("Splitting of matrix to Red and Black ( odd and even) have not be done!");
     }
   
@@ -251,8 +251,8 @@ ghost_error ghost_kacz_rb_with_shift(ghost_densemat *x, ghost_sparsemat *mat, gh
     double *xval = (double *)(x->val);
     double *mval = (double *)mat->val;
     double omega = *(double *)opts.omega;
-    ghost_lidx *zone_ptr = mat->zone_ptr;
-    ghost_lidx nzones    = mat->nzones;
+    ghost_lidx *zone_ptr = mat->context->zone_ptr;
+    ghost_lidx nzones    = mat->context->nzones;
     ghost_lidx nthreads  = nzones/2;
 
    // disables dynamic thread adjustments 

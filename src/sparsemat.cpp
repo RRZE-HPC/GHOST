@@ -12,9 +12,11 @@
 #include <sstream>
 #include <iomanip>
 #include <complex>
+#include <vector>
 
 #include "ghost/types.h"
 #include "ghost/util.h"
+#include "ghost/locality.h"
 #include "ghost/sparsemat.h"
 
 using namespace std;
@@ -43,7 +45,7 @@ ghost_error ghost_sparsemat_registerrow(ghost_sparsemat *mat, ghost_gidx row, gh
             lowerDistsAcc += row-col;
             lowerEnts++;
 #ifdef GHOST_SPARSEMAT_GLOBALSTATS
-            mat->nzDist[mat->context->row_map->gnrows-1-(row-col)]++;
+            mat->nzDist[mat->context->row_map->gdim-1-(row-col)]++;
 #endif
         } else if (col > row) {
             mat->context->upperBandwidth = MAX(mat->context->upperBandwidth, col-row);
@@ -51,13 +53,13 @@ ghost_error ghost_sparsemat_registerrow(ghost_sparsemat *mat, ghost_gidx row, gh
             upperDistsAcc += col-row;
             upperEnts++;
 #ifdef GHOST_SPARSEMAT_GLOBALSTATS
-            mat->nzDist[mat->context->row_map->gnrows-1+col-row]++;
+            mat->nzDist[mat->context->row_map->gdim-1+col-row]++;
 #endif
         } else {
             lowerDists.push_back(0);
             upperDists.push_back(0);
 #ifdef GHOST_SPARSEMAT_GLOBALSTATS
-            mat->nzDist[mat->context->row_map->gnrows-1]++;
+            mat->nzDist[mat->context->row_map->gdim-1]++;
 #endif
         }
         firstcol = MIN(col,firstcol);
@@ -104,7 +106,7 @@ ghost_error ghost_sparsemat_registerrow_finalize(ghost_sparsemat *mat)
     MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&mat->avgRowBand,1,MPI_DOUBLE,MPI_SUM,mat->context->mpicomm));
     MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&mat->avgAvgRowBand,1,MPI_DOUBLE,MPI_SUM,mat->context->mpicomm));
 #ifdef GHOST_SPARSEMAT_GLOBALSTATS
-    MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,mat->nzDist,2*mat->context->row_map->gnrows-1,ghost_mpi_dt_idx,MPI_SUM,mat->context->mpicomm));
+    MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,mat->nzDist,2*mat->context->row_map->gdim-1,ghost_mpi_dt_idx,MPI_SUM,mat->context->mpicomm));
 #endif
 #endif
     mat->context->bandwidth = mat->context->lowerBandwidth+mat->context->upperBandwidth+1;
@@ -145,8 +147,17 @@ static ghost_error ghost_sparsemat_string_tmpl(ghost_sparsemat *mat, char **str,
         dense = 1;
     }
 
+
+    int nranks;
+    ghost_nrank(&nranks,mat->context->mpicomm);
+
+    if (!(mat->traits.flags & GHOST_SPARSEMAT_SAVE_ORIG_COLS) && nranks > 1) {
+        ERROR_LOG("Cannot print compress sparse matrix without original column indices!");
+        return GHOST_ERR_INVALID_ARG;
+    }
+
     if(mat->context->flags & GHOST_PERM_NO_DISTINCTION) {
-	INFO_LOG("Original matrix without permutation is printed, since GHOST_PERM_NO_DISTINCTION is on");
+	    INFO_LOG("Original matrix without permutation is printed, since GHOST_PERM_NO_DISTINCTION is on");
     }
 
     ghost_lidx chunk,i,j,row=0,col;
@@ -157,32 +168,54 @@ static ghost_error ghost_sparsemat_string_tmpl(ghost_sparsemat *mat, char **str,
            << std::right
            << std::scientific;
 
-    for (chunk = 0; chunk < SPM_NROWSPAD(mat)/mat->traits.C; chunk++) {
+    for (chunk = 0; chunk < SPM_NCHUNKS(mat); chunk++) {
         for (i=0; i<mat->traits.C && row<SPM_NROWS(mat); i++, row++) {
             ghost_lidx rowOffs = mat->chunkStart[chunk]+i;
-            if (dense) {
-                for (col=0, j=0; col<SPM_NCOLS(mat); col++) {
-                    if (j< mat->rowLen[row]) {
-                        if (mat->traits.flags & GHOST_SPARSEMAT_SAVE_ORIG_COLS) {
-                            if (mat->col_orig[rowOffs+j*mat->traits.C] == col) {
-                                buffer << val[rowOffs+j*mat->traits.C] << "  ";
-                                j++;
-                            } else {
-                                buffer << ".         ";
-                            }
-                        } else {
-                            if (mat->col[rowOffs+j*mat->traits.C] == col) {
-                                buffer << val[rowOffs+j*mat->traits.C] << "  ";
-                                j++;
-                            } else {
-                                buffer << ".         ";
-                            }
-                        }
-                    } else {
-                        buffer << ".         ";
-                    }
+            std::vector<std::string> rowStrings(SPM_GNCOLS(mat));
+
+            for (j=0; j<SPM_GNCOLS(mat); j++) {
+                rowStrings[j] = ".         ";
+            }
+            
+            for (j=0; j<mat->rowLen[row]; j++) {
+                std::ostringstream strs;
+                strs << std::setprecision(2)
+                     << std::right
+                     << std::scientific;
+                strs << val[rowOffs+j*mat->traits.C] << "  ";
+                if (mat->traits.flags & GHOST_SPARSEMAT_SAVE_ORIG_COLS) {
+                    rowStrings[mat->col_orig[rowOffs+j*mat->traits.C]] = strs.str();
+                } else {
+                    rowStrings[mat->col[rowOffs+j*mat->traits.C]] = strs.str();
                 }
             }
+           
+            if (nranks > 1) { 
+                buffer << " | ";
+                
+                for (j=0; j<mat->context->row_map->offs; j++) {
+                    buffer << rowStrings[j];
+                }
+                
+                buffer << " | ";
+                
+                for (; j<mat->context->row_map->offs+SPM_NROWS(mat); j++) {
+                    buffer << rowStrings[j];
+                }
+                
+                buffer << " | ";
+                
+                for (; j<SPM_GNCOLS(mat); j++) {
+                    buffer << rowStrings[j];
+                }
+                
+                buffer << " | ";
+            } else {
+                for (j=0; j<SPM_GNCOLS(mat); j++) {
+                    buffer << rowStrings[j];
+                }
+            }
+
             if (i<SPM_NROWS(mat)-1) {
                 buffer << endl;
             }

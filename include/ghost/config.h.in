@@ -51,8 +51,7 @@
 #cmakedefine GHOST_IDX64_GLOBAL
 
 /* code generation */
-#define GHOST_GEN_SELL_C "${GHOST_GEN_SELL_C}"
-#define GHOST_GEN_DENSEMAT_DIM "${GHOST_GEN_DENSEMAT_DIM}"
+#define GHOST_AUTOGEN_MAX_CHUNKHEIGHT "${GHOST_AUTOGEN_MAX_CHUNKHEIGHT}"
 
 /* sparsemat statistics */
 #cmakedefine GHOST_SPARSEMAT_STATS

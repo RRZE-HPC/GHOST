@@ -10,7 +10,7 @@ typedef enum {
 
 //returns the virtual column index; ie takes into account the permutation of halo elements also
 #define virtual_col(col_idx)\
-(mat->context->flags & GHOST_PERM_NO_DISTINCTION)?( (col_ptr[col_idx]<mat->context->col_map->nrowspadded)?col_ptr[col_idx]:mat->context->col_map->loc_perm[col_ptr[col_idx]] ):col_ptr[col_idx]\
+(mat->context->flags & GHOST_PERM_NO_DISTINCTION)?( (col_ptr[col_idx]<mat->context->col_map->dimpad)?col_ptr[col_idx]:mat->context->col_map->loc_perm[col_ptr[col_idx]] ):col_ptr[col_idx]\
 
 
 
@@ -62,7 +62,7 @@ ghost_error find_zone_extrema(ghost_sparsemat *mat, int **extrema, ghost_lidx a,
 ghost_error checker(ghost_sparsemat *mat)
 {
     ghost_error ret = GHOST_SUCCESS;
-    ghost_lidx *zones = mat->zone_ptr;
+    ghost_lidx *zones = mat->context->zone_ptr;
     
     //for SELL-1-1
     ghost_lidx *row_ptr = mat->chunkStart;
@@ -79,7 +79,7 @@ ghost_error checker(ghost_sparsemat *mat)
     find_zone_extrema(mat, &extrema_black,  zones[3], zones[4]);
     
     
-    for(int i=1; i<mat->kacz_setting.active_threads; ++i) {
+    for(int i=1; i<mat->context->kacz_setting.active_threads; ++i) {
         
         pure_max = extrema_pure[MAX_UPPER]; 
         free(extrema_pure);
@@ -121,7 +121,7 @@ ghost_error checker(ghost_sparsemat *mat)
             //	    break;
         }
         //check transition in transition zones, if we are using one sweep method, 
-        if(mat->kacz_setting.kacz_method == GHOST_KACZ_METHOD_BMC_one_sweep) {
+        if(mat->context->kacz_setting.kacz_method == GHOST_KACZ_METHOD_BMC_one_sweep) {
             trans_max = extrema_trans[MAX_UPPER];
             free(extrema_trans);
             find_zone_extrema(mat, &extrema_trans, zones[4*i+2], zones[4*i+3]);
@@ -133,7 +133,7 @@ ghost_error checker(ghost_sparsemat *mat)
                 
                 //	break;
             }
-        } else if(i <mat->kacz_setting.active_threads-1) {
+        } else if(i <mat->context->kacz_setting.active_threads-1) {
             find_zone_extrema(mat, &extrema_trans_1, zones[4*(i-1)+2], zones[4*(i-1)+3]);
             trans_max = extrema_trans_1[MAX_UPPER];
             free(extrema_trans_1);
@@ -182,7 +182,7 @@ ghost_error mat_bandwidth(ghost_sparsemat *mat, int *lower_bw, int *upper_bw, in
     ghost_lidx idx = 0;
     
     /*   for(int i=a; i<b; ++i){
-     *	   start_col = SPM_NROWS(mat) + mat->context->col_map->nrowspadded;
+     *	   start_col = SPM_NROWS(mat) + mat->context->col_map->dimpad;
      *	   end_col   = 0;
      *	for(int j=chunk_ptr[i]; j<chunk_ptr[i+1]; ++j) {
      *           start_col = MIN(start_col, virtual_col(j));
@@ -199,7 +199,7 @@ upper = 0;
     for(int i=a; i<b; ++i){
         chunk = i/chunkheight;   //can avoid this by doing reminder loops
         rowinchunk = i%chunkheight;
-        start_col = SPM_NROWS(mat) + mat->context->col_map->nrowspadded;
+        start_col = SPM_NROWS(mat) + mat->context->col_map->dimpad;
         end_col   = 0;
         idx = chunk_ptr[chunk]+rowinchunk;
         
@@ -229,15 +229,15 @@ ghost_error split_transition(ghost_sparsemat *mat)
     
     
     //height might vary from nrows if we have multicoloring
-    ghost_lidx height = mat->zone_ptr[mat->nzones];
+    ghost_lidx height = mat->context->zone_ptr[mat->context->nzones];
     //width might vary from ncols  if we consider remote permutations also
     //ghost_lidx width  = mat->context->maxColRange+1;
     
     
-    int n_zones = mat->kacz_setting.active_threads;//nthread[0];
+    int n_zones = mat->context->kacz_setting.active_threads;//nthread[0];
     ghost_lidx *new_zone_ptr = NULL;
     
-    mat->nzones = mat->nzones + 2*(n_zones);//add the new zones
+    mat->context->nzones = mat->context->nzones + 2*(n_zones);//add the new zones
     
     
     //GHOST_CALL_GOTO(ghost_malloc((void **)&new_zone_ptr,sizeof(ghost_lidx)*(4*n_zones+2)),err,ret);
@@ -257,12 +257,12 @@ ghost_error split_transition(ghost_sparsemat *mat)
     //ghost_lidx separation  = (int)(ceil((diagonal_slope*total_bw))); 
     
     for (int i=0; i<n_zones; ++i) {
-        new_zone_ptr[4*i] = mat->zone_ptr[2*i];
-        new_zone_ptr[4*i+1] = mat->zone_ptr[2*i+1];
+        new_zone_ptr[4*i] = mat->context->zone_ptr[2*i];
+        new_zone_ptr[4*i+1] = mat->context->zone_ptr[2*i+1];
     }
     
-    new_zone_ptr[4*(n_zones)]  = mat->zone_ptr[2*(n_zones)] ;
-    new_zone_ptr[4*(n_zones)+1] = mat->zone_ptr[2*(n_zones)] ; //simply for ease of calculation, not accessible by user
+    new_zone_ptr[4*(n_zones)]  = mat->context->zone_ptr[2*(n_zones)] ;
+    new_zone_ptr[4*(n_zones)+1] = mat->context->zone_ptr[2*(n_zones)] ; //simply for ease of calculation, not accessible by user
     
     for (int i=0; i<n_zones; ++i) {
         ghost_lidx black_start = new_zone_ptr[4*i] + total_bw;
@@ -296,7 +296,7 @@ ghost_error split_transition(ghost_sparsemat *mat)
     
     
     //now check whether the transition in transition is overlapping- if one region overlaps we use 2 sweep method (with threads/2) , else one sweep method 
-    mat->kacz_setting.kacz_method = GHOST_KACZ_METHOD_BMC_one_sweep;
+    mat->context->kacz_setting.kacz_method = GHOST_KACZ_METHOD_BMC_one_sweep;
     
     for(int i=1; i<n_zones; ++i) {
         //	ghost_gidx lower = virtual_col(row_ptr[new_zone_ptr[4*i+2]]); //This might not work if the matrix is not RCM permuted
@@ -312,7 +312,7 @@ ghost_error split_transition(ghost_sparsemat *mat)
         
         if(lower <= upper) {
             //printf("check lower = %d and upper =%d\n",virtual_col(row_ptr[new_zone_ptr[4*i+2]]) , virtual_col(row_ptr[new_zone_ptr[4*i-1]]-1));
-            mat->kacz_setting.kacz_method = GHOST_KACZ_METHOD_BMC_two_sweep;	
+            mat->context->kacz_setting.kacz_method = GHOST_KACZ_METHOD_BMC_two_sweep;	
             WARNING_LOG("ONLY half the available threads would be used for transitional sweep\n");
             break;
         }
@@ -325,7 +325,7 @@ ghost_error split_transition(ghost_sparsemat *mat)
     }
     
     
-    mat->zone_ptr = new_zone_ptr;
+    mat->context->zone_ptr = new_zone_ptr;
     
     #ifdef GHOST_KACZ_ANALYZE 
     kacz_analyze_print(mat);
@@ -363,21 +363,19 @@ ghost_error split_analytical(ghost_sparsemat *mat)
     int possible_threads = (int) ((double)height/mat->context->bandwidth); //height/separation
     
     ghost_error ret = GHOST_SUCCESS;
-    int *nthread ;
-    GHOST_CALL_GOTO(ghost_malloc((void **)&nthread, 1*sizeof(int)),err,ret);
+    int nthread;
     
     #ifdef GHOST_HAVE_OPENMP
     #pragma omp parallel
     {
         #pragma omp master
-        nthread[0] = ghost_omp_nthread();
+        nthread = ghost_omp_nthread();
     }
     #else
-    nthread[0] = 1;
+    nthread = 1;
     #endif
-    
-    int current_threads = nthread[0];
-    free(nthread);
+
+    int current_threads = nthread;
     
     if( current_threads > possible_threads) {
         WARNING_LOG("Specified number of threads cannot be used for the specified KACZ kernel, setting from %d to %d",current_threads,possible_threads);
@@ -387,16 +385,16 @@ ghost_error split_analytical(ghost_sparsemat *mat)
         ghost_omp_nthread_set(current_threads);
     } 
     
-    mat->kacz_setting.active_threads = current_threads;
+    mat->context->kacz_setting.active_threads = current_threads;
     
     
     //ghost_lidx *chunk_ptr = mat->chunkStart;
     //ghost_lidx *col_ptr = mat->col;
     //ghost_lidx chunkheight = mat->traits.C;
     
-    mat->nzones = 4*current_threads;
-    ghost_malloc((void **)&mat->zone_ptr,(mat->nzones+2)*sizeof(ghost_lidx)); //one extra zone added for convenience
-    ghost_lidx *zone_ptr = mat->zone_ptr;
+    mat->context->nzones = 4*current_threads;
+    ghost_malloc((void **)&mat->context->zone_ptr,(mat->context->nzones+2)*sizeof(ghost_lidx)); //one extra zone added for convenience
+    ghost_lidx *zone_ptr = mat->context->zone_ptr;
     
     int pure_gap = (int)( ((double)height/current_threads));
     int pure_thickness = (int)( ( ((double)height/current_threads)-mat->context->bandwidth*diagonal_slope)) + 1;   
@@ -444,14 +442,14 @@ ghost_error split_analytical(ghost_sparsemat *mat)
     }
     
     //multicoloring is also dummy initialise pointers so we can use the same kacz kernel
-    mat->ncolors = 1;//mat->zone_ptr[mat->nzones+1] - mat->zone_ptr[mat->nzones];
-    ghost_malloc((void **)&mat->color_ptr,(mat->ncolors+1)*sizeof(ghost_lidx)); 
+    mat->context->ncolors = 1;//mat->context->zone_ptr[mat->context->nzones+1] - mat->context->zone_ptr[mat->context->nzones];
+    ghost_malloc((void **)&mat->context->color_ptr,(mat->context->ncolors+1)*sizeof(ghost_lidx)); 
     
-    for(int i=0; i<mat->ncolors+1; ++i) {
-        mat->color_ptr[i] = mat->zone_ptr[mat->nzones];
+    for(int i=0; i<mat->context->ncolors+1; ++i) {
+        mat->context->color_ptr[i] = mat->context->zone_ptr[mat->context->nzones];
     }
     
-    mat->kacz_setting.kacz_method = GHOST_KACZ_METHOD_BMC_one_sweep;
+    mat->context->kacz_setting.kacz_method = GHOST_KACZ_METHOD_BMC_one_sweep;
     
     for(int i=1; i<current_threads; ++i) {	 
         
@@ -474,7 +472,7 @@ ghost_error split_analytical(ghost_sparsemat *mat)
          */
         if(lower <= upper) {
             //printf("check lower = %d and upper =%d\n",virtual_col(row_ptr[zone_ptr[4*i+2]]) , virtual_col(row_ptr[zone_ptr[4*i-1]]-1));
-            mat->kacz_setting.kacz_method = GHOST_KACZ_METHOD_BMC_two_sweep;	
+            mat->context->kacz_setting.kacz_method = GHOST_KACZ_METHOD_BMC_two_sweep;	
             WARNING_LOG("ONLY half the available threads would be used for transitional sweep\n");
             break;
         }
@@ -524,15 +522,15 @@ ghost_error split_analytical(ghost_sparsemat *mat)
  *   int n_zones = nthread[0];
  *   ghost_lidx *new_zone_ptr = NULL;
  * 
- *   mat->kacz_setting.active_threads = nthread[0];//TODO add this to sparsemat
+ *   mat->context->kacz_setting.active_threads = nthread[0];//TODO add this to sparsemat
  *  
- *   mat->nzones = mat->nzones + 2*(n_zones-1);//add the new zones
+ *   mat->context->nzones = mat->context->nzones + 2*(n_zones-1);//add the new zones
  *  
  *   GHOST_CALL_GOTO(ghost_malloc((void **)&new_zone_ptr,sizeof(ghost_lidx)*(4*n_zones-2)),err,ret);
  * 
  *  for (int i=0; i<n_zones; ++i) {
- *        new_zone_ptr[4*i] = mat->zone_ptr[2*i];
- *        new_zone_ptr[4*i+1] = mat->zone_ptr[2*i+1];
+ *        new_zone_ptr[4*i] = mat->context->zone_ptr[2*i];
+ *        new_zone_ptr[4*i+1] = mat->context->zone_ptr[2*i+1];
  *  }
  * 
  * 
@@ -604,16 +602,16 @@ ghost_error split_analytical(ghost_sparsemat *mat)
  * 
  *   //now check whether the transition in transition is overlapping- if one region overlaps we use 2 sweep method (with threads/2) , else one sweep method 
  *   for(int i=1; i<n_zones-1; ++i) {
- *	mat->kacz_setting.kacz_method = GHOST_KACZ_METHOD_BMC_one_sweep;
+ *	mat->context->kacz_setting.kacz_method = GHOST_KACZ_METHOD_BMC_one_sweep;
  * 
  *       if(col_ptr[row_ptr[new_zone_ptr[4*i+2]]] <= col_ptr[row_ptr[new_zone_ptr[[4*i-1]]]-1]) {
- *           mat->kacz_setting.kacz_method = GHOST_KACZ_METHOD_BMC_two_sweep;	
+ *           mat->context->kacz_setting.kacz_method = GHOST_KACZ_METHOD_BMC_two_sweep;	
  *           break;
  *       }
  *  }
  * 
  * 
- *      mat->zone_ptr = new_zone_ptr;
+ *      mat->context->zone_ptr = new_zone_ptr;
  *      goto out;
  * 
  * err:

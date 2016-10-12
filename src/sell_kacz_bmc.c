@@ -462,7 +462,7 @@ ghost_error ghost_kacz_bmc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densem
     ghost_lidx idx=0, row=0;   											
 #endif
 
-   if (mat->nzones == 0 || mat->zone_ptr == NULL){
+   if (mat->context->nzones == 0 || mat->context->zone_ptr == NULL){
         ERROR_LOG("Splitting of matrix by Block Multicoloring  has not be done!");
     }
   
@@ -479,11 +479,11 @@ ghost_error ghost_kacz_bmc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densem
     double *xval = (double *)(x->val);
     double *mval = (double *)mat->val;
     double omega = *(double *)opts.omega;
-    ghost_lidx *zone_ptr = (ghost_lidx*) mat->zone_ptr;
-    //ghost_lidx nzones    = mat->nzones;
-    ghost_lidx *color_ptr= (ghost_lidx*) mat->color_ptr;
-    //ghost_lidx ncolors   = mat->ncolors;
-    ghost_lidx nthreads  = mat->kacz_setting.active_threads;
+    ghost_lidx *zone_ptr = (ghost_lidx*) mat->context->zone_ptr;
+    //ghost_lidx nzones    = mat->context->nzones;
+    ghost_lidx *color_ptr= (ghost_lidx*) mat->context->color_ptr;
+    //ghost_lidx ncolors   = mat->context->ncolors;
+    ghost_lidx nthreads  = mat->context->kacz_setting.active_threads;
 
    // disables dynamic thread adjustments 
     ghost_omp_set_dynamic(0);
@@ -508,7 +508,7 @@ ghost_error ghost_kacz_bmc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densem
 
     if (opts.direction == GHOST_KACZ_DIRECTION_BACKWARD) {
             //for time being single thread
-	for(int i=mat->ncolors; i>0; --i) {
+	for(int i=mat->context->ncolors; i>0; --i) {
             mc_start  = color_ptr[i]-1;
             mc_end    = color_ptr[i-1]-1;
             stride   = -1;
@@ -557,7 +557,7 @@ ghost_error ghost_kacz_bmc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densem
 
     //double rownorm = 0.;
 
- if(mat->kacz_setting.kacz_method == GHOST_KACZ_METHOD_BMC_one_sweep) { 
+ if(mat->context->kacz_setting.kacz_method == GHOST_KACZ_METHOD_BMC_one_sweep) { 
     for(ghost_lidx zone = 0; zone<4; ++zone) { 
 
 	LOOP(start[zone],end[zone],stride);
@@ -600,7 +600,7 @@ ghost_error ghost_kacz_bmc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densem
 */
   	//	LOCK_NEIGHBOUR(tid)
    }
- } else if (mat->kacz_setting.kacz_method == GHOST_KACZ_METHOD_BMC_two_sweep) {
+ } else if (mat->context->kacz_setting.kacz_method == GHOST_KACZ_METHOD_BMC_two_sweep) {
       LOOP(start[0],end[0],stride)
       #pragma omp barrier  
       if(opts.direction == GHOST_KACZ_DIRECTION_BACKWARD) {
@@ -637,7 +637,7 @@ ghost_error ghost_kacz_bmc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densem
 //do multicoloring if in FORWARD direction
    if (opts.direction == GHOST_KACZ_DIRECTION_FORWARD) {
 
-	for(int i=0; i<mat->ncolors; ++i) {
+	for(int i=0; i<mat->context->ncolors; ++i) {
            //for time being single thread
             mc_start  = color_ptr[i];
             mc_end    = color_ptr[i+1];
@@ -774,7 +774,7 @@ ghost_error ghost_kacz_shift_bmc(ghost_densemat *x_real, ghost_densemat *x_imag,
     //const int CHUNKHEIGHT = 1;  
     // const int NVECS = 1;
 
-   if (mat->nzones == 0 || mat->zone_ptr == NULL){
+   if (mat->context->nzones == 0 || mat->context->zone_ptr == NULL){
         ERROR_LOG("Splitting of matrix by Block Multicoloring  has not be done!");
     }
   
@@ -792,11 +792,11 @@ ghost_error ghost_kacz_shift_bmc(ghost_densemat *x_real, ghost_densemat *x_imag,
     double *x_i = (double *)(x_imag->val);
     double *mval = (double *)mat->val;
     double omega = *(double *)opts.omega;
-    ghost_lidx *zone_ptr = (ghost_lidx*) mat->zone_ptr;
-    //ghost_lidx nzones    = mat->nzones;
-    ghost_lidx *color_ptr= (ghost_lidx*) mat->color_ptr;
-    //ghost_lidx ncolors   = mat->ncolors;
-    ghost_lidx nthreads  = mat->kacz_setting.active_threads;
+    ghost_lidx *zone_ptr = (ghost_lidx*) mat->context->zone_ptr;
+    //ghost_lidx nzones    = mat->context->nzones;
+    ghost_lidx *color_ptr= (ghost_lidx*) mat->context->color_ptr;
+    //ghost_lidx ncolors   = mat->context->ncolors;
+    ghost_lidx nthreads  = mat->context->kacz_setting.active_threads;
 
    // disables dynamic thread adjustments 
     ghost_omp_set_dynamic(0);
@@ -821,7 +821,7 @@ ghost_error ghost_kacz_shift_bmc(ghost_densemat *x_real, ghost_densemat *x_imag,
 
     if (opts.direction == GHOST_KACZ_DIRECTION_BACKWARD) {
             //for time being single thread
-	for(int i=mat->ncolors; i>0; --i) {
+	for(int i=mat->context->ncolors; i>0; --i) {
             mc_start  = color_ptr[i]-1;
             mc_end    = color_ptr[i-1]-1;
             stride   = -1;
@@ -869,7 +869,7 @@ ghost_error ghost_kacz_shift_bmc(ghost_densemat *x_real, ghost_densemat *x_imag,
 
     //double rownorm = 0.;
 
- if(mat->kacz_setting.kacz_method == GHOST_KACZ_METHOD_BMC_one_sweep) { 
+ if(mat->context->kacz_setting.kacz_method == GHOST_KACZ_METHOD_BMC_one_sweep) { 
     for(ghost_lidx zone = 0; zone<4; ++zone) { 
 
             SHIFT_LOOP(start[zone],end[zone],stride)   
@@ -906,7 +906,7 @@ ghost_error ghost_kacz_shift_bmc(ghost_densemat *x_real, ghost_densemat *x_imag,
 */
   	//	LOCK_NEIGHBOUR(tid)
    }
- } else if (mat->kacz_setting.kacz_method == GHOST_KACZ_METHOD_BMC_two_sweep) {
+ } else if (mat->context->kacz_setting.kacz_method == GHOST_KACZ_METHOD_BMC_two_sweep) {
 //TODO remove barriers its for testing 
      SHIFT_LOOP(start[0],end[0],stride)
       #pragma omp barrier 
@@ -946,7 +946,7 @@ ghost_error ghost_kacz_shift_bmc(ghost_densemat *x_real, ghost_densemat *x_imag,
 //do multicoloring if in FORWARD direction
    if (opts.direction == GHOST_KACZ_DIRECTION_FORWARD) {
 
-	for(int i=0; i<mat->ncolors; ++i) {
+	for(int i=0; i<mat->context->ncolors; ++i) {
            //for time being single thread
             mc_start  = color_ptr[i];
             mc_end    = color_ptr[i+1];

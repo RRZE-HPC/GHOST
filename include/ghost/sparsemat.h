@@ -129,32 +129,6 @@ ghost_carp_opts; //no direction since forward followed by backward done
 
 
 /**
- * @brief internal to differentiate between different KACZ sweep methods
- * MC - Multicolored
- * BMC_RB - Block Multicolored with RCM ( condition : nrows/(2*(total_bw+1)) > threads)
- * BMC_one_trans_sweep - Block Multicolored with RCM ( condition : nrows/(total_bw+1) > threads, and transition does not overlap)
- * BMC_two_trans_sweep - Block Multicolored with RCM ( condition : nrows/(total_bw+1) > threads, and transition can overlap)
- */
-typedef enum{
-      GHOST_KACZ_METHOD_MC,
-      GHOST_KACZ_METHOD_BMC_RB,
-      GHOST_KACZ_METHOD_BMC_one_sweep,
-      GHOST_KACZ_METHOD_BMC_two_sweep,
-      GHOST_KACZ_METHOD_BMC,
-      GHOST_KACZ_METHOD_BMCshift,
-      GHOST_KACZ_METHOD_BMCNORMAL //for system normalized at start
-}
-ghost_kacz_method;
-
-//TODO zone ptr can be moved here 
-typedef struct {
-      
-      ghost_kacz_method kacz_method;
-      ghost_lidx active_threads;
-}
-ghost_kacz_setting;
-    
-/**
  * @brief Create only a single chunk, i.e., use the ELLPACK storage format.
  */
 #define GHOST_SELL_CHUNKHEIGHT_ELLPACK 0
@@ -334,8 +308,19 @@ typedef enum {
     * depending on the bandwidth of the matrix
     */
     GHOST_SOLVER_KACZ = 16384,
+    /**
+    * @brief Sort matrix rows according to their length (SELL-C-Sigma sorting)
+    */
+    GHOST_SPARSEMAT_SORT_ROWS = 32768,
 
 } ghost_sparsemat_flags;
+
+/**
+ * @brief Combination of flags which apply any permutation to a ::ghost_sparsemat 
+ */
+#define GHOST_SPARSEMAT_PERM_ANY (GHOST_SPARSEMAT_PERM_ANY_LOCAL|GHOST_SPARSEMAT_PERM_ANY_GLOBAL)
+#define GHOST_SPARSEMAT_PERM_ANY_LOCAL (GHOST_SPARSEMAT_COLOR|GHOST_SPARSEMAT_RCM|GHOST_SPARSEMAT_BLOCKCOLOR|GHOST_SPARSEMAT_SORT_ROWS|GHOST_SOLVER_KACZ)
+#define GHOST_SPARSEMAT_PERM_ANY_GLOBAL (GHOST_SPARSEMAT_SCOTCHIFY|GHOST_SPARSEMAT_ZOLTAN)
 
 #ifdef __cplusplus
 inline ghost_sparsemat_flags operator|(const ghost_sparsemat_flags &a,
@@ -521,27 +506,6 @@ struct ghost_sparsemat
      */
     ghost_gidx *col_orig;
     /**
-     * @brief The number of colors from distance-2 coloring.
-     */
-    ghost_lidx ncolors;
-    /**
-     * @brief The number of rows with each color (length: ncolors+1).
-     */
-    ghost_lidx *color_ptr;
-     /**
-     * @brief The number of total zones (odd+even)
-     **/
-    ghost_lidx nzones;
-    /**
-    * @brief Pointer to odd-even (Red-Black coloring) zones of a matrix (length: nzones+1)  
-    * Ordering [even_begin_1 odd_begin_1 even_begin_2 odd_begin_2 ..... nrows]
-    **/
-    ghost_lidx *zone_ptr;
-    /**
-    * @brief details regarding kacz is stored here
-    */ 
-    ghost_kacz_setting kacz_setting;
-    /**
      * @brief The number of rows.
      */
     //ghost_lidx nrows;
@@ -565,10 +529,6 @@ struct ghost_sparsemat
      * For CRS or SELL-1, this is equal to nnz.
      */
     ghost_lidx nEnts;
-    /**
-     * @brief Store the ratio between nrows and bandwidth
-     */ 	
-    double kaczRatio;
     /**
      * @brief The average width of the rows wrt. the diagonal.
      */
@@ -608,13 +568,15 @@ struct ghost_sparsemat
      * with distance i from diagonal
      */
     ghost_gidx *nzDist;
+    ghost_lidx nchunks;
 };
 
-#define SPM_NROWS(mat) mat->context->row_map->nrows
+#define SPM_NROWS(mat) mat->context->row_map->dim
 #define SPM_NNZ(mat) mat->context->nnz
-#define SPM_NCOLS(mat) mat->context->col_map->nrows
-#define SPM_GNCOLS(mat) mat->context->col_map->gnrows
-#define SPM_NROWSPAD(mat) mat->context->row_map->nrowspadded
+#define SPM_NCOLS(mat) mat->context->col_map->dim
+#define SPM_GNCOLS(mat) mat->context->col_map->gdim
+#define SPM_NROWSPAD(mat) mat->context->row_map->dimpad
+#define SPM_NCHUNKS(mat) (mat->nchunks)
 
 
 #ifdef __cplusplus
@@ -702,7 +664,7 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error ghost_sparsemat_perm_scotch(ghost_sparsemat *mat, void *matrixSource, ghost_sparsemat_src srcType);
+    ghost_error ghost_sparsemat_perm_scotch(ghost_context *ctx, ghost_sparsemat *mat);
     /**
      * @brief Create a matrix permutation based on row length sorting within a 
      * given scope.
@@ -715,28 +677,23 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error ghost_sparsemat_perm_sort(ghost_sparsemat *mat, 
-            void *matrixSource, ghost_sparsemat_src srcType, ghost_gidx scope);
+    ghost_error ghost_sparsemat_perm_sort(ghost_context *ctx, ghost_sparsemat *mat, ghost_lidx scope);
 
-    ghost_error ghost_sparsemat_perm_spmp(ghost_sparsemat *mat_out, ghost_context *ctx, ghost_sparsemat_src_rowfunc *src);
+    ghost_error ghost_sparsemat_perm_spmp(ghost_context *ctx, ghost_sparsemat *mat);
 
     /**
      * @brief Create a matrix permutation based on 2-way coloring using ColPack.
      *
-     * @param[out] mat_out The sparse matrix in which to store color information.
-     * @param[in] ctx The context.
-     * @param[in] matrixSource The matrix source. This will be casted depending 
-     * on \p srcType.
-     * @param[in] srcType Type of the matrix source.
+     * @param[out] ctx The context in which to store the permutations and color information.
+     * @param[in] ctx The unpermuted SELL-1-1 source sparse matrix.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error ghost_sparsemat_perm_color(ghost_sparsemat *mat_out, ghost_context *ctx, 
-            void *matrixSource, ghost_sparsemat_src srcType);
+    ghost_error ghost_sparsemat_perm_color(ghost_context *ctx, ghost_sparsemat *mat);
 
-    ghost_error ghost_sparsemat_blockColor(ghost_sparsemat *mat_out, ghost_context *ctx, void *matrixSource, ghost_sparsemat_src srcType);
+    ghost_error ghost_sparsemat_blockColor(ghost_context *ctx, ghost_sparsemat *mat);
  
-    ghost_error ghost_sparsemat_perm_zoltan(ghost_sparsemat *mat, void *matrixSource, ghost_sparsemat_src srcType);
+    ghost_error ghost_sparsemat_perm_zoltan(ghost_context *ctx, ghost_sparsemat *mat);
     /**
      * @brief Sort the entries in a given row physically to have increasing 
      * column indices.

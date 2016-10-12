@@ -61,14 +61,14 @@ ghost_error ghost_densemat_rm_distributeVector(ghost_densemat *vec, ghost_densem
 
     if (me != 0) {
         for (c=0; c<vec->traits.ncols; c++) {
-            MPI_CALL_RETURN(MPI_Irecv(DENSEMAT_VALPTR(nodeVec,0,c),ctx->row_map->lnrows[me],mpidt,0,me,ctx->mpicomm,&req[msgcount]));
+            MPI_CALL_RETURN(MPI_Irecv(DENSEMAT_VALPTR(nodeVec,0,c),ctx->row_map->ldim[me],mpidt,0,me,ctx->mpicomm,&req[msgcount]));
             msgcount++;
         }
     } else {
         for (c=0; c<vec->traits.ncols; c++) {
-            memcpy(DENSEMAT_VALPTR(nodeVec,0,c),DENSEMAT_VALPTR(vec,0,c),vec->elSize*ctx->row_map->lnrows[0]);
+            memcpy(DENSEMAT_VALPTR(nodeVec,0,c),DENSEMAT_VALPTR(vec,0,c),vec->elSize*ctx->row_map->ldim[0]);
             for (i=1;i<nprocs;i++) {
-                MPI_CALL_RETURN(MPI_Isend(DENSEMAT_VALPTR(vec,c,ctx->row_map->goffs[i]),ctx->row_map->lnrows[i],mpidt,i,i,ctx->mpicomm,&req[msgcount]));
+                MPI_CALL_RETURN(MPI_Isend(DENSEMAT_VALPTR(vec,c,ctx->row_map->goffs[i]),ctx->row_map->ldim[i],mpidt,i,i,ctx->mpicomm,&req[msgcount]));
                 msgcount++;
             }
         }
@@ -121,14 +121,14 @@ ghost_error ghost_densemat_rm_collectVectors(ghost_densemat *vec, ghost_densemat
 
     if (me != 0) {
         for (c=0; c<vec->traits.ncols; c++) {
-            MPI_CALL_RETURN(MPI_Isend(DENSEMAT_VALPTR(vec,0,c),ctx->row_map->lnrows[me],mpidt,0,me,ctx->mpicomm,&req[msgcount]));
+            MPI_CALL_RETURN(MPI_Isend(DENSEMAT_VALPTR(vec,0,c),ctx->row_map->ldim[me],mpidt,0,me,ctx->mpicomm,&req[msgcount]));
             msgcount++;
         }
     } else {
         for (c=0; c<vec->traits.ncols; c++) {
-            memcpy(DENSEMAT_VALPTR(totalVec,0,c),DENSEMAT_VALPTR(vec,0,c),vec->elSize*ctx->row_map->lnrows[0]);
+            memcpy(DENSEMAT_VALPTR(totalVec,0,c),DENSEMAT_VALPTR(vec,0,c),vec->elSize*ctx->row_map->ldim[0]);
             for (i=1;i<nprocs;i++) {
-                MPI_CALL_RETURN(MPI_Irecv(DENSEMAT_VALPTR(totalVec,c,ctx->row_map->goffs[i]),ctx->row_map->lnrows[i],mpidt,i,i,ctx->mpicomm,&req[msgcount]));
+                MPI_CALL_RETURN(MPI_Irecv(DENSEMAT_VALPTR(totalVec,c,ctx->row_map->goffs[i]),ctx->row_map->ldim[i],mpidt,i,i,ctx->mpicomm,&req[msgcount]));
                 msgcount++;
             }
         }

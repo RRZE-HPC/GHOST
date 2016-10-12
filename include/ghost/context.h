@@ -127,6 +127,35 @@ inline ghost_context_flags_t operator&(const ghost_context_flags_t &a,
             static_cast<int>(a) & static_cast<int>(b));
 }
 #endif
+
+
+/**
+ * @brief internal to differentiate between different KACZ sweep methods
+ * MC - Multicolored
+ * BMC_RB - Block Multicolored with RCM ( condition : nrows/(2*(total_bw+1)) > threads)
+ * BMC_one_trans_sweep - Block Multicolored with RCM ( condition : nrows/(total_bw+1) > threads, and transition does not overlap)
+ * BMC_two_trans_sweep - Block Multicolored with RCM ( condition : nrows/(total_bw+1) > threads, and transition can overlap)
+ */
+typedef enum{
+      GHOST_KACZ_METHOD_MC,
+      GHOST_KACZ_METHOD_BMC_RB,
+      GHOST_KACZ_METHOD_BMC_one_sweep,
+      GHOST_KACZ_METHOD_BMC_two_sweep,
+      GHOST_KACZ_METHOD_BMC,
+      GHOST_KACZ_METHOD_BMCshift,
+      GHOST_KACZ_METHOD_BMCNORMAL //for system normalized at start
+}
+ghost_kacz_method;
+
+//TODO zone ptr can be moved here 
+typedef struct {
+      
+      ghost_kacz_method kacz_method;
+      ghost_lidx active_threads;
+}
+ghost_kacz_setting;
+    
+
 /**
  * @brief The GHOST context.
  *
@@ -135,31 +164,13 @@ inline ghost_context_flags_t operator&(const ghost_context_flags_t &a,
 struct ghost_context
 {
     /**
-     * @brief Row pointers
-     * 
-     * if the context is distributed by nnz, the row pointers are being read
-     * at context creation in order to create the distribution. once the matrix
-     * is being created, the row pointers are distributed
-     */
-    ghost_gidx *rpt;
-    /**
      * @brief The global number of non-zeros
      */
     ghost_gidx gnnz;
     /**
-     * @brief Local number of nonzeros.
-     *
-     * SELL padding elements count as nonzeros.
+     * @brief Local number of non-zeros.
      */
     ghost_lidx nnz;
-    /**
-     * @brief The global number of rows
-     */
-    //ghost_gidx gnrows;
-    /**
-     * @brief The global number of columns.
-     */
-    //ghost_gidx gncols;
     /**
      * @brief The context's property flags.
      */
@@ -184,67 +195,60 @@ struct ghost_context
      */
     ghost_mpi_comm mpicomm_parent;
     /**
-     * @brief The matrix' global permutation.
-     */
-    //ghost_permutation *perm_global;
-    /**
-     * @brief The matrix' local permutation.
-     */
-    //ghost_permutation *perm_local;
-    /**
      * @brief Number of remote elements with unique colidx
      */
-    ghost_lidx halo_elements; // TODO rename nHaloElements
+    ghost_lidx halo_elements; 
     /**
-     * @brief Number of matrix elements for each rank
+     * @brief The row map of this context
      */
-    //ghost_lidx* lnEnts; // TODO rename nLclEnts
-    /**
-     * @brief Index of first element into the global matrix for each rank
-     */
-    //ghost_gidx* lfEnt; // TODO rename firstLclEnt
-    /**
-     * @brief Number of matrix rows for each rank
-     */
-    //ghost_lidx* lnrows; // TODO rename nLclRows
-    /**
-     * @brief Index of first matrix row for each rank
-     */
-    //ghost_gidx* lfRow; // TODO rename firstLclRow
-    /**
-     * @brief Number of densemat rows (or sparsemat columns) with padding 
-     * Required if GHOST_PERM_NO_DISTINCTION is set
-     */
-    //ghost_lidx nrowspadded;
     ghost_map *row_map;
+    /**
+     * @brief The column map of this context
+     */
     ghost_map *col_map;
      /**
      * @brief Number of wishes (= unique RHS elements to get) from each rank
      */
-    ghost_lidx * wishes; // TODO rename nWishes
+    ghost_lidx * wishes; 
     /**
      * @brief Column idx of wishes from each rank
      */
-    ghost_lidx ** wishlist; // TODO rename wishes
+    ghost_lidx ** wishlist; 
     /**
      * @brief Number of dues (= unique RHS elements from myself) to each rank
      */
-    ghost_lidx * dues; // TODO rename nDues
+    ghost_lidx * dues; 
     /**
      * @brief Column indices of dues to each rank
      */
-    ghost_lidx ** duelist; // TODO rename dues
+    ghost_lidx ** duelist;
     /**
      * @brief Column indices of dues to each rank (CUDA)
      */
-    ghost_lidx ** cu_duelist; // TODO rename dues
+    ghost_lidx ** cu_duelist;
     /**
      * @brief First index to get RHS elements coming from each rank
      */
-    ghost_lidx* hput_pos; // TODO rename
+    ghost_lidx* hput_pos; 
+    /**
+     * @brief The list of ranks to which this rank has to send RHS vector elements in SpMV communcations.
+     *
+     * Length: ghost_context::nduepartners
+     */
     int *duepartners;
+    /**
+     * @brief The number of ranks to which this rank has to send RHS vector elements in SpMV communication
+     */
     int nduepartners;
+    /**
+     * @brief The list of ranks from which this rank has to receive RHS vector elements in SpMV communcations.
+     *
+     * Length: ghost_context::nwishpartners
+     */
     int *wishpartners;
+    /**
+     * @brief The number of ranks from which this rank has to receive RHS vector elements in SpMV communication
+     */
     int nwishpartners;
     /**
      * @brief Number of matrix entries in each local column.
@@ -303,6 +307,31 @@ struct ghost_context
      * (Required for example if we permute the (local + remote) part of matrix
      */
     ghost_gidx maxColRange; 
+    /**
+     * @brief The number of colors from distance-2 coloring.
+     */
+    ghost_lidx ncolors;
+    /**
+     * @brief The number of rows with each color (length: ncolors+1).
+     */
+    ghost_lidx *color_ptr;
+     /**
+     * @brief The number of total zones (odd+even)
+     **/
+    ghost_lidx nzones;
+    /**
+    * @brief Pointer to odd-even (Red-Black coloring) zones of a matrix (length: nzones+1)  
+    * Ordering [even_begin_1 odd_begin_1 even_begin_2 odd_begin_2 ..... nrows]
+    **/
+    ghost_lidx *zone_ptr;
+    /**
+    * @brief details regarding kacz is stored here
+    */ 
+    ghost_kacz_setting kacz_setting;
+    /**
+     * @brief Store the ratio between nrows and bandwidth
+     */ 	
+    double kaczRatio;
  
 };
 

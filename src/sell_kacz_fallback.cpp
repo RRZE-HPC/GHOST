@@ -155,7 +155,7 @@ if(tid == nthreads-1) \
      ghost_lidx rowinchunk = 0; 
      ghost_lidx idx=0, row=0; 
      
-     if (mat->nzones == 0 || mat->zone_ptr == NULL){
+     if (mat->context->nzones == 0 || mat->context->zone_ptr == NULL){
          ERROR_LOG("Splitting of matrix by Block Multicoloring has not be done!");
      }
      
@@ -189,9 +189,9 @@ if(tid == nthreads-1) \
      VT *xval = (VT *)(x->val);
      MT *mval = (MT *)mat->val;
      MT omega = *(MT *)opts.omega;
-     ghost_lidx *zone_ptr = (ghost_lidx*) mat->zone_ptr;
-     ghost_lidx *color_ptr= (ghost_lidx*) mat->color_ptr;
-     ghost_lidx nthreads = mat->kacz_setting.active_threads;
+     ghost_lidx *zone_ptr = (ghost_lidx*) mat->context->zone_ptr;
+     ghost_lidx *color_ptr= (ghost_lidx*) mat->context->color_ptr;
+     ghost_lidx nthreads = mat->context->kacz_setting.active_threads;
      //int prev_nthreads;
      int prev_omp_nested;
      
@@ -218,7 +218,7 @@ if(tid == nthreads-1) \
      //    ghost_lidx stride = 0;
      if (opts.direction == GHOST_KACZ_DIRECTION_BACKWARD) {
          #ifdef GHOST_HAVE_COLPACK 
-         for(int i=mat->ncolors; i>0; --i) {
+         for(int i=mat->context->ncolors; i>0; --i) {
              mc_start  = color_ptr[i]-1;
              mc_end    = color_ptr[i-1]-1;
              BACKWARD_LOOP(mc_start,mc_end,MT,MT)
@@ -227,7 +227,7 @@ if(tid == nthreads-1) \
          ghost_omp_set_dynamic(0);
          ghost_omp_nthread_set(1);
          
-         for(int i=mat->ncolors; i>0; --i) {
+         for(int i=mat->context->ncolors; i>0; --i) {
              mc_start  = color_ptr[i]-1;
              mc_end    = color_ptr[i-1]-1;
              BACKWARD_LOOP(mc_start,mc_end,MT,MT)
@@ -252,12 +252,12 @@ if(tid == nthreads-1) \
              end[2]    = zone_ptr[4*tid+1]-1;
              start[3]  = zone_ptr[4*tid+1]-1;
              end[3]    = zone_ptr[4*tid]  -1;
-             if(mat->kacz_setting.kacz_method == GHOST_KACZ_METHOD_BMC_one_sweep) { 
+             if(mat->context->kacz_setting.kacz_method == GHOST_KACZ_METHOD_BMC_one_sweep) { 
                  for(ghost_lidx zone = 0; zone<4; ++zone) { 
                      BACKWARD_LOOP(start[zone],end[zone],MT,MT)   
                      #pragma omp barrier                           
                  }
-             } else if (mat->kacz_setting.kacz_method == GHOST_KACZ_METHOD_BMC_two_sweep) {
+             } else if (mat->context->kacz_setting.kacz_method == GHOST_KACZ_METHOD_BMC_two_sweep) {
                  BACKWARD_LOOP(start[0],end[0],MT,MT)
                  #pragma omp barrier 
                  if(tid%2 != 0) {
@@ -295,12 +295,12 @@ if(tid == nthreads-1) \
              start[3]  = zone_ptr[4*tid+3];
              end[3]    = zone_ptr[4*tid+4];
              
-             if(mat->kacz_setting.kacz_method == GHOST_KACZ_METHOD_BMC_one_sweep) { 
+             if(mat->context->kacz_setting.kacz_method == GHOST_KACZ_METHOD_BMC_one_sweep) { 
                  for(ghost_lidx zone = 0; zone<4; ++zone) { 
                      FORWARD_LOOP(start[zone],end[zone],MT,MT)        
                      #pragma omp barrier                           
                  }
-             } else if (mat->kacz_setting.kacz_method == GHOST_KACZ_METHOD_BMC_two_sweep) {
+             } else if (mat->context->kacz_setting.kacz_method == GHOST_KACZ_METHOD_BMC_two_sweep) {
                  FORWARD_LOOP(start[0],end[0],MT,MT)
                  #pragma omp barrier 
                  FORWARD_LOOP(start[1],end[1],MT,MT)
@@ -321,7 +321,7 @@ if(tid == nthreads-1) \
          #endif
          
          #ifdef GHOST_HAVE_COLPACK 
-         for(int i=0; i<mat->ncolors; ++i) { 
+         for(int i=0; i<mat->context->ncolors; ++i) { 
              mc_start  = color_ptr[i];
              mc_end    = color_ptr[i+1];
              FORWARD_LOOP(mc_start,mc_end,MT,MT)
@@ -330,7 +330,7 @@ if(tid == nthreads-1) \
          ghost_omp_set_dynamic(0);
          ghost_omp_nthread_set(1);
          
-         for(int i=0; i<mat->ncolors; ++i) { 
+         for(int i=0; i<mat->context->ncolors; ++i) { 
              mc_start  = color_ptr[i];
              mc_end    = color_ptr[i+1];
              FORWARD_LOOP(mc_start,mc_end,MT,MT)

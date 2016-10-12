@@ -1,6 +1,7 @@
 #include "ghost/densemat_cm.h"
 #include "ghost/util.h"
 #include "ghost/locality.h"
+#include "ghost/sparsemat.h"
 #include <complex>
 
 #define COLMAJOR
@@ -89,7 +90,7 @@ static ghost_error ghost_densemat_cm_averagehalo_tmpl(ghost_densemat *vec, ghost
             if(ctx->col_map->loc_perm_inv) {
                 // This check is important since entsInCol has only lnrows (NO_DISTINCTION
                 // might give seg fault else) the rest are halo anyway, not needed for local sums
-                if(ctx->col_map->loc_perm_inv[i]< ctx->row_map->lnrows[rank] ) { 
+                if(ctx->col_map->loc_perm_inv[i]< ctx->row_map->ldim[rank] ) { 
                     nrankspresent[i] = ctx->entsInCol[ctx->col_map->loc_perm_inv[i]]?1:0; //this has also to be permuted since it was
                     //for unpermuted columns that we calculate
                     if(nrankspresent[i]==1)
@@ -137,11 +138,11 @@ static ghost_error ghost_densemat_cm_averagehalo_tmpl(ghost_densemat *vec, ghost
         }
 
         /* } else { 
-           GHOST_CALL_GOTO(ghost_malloc((void **)&sum, ctx->row_map->lnrows[rank]*sizeof(T)),err,ret);
-           GHOST_CALL_GOTO(ghost_malloc((void **)&nrankspresent, ctx->row_map->lnrows[rank]*sizeof(int)),err,ret);
+           GHOST_CALL_GOTO(ghost_malloc((void **)&sum, ctx->row_map->ldim[rank]*sizeof(T)),err,ret);
+           GHOST_CALL_GOTO(ghost_malloc((void **)&nrankspresent, ctx->row_map->ldim[rank]*sizeof(int)),err,ret);
 
 
-           for (i=0; i<ctx->row_map->lnrows[rank]; i++) {
+           for (i=0; i<ctx->row_map->ldim[rank]; i++) {
            sum[i] = ((T *)vec->val)[i];
            nrankspresent[i] = ctx->entsInCol[i]?1:0;	
            }
@@ -161,12 +162,12 @@ static ghost_error ghost_densemat_cm_averagehalo_tmpl(ghost_densemat *vec, ghost
            curwork += ctx->dues[i];
            }
 
-           for (i=0; i<ctx->row_map->lnrows[rank]; i++) {
+           for (i=0; i<ctx->row_map->ldim[rank]; i++) {
            printf("<%d> ranks of row[%d] = %d\n",rank,i,nrankspresent[i]);
            }
 
 
-           for (currow=0; currow<ctx->row_map->lnrows[rank]; currow++) { 
+           for (currow=0; currow<ctx->row_map->ldim[rank]; currow++) { 
            ((T *)vec->val)[currow] = sum[currow]/(T)nrankspresent[currow];
            }
            }

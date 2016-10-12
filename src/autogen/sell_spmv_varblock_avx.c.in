@@ -70,7 +70,7 @@ ghost_error ghost_sellspmv__a_avx_d_d_cm_CHUNKHEIGHT_x(ghost_densemat *res, ghos
         }
 
 #pragma omp for schedule(runtime)
-        for (c=0; c<SPM_NROWSPAD(mat)/CHUNKHEIGHT; c++) 
+        for (c=0; c<SPM_NCHUNKS(mat); c++) 
         { // loop over chunks
             for (v=0; v<invec->traits.ncols; v++)
             {
@@ -242,7 +242,7 @@ ghost_error ghost_sellspmv__a_avx_z_z_cm_CHUNKHEIGHT_x(ghost_densemat *res, ghos
         }
 
 #pragma omp for schedule(runtime)
-        for (c=0; c<SPM_NROWSPAD(mat)/CHUNKHEIGHT; c++) 
+        for (c=0; c<SPM_NCHUNKS(mat); c++) 
         { // loop over chunks
             for (v=0; v<invec->traits.ncols; v++)
             {

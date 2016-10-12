@@ -35,29 +35,29 @@ typedef enum {
 typedef struct 
 {
     /**
-     * @brief The global number of rows.
+     * @brief The global dimension.
      */
-    ghost_gidx gnrows;
+    ghost_gidx gdim;
     /**
-     * @brief The offset into ::gnrows of each rank.
+     * @brief The offset into ::gdim of each rank.
      */
     ghost_gidx *goffs;
     /**
-     * @brief The offset into ::gnrows for this rank.
+     * @brief The offset into ::gdim for this rank.
      */
     ghost_gidx offs;
     /**
-     * @brief The local number of rows of each rank.
+     * @brief The local dimension of each rank.
      */
-    ghost_lidx *lnrows;
+    ghost_lidx *ldim;
     /**
-     * @brief The local number of rows for this rank.
+     * @brief The local dimension for this rank.
      */
-    ghost_lidx nrows;
+    ghost_lidx dim;
     /**
-     * @brief The padded local number of rows for this rank.
+     * @brief The padded local dimension for this rank.
      */
-    ghost_lidx nrowspadded;
+    ghost_lidx dimpad;
     /**
      * @brief The local permutation 
      */
@@ -90,7 +90,7 @@ typedef enum {
 extern "C" {
 #endif
     ghost_error ghost_map_create_distribution(ghost_map *map, ghost_sparsemat_src_rowfunc *matsrc, ghost_mpi_comm mpicomm, double weight, ghost_map_dist_type distType);
-    ghost_error ghost_map_create(ghost_map **map, ghost_gidx gnrows, ghost_mpi_comm comm);
+    ghost_error ghost_map_create(ghost_map **map, ghost_gidx gdim, ghost_mpi_comm comm);
     void ghost_map_destroy(ghost_map *map);
 #ifdef __cplusplus
 }

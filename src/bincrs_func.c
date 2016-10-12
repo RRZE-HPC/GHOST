@@ -103,7 +103,7 @@ int ghost_sparsemat_rowfunc_bincrs(ghost_gidx row, ghost_lidx *rowlen, ghost_gid
             ghost_sparsemat *mat = (ghost_sparsemat *)arg;
             ghost_rank(&me,mat->context->mpicomm);
             firstrow = mat->context->row_map->goffs[me];
-            nrows = mat->context->row_map->lnrows[me];
+            nrows = mat->context->row_map->ldim[me];
         
             ghost_malloc((void **)&rowPtr,(nrows + 1) * sizeof(ghost_gidx));
             

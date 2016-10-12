@@ -235,7 +235,7 @@ static ghost_error kacz_fallback(ghost_densemat *x, ghost_sparsemat *mat, ghost_
     
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     
-    if (!mat->color_ptr || mat->ncolors == 0) {
+    if (!mat->context->color_ptr || mat->context->ncolors == 0) {
         WARNING_LOG("Matrix has not been colored!");
     }
     if (x->traits.ncols > 1) {
@@ -262,18 +262,18 @@ static ghost_error kacz_fallback(ghost_densemat *x, ghost_sparsemat *mat, ghost_
     
     if (forward) {
         firstcolor = 0;
-        lastcolor = mat->ncolors;
+        lastcolor = mat->context->ncolors;
         stride = 1;
     } else {
-        firstcolor = mat->ncolors-1;
+        firstcolor = mat->context->ncolors-1;
         lastcolor = -1;
         stride = -1;
     }
     
     
     for (color=firstcolor; color!=lastcolor; color+=stride) {
-        fchunk = mat->color_ptr[color]/mat->traits.C;
-        lchunk = mat->color_ptr[color+1]/mat->traits.C;
+        fchunk = mat->context->color_ptr[color]/mat->traits.C;
+        lchunk = mat->context->color_ptr[color+1]/mat->traits.C;
         #pragma omp parallel
         { 
             m_t *rownorm;
@@ -320,7 +320,7 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
     ghost_kacz_parameters p;
     
     //if rectangular matrix
-    if(x->map != x->context->col_map && SPM_NROWS(mat) != mat->context->col_map->nrows) {
+    if(x->map != x->context->col_map && SPM_NROWS(mat) != mat->context->col_map->dim) {
         ERROR_LOG("Output vector is not COLUMN(Right sided) vector, please set the map to the column map")
     }
     
@@ -339,7 +339,7 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
     
     if(opts.shift) {     
         if(!(mat->traits.flags & GHOST_SPARSEMAT_COLOR)) {
-            if(!(mat->traits.flags & GHOST_SPARSEMAT_BLOCKCOLOR) && (mat->kaczRatio >= 2*mat->kacz_setting.active_threads)) {
+            if(!(mat->traits.flags & GHOST_SPARSEMAT_BLOCKCOLOR) && (mat->context->kaczRatio >= 2*mat->context->kacz_setting.active_threads)) {
                 INFO_LOG("BMC KACZ_shift without transition called");
                 p.method = GHOST_KACZ_METHOD_BMCshift;//Now BMC_RB can run with BMC 
             }
@@ -353,7 +353,7 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
         }
     } else if(opts.normalize==GHOST_KACZ_NORMALIZE_YES) {
         if(!(mat->traits.flags & GHOST_SPARSEMAT_COLOR)) {
-            if(!(mat->traits.flags & GHOST_SPARSEMAT_BLOCKCOLOR) && (mat->kaczRatio >= 2*mat->kacz_setting.active_threads)) {
+            if(!(mat->traits.flags & GHOST_SPARSEMAT_BLOCKCOLOR) && (mat->context->kaczRatio >= 2*mat->context->kacz_setting.active_threads)) {
                 INFO_LOG("BMC KACZ without transition, for Normalized system called");
                 p.method = GHOST_KACZ_METHOD_BMCNORMAL;//Now BMC_RB can run with BMC 
             }
@@ -367,7 +367,7 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
         }
     } else {
         if(!(mat->traits.flags & GHOST_SPARSEMAT_COLOR)) {
-            if(!(mat->traits.flags & GHOST_SPARSEMAT_BLOCKCOLOR) && (mat->kaczRatio >= 2*mat->kacz_setting.active_threads)) {
+            if(!(mat->traits.flags & GHOST_SPARSEMAT_BLOCKCOLOR) && (mat->context->kaczRatio >= 2*mat->context->kacz_setting.active_threads)) {
                 INFO_LOG("BMC KACZ without transition called");
                 p.method = GHOST_KACZ_METHOD_BMC;//Now BMC_RB can run with BMC 
             }

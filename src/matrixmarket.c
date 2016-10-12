@@ -421,12 +421,12 @@ ghost_error ghost_sparsemat_to_mm(char *path, ghost_sparsemat *mat)
     int nrank,rank;
     FILE *fp;
     
-    if (mat->context->row_map->gnrows > INT_MAX) {
+    if (mat->context->row_map->gdim > INT_MAX) {
         ERROR_LOG("The number of matrix rows exceeds INT_MAX and I cannot write a MatrixMarket file!");
         return GHOST_ERR_INVALID_ARG;
     }
     
-    if (mat->context->col_map->gnrows > INT_MAX) {
+    if (mat->context->col_map->gdim > INT_MAX) {
         ERROR_LOG("The number of matrix columns exceeds INT_MAX and I cannot write a MatrixMarket file!");
         return GHOST_ERR_INVALID_ARG;
     }
@@ -459,7 +459,7 @@ ghost_error ghost_sparsemat_to_mm(char *path, ghost_sparsemat *mat)
         }
         
         mm_write_banner(fp,matcode);
-        mm_write_mtx_crd_size(fp,(int)mat->context->row_map->gnrows,(int)mat->context->col_map->gnrows,(int)mat->context->gnnz);
+        mm_write_mtx_crd_size(fp,(int)mat->context->row_map->gdim,(int)mat->context->col_map->gdim,(int)mat->context->gnnz);
         
         fclose(fp);
     }

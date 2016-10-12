@@ -27,7 +27,7 @@ ghost_error ghost_sellspmvSTRIPPED__a_mic_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densema
     {
         #GHOST_UNROLL#__m512d tmp@;#CHUNKHEIGHT/8
 #pragma omp for schedule(runtime) 
-        for (c=0; c<SPM_NROWSPAD(mat)/CHUNKHEIGHT; c++) {
+        for (c=0; c<SPM_NCHUNKS(mat); c++) {
             #GHOST_UNROLL#tmp@ = _mm512_setzero_pd();#CHUNKHEIGHT/8
             double *lval = (double *)res->val;
             double *rval = (double *)invec->val;
@@ -102,7 +102,7 @@ ghost_error ghost_sellspmv__a_mic_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
             dot3[v] = _mm512_setzero_pd();
         }
 #pragma omp for schedule(runtime) 
-        for (c=0; c<SPM_NROWSPAD(mat)/CHUNKHEIGHT; c++) {
+        for (c=0; c<SPM_NCHUNKS(mat); c++) {
             for (v=0; v<NVECS; v++) {
                 #GHOST_UNROLL#tmp@ = _mm512_setzero_pd();#CHUNKHEIGHT/8
                 double *lval = (double *)res->val+v*res->stride;
@@ -232,7 +232,7 @@ ghost_error ghost_sellspmv__a_mic_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
         #GHOST_UNROLL#__m512d tmp@;#CHUNKHEIGHT*NVECS/8
 
 #pragma omp for schedule(runtime)
-        for (c=0; c<SPM_NROWSPAD(mat)/CHUNKHEIGHT; c++) 
+        for (c=0; c<SPM_NCHUNKS(mat); c++) 
         { // loop over chunks
             double *lval = (double *)res->val[c*CHUNKHEIGHT];
             double *rval = (double *)invec->val[c*CHUNKHEIGHT];

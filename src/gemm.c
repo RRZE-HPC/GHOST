@@ -117,17 +117,17 @@ ghost_densemat *w_in, const char *transw_in, void *alpha, void *beta, int reduce
     if (strncasecmp(transv_in,"N",1)) {
         nrV = v->traits.ncols; 
         ncV = DM_NROWS(v);
-        ncVglob = w->map->gnrows;
+        ncVglob = w->map->gdim;
         nrVglob = v->traits.ncols;
     } else {
         nrV = DM_NROWS(v); 
         ncV = v->traits.ncols;
-        nrVglob = v->map->gnrows;
+        nrVglob = v->map->gdim;
         ncVglob = v->traits.ncols;
     }
     if (strncasecmp(transw_in,"N",1)) {
         ncW = DM_NROWS(w);
-        ncWglob = w->map->gnrows;
+        ncWglob = w->map->gdim;
     } else {
         ncW = w->traits.ncols;
         ncWglob = w->traits.ncols;

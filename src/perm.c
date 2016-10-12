@@ -23,14 +23,14 @@ ghost_error ghost_global_perm_inv(ghost_gidx *toPerm, ghost_gidx *fromPerm, ghos
     ghost_nrank(&nprocs,context->mpicomm);
 
     ghost_permutation_ent_t *permclone;
-    ghost_malloc((void **)&permclone,sizeof(ghost_permutation_ent_t)*context->row_map->lnrows[me]);
+    ghost_malloc((void **)&permclone,sizeof(ghost_permutation_ent_t)*context->row_map->ldim[me]);
 
 #pragma omp parallel for
-    for (i=0; i<context->row_map->lnrows[me]; i++) {
+    for (i=0; i<context->row_map->ldim[me]; i++) {
         permclone[i].idx = context->row_map->goffs[me]+i;
         permclone[i].pidx = fromPerm[i];
     }
-    qsort(permclone,context->row_map->lnrows[me],sizeof(ghost_permutation_ent_t),perm_ent_cmp);
+    qsort(permclone,context->row_map->ldim[me],sizeof(ghost_permutation_ent_t),perm_ent_cmp);
     // permclone is now sorted by ascending pidx
 
     ghost_lidx offs = 0;
@@ -42,13 +42,13 @@ ghost_error ghost_global_perm_inv(ghost_gidx *toPerm, ghost_gidx *fromPerm, ghos
         memset(nel,0,sizeof(nel));
 
         // find 1st pidx in sorted permclone which lies in process proc
-        while((offs < context->row_map->lnrows[me]) && (permclone[offs].pidx < context->row_map->goffs[proc])) {
+        while((offs < context->row_map->ldim[me]) && (permclone[offs].pidx < context->row_map->goffs[proc])) {
             offs++;
         }
         displ[me] = offs;
         
         // find last pidx in sorted permclone which lies in process proc
-        while((offs < context->row_map->lnrows[me]) && (permclone[offs].pidx < context->row_map->goffs[proc]+context->row_map->lnrows[proc])) {
+        while((offs < context->row_map->ldim[me]) && (permclone[offs].pidx < context->row_map->goffs[proc]+context->row_map->ldim[proc])) {
             offs++;
         }
         nel[me] = offs-displ[me];
@@ -72,7 +72,7 @@ ghost_error ghost_global_perm_inv(ghost_gidx *toPerm, ghost_gidx *fromPerm, ghos
         // prepare receive buffer
         ghost_permutation_ent_t *recvbuf = NULL;
         if (proc == me) {
-            ghost_malloc((void **)&recvbuf,context->row_map->lnrows[me]*sizeof(ghost_permutation_ent_t));
+            ghost_malloc((void **)&recvbuf,context->row_map->ldim[me]*sizeof(ghost_permutation_ent_t));
         }
 
         // gather local invPerm
@@ -80,8 +80,8 @@ ghost_error ghost_global_perm_inv(ghost_gidx *toPerm, ghost_gidx *fromPerm, ghos
         
         if (proc == me) {
             // sort the indices and put them into the invPerm array
-            qsort(recvbuf,context->row_map->lnrows[me],sizeof(ghost_permutation_ent_t),perm_ent_cmp);
-            for (i=0; i<context->row_map->lnrows[me]; i++) {
+            qsort(recvbuf,context->row_map->ldim[me],sizeof(ghost_permutation_ent_t),perm_ent_cmp);
+            for (i=0; i<context->row_map->ldim[me]; i++) {
                 toPerm[i] = recvbuf[i].idx;
             }
         }

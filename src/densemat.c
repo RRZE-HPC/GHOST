@@ -187,9 +187,6 @@ ghost_error ghost_densemat_create(ghost_densemat **vec, ghost_context *ctx, ghos
         }
     }
 
-
-
-    // TODO assign correctly
     if (traits.initial_map == GHOST_MAP_DEFAULT || traits.initial_map == GHOST_MAP_ROW) {
         (*vec)->map = (*vec)->context->row_map;
     } else {
@@ -201,7 +198,7 @@ ghost_error ghost_densemat_create(ghost_densemat **vec, ghost_context *ctx, ghos
         (*vec)->nblock = DM_NROWS((*vec));
         (*vec)->blocklen = (*vec)->traits.ncols;
     } else {
-        (*vec)->stride = (*vec)->context->col_map->nrowspadded;
+        (*vec)->stride = (*vec)->context->col_map->dimpad;
         (*vec)->nblock = (*vec)->traits.ncols;
         (*vec)->blocklen = DM_NROWS((*vec));
     }
@@ -236,17 +233,17 @@ static ghost_error getNrowsFromContext(ghost_densemat *vec, ghost_context *ctx)
         int rank;
         GHOST_CALL_RETURN(ghost_rank(&rank, ctx->mpicomm));
         //make distinction between Left and Right side vectors (since now we have rectangular matrix)
-        DM_NROWS(vec) = MAX(ctx->row_map->nrows,ctx->col_map->nrows);
+        DM_NROWS(vec) = MAX(ctx->row_map->dim,ctx->col_map->dim);
 /*        if(ctx->flags & GHOST_PERM_NO_DISTINCTION){
           if(vec->traits.permutemethod==COLUMN) {
 		        DM_NROWS(vec) = ctx->nrowspadded; 
           } else if(vec->traits.permutemethod==ROW) {
-            DM_NROWS(vec) = ctx->row_map->lnrows[rank];
+            DM_NROWS(vec) = ctx->row_map->ldim[rank];
           } 
-          vec->traits.maxnrows = MAX(ctx->nrowspadded, ctx->row_map->lnrows[rank]); //required for rectanglar matrices
+          vec->traits.maxnrows = MAX(ctx->nrowspadded, ctx->row_map->ldim[rank]); //required for rectanglar matrices
         } else {
-        	DM_NROWS(vec) = ctx->row_map->lnrows[rank];
-          vec->traits.maxnrows = ctx->row_map->lnrows[rank];
+        	DM_NROWS(vec) = ctx->row_map->ldim[rank];
+          vec->traits.maxnrows = ctx->row_map->ldim[rank];
 	      }
 */
     } else {
@@ -311,7 +308,7 @@ static ghost_error getNrowsFromContext(ghost_densemat *vec, ghost_context *ctx)
         if(ctx->flags & GHOST_PERM_NO_DISTINCTION) {
 	      	DM_NROWS(vec) = ctx->nrowspadded;
       	} else {
-        	DM_NROWS(vec) = ctx->row_map->lnrows[rank];
+        	DM_NROWS(vec) = ctx->row_map->ldim[rank];
 	      }
 */
 	 if (!(vec->traits.flags & GHOST_DENSEMAT_NO_HALO)) {
@@ -683,6 +680,7 @@ ghost_lidx ghost_densemat_row_padding()
     ghost_lidx padding = ghost_sell_max_cfg_chunkheight();  
     // pad for unrolled densemat kernels, assume worst case: SP data with 4 bytes
     padding = MAX(padding,ghost_machine_simd_width()/4 * GHOST_MAX_ROWS_UNROLL);
+    
     return padding;
 }
 

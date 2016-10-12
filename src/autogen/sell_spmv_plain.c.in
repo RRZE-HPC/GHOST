@@ -56,7 +56,7 @@ ghost_error ghost_sellspmv__u_plain_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res
         int tid = ghost_omp_threadnum();
 
 #pragma omp for schedule(runtime)
-        for (c=0; c<SPM_NROWSPAD(mat)/CHUNKHEIGHT; c++) 
+        for (c=0; c<SPM_NCHUNKS(mat); c++) 
         { // loop over chunks
             offs = mat->chunkStart[c];
 
@@ -229,7 +229,7 @@ ghost_error ghost_sellspmv__a_plain_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res
         int tid = ghost_omp_threadnum();
 
 #pragma omp for schedule(runtime)
-        for (c=0; c<SPM_NROWSPAD(mat)/CHUNKHEIGHT; c++) 
+        for (c=0; c<SPM_NCHUNKS(mat); c++) 
         { // loop over chunks
             offs = mat->chunkStart[c];
 
@@ -366,7 +366,7 @@ ghost_error ghost_sellspmv__a_plain_z_z_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res
         int tid = ghost_omp_threadnum();
 
 #pragma omp for schedule(runtime)
-        for (c=0; c<SPM_NROWSPAD(mat)/CHUNKHEIGHT; c++) 
+        for (c=0; c<SPM_NCHUNKS(mat); c++) 
         { // loop over chunks
             offs = mat->chunkStart[c];
 
@@ -539,7 +539,7 @@ ghost_error ghost_sellspmv__a_plain_z_z_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res
         int tid = ghost_omp_threadnum();
 
 #pragma omp for schedule(runtime)
-        for (c=0; c<SPM_NROWSPAD(mat)/CHUNKHEIGHT; c++) 
+        for (c=0; c<SPM_NCHUNKS(mat); c++) 
         { // loop over chunks
             offs = mat->chunkStart[c];
 

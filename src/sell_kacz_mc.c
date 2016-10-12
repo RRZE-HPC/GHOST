@@ -35,7 +35,7 @@ ghost_error ghost_kacz_mc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densema
 
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
    
-    if (!mat->color_ptr || mat->ncolors == 0 ) {
+    if (!mat->context->color_ptr || mat->context->ncolors == 0 ) {
     
     ghost_lidx threads[1] ;
 
@@ -52,12 +52,12 @@ ghost_error ghost_kacz_mc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densema
      GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
      return GHOST_ERR_NOT_COLORED;
    } else {
-     mat->ncolors = 1;
+     mat->context->ncolors = 1;
      int *new_color;
      new_color = (int*) malloc(2);
      new_color[0]=0;
      new_color[1]=SPM_NROWS(mat) ;
-     mat->color_ptr = new_color;        
+     mat->context->color_ptr = new_color;        
   } 
  } 
 
@@ -85,10 +85,10 @@ ghost_error ghost_kacz_mc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densema
     
     if (opts.direction == GHOST_KACZ_DIRECTION_FORWARD) {
         firstcolor = 0;
-        lastcolor = mat->ncolors;
+        lastcolor = mat->context->ncolors;
         stride = 1;
     } else {
-        firstcolor = mat->ncolors;
+        firstcolor = mat->context->ncolors;
         lastcolor = 0;
         stride = -1;
     }
@@ -96,16 +96,16 @@ ghost_error ghost_kacz_mc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densema
     
     for (color=firstcolor; color!=lastcolor; color+=stride) {
        if (opts.direction == GHOST_KACZ_DIRECTION_FORWARD) {
-  		 fchunk = mat->color_ptr[color]/CHUNKHEIGHT;
-                 rem_fchunk = mat->color_ptr[color]%CHUNKHEIGHT;
-       		 lchunk = mat->color_ptr[color+1]/CHUNKHEIGHT;
-                 rem_lchunk = (mat->color_ptr[color+1]-1)%CHUNKHEIGHT;
+  		 fchunk = mat->context->color_ptr[color]/CHUNKHEIGHT;
+                 rem_fchunk = mat->context->color_ptr[color]%CHUNKHEIGHT;
+       		 lchunk = mat->context->color_ptr[color+1]/CHUNKHEIGHT;
+                 rem_lchunk = (mat->context->color_ptr[color+1]-1)%CHUNKHEIGHT;
   
         } else {
-	 	 fchunk = (mat->color_ptr[color]-1)/CHUNKHEIGHT;
-                 rem_fchunk = (mat->color_ptr[color]-1)%CHUNKHEIGHT;
-                 lchunk = (mat->color_ptr[color-1]-1)/CHUNKHEIGHT;
-                 rem_lchunk = (mat->color_ptr[color-1])%CHUNKHEIGHT;
+	 	 fchunk = (mat->context->color_ptr[color]-1)/CHUNKHEIGHT;
+                 rem_fchunk = (mat->context->color_ptr[color]-1)%CHUNKHEIGHT;
+                 lchunk = (mat->context->color_ptr[color-1]-1)/CHUNKHEIGHT;
+                 rem_lchunk = (mat->context->color_ptr[color-1])%CHUNKHEIGHT;
           }
 
 #pragma omp parallel

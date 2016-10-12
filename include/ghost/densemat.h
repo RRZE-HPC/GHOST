@@ -410,9 +410,9 @@ struct ghost_densemat
 
 };
 
-#define DM_NROWS(dm) dm->map->nrows
-#define DM_GNROWS(dm) dm->map->gnrows
-#define DM_NROWSPAD(dm) dm->map->nrowspadded
+#define DM_NROWS(dm) dm->map->dim
+#define DM_GNROWS(dm) dm->map->gdim
+#define DM_NROWSPAD(dm) dm->map->dimpad
 
 #ifdef __cplusplus
 static inline ghost_densemat_flags operator|(const ghost_densemat_flags &a, const ghost_densemat_flags &b) {

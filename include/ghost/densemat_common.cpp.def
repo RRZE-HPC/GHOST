@@ -456,6 +456,7 @@ static ghost_error FUNCNAME(permute_tmpl(ghost_densemat *vec, ghost_context *ctx
                 }
                 MPI_Waitall(2*DM_NROWS(vec),req,MPI_STATUS_IGNORE);
             }
+            free(req);
             ghost_densemat_destroy(vecclone);
             GHOST_CALL_RETURN(ghost_densemat_upload(vec));
 #else

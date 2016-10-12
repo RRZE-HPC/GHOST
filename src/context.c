@@ -55,6 +55,13 @@ ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, gho
     (*context)->nwishpartners = 0;
     (*context)->entsInCol = NULL;
     
+    (*context)->ncolors = 0;
+    (*context)->color_ptr = NULL;
+    (*context)->nzones = 0;
+    (*context)->zone_ptr = NULL;
+    (*context)->kacz_setting.kacz_method = GHOST_KACZ_METHOD_MC;//fallback
+    (*context)->kacz_setting.active_threads = 0;
+    
     (*context)->bandwidth = 0;
     (*context)->lowerBandwidth = 0;
     (*context)->upperBandwidth = 0;
@@ -152,8 +159,8 @@ ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, gho
     DEBUG_LOG(1,"Creating context with dimension %"PRGIDX"x%"PRGIDX,(*context)->gnrows,(*context)->gncols);
 
     */
-    //(*context)->row_map->gnrows = gnrows;
-    //(*context)->col_map->gnrows = gncols;
+    //(*context)->row_map->gdim = gnrows;
+    //(*context)->col_map->gdim = gncols;
 
 
     //GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->lnEnts, nranks*sizeof(ghost_lidx)),err,ret); 
@@ -289,7 +296,6 @@ err:
         //free((*context)->lfRow); (*context)->lfRow = NULL;
         free((*context)->wishlist); (*context)->wishlist = NULL;
         free((*context)->duelist); (*context)->duelist = NULL;
-        free((*context)->rpt); (*context)->rpt = NULL;
     }
     free(*context); *context = NULL;
 
@@ -374,6 +380,9 @@ void ghost_context_destroy(ghost_context *context)
           free(context->mappedDuelist); context->mappedDuelist = NULL;
           free(context->nrankspresent); context->nrankspresent = NULL;
         }
+    
+        free(context->color_ptr);
+        free(context->zone_ptr);
 /*
         if( context->perm_local )
         {
@@ -445,22 +454,22 @@ ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, gh
     MPI_Status stat[2*nprocs];
 #endif
 
-    GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->entsInCol,ctx->row_map->lnrows[me]*sizeof(ghost_lidx)),err,ret); 
+    GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->entsInCol,ctx->row_map->dim*sizeof(ghost_lidx)),err,ret); 
     GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->wishlist,nprocs*sizeof(ghost_lidx *)),err,ret); 
     GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->duelist,nprocs*sizeof(ghost_lidx *)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->wishes,nprocs*sizeof(ghost_lidx)),err,ret); 
     GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->dues,nprocs*sizeof(ghost_lidx)),err,ret);
 
-    memset(ctx->entsInCol,0,ctx->row_map->lnrows[me]*sizeof(ghost_lidx));
+    memset(ctx->entsInCol,0,ctx->row_map->dim*sizeof(ghost_lidx));
        
     ghost_lidx chunk,rowinchunk,entinrow,globalent,globalrow;
-    for(chunk = 0; chunk < SPM_NROWSPAD(mat)/mat->traits.C; chunk++) {
+    for(chunk = 0; chunk < SPM_NCHUNKS(mat); chunk++) {
         for (rowinchunk=0; rowinchunk<mat->traits.C; rowinchunk++) {
             globalrow = chunk*mat->traits.C+rowinchunk;
-            if (globalrow < ctx->row_map->lnrows[me]) {
+            if (globalrow < ctx->row_map->ldim[me]) {
                 for (entinrow=0; entinrow<mat->rowLen[globalrow]; entinrow++) {
                     globalent = mat->chunkStart[chunk] + entinrow*mat->traits.C + rowinchunk;
-		    if (col_orig[globalent] >= ctx->row_map->goffs[me] && col_orig[globalent]<(ctx->row_map->goffs[me]+ctx->row_map->lnrows[me])) {
+		    if (col_orig[globalent] >= ctx->row_map->goffs[me] && col_orig[globalent]<(ctx->row_map->goffs[me]+ctx->row_map->ldim[me])) {
                         ctx->entsInCol[col_orig[globalent]-ctx->row_map->goffs[me]]++;
                     }
                 }
@@ -690,7 +699,7 @@ ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, gh
     int meHandled = 0;
 
  
-    ghost_lidx rowpaddingoffset = 0;
+    ghost_lidx first_putpos = 0;
      
      if(mat->context->flags & GHOST_PERM_NO_DISTINCTION) {
         ghost_lidx halo_ctr = 0;
@@ -703,12 +712,18 @@ ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, gh
           }
         }
 
-//        ctx->nrowspadded   =  PAD(ctx->row_map->lnrows[me]+halo_ctr,rowpadding);
-//        rowpaddingoffset   =  ctx->nrowspadded-ctx->row_map->lnrows[me];
+//        ctx->col_map->dimpad = PAD(ctx->row_map->dim+halo_ctr,ghost_densemat_row_padding());
+//        ctx->nrowspadded   =  PAD(ctx->row_map->ldim[me]+halo_ctr,rowpadding);
+//        rowpaddingoffset   =  ctx->nrowspadded-ctx->row_map->ldim[me];
+        first_putpos = ctx->row_map->dimpad+halo_ctr;
     } else {
-//	    ctx->nrowspadded = PAD(ctx->row_map->lnrows[me],rowpadding);// this is set already
+//	    ctx->nrowspadded = PAD(ctx->row_map->ldim[me],rowpadding);// this is set already
+//        ctx->col_map->dimpad = PAD(ctx->row_map->dim,ghost_densemat_row_padding());
+        first_putpos = ctx->row_map->dimpad;
     }
-	rowpaddingoffset = MAX(ctx->row_map->nrowspadded,ctx->col_map->nrowspadded)-ctx->row_map->nrows;
+
+//	rowpaddingoffset = MAX(ctx->row_map->dimpad,ctx->col_map->dimpad)-ctx->row_map->dim;
+    //first_putpos -= ctx->row_map->dim;
 
     GHOST_INSTR_START("compress_cols");
     /*
@@ -723,7 +738,7 @@ ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, gh
      * globcol   = <{0,0,0,0,0,0,0},{0,0,0,0,0,0},{0,0,0,0,0}> local colidx of element
      */
 
-    this_pseudo_col = ctx->row_map->lnrows[me];
+    this_pseudo_col = ctx->row_map->ldim[me];
     
     ghost_lidx rowpadding = ghost_densemat_row_padding();
     GHOST_CALL_RETURN(ghost_nrank(&nprocs, ctx->mpicomm));
@@ -749,7 +764,7 @@ ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, gh
 
             // myrevcol maps the actual colidx to the new colidx
             DEBUG_LOG(2,"Allocating space for myrevcol");
-            GHOST_CALL_GOTO(ghost_malloc((void **)&myrevcol,ctx->row_map->lnrows[i]*sizeof(ghost_lidx)),err,ret);
+            GHOST_CALL_GOTO(ghost_malloc((void **)&myrevcol,ctx->row_map->ldim[i]*sizeof(ghost_lidx)),err,ret);
             for (j=0;j<ctx->wishes[i];j++){
                 myrevcol[globcol[tt]-ctx->row_map->goffs[i]] = tt;
                 tt++;
@@ -760,15 +775,15 @@ ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, gh
              */
 
 #pragma omp parallel for
-            for (t=0; t<ctx->nnz; t++) {
+            for (t=0; t<mat->nEnts; t++) {
                 if (comm_remotePE[t] == i) { // local element for rank i
-                    col[t] =  rowpaddingoffset + pseudocol[myrevcol[col_orig[t]-ctx->row_map->goffs[i]]];
+                    col[t] =  first_putpos-ctx->row_map->dim + pseudocol[myrevcol[col_orig[t]-ctx->row_map->goffs[i]]];
                 }
             }
             free(myrevcol); myrevcol = NULL;
         } else { // first i iteration goes here
 #pragma omp parallel for
-            for (t=0; t<ctx->nnz; t++) {
+            for (t=0; t<mat->nEnts; t++) {
                 if (comm_remotePE[t] == me) { // local element for myself
                     col[t] =  comm_remoteEl[t];
                 }
@@ -830,12 +845,7 @@ ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, gh
         }
 #endif
         ctx->wishlist[i]   = &(wishl_mem[acc_wishes]);
-
-//        if(mat->context->flags & GHOST_PERM_NO_DISTINCTION) {	
-		      ctx->hput_pos[i]   = MAX(ctx->col_map->nrowspadded,ctx->row_map->nrowspadded) + acc_wishes;
-//	} else {
-//        	ctx->hput_pos[i]   = PAD(ctx->row_map->lnrows[me],rowpadding)+acc_wishes;
-//	}
+        ctx->hput_pos[i]   = first_putpos + acc_wishes;
 
         if  ( (me != i) && !( (i == nprocs-2) && (me == nprocs-1) ) ){
             acc_dues   += ctx->dues[i];
@@ -937,7 +947,7 @@ int ghost_rank_of_row(ghost_context *ctx, ghost_gidx row)
     GHOST_CALL_RETURN(ghost_nrank(&nprocs,ctx->mpicomm));
 
     for (i=0; i<nprocs; i++) {
-        if (ctx->row_map->goffs[i] <= row && ctx->row_map->goffs[i]+ctx->row_map->lnrows[i] > row) {
+        if (ctx->row_map->goffs[i] <= row && ctx->row_map->goffs[i]+ctx->row_map->ldim[i] > row) {
             return i;
         }
     }

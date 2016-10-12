@@ -223,44 +223,7 @@ ghost_error ghost_malloc_align(void **mem, const size_t size, const size_t align
 
 int ghost_sell_max_cfg_chunkheight()
 {
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
-    
-    int max = 0;
-    char *cfgch = strdup(GHOST_GEN_SELL_C);
-    char *ch = strtok(cfgch,",");
-
-    while (ch) {
-        max = MAX(max,atoi(ch));
-        ch = strtok(NULL,",");
-    }
-
-    free(cfgch);
-
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
-    return max;
-}
-
-int ghost_get_next_cfg_densemat_dim(int dim)
-{
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
-    
-    int d = 0;
-    int cur;
-    char *cfgd = strdup(GHOST_GEN_DENSEMAT_DIM);
-    char *curstr = strtok(cfgd,",");
-
-    while (curstr) {
-        cur = atoi(curstr);
-        if (cur <= dim && cur > d) {
-            d = cur;
-        }
-        curstr = strtok(NULL,",");
-    }
-
-    free(cfgd);
-
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
-    return d;
+    return atoi(GHOST_AUTOGEN_MAX_CHUNKHEIGHT);
 }
 
 /*

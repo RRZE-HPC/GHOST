@@ -66,7 +66,7 @@ ghost_error ghost_sellspmv__a_mic_d_d_cm_CHUNKHEIGHT_x(ghost_densemat *res, ghos
         }
         for (v=0; v<invec->traits.ncols; v++) {
 #pragma omp for schedule(runtime) 
-            for (c=0; c<SPM_NROWSPAD(mat)/CHUNKHEIGHT; c++) {
+            for (c=0; c<SPM_NCHUNKS(mat); c++) {
                 #GHOST_UNROLL#tmp@ = _mm512_setzero_pd();#CHUNKHEIGHT/8
                 double *lval = (double *)res->val+v*res->stride;
                 double *rval = (double *)invec->val+v*invec->stride;
@@ -203,7 +203,7 @@ ghost_error ghost_sellspmv__a_mic_d_d_rm_CHUNKHEIGHT_x(ghost_densemat *res, ghos
         ghost_lidx donecols;
 
 #pragma omp for schedule(runtime)
-        for (c=0; c<SPM_NROWSPAD(mat)/CHUNKHEIGHT; c++) 
+        for (c=0; c<SPM_NCHUNKS(mat); c++) 
         { // loop over chunks
             double *lval = (double *)res->val[c*CHUNKHEIGHT];
             double *rval = (double *)invec->val[c*CHUNKHEIGHT];
