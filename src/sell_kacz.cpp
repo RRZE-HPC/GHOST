@@ -12,6 +12,7 @@
 #include "ghost/sell_kacz_bmc_normal_gen.h"
 #include "ghost/sell_kacz_bmc_shift_gen.h"
 #include "ghost/compatibility_check.h"
+#include "ghost/autogen.h"
 #include <complex>
 #include <unordered_map>
 #include <vector>
@@ -149,14 +150,30 @@ ghost_error ghost_carp_perf_init_tmpl(ghost_sparsemat *mat, ghost_carp_opts *opt
        //TODO block values should be precompiled, now 1,4,8,16,32,64,128,256
         int curr_block_size = 64; // since most of the matrix violate LC after 64
           
-        
+        int *block_sizes;
+        int nblock_sizes;
+        ghost_autogen_kacz_nvecs(&block_sizes,&nblock_sizes,mat->traits.C,opts->num_shifts);
+       
+        int i;
+
         while(curr_block_size > 0)
         {
-          curr_block_size = ghost_get_next_cfg_densemat_dim(curr_block_size);    
-          block_size.push_back(curr_block_size);
-          curr_block_size -= 1;
-          total_sizes += 1;
+            for (i=nblock_sizes-1; i>=0; i--) {
+                if (block_sizes[i] <= curr_block_size) {
+                    curr_block_size = block_sizes[i];
+                    break;
+                }
+            }
+
+            if(i == -1) {
+                ERROR_LOG("Please compile block size 1")
+                break;
+            }
+            block_size.push_back(curr_block_size);
+            curr_block_size -= 1;
+            total_sizes += 1;
         }
+        free(block_sizes);
 
         if(block_size.back() !=1) {
           WARNING_LOG("Please compile block size = 1")
@@ -187,7 +204,6 @@ ghost_error ghost_carp_perf_init_tmpl(ghost_sparsemat *mat, ghost_carp_opts *opt
             } else {
                 //Some LC broken
                 opts->best_block_size = block_size[i-1];
-                free(block_size);
                 return ret;
             }
         }

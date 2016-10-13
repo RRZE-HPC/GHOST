@@ -47,13 +47,6 @@ ghost_error ghost_check_mat_vec_compatibility(ghost_compatible_mat_vec *data, gh
 ghost_error ghost_check_vec_vec_compatibility(ghost_compatible_vec_vec *data, ghost_context *ctx);
 
 
-//Internal functions
-bool checkLeft(ghost_densemat *left, ghost_context *ctx);
-bool checkRight(ghost_densemat *right, ghost_context *ctx);
-bool makeSimilar(ghost_densemat *vec1, ghost_densemat *vec2, ghost_context *ctx);
-bool clonePermProperties(ghost_densemat *vec1, ghost_densemat_permuted vec2_row, ghost_densemat_permuted vec2_col, bool permuted_vec2 , ghost_context *ctx);
-
-
 #ifdef __cplusplus
 }
 #endif

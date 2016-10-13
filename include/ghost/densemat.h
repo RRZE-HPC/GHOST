@@ -553,6 +553,7 @@ extern "C" {
     ghost_lidx ghost_densemat_row_padding();
 
     ghost_error ghost_densemat_swap_map( ghost_densemat *vec);
+    ghost_error ghost_densemat_set_map( ghost_densemat *vec, ghost_maptype mt);
     
     int ghost_idx_of_densemat_storage(ghost_densemat_storage s); 
     

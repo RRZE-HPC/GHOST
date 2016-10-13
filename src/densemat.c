@@ -719,10 +719,6 @@ ghost_lidx ghost_densemat_row_padding()
     return padding;
 }
 
-//The third argument isPermuted if set, it assumes the vector is permuted
-//else it takes the value of GHOST_DENSEMAT_PERMUTED
-//TODO: this is just for time being since the flag have to be set 
-//after each operator like SpMV or CARP 
 ghost_error ghost_densemat_swap_map( ghost_densemat *vec) 
 {
     bool wasPermuted = false;
@@ -740,40 +736,20 @@ ghost_error ghost_densemat_swap_map( ghost_densemat *vec)
     if (wasPermuted) {
         ghost_densemat_permute(vec,vec->context,GHOST_PERMUTATION_ORIG2PERM);
     }
-/*
-    if((*vec)->traits.permutemethod != NONE) {
-      if((*vec)->traits.flags & (ghost_densemat_flags)GHOST_DENSEMAT_PERMUTED || isPermuted) 
-      {
-        ghost_densemat_permute(*vec,ctx,GHOST_PERMUTATION_PERM2ORIG);
-        permuted = true;
-      }
-      if((*vec)->perm_local) {
-        free((*vec)->perm_local);
-        (*vec)->perm_local = NULL;
-      }
-      if((*vec)->perm_global) {
-        free((*vec)->perm_global);
-        (*vec)->perm_global = NULL;
-      }
-      (*vec)->traits.permutemethod = ((*vec)->traits.permutemethod==ROW)?COLUMN:ROW;
-      ghost_densemat *temp_vec; 
-      ghost_densemat_create(&temp_vec,ctx,(*vec)->traits);//no allocation
-      temp_vec->val = (*vec)->val;
-      free(*vec);//not the value
-      (*vec) = temp_vec;
-
-      if(permuted) {
-        ghost_densemat_permute(*vec,ctx,GHOST_PERMUTATION_ORIG2PERM);
-      }
-    } else {
-      WARNING_LOG("Permutation Method cannot be switched since matrix has permutemethod == NONE")
-    }
-*/
-    //ERROR_LOG("Not implemented!");
-  
-   //return GHOST_ERR_NOT_IMPLEMENTED;
-   return GHOST_SUCCESS;
+   
+    return GHOST_SUCCESS;
 }   
+
+ghost_error ghost_densemat_set_map( ghost_densemat *vec, ghost_maptype mt)
+{
+    if ((vec->map == vec->context->col_map && mt == GHOST_MAP_COL) ||
+            (vec->map == vec->context->row_map && mt == GHOST_MAP_ROW)) {
+        // Nothing to be done
+        return GHOST_SUCCESS;
+    }
+
+    return ghost_densemat_swap_map(vec);
+} 
 
 int ghost_idx_of_densemat_storage(ghost_densemat_storage s)
 {
