@@ -64,7 +64,6 @@ typedef struct
     ghost_gidx offs;
 } 
 ghost_sparsemat_rowfunc_crs_arg;
-
     
 typedef struct ghost_sparsemat_traits ghost_sparsemat_traits;
 typedef struct ghost_sparsemat ghost_sparsemat;
@@ -312,6 +311,10 @@ typedef enum {
     * @brief Sort matrix rows according to their length (SELL-C-Sigma sorting)
     */
     GHOST_SPARSEMAT_SORT_ROWS = 32768,
+    /**
+    * @brief Does not make a distinction between local and remote entries if set; this might lead to higher communication time
+    */
+    GHOST_SPARSEMAT_PERM_NO_DISTINCTION=65536,
 
 } ghost_sparsemat_flags;
 
@@ -570,6 +573,14 @@ struct ghost_sparsemat
     ghost_gidx *nzDist;
     ghost_lidx nchunks;
 };
+
+typedef struct 
+{
+    char *filename;
+    ghost_datatype dt;
+    ghost_sparsemat *mat;
+} 
+ghost_sparsemat_rowfunc_file_initargs;
 
 #define SPM_NROWS(mat) mat->context->row_map->dim
 #define SPM_NNZ(mat) mat->context->nnz

@@ -450,6 +450,8 @@ extern "C" {
      */
     ghost_error ghost_densemat_create(ghost_densemat **vec, 
             ghost_context *ctx, ghost_densemat_traits traits);
+
+    ghost_error ghost_densemat_noctx_create(ghost_densemat **vec, ghost_lidx nrows, ghost_densemat_traits traits);
     
     /**
      * @brief Create an array of chars ('0' or '1') of the densemat mask.
@@ -550,17 +552,7 @@ extern "C" {
      */
     ghost_lidx ghost_densemat_row_padding();
 
-    /**
-     * @brief Switches permmethod(side) from the current method(side) to the other method(side).
-     *
-     * @return The number of padded rows.
-     * @param vec Where to store the matrix.
-     * @param ctx The context the matrix lives in or NULL.
-     * @param isPermuted This overrules the flag GHOST_DENSEMAT_PERMUTED 
-     * (this is required for time-being since operators like SpMV, CARP is not 
-     *  currently setting the GHOST_DENSEMAT_PERMUTED flag)
-     */ 
-    ghost_error switch_permutation_method( ghost_densemat **vec, ghost_context *ctx, bool isPermuted); 
+    ghost_error ghost_densemat_swap_map( ghost_densemat *vec);
     
     int ghost_idx_of_densemat_storage(ghost_densemat_storage s); 
     

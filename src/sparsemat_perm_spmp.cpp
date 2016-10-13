@@ -60,10 +60,11 @@ extern "C" ghost_error ghost_sparsemat_perm_spmp(ghost_context *ctx, ghost_spars
     //SpMP::CSR *csrTT = NULL; //delete after transpose checking
 #endif
 
-    ghost_lidx ncols_halo_padded = ctx->row_map->dim;
-    if (ctx->flags & GHOST_PERM_NO_DISTINCTION) {
-        ncols_halo_padded = ctx->col_map->dim;
+    ghost_lidx ncols_halo_padded = mat->context->row_map->dim;
+    if (mat->traits.flags & GHOST_PERM_NO_DISTINCTION) {
+        ncols_halo_padded = mat->context->col_map->dim;
     }
+    ERROR_LOG("ncolshalopadded = %d row_map->dim %d halo %d",ncols_halo_padded,mat->context->row_map->dim,mat->context->halo_elements);
 
 #ifdef GHOST_HAVE_CUDA
     GHOST_CALL_GOTO(ghost_cu_malloc((void **)ctx->perm_local->cu_perm,sizeof(ghost_gidx)*ctx->row_map->dim),err,ret);
@@ -74,7 +75,7 @@ extern "C" ghost_error ghost_sparsemat_perm_spmp(ghost_context *ctx, ghost_spars
     
     rptlocal[0] = 0;
     
-    for (ghost_lidx i=0; i<ctx->row_map->dim; i++) {
+    for (i=0; i<ctx->row_map->dim; i++) {
         rptlocal[i+1] = rptlocal[i];
         
         ghost_lidx orig_row = i;
@@ -85,13 +86,14 @@ extern "C" ghost_error ghost_sparsemat_perm_spmp(ghost_context *ctx, ghost_spars
         ghost_lidx orig_row_len = mat->chunkStart[orig_row+1]-mat->chunkStart[orig_row];
 
         for(j=0; j<orig_row_len; ++j) {
-            if (col[j] < mat->context->row_map->dim) {
+            if ((ctx->flags & GHOST_PERM_NO_DISTINCTION) || (col[j] < mat->context->row_map->dim)) {
                 collocal[nnzlocal] = col[j];
                 nnzlocal++;
                 rptlocal[i+1]++;
             }
         }
     }
+
     GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->row_map->loc_perm,sizeof(ghost_gidx)*ctx->row_map->dim),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->row_map->loc_perm_inv,sizeof(ghost_gidx)*ctx->row_map->dim),err,ret);   
 
@@ -103,7 +105,8 @@ extern "C" ghost_error ghost_sparsemat_perm_spmp(ghost_context *ctx, ghost_spars
     GHOST_CALL_GOTO(ghost_malloc((void **)&intperm,sizeof(int)*ctx->row_map->dim),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&intinvperm,sizeof(int)*ctx->row_map->dim),err,ret);
 
-    if (csr->isSymmetric(false,false)) { 
+    if (csr->isSymmetric(false,false)) {
+       INFO_LOG("Doing RCM"); 
         csr->getRCMPermutation(intperm, intinvperm);
 
         useperm = intperm;
@@ -167,6 +170,14 @@ extern "C" ghost_error ghost_sparsemat_perm_spmp(ghost_context *ctx, ghost_spars
 
         INFO_LOG("Doing BFS Bipartite instead of RCM as the matrix is not symmetric.");         
 
+
+        int me;
+        ghost_rank(&me,MPI_COMM_WORLD);
+        	if(me==0)
+            csr->storeMatrixMarket("proc0_before_RCM");
+            if(me==1)
+            csr->storeMatrixMarket("proc1_before_RCM");
+
         csrT = csr->transpose();
         /*      csrTT = csrT->transpose();
 
@@ -200,19 +211,13 @@ extern "C" ghost_error ghost_sparsemat_perm_spmp(ghost_context *ctx, ghost_spars
                   */
         GHOST_CALL_GOTO(ghost_malloc((void **)&intcolperm,sizeof(int)*ncols_halo_padded),err,ret);
         GHOST_CALL_GOTO(ghost_malloc((void **)&intcolinvperm,sizeof(int)*ncols_halo_padded),err,ret);
-
+        
         bfsBipartite(*csr, *csrT, intperm, intinvperm, intcolperm, intcolinvperm);
 
-        /*	if(me==0)
-            csr->storeMatrixMarket("proc0_before_RCM");
-            if(me==1)
-            csr->storeMatrixMarket("proc1_before_RCM");
-            */
         useperm = intperm;
         useinvperm = intinvperm; 
 
         //ctx->perm_local->method = GHOST_PERMUTATION_UNSYMMETRIC;
-        ERROR_LOG("alloc col_perm with %d entries",ncols_halo_padded); 
         GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->col_map->loc_perm,sizeof(ghost_gidx)*ncols_halo_padded),err,ret);
         GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->col_map->loc_perm_inv,sizeof(ghost_gidx)*ncols_halo_padded),err,ret);
 
@@ -250,7 +255,7 @@ extern "C" ghost_error ghost_sparsemat_perm_spmp(ghost_context *ctx, ghost_spars
         csrperm = csr->permute(useperm,useinvperm);
     }
     else {
-        csrperm = csr->permute(useperm ,useinvperm);
+        csrperm = csr->permute(intcolperm ,useinvperm);
         /* 	if(me==0)
             csrperm->storeMatrixMarket("proc0_after_RCM");
             if(me==1)

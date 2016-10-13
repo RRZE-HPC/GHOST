@@ -43,8 +43,13 @@ ghost_error FUNCNAME(malloc(ghost_densemat *vec, int* needsInit))
     }
 
     if ((vec->traits.location & GHOST_LOCATION_HOST) && !vec->val) {
-        ghost_lidx allocrows = MAX(vec->context->row_map->dimpad,vec->context->col_map->dimpad);
-        ERROR_LOG("Allocating host side of densemat with %"PRLIDX"x%"PRLIDX" padded elements",allocrows,vec->traits.ncolspadded);
+        ghost_lidx allocrows;
+        if (vec->context) {
+            allocrows = MAX(vec->context->row_map->dimpad,vec->context->col_map->dimpad);
+        } else {
+            allocrows = vec->map->dimpad;
+        }
+
         ghost_type mytype;
         ghost_type_get(&mytype);
 

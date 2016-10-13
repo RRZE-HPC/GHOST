@@ -13,11 +13,6 @@
 #define GHOST_SPARSEMAT_ROWFUNC_MM_ROW_GETRPT -3
 #define GHOST_SPARSEMAT_ROWFUNC_MM_ROW_GETDIM -4
 
-typedef struct 
-{
-    char *filename;
-    ghost_datatype dt;
-} ghost_sparsemat_rowfunc_mm_initargs;
 
 /**
  * @brief 

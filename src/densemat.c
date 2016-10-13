@@ -69,6 +69,34 @@ const ghost_densemat_halo_comm GHOST_DENSEMAT_HALO_COMM_INITIALIZER = {
 
 static ghost_error getNrowsFromContext(ghost_densemat *vec, ghost_context *ctx);
 
+ghost_error ghost_densemat_noctx_create(ghost_densemat **vec, ghost_lidx nrows, ghost_densemat_traits traits)
+{
+    ghost_densemat_create(vec,NULL,traits);
+    ghost_map *map;
+    ghost_map_create(&map,nrows,MPI_COMM_NULL);
+    map->dim = map->gdim;
+    map->dimpad = PAD(map->dim,ghost_densemat_row_padding());
+    (*vec)->map = map;
+
+    if ((*vec)->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
+        (*vec)->stride = (*vec)->traits.ncolspadded;
+        (*vec)->nblock = DM_NROWS((*vec));
+        (*vec)->blocklen = (*vec)->traits.ncols;
+    } else {
+        (*vec)->stride = (*vec)->map->dimpad;
+        (*vec)->nblock = (*vec)->traits.ncols;
+        (*vec)->blocklen = DM_NROWS((*vec));
+    }
+#ifdef GHOST_HAVE_MPI
+    GHOST_CALL_RETURN(ghost_mpi_datatype_get(&(*vec)->mpidt,(*vec)->traits.datatype));
+    MPI_CALL_RETURN(MPI_Type_vector((*vec)->nblock,(*vec)->blocklen,(*vec)->stride,(*vec)->mpidt,&((*vec)->fullmpidt)));
+    MPI_CALL_RETURN(MPI_Type_commit(&((*vec)->fullmpidt)));
+#else
+    (*vec)->mpidt = MPI_DATATYPE_NULL;
+    (*vec)->fullmpidt = MPI_DATATYPE_NULL;
+#endif
+}
+
 ghost_error ghost_densemat_create(ghost_densemat **vec, ghost_context *ctx, ghost_densemat_traits traits)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_SETUP);
@@ -187,29 +215,33 @@ ghost_error ghost_densemat_create(ghost_densemat **vec, ghost_context *ctx, ghos
         }
     }
 
-    if (traits.initial_map == GHOST_MAP_DEFAULT || traits.initial_map == GHOST_MAP_ROW) {
-        (*vec)->map = (*vec)->context->row_map;
-    } else {
-        (*vec)->map = (*vec)->context->col_map;
-    }
-
-    if ((*vec)->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
-        (*vec)->stride = (*vec)->traits.ncolspadded;
-        (*vec)->nblock = DM_NROWS((*vec));
-        (*vec)->blocklen = (*vec)->traits.ncols;
-    } else {
-        (*vec)->stride = (*vec)->context->col_map->dimpad;
-        (*vec)->nblock = (*vec)->traits.ncols;
-        (*vec)->blocklen = DM_NROWS((*vec));
-    }
+    if ((*vec)->context) {
+        if (traits.initial_map == GHOST_MAP_DEFAULT || traits.initial_map == GHOST_MAP_ROW) {
+            (*vec)->map = (*vec)->context->row_map;
+        } else {
+            (*vec)->map = (*vec)->context->col_map;
+        }
+        if ((*vec)->map->loc_perm || (*vec)->map->glb_perm) {
+            (*vec)->traits.flags |= GHOST_DENSEMAT_PERMUTED;
+        }
+        if ((*vec)->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
+            (*vec)->stride = (*vec)->traits.ncolspadded;
+            (*vec)->nblock = DM_NROWS((*vec));
+            (*vec)->blocklen = (*vec)->traits.ncols;
+        } else {
+            (*vec)->stride = (*vec)->context->col_map->dimpad;
+            (*vec)->nblock = (*vec)->traits.ncols;
+            (*vec)->blocklen = DM_NROWS((*vec));
+        }
 #ifdef GHOST_HAVE_MPI
-    GHOST_CALL_RETURN(ghost_mpi_datatype_get(&(*vec)->mpidt,(*vec)->traits.datatype));
-    MPI_CALL_RETURN(MPI_Type_vector((*vec)->nblock,(*vec)->blocklen,(*vec)->stride,(*vec)->mpidt,&((*vec)->fullmpidt)));
-    MPI_CALL_RETURN(MPI_Type_commit(&((*vec)->fullmpidt)));
+        GHOST_CALL_RETURN(ghost_mpi_datatype_get(&(*vec)->mpidt,(*vec)->traits.datatype));
+        MPI_CALL_RETURN(MPI_Type_vector((*vec)->nblock,(*vec)->blocklen,(*vec)->stride,(*vec)->mpidt,&((*vec)->fullmpidt)));
+        MPI_CALL_RETURN(MPI_Type_commit(&((*vec)->fullmpidt)));
 #else
-    (*vec)->mpidt = MPI_DATATYPE_NULL;
-    (*vec)->fullmpidt = MPI_DATATYPE_NULL;
+        (*vec)->mpidt = MPI_DATATYPE_NULL;
+        (*vec)->fullmpidt = MPI_DATATYPE_NULL;
 #endif
+    }
 
 //    char *str;
 //    ghost_densemat_info_string(&str,*vec);
@@ -677,7 +709,7 @@ void ghost_densemat_destroy( ghost_densemat* vec )
 ghost_lidx ghost_densemat_row_padding()
 {
     // pad for SELL SpMV
-    ghost_lidx padding = ghost_sell_max_cfg_chunkheight();  
+    ghost_lidx padding = atoi(GHOST_AUTOGEN_MAX_CHUNKHEIGHT);
     // pad for unrolled densemat kernels, assume worst case: SP data with 4 bytes
     padding = MAX(padding,ghost_machine_simd_width()/4 * GHOST_MAX_ROWS_UNROLL);
     
@@ -688,13 +720,25 @@ ghost_lidx ghost_densemat_row_padding()
 //else it takes the value of GHOST_DENSEMAT_PERMUTED
 //TODO: this is just for time being since the flag have to be set 
 //after each operator like SpMV or CARP 
-ghost_error switch_permutation_method( ghost_densemat **vec, ghost_context *ctx, bool isPermuted) 
+ghost_error ghost_densemat_swap_map( ghost_densemat *vec) 
 {
-    int rank;
-    GHOST_CALL_RETURN(ghost_rank(&rank, ctx->mpicomm));
-    bool permuted = false;
+    bool wasPermuted = false;
+    
+    if (vec->traits.flags & GHOST_DENSEMAT_PERMUTED) {
+        wasPermuted = true;
+        ghost_densemat_permute(vec,vec->context,GHOST_PERMUTATION_PERM2ORIG);
+    }
+    if (vec->map == vec->context->col_map) {
+        vec->map = vec->context->row_map;
+    } else {
+        vec->map = vec->context->col_map;
+    }
 
-    /*if((*vec)->traits.permutemethod != NONE) {
+    if (wasPermuted) {
+        ghost_densemat_permute(vec,vec->context,GHOST_PERMUTATION_ORIG2PERM);
+    }
+/*
+    if((*vec)->traits.permutemethod != NONE) {
       if((*vec)->traits.flags & (ghost_densemat_flags)GHOST_DENSEMAT_PERMUTED || isPermuted) 
       {
         ghost_densemat_permute(*vec,ctx,GHOST_PERMUTATION_PERM2ORIG);
@@ -720,11 +764,12 @@ ghost_error switch_permutation_method( ghost_densemat **vec, ghost_context *ctx,
       }
     } else {
       WARNING_LOG("Permutation Method cannot be switched since matrix has permutemethod == NONE")
-    }*/
-
-    ERROR_LOG("Not implemented!");
+    }
+*/
+    //ERROR_LOG("Not implemented!");
   
-   return GHOST_ERR_NOT_IMPLEMENTED;
+   //return GHOST_ERR_NOT_IMPLEMENTED;
+   return GHOST_SUCCESS;
 }   
 
 int ghost_idx_of_densemat_storage(ghost_densemat_storage s)

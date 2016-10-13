@@ -10,7 +10,7 @@ typedef enum {
 
 //returns the virtual column index; ie takes into account the permutation of halo elements also
 #define virtual_col(col_idx)\
-(mat->context->flags & GHOST_PERM_NO_DISTINCTION)?( (col_ptr[col_idx]<mat->context->col_map->dimpad)?col_ptr[col_idx]:mat->context->col_map->loc_perm[col_ptr[col_idx]] ):col_ptr[col_idx]\
+(mat->context->flags & GHOST_PERM_NO_DISTINCTION)?( (col_ptr[col_idx]<(mat->context->col_map->dim-mat->context->halo_elements))?col_ptr[col_idx]:mat->context->col_map->loc_perm[col_ptr[col_idx]] ):col_ptr[col_idx]\
 
 
 
@@ -162,7 +162,7 @@ ghost_error checker(ghost_sparsemat *mat)
         free(extrema_trans);
     
     if(ret == GHOST_ERR_BLOCKCOLOR)
-        ERROR_LOG("ERROR in BLOCK COLORING, Check hybrid splitting \n");
+        ERROR_LOG("ERROR in BLOCK COLORING, Check hybrid splitting");
     
     
     return ret;            	
@@ -334,7 +334,7 @@ ghost_error split_transition(ghost_sparsemat *mat)
     //currently be done only if CHUNKHEIGHT==1, and NO_DISTINCTION is on, since if no distinction is not on 
     //further permutation occurs after ghost_sparsemat_fromfunc_common , which permutes remote entries
     //this causes problem for checking although the result is correct
-    if(mat->traits.C == 1 && mat->context->flags & GHOST_PERM_NO_DISTINCTION) 
+    if(mat->traits.C == 1/* && mat->context->flags & GHOST_PERM_NO_DISTINCTION*/) 
     {
         INFO_LOG("CHECKING BLOCK COLORING")
         checker(mat);

@@ -91,7 +91,7 @@ ghost_error ghost_header_string(char **str, const char *fmt, ...)
     offset += PRINTWIDTH;
     sprintf(*str+offset,"\n");
 #endif
-    
+
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return GHOST_SUCCESS;
 }
@@ -99,7 +99,7 @@ ghost_error ghost_header_string(char **str, const char *fmt, ...)
 ghost_error ghost_footer_string(char **str) 
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
-    
+
     size_t len = strlen(*str);
     size_t footerLen = (PRINTWIDTH+1)*FOOTERHEIGHT+1;
     *str = realloc(*str,strlen(*str)+footerLen);
@@ -157,7 +157,7 @@ ghost_error ghost_line_string(char **str, const char *label, const char *unit, c
     sprintf(*str+len+PRINTWIDTH,"\n");
     for (l=1; l<nLines; l++) {
         sprintf(*str+len+l*(PRINTWIDTH+1),"%-*s%s%*s",LABELWIDTH,"",PRINTSEP,VALUEWIDTH,dummy+l*VALUEWIDTH);
-//        sprintf(*str+len+l*(PRINTWIDTH+1),"%*s",PRINTWIDTH,dummy+l*VALUEWIDTH);
+        //        sprintf(*str+len+l*(PRINTWIDTH+1),"%*s",PRINTWIDTH,dummy+l*VALUEWIDTH);
         sprintf(*str+len+(l+1)*PRINTWIDTH+1,"\n");
     }
 
@@ -221,29 +221,24 @@ ghost_error ghost_malloc_align(void **mem, const size_t size, const size_t align
     return GHOST_SUCCESS;
 }
 
-int ghost_sell_max_cfg_chunkheight()
-{
-    return atoi(GHOST_AUTOGEN_MAX_CHUNKHEIGHT);
-}
-
 /*
 // make this inline for not wasting too much time hashing for kernel-map indexes
 int ghost_hash(int a, int b, int c)
 {
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
-    
-    a -= b; a -= c; a ^= (c>>13);
-    b -= c; b -= a; b ^= (a<<8);
-    c -= a; c -= b; c ^= (b>>13);
-    a -= b; a -= c; a ^= (c>>12);
-    b -= c; b -= a; b ^= (a<<16);
-    c -= a; c -= b; c ^= (b>>5);
-    a -= b; a -= c; a ^= (c>>3);
-    b -= c; b -= a; b ^= (a<<10);
-    c -= a; c -= b; c ^= (b>>15);
+GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
 
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
-    return c;
+a -= b; a -= c; a ^= (c>>13);
+b -= c; b -= a; b ^= (a<<8);
+c -= a; c -= b; c ^= (b>>13);
+a -= b; a -= c; a ^= (c>>12);
+b -= c; b -= a; b ^= (a<<16);
+c -= a; c -= b; c ^= (b>>5);
+a -= b; a -= c; a ^= (c>>3);
+b -= c; b -= a; b ^= (a<<10);
+c -= a; c -= b; c ^= (b>>15);
+
+GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
+return c;
 }
 */
 

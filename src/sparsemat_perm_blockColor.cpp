@@ -37,9 +37,11 @@ extern "C" ghost_error ghost_sparsemat_blockColor(ghost_context *ctx, ghost_spar
     uint32_t** adolc = NULL; 
     uint32_t *adolc_data = NULL;
     #endif
-    
-    ghost_gidx ncols_halo_padded = ctx->col_map->dim;
-//    if (ctx->flags & GHOST_PERM_NO_DISTINCTION) {
+   
+    // We have to access mat->context because this already has communication information 
+    ghost_gidx ncols_halo_padded = mat->context->col_map->dim;
+
+    //    if (ctx->flags & GHOST_PERM_NO_DISTINCTION) {
 //        ncols_halo_padded = ctx->nrowspadded + ctx->halo_elements+1;
 //    }
     
@@ -149,7 +151,8 @@ free(tmpval);
     rhs_split = new int[n_zones+2];
     
     for(int i=0; i<n_zones+1; ++i) {
-        rhs_split[i] = i*local_size; 
+        rhs_split[i] = i*local_size;
+        //printf("rhs_split[%d] = %d\n",i,rhs_split[i]); 
     }
     
     rhs_split[n_zones+1] = max_col_idx+1;
@@ -165,7 +168,7 @@ free(tmpval);
     
     nnz = SPM_NNZ(mat); 
     
-    #pragma omp parallel for reduction(+:ctr_nrows_MC) 
+    #pragma omp parallel for reduction(+:ctr_nrows_MC,ctr_nnz_MC) 
     for (ghost_lidx i=0; i<ctx->row_map->dim; i++) {
         
         ghost_lidx orig_row = i;
@@ -247,6 +250,7 @@ else if(k>0 && zone[i]<0 && (col_ptr[row_ptr[i]] >= rhs_split[k-1] && col_ptr[ro
         //anyway separate both permutations 
         GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->col_map->loc_perm,sizeof(ghost_gidx)*ncols_halo_padded), err, ret);
         GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->col_map->loc_perm_inv,sizeof(ghost_gidx)*ncols_halo_padded), err, ret);
+        ERROR_LOG("ncolshalopadded = %d",ncols_halo_padded);
         
         #pragma omp parallel for         
         for(int i=0; i<ncols_halo_padded; ++i) { 
@@ -254,10 +258,10 @@ else if(k>0 && zone[i]<0 && (col_ptr[row_ptr[i]] >= rhs_split[k-1] && col_ptr[ro
             ctx->col_map->loc_perm_inv[i] = i;
         } 
         
-    } else if(ctx->row_map->loc_perm != ctx->col_map->loc_perm) {
+    } else if(ctx->row_map->loc_perm == ctx->col_map->loc_perm) {
         //this branch if no unsymmetric permutations have been carried out before
         
-        if(ctx->row_map->dim != ctx->col_map->dimpad) {
+        if(ctx->row_map->dim != ctx->col_map->dim) {
             ERROR_LOG("Trying to do symmetric permutation on non-squared matrix");
         }
         
@@ -319,21 +323,29 @@ else if(k>0 && zone[i]<0 && (col_ptr[row_ptr[i]] >= rhs_split[k-1] && col_ptr[ro
     offs = ctx->zone_ptr[ctx->nzones];
     adolc_data = new uint32_t[ctr_nnz_MC + ctr_nrows_MC];
     pos = 0;
+    //printf("MC NNZ %d NROWS %d\n\n",ctr_nnz_MC,ctr_nrows_MC);
     
     //here if a previous permutation like RCM was carried out we either need the original unpermuted matrix or a totally permuted matrix
         
     for(int i=0; i< ctr_nrows_MC; ++i) {
-        ghost_lidx orig_row = i;
+        ghost_lidx orig_row = offs+i;
         if (ctx->row_map->loc_perm) {
-            orig_row = ctx->row_map->loc_perm_inv[i];
+            orig_row = ctx->row_map->loc_perm_inv[offs+i];
         }
         ghost_lidx orig_row_len = mat->chunkStart[orig_row+1]-mat->chunkStart[orig_row];
         ghost_lidx * col = &mat->col[mat->chunkStart[orig_row]];
         
         adolc[i] = &(adolc_data[pos]);
         adolc_data[pos++] = orig_row_len;
-        for(int j=0; j<orig_row_len; ++j) {
-            adolc_data[pos++] = col[j];
+        
+        if (ctx->col_map->loc_perm) {
+            for(int j=0; j<orig_row_len; ++j) {
+                adolc_data[pos++] = ctx->col_map->loc_perm_inv[col[j]];
+            }
+        } else {
+            for(int j=0; j<orig_row_len; ++j) {
+                adolc_data[pos++] = col[j];
+            }
         }
     }
     
@@ -405,12 +417,14 @@ else if(k>0 && zone[i]<0 && (col_ptr[row_ptr[i]] >= rhs_split[k-1] && col_ptr[ro
     err:
     
     out:
-    
+   
+#ifdef GHOST_HAVE_COLPACK 
     delete [] adolc_data;
     delete [] adolc;
+    delete GC;
+#endif
     delete [] rhs_split;
     delete [] zone;
-    delete GC;
     free(curcol);
     
     return ret;

@@ -55,8 +55,11 @@ typedef struct {
     void *arg;
 } ghost_sparsemat_src_rowfunc;
 
+
 extern const ghost_sparsemat_src_rowfunc GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER;
 
 
+#define GHOST_SPARSEMAT_ROWFUNC_INIT -99
+#define GHOST_SPARSEMAT_ROWFUNC_FINALIZE -100
 
 #endif

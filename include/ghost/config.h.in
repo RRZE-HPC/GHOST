@@ -52,6 +52,7 @@
 
 /* code generation */
 #define GHOST_AUTOGEN_MAX_CHUNKHEIGHT "${GHOST_AUTOGEN_MAX_CHUNKHEIGHT}"
+#define GHOST_AUTOGEN_KACZ "${GHOST_AUTOGEN_KACZ}"
 
 /* sparsemat statistics */
 #cmakedefine GHOST_SPARSEMAT_STATS

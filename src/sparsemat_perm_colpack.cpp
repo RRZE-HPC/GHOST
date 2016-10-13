@@ -170,9 +170,8 @@ extern "C" ghost_error ghost_sparsemat_perm_color(ghost_context *ctx, ghost_spar
     
     return ret;
     #else
-    UNUSED(mat_out);
-    UNUSED(matrixSource);
-    UNUSED(srcType);
+    UNUSED(mat);
+    UNUSED(ctx);
     ERROR_LOG("ColPack not available!");
     return GHOST_ERR_NOT_IMPLEMENTED;
     #endif

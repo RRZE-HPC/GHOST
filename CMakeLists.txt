@@ -80,6 +80,7 @@ if (GHOST_IDX64_LOCAL)
 endif()
 
 set (SOURCES
+    src/autogen.cpp
     src/datatransfers.cpp 
     src/densemat_cm_averagehalo.cpp
     src/densemat_cm.cpp 
@@ -88,7 +89,7 @@ set (SOURCES
     src/dot.cpp 
     src/errorhandler.cpp
     src/rcm_dissection.cpp
-    src/sell_kacz_fallback.cpp 
+    #    src/sell_kacz_fallback.cpp 
     src/sell_kacz.cpp
     src/sell_spmv.cpp
     src/sparsemat.cpp
@@ -147,6 +148,7 @@ set (SOURCES
    )
 
 set (HEADERS
+    include/ghost/autogen.h
     include/ghost/bench.h
     include/ghost/bincrs.h
     include/ghost/bindensemat.h

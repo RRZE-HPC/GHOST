@@ -13,8 +13,8 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *c
     static size_t dtsize = 0;
 
     if (row == GHOST_SPARSEMAT_ROWFUNC_MM_ROW_GETDIM) {
-        ghost_sparsemat_rowfunc_mm_initargs args = 
-            *(ghost_sparsemat_rowfunc_mm_initargs *)val;
+        ghost_sparsemat_rowfunc_file_initargs args = 
+            *(ghost_sparsemat_rowfunc_file_initargs *)arg;
         char *filename = args.filename;
 
         FILE *f;
@@ -45,10 +45,10 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *c
         col[1] = N;
         
         fclose(f);
-    } else if ((row == GHOST_SPARSEMAT_ROWFUNC_MM_ROW_GETRPT) || (row == GHOST_SPARSEMAT_ROWFUNC_MM_ROW_INIT)) {
+    } else if (row == GHOST_SPARSEMAT_ROWFUNC_INIT) {
 
-        ghost_sparsemat_rowfunc_mm_initargs args = 
-            *(ghost_sparsemat_rowfunc_mm_initargs *)val;
+        ghost_sparsemat_rowfunc_file_initargs args = 
+            *(ghost_sparsemat_rowfunc_file_initargs *)arg;
         char *filename = args.filename;
         ghost_datatype matdt = args.dt;
 
@@ -97,7 +97,7 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *c
 
         if (mm_is_symmetric(matcode)) {
             PERFWARNING_LOG("Will create a general matrix out of a symmetric matrix!");
-            *(int *)arg = 1;
+            args.mat->traits.symmetry = GHOST_SPARSEMAT_SYMM_SYMMETRIC;
             actualnz = nz*2;
             symm = 1;
         } else {
@@ -192,7 +192,7 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *c
         free(offset);
         fclose(f);
 
-    } else if (row == GHOST_SPARSEMAT_ROWFUNC_MM_ROW_FINALIZE) {
+    } else if (row == GHOST_SPARSEMAT_ROWFUNC_FINALIZE) {
         free(colInd);
         free(rowPtr);
         free(values);
@@ -217,8 +217,8 @@ int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx row, ghost_lidx *rowlen, gho
     static size_t dtsize = 0;
 
     if (row == GHOST_SPARSEMAT_ROWFUNC_MM_ROW_GETDIM) {
-        ghost_sparsemat_rowfunc_mm_initargs args = 
-            *(ghost_sparsemat_rowfunc_mm_initargs *)val;
+        ghost_sparsemat_rowfunc_file_initargs args = 
+            *(ghost_sparsemat_rowfunc_file_initargs *)val;
         char *filename = args.filename;
 
         FILE *f;
@@ -251,8 +251,8 @@ int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx row, ghost_lidx *rowlen, gho
         fclose(f);
     } else if ((row == GHOST_SPARSEMAT_ROWFUNC_MM_ROW_GETRPT) || (row == GHOST_SPARSEMAT_ROWFUNC_MM_ROW_INIT)) {
 
-        ghost_sparsemat_rowfunc_mm_initargs args = 
-            *(ghost_sparsemat_rowfunc_mm_initargs *)val;
+        ghost_sparsemat_rowfunc_file_initargs args = 
+            *(ghost_sparsemat_rowfunc_file_initargs *)val;
         char *filename = args.filename;
         ghost_datatype matdt = args.dt;
 

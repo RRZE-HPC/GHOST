@@ -6,6 +6,7 @@
 #ifndef GHOST_H
 #define GHOST_H
 
+#include "ghost/autogen.h"
 #include "ghost/config.h"
 #include "ghost/types.h"
 #include "ghost/core.h"

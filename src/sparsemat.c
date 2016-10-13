@@ -240,9 +240,9 @@ static ghost_error ghost_set_kacz_ratio(ghost_context *ctx, ghost_sparsemat *mat
     nthread = 1;
     #endif
     
-    mat->context->kacz_setting.active_threads = nthread;
+    ctx->kacz_setting.active_threads = nthread;
     ghost_calculate_bw(ctx,mat);
-    mat->context->kaczRatio = ((double)SPM_NROWS(mat))/mat->context->bandwidth;
+    ctx->kaczRatio = ((double)SPM_NROWS(mat))/ctx->bandwidth;
     return GHOST_SUCCESS;
 }
 
@@ -615,14 +615,23 @@ ghost_error ghost_sparsemat_init_bin(ghost_sparsemat *mat, char *path, ghost_mpi
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION|GHOST_FUNCTYPE_IO);
     
     ghost_error ret = GHOST_SUCCESS;
-    ghost_sparsemat_rowfunc_bincrs_initargs args;
+    ghost_sparsemat_rowfunc_file_initargs args;
     ghost_gidx dim[2];
     ghost_lidx bincrs_dt = 0; // or use args.dt directly...
     ghost_sparsemat_src_rowfunc src = GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER;
     
     src.func = &ghost_sparsemat_rowfunc_bincrs;
-    src.arg = mat;
+    src.arg = &args; 
+   
+    args.mat = mat; 
     args.filename = path;
+   
+    // Apply file datatype only if still unspecified.
+    if(mat->traits.datatype == GHOST_DT_NONE) mat->traits.datatype = (ghost_datatype)bincrs_dt;
+    // Require valid datatype here.
+    GHOST_CALL_GOTO(ghost_datatype_size(&mat->elSize,mat->traits.datatype),err,ret);   
+    args.dt = mat->traits.datatype;
+    
     if (src.func(GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_GETDIM,&bincrs_dt,dim,&args,src.arg)) {
         ERROR_LOG("Error in matrix creation function");
         ret = GHOST_ERR_UNKNOWN;
@@ -631,29 +640,9 @@ ghost_error ghost_sparsemat_init_bin(ghost_sparsemat *mat, char *path, ghost_mpi
     
     src.gnrows = dim[0];
     src.gncols = dim[1];
-    
-    
-    // Apply file datatype only if still unspecified.
-    if(mat->traits.datatype == GHOST_DT_NONE) mat->traits.datatype = (ghost_datatype)bincrs_dt;
-    // Require valid datatype here.
-    GHOST_CALL_GOTO(ghost_datatype_size(&mat->elSize,mat->traits.datatype),err,ret);   
-    args.dt = mat->traits.datatype;
-    
-    if (src.func(GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_INIT,NULL,NULL,&args,src.arg)) {
-        ERROR_LOG("Error in matrix creation function");
-        ret = GHOST_ERR_UNKNOWN;
-        goto err;
-    }
-    
     src.maxrowlen = dim[1];
     
     GHOST_CALL_GOTO(ghost_sparsemat_init_rowfunc(mat,&src,mpicomm,weight),err,ret);
-    
-    if (src.func(GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_FINALIZE,NULL,NULL,NULL,src.arg)) {
-        ERROR_LOG("Error in matrix creation function");
-        ret = GHOST_ERR_UNKNOWN;
-        goto err;
-    }
     
     goto out;
     err:
@@ -669,28 +658,20 @@ ghost_error ghost_sparsemat_init_mm(ghost_sparsemat *mat, char *path, ghost_mpi_
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION|GHOST_FUNCTYPE_IO);
     
     ghost_error ret = GHOST_SUCCESS;
-    ghost_sparsemat_rowfunc_mm_initargs args;
+    ghost_sparsemat_rowfunc_file_initargs args;
     ghost_gidx dim[2];
     ghost_lidx bincrs_dt = 0;
     ghost_sparsemat_src_rowfunc src = GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER;
-    
-    int symmetric = 0;
-    src.arg = &symmetric;
     
     if (mat->traits.flags & GHOST_SPARSEMAT_TRANSPOSE_MM) { 
         src.func = &ghost_sparsemat_rowfunc_mm_transpose;
     } else {
         src.func = &ghost_sparsemat_rowfunc_mm;
     }
-    args.filename = path;
-    if (src.func(GHOST_SPARSEMAT_ROWFUNC_MM_ROW_GETDIM,&bincrs_dt,dim,&args,src.arg)) {
-        ERROR_LOG("Error in matrix creation function");
-        ret = GHOST_ERR_UNKNOWN;
-        goto err;
-    }
     
-    src.gnrows = dim[0];
-    src.gncols = dim[1];
+    src.arg = &args; 
+    args.filename = path;
+    args.mat = mat;
     
     // Construct final datatype.
     if(mat->traits.datatype == GHOST_DT_NONE) mat->traits.datatype = GHOST_DT_DOUBLE;
@@ -699,24 +680,17 @@ ghost_error ghost_sparsemat_init_mm(ghost_sparsemat *mat, char *path, ghost_mpi_
     GHOST_CALL_GOTO(ghost_datatype_size(&mat->elSize,mat->traits.datatype),err,ret);   
     args.dt = mat->traits.datatype;
     
-    if (src.func(GHOST_SPARSEMAT_ROWFUNC_MM_ROW_INIT,NULL,NULL,&args,src.arg)) {
+    if (src.func(GHOST_SPARSEMAT_ROWFUNC_MM_ROW_GETDIM,&bincrs_dt,dim,NULL,src.arg)) {
         ERROR_LOG("Error in matrix creation function");
         ret = GHOST_ERR_UNKNOWN;
         goto err;
     }
-    
+    src.gnrows = dim[0];
+    src.gncols = dim[1];
     src.maxrowlen = dim[1];
+
     
     GHOST_CALL_GOTO(ghost_sparsemat_init_rowfunc(mat,&src,mpicomm,weight),err,ret);
-    if (src.func(GHOST_SPARSEMAT_ROWFUNC_MM_ROW_FINALIZE,NULL,NULL,NULL,src.arg)) {
-        ERROR_LOG("Error in matrix creation function");
-        ret = GHOST_ERR_UNKNOWN;
-        goto err;
-    }
-    
-    if (*(int *)src.arg) {
-        mat->traits.symmetry = GHOST_SPARSEMAT_SYMM_SYMMETRIC;
-    }
     
     goto out;
     err:
@@ -796,7 +770,7 @@ ghost_error initHaloAvg(ghost_sparsemat *mat)
     
     #pragma omp parallel for schedule(runtime)
     for (int i=0; i<ctx_nrowspadded; i++) {	
-        if(ctx->row_map->loc_perm) {
+        if(ctx->col_map->loc_perm) {
             if(ctx->col_map->loc_perm_inv[i]< ctx->row_map->dim ) { //This check is important since entsInCol has only lnrows(NO_DISTINCTION
                 //might give seg fault else) the rest are halo anyway, not needed for local sums
                 temp_nrankspresent[i] = ctx->entsInCol[ctx->col_map->loc_perm_inv[i]]?1:0; //this has also to be permuted since it was
@@ -930,9 +904,13 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
     int me,nprocs;
     
     if (!(mat->context)) {
-        ghost_context_create(&(mat->context),src->gnrows,src->gncols,GHOST_CONTEXT_DEFAULT,src,GHOST_SPARSEMAT_SRC_FUNC,mpicomm,weight);
+        ghost_context_flags_t ctxflags = GHOST_CONTEXT_DEFAULT;
+        if (mat->traits.flags & GHOST_SPARSEMAT_PERM_NO_DISTINCTION) {
+            ctxflags |= GHOST_PERM_NO_DISTINCTION;
+        }
+        ghost_context_create(&(mat->context),src->gnrows,src->gncols,ctxflags,src,GHOST_SPARSEMAT_SRC_FUNC,mpicomm,weight);
         GHOST_CALL_GOTO(ghost_nrank(&nprocs, mat->context->mpicomm),err,ret);
-        ghost_map_create_distribution(mat->context->row_map,src,mat->context->mpicomm,mat->context->weight,GHOST_MAP_DIST_NNZ);
+        ghost_map_create_distribution(mat->context->row_map,src,mat->context->mpicomm,mat->context->weight,GHOST_MAP_DIST_NROWS);
         if (nprocs == 1) {
             mat->context->col_map->dim = src->gncols;
             mat->context->col_map->dimpad = PAD(mat->context->col_map->dim,ghost_densemat_row_padding());
@@ -965,7 +943,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
     
     GHOST_CALL_GOTO(ghost_rank(&me,mat->context->mpicomm),err,ret);
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, mat->context->mpicomm),err,ret);
-   
+
 
     //set NO_DISTINCTION when block multicolor and RCM is on and more than 2 processors, TODO pure MC and MPI
     //this has to be invoked even if no permutations are carried out and more than 2 processors, since we need to
@@ -999,7 +977,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
     GHOST_CALL_GOTO(ghost_rank(&me, mat->context->mpicomm),err,ret);
     
     
-    /*if(mat->traits.flags & GHOST_PERM_NO_DISTINCTION) 
+    /*if(mat->context->flags & GHOST_PERM_NO_DISTINCTION) 
      *        SPM_NCOLS(mat) = mat->context->nrowspadded; 
      *    else */
     
@@ -1045,6 +1023,9 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
         ghost_sparsemat_traits mtraits = mat->traits;
         mtraits.flags = mtraits.flags & ~(GHOST_SPARSEMAT_PERM_ANY_LOCAL);
         mtraits.flags = mtraits.flags | GHOST_SPARSEMAT_SAVE_ORIG_COLS;
+        if (mat->traits.flags & GHOST_SOLVER_KACZ && nprocs > 1) {
+            mtraits.flags = mtraits.flags | GHOST_SPARSEMAT_PERM_NO_DISTINCTION;
+        }
         mtraits.C = 1;
         mtraits.sortScope = 1;
         ghost_sparsemat_create(&dummymat,NULL,&mtraits,1);
@@ -1064,8 +1045,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
             ghost_set_kacz_ratio(mat->context,dummymat);
             if(mat->context->kaczRatio < mat->context->kacz_setting.active_threads && !(mat->traits.flags & GHOST_SPARSEMAT_COLOR)) {
                 mat->traits.flags |= (ghost_sparsemat_flags)GHOST_SPARSEMAT_BLOCKCOLOR; 
-            } 
-
+            }
         }
         
         if (mat->traits.flags & GHOST_SPARSEMAT_BLOCKCOLOR) {
@@ -1096,6 +1076,15 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
         mat->traits.flags |= (ghost_sparsemat_flags)GHOST_SPARSEMAT_NOT_PERMUTE_COLS;
         mat->traits.flags |= (ghost_sparsemat_flags)GHOST_SPARSEMAT_NOT_SORT_COLS;
     }
+    if (src->func == ghost_sparsemat_rowfunc_bincrs || src->func == ghost_sparsemat_rowfunc_mm) {
+        if (src->func(GHOST_SPARSEMAT_ROWFUNC_INIT,NULL,NULL,NULL,src->arg)) {
+            ERROR_LOG("Error in matrix creation function");
+            ret = GHOST_ERR_UNKNOWN;
+            goto err;
+        }
+    }
+        
+   
     
     ghost_lidx *tmpclp = NULL;
     if (!clp) {
@@ -1486,7 +1475,6 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
         //split if no splitting was done before and MC is off
         else if(!(mat->traits.flags & GHOST_SPARSEMAT_COLOR)) {
             if( (mat->context->kaczRatio >= 2*mat->context->kacz_setting.active_threads) ) {
-                WARNING_LOG("RCM dissect called with %d ents",mat->nEnts);
                 ghost_rcm_dissect(mat);
             } else {
                 split_analytical(mat);
@@ -1498,6 +1486,14 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
     if (!(mat->traits.flags & GHOST_SPARSEMAT_HOST))
         ghost_sparsemat_upload(mat);
     #endif
+
+    if (src->func == ghost_sparsemat_rowfunc_bincrs || src->func == ghost_sparsemat_rowfunc_mm) {
+        if (src->func(GHOST_SPARSEMAT_ROWFUNC_FINALIZE,NULL,NULL,NULL,src->arg)) {
+            ERROR_LOG("Error in matrix creation function");
+            ret = GHOST_ERR_UNKNOWN;
+            goto err;
+        }
+    }
     
     goto out;
     err:
@@ -1570,17 +1566,16 @@ static ghost_error ghost_sparsemat_split(ghost_sparsemat *mat)
         if (mat->context->col_map->dim != 0) {
             ERROR_LOG("This should be zero and is %d!",mat->context->col_map->dim);
         }
-        mat->context->col_map->dim = mat->context->row_map->dim+mat->context->halo_elements;
         if (mat->context->col_map->dimpad) {
             ERROR_LOG("This should be zero and is %d!",mat->context->col_map->dimpad);
         }
         if(mat->context->flags & GHOST_PERM_NO_DISTINCTION) {
+            mat->context->col_map->dim = mat->context->row_map->dimpad+2*mat->context->halo_elements;
             mat->context->col_map->dimpad = PAD(mat->context->row_map->dimpad+2*mat->context->halo_elements,ghost_densemat_row_padding());
-            ERROR_LOG("setting col_map->dimpad to PAD(%d+2*%d)",mat->context->row_map->dimpad,mat->context->halo_elements);
             initHaloAvg(mat);
         } else {
+            mat->context->col_map->dim = mat->context->row_map->dimpad+mat->context->halo_elements;
             mat->context->col_map->dimpad = PAD(mat->context->row_map->dimpad+mat->context->halo_elements,ghost_densemat_row_padding());
-            ERROR_LOG("setting col_map->dimpad to PAD(%d+%d)",mat->context->row_map->dimpad,mat->context->halo_elements);
         }
     }
 
@@ -1604,6 +1599,9 @@ static ghost_error ghost_sparsemat_split(ghost_sparsemat *mat)
         
         mat->localPart->traits.T = mat->traits.T;
         mat->remotePart->traits.T = mat->traits.T;
+    
+        mat->localPart->nchunks = CEILDIV(SPM_NROWS(mat->localPart),mat->localPart->traits.C);
+        mat->remotePart->nchunks = CEILDIV(SPM_NROWS(mat->remotePart),mat->remotePart->traits.C);
         
         ghost_lidx nChunks = SPM_NCHUNKS(mat);
         GHOST_CALL_GOTO(ghost_malloc((void **)&localMat->chunkStart, (nChunks+1)*sizeof(ghost_lidx)),err,ret);

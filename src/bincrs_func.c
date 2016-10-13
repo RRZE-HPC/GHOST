@@ -31,7 +31,6 @@ static inline uint64_t bswap_64(uint64_t val)
 int ghost_sparsemat_rowfunc_bincrs(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *col, void *val, void *arg)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION|GHOST_FUNCTYPE_IO);
-    UNUSED(arg);
 
     static ghost_gidx *colInd = NULL, *globalRowPtr = NULL, *rowPtr = NULL;
     static char *values = NULL;
@@ -41,8 +40,8 @@ int ghost_sparsemat_rowfunc_bincrs(ghost_gidx row, ghost_lidx *rowlen, ghost_gid
 
     if (row == GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_GETDIM) {
         ghost_bincrs_header_t header;
-        ghost_sparsemat_rowfunc_bincrs_initargs args = 
-            *(ghost_sparsemat_rowfunc_bincrs_initargs *)val;
+        ghost_sparsemat_rowfunc_file_initargs args = 
+            *(ghost_sparsemat_rowfunc_file_initargs *)arg;
         
         char *filename = args.filename;
 
@@ -52,10 +51,10 @@ int ghost_sparsemat_rowfunc_bincrs(ghost_gidx row, ghost_lidx *rowlen, ghost_gid
         col[1] = header.ncols;
 
         if(rowlen) *rowlen = header.datatype;
-    } else if ((row == GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_GETRPT) || (row == GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_INIT)) {
+    } else if (row == GHOST_SPARSEMAT_ROWFUNC_INIT) {
 
-        ghost_sparsemat_rowfunc_bincrs_initargs args = 
-            *(ghost_sparsemat_rowfunc_bincrs_initargs *)val;
+        ghost_sparsemat_rowfunc_file_initargs args = 
+            *(ghost_sparsemat_rowfunc_file_initargs *)arg;
         char *filename = args.filename;
         ghost_datatype matdt = args.dt;
         ghost_datatype_size(&dtsize,matdt);
@@ -86,71 +85,57 @@ int ghost_sparsemat_rowfunc_bincrs(ghost_gidx row, ghost_lidx *rowlen, ghost_gid
             return GHOST_ERR_IO;
         }
         
-        if (row == GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_GETRPT) {
-            ghost_malloc((void **)&globalRowPtr,(header.nrows + 1) * sizeof(ghost_gidx));
-
-#pragma omp parallel for
-            for(i=0; i < header.nrows+1; ++i){
-                globalRowPtr[i] = 0;
-            }
-            if ((ret = fread(globalRowPtr, GHOST_BINCRS_SIZE_RPT_EL, (header.nrows+1),f)) != (size_t)(header.nrows+1)){
-                ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
-                return GHOST_ERR_IO;
-            }
-            col = globalRowPtr;
-        } else {
-            int me;
-            ghost_sparsemat *mat = (ghost_sparsemat *)arg;
-            ghost_rank(&me,mat->context->mpicomm);
-            firstrow = mat->context->row_map->goffs[me];
-            nrows = mat->context->row_map->ldim[me];
+        int me;
+        ghost_sparsemat *mat = args.mat;
+        ghost_rank(&me,mat->context->mpicomm);
+        firstrow = mat->context->row_map->goffs[me];
+        nrows = mat->context->row_map->ldim[me];
+    
+        ghost_malloc((void **)&rowPtr,(nrows + 1) * sizeof(ghost_gidx));
         
-            ghost_malloc((void **)&rowPtr,(nrows + 1) * sizeof(ghost_gidx));
-            
-            if (fseeko(f,firstrow*GHOST_BINCRS_SIZE_RPT_EL,SEEK_CUR)) {
-                ERROR_LOG("Seek failed");
-                return GHOST_ERR_IO;
-            }
-            if ((ret = fread(rowPtr, GHOST_BINCRS_SIZE_RPT_EL, nrows+1,f)) != (size_t)(nrows+1)){
-                ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
-                return GHOST_ERR_IO;
-            }
-            
-            ghost_lidx nnz = (ghost_lidx)(rowPtr[nrows]-rowPtr[0]);
-            ghost_malloc((void **)&colInd,nnz * sizeof(ghost_gidx));
-            ghost_malloc((void **)&values,nnz * dtsize);
+        if (fseeko(f,firstrow*GHOST_BINCRS_SIZE_RPT_EL,SEEK_CUR)) {
+            ERROR_LOG("Seek failed");
+            return GHOST_ERR_IO;
+        }
+        if ((ret = fread(rowPtr, GHOST_BINCRS_SIZE_RPT_EL, nrows+1,f)) != (size_t)(nrows+1)){
+            ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
+            return GHOST_ERR_IO;
+        }
+        
+        ghost_lidx nnz = (ghost_lidx)(rowPtr[nrows]-rowPtr[0]);
+        ghost_malloc((void **)&colInd,nnz * sizeof(ghost_gidx));
+        ghost_malloc((void **)&values,nnz * dtsize);
 
 #pragma omp parallel for
-            for(i=0; i < nrows; ++i){
-                values[rowPtr[i]-rowPtr[0]] = 0;
-                colInd[rowPtr[i]-rowPtr[0]] = 0;
-            }
-            
-            
-            if (fseeko(f,GHOST_BINCRS_SIZE_HEADER+(header.nrows+1)*GHOST_BINCRS_SIZE_RPT_EL+rowPtr[0]*GHOST_BINCRS_SIZE_COL_EL,SEEK_SET)) {
-                ERROR_LOG("Seek failed");
-                return GHOST_ERR_IO;
-            }
-            
-            if ((ret = fread(colInd, GHOST_BINCRS_SIZE_COL_EL, nnz,f)) != (size_t)(nnz)){
-                ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
-                return GHOST_ERR_IO;
-            }
-            
-            if (fseeko(f,GHOST_BINCRS_SIZE_HEADER+(header.nrows+1)*GHOST_BINCRS_SIZE_RPT_EL+header.nnz*GHOST_BINCRS_SIZE_COL_EL+rowPtr[0]*dtsize,SEEK_SET)) {
-                ERROR_LOG("Seek failed");
-                return GHOST_ERR_IO;
-            }
-            
-            if ((ret = fread(values, dtsize, nnz,f)) != (size_t)(nnz)){
-                ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
-                return GHOST_ERR_IO;
-            }
+        for(i=0; i < nrows; ++i){
+            values[rowPtr[i]-rowPtr[0]] = 0;
+            colInd[rowPtr[i]-rowPtr[0]] = 0;
+        }
+        
+        
+        if (fseeko(f,GHOST_BINCRS_SIZE_HEADER+(header.nrows+1)*GHOST_BINCRS_SIZE_RPT_EL+rowPtr[0]*GHOST_BINCRS_SIZE_COL_EL,SEEK_SET)) {
+            ERROR_LOG("Seek failed");
+            return GHOST_ERR_IO;
+        }
+        
+        if ((ret = fread(colInd, GHOST_BINCRS_SIZE_COL_EL, nnz,f)) != (size_t)(nnz)){
+            ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
+            return GHOST_ERR_IO;
+        }
+        
+        if (fseeko(f,GHOST_BINCRS_SIZE_HEADER+(header.nrows+1)*GHOST_BINCRS_SIZE_RPT_EL+header.nnz*GHOST_BINCRS_SIZE_COL_EL+rowPtr[0]*dtsize,SEEK_SET)) {
+            ERROR_LOG("Seek failed");
+            return GHOST_ERR_IO;
+        }
+        
+        if ((ret = fread(values, dtsize, nnz,f)) != (size_t)(nnz)){
+            ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
+            return GHOST_ERR_IO;
         }
 
         fclose(f);
 
-    } else if (row == GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_FINALIZE) {
+    } else if (row == GHOST_SPARSEMAT_ROWFUNC_FINALIZE) {
         free(colInd);
         free(rowPtr);
         free(globalRowPtr);
