@@ -8,7 +8,8 @@
 #include "ghost/tsmttsm_var2_avx_gen.h"
 #include "ghost/tsmttsm_var2_cu_gen.h"
 #include "ghost/tsmttsm_plain_gen.h"
-#include "ghost/tsmttsm_var1_plain_gen.h"
+#include "ghost/tsmttsm_varcols1_plain_gen.h"
+#include "ghost/tsmttsm_varcols2_plain_gen.h"
 #include "ghost/tsmttsm_avx2_gen.h"
 #include "ghost/tsmttsm_avx_gen.h"
 #include "ghost/tsmttsm_sse_gen.h"
@@ -151,7 +152,8 @@ ghost_error ghost_tsmttsm(ghost_densemat *x_in, ghost_densemat *v, ghost_densema
         if (ghost_tsmttsm_kernels.empty()) {
 #include "tsmttsm_plain.def"
 #include "tsmttsm_var2_plain.def"
-#include "tsmttsm_var1_plain.def"
+#include "tsmttsm_varcols1_plain.def"
+#include "tsmttsm_varcols2_plain.def"
 #include "tsmttsm_var2_avx.def"
 #include "tsmttsm_avx2.def"
 #include "tsmttsm_avx.def"
@@ -196,7 +198,7 @@ ghost_error ghost_tsmttsm(ghost_densemat *x_in, ghost_densemat *v, ghost_densema
     // possible implementations
     std::vector<ghost_implementation> try_impl;
 #ifdef GHOST_HAVE_CUDA
-    if (x->traits.location & GHOST_LOCATION_DEVICE) {
+    if (x->traits.location & GHOST_LOCATION_DEVICE && x->traits.compute_at != GHOST_LOCATION_HOST) {
         try_impl.push_back(GHOST_IMPLEMENTATION_CUDA);
     } else {
 #endif
@@ -242,7 +244,7 @@ ghost_error ghost_tsmttsm(ghost_densemat *x_in, ghost_densemat *v, ghost_densema
     }
     
 #ifdef GHOST_HAVE_CUDA
-    if (x->traits.location & GHOST_LOCATION_DEVICE) {
+    if (x->traits.location & GHOST_LOCATION_DEVICE && x->traits.compute_at != GHOST_LOCATION_HOST) {
         try_dt[0] = GHOST_DT_ANY;
         opt_align = GHOST_UNALIGNED;
     }
@@ -290,7 +292,7 @@ end_of_loop:
 
         ret = kernel(x,v,w,alpha,beta,conjv);
         if (reduce != GHOST_GEMM_NO_REDUCE && ctx) {
-            x->reduce(x,ctx->mpicomm,reduce);
+            ghost_densemat_reduce(x,ctx->mpicomm,reduce);
         }
     } else if (flags & GHOST_GEMM_KAHAN) { 
         WARNING_LOG("Could not find TSMTTSM-Kahan kernel. Trying non-Kahan version!");

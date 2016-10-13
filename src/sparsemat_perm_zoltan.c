@@ -92,12 +92,11 @@ static void get_hypergraph(void *data, int sizeGID, int num_vert, int num_nonzer
 }
 #endif
 
-ghost_error ghost_sparsemat_perm_zoltan(ghost_sparsemat *mat, void *matrixSource, ghost_sparsemat_src srcType)
+ghost_error ghost_sparsemat_perm_zoltan(ghost_context *ctx, ghost_sparsemat *mat)
 {
 #if !defined(GHOST_HAVE_ZOLTAN) || !defined(GHOST_HAVE_MPI)
+    UNUSED(ctx);
     UNUSED(mat);
-    UNUSED(matrixSource);
-    UNUSED(srcType);
     WARNING_LOG("Zoltan or MPI not available. Will not create matrix permutation!");
     return GHOST_SUCCESS;
 #else
@@ -105,76 +104,33 @@ ghost_error ghost_sparsemat_perm_zoltan(ghost_sparsemat *mat, void *matrixSource
     ghost_error ret = GHOST_SUCCESS;
     ghost_lidx i;
     zoltan_info info;
-    int me, nprocs;
+    int nprocs,me;
     struct Zoltan_Struct *zz;
     int changes, numGidEntries, numLidEntries, numImport, numExport;
     ZOLTAN_ID_PTR importGlobalGids, importLocalGids, exportGlobalGids, exportLocalGids;
     int *importProcs, *importToPart, *exportProcs, *exportToPart;
     
-    if (mat->context->perm_global) {
-        WARNING_LOG("Existing permutations will be overwritten!");
-    }
-    if (srcType != GHOST_SPARSEMAT_SRC_FUNC) {
-        ERROR_LOG("Only function sparse matrix source allowed!");
-        ret = GHOST_ERR_NOT_IMPLEMENTED;
-        goto err;
+    if (ctx->row_map->glb_perm) {
+        WARNING_LOG("Existing global permutations will be overwritten!");
     }
     
-    GHOST_CALL_GOTO(ghost_rank(&me, mat->context->mpicomm),err,ret);
-    GHOST_CALL_GOTO(ghost_nrank(&nprocs, mat->context->mpicomm),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_global,sizeof(ghost_permutation)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_global->perm,sizeof(ghost_gidx)*mat->context->lnrows[me]),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_global->invPerm,sizeof(ghost_gidx)*mat->context->lnrows[me]),err,ret);
-    mat->context->perm_global->colPerm = NULL;
-    mat->context->perm_global->colInvPerm = NULL;
-    mat->context->perm_global->method = GHOST_PERMUTATION_SYMMETRIC;
+    GHOST_CALL_GOTO(ghost_rank(&me, ctx->mpicomm),err,ret);
+    GHOST_CALL_GOTO(ghost_nrank(&nprocs, ctx->mpicomm),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->row_map->glb_perm,sizeof(ghost_gidx)*ctx->row_map->dim),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->row_map->glb_perm_inv,sizeof(ghost_gidx)*ctx->row_map->dim),err,ret);
+    ctx->col_map->glb_perm = ctx->row_map->glb_perm;
+    ctx->col_map->glb_perm_inv = ctx->row_map->glb_perm_inv;
 
-    memset(mat->context->perm_global->perm,0,sizeof(ghost_gidx)*mat->context->lnrows[me]);
-    memset(mat->context->perm_global->invPerm,0,sizeof(ghost_gidx)*mat->context->lnrows[me]);
+    memset(ctx->row_map->glb_perm,0,sizeof(ghost_gidx)*ctx->row_map->dim);
+    memset(ctx->row_map->glb_perm_inv,0,sizeof(ghost_gidx)*ctx->row_map->dim);
            
-    ghost_malloc((void **)&(info.rpt),(mat->context->lnrows[me]+1)*sizeof(ghost_gidx));
-
-    ghost_sparsemat_src_rowfunc *src = (ghost_sparsemat_src_rowfunc *)matrixSource;
-    char * tmpval = NULL;
-    ghost_gidx * tmpcol = NULL;
-
-    ghost_gidx nnz = 0;
-    ghost_lidx rowlen;
-    info.rpt[0] = 0;
-#pragma omp parallel private (tmpval,tmpcol,i,rowlen) reduction(+:nnz)
-    {
-        ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize);
-        ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx));
-
-#pragma omp for
-        for (i=0; i<mat->context->lnrows[me]; i++) {
-            src->func(mat->context->lfRow[me]+i,&rowlen,tmpcol,tmpval,NULL);
-            nnz += rowlen;
-        }
-        free(tmpval); tmpval = NULL;
-        free(tmpcol); tmpcol = NULL;
-    }
-
-    info.nnz = nnz;
-    ghost_malloc((void **)&(info.col),(info.nnz)*sizeof(ghost_gidx));
-
-#pragma omp parallel private (tmpval,tmpcol,i,rowlen)
-    {
-        ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize);
-#pragma omp for ordered
-        for (i=0; i<mat->context->lnrows[me]; i++) {
-#pragma omp ordered
-            {
-                src->func(mat->context->lfRow[me]+i,&rowlen,&(info.col[info.rpt[i]]),tmpval,NULL);
-                info.rpt[i+1] = info.rpt[i] + rowlen;
-            }
-        }
-        free(tmpval); tmpval = NULL;
-    }
-    info.nrows = mat->context->lnrows[me];
-    info.rowoffs = mat->context->lfRow[me];
+    info.nnz = SPM_NNZ(mat);
+    info.col = mat->col_orig;
+    info.rpt = mat->chunkStart;
+    info.nrows = ctx->row_map->dim;
+    info.rowoffs = ctx->row_map->offs;
    
-    zz = Zoltan_Create(mat->context->mpicomm);
+    zz = Zoltan_Create(ctx->mpicomm);
 
     INFO_LOG("before zoltan");
     /* General parameters */
@@ -213,18 +169,18 @@ ghost_error ghost_sparsemat_perm_zoltan(ghost_sparsemat *mat, void *matrixSource
         &exportToPart),err,ret);  /* Partition to which each vertex will belong */
 
     INFO_LOG("after zoltan");
-    for (i=0; i<mat->context->lnrows[me]; i++) {
-//        mat->context->perm_global->perm[i] = mat->context->lfRow[me]+i;
+    for (i=0; i<ctx->row_map->ldim[me]; i++) {
+//        ctx->row_map->glb_perm[i] = ctx->row_map->goffs[me]+i;
     }
 
     part_info *partinfo;
-    ghost_malloc((void **)&partinfo,sizeof(part_info)*mat->nrows);
+    ghost_malloc((void **)&partinfo,sizeof(part_info)*SPM_NROWS(mat));
     for (i=0; i<numExport; i++) {
         partinfo[i].part = exportToPart[i];
-        partinfo[i].row = mat->context->lfRow[me]+i;
+        partinfo[i].row = ctx->row_map->goffs[me]+i;
     }
     part_info *global_partinfo;
-    ghost_malloc((void **)&global_partinfo,sizeof(part_info)*mat->context->gnrows);
+    ghost_malloc((void **)&global_partinfo,sizeof(part_info)*ctx->row_map->gdim);
     
     const int nitems=2;
     int          blocklengths[2] = {1,1};
@@ -241,27 +197,26 @@ ghost_error ghost_sparsemat_perm_zoltan(ghost_sparsemat *mat, void *matrixSource
     PERFWARNING_LOG("The sorting of export lists is currently serial! This can cause problems in terms of performance and memory!");
     INFO_LOG("before gather");
     if (me != 0) {
-        MPI_Send(partinfo,mat->context->lnrows[me],mpi_partinfo_type,0,me,mat->context->mpicomm);
+        MPI_Send(partinfo,ctx->row_map->ldim[me],mpi_partinfo_type,0,me,ctx->mpicomm);
     }
     if (me == 0) {
         for (i=1; i<nprocs; i++) {
-            MPI_Recv(&global_partinfo[mat->context->lfRow[i]],mat->context->lnrows[i],mpi_partinfo_type,i,i,mat->context->mpicomm,MPI_STATUS_IGNORE);
+            MPI_Recv(&global_partinfo[ctx->row_map->goffs[i]],ctx->row_map->ldim[i],mpi_partinfo_type,i,i,ctx->mpicomm,MPI_STATUS_IGNORE);
         }
-        memcpy(global_partinfo,partinfo,mat->nrows*sizeof(part_info));
+        memcpy(global_partinfo,partinfo,SPM_NROWS(mat)*sizeof(part_info));
     }
     INFO_LOG("after gather");
-    qsort(global_partinfo,mat->context->gnrows,sizeof(part_info),part_info_cmp);
+    qsort(global_partinfo,ctx->row_map->gdim,sizeof(part_info),part_info_cmp);
     
     INFO_LOG("after sort");
     if (me == 0) {
         for (i=1; i<nprocs; i++) {
-            MPI_Send(&global_partinfo[mat->context->lfRow[i]],mat->context->lnrows[i],mpi_partinfo_type,i,i,mat->context->mpicomm);
+            MPI_Send(&global_partinfo[ctx->row_map->goffs[i]],ctx->row_map->ldim[i],mpi_partinfo_type,i,i,ctx->mpicomm);
         }
-        memcpy(partinfo,global_partinfo,mat->nrows*sizeof(part_info));
-        free(global_partinfo);
+        memcpy(partinfo,global_partinfo,SPM_NROWS(mat)*sizeof(part_info));
     }
     if (me != 0) {
-        MPI_Recv(partinfo,mat->context->lnrows[me],mpi_partinfo_type,0,me,mat->context->mpicomm,MPI_STATUS_IGNORE);
+        MPI_Recv(partinfo,ctx->row_map->ldim[me],mpi_partinfo_type,0,me,ctx->mpicomm,MPI_STATUS_IGNORE);
     }
     INFO_LOG("after scatter");
 
@@ -269,40 +224,36 @@ ghost_error ghost_sparsemat_perm_zoltan(ghost_sparsemat *mat, void *matrixSource
 
 #if 0
 
-    qsort(partinfo,mat->nrows,sizeof(part_info),part_info_cmp);
+    qsort(partinfo,SPM_NROWS(mat),sizeof(part_info),part_info_cmp);
     for (i=0; i<numExport; i++) {
         printf("rank %d sorted partinfo[%d] = {%d,%d}\n",me,i,partinfo[i].part,partinfo[i].row);
         printf("send from %d to %d, tag %d\n",me,partinfo[i].part,me);
         if (partinfo[i].part != me) {
-        MPI_Send(&partinfo[i].row,1,ghost_mpi_dt_gidx,partinfo[i].part,0,mat->context->mpicomm);
+        MPI_Send(&partinfo[i].row,1,ghost_mpi_dt_gidx,partinfo[i].part,0,ctx->mpicomm);
    //     printf("recv to %d from %d, tag %d\n",me,partinfo[i].part,partinfo[i].part);
-        MPI_Recv(&partinfo[i].row,1,ghost_mpi_dt_gidx,MPI_ANY_SOURCE,0,mat->context->mpicomm,MPI_STATUS_IGNORE);
+        MPI_Recv(&partinfo[i].row,1,ghost_mpi_dt_gidx,MPI_ANY_SOURCE,0,ctx->mpicomm,MPI_STATUS_IGNORE);
         }
     }
 #endif
-    for (i=0; i<mat->nrows; i++) {
-        mat->context->perm_global->invPerm[i] = partinfo[i].row;
+    for (i=0; i<SPM_NROWS(mat); i++) {
+        ctx->row_map->glb_perm_inv[i] = partinfo[i].row;
     }
     
 
-    ghost_global_perm_inv(mat->context->perm_global->perm,mat->context->perm_global->invPerm,mat->context);
-    //ghost_global_perm_inv(mat->context->perm_global->invPerm,mat->context->perm_global->perm,mat->context);
+    ghost_global_perm_inv(ctx->row_map->glb_perm,ctx->row_map->glb_perm_inv,ctx);
+    //ghost_global_perm_inv(ctx->row_map->glb_perm_inv,ctx->row_map->glb_perm,ctx);
     
     goto out;
 err:
-    free(mat->context->perm_global->perm); mat->context->perm_global->perm = NULL;
-    free(mat->context->perm_global->invPerm); mat->context->perm_global->invPerm = NULL;
-#ifdef GHOST_HAVE_CUDA
-    ghost_cu_free(mat->context->perm_global->cu_perm); mat->context->perm_global->cu_perm = NULL;
-#endif
-    free(mat->context->perm_global); mat->context->perm_global = NULL;
+    free(ctx->row_map->glb_perm); ctx->row_map->glb_perm = NULL;
+    free(ctx->row_map->glb_perm_inv); ctx->row_map->glb_perm_inv = NULL;
     
 out:
+    free(partinfo);
+    free(global_partinfo);
     Zoltan_LB_Free_Part(&importGlobalGids, &importLocalGids, &importProcs, &importToPart);
     Zoltan_LB_Free_Part(&exportGlobalGids, &exportLocalGids, &exportProcs, &exportToPart);
     Zoltan_Destroy(&zz);
-    free(info.rpt);
-    free(info.col);
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_SETUP);
     return ret;
 

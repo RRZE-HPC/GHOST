@@ -10,7 +10,7 @@
 #include <vector>
 #include <limits.h>
 
-extern "C" ghost_error ghost_sparsemat_blockColor(ghost_sparsemat *mat, void *matrixSource, ghost_sparsemat_src srcType) 
+extern "C" ghost_error ghost_sparsemat_blockColor(ghost_context *ctx, ghost_sparsemat *mat) 
 {
     
     INFO_LOG("Create partition and permute (Block coloring)");
@@ -34,47 +34,49 @@ extern "C" ghost_error ghost_sparsemat_blockColor(ghost_sparsemat *mat, void *ma
     #ifdef GHOST_HAVE_COLPACK
     ghost_lidx offs = 0;
     ghost_lidx pos = 0;
-    uint32_t** adolc; 
+    uint32_t** adolc = NULL; 
     uint32_t *adolc_data = NULL;
     #endif
-    
-    ghost_gidx ncols_halo_padded = mat->context->nrowspadded ;
-    if (mat->context->flags & GHOST_PERM_NO_DISTINCTION) {
-        ncols_halo_padded = mat->context->nrowspadded + mat->context->halo_elements+1;
-    }
+   
+    // We have to access mat->context because this already has communication information 
+    ghost_gidx ncols_halo_padded = mat->context->col_map->dim;
+
+    //    if (ctx->flags & GHOST_PERM_NO_DISTINCTION) {
+//        ncols_halo_padded = ctx->nrowspadded + ctx->halo_elements+1;
+//    }
     
     #ifdef GHOST_HAVE_COLPACK
     ColPack::BipartiteGraphPartialColoringInterface *GC;
-    adolc = new uint32_t*[mat->nrows];
+    adolc = new uint32_t*[ctx->row_map->dim];
     #endif
     
-    int *nthread = new int[1];  
+    int nthread;
     
     #ifdef GHOST_HAVE_OPENMP
     #pragma omp parallel
     {
         #pragma omp master
-        nthread[0] = ghost_omp_nthread();
+        nthread = ghost_omp_nthread();
     }
     #else
-    nthread[0] = 1;
+    nthread = 1;
     #endif
     
-    int n_zones = nthread[0];
-    mat->kacz_setting.active_threads = n_zones;
+    int n_zones = nthread;
+    ctx->kacz_setting.active_threads = n_zones;
     
     //printf("...NZONES... = %d\n", n_zones);
     int me;
     
     
-    GHOST_CALL_GOTO(ghost_rank(&me,mat->context->mpicomm),err,ret);
+    GHOST_CALL_GOTO(ghost_rank(&me,ctx->mpicomm),err,ret);
     
-    nrows = mat->context->lnrows[me];
+    nrows = ctx->row_map->ldim[me];
     
     
-    //  ghost_lidx *row_ptr = mat->sell->chunkStart;
-    //  ghost_lidx *col_ptr = mat->sell->col;
-    //  ghost_lidx nrows = mat->nrows;
+    //  ghost_lidx *row_ptr = mat_out->sell->chunkStart;
+    //  ghost_lidx *col_ptr = mat_out->sell->col;
+    //  ghost_lidx nrows = ctx->row_map->dim;
     
     
     //  ghost_lidx n_t_zones = n_zones-1; 
@@ -90,33 +92,33 @@ extern "C" ghost_error ghost_sparsemat_blockColor(ghost_sparsemat *mat, void *ma
      * #pragma omp parallel private(tmpval,tmpcol,rowlen) 
      *  {
      *       ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx));
-     *       ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize); 
+     *       ghost_malloc((void **)&tmpval,src->maxrowlen*mat_out->elSize); 
      *       int ctr = 0;
      *  #pragma omp parallel for reduction(max:lower_bw) reduction(max:upper_bw) reduction(+:ctr)
-     *       for (int i=0; i<mat->context->lnrows[me]; i++) {
-     *        	if (mat->context->perm_global && mat->context->perm_local) {
-     *                 	src->func(mat->context->perm_global->invPerm[mat->context->perm_local->invPerm[i]],&rowlen,tmpcol,tmpval,src->arg);
-} else if (mat->context->perm_global) {
-    src->func(mat->context->perm_global->invPerm[i],&rowlen,tmpcol,tmpval,src->arg);
-} else if (mat->context->perm_local) {
-    src->func(mat->context->lfRow[me]+mat->context->perm_local->invPerm[i],&rowlen,tmpcol,tmpval,src->arg);
+     *       for (int i=0; i<ctx->row_map->ldim[me]; i++) {
+     *        	if (ctx->perm_global && ctx->perm_local) {
+     *                 	src->func(ctx->row_map->glb_perm_inv[ctx->row_map->loc_perm_inv[i]],&rowlen,tmpcol,tmpval,src->arg);
+} else if (ctx->perm_global) {
+    src->func(ctx->row_map->glb_perm_inv[i],&rowlen,tmpcol,tmpval,src->arg);
+} else if (ctx->perm_local) {
+    src->func(ctx->row_map->goffs[me]+ctx->row_map->loc_perm_inv[i],&rowlen,tmpcol,tmpval,src->arg);
 } else {
-    src->func(mat->context->lfRow[me]+i,&rowlen,tmpcol,tmpval,src->arg);
+    src->func(ctx->row_map->goffs[me]+i,&rowlen,tmpcol,tmpval,src->arg);
 }
 
-ghost_gidx start_col = mat->nrows + mat->context->nrowspadded;
+ghost_gidx start_col = ctx->row_map->dim + ctx->nrowspadded;
 ghost_gidx end_col   = 0;
 
-if(mat->context->perm_local){
-    if(mat->context->perm_local->colPerm == NULL) {
+if(ctx->perm_local){
+    if(ctx->col_map->loc_perm == NULL) {
         for(int j=0; j<rowlen; ++j) {
-            start_col = MIN(start_col, mat->context->perm_local->perm[tmpcol[j]]);
-            end_col   = MAX(end_col, mat->context->perm_local->perm[tmpcol[j]]);
+            start_col = MIN(start_col, ctx->row_map->loc_perm[tmpcol[j]]);
+            end_col   = MAX(end_col, ctx->row_map->loc_perm[tmpcol[j]]);
 }
 } else {
     for(int j=0; j<rowlen; ++j) {
-        start_col = MIN(start_col, mat->context->perm_local->colPerm[tmpcol[j]]);
-        end_col   = MAX(end_col, mat->context->perm_local->colPerm[tmpcol[j]]);
+        start_col = MIN(start_col, ctx->col_map->loc_perm[tmpcol[j]]);
+        end_col   = MAX(end_col, ctx->col_map->loc_perm[tmpcol[j]]);
 }
 }
 } else {
@@ -134,11 +136,11 @@ free(tmpcol);
 free(tmpval);
 }
 }*/
-    //std::cout<<"nrows ="<<mat->nrows<<std::endl;
-    //std::cout<<"check"<<row_ptr[mat->nrows-1]<<std::endl;
+    //std::cout<<"nrows ="<<ctx->row_map->dim<<std::endl;
+    //std::cout<<"check"<<row_ptr[ctx->row_map->dim-1]<<std::endl;
     
-    total_bw = mat->bandwidth;
-    max_col_idx = mat->maxColRange;
+    total_bw = ctx->bandwidth;
+    max_col_idx = ctx->maxColRange;
     
     //approximate, currently last thread is set to not have anything in transitional sweeps;
     //since large bandwidths might create problems (TODO optimise this value)
@@ -149,7 +151,8 @@ free(tmpval);
     rhs_split = new int[n_zones+2];
     
     for(int i=0; i<n_zones+1; ++i) {
-        rhs_split[i] = i*local_size; 
+        rhs_split[i] = i*local_size;
+        //printf("rhs_split[%d] = %d\n",i,rhs_split[i]); 
     }
     
     rhs_split[n_zones+1] = max_col_idx+1;
@@ -163,140 +166,63 @@ free(tmpval);
         zone[i] = -(n_zones+1) ; //an invalid number
     }
     
-    if (srcType == GHOST_SPARSEMAT_SRC_FUNC || srcType == GHOST_SPARSEMAT_SRC_FILE) {
-        ghost_sparsemat_src_rowfunc *src = (ghost_sparsemat_src_rowfunc *)matrixSource;
-        ghost_gidx * tmpcol = NULL;
-        char * tmpval = NULL;
-        ghost_lidx rowlen;
-        
-        
-        //TODO delete it
-        ghost_lidx max_col = 0;
-        int me;
-        ghost_rank(&me, mat->context->mpicomm);
-        
-        #pragma omp parallel private (tmpval,tmpcol,rowlen) reduction(+:nnz) reduction(max:max_col)
-        {
-            ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize);
-            ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx));
-            
-            #pragma omp for
-            for (int i=0; i<mat->context->lnrows[me]; i++) {
-                if (mat->context->perm_global && mat->context->perm_local) {
-                    src->func(mat->context->perm_global->invPerm[mat->context->perm_local->invPerm[i]],&rowlen,tmpcol,tmpval,src->arg);
-                } else if (mat->context->perm_global) {
-                    src->func(mat->context->perm_global->invPerm[i],&rowlen,tmpcol,tmpval,src->arg);
-                } else if (mat->context->perm_local) {
-                    src->func(mat->context->lfRow[me]+mat->context->perm_local->invPerm[i],&rowlen,tmpcol,tmpval,src->arg);
-                } else {
-                    src->func(mat->context->lfRow[me]+i,&rowlen,tmpcol,tmpval,src->arg);
-                }
-                nnz += rowlen;
-                //TODO delete after test
-                for(int j=0 ;j<rowlen; ++j)
-                {
-                    //			max_col = MAX(max_col,mat->context->perm_local->colPerm[tmpcol[j]]);	
-                }	
-                
-            }
-            free(tmpval); tmpval = NULL;
-            free(tmpcol); tmpcol = NULL;
-        }
-        //ERROR_LOG("max_col after RCM<%d> = %d",me,max_col);
-    } 
+    nnz = SPM_NNZ(mat); 
     
-    if (srcType == GHOST_SPARSEMAT_SRC_FUNC || srcType == GHOST_SPARSEMAT_SRC_FILE) {
-        ghost_sparsemat_src_rowfunc *src = (ghost_sparsemat_src_rowfunc *)matrixSource;
-        //       ghost_gidx * tmpcol = NULL;
-        char * tmpval = NULL;
+    #pragma omp parallel for reduction(+:ctr_nrows_MC,ctr_nnz_MC) 
+    for (ghost_lidx i=0; i<ctx->row_map->dim; i++) {
         
-        ghost_lidx rowlen;
-        
-        GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,(mat->context->lnrows[me]+1) * sizeof(ghost_gidx)),err,ret);
-        
-        rpt[0] = 0;
-        
-        GHOST_CALL_GOTO(ghost_malloc((void **)&col,nnz * sizeof(ghost_gidx)),err,ret);
-        
-        //#pragma omp parallel private(tmpval,tmpcol,rowlen) 
-        #pragma omp parallel private(tmpval,rowlen)       
-        {
-            //       ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx));
-            ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize);
-            
-            #pragma omp for ordered reduction(+:ctr_nrows_MC) 
-            for (int i=0; i<mat->context->lnrows[me]; i++) {
-                #pragma omp ordered
-                {
-                    if (mat->context->perm_global && mat->context->perm_local) {
-                        //                 	src->func(mat->context->perm_global->invPerm[mat->context->perm_local->invPerm[i]],&rowlen,tmpcol,tmpval,src->arg);
-                        src->func(mat->context->perm_global->invPerm[mat->context->perm_local->invPerm[i]],&rowlen,&col[rpt[i]],tmpval,src->arg);
-                    } else if (mat->context->perm_global) {
-                        src->func(mat->context->perm_global->invPerm[i],&rowlen,&col[rpt[i]],tmpval,src->arg);
-                    } else if (mat->context->perm_local) {
-                        src->func(mat->context->lfRow[me]+mat->context->perm_local->invPerm[i],&rowlen,&col[rpt[i]],tmpval,src->arg);
-                    } else {
-                        src->func(mat->context->lfRow[me]+i,&rowlen,&col[rpt[i]],tmpval,src->arg);
-                    }
-                    
-                    
-                    //		nnz+=rowlen;
-                    rpt[i+1] = rpt[i] + rowlen;
-                }
-                
-                ghost_lidx start_col =  INT_MAX;
-                ghost_lidx end_col   =  0;
-                
-                if(mat->context->perm_local) {
-                    if(mat->context->perm_local->colPerm == NULL) {
-                        for(int j=rpt[i]; j<rpt[i+1]; ++j) {
-                            start_col = MIN(start_col, mat->context->perm_local->perm[col[j]]);
-                            end_col   = MAX(end_col, mat->context->perm_local->perm[col[j]]);
-                        } 
-                    } else {
-                        for(int j=rpt[i]; j<rpt[i+1]; ++j) {
-                            start_col = MIN(start_col, mat->context->perm_local->colPerm[col[j]]);
-                            end_col   = MAX(end_col, mat->context->perm_local->colPerm[col[j]]);
-                        }
-                    }
-                } else {
-                    for(int j=rpt[i]; j<rpt[i+1]; ++j) {
-                        start_col = MIN(start_col, col[j]);
-                        end_col   = MAX(end_col, col[j]);
-                    }
-                }
-                
-                
-                for(int k=0; k<n_zones; ++k) {
-                    //pure zone
-                    if(start_col >= rhs_split[k] && end_col < rhs_split[k+1]) {
-                        zone[i] = 2*k; 
-                    }
-                    //transition zone
-                    else if(zone[i]<0 && (start_col >= rhs_split[k] && end_col < rhs_split[k+2]) ) {
-                        zone[i] = 2*k+1;
-                    }
-                    //else one can also add the rest of them for Multicoloring
-                    else if(k==n_zones-1 && zone[i]<0) {
-                        zone[i] = 2*n_zones;      //put Multicolor as last segment, but for time being we do this zone using single thread          
-                        ctr_nrows_MC+=1;
-                        ctr_nnz_MC += rowlen;
-                        //TODO  - increase zone by 1        zone[i] = 2*n_zones + 1;
-                    } 
-                }
-            }
-            
-            #pragma omp single
-            {
-                INFO_LOG("NO. of Rows Multicolored = %d",ctr_nrows_MC);
-            }
-            
-            // free(tmpcol);
-            free(tmpval);
+        ghost_lidx orig_row = i;
+        if (ctx->row_map->loc_perm) {
+            orig_row = ctx->row_map->loc_perm_inv[i];
         }
-        free(col);
-        free(rpt);
+        
+        ghost_lidx start_col =  INT_MAX;
+        ghost_lidx end_col   =  0;
+
+        ghost_lidx * col = &mat->col[mat->chunkStart[orig_row]];
+        ghost_lidx orig_row_len = mat->chunkStart[orig_row+1]-mat->chunkStart[orig_row];
+        
+        if(ctx->row_map->loc_perm) {
+            if(ctx->col_map->loc_perm == NULL) {
+                for(int j=0; j<orig_row_len; ++j) {
+                    start_col = MIN(start_col, ctx->row_map->loc_perm[col[j]]);
+                    end_col   = MAX(end_col, ctx->row_map->loc_perm[col[j]]);
+                } 
+            } else {
+                for(int j=0; j<orig_row_len; ++j) {
+                    start_col = MIN(start_col, ctx->col_map->loc_perm[col[j]]);
+                    end_col   = MAX(end_col, ctx->col_map->loc_perm[col[j]]);
+                }
+            }
+        } else {
+            for(int j=0; j<orig_row_len; ++j) {
+                start_col = MIN(start_col, col[j]);
+                end_col   = MAX(end_col, col[j]);
+            }
+        }
+        
+        
+        for(int k=0; k<n_zones; ++k) {
+            //pure zone
+            if(start_col >= rhs_split[k] && end_col < rhs_split[k+1]) {
+                zone[i] = 2*k; 
+            }
+            //transition zone
+            else if(zone[i]<0 && (start_col >= rhs_split[k] && end_col < rhs_split[k+2]) ) {
+                zone[i] = 2*k+1;
+            }
+            //else one can also add the rest of them for Multicoloring
+            else if(k==n_zones-1 && zone[i]<0) {
+                zone[i] = 2*n_zones;      //put Multicolor as last segment, but for time being we do this zone using single thread          
+                ctr_nrows_MC+=1;
+                ctr_nnz_MC += orig_row_len;
+                //TODO  - increase zone by 1        zone[i] = 2*n_zones + 1;
+            } 
+        }
     }
+    
+    INFO_LOG("NO. of Rows Multicolored = %d",ctr_nrows_MC);
+            
     
     /*       for(int i=0; i<nrows; ++i){
      *    	    for(int k=0; k<n_zones; ++k){
@@ -312,119 +238,115 @@ else if(k>0 && zone[i]<0 && (col_ptr[row_ptr[i]] >= rhs_split[k-1] && col_ptr[ro
 }
 */
     
-    if (!mat->context->perm_local) {
+    if (!ctx->row_map->loc_perm) {
         //this branch if no local permutations are carried out before
         WARNING_LOG("The matrix has not been RCM permuted, BLOCK coloring works better for matrix with small bandwidths");
-        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local,sizeof(ghost_permutation)), err, ret);
         old_perm = false;
-        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->perm,sizeof(ghost_gidx)*mat->nrows), err, ret);
-        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->invPerm,sizeof(ghost_gidx)*mat->nrows), err, ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->row_map->loc_perm,sizeof(ghost_gidx)*ctx->row_map->dim), err, ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->row_map->loc_perm_inv,sizeof(ghost_gidx)*ctx->row_map->dim), err, ret);
         
-        mat->context->perm_local->method = GHOST_PERMUTATION_UNSYMMETRIC;
+//        ctx->perm_local->method = GHOST_PERMUTATION_UNSYMMETRIC;
         
         //anyway separate both permutations 
-        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->colPerm,sizeof(ghost_gidx)*ncols_halo_padded), err, ret);
-        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->colInvPerm,sizeof(ghost_gidx)*ncols_halo_padded), err, ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->col_map->loc_perm,sizeof(ghost_gidx)*ncols_halo_padded), err, ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->col_map->loc_perm_inv,sizeof(ghost_gidx)*ncols_halo_padded), err, ret);
+        ERROR_LOG("ncolshalopadded = %d",ncols_halo_padded);
         
         #pragma omp parallel for         
         for(int i=0; i<ncols_halo_padded; ++i) { 
-            mat->context->perm_local->colPerm[i] = i;
-            mat->context->perm_local->colInvPerm[i] = i;
+            ctx->col_map->loc_perm[i] = i;
+            ctx->col_map->loc_perm_inv[i] = i;
         } 
         
-    } else if(mat->context->perm_local->method == GHOST_PERMUTATION_SYMMETRIC) {
+    } else if(ctx->row_map->loc_perm == ctx->col_map->loc_perm) {
         //this branch if no unsymmetric permutations have been carried out before
         
-        if(mat->nrows != mat->context->nrowspadded) {
+        if(ctx->row_map->dim != ctx->col_map->dim) {
             ERROR_LOG("Trying to do symmetric permutation on non-squared matrix");
         }
         
         //now make it unsymmetric
-        mat->context->perm_local->method = GHOST_PERMUTATION_UNSYMMETRIC;
+  //      ctx->perm_local->method = GHOST_PERMUTATION_UNSYMMETRIC;
         
         //anyway separate both permutations 
-        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->colPerm,sizeof(ghost_gidx)*ncols_halo_padded), err, ret);
-        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->perm_local->colInvPerm,sizeof(ghost_gidx)*ncols_halo_padded), err, ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->col_map->loc_perm,sizeof(ghost_gidx)*ncols_halo_padded), err, ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->col_map->loc_perm_inv,sizeof(ghost_gidx)*ncols_halo_padded), err, ret);
         
         #pragma omp parallel for         
         for(int i=0; i<ncols_halo_padded; ++i) {
-            mat->context->perm_local->colPerm[i] =  mat->context->perm_local->perm[i];
-            mat->context->perm_local->colInvPerm[i] =  mat->context->perm_local->invPerm[i];
+            ctx->col_map->loc_perm[i] =  ctx->row_map->loc_perm[i];
+            ctx->col_map->loc_perm_inv[i] =  ctx->row_map->loc_perm_inv[i];
         } 
     }
     
-    mat->nzones = 2*n_zones ;
-    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->zone_ptr,(mat->nzones+2)*sizeof(ghost_lidx)), err, ret);
+    ctx->nzones = 2*n_zones ;
+    GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->zone_ptr,(ctx->nzones+2)*sizeof(ghost_lidx)), err, ret);
     
-    GHOST_CALL_GOTO(ghost_malloc((void **)&curcol,(mat->nzones+1)*sizeof(ghost_lidx)), err, ret);
-    memset(curcol,0,(mat->nzones+1)*sizeof(ghost_lidx));
+    GHOST_CALL_GOTO(ghost_malloc((void **)&curcol,(ctx->nzones+1)*sizeof(ghost_lidx)), err, ret);
+    memset(curcol,0,(ctx->nzones+1)*sizeof(ghost_lidx));
     
-    for (int i=0;i<mat->nzones+2;i++) {
-        mat->zone_ptr[i] = 0;
+    for (int i=0;i<ctx->nzones+2;i++) {
+        ctx->zone_ptr[i] = 0;
     }
     
-    for (int i=0;i<mat->nrows;i++) {
-        mat->zone_ptr[zone[i]+1]++;
+    for (int i=0;i<ctx->row_map->dim;i++) {
+        ctx->zone_ptr[zone[i]+1]++;
     }
     
-    for (int i=1;i<mat->nzones+2;i++) {
-        mat->zone_ptr[i] += mat->zone_ptr[i-1];
+    for (int i=1;i<ctx->nzones+2;i++) {
+        ctx->zone_ptr[i] += ctx->zone_ptr[i-1];
     }
     
-    mat->zone_ptr[mat->nzones+1] = nrows;
+    ctx->zone_ptr[ctx->nzones+1] = nrows;
     
     if(old_perm){
-        for (int i=0;i<mat->nrows;i++) {
-            mat->context->perm_local->perm[mat->context->perm_local->invPerm[i]] = curcol[zone[i]] + mat->zone_ptr[zone[i]];
+        for (int i=0;i<ctx->row_map->dim;i++) {
+            ctx->row_map->loc_perm[ctx->row_map->loc_perm_inv[i]] = curcol[zone[i]] + ctx->zone_ptr[zone[i]];
             curcol[zone[i]]++;
         }
     } else {  
-        for (int i=0;i<mat->nrows;i++) {
-            mat->context->perm_local->perm[i] = curcol[zone[i]] + mat->zone_ptr[zone[i]];
+        for (int i=0;i<ctx->row_map->dim;i++) {
+            ctx->row_map->loc_perm[i] = curcol[zone[i]] + ctx->zone_ptr[zone[i]];
             curcol[zone[i]]++;
         }
     }
     
-    for (int i=0;i<mat->nrows;i++) {
-        mat->context->perm_local->invPerm[mat->context->perm_local->perm[i]] = i;
+    for (int i=0;i<ctx->row_map->dim;i++) {
+        ctx->row_map->loc_perm_inv[ctx->row_map->loc_perm[i]] = i;
     }
     
     #ifdef GHOST_HAVE_COLPACK         
     INFO_LOG("Create permutation from coloring");
     free(curcol);
     //now build adolc for multicoloring
-    //int nrows_to_mc = mat->zone_ptr[mat->nzones+1]-mat->zone_ptr[mat->nzones];
-    offs = mat->zone_ptr[mat->nzones];		
+    //int nrows_to_mc = ctx->zone_ptr[ctx->nzones+1]-ctx->zone_ptr[ctx->nzones];
+    offs = ctx->zone_ptr[ctx->nzones];
     adolc_data = new uint32_t[ctr_nnz_MC + ctr_nrows_MC];
     pos = 0;
+    //printf("MC NNZ %d NROWS %d\n\n",ctr_nnz_MC,ctr_nrows_MC);
     
     //here if a previous permutation like RCM was carried out we either need the original unpermuted matrix or a totally permuted matrix
-    if (srcType == GHOST_SPARSEMAT_SRC_FUNC || srcType == GHOST_SPARSEMAT_SRC_FILE) {
-        ghost_sparsemat_src_rowfunc *src = (ghost_sparsemat_src_rowfunc *)matrixSource;
-        ghost_gidx * tmpcol = NULL;
-        char * tmpval = NULL;
-        ghost_lidx rowlen;
         
-        ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx));
-        ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize);
+    for(int i=0; i< ctr_nrows_MC; ++i) {
+        ghost_lidx orig_row = offs+i;
+        if (ctx->row_map->loc_perm) {
+            orig_row = ctx->row_map->loc_perm_inv[offs+i];
+        }
+        ghost_lidx orig_row_len = mat->chunkStart[orig_row+1]-mat->chunkStart[orig_row];
+        ghost_lidx * col = &mat->col[mat->chunkStart[orig_row]];
         
-        for(int i=0; i< ctr_nrows_MC; ++i) {
-            if (mat->context->perm_global && mat->context->perm_local) {
-                src->func(mat->context->perm_global->invPerm[mat->context->perm_local->invPerm[offs+i]],&rowlen,tmpcol,tmpval,src->arg);
-            } else if (mat->context->perm_global) {
-                src->func(mat->context->perm_global->invPerm[offs+i],&rowlen,tmpcol,tmpval,src->arg);
-            } else if (mat->context->perm_local) {
-                src->func(mat->context->lfRow[me]+mat->context->perm_local->invPerm[offs+i],&rowlen,tmpcol,tmpval,src->arg);
+        adolc[i] = &(adolc_data[pos]);
+        adolc_data[pos++] = orig_row_len;
+        
+        if (ctx->col_map->loc_perm) {
+            for(int j=0; j<orig_row_len; ++j) {
+                adolc_data[pos++] = ctx->col_map->loc_perm_inv[col[j]];
             }
-            
-            adolc[i] = &(adolc_data[pos]);
-            adolc_data[pos++] = rowlen;
-            for(int j=0; j<rowlen; ++j) {
-                adolc_data[pos++] = tmpcol[j];
+        } else {
+            for(int j=0; j<orig_row_len; ++j) {
+                adolc_data[pos++] = col[j];
             }
         }
-        free(tmpcol);
-        free(tmpval);
     }
     
     //build Bipartite Graph
@@ -437,53 +359,53 @@ else if(k>0 && zone[i]<0 && (col_ptr[row_ptr[i]] >= rhs_split[k-1] && col_ptr[ro
         goto err;
     }
     
-    mat->ncolors = GC->GetVertexColorCount();
+    ctx->ncolors = GC->GetVertexColorCount();
     GC->GetVertexPartialColors(colvec);
-    INFO_LOG("No. of Colors = %d",mat->ncolors);
+    INFO_LOG("No. of Colors = %d",ctx->ncolors);
     
-    ghost_malloc((void **)&mat->color_ptr,(mat->ncolors+1)*sizeof(ghost_lidx)); 
-    GHOST_CALL_GOTO(ghost_malloc((void **)&curcol,(mat->ncolors)*sizeof(ghost_lidx)),err,ret);
-    memset(curcol,0,mat->ncolors*sizeof(ghost_lidx));
+    ghost_malloc((void **)&ctx->color_ptr,(ctx->ncolors+1)*sizeof(ghost_lidx)); 
+    GHOST_CALL_GOTO(ghost_malloc((void **)&curcol,(ctx->ncolors)*sizeof(ghost_lidx)),err,ret);
+    memset(curcol,0,ctx->ncolors*sizeof(ghost_lidx));
     
-    for (int i=0;i<mat->ncolors+1;i++) {
-        mat->color_ptr[i] = 0; 
+    for (int i=0;i<ctx->ncolors+1;i++) {
+        ctx->color_ptr[i] = 0; 
     }
     
     for (int i=0;i<ctr_nrows_MC;i++) {
-        mat->color_ptr[colvec[i]+1]++;
+        ctx->color_ptr[colvec[i]+1]++;
     }
     
-    for (int i=1;i<mat->ncolors+1;i++) {
-        mat->color_ptr[i] += mat->color_ptr[i-1];
+    for (int i=1;i<ctx->ncolors+1;i++) {
+        ctx->color_ptr[i] += ctx->color_ptr[i-1];
     }
     
-    for(int i=0; i<mat->ncolors+1;++i) {
-        mat->color_ptr[i] = mat->color_ptr[i] + offs; //add offset to it
+    for(int i=0; i<ctx->ncolors+1;++i) {
+        ctx->color_ptr[i] = ctx->color_ptr[i] + offs; //add offset to it
     }
     
     for (int i=0;i<ctr_nrows_MC;i++) {
-        int idx = mat->context->perm_local->invPerm[i+offs];
-        mat->context->perm_local->perm[idx]  = curcol[colvec[i]] + mat->color_ptr[colvec[i]];
+        int idx = ctx->row_map->loc_perm_inv[i+offs];
+        ctx->row_map->loc_perm[idx]  = curcol[colvec[i]] + ctx->color_ptr[colvec[i]];
         curcol[colvec[i]]++;
     }
     
-    for (int i=0;i<mat->nrows;i++) {
-        mat->context->perm_local->invPerm[mat->context->perm_local->perm[i]] = i;
+    for (int i=0;i<ctx->row_map->dim;i++) {
+        ctx->row_map->loc_perm_inv[ctx->row_map->loc_perm[i]] = i;
     }
     
     #else
     WARNING_LOG("COLPACK is not available, only 1 thread would be used")
-    mat->ncolors = 1;
-    ghost_malloc((void **)&mat->color_ptr,(mat->ncolors+1)*sizeof(ghost_lidx)); 
+    ctx->ncolors = 1;
+    ghost_malloc((void **)&ctx->color_ptr,(ctx->ncolors+1)*sizeof(ghost_lidx)); 
     
-    for(int i=0; i<mat->ncolors+1; ++i) {
-        mat->color_ptr[i] = mat->zone_ptr[mat->nzones+i];
+    for(int i=0; i<ctx->ncolors+1; ++i) {
+        ctx->color_ptr[i] = ctx->zone_ptr[ctx->nzones+i];
     }
     
     #endif 
     
     double MC_percent;
-    MC_percent = ((double)ctr_nrows_MC/mat->context->lnrows[me])*100.;
+    MC_percent = ((double)ctr_nrows_MC/ctx->row_map->ldim[me])*100.;
     //TODO : quantify this and give a break point
     if( MC_percent > 5  ) {
         WARNING_LOG("%3.2f %% rows would be Multicolored, try reducing number of threads", MC_percent);
@@ -495,8 +417,16 @@ else if(k>0 && zone[i]<0 && (col_ptr[row_ptr[i]] >= rhs_split[k-1] && col_ptr[ro
     err:
     
     out:
-    
+   
+#ifdef GHOST_HAVE_COLPACK 
+    delete [] adolc_data;
+    delete [] adolc;
+    delete GC;
+#endif
+    delete [] rhs_split;
+    delete [] zone;
     free(curcol);
+    
     return ret;
 }
 

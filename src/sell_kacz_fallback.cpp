@@ -6,7 +6,7 @@ VT *scal; \
 VT *rownorm; \
 scal = (VT*) malloc(sizeof(VT)*NBLOCKS*NSHIFTS); \
 rownorm = (VT*) malloc(sizeof(VT)*NSHIFTS); \
-idx = sellmat->chunkStart[start_chunk] + rowinchunk; \
+idx = mat->chunkStart[start_chunk] + rowinchunk; \
 if(bval != NULL) { \
     for(int shift=0; shift<NSHIFTS; ++shift) { \
         for(int block=0; block<NBLOCKS; ++block) { \
@@ -16,15 +16,15 @@ if(bval != NULL) { \
 } \
 bool is_diag = false; \
 ghost_lidx diag_idx = 0; \
-if(mat->context->perm_local && mat->context->perm_local->method == GHOST_PERMUTATION_UNSYMMETRIC) {\
-    diag_idx = mat->context->perm_local->colPerm[mat->context->perm_local->invPerm[row]]; \
+if(mat->context->row_map->loc_perm && mat->context->col_map->loc_perm != mat->context->row_map->loc_perm) {\
+    diag_idx = mat->context->col_map->loc_perm[mat->context->row_map->loc_perm_inv[row]]; \
 } \
 else { \
     diag_idx = row; \
 } \
-for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) { \
+for (ghost_lidx j=0; j<mat->rowLen[row]; ++j) { \
     VT mval_idx = mval[idx]; \
-    ghost_lidx col_idx = sellmat->col[idx]; \
+    ghost_lidx col_idx = mat->col[idx]; \
     for(int shift=0; shift<NSHIFTS; ++shift) { \
         if(diag_idx == col_idx){ \
             mval_idx -= sigma[shift]; \
@@ -52,11 +52,11 @@ for(int shift=0; shift<NSHIFTS; ++shift) { \
     } \
 } \
 \
-idx -= CHUNKHEIGHT*sellmat->rowLen[row]; \
+idx -= CHUNKHEIGHT*mat->rowLen[row]; \
 \
-for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) { \
+for (ghost_lidx j=0; j<mat->rowLen[row]; j++) { \
     MT mval_idx = mval[idx]; \
-    ghost_lidx col_idx = sellmat->col[idx]; \
+    ghost_lidx col_idx = mat->col[idx]; \
     for(int shift=0; shift<NSHIFTS; ++shift) { \
         for(int block=0; block<NBLOCKS; ++block) { \
             xval[col_idx*NBLOCKS*NSHIFTS+ shift*NBLOCKS + block] += scal[shift*NBLOCKS+block]*std::conj(mval_idx);\
@@ -85,7 +85,7 @@ for(rowinchunk=start_rem; rowinchunk<MIN(CHUNKHEIGHT,(end_chunk-start_chunk)*CHU
     row = rowinchunk + (start_chunk)*CHUNKHEIGHT; \
     LOOP_IN_CHUNK(row); \
 } \
-_Pragma("omp parallel for private(chunk, rowinchunk, idx, row, NBLOCKS, NSHIFTS, CHUNKHEIGHT)") \
+_Pragma("omp parallel for private(chunk, rowinchunk, idx, row)") \
 for (chunk=start_chunk+1; chunk<end_chunk; ++chunk){ \
     for(rowinchunk=0; rowinchunk<CHUNKHEIGHT; ++rowinchunk) { \
         row = rowinchunk + chunk*CHUNKHEIGHT; \
@@ -111,7 +111,7 @@ for(rowinchunk=start_rem; rowinchunk>=MAX(0,(end_chunk-start_chunk)*CHUNKHEIGHT+
     row = rowinchunk + (start_chunk)*CHUNKHEIGHT; \
     LOOP_IN_CHUNK(row) \
 } \
-_Pragma("omp parallel for private(chunk, rowinchunk, idx, row, NBLOCKS, NSHIFTS, CHUNKHEIGHT)") \
+_Pragma("omp parallel for private(chunk, rowinchunk, idx, row)") \
 for (chunk=start_chunk-1; chunk>end_chunk; --chunk){ \
     for(rowinchunk=CHUNKHEIGHT-1; rowinchunk>=0; --rowinchunk) { \
         row = rowinchunk + chunk*CHUNKHEIGHT; \
@@ -155,7 +155,7 @@ if(tid == nthreads-1) \
      ghost_lidx rowinchunk = 0; 
      ghost_lidx idx=0, row=0; 
      
-     if (mat->nzones == 0 || mat->zone_ptr == NULL){
+     if (mat->context->nzones == 0 || mat->context->zone_ptr == NULL){
          ERROR_LOG("Splitting of matrix by Block Multicoloring has not be done!");
      }
      
@@ -179,7 +179,6 @@ if(tid == nthreads-1) \
      NBLOCKS = x->traits.ncols/NSHIFTS;
      
      
-     ghost_sell *sellmat = SELL(mat); 
      int CHUNKHEIGHT = mat->traits.C;
      
      MT *bval = NULL; 
@@ -188,12 +187,12 @@ if(tid == nthreads-1) \
          bval = (MT *)(b->val);
      
      VT *xval = (VT *)(x->val);
-     MT *mval = (MT *)sellmat->val;
+     MT *mval = (MT *)mat->val;
      MT omega = *(MT *)opts.omega;
-     ghost_lidx *zone_ptr = (ghost_lidx*) mat->zone_ptr;
-     ghost_lidx *color_ptr= (ghost_lidx*) mat->color_ptr;
-     ghost_lidx nthreads = mat->kacz_setting.active_threads;
-     int prev_nthreads;
+     ghost_lidx *zone_ptr = (ghost_lidx*) mat->context->zone_ptr;
+     ghost_lidx *color_ptr= (ghost_lidx*) mat->context->color_ptr;
+     ghost_lidx nthreads = mat->context->kacz_setting.active_threads;
+     //int prev_nthreads;
      int prev_omp_nested;
      
      #ifdef GHOST_HAVE_OPENMP
@@ -219,7 +218,7 @@ if(tid == nthreads-1) \
      //    ghost_lidx stride = 0;
      if (opts.direction == GHOST_KACZ_DIRECTION_BACKWARD) {
          #ifdef GHOST_HAVE_COLPACK 
-         for(int i=mat->ncolors; i>0; --i) {
+         for(int i=mat->context->ncolors; i>0; --i) {
              mc_start  = color_ptr[i]-1;
              mc_end    = color_ptr[i-1]-1;
              BACKWARD_LOOP(mc_start,mc_end,MT,MT)
@@ -228,7 +227,7 @@ if(tid == nthreads-1) \
          ghost_omp_set_dynamic(0);
          ghost_omp_nthread_set(1);
          
-         for(int i=mat->ncolors; i>0; --i) {
+         for(int i=mat->context->ncolors; i>0; --i) {
              mc_start  = color_ptr[i]-1;
              mc_end    = color_ptr[i-1]-1;
              BACKWARD_LOOP(mc_start,mc_end,MT,MT)
@@ -238,7 +237,7 @@ if(tid == nthreads-1) \
          #endif
          
          #ifdef GHOST_HAVE_OPENMP  
-         #pragma omp parallel private (start_rem, start_chunk, end_chunk, end_rem, chunk, rowinchunk, idx, row, NBLOCKS, NSHIFTS, CHUNKHEIGHT)
+         #pragma omp parallel private (start_rem, start_chunk, end_chunk, end_rem, chunk, rowinchunk, idx, row)
          {
              #endif 
              ghost_lidx tid = ghost_omp_threadnum();
@@ -253,12 +252,12 @@ if(tid == nthreads-1) \
              end[2]    = zone_ptr[4*tid+1]-1;
              start[3]  = zone_ptr[4*tid+1]-1;
              end[3]    = zone_ptr[4*tid]  -1;
-             if(mat->kacz_setting.kacz_method == GHOST_KACZ_METHOD_BMC_one_sweep) { 
+             if(mat->context->kacz_setting.kacz_method == GHOST_KACZ_METHOD_BMC_one_sweep) { 
                  for(ghost_lidx zone = 0; zone<4; ++zone) { 
                      BACKWARD_LOOP(start[zone],end[zone],MT,MT)   
                      #pragma omp barrier                           
                  }
-             } else if (mat->kacz_setting.kacz_method == GHOST_KACZ_METHOD_BMC_two_sweep) {
+             } else if (mat->context->kacz_setting.kacz_method == GHOST_KACZ_METHOD_BMC_two_sweep) {
                  BACKWARD_LOOP(start[0],end[0],MT,MT)
                  #pragma omp barrier 
                  if(tid%2 != 0) {
@@ -281,7 +280,7 @@ if(tid == nthreads-1) \
      } else {
          
          #ifdef GHOST_HAVE_OPENMP  
-         #pragma omp parallel private(start_rem, start_chunk, end_chunk, end_rem, chunk, rowinchunk, idx, row, NBLOCKS, NSHIFTS, CHUNKHEIGHT)
+         #pragma omp parallel private(start_rem, start_chunk, end_chunk, end_rem, chunk, rowinchunk, idx, row)
          {
              #endif 
              ghost_lidx tid = ghost_omp_threadnum();
@@ -296,12 +295,12 @@ if(tid == nthreads-1) \
              start[3]  = zone_ptr[4*tid+3];
              end[3]    = zone_ptr[4*tid+4];
              
-             if(mat->kacz_setting.kacz_method == GHOST_KACZ_METHOD_BMC_one_sweep) { 
+             if(mat->context->kacz_setting.kacz_method == GHOST_KACZ_METHOD_BMC_one_sweep) { 
                  for(ghost_lidx zone = 0; zone<4; ++zone) { 
                      FORWARD_LOOP(start[zone],end[zone],MT,MT)        
                      #pragma omp barrier                           
                  }
-             } else if (mat->kacz_setting.kacz_method == GHOST_KACZ_METHOD_BMC_two_sweep) {
+             } else if (mat->context->kacz_setting.kacz_method == GHOST_KACZ_METHOD_BMC_two_sweep) {
                  FORWARD_LOOP(start[0],end[0],MT,MT)
                  #pragma omp barrier 
                  FORWARD_LOOP(start[1],end[1],MT,MT)
@@ -322,7 +321,7 @@ if(tid == nthreads-1) \
          #endif
          
          #ifdef GHOST_HAVE_COLPACK 
-         for(int i=0; i<mat->ncolors; ++i) { 
+         for(int i=0; i<mat->context->ncolors; ++i) { 
              mc_start  = color_ptr[i];
              mc_end    = color_ptr[i+1];
              FORWARD_LOOP(mc_start,mc_end,MT,MT)
@@ -331,7 +330,7 @@ if(tid == nthreads-1) \
          ghost_omp_set_dynamic(0);
          ghost_omp_nthread_set(1);
          
-         for(int i=0; i<mat->ncolors; ++i) { 
+         for(int i=0; i<mat->context->ncolors; ++i) { 
              mc_start  = color_ptr[i];
              mc_end    = color_ptr[i+1];
              FORWARD_LOOP(mc_start,mc_end,MT,MT)

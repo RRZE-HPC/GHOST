@@ -325,9 +325,9 @@
     col = 0;\
     memcol = 0;\
     _Pragma("omp for schedule(runtime) private(memrow,valptr,cuvalptr)")\
-    for (row = 0; row<vec->traits.nrowspadded; row++) {\
+    for (row = 0; row<DM_NROWSPAD(vec); row++) {\
         memrow = row;\
-        if( row < vec->traits.nrows ) {\
+        if( row < DM_NROWS(vec) ) {\
 
 #define DENSEMAT_ITER_COMPACT_SINGLECOL_PAD(vec,valptr,row,col,memrow,memcol)\
         } else {\
@@ -336,10 +336,10 @@
 
 #define DENSEMAT_ITER_BEGIN_COMPACT(vec,valptr,row,col,memrow,memcol)\
     _Pragma("omp for schedule(runtime) private(col,memrow,memcol,valptr,cuvalptr)")\
-    for (row = 0; row<vec->traits.nrowspadded; row++) {\
+    for (row = 0; row<DM_NROWSPAD(vec); row++) {\
         memrow = row;\
         col = 0;\
-        if( row<vec->traits.nrows )\
+        if( row<DM_NROWS(vec) )\
         for (; col<vec->traits.ncols; col++) {\
             memcol = col;\
 
@@ -359,7 +359,7 @@
 
 #define DENSEMAT_ITER2_BEGIN_COMPACT_OFFS(vec1,vec2,valptr1,valptr2,row,col,memrow1,memrow2,memcol1,memcol2,vec2roffs,vec2coffs)\
     _Pragma("omp for schedule(runtime) private(col,memcol1,memcol2,memrow1,memrow2,valptr1,valptr2,cuvalptr1,cuvalptr2)")\
-    for (row=0; row<vec1->traits.nrows; row++) {\
+    for (row=0; row<DM_NROWS(vec1); row++) {\
         memrow1 = row;\
         memrow2 = row;\
         for (col = 0; col<vec1->traits.ncols; col++) {\
@@ -371,14 +371,14 @@
     memcol2 = 0;\
     col = 0;\
     _Pragma("omp for schedule(runtime) private(memrow1,memrow2,valptr1,valptr2,cuvalptr1,cuvalptr2)")\
-    for (row=0; row<vec1->traits.nrows; row++) {\
+    for (row=0; row<DM_NROWS(vec1); row++) {\
         memrow1 = row;\
         memrow2 = row;\
         {\
 
 #define DENSEMAT_ITER2_BEGIN_COMPACT_OFFS_TRANSPOSED(vec1,vec2,row,col,memrow1,memrow2,memcol1,memcol2,vec2roffs,vec2coffs)\
     _Pragma("omp for schedule(runtime) private(col,memcol1,memcol2,memrow1,memrow2,valptr1,valptr2,cuvalptr1,cuvalptr2)")\
-    for (row=0; row<vec1->traits.nrows; row++) {\
+    for (row=0; row<DM_NROWS(vec1); row++) {\
         memrow1 = row;\
         memrow2 = row;\
         for (col = 0; col<vec1->traits.ncols; col++) {\
@@ -391,7 +391,7 @@
         memcol1 = ghost_bitmap_next(vec1->colmask,memcol1);\
         memcol2 = col;\
         _Pragma("omp for schedule(runtime) private(memrow1,memrow2,valptr1,valptr2,cuvalptr1,cuvalptr2)")\
-        for (row=0; row<vec1->traits.nrows; row++) {\
+        for (row=0; row<DM_NROWS(vec1); row++) {\
             memrow1 = row;\
             memrow2 = row;\
 
@@ -409,7 +409,7 @@
 
 #define DENSEMAT_ITER_BEGIN_SCATTERED(vec,row,col,memrow,memcol)\
     memrow = -1;\
-    for (row=0; row<vec->traits.nrows; row++) {\
+    for (row=0; row<DM_NROWS(vec); row++) {\
         memrow = ghost_bitmap_next(vec->rowmask,memrow);\
         memcol = -1;\
         for (col = 0; col<vec->traits.ncols; col++) {\
@@ -426,7 +426,7 @@
     for (row=0; row<vec2roffs; row++) { /* go to offset */\
         memrow2 = ghost_bitmap_next(vec2->rowmask,memrow2);\
     }\
-    for (row=0; row<vec1->traits.nrows; row++) {\
+    for (row=0; row<DM_NROWS(vec1); row++) {\
         memrow1 = ghost_bitmap_next(vec1->rowmask,memrow1);\
         memrow2 = ghost_bitmap_next(vec2->rowmask,memrow2);\
         memcol1 = -1;\
@@ -444,7 +444,7 @@
 
 #define DENSEMAT_ITER2_BEGIN_SCATTERED1_OFFS(vec1,vec2,row,col,memrow1,memrow2,memcol1,memcol2,vec2roffs,vec2coffs)\
     memrow1 = -1;\
-    for (row=0; row<vec1->traits.nrows; row++) {\
+    for (row=0; row<DM_NROWS(vec1); row++) {\
         memrow1 = ghost_bitmap_next(vec1->rowmask,memrow1);\
         memrow2 = row;\
         memcol1 = -1;\
@@ -461,7 +461,7 @@
     for (row=0; row<vec2roffs; row++) { /* go to offset */\
         memrow2 = ghost_bitmap_next(vec2->rowmask,memrow2);\
     }\
-    for (row=0; row<vec1->traits.nrows; row++) {\
+    for (row=0; row<DM_NROWS(vec1); row++) {\
         memrow1 = row;\
         memrow2 = ghost_bitmap_next(vec2->rowmask,memrow2);\
         memcol2 = -1;\
@@ -486,7 +486,7 @@
 
 #define DENSEMAT_ITER_BEGIN_SCATTERED(vec,row,col,memrow,memcol)\
     memrow = -1;\
-    for (row=0; row<vec->traits.nrows; row++) {\
+    for (row=0; row<DM_NROWS(vec); row++) {\
         memrow = ghost_bitmap_next(vec->rowmask,memrow);\
         memcol = -1;\
         for (col = 0; col<vec->traits.ncols; col++) {\
@@ -503,7 +503,7 @@
     for (row=0; row<vec2roffs; row++) { /* go to offset */\
         memrow2 = ghost_bitmap_next(vec2->rowmask,memrow2);\
     }\
-    for (row=0; row<vec1->traits.nrows; row++) {\
+    for (row=0; row<DM_NROWS(vec1); row++) {\
         memrow1 = ghost_bitmap_next(vec1->rowmask,memrow1);\
         memrow2 = ghost_bitmap_next(vec2->rowmask,memrow2);\
         memcol1 = -1;\
@@ -521,7 +521,7 @@
 
 #define DENSEMAT_ITER2_BEGIN_SCATTERED1_OFFS(vec1,vec2,row,col,memrow1,memrow2,memcol1,memcol2,vec2roffs,vec2coffs)\
     memrow1 = -1;\
-    for (row=0; row<vec1->traits.nrows; row++) {\
+    for (row=0; row<DM_NROWS(vec1); row++) {\
         memrow1 = ghost_bitmap_next(vec1->rowmask,memrow1);\
         memrow2 = row;\
         memcol1 = -1;\
@@ -538,7 +538,7 @@
     for (row=0; row<vec2roffs; row++) { /* go to offset */\
         memrow2 = ghost_bitmap_next(vec2->rowmask,memrow2);\
     }\
-    for (row=0; row<vec1->traits.nrows; row++) {\
+    for (row=0; row<DM_NROWS(vec1); row++) {\
         memrow1 = row;\
         memrow2 = ghost_bitmap_next(vec2->rowmask,memrow2);\
         memcol2 = -1;\

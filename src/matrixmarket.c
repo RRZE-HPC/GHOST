@@ -13,8 +13,8 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *c
     static size_t dtsize = 0;
 
     if (row == GHOST_SPARSEMAT_ROWFUNC_MM_ROW_GETDIM) {
-        ghost_sparsemat_rowfunc_mm_initargs args = 
-            *(ghost_sparsemat_rowfunc_mm_initargs *)val;
+        ghost_sparsemat_rowfunc_file_initargs args = 
+            *(ghost_sparsemat_rowfunc_file_initargs *)arg;
         char *filename = args.filename;
 
         FILE *f;
@@ -45,10 +45,10 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *c
         col[1] = N;
         
         fclose(f);
-    } else if ((row == GHOST_SPARSEMAT_ROWFUNC_MM_ROW_GETRPT) || (row == GHOST_SPARSEMAT_ROWFUNC_MM_ROW_INIT)) {
+    } else if (row == GHOST_SPARSEMAT_ROWFUNC_INIT) {
 
-        ghost_sparsemat_rowfunc_mm_initargs args = 
-            *(ghost_sparsemat_rowfunc_mm_initargs *)val;
+        ghost_sparsemat_rowfunc_file_initargs args = 
+            *(ghost_sparsemat_rowfunc_file_initargs *)arg;
         char *filename = args.filename;
         ghost_datatype matdt = args.dt;
 
@@ -97,7 +97,7 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *c
 
         if (mm_is_symmetric(matcode)) {
             PERFWARNING_LOG("Will create a general matrix out of a symmetric matrix!");
-            *(int *)arg = 1;
+            args.mat->traits.symmetry = GHOST_SPARSEMAT_SYMM_SYMMETRIC;
             actualnz = nz*2;
             symm = 1;
         } else {
@@ -192,7 +192,7 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *c
         free(offset);
         fclose(f);
 
-    } else if (row == GHOST_SPARSEMAT_ROWFUNC_MM_ROW_FINALIZE) {
+    } else if (row == GHOST_SPARSEMAT_ROWFUNC_FINALIZE) {
         free(colInd);
         free(rowPtr);
         free(values);
@@ -217,8 +217,8 @@ int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx row, ghost_lidx *rowlen, gho
     static size_t dtsize = 0;
 
     if (row == GHOST_SPARSEMAT_ROWFUNC_MM_ROW_GETDIM) {
-        ghost_sparsemat_rowfunc_mm_initargs args = 
-            *(ghost_sparsemat_rowfunc_mm_initargs *)val;
+        ghost_sparsemat_rowfunc_file_initargs args = 
+            *(ghost_sparsemat_rowfunc_file_initargs *)val;
         char *filename = args.filename;
 
         FILE *f;
@@ -251,8 +251,8 @@ int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx row, ghost_lidx *rowlen, gho
         fclose(f);
     } else if ((row == GHOST_SPARSEMAT_ROWFUNC_MM_ROW_GETRPT) || (row == GHOST_SPARSEMAT_ROWFUNC_MM_ROW_INIT)) {
 
-        ghost_sparsemat_rowfunc_mm_initargs args = 
-            *(ghost_sparsemat_rowfunc_mm_initargs *)val;
+        ghost_sparsemat_rowfunc_file_initargs args = 
+            *(ghost_sparsemat_rowfunc_file_initargs *)val;
         char *filename = args.filename;
         ghost_datatype matdt = args.dt;
 
@@ -421,12 +421,12 @@ ghost_error ghost_sparsemat_to_mm(char *path, ghost_sparsemat *mat)
     int nrank,rank;
     FILE *fp;
     
-    if (mat->context->gnrows > INT_MAX) {
+    if (mat->context->row_map->gdim > INT_MAX) {
         ERROR_LOG("The number of matrix rows exceeds INT_MAX and I cannot write a MatrixMarket file!");
         return GHOST_ERR_INVALID_ARG;
     }
     
-    if (mat->context->gncols > INT_MAX) {
+    if (mat->context->col_map->gdim > INT_MAX) {
         ERROR_LOG("The number of matrix columns exceeds INT_MAX and I cannot write a MatrixMarket file!");
         return GHOST_ERR_INVALID_ARG;
     }
@@ -459,7 +459,7 @@ ghost_error ghost_sparsemat_to_mm(char *path, ghost_sparsemat *mat)
         }
         
         mm_write_banner(fp,matcode);
-        mm_write_mtx_crd_size(fp,(int)mat->context->gnrows,(int)mat->context->gncols,(int)mat->context->gnnz);
+        mm_write_mtx_crd_size(fp,(int)mat->context->row_map->gdim,(int)mat->context->col_map->gdim,(int)mat->context->gnnz);
         
         fclose(fp);
     }
@@ -476,39 +476,39 @@ ghost_error ghost_sparsemat_to_mm(char *path, ghost_sparsemat *mat)
                 return GHOST_ERR_INVALID_ARG;
             }
 
-            globrow = mat->context->lfRow[rank]+1;
+            globrow = mat->context->row_map->goffs[rank]+1;
 
-            for (row=1; row<=mat->nrows; row++, globrow++) {
-                for (entinrow=0; entinrow<SELL(mat)->rowLen[row-1]; entinrow++) {
-                    sellidx = SELL(mat)->chunkStart[(row-1)/mat->traits.C] + entinrow*mat->traits.C + (row-1)%mat->traits.C;
+            for (row=1; row<=SPM_NROWS(mat); row++, globrow++) {
+                for (entinrow=0; entinrow<mat->rowLen[row-1]; entinrow++) {
+                    sellidx = mat->chunkStart[(row-1)/mat->traits.C] + entinrow*mat->traits.C + (row-1)%mat->traits.C;
                     if (mat->traits.flags & GHOST_SPARSEMAT_SAVE_ORIG_COLS) {
                         int col = (int)mat->col_orig[sellidx]+1;
                         if (mat->traits.datatype & GHOST_DT_REAL) {
                             if (mat->traits.datatype & GHOST_DT_DOUBLE) {
-                                fprintf(fp,"%d %d %10.3g\n",globrow,col,((double *)SELL(mat)->val)[sellidx]);
+                                fprintf(fp,"%d %d %10.3g\n",globrow,col,((double *)mat->val)[sellidx]);
                             } else {
-                                fprintf(fp,"%d %d %10.3g\n",globrow,col,((float *)SELL(mat)->val)[sellidx]);
+                                fprintf(fp,"%d %d %10.3g\n",globrow,col,((float *)mat->val)[sellidx]);
                             }
                         } else {
                             if (mat->traits.datatype & GHOST_DT_DOUBLE) {
-                                fprintf(fp,"%d %d %10.3g %10.3g\n",globrow,col,creal(((complex double *)SELL(mat)->val)[sellidx]),cimag(((complex double *)SELL(mat)->val)[sellidx]));
+                                fprintf(fp,"%d %d %10.3g %10.3g\n",globrow,col,creal(((complex double *)mat->val)[sellidx]),cimag(((complex double *)mat->val)[sellidx]));
                             } else {
-                                fprintf(fp,"%d %d %10.3g %10.3g\n",globrow,col,crealf(((complex float *)SELL(mat)->val)[sellidx]),cimagf(((complex float *)SELL(mat)->val)[sellidx]));
+                                fprintf(fp,"%d %d %10.3g %10.3g\n",globrow,col,crealf(((complex float *)mat->val)[sellidx]),cimagf(((complex float *)mat->val)[sellidx]));
                             }
                         }
                     } else {
-                        ghost_lidx col = SELL(mat)->col[sellidx]+1;
+                        ghost_lidx col = mat->col[sellidx]+1;
                         if (mat->traits.datatype & GHOST_DT_REAL) {
                             if (mat->traits.datatype & GHOST_DT_DOUBLE) {
-                                fprintf(fp,"%d %d %10.3g\n",globrow,col,((double *)SELL(mat)->val)[sellidx]);
+                                fprintf(fp,"%d %d %10.3g\n",globrow,col,((double *)mat->val)[sellidx]);
                             } else {
-                                fprintf(fp,"%d %d %10.3g\n",globrow,col,((float *)SELL(mat)->val)[sellidx]);
+                                fprintf(fp,"%d %d %10.3g\n",globrow,col,((float *)mat->val)[sellidx]);
                             }
                         } else {
                             if (mat->traits.datatype & GHOST_DT_DOUBLE) {
-                                fprintf(fp,"%d %d %10.3g %10.3g\n",globrow,col,creal(((complex double *)SELL(mat)->val)[sellidx]),cimag(((complex double *)SELL(mat)->val)[sellidx]));
+                                fprintf(fp,"%d %d %10.3g %10.3g\n",globrow,col,creal(((complex double *)mat->val)[sellidx]),cimag(((complex double *)mat->val)[sellidx]));
                             } else {
-                                fprintf(fp,"%d %d %10.3g %10.3g\n",globrow,col,crealf(((complex float *)SELL(mat)->val)[sellidx]),cimagf(((complex float *)SELL(mat)->val)[sellidx]));
+                                fprintf(fp,"%d %d %10.3g %10.3g\n",globrow,col,crealf(((complex float *)mat->val)[sellidx]),cimagf(((complex float *)mat->val)[sellidx]));
                             }
                         }
                     }

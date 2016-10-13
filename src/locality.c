@@ -188,6 +188,10 @@ out:
 ghost_error ghost_nrank(int *nRanks, ghost_mpi_comm comm)
 {
 #ifdef GHOST_HAVE_MPI
+    if (comm == MPI_COMM_NULL) {
+        *nRanks = 1;
+        return GHOST_SUCCESS;
+    }
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     MPI_CALL_RETURN(MPI_Comm_size(comm,nRanks));
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);

@@ -5,7 +5,8 @@
 #include "ghost/tsmm_inplace.h"
 #include "ghost/tsmm_inplace_cu.h"
 #include "ghost/tsmm_inplace_plain_gen.h"
-#include "ghost/tsmm_inplace_var1_plain_gen.h"
+#include "ghost/tsmm_inplace_varincols_plain_gen.h"
+#include "ghost/tsmm_inplace_varoutcols_plain_gen.h"
 #include "ghost/tsmm_inplace_var2_plain_gen.h"
 #include "ghost/tsmm_inplace_var2_cu_gen.h"
 #include "ghost/tsmm_inplace_cu_gen.h"
@@ -123,7 +124,8 @@ ghost_error ghost_tsmm_inplace(ghost_densemat *x, ghost_densemat *w, void *alpha
     
     if (ghost_tsmm_inplace_kernels.empty()) {
 #include "tsmm_inplace_plain.def"
-#include "tsmm_inplace_var1_plain.def"
+#include "tsmm_inplace_varincols_plain.def"
+#include "tsmm_inplace_varoutcols_plain.def"
 #include "tsmm_inplace_var2_plain.def"
 #ifdef GHOST_HAVE_CUDA
 #include "tsmm_inplace_cu.def"
@@ -138,7 +140,7 @@ ghost_error ghost_tsmm_inplace(ghost_densemat *x, ghost_densemat *w, void *alpha
     // possible implementations
     std::vector<ghost_implementation> try_impl;
 #ifdef GHOST_HAVE_CUDA
-    if (x->traits.location & GHOST_LOCATION_DEVICE) {
+    if (x->traits.location & GHOST_LOCATION_DEVICE && x->traits.compute_at != GHOST_LOCATION_HOST) {
         try_impl.push_back(GHOST_IMPLEMENTATION_CUDA);
     } else {
 #endif
@@ -175,11 +177,11 @@ ghost_error ghost_tsmm_inplace(ghost_densemat *x, ghost_densemat *w, void *alpha
     }
     
     ghost_lidx try_ncolsout[2] = {w->traits.ncols,-1};
-    ghost_lidx try_ncolsin[2] = {w->traits.nrows,-1};
+DM_NROWS(    ghost_lidx try_ncolsin[2] = {w),-1};
     ghost_datatype try_dt[2] = {x->traits.datatype,GHOST_DT_ANY};
 
 #ifdef GHOST_HAVE_CUDA
-    if (x->traits.location & GHOST_LOCATION_DEVICE) {
+    if (x->traits.location & GHOST_LOCATION_DEVICE && x->traits.compute_at != GHOST_LOCATION_HOST) {
         try_dt[0] = GHOST_DT_ANY;
         opt_align = GHOST_UNALIGNED;
     }
@@ -233,7 +235,7 @@ end_of_loop:
 #ifdef GHOST_INSTR_TIMING
     ghost_gemm_perf_args tsmm_inplace_perfargs;
     tsmm_inplace_perfargs.n = w->traits.ncols;
-    tsmm_inplace_perfargs.k = w->traits.nrows;
+DM_NROWS(    tsmm_inplace_perfargs.k = w);
     tsmm_inplace_perfargs.m = x->traits.gnrows;
     tsmm_inplace_perfargs.dt = x->traits.datatype;
     tsmm_inplace_perfargs.betaiszero = ghost_iszero(beta,x->traits.datatype);

@@ -621,7 +621,8 @@ ghost_error ghost_finalize()
     ghost_topology_destroy();
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TEARDOWN);
-    
+
+    ghost_timing_destroy();    
     ghost_instr_destroy();
 #ifdef GHOST_HAVE_MPI
     if (!MPIwasInitialized) {
@@ -671,8 +672,6 @@ ghost_error ghost_string(char **str)
 #else
     ghost_line_string(str,"CUDA support",NULL,"Disabled");
 #endif
-    ghost_line_string(str,"Configured SELL chunk heights",NULL,"%s",GHOST_GEN_SELL_C);
-    ghost_line_string(str,"Configured blockvector widths",NULL,"%s",GHOST_GEN_DENSEMAT_DIM);
 #ifdef GHOST_INSTR_LIKWID
 #ifdef GHOST_INSTR_TIMING
     ghost_line_string(str,"Instrumentation",NULL,"Likwid+Timing");

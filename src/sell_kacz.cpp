@@ -1,5 +1,4 @@
 #include "ghost/types.h"
-#include "ghost/complex.h"
 #include "ghost/locality.h"
 #include "ghost/util.h"
 #include "ghost/timing.h"
@@ -51,12 +50,12 @@ static ghost_error ghost_carp_init_tmpl(ghost_sparsemat *mat, ghost_densemat *rh
     if(opts->normalize == GHOST_KACZ_NORMALIZE_YES) {
         opts->initialized = true;
         ghost_lidx chunkHeight = mat->traits.C;
-        ghost_lidx nchunks = mat->nrows/chunkHeight;
-        ghost_lidx remchunk = mat->nrows%chunkHeight;
+        ghost_lidx nchunks = SPM_NROWS(mat)/chunkHeight;
+        ghost_lidx remchunk = SPM_NROWS(mat)%chunkHeight;
         m_t *scal;
-        ghost_malloc((void **)&scal,mat->nrows*sizeof(m_t));
+        ghost_malloc((void **)&scal,SPM_NROWS(mat)*sizeof(m_t));
         ghost_lidx row,idx;
-        m_t* mval = ((m_t*)mat->sell->val);
+        m_t* mval = ((m_t*)mat->val);
         v_t* bval = ((v_t*)rhs->val);
         
         #ifdef GHOST_HAVE_OPENMP 
@@ -67,15 +66,15 @@ static ghost_error ghost_carp_init_tmpl(ghost_sparsemat *mat, ghost_densemat *rh
             for(ghost_lidx chunkinrow=0; chunkinrow<mat->traits.C; ++chunkinrow) {
                 //TODO convert this into function for outer loop vectorisation
                 row = chunk*mat->traits.C + chunkinrow;
-                idx = mat->sell->chunkStart[chunk] + chunkinrow;              
+                idx = mat->chunkStart[chunk] + chunkinrow;              
                 scal[row] = 0;
-                for(ghost_lidx j=0; j<mat->sell->chunkLen[chunk]; ++j) {
+                for(ghost_lidx j=0; j<mat->chunkLen[chunk]; ++j) {
                     scal[row] += mval[idx]*mval[idx];
                     idx+=chunkHeight;
                 }    
                 scal[row] = sqrt(scal[row]);
-                idx -= mat->sell->chunkLen[chunk]*chunkHeight;               
-                for(ghost_lidx j=0; j<mat->sell->chunkLen[chunk]; ++j) {
+                idx -= mat->chunkLen[chunk]*chunkHeight;               
+                for(ghost_lidx j=0; j<mat->chunkLen[chunk]; ++j) {
                     mval[idx] = ((m_t)mval[idx])/scal[row];
                     idx+=chunkHeight;
                 }     
@@ -87,15 +86,15 @@ static ghost_error ghost_carp_init_tmpl(ghost_sparsemat *mat, ghost_densemat *rh
         ghost_lidx chunk = nchunks; 
         for(ghost_lidx chunkinrow=0; chunkinrow<remchunk; ++chunkinrow) {
             row = chunk*mat->traits.C + chunkinrow;
-            idx = mat->sell->chunkStart[chunk] + chunkinrow;              
+            idx = mat->chunkStart[chunk] + chunkinrow;              
             scal[row] = 0;
-            for(ghost_lidx j=0; j<mat->sell->chunkLen[chunk]; ++j) {
+            for(ghost_lidx j=0; j<mat->chunkLen[chunk]; ++j) {
                 scal[row] += mval[idx]*mval[idx];
                 idx+=chunkHeight;
             }    
             scal[row] = sqrt(scal[row]);
-            idx -= mat->sell->chunkLen[chunk]*chunkHeight;               
-            for(ghost_lidx j=0; j<mat->sell->chunkLen[chunk]; ++j) {
+            idx -= mat->chunkLen[chunk]*chunkHeight;               
+            for(ghost_lidx j=0; j<mat->chunkLen[chunk]; ++j) {
                 mval[idx] = ((m_t)mval[idx])/scal[row];
                 idx+=chunkHeight;
             }
@@ -127,9 +126,7 @@ ghost_error ghost_carp_perf_init_tmpl(ghost_sparsemat *mat, ghost_carp_opts *opt
         ghost_densemat_traits vtraits_col = GHOST_DENSEMAT_TRAITS_INITIALIZER;
         ghost_densemat_traits vtraits_row = GHOST_DENSEMAT_TRAITS_INITIALIZER;
         vtraits_col.storage = GHOST_DENSEMAT_ROWMAJOR;
-        vtraits_col.permutemethod = COLUMN;
         vtraits_row.storage = GHOST_DENSEMAT_ROWMAJOR;
-        vtraits_row.permutemethod = ROW;
         vtraits_row.datatype = (ghost_datatype)mat->traits.datatype;
         double start,end;
         double max_flop = 0;
@@ -167,31 +164,31 @@ ghost_error ghost_carp_perf_init_tmpl(ghost_sparsemat *mat, ghost_carp_opts *opt
 
         int nIter = 1;//things like alpha=0 wouldn't be considered, but the LC 
         for (int i=0; i<total_sizes; ++i) { 
-            if(block_size[i] != 0) {
-                vtraits_col.ncols = block_size[i];
-                vtraits_row.ncols = block_size[i];
-                ghost_densemat_create(&test_x, mat->context, vtraits_col);
-                ghost_densemat_create(&test_rhs, mat->context, vtraits_row);
-                test_x->fromScalar(test_x,&zero);
-                test_rhs->fromScalar(test_rhs,&one);
-                ghost_barrier();
-                ghost_timing_wcmilli(&start);
-                
-                for(int iter=0; iter<nIter; ++iter) {
-                    ghost_carp(mat, test_x, test_rhs, *opts);
-                }
-                
-                ghost_barrier();
-                ghost_timing_wcmilli(&end);
-                double flop = ((nIter*mat->context->gnnz)*vtraits_col.ncols*1*8*1e-6)/(end-start);
-                if(flop > max_flop) {
-                    max_flop = std::max(max_flop,flop);
-                } else {
-                    //Some LC broken
-                    opts->best_block_size = block_size[i-1];
-                    //free(block_size);
-                    return ret;
-                }
+            vtraits_col.ncols = block_size[i];
+            vtraits_row.ncols = block_size[i];
+            ghost_densemat_create(&test_x, mat->context, vtraits_col);
+            ghost_densemat_create(&test_rhs, mat->context, vtraits_row);
+            test_x->map = test_x->context->col_map;
+            test_rhs->map = test_x->context->row_map;
+            ghost_densemat_init_val(test_x,&zero);
+            ghost_densemat_init_val(test_rhs,&one);
+            ghost_barrier();
+            ghost_timing_wcmilli(&start);
+            
+            for(int iter=0; iter<nIter; ++iter) {
+                ghost_carp(mat, test_x, test_rhs, *opts);
+            }
+            
+            ghost_barrier();
+            ghost_timing_wcmilli(&end);
+            double flop = ((nIter*mat->context->gnnz)*vtraits_col.ncols*1*8*1e-6)/(end-start);
+            if(flop > max_flop) {
+                max_flop = std::max(max_flop,flop);
+            } else {
+                //Some LC broken
+                opts->best_block_size = block_size[i-1];
+                free(block_size);
+                return ret;
             }
         }
         opts->best_block_size = block_size[total_sizes-1];
@@ -241,7 +238,7 @@ static ghost_error kacz_fallback(ghost_densemat *x, ghost_sparsemat *mat, ghost_
     
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     
-    if (!mat->color_ptr || mat->ncolors == 0) {
+    if (!mat->context->color_ptr || mat->context->ncolors == 0) {
         WARNING_LOG("Matrix has not been colored!");
     }
     if (x->traits.ncols > 1) {
@@ -258,29 +255,28 @@ static ghost_error kacz_fallback(ghost_densemat *x, ghost_sparsemat *mat, ghost_
     ghost_lidx rowinchunk;
     ghost_lidx j;
     ghost_lidx color;
-    ghost_sell *sellmat = SELL(mat);
     ghost_lidx fchunk, lchunk;
     v_t *bval = (v_t *)(b->val);
     v_t *xval = (v_t *)(x->val);
-    m_t *mval = (m_t *)sellmat->val;
+    m_t *mval = (m_t *)mat->val;
     v_t omega = *(v_t *)opts.omega;
     
     ghost_lidx firstcolor, lastcolor, stride;
     
     if (forward) {
         firstcolor = 0;
-        lastcolor = mat->ncolors;
+        lastcolor = mat->context->ncolors;
         stride = 1;
     } else {
-        firstcolor = mat->ncolors-1;
+        firstcolor = mat->context->ncolors-1;
         lastcolor = -1;
         stride = -1;
     }
     
     
     for (color=firstcolor; color!=lastcolor; color+=stride) {
-        fchunk = mat->color_ptr[color]/mat->traits.C;
-        lchunk = mat->color_ptr[color+1]/mat->traits.C;
+        fchunk = mat->context->color_ptr[color]/mat->traits.C;
+        lchunk = mat->context->color_ptr[color+1]/mat->traits.C;
         #pragma omp parallel
         { 
             m_t *rownorm;
@@ -291,20 +287,20 @@ static ghost_error kacz_fallback(ghost_densemat *x, ghost_sparsemat *mat, ghost_
                     row = rowinchunk + c*mat->traits.C;
                     rownorm[rowinchunk] = 0.;
                     
-                    ghost_lidx idx = sellmat->chunkStart[c]+rowinchunk;
+                    ghost_lidx idx = mat->chunkStart[c]+rowinchunk;
                     v_t scal = -bval[row];
                     
-                    for (j=0; j<sellmat->rowLen[row]; j++) {
-                        scal += (v_t)mval[idx] * xval[sellmat->col[idx]];
+                    for (j=0; j<mat->rowLen[row]; j++) {
+                        scal += (v_t)mval[idx] * xval[mat->col[idx]];
                         rownorm[rowinchunk] += mval[idx]*mval[idx];
                         idx += mat->traits.C;
                     }
                     
-                    idx -= mat->traits.C*sellmat->rowLen[row];
+                    idx -= mat->traits.C*mat->rowLen[row];
                     scal /= (v_t)rownorm[rowinchunk];
                     
-                    for (j=0; j<sellmat->rowLen[row]; j++) {
-                        xval[sellmat->col[idx]] = xval[sellmat->col[idx]] - omega * scal * (v_t)mval[idx];
+                    for (j=0; j<mat->rowLen[row]; j++) {
+                        xval[mat->col[idx]] = xval[mat->col[idx]] - omega * scal * (v_t)mval[idx];
                         idx += mat->traits.C;
                     }
                 }
@@ -337,17 +333,17 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
     ghost_kacz_parameters p;
     
     //if rectangular matrix
-    if(x->traits.permutemethod != COLUMN && mat->nrows != mat->context->nrowspadded) {
-        ERROR_LOG("Output vector is not COLUMN(Right sided) vector, please set permutemethod to column in traits field")
+    if(x->map != x->context->col_map && SPM_NROWS(mat) != mat->context->col_map->dim) {
+        ERROR_LOG("Output vector is not COLUMN(Right sided) vector, please set the map to the column map")
     }
     
     ghost_densemat *b;
     //deal with NULL pointer of b
     if(rhs==NULL) {
         if(opts.num_shifts != 0)       
-            ghost_densemat_create_and_view_densemat(&b, x, x->traits.nrows, 0, x->traits.ncols/opts.num_shifts, 0);
+            ghost_densemat_create_and_view_densemat(&b, x, DM_NROWS(x), 0, x->traits.ncols/opts.num_shifts, 0);
         else       
-            ghost_densemat_create_and_view_densemat(&b, x, x->traits.nrows, 0, x->traits.ncols, 0);
+            ghost_densemat_create_and_view_densemat(&b, x, DM_NROWS(x), 0, x->traits.ncols, 0);
         
         b->val = NULL; 
     } else {
@@ -356,7 +352,7 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
     
     if(opts.shift) {     
         if(!(mat->traits.flags & GHOST_SPARSEMAT_COLOR)) {
-            if(!(mat->traits.flags & GHOST_SPARSEMAT_BLOCKCOLOR) && (mat->kaczRatio >= 2*mat->kacz_setting.active_threads)) {
+            if(!(mat->traits.flags & GHOST_SPARSEMAT_BLOCKCOLOR) && (mat->context->kaczRatio >= 2*mat->context->kacz_setting.active_threads)) {
                 INFO_LOG("BMC KACZ_shift without transition called");
                 p.method = GHOST_KACZ_METHOD_BMCshift;//Now BMC_RB can run with BMC 
             }
@@ -370,7 +366,7 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
         }
     } else if(opts.normalize==GHOST_KACZ_NORMALIZE_YES) {
         if(!(mat->traits.flags & GHOST_SPARSEMAT_COLOR)) {
-            if(!(mat->traits.flags & GHOST_SPARSEMAT_BLOCKCOLOR) && (mat->kaczRatio >= 2*mat->kacz_setting.active_threads)) {
+            if(!(mat->traits.flags & GHOST_SPARSEMAT_BLOCKCOLOR) && (mat->context->kaczRatio >= 2*mat->context->kacz_setting.active_threads)) {
                 INFO_LOG("BMC KACZ without transition, for Normalized system called");
                 p.method = GHOST_KACZ_METHOD_BMCNORMAL;//Now BMC_RB can run with BMC 
             }
@@ -384,7 +380,7 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
         }
     } else {
         if(!(mat->traits.flags & GHOST_SPARSEMAT_COLOR)) {
-            if(!(mat->traits.flags & GHOST_SPARSEMAT_BLOCKCOLOR) && (mat->kaczRatio >= 2*mat->kacz_setting.active_threads)) {
+            if(!(mat->traits.flags & GHOST_SPARSEMAT_BLOCKCOLOR) && (mat->context->kaczRatio >= 2*mat->context->kacz_setting.active_threads)) {
                 INFO_LOG("BMC KACZ without transition called");
                 p.method = GHOST_KACZ_METHOD_BMC;//Now BMC_RB can run with BMC 
             }

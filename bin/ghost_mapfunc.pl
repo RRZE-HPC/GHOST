@@ -81,6 +81,7 @@ while (<>) {
             } else {
                 print "pars.blocksz = ".$funcpars[7].";\n";
             }
+            print "pars.nshifts = ".$funcpars[8].";\n";
             print $funcname."_kernels[pars] = ".$funcname_full.";\n"; 
             if ($funcpars[7] ne "x") {
                 print "ghost_gidx nnz;\n";
@@ -107,7 +108,7 @@ while (<>) {
             if ($funcpars[4] ne "x" ) {
                 print "ghost_dot_perf_args dot_perfargs;\n";
                 print "dot_perfargs.ncols = ".$funcpars[4].";\n";
-                print "dot_perfargs.globnrows = vec1->traits.gnrows;\n";
+                print "dot_perfargs.globnrows = DM_GNROWS(vec1);\n";
                 print "dot_perfargs.dt = vec1->traits.datatype;\n";
                 print "if (vec1 == vec2) {\n";
                 print "dot_perfargs.samevec = true;\n";
@@ -140,7 +141,7 @@ while (<>) {
                 print "ghost_gemm_perf_args tsmttsm_perfargs;\n";
                 print "tsmttsm_perfargs.n = ".$funcpars[3].";\n";
                 print "tsmttsm_perfargs.m = ".$funcpars[4].";\n";
-                print "tsmttsm_perfargs.k = v->traits.gnrows;\n";
+                print "tsmttsm_perfargs.k = DM_GNROWS(v);\n";
                 print "tsmttsm_perfargs.dt = v->traits.datatype;\n";
                 print "tsmttsm_perfargs.betaiszero = ghost_iszero(beta,tsmttsm_perfargs.dt);\n";
                 print "tsmttsm_perfargs.alphaisone = ghost_isone(alpha,tsmttsm_perfargs.dt);\n";
@@ -173,7 +174,7 @@ while (<>) {
                 print "ghost_gemm_perf_args tsmm_perfargs;\n";
                 print "tsmm_perfargs.n = ".$funcpars[3].";\n";
                 print "tsmm_perfargs.k = ".$funcpars[4].";\n";
-                print "tsmm_perfargs.m = v->traits.gnrows;\n";
+                print "tsmm_perfargs.m = DM_GNROWS(v);\n";
                 print "tsmm_perfargs.dt = x->traits.datatype;\n";
                 print "tsmm_perfargs.betaiszero = ghost_iszero(beta,x->traits.datatype);\n";
                 print "tsmm_perfargs.alphaisone = ghost_isone(alpha,x->traits.datatype);\n";
@@ -203,7 +204,7 @@ while (<>) {
                 print "ghost_gemm_perf_args tsmm_perfargs;\n";
                 print "tsmm_perfargs.n = ".$funcpars[3].";\n";
                 print "tsmm_perfargs.k = ".$funcpars[4].";\n";
-                print "tsmm_perfargs.m = x->traits.gnrows;\n";
+                print "tsmm_perfargs.m = DM_GNROWS(x);\n";
                 print "tsmm_perfargs.dt = x->traits.datatype;\n";
                 print "tsmm_perfargs.betaiszero = ghost_iszero(beta,x->traits.datatype);\n";
                 print "tsmm_perfargs.alphaisone = ghost_isone(alpha,x->traits.datatype);\n";

@@ -9,26 +9,25 @@
 
 ghost_error ghost_initialize_kacz(ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts)
 {
-    ghost_sell *sellmat = SELL(mat);
-    double *mval = (double *)sellmat->val;
     double *bval = (double *)(b->val);
+    double *mval = (double *)(mat->val);
     double rownorm = 0;
     ghost_lidx idx;
 
   //normalize if necessary
    if(opts.normalize == GHOST_KACZ_NORMALIZE_YES) {
-       for(int row=0; row < mat->nrows; ++row) {
+       for(int row=0; row < SPM_NROWS(mat); ++row) {
            rownorm = 0;
-           idx =  sellmat->chunkStart[row];
-           for (int j=0; j<sellmat->rowLen[row]; ++j) {
+           idx =  mat->chunkStart[row];
+           for (int j=0; j<mat->rowLen[row]; ++j) {
              rownorm += mval[idx]*mval[idx];
 	     idx += 1;
            }
            
            bval[row] = (double)(bval[row])/rownorm;
 
-          idx =  sellmat->chunkStart[row];
-          for (int j=0; j<sellmat->rowLen[row]; ++j) {
+          idx =  mat->chunkStart[row];
+          for (int j=0; j<mat->rowLen[row]; ++j) {
              mval[idx] = (double)(mval[idx])/sqrt(rownorm);
 	     idx += 1;
            }
@@ -46,7 +45,7 @@ ghost_error ghost_kacz_rb(ghost_densemat *x, ghost_sparsemat *mat, ghost_densema
     const int NVECS = 1;
 
     //TODO check for RCM and give a Warning
-    if (mat->nzones == 0 || mat->zone_ptr == NULL){
+    if (mat->context->nzones == 0 || mat->context->zone_ptr == NULL){
         ERROR_LOG("Splitting of matrix to Red and Black ( odd and even) have not be done!");
     }
   
@@ -55,17 +54,16 @@ ghost_error ghost_kacz_rb(ghost_densemat *x, ghost_sparsemat *mat, ghost_densema
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
    
-    ghost_sell *sellmat = SELL(mat); 
     double *bval = NULL;
   
    if(b!= NULL)
      bval = (double *)(b->val);
 
     double *xval = (double *)(x->val);
-    double *mval = (double *)sellmat->val;
+    double *mval = (double *)mat->val;
     double omega = *(double *)opts.omega;
-    ghost_lidx *zone_ptr = mat->zone_ptr;
-    ghost_lidx nzones    = mat->nzones;
+    ghost_lidx *zone_ptr = mat->context->zone_ptr;
+    ghost_lidx nzones    = mat->context->nzones;
     ghost_lidx nthreads  = nzones/2;
 
    // disables dynamic thread adjustments 
@@ -120,28 +118,30 @@ ghost_error ghost_kacz_rb(ghost_densemat *x, ghost_sparsemat *mat, ghost_densema
       for (ghost_lidx row=even_start; row!=even_end; row+=stride){
   	 //printf("projecting to row ........ %d\n",row); 
          rownorm = 0.;
-	 ghost_lidx  idx = sellmat->chunkStart[row];
+	 ghost_lidx  idx = mat->chunkStart[row];
 
 	 double scal = 0;
 
          if(bval != NULL)
           scal  = -bval[row];
         
-        for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {
-                 scal += (double)mval[idx] * xval[sellmat->col[idx]];
-                if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)
+        for (ghost_lidx j=0; j<mat->rowLen[row]; ++j) {
+                 scal += (double)mval[idx] * xval[mat->col[idx]];
+                if(opts.normalize==GHOST_KACZ_NORMALIZE_NO) {
                  rownorm += mval[idx]*mval[idx]; 
+                }
                  idx += 1;
           }
-        if(opts.normalize==GHOST_KACZ_NORMALIZE_NO) 
+        if(opts.normalize==GHOST_KACZ_NORMALIZE_NO) {
           scal /= (double)rownorm;
+        }
          scal *= omega;
 
-	idx -= sellmat->rowLen[row];
+	idx -= mat->rowLen[row];
 
  	#pragma simd vectorlength(4)
-         for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {
-		xval[sellmat->col[idx]] = xval[sellmat->col[idx]] - scal * (double)mval[idx];
+         for (ghost_lidx j=0; j<mat->rowLen[row]; j++) {
+		xval[mat->col[idx]] = xval[mat->col[idx]] - scal * (double)mval[idx];
                 idx += 1;
           }
        
@@ -173,28 +173,30 @@ ghost_error ghost_kacz_rb(ghost_densemat *x, ghost_sparsemat *mat, ghost_densema
      for (ghost_lidx row=odd_start; row!=odd_end; row+=stride){
          //printf("projecting to row ........ %d\n",row);
          rownorm = 0.; 
-         ghost_lidx idx = sellmat->chunkStart[row];
+         ghost_lidx idx = mat->chunkStart[row];
          double scal = 0;
   
          if(bval != NULL)
           scal  = -bval[row];
  
-         for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {
-                 scal += (double)mval[idx] * xval[sellmat->col[idx]];
-                if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)
+         for (ghost_lidx j=0; j<mat->rowLen[row]; ++j) {
+                 scal += (double)mval[idx] * xval[mat->col[idx]];
+                if(opts.normalize==GHOST_KACZ_NORMALIZE_NO) {
                  rownorm += mval[idx]*mval[idx];
+                }
                  idx += 1;
           }
    
-        if(opts.normalize==GHOST_KACZ_NORMALIZE_NO) 
+        if(opts.normalize==GHOST_KACZ_NORMALIZE_NO) {
          scal /= (double)rownorm;
+        }
         scal *= omega;
 	
- 	idx -= sellmat->rowLen[row];
+ 	idx -= mat->rowLen[row];
 
      #pragma simd vectorlength(4)
-         for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {
-                xval[sellmat->col[idx]] = xval[sellmat->col[idx]]  - scal * (double)mval[idx];
+         for (ghost_lidx j=0; j<mat->rowLen[row]; j++) {
+                xval[mat->col[idx]] = xval[mat->col[idx]]  - scal * (double)mval[idx];
                 idx += 1;
           }      
          
@@ -231,7 +233,7 @@ ghost_error ghost_kacz_rb_with_shift(ghost_densemat *x, ghost_sparsemat *mat, gh
     const int NVECS = 1;
 
     //TODO check for RCM and give a Warning
-    if (mat->nzones == 0 || mat->zone_ptr == NULL){
+    if (mat->context->nzones == 0 || mat->context->zone_ptr == NULL){
         ERROR_LOG("Splitting of matrix to Red and Black ( odd and even) have not be done!");
     }
   
@@ -241,17 +243,16 @@ ghost_error ghost_kacz_rb_with_shift(ghost_densemat *x, ghost_sparsemat *mat, gh
     }
 
    
-    ghost_sell *sellmat = SELL(mat); 
     double *bval = NULL;
   
    if(b!= NULL)
      bval = (double *)(b->val);
 
     double *xval = (double *)(x->val);
-    double *mval = (double *)sellmat->val;
+    double *mval = (double *)mat->val;
     double omega = *(double *)opts.omega;
-    ghost_lidx *zone_ptr = mat->zone_ptr;
-    ghost_lidx nzones    = mat->nzones;
+    ghost_lidx *zone_ptr = mat->context->zone_ptr;
+    ghost_lidx nzones    = mat->context->nzones;
     ghost_lidx nthreads  = nzones/2;
 
    // disables dynamic thread adjustments 
@@ -300,17 +301,18 @@ ghost_error ghost_kacz_rb_with_shift(ghost_densemat *x, ghost_sparsemat *mat, gh
       for (ghost_lidx row=even_start; row!=even_end; row+=stride){
   	 //printf("projecting to row ........ %d\n",row); 
          rownorm = 0.;
-	 ghost_lidx  idx = sellmat->chunkStart[row];
+	 ghost_lidx  idx = mat->chunkStart[row];
 
 	 double scal = 0;
 
          if(bval != NULL)
           scal  = -bval[row];
         
-        for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {
-                 scal += (double)mval[idx] * xval[sellmat->col[idx]];
-                if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)
+        for (ghost_lidx j=0; j<mat->rowLen[row]; ++j) {
+                 scal += (double)mval[idx] * xval[mat->col[idx]];
+                if(opts.normalize==GHOST_KACZ_NORMALIZE_NO) {
                  rownorm += mval[idx]*mval[idx]; 
+                }
                  idx += 1;
           }
         scal -= (*shift_r) * xval[row];
@@ -322,11 +324,11 @@ ghost_error ghost_kacz_rb_with_shift(ghost_densemat *x, ghost_sparsemat *mat, gh
 
         scal *= omega;
 
-	idx -= sellmat->rowLen[row];
+	idx -= mat->rowLen[row];
 
  	#pragma simd vectorlength(4)
-         for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {
-		xval[sellmat->col[idx]] = xval[sellmat->col[idx]] - scal * (double)mval[idx];
+         for (ghost_lidx j=0; j<mat->rowLen[row]; j++) {
+		xval[mat->col[idx]] = xval[mat->col[idx]] - scal * (double)mval[idx];
                 idx += 1;
           }
         xval[row] = xval[row] + scal * (*shift_r);
@@ -343,16 +345,17 @@ ghost_error ghost_kacz_rb_with_shift(ghost_densemat *x, ghost_sparsemat *mat, gh
      for (ghost_lidx row=odd_start; row!=odd_end; row+=stride){
          //printf("projecting to row ........ %d\n",row);
          rownorm = 0.; 
-         ghost_lidx idx = sellmat->chunkStart[row];
+         ghost_lidx idx = mat->chunkStart[row];
          double scal = 0;
   
          if(bval != NULL)
           scal  = -bval[row];
  
-         for (ghost_lidx j=0; j<sellmat->rowLen[row]; ++j) {
-                 scal += (double)mval[idx] * xval[sellmat->col[idx]];
-                if(opts.normalize==GHOST_KACZ_NORMALIZE_NO)
+         for (ghost_lidx j=0; j<mat->rowLen[row]; ++j) {
+                 scal += (double)mval[idx] * xval[mat->col[idx]];
+                if(opts.normalize==GHOST_KACZ_NORMALIZE_NO) {
                  rownorm += mval[idx]*mval[idx];
+                }
                  idx += 1;
           }
         scal -= (*shift_r) * xval[row];  
@@ -364,11 +367,11 @@ ghost_error ghost_kacz_rb_with_shift(ghost_densemat *x, ghost_sparsemat *mat, gh
 
         scal *= omega;
 	
- 	idx -= sellmat->rowLen[row];
+ 	idx -= mat->rowLen[row];
 
      #pragma simd vectorlength(4)
-         for (ghost_lidx j=0; j<sellmat->rowLen[row]; j++) {
-                xval[sellmat->col[idx]] = xval[sellmat->col[idx]]  - scal * (double)mval[idx];
+         for (ghost_lidx j=0; j<mat->rowLen[row]; j++) {
+                xval[mat->col[idx]] = xval[mat->col[idx]]  - scal * (double)mval[idx];
                 idx += 1;
           }      
          xval[row] = xval[row] + scal * (*shift_r);

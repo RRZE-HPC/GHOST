@@ -15,9 +15,27 @@
 #include "tsmm.h"
 #include "tsmm_inplace.h"
 #include "dot.h"
-#include "funcptr_wrappers.h"
 
 #include <stdarg.h>
+
+#define SELECT_BLAS1_KERNEL(kernels,commonlocation,compute_at,storage,ret,...) \
+    if (commonlocation == (GHOST_LOCATION_HOST | GHOST_LOCATION_DEVICE)) {\
+        if (compute_at == GHOST_LOCATION_HOST) {\
+            if (storage == GHOST_DENSEMAT_COLMAJOR) {\
+                ret = kernels[GHOST_HOST_IDX][GHOST_CM_IDX](__VA_ARGS__);\
+            } else {\
+                ret = kernels[GHOST_HOST_IDX][GHOST_RM_IDX](__VA_ARGS__);\
+            }\
+        } else {\
+            if (storage == GHOST_DENSEMAT_COLMAJOR) {\
+                ret = kernels[GHOST_DEVICE_IDX][GHOST_CM_IDX](__VA_ARGS__);\
+            } else {\
+                ret = kernels[GHOST_DEVICE_IDX][GHOST_RM_IDX](__VA_ARGS__);\
+            }\
+        }\
+    } else {\
+        ret = kernels[ghost_idx_of_location(commonlocation)][ghost_idx_of_densemat_storage(storage)](__VA_ARGS__);\
+    }
 
 typedef enum {
     GHOST_GEMM_DEFAULT = 0,
@@ -128,16 +146,6 @@ ghost_scale_perf_args;
 
 
 #ifdef __cplusplus
-#include "complex.h"
-
-static inline ghost_complex<double> conjugate(ghost_complex<double> * c) {
-    return ghost_complex<double>(c->re,-c->im);
-}
-static inline ghost_complex<float> conjugate(ghost_complex<float> * c) {
-    return ghost_complex<float>(c->re,-c->im);
-}
-static inline double conjugate(double * c) {return *c;}
-static inline float conjugate(float * c) {return *c;}
 extern "C" {
 #endif
 
@@ -172,6 +180,7 @@ extern "C" {
      * If this should be done, ::GHOST_SPMV_CHAIN_AXPBY has to be set in the flags.
      */
     ghost_error ghost_spmv(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat *invec, ghost_spmv_opts opts);
+    ghost_error ghost_spmv_nocomm(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat *invec, ghost_spmv_opts opts);
     ghost_error ghost_gemm_valid(ghost_densemat *x, ghost_densemat *v, const char * transv, 
     ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce,ghost_context *ctx,ghost_gemm_flags flags, int printerror); 
     /**
@@ -200,6 +209,116 @@ extern "C" {
     
     ghost_error ghost_spmv_nflops(int *nFlops, ghost_datatype m_t, ghost_datatype v_t);
 
+
+    /**
+     * @ingroup locops
+     * @brief Computes <em>y := a*x + y</em> with scalar a
+     * @param y The in-/output densemat
+     * @param x The input densemat
+     * @param a Points to the scale factor.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error ghost_axpy(ghost_densemat *y, ghost_densemat *x, void *a);
+    /**
+     * @ingroup locops
+     * @brief Computes column-wise <em>y := a_i*x + y</em> with separate scalar a_i
+     * @param y The in-/output densemat
+     * @param x The input densemat
+     * @param a Points to the scale factors a. Length must be number of densemat columns.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error ghost_vaxpy(ghost_densemat *y, ghost_densemat *x, void *a);
+    /**
+     * @ingroup locops
+     * @brief Computes <em>y := a*x + b*y</em> with scalar a and b
+     * @param y The in-/output densemat.
+     * @param x The input densemat
+     * @param a Points to the scale factor a.
+     * @param b Points to the scale factor b.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error ghost_axpby(ghost_densemat *y, ghost_densemat *x, void *a, void *b);
+    /**
+     * @ingroup locops
+     * @brief Computes column-wise <em>y := a_i*x + b_i*y</em> with separate scalar a_i and b_i
+     * @param y The in-/output densemat.
+     * @param x The input densemat
+     * @param a Points to the scale factors a. Length must be number of densemat columns.
+     * @param b Points to the scale factors b. Length must be number of densemat columns.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error ghost_vaxpby(ghost_densemat *y, ghost_densemat *x, void *a, void *b);
+    /**
+     * @ingroup locops
+     * @brief Computes <em>y := a*x + b*y + c*z</em> with scalar a, b, and c
+     * @param y The in-/output densemat.
+     * @param x The input densemat x
+     * @param z The input densemat z
+     * @param a Points to the scale factor a.
+     * @param b Points to the scale factor b.
+     * @param c Points to the scale factor c.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error ghost_axpbypcz(ghost_densemat *y, ghost_densemat *x, void *a, void *b, ghost_densemat *z, void *c);
+    /**
+     * @ingroup locops
+     * @brief Computes column-wise <em>y := a_i*x + b_i*y + c_i*z</em> with separate scalars a_i, b_i, and c_i
+     * @param y The in-/output densemat.
+     * @param x The input densemat x
+     * @param z The input densemat z
+     * @param a Points to the scale factors a. Length must be number of densemat columns.
+     * @param b Points to the scale factors b. Length must be number of densemat columns.
+     * @param c Points to the scale factors c. Length must be number of densemat columns.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error ghost_vaxpbypcz(ghost_densemat *y, ghost_densemat *x, void *a, void *b, ghost_densemat *z, void *c); 
+
+    /**
+     * @ingroup locops
+     * @brief Computes <em>x := s*x</em> with scalar s
+     * @param x The densemat.
+     * @param s The scale factor.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error ghost_scale(ghost_densemat *x, void *s);
+    /**
+     * @ingroup locops
+     * @brief Computes column-wise <em>x := s_i*x</em> with separate scalars s_i
+     * @param x The densemat.
+     * @param s The scale factors. Length must be number of densemat columns.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error ghost_vscale(ghost_densemat *x, void *s);
+    /**
+     * @ingroup globops
+     * @brief Normalizes a densemat (interpreted as a block vector).
+     * @param x The densemat.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     *
+     * This function normalizes every column of the matrix to have Euclidian norm 1.
+     */
+    ghost_error ghost_normalize(ghost_densemat *x);
+    /**
+     * @ingroup locops
+     * @brief Conjugates a densemat.
+     * @param x The densemat.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     *
+     * This function does nothing for real-valued densemats.
+     */
+    ghost_error ghost_conj(ghost_densemat *x);
+    
+    /**
+     * @brief Compute the norm of a densemat: sum_i [conj(vec_i) * vec_i]^pow
+     *
+     * @param norm Where to store the norm. Must be a pointer to the densemat's data type.
+     * @param vec The densemat.
+     * @param pow The power. Must be a pointer to the densemat's data type.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error ghost_norm(void *norm, ghost_densemat *vec, void *pow);
+
     int ghost_kacz_perf(double *perf, double time, void *arg);
     int ghost_spmv_perf(double *perf, double time, void *arg);
     int ghost_axpy_perf(double *perf, double time, void *arg);
@@ -216,12 +335,6 @@ extern "C" {
 #ifdef __cplusplus
 } //extern "C"
 
-#include "ghost/complex.h"
-
-ghost_complex<float> conjugate(ghost_complex<float> * c);
-ghost_complex<double> conjugate(ghost_complex<double> * c);
-double conjugate(double * c);
-float conjugate(float * c);
 #endif
 
 #endif

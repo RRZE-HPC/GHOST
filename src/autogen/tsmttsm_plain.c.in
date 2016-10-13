@@ -1,0 +1,370 @@
+/*!GHOST_AUTOGEN_TSMTTSM M,N,UNROLL */
+#include "ghost/config.h"
+#include "ghost/types.h"
+#include "ghost/math.h"
+#include "ghost/instr.h"
+#include "ghost/util.h"
+#include "ghost/tsmttsm_plain_gen.h"
+
+#GHOST_SUBST CFGK ${N}
+#GHOST_SUBST CFGM ${M}
+#GHOST_SUBST OUTERUNROLL ${UNROLL}
+
+#if 0
+#GHOST_FUNC_BEGIN#CFGK=${BLOCKDIM1}#CFGM=${BLOCKDIM2}
+struct dCFGKxCFGM { double v[CFGK*CFGM]; };
+static void add_CFGKxCFGM(struct dCFGKxCFGM * x,struct dCFGKxCFGM * y){
+      int i;
+        for (i=0;i<CFGK*CFGM;i++) {
+            x->v[i] += y->v[i];
+        }
+}
+#pragma omp declare reduction(dCFGKxCFGMAdd: struct dCFGKxCFGM: \
+        add_CFGKxCFGM(&omp_out,&omp_in)) initializer(\
+        omp_priv={{\
+#GHOST_UNROLL#0,\#CFGK*CFGM
+        }} )
+#GHOST_FUNC_END
+#endif
+
+ghost_error ghost_tsmttsm__u_plain_d_CFGK_CFGM_OUTERUNROLL_cm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
+{
+    UNUSED(conjv);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
+    ghost_error ret = GHOST_SUCCESS;
+
+    ghost_lidx n = DM_NROWS(v);
+    if (n%OUTERUNROLL) {
+        n+=(OUTERUNROLL-n%OUTERUNROLL);
+        INFO_LOG("Padding large dimension to %d\n",n);
+    }
+    INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
+    
+    double * restrict vval = (double *) v->val, * restrict wval = (double *) w->val, * restrict xval = (double *) x->val;
+    ghost_lidx ldv, ldw, ldx;
+
+    ldv = v->stride;
+    ldw = w->stride;
+    ldx = x->stride;
+
+    double dalpha = *(double *)alpha;
+    double dbeta = *(double *)beta;
+    
+    ghost_lidx i;
+#if 0
+    ghost_lidx j,k;
+    struct dCFGKxCFGM xnopad;
+
+    for (k=0; k<CFGK; k++) {
+        for (j=0; j<CFGM; j++) {
+            xnopad.v[j*CFGK+k] = 0;
+        }
+    }
+#endif
+    
+#if 0
+#pragma omp parallel for private(j,k) reduction(dCFGKxCFGMAdd: xnopad)
+    for (i=0; i<n; i++) {
+        for (j=0; j<CFGM; j++) {
+            for (k=0; k<CFGK; k++) {
+                xnopad.v[j*CFGK+k] += dalpha*vval[j*ldv+i]*wval[k*ldw+i];
+            }
+        }
+    }
+    for (k=0; k<CFGK; k++) {
+        for (j=0; j<CFGM; j++) {
+            xval[k*ldx+j] = dbeta*xval[k*ldx+j] + xnopad.v[j*CFGK+k];
+        }
+    }
+#endif
+#GHOST_UNROLL#double sum@ = 0;#CFGM*CFGK
+#if 1//CFGM == 1 && CFGK == 1
+#pragma omp parallel for \
+#GHOST_UNROLL#reduction(+:sum@)\#CFGM*CFGK
+        schedule(runtime) 
+    for (i=0; i<n; i++) {
+#GHOST_UNROLL#sum@ += dalpha*vval[(@/CFGK)*ldv+i]*wval[(@%CFGK)*ldw+i];#CFGM*CFGK
+                    //x_priv[j*CFGK+k] += vval[j*ldv+i]*wval[k*ldw+i];
+    }
+#GHOST_UNROLL#xval[(@%CFGK)*ldx+(@/CFGK)] = dbeta*xval[(@%CFGK)*ldx+(@/CFGK)] + sum@;#CFGM*CFGK
+//    xval[0] = sum;
+   /* 
+#pragma omp critical
+        {
+            for (k=0; k<CFGK; k++) {
+                for (j=0; j<CFGM; j++) {
+                    xval[k*ldx+j] += dalpha*x_priv[j*CFGK+k];
+                }
+            }
+        }
+        free(x_priv);*/
+    
+#else
+#pragma omp parallel private(j,k)
+    {
+        ghost_lidx t;
+        double *x_priv;
+        ghost_malloc_align((void **)&x_priv,CFGM*CFGK*sizeof(double),64);
+        memset(x_priv,0,CFGM*CFGK*sizeof(double));
+        
+#pragma omp for schedule(runtime)
+        for (i=0; i<=n-OUTERUNROLL; i+=OUTERUNROLL) {
+            for (j=0; j<CFGM; j++) {
+                for (k=0; k<CFGK; k++) {
+#pragma vector always
+#pragma ivdep
+#pragma simd
+                  for (t=0; t<OUTERUNROLL; t++) {
+                        x_priv[j*CFGK+k] += vval[j*ldv+i+t]*wval[k*ldw+i+t];
+                  }
+                }
+            }
+        }
+
+#pragma omp critical
+        {
+            for (k=0; k<CFGK; k++) {
+                for (j=0; j<CFGM; j++) {
+                    xval[k*ldx+j] += dalpha*x_priv[j*CFGK+k];
+                }
+            }
+        }
+        free(x_priv);
+    }
+#endif
+   
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
+    return ret;
+}
+
+ghost_error ghost_tsmttsm__a_plain_z_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
+{
+    UNUSED(conjv);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
+    ghost_error ret = GHOST_SUCCESS;
+
+    ghost_lidx n = DM_NROWS(v);
+    INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
+    
+    complex double * restrict vval = (complex double *) v->val, * restrict wval = (complex double *) w->val, * restrict xval = (complex double *) x->val;
+    ghost_lidx ldv, ldw, ldx;
+
+    ldv = v->stride;
+    ldw = w->stride;
+    ldx = x->stride;
+    
+    complex double dalpha = *(complex double *)alpha;
+    complex double dbeta = *(complex double *)beta;
+    
+    ghost_mpi_op mpiop_zadd;
+    ghost_mpi_datatype mpidt_z;
+    ghost_mpi_op_sum(&mpiop_zadd,(ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
+    ghost_mpi_datatype_get(&mpidt_z,(ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
+    
+    ghost_lidx i,j;
+    
+    ghost_lidx k;
+#if CFGK>1
+#pragma simd
+#endif
+    for (k=0; k<CFGK; k++) {
+        for (j=0; j<CFGM; j++) {
+            xval[k*ldx+j] = dbeta*xval[k*ldx+j];
+        }
+    }
+#pragma omp parallel private(j,k)
+    {
+        complex double *x_priv;
+        ghost_malloc((void **)&x_priv,CFGM*CFGK*sizeof(complex double));
+        memset(x_priv,0,CFGM*CFGK*sizeof(complex double));
+        
+        if (conjv) {
+#pragma omp for schedule(runtime)
+            for (i=0; i<n; i++) {
+#if CFGK>1
+#pragma simd
+#pragma vector aligned
+#pragma ivdep
+#endif
+                for (k=0; k<CFGK; k++) {
+#pragma unroll_and_jam
+                  for (j=0; j<CFGM; j++) {
+                        x_priv[j*CFGK+k] += dalpha*conj(vval[i*ldv+j])*wval[i*ldw+k];
+                    }
+                }
+
+            }
+        } else {
+#pragma omp for schedule(runtime)
+            for (i=0; i<n; i++) {
+#if CFGK>1
+#pragma simd
+#pragma vector aligned
+#pragma ivdep
+#endif
+                for (k=0; k<CFGK; k++) {
+#pragma unroll_and_jam
+                  for (j=0; j<CFGM; j++) {
+                        x_priv[j*CFGK+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
+                    }
+                }
+
+            }
+        }
+
+#pragma omp critical
+#if CFGK>1
+#pragma simd
+#pragma vector aligned
+#pragma ivdep
+#endif
+        for (k=0; k<CFGK; k++) {
+#pragma unroll_and_jam
+            for (j=0; j<CFGM; j++) {
+                xval[k*ldx+j] += x_priv[j*CFGK+k];
+            }
+        }
+
+        free(x_priv);
+    }
+   
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
+    return ret;
+}
+
+ghost_error ghost_tsmttsm__a_plain_d_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
+{
+    UNUSED(conjv);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
+    ghost_error ret = GHOST_SUCCESS;
+
+    ghost_lidx n = DM_NROWS(v);
+    INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
+    
+    double * restrict vval = (double *) v->val, * restrict wval = (double *) w->val, * restrict xval = (double *) x->val;
+    ghost_lidx ldv, ldw, ldx;
+
+    ldv = v->stride;
+    ldw = w->stride;
+    ldx = x->stride;
+
+    double dalpha = *(double *)alpha;
+    double dbeta = *(double *)beta;
+    
+    ghost_lidx i,j;
+    
+    ghost_lidx k;
+#if CFGK>1
+#pragma simd
+#endif
+    for (k=0; k<CFGK; k++) {
+        for (j=0; j<CFGM; j++) {
+            xval[k*ldx+j] = dbeta*xval[k*ldx+j];
+        }
+    }
+#pragma omp parallel private(j,k)
+    {
+        double *x_priv;
+        ghost_malloc((void **)&x_priv,CFGM*CFGK*sizeof(double));
+        memset(x_priv,0,CFGM*CFGK*sizeof(double));
+#pragma omp for schedule(runtime)
+        for (i=0; i<n; i++) {
+#if CFGK>1
+#pragma simd
+#pragma vector aligned
+#pragma ivdep
+#endif
+            for (k=0; k<CFGK; k++) {
+#pragma unroll_and_jam
+              for (j=0; j<CFGM; j++) {
+                    x_priv[j*CFGK+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
+                }
+            }
+
+        }
+#pragma omp critical
+#if CFGK>1
+#pragma simd
+#pragma vector aligned
+#pragma ivdep
+#endif
+        for (k=0; k<CFGK; k++) {
+#pragma unroll_and_jam
+            for (j=0; j<CFGM; j++) {
+                xval[k*ldx+j] += x_priv[j*CFGK+k];
+            }
+        }
+        free(x_priv);
+    }
+   
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
+    return ret;
+}
+
+ghost_error ghost_tsmttsm__a_plain_d_CFGK_CFGM_4_cm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
+{
+    UNUSED(conjv);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
+    ghost_error ret = GHOST_SUCCESS;
+
+    ghost_lidx n = DM_NROWS(v);
+    if (n%4) {
+        n+=(4-n%4);
+        INFO_LOG("Padding large dimension to %d",n);
+    }
+    INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
+    
+    double * restrict vval = (double *) v->val, * restrict wval = (double *) w->val, * restrict xval = (double *) x->val;
+    ghost_lidx ldv, ldw, ldx;
+
+    ldv = v->stride;
+    ldw = w->stride;
+    ldx = x->stride;
+    
+    double dalpha = *(double *)alpha;
+    double dbeta = *(double *)beta;
+    
+    ghost_lidx i,j,t;
+    
+    ghost_lidx k;
+    for (k=0; k<CFGK; k++) {
+        for (j=0; j<CFGM; j++) {
+            xval[k*ldx+j] = dbeta*xval[k*ldx+j];
+        }
+    }
+
+#pragma omp parallel private(j,k,t)
+    {
+        double *x_priv;
+        ghost_malloc_align((void **)&x_priv,CFGM*CFGK*sizeof(double),32);
+        memset(x_priv,0,CFGM*CFGK*sizeof(double));
+        
+#pragma omp for schedule(runtime)
+        for (i=0; i<=n-4; i+=4) {
+            for (j=0; j<CFGM; j++) {
+                for (k=0; k<CFGK; k++) {
+                    double tmp = 0;
+#pragma simd reduction(+:tmp)
+                     for (t=0; t<4; t++) {
+                           tmp += vval[j*ldv+i+t]*wval[k*ldw+i+t];
+                     }
+                     x_priv[j*CFGK+k] += tmp;
+                }
+            }
+        }
+
+#pragma omp critical
+        {
+            for (j=0; j<CFGM; j++) {
+                for (k=0; k<CFGK; k++) {
+                    xval[k*ldx+j] += dalpha*x_priv[j*CFGK+k];
+                }
+            }
+        }
+        free(x_priv);
+    }
+   
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
+    return ret;
+}
+

@@ -1,7 +1,6 @@
 #include "ghost/types.h"
 #include "ghost/omp.h"
 
-#include "ghost/complex.h"
 #include "ghost/util.h"
 #include "ghost/densemat.h"
 #include "ghost/math.h"
@@ -21,10 +20,11 @@
 #include "ghost/sell_spmv_varblock_plain_gen.h"
 #include "ghost/compatibility_check.h"
 
+#include <complex>
 #include <unordered_map>
 
 using namespace std;
-    
+
     template<typename m_t, typename v_t, bool scatteredvecs> 
 static ghost_error ghost_sell_spmv_plain_rm(ghost_densemat *lhs, 
         ghost_sparsemat *mat, ghost_densemat *rhs, 
@@ -32,7 +32,6 @@ static ghost_error ghost_sell_spmv_plain_rm(ghost_densemat *lhs,
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     PERFWARNING_LOG("In plain row-major SEL SpMV with scatteredvecs=%d, blocksz=%d",scatteredvecs,rhs->traits.ncols);
-    ghost_sell *sell = (ghost_sell *)(mat->sell);
     v_t *local_dot_product = NULL, *partsums = NULL;
     ghost_lidx i,j,c,rcol,lcol,zcol,cidx;
     ghost_lidx v;
@@ -71,10 +70,10 @@ static ghost_error ghost_sell_spmv_plain_rm(ghost_densemat *lhs,
         }
         int tid = ghost_omp_threadnum();
         v_t * rhsrow, *lhsrow, *zrow = NULL;
-        v_t matrixval;
+        m_t matrixval;
 
 #pragma omp for schedule(runtime) 
-        for (c=0; c<mat->nrowsPadded/ch; c++) { // loop over chunks
+        for (c=0; c<SPM_NROWSPAD(mat)/ch; c++) { // loop over chunks
 
             for (i=0; i<ch; i++) {
                 for (rcol=0; rcol<rhs->traits.ncols; rcol++) {
@@ -82,14 +81,14 @@ static ghost_error ghost_sell_spmv_plain_rm(ghost_densemat *lhs,
                 }
             }
 
-            for (j=0; j<sell->chunkLen[c]; j++) { // loop inside chunk
+            for (j=0; j<mat->chunkLen[c]; j++) { // loop inside chunk
                 for (i=0; i<ch; i++) {
-                    matrixval = (v_t)(((m_t*)(sell->val))
-                            [sell->chunkStart[c]+j*ch+i]);
-                    rhsrow = ((v_t *)rhs->val)+rhs->stride*sell->col[sell->chunkStart[c]+j*ch+i];
+                    matrixval = (((m_t*)(mat->val))
+                            [mat->chunkStart[c]+j*ch+i]);
+                    rhsrow = ((v_t *)rhs->val)+rhs->stride*mat->col[mat->chunkStart[c]+j*ch+i];
                     rcol = 0;
                     for (cidx = 0; cidx<rhs->traits.ncols; cidx++) {
-                        tmp[i][cidx] +=  matrixval * rhsrow[rcol];
+                        tmp[i][cidx] += (v_t)(matrixval * rhsrow[rcol]);
                         if (scatteredvecs) {
                             rcol = ghost_bitmap_next(rhs->colmask,rcol);
                         } else {
@@ -100,7 +99,7 @@ static ghost_error ghost_sell_spmv_plain_rm(ghost_densemat *lhs,
                 }
             }
 
-            for (i=0; (i<ch) && (c*ch+i < mat->nrows); i++) {
+            for (i=0; (i<ch) && (c*ch+i < SPM_NROWS(mat)); i++) {
                 lhsrow = ((v_t *)lhs->val)+lhs->stride*(c*ch+i);
                 rhsrow = ((v_t *)rhs->val)+rhs->stride*(c*ch+i);
                 if (z) {
@@ -132,11 +131,11 @@ static ghost_error ghost_sell_spmv_plain_rm(ghost_densemat *lhs,
 
                     if (traits.flags & GHOST_SPMV_DOT) {
                         partsums[((pad+3*lhs->traits.ncols)*tid)+3*cidx+0] += 
-                            conjugate(&lhsrow[lcol])*lhsrow[rcol];
+                            std::conj(lhsrow[lcol])*lhsrow[rcol];
                         partsums[((pad+3*lhs->traits.ncols)*tid)+3*cidx+1] += 
-                            conjugate(&rhsrow[rcol])*lhsrow[lcol];
+                            std::conj(rhsrow[rcol])*lhsrow[lcol];
                         partsums[((pad+3*lhs->traits.ncols)*tid)+3*cidx+2] += 
-                            conjugate(&rhsrow[rcol])*rhsrow[rcol];
+                            std::conj(rhsrow[rcol])*rhsrow[rcol];
                     }
                     if (scatteredvecs) {
                         rcol = ghost_bitmap_next(rhs->colmask,rcol);
@@ -201,7 +200,6 @@ static ghost_error ghost_sell_spmv_plain_cm(ghost_densemat *lhs,
         ghost_spmv_opts traits)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
-    ghost_sell *sell = (ghost_sell *)(mat->sell);
     v_t *local_dot_product = NULL, *partsums = NULL;
     ghost_lidx i,j,c;
     ghost_lidx v;
@@ -240,7 +238,7 @@ static ghost_error ghost_sell_spmv_plain_cm(ghost_densemat *lhs,
 
 
 #pragma omp for schedule(runtime) 
-        for (c=0; c<mat->nrowsPadded/ch; c++) { // loop over chunks
+        for (c=0; c<SPM_NROWSPAD(mat)/ch; c++) { // loop over chunks
                     
             ghost_lidx rcol = 0, lcol = 0, zcol = 0;
 
@@ -257,15 +255,15 @@ static ghost_error ghost_sell_spmv_plain_cm(ghost_densemat *lhs,
                     tmp[i] = (v_t)0;
                 }
 
-                for (j=0; j<sell->chunkLen[c]; j++) { // loop inside chunk
+                for (j=0; j<mat->chunkLen[c]; j++) { // loop inside chunk
                     for (i=0; i<ch; i++) {
-                        tmp[i] += (v_t)(((m_t*)(sell->val))[sell->chunkStart[c]+
-                                j*ch+i]) * rhsv[sell->col[sell->chunkStart[c]+
+                        tmp[i] += (v_t)(((m_t*)(mat->val))[mat->chunkStart[c]+
+                                j*ch+i]) * rhsv[mat->col[mat->chunkStart[c]+
                             j*ch+i]];
                     }
                 }
                 for (i=0; i<ch; i++) {
-                    if (c*ch+i < mat->nrows) {
+                    if (c*ch+i < SPM_NROWS(mat)) {
                         if ((traits.flags & GHOST_SPMV_SHIFT) && shift) {
                             tmp[i] = tmp[i]-shift[0]*rhsv[c*ch+i];
                         }
@@ -288,13 +286,13 @@ static ghost_error ghost_sell_spmv_plain_cm(ghost_densemat *lhs,
 
                         if (traits.flags & GHOST_SPMV_DOT) {
                             partsums[((pad+3*lhs->traits.ncols)*tid)+3*v+0] += 
-                                conjugate(&lhsv[c*ch+i])*
+                                std::conj(lhsv[c*ch+i])*
                                 lhsv[c*ch+i];
                             partsums[((pad+3*lhs->traits.ncols)*tid)+3*v+1] += 
-                                conjugate(&rhsv[c*ch+i])*
+                                std::conj(rhsv[c*ch+i])*
                                 lhsv[c*ch+i];
                             partsums[((pad+3*lhs->traits.ncols)*tid)+3*v+2] += 
-                                conjugate(&rhsv[c*ch+i])*
+                                std::conj(rhsv[c*ch+i])*
                                 rhsv[c*ch+i];
                         }
                     }
@@ -407,18 +405,14 @@ extern "C" ghost_error ghost_sell_spmv_selector(ghost_densemat *lhs,
         ERROR_LOG("The number of columns for the densemats does not match!");
         return GHOST_ERR_INVALID_ARG;
     }
-    if (!(mat->context->flags & GHOST_PERM_NO_DISTINCTION) && rhs->traits.nrows != lhs->traits.nrows) { //if No distinction is set it can be rectangular matrix
-        ERROR_LOG("The number of rows for the densemats does not match!");
-        return GHOST_ERR_INVALID_ARG;
-    }
-    if (!(mat->context->flags & GHOST_PERM_NO_DISTINCTION) && lhs->traits.nrows != mat->nrows) {
+    if (!(mat->context->flags & GHOST_PERM_NO_DISTINCTION) && DM_NROWS(lhs) != SPM_NROWS(mat)) {
         ERROR_LOG("Different number of rows for the densemats and matrix!");
         return GHOST_ERR_INVALID_ARG;
     }
     if (((rhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) && 
-                (rhs->traits.nrowsorig != rhs->traits.nrows)) || 
+                (DM_NROWS(rhs->src) != DM_NROWS(rhs))) || 
             ((lhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) && 
-            (lhs->traits.nrowsorig != lhs->traits.nrows))) {
+            (DM_NROWS(lhs->src) != DM_NROWS(lhs)))) {
         ERROR_LOG("Col-major densemats with masked out rows currently not "
                 "supported!");
         return GHOST_ERR_NOT_IMPLEMENTED;
@@ -542,13 +536,13 @@ end_of_loop:
     } else { // execute plain kernel as fallback
         PERFWARNING_LOG("Execute fallback SELL SpMV kernel which is potentially slow!");
         if (lhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
-            SELECT_TMPL_2DATATYPES(mat->traits.datatype,
-                    rhs->traits.datatype,ghost_complex,ret,
+            SELECT_TMPL_2DATATYPES_base_derived(mat->traits.datatype,
+                    rhs->traits.datatype,std::complex,ret,
                     ghost_sell_spmv_plain_cm_selector,lhs,mat,rhs,traits);
 
         } else {
-            SELECT_TMPL_2DATATYPES(mat->traits.datatype,
-                    rhs->traits.datatype,ghost_complex,ret,
+            SELECT_TMPL_2DATATYPES_base_derived(mat->traits.datatype,
+                    rhs->traits.datatype,std::complex,ret,
                     ghost_sell_spmv_plain_rm_selector,lhs,mat,rhs,traits);
         }
     } 
