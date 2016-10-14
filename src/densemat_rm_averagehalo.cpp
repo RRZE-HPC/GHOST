@@ -6,8 +6,6 @@
 #define ROWMAJOR
 #include "ghost/densemat_iter_macros.h"
 
-//TODO fix this- for some reasons broken
-
 template<typename T>
 static ghost_error ghost_densemat_rm_averagehalo_tmpl(ghost_densemat *vec, ghost_context *ctx)
 {
@@ -75,7 +73,7 @@ static ghost_error ghost_densemat_rm_averagehalo_tmpl(ghost_densemat *vec, ghost
     curwork = work;
     for (i=0; i<nrank; i++) {
         MPI_CALL_GOTO(MPI_Irecv(curwork,ctx->dues[i]*vec->traits.ncols,vec->mpidt,i,i,ctx->mpicomm,&req[nrank+i]),err,ret);
-        curwork += ctx->dues[i];
+        curwork += ctx->dues[i]*vec->traits.ncols;
     }
     
     MPI_CALL_GOTO(MPI_Waitall(2*nrank,req,MPI_STATUSES_IGNORE),err,ret);
@@ -110,7 +108,7 @@ static ghost_error ghost_densemat_rm_averagehalo_tmpl(ghost_densemat *vec, ghost
     }
   }
  
-    curwork = work;
+ curwork = work;
 
 
 start = 0;
