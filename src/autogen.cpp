@@ -69,3 +69,72 @@ ghost_error ghost_autogen_kacz_nvecs(int **nvecs, int *n, int chunkheight, int n
 
 
 }
+
+ghost_error ghost_autogen_spmmv_nvecs(int **nvecs, int *n, int chunkheight)
+{
+    string configurations = GHOST_AUTOGEN_SPMMV;
+    if (configurations[configurations.length()-1] != ';') {
+        configurations += ";";
+    }
+
+    size_t pos = 0, commapos = 0;
+    int cfg_chunkheight, cfg_nvecs, cfg_nshifts;
+    string configuration;
+    vector<int> nvecs_vec;
+
+    while ((pos = configurations.find(";")) != string::npos) {
+        configuration = configurations.substr(0, pos);
+
+        commapos = configuration.find(",");
+        string cfg_chunkheight_str = configuration.substr(0,commapos);
+
+        if (!cfg_chunkheight_str.compare("*")) {
+            cfg_chunkheight = chunkheight;
+        } else {
+            cfg_chunkheight = stoi(cfg_chunkheight_str);
+        }
+        configuration.erase(0, commapos + 1);
+        
+        commapos = configuration.find(",");
+        string cfg_nvecs_str = configuration.substr(0,commapos);
+        if (!cfg_nvecs_str.compare("*")) {
+            configurations.erase(0, pos + 1);
+            continue;
+        } else {
+            cfg_nvecs = stoi(cfg_nvecs_str);
+        }
+        configurations.erase(0, pos + 1);
+    }
+
+    sort(nvecs_vec.begin(),nvecs_vec.end());
+    *n = nvecs_vec.size();
+    ghost_malloc((void **)nvecs,sizeof(int)*(*n));
+
+    int i;
+    for (i=0; i<*n; i++) {
+        (*nvecs)[i] = nvecs_vec[i];
+    }
+
+    return GHOST_SUCCESS;
+}
+
+int ghost_autogen_spmmv_next_nvecs(int desired_nvecs, int chunkheight)
+{
+    int *nvecs,n,i,found_nvecs;
+
+    if (ghost_autogen_spmmv_nvecs(&nvecs,&n,chunkheight) != GHOST_SUCCESS) {
+        return 0;
+    }
+    if (n == 0) {
+        return 0;
+    }
+    for (i=n-1; i>=0; i--) {
+        if (nvecs[i] <= desired_nvecs) {
+            return nvecs[i];
+        }
+    }
+
+    ERROR_LOG("Should never happen!");
+    return 0;
+}
+

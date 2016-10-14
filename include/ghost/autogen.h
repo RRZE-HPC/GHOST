@@ -13,6 +13,8 @@ extern "C" {
 #endif
 
 ghost_error ghost_autogen_kacz_nvecs(int **nvecs, int *n, int chunkheight, int nshifts);
+ghost_error ghost_autogen_spmmv_nvecs(int **nvecs, int *n, int chunkheight);
+int ghost_autogen_spmmv_next_nvecs(int desired_nvecs, int chunkheight);
 
 #ifdef __cplusplus
 }
