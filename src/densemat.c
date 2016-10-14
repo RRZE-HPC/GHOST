@@ -103,6 +103,12 @@ ghost_error ghost_densemat_create(ghost_densemat **vec, ghost_context *ctx, ghos
     ghost_error ret = GHOST_SUCCESS;
     GHOST_CALL_GOTO(ghost_malloc((void **)vec,sizeof(ghost_densemat)),err,ret);
     (*vec)->traits = traits;
+    /*if (!ctx) {
+        ERROR_LOG("The context must not be NULL! Use ghost_densemat_noctx_create() instead!");
+        ret = GHOST_ERR_INVALID_ARG;
+        goto err;
+    }*/
+
     (*vec)->context = ctx;
     (*vec)->colmask = NULL;
     (*vec)->rowmask = NULL;
@@ -223,9 +229,6 @@ ghost_error ghost_densemat_create(ghost_densemat **vec, ghost_context *ctx, ghos
             (*vec)->map = (*vec)->context->row_map;
         } else {
             (*vec)->map = (*vec)->context->col_map;
-        }
-        if ((*vec)->map->loc_perm || (*vec)->map->glb_perm) {
-            (*vec)->traits.flags |= GHOST_DENSEMAT_PERMUTED;
         }
         if ((*vec)->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
             (*vec)->stride = (*vec)->traits.ncolspadded;
@@ -679,6 +682,10 @@ void ghost_densemat_destroy( ghost_densemat* vec )
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TEARDOWN);
     if (vec) {
+        if (!vec->context) {
+            // a map has been allocated in ghost_densemat_noctx_create()
+            ghost_map_destroy(vec->map);
+        }
         if (!(vec->traits.flags & GHOST_DENSEMAT_VIEW)) {
             if (vec->traits.location & GHOST_LOCATION_DEVICE) {
                 ghost_cu_free(vec->cu_val); vec->cu_val = NULL;
@@ -944,14 +951,19 @@ ghost_error ghost_densemat_clone(ghost_densemat **dst, ghost_densemat *src, ghos
     newTraits.flags &= ~(ghost_densemat_flags)GHOST_DENSEMAT_VIEW;
     newTraits.flags &= ~(ghost_densemat_flags)GHOST_DENSEMAT_SCATTERED;
 
-    ghost_densemat_create(dst,src->context,newTraits);
+    if (src->context) {
+        ghost_densemat_create(dst,src->context,newTraits);
+    } else {
+        ghost_densemat_noctx_create(dst,nr,newTraits);
+    }
+    (*dst)->map = src->map;
 
-    //since context is not present we should copy the perm pointer
-/*    if(src->perm_local) {
-      ghost_malloc((void **)&((*dst)->perm_local),sizeof(ghost_densemat_permutation)); 
-      (*dst)->perm_local->perm = src->perm_local->perm;
-    }*/
- 
     ghost_densemat_init_densemat(*dst,src,roffs,coffs);
     return GHOST_SUCCESS;
 }
+    
+ghost_maptype ghost_densemat_maptype(const ghost_densemat *vec)
+{
+    return vec->context?vec->context->col_map == vec->map?GHOST_MAP_COL:GHOST_MAP_ROW:GHOST_MAP_DEFAULT;
+}
+

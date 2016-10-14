@@ -268,10 +268,17 @@ out:
 ghost_error ghost_task_cur(ghost_task **task)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING);
+
+    ghost_thpool *thpool;
+    ghost_thpool_get(&thpool);
     
-    pthread_key_t key;
-    GHOST_CALL_RETURN(ghost_thpool_key(&key));
-    *task = (ghost_task *)pthread_getspecific(key);
+    if (!thpool) {
+        *task = NULL;
+    } else {
+        pthread_key_t key;
+        GHOST_CALL_RETURN(ghost_thpool_key(&key));
+        *task = (ghost_task *)pthread_getspecific(key);
+    }
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING);
     return GHOST_SUCCESS;

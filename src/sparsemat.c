@@ -22,7 +22,9 @@ const ghost_sparsemat_src_rowfunc GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER = {
     .maxrowlen = 0,
     .base = 0,
     .flags = GHOST_SPARSEMAT_ROWFUNC_DEFAULT,
-    .arg = NULL
+    .arg = NULL,
+    .gnrows = 0,
+    .gncols = 0
 };
 
 const ghost_sparsemat_traits GHOST_SPARSEMAT_TRAITS_INITIALIZER = {
@@ -625,6 +627,12 @@ ghost_error ghost_sparsemat_init_bin(ghost_sparsemat *mat, char *path, ghost_mpi
    
     args.mat = mat; 
     args.filename = path;
+    
+    if (src.func(GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_GETDIM,&bincrs_dt,dim,NULL,src.arg)) {
+        ERROR_LOG("Error in matrix creation function");
+        ret = GHOST_ERR_UNKNOWN;
+        goto err;
+    }
    
     // Apply file datatype only if still unspecified.
     if(mat->traits.datatype == GHOST_DT_NONE) mat->traits.datatype = (ghost_datatype)bincrs_dt;
@@ -632,11 +640,6 @@ ghost_error ghost_sparsemat_init_bin(ghost_sparsemat *mat, char *path, ghost_mpi
     GHOST_CALL_GOTO(ghost_datatype_size(&mat->elSize,mat->traits.datatype),err,ret);   
     args.dt = mat->traits.datatype;
     
-    if (src.func(GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_GETDIM,&bincrs_dt,dim,&args,src.arg)) {
-        ERROR_LOG("Error in matrix creation function");
-        ret = GHOST_ERR_UNKNOWN;
-        goto err;
-    }
     
     src.gnrows = dim[0];
     src.gncols = dim[1];
@@ -673,6 +676,12 @@ ghost_error ghost_sparsemat_init_mm(ghost_sparsemat *mat, char *path, ghost_mpi_
     args.filename = path;
     args.mat = mat;
     
+    if (src.func(GHOST_SPARSEMAT_ROWFUNC_MM_ROW_GETDIM,&bincrs_dt,dim,NULL,src.arg)) {
+        ERROR_LOG("Error in matrix creation function");
+        ret = GHOST_ERR_UNKNOWN;
+        goto err;
+    }
+    
     // Construct final datatype.
     if(mat->traits.datatype == GHOST_DT_NONE) mat->traits.datatype = GHOST_DT_DOUBLE;
     if((mat->traits.datatype == GHOST_DT_DOUBLE) || (mat->traits.datatype == GHOST_DT_FLOAT))
@@ -680,11 +689,6 @@ ghost_error ghost_sparsemat_init_mm(ghost_sparsemat *mat, char *path, ghost_mpi_
     GHOST_CALL_GOTO(ghost_datatype_size(&mat->elSize,mat->traits.datatype),err,ret);   
     args.dt = mat->traits.datatype;
     
-    if (src.func(GHOST_SPARSEMAT_ROWFUNC_MM_ROW_GETDIM,&bincrs_dt,dim,NULL,src.arg)) {
-        ERROR_LOG("Error in matrix creation function");
-        ret = GHOST_ERR_UNKNOWN;
-        goto err;
-    }
     src.gnrows = dim[0];
     src.gncols = dim[1];
     src.maxrowlen = dim[1];
@@ -904,6 +908,15 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
     int me,nprocs;
     
     if (!(mat->context)) {
+        if (!src->gnrows) {
+            ERROR_LOG("The global number of rows (and possibly columns) has to be set in the matrix source!");
+            ret = GHOST_ERR_INVALID_ARG;
+            goto err;
+        }
+        if (!src->gncols) {
+            src->gncols = src->gnrows;
+        }
+
         ghost_context_flags_t ctxflags = GHOST_CONTEXT_DEFAULT;
         if (mat->traits.flags & GHOST_SPARSEMAT_PERM_NO_DISTINCTION) {
             ctxflags |= GHOST_PERM_NO_DISTINCTION;

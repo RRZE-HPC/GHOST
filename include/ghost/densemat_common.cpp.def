@@ -584,6 +584,10 @@ static ghost_error FUNCNAME(fromRand_tmpl(ghost_densemat *vec))
             DENSEMAT_ITER(vec,my_rand(state,(v_t *)valptr));
         }
     }
+    
+    if (vec->map->loc_perm || vec->map->glb_perm) {
+        vec->traits.flags |= GHOST_DENSEMAT_PERMUTED;
+    }
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
     return GHOST_SUCCESS;
@@ -600,6 +604,10 @@ static ghost_error FUNCNAME(fromScalar_tmpl(ghost_densemat *vec, void *val))
         DENSEMAT_ITER_INIT(vec,*(v_t *)valptr = *(v_t *)val);
     } else {
         DENSEMAT_ITER(vec,*(v_t *)valptr = *(v_t *)val);
+    }
+    
+    if (vec->map->loc_perm || vec->map->glb_perm) {
+        vec->traits.flags |= GHOST_DENSEMAT_PERMUTED;
     }
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);

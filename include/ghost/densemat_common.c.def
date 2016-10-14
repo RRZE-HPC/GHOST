@@ -804,7 +804,11 @@ static ghost_error FUNCNAME(fromFile(ghost_densemat *vec, char *path, ghost_mpi_
 static ghost_error FUNCNAME(fromFunc(ghost_densemat *vec, int (*fp)(ghost_gidx, ghost_lidx, void *, void *), void *arg))
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
-    ghost_gidx offset = vec->context->row_map->offs;
+    ghost_gidx offset = 0;
+    if (vec->context) {
+        offset = vec->context->row_map->offs;
+    }
+    
     int needInit = 0;
     GHOST_CALL_RETURN(FUNCNAME(malloc(vec,&needInit)));
 
@@ -815,27 +819,28 @@ static ghost_error FUNCNAME(fromFunc(ghost_densemat *vec, int (*fp)(ghost_gidx, 
             } else {
               DENSEMAT_ITER(vec,fp(offset+row,col,valptr,arg));
             }
-        } else if (vec->map->loc_perm && !vec->map->glb_perm) {
-            if( needInit ) {
-              DENSEMAT_ITER_INIT(vec,fp(offset+vec->map->loc_perm_inv[row],col,valptr,arg));
-            } else {
-              DENSEMAT_ITER(vec,fp(offset+vec->map->loc_perm_inv[row],col,valptr,arg));
-            }
-        } else if (!vec->map->loc_perm && vec->map->glb_perm) {
-            if( needInit ) {
-              DENSEMAT_ITER_INIT(vec,fp(vec->map->glb_perm_inv[row],col,valptr,arg));
-            } else {
-              DENSEMAT_ITER(vec,fp(vec->map->glb_perm_inv[row],col,valptr,arg));
-            }
-        } else if (vec->map->loc_perm && vec->map->glb_perm) {
-            if( needInit ) {
-              DENSEMAT_ITER_INIT(vec,fp(vec->map->glb_perm_inv[vec->map->loc_perm_inv[row]],col,valptr,arg));
-            } else {
-              DENSEMAT_ITER(vec,fp(vec->map->glb_perm_inv[vec->map->loc_perm_inv[row]],col,valptr,arg));
+        } else {
+            vec->traits.flags |= GHOST_DENSEMAT_PERMUTED;
+            if (vec->map->loc_perm && !vec->map->glb_perm) {
+                if( needInit ) {
+                  DENSEMAT_ITER_INIT(vec,fp(offset+vec->map->loc_perm_inv[row],col,valptr,arg));
+                } else {
+                  DENSEMAT_ITER(vec,fp(offset+vec->map->loc_perm_inv[row],col,valptr,arg));
+                }
+            } else if (!vec->map->loc_perm && vec->map->glb_perm) {
+                if( needInit ) {
+                  DENSEMAT_ITER_INIT(vec,fp(vec->map->glb_perm_inv[row],col,valptr,arg));
+                } else {
+                  DENSEMAT_ITER(vec,fp(vec->map->glb_perm_inv[row],col,valptr,arg));
+                }
+            } else if (vec->map->loc_perm && vec->map->glb_perm) {
+                if( needInit ) {
+                  DENSEMAT_ITER_INIT(vec,fp(vec->map->glb_perm_inv[vec->map->loc_perm_inv[row]],col,valptr,arg));
+                } else {
+                  DENSEMAT_ITER(vec,fp(vec->map->glb_perm_inv[vec->map->loc_perm_inv[row]],col,valptr,arg));
+                }
             }
         }
-
-
         
         // host+device case: uploading will be done in fromVec()
         if (vec->traits.location & GHOST_LOCATION_DEVICE) {

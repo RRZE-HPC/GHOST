@@ -101,15 +101,6 @@ ghost_error ghost_thpool_destroy()
 
 ghost_error ghost_thpool_get(ghost_thpool **thp)
 {
-    if (!thpool) {
-        ERROR_LOG("NULL pointer");
-        return GHOST_ERR_INVALID_ARG;
-    }
-    if (!thpool) {
-        ERROR_LOG("Thread pool not present");
-        return GHOST_ERR_UNKNOWN;
-    }
-
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING); 
     
     *thp = thpool;

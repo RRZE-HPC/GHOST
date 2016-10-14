@@ -151,6 +151,7 @@ out:
     return ret;
 }
 
+
 void ghost_map_destroy(ghost_map *map)
 {
         free(map->cu_loc_perm); map->cu_loc_perm = NULL;

@@ -27,6 +27,14 @@ typedef enum
 }
 ghost_permutation_method;
 
+typedef enum
+{
+    GHOST_MAP_DEFAULT,
+    GHOST_MAP_ROW,
+    GHOST_MAP_COL
+} 
+ghost_maptype;
+
 /*typedef enum
 {
     GHOST_PERM_NO_DISTINCTION=1, 
@@ -408,6 +416,7 @@ extern "C" {
      */
 ghost_error ghost_global_perm_inv(ghost_gidx *toPerm, ghost_gidx *fromPerm, ghost_context *context);
     int ghost_rank_of_row(ghost_context *ctx, ghost_gidx row);
+    ghost_map *ghost_context_map(const ghost_context *ctx, const ghost_maptype mt);
 
 #ifdef __cplusplus
 } //extern "C"

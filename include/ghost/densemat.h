@@ -198,13 +198,6 @@ typedef struct
 }
 ghost_densemat_halo_comm;
 
-typedef enum
-{
-    GHOST_MAP_DEFAULT,
-    GHOST_MAP_ROW,
-    GHOST_MAP_COL
-} ghost_maptype;
-
 /**
  * @brief Traits of the densemat.
  */
@@ -871,6 +864,15 @@ extern "C" {
      * @param localVec The local densemat.
      */
     ghost_error ghost_densemat_distribute(ghost_densemat *vec, ghost_densemat *localVec, ghost_context *ctx);
+
+    /**
+     * @brief Get the current maptype of a densemat
+     *
+     * @param vec The densemat.
+     *
+     * @return 
+     */
+    ghost_maptype ghost_densemat_maptype(const ghost_densemat *vec);
 
 #ifdef __cplusplus
 }

@@ -740,3 +740,9 @@ int ghost_rank_of_row(ghost_context *ctx, ghost_gidx row)
 
     return -1;
 }
+
+ghost_map *ghost_context_map(const ghost_context *ctx, const ghost_maptype mt) 
+{
+    return mt==GHOST_MAP_ROW?ctx->row_map:mt==GHOST_MAP_COL?ctx->col_map:ctx->row_map;
+}
+
