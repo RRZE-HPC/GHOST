@@ -120,21 +120,25 @@ ghost_error ghost_autogen_spmmv_nvecs(int **nvecs, int *n, int chunkheight)
 
 int ghost_autogen_spmmv_next_nvecs(int desired_nvecs, int chunkheight)
 {
-    int *nvecs,n,i,found_nvecs;
+    int *nvecs = NULL;
+    int n,i,found_nvecs;
 
     if (ghost_autogen_spmmv_nvecs(&nvecs,&n,chunkheight) != GHOST_SUCCESS) {
         return 0;
     }
     if (n == 0) {
+        free(nvecs);
         return 0;
     }
     for (i=n-1; i>=0; i--) {
         if (nvecs[i] <= desired_nvecs) {
-            return nvecs[i];
+            found_nvecs = nvecs[i];
+            break;
         }
     }
 
-    ERROR_LOG("Should never happen!");
-    return 0;
+    free(nvecs);
+
+    return found_nvecs;
 }
 

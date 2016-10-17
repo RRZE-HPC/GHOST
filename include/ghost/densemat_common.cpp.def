@@ -244,7 +244,7 @@ static ghost_error FUNCNAME(vaxpy_tmpl(ghost_densemat *vec, ghost_densemat *vec2
 #ifdef GHOST_INSTR_TIMING
     ghost_axpy_perf_args pargs;
     pargs.ncols = vec->traits.ncols;
-    pargs.globnrows = vec->traits.gnrows;
+    pargs.globnrows = vec->map->gdim;
     pargs.dt = vec->traits.datatype;
 
     ghost_timing_set_perfFunc(NULL,__ghost_functag,ghost_axpy_perf,(void *)&pargs,sizeof(pargs),GHOST_AXPY_PERF_UNIT);
@@ -278,7 +278,7 @@ static ghost_error FUNCNAME(vaxpby_tmpl(ghost_densemat *vec, ghost_densemat *vec
 #ifdef GHOST_INSTR_TIMING
     ghost_axpby_perf_args pargs;
     pargs.ncols = vec->traits.ncols;
-    pargs.globnrows = vec->traits.gnrows;
+    pargs.globnrows = vec->map->gdim;
     pargs.dt = vec->traits.datatype;
 
     ghost_timing_set_perfFunc(NULL,__ghost_functag,ghost_axpby_perf,(void *)&pargs,sizeof(pargs),GHOST_AXPBY_PERF_UNIT);
@@ -308,7 +308,7 @@ static ghost_error FUNCNAME(vaxpbypcz_tmpl(ghost_densemat *vec, ghost_densemat *
 #ifdef GHOST_INSTR_TIMING
     ghost_axpbypcz_perf_args pargs;
     pargs.ncols = vec->traits.ncols;
-    pargs.globnrows = vec->traits.gnrows;
+    pargs.globnrows = vec->map->gdim;
     pargs.dt = vec->traits.datatype;
 
     ghost_timing_set_perfFunc(NULL,__ghost_functag,ghost_axpbypcz_perf,(void *)&pargs,sizeof(pargs),GHOST_AXPBYPCZ_PERF_UNIT);
@@ -327,7 +327,7 @@ static ghost_error FUNCNAME(vscale_tmpl(ghost_densemat *vec, void *scale))
 #ifdef GHOST_INSTR_TIMING
     ghost_scale_perf_args pargs;
     pargs.ncols = vec->traits.ncols;
-    pargs.globnrows = vec->traits.gnrows;
+    pargs.globnrows = vec->map->gdim;
     pargs.dt = vec->traits.datatype;
 
     ghost_timing_set_perfFunc(NULL,__ghost_functag,ghost_scale_perf,(void *)&pargs,sizeof(pargs),GHOST_SCALE_PERF_UNIT);

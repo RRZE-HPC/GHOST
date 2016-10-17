@@ -685,6 +685,7 @@ void ghost_densemat_destroy( ghost_densemat* vec )
         if (!vec->context) {
             // a map has been allocated in ghost_densemat_noctx_create()
             ghost_map_destroy(vec->map);
+            free(vec->map);
         }
         if (!(vec->traits.flags & GHOST_DENSEMAT_VIEW)) {
             if (vec->traits.location & GHOST_LOCATION_DEVICE) {
@@ -876,22 +877,22 @@ ghost_error ghost_densemat_halo_avg (ghost_densemat *vec, ghost_context *ctx)
     
 ghost_error ghost_densemat_create_and_view_densemat(ghost_densemat **x, ghost_densemat *src, ghost_lidx nr, ghost_lidx roffs, ghost_lidx nc, ghost_lidx coffs)
 {
-    CALL_DENSEMAT_FUNC((*x),view,src,x,nr,roffs,nc,coffs);
+    CALL_DENSEMAT_FUNC(src,view,src,x,nr,roffs,nc,coffs);
 }
     
 ghost_error ghost_densemat_create_and_view_densemat_scattered(ghost_densemat **x, ghost_densemat *src, ghost_lidx nr, ghost_lidx *ridx, ghost_lidx nc, ghost_lidx *cidx)
 {
-    CALL_DENSEMAT_FUNC((*x),viewScatteredVec,src,x,nr,ridx,nc,cidx);
+    CALL_DENSEMAT_FUNC(src,viewScatteredVec,src,x,nr,ridx,nc,cidx);
 }
     
 ghost_error ghost_densemat_create_and_view_densemat_cols(ghost_densemat **x, ghost_densemat *src, ghost_lidx nc, ghost_lidx coffs)
 {
-    CALL_DENSEMAT_FUNC((*x),viewCols,src,x,nc,coffs);
+    CALL_DENSEMAT_FUNC(src,viewCols,src,x,nc,coffs);
 }
     
 ghost_error ghost_densemat_create_and_view_densemat_cols_scattered(ghost_densemat **x, ghost_densemat *src, ghost_lidx nc, ghost_lidx *cidx)
 {
-    CALL_DENSEMAT_FUNC((*x),viewScatteredCols,src,x,nc,cidx);
+    CALL_DENSEMAT_FUNC(src,viewScatteredCols,src,x,nc,cidx);
 }
     
 ghost_error ghost_densemat_init_file(ghost_densemat *x, char *path, ghost_mpi_comm mpicomm)

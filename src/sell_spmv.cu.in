@@ -455,13 +455,13 @@ static ghost_error ghost_cu_sell_spmv_tmpl(ghost_sparsemat *mat, ghost_densemat 
     ghost_densemat *lhscompact, *rhscompact, *zcompact;
     if (lhs->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         PERFWARNING_LOG("Cloning (and compressing) lhs before operation");
-DM_NROWS(        GHOST_CALL_RETURN(ghost_densemat_clone(&lhscompact,lhs,lhs),0,lhs->traits.ncols,0));
+        GHOST_CALL_RETURN(ghost_densemat_clone(&lhscompact,lhs,DM_NROWS(lhs),0,lhs->traits.ncols,0));
     } else {
         lhscompact = lhs;
     }
     if (rhs->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         PERFWARNING_LOG("Cloning (and compressing) rhs before operation");
-DM_NROWS(        GHOST_CALL_RETURN(ghost_densemat_clone(&rhscompact,rhs,rhs),0,rhs->traits.ncols,0));
+        GHOST_CALL_RETURN(ghost_densemat_clone(&rhscompact,rhs,DM_NROWS(rhs),0,rhs->traits.ncols,0));
     } else {
         rhscompact = rhs;
     }
@@ -478,7 +478,7 @@ DM_NROWS(        GHOST_CALL_RETURN(ghost_densemat_clone(&rhscompact,rhs,rhs),0,r
     GHOST_SPMV_PARSE_TRAITS(traits,scale,beta,shift,localdot,z,sdelta,seta,v_dt_host,v_dt_device);
     if (z && (z->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
         PERFWARNING_LOG("Cloning (and compressing) z before operation");
-DM_NROWS(        GHOST_CALL_RETURN(ghost_densemat_clone(&zcompact,z,z),0,z->traits.ncols,0));
+        GHOST_CALL_RETURN(ghost_densemat_clone(&zcompact,z,DM_NROWS(z),0,z->traits.ncols,0));
     } else {
         zcompact = z;
     }

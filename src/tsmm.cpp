@@ -271,7 +271,7 @@ end_of_loop:
     ghost_gemm_perf_args tsmm_perfargs;
     tsmm_perfargs.n = x->traits.ncols;
     tsmm_perfargs.k = v->traits.ncols;
-    tsmm_perfargs.m = v->traits.gnrows;
+    tsmm_perfargs.m = v->map->gdim;
     tsmm_perfargs.dt = x->traits.datatype;
     tsmm_perfargs.betaiszero = ghost_iszero(beta,x->traits.datatype);
     tsmm_perfargs.alphaisone = ghost_isone(alpha,x->traits.datatype);

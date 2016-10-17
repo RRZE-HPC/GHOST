@@ -96,7 +96,7 @@ static ghost_error FUNCNAME(view(ghost_densemat *src, ghost_densemat **new, ghos
     newTraits.ncolspadded = nc;
     newTraits.flags |= (ghost_densemat_flags)GHOST_DENSEMAT_VIEW;
 
-    ghost_densemat_create(new,NULL,newTraits);
+    ghost_densemat_create(new,src->context,newTraits);
     FUNCNAME(malloc(*new,NULL));
 
     (*new)->stride = src->stride;
@@ -175,11 +175,10 @@ static ghost_error FUNCNAME(viewCols(ghost_densemat *src, ghost_densemat **new, 
     newTraits.ncolsorig = src->traits.ncolsorig;
     newTraits.flags |= (ghost_densemat_flags)GHOST_DENSEMAT_VIEW;
 
-    ghost_densemat_create(new,NULL,newTraits);
+    ghost_densemat_create(new,src->context,newTraits);
     FUNCNAME(malloc(*new,NULL));
     (*new)->stride = src->stride;
     (*new)->src = src->src;
-    (*new)->context=src->context;
 #ifdef GHOST_HAVE_MPI
     MPI_CALL_RETURN(MPI_Type_free(&((*new)->fullmpidt)));
     MPI_CALL_RETURN(MPI_Type_vector((*new)->nblock,(*new)->blocklen,(*new)->stride,(*new)->mpidt,&((*new)->fullmpidt)));
@@ -224,7 +223,7 @@ static ghost_error FUNCNAME(viewScatteredCols(ghost_densemat *src, ghost_densema
     newTraits.flags |= (ghost_densemat_flags)GHOST_DENSEMAT_VIEW;
     newTraits.flags |= (ghost_densemat_flags)GHOST_DENSEMAT_SCATTERED_COLS;
 
-    ghost_densemat_create(new,NULL,newTraits);
+    ghost_densemat_create(new,src->context,newTraits);
     FUNCNAME(malloc(*new,NULL));
     (*new)->stride = src->stride;
     (*new)->src = src->src;
@@ -267,7 +266,7 @@ static ghost_error FUNCNAME(viewScatteredVec(ghost_densemat *src, ghost_densemat
     newTraits.flags |= (ghost_densemat_flags)GHOST_DENSEMAT_VIEW;
     newTraits.flags |= (ghost_densemat_flags)GHOST_DENSEMAT_SCATTERED;
 
-    ghost_densemat_create(new,NULL,newTraits);
+    ghost_densemat_create(new,src->context,newTraits);
     FUNCNAME(malloc(*new,NULL));
     (*new)->stride = src->stride;
     (*new)->src = src->src;
@@ -440,7 +439,7 @@ static ghost_error FUNCNAME(reduce(ghost_densemat * vec_in, ghost_mpi_comm comm,
         vectraits.flags &= (ghost_densemat_flags)~GHOST_DENSEMAT_SCATTERED;
         vectraits.location = GHOST_LOCATION_HOST;
 
-        ghost_densemat_create(&vec,NULL,vectraits);
+        ghost_densemat_noctx_create(&vec,vec_in->map->dim,vectraits);
         ghost_densemat_init_densemat(vec,vec_in,0,0);
     } else {
         vec = vec_in;
@@ -632,7 +631,7 @@ static ghost_error FUNCNAME(toFile(ghost_densemat *vec, char *path, ghost_mpi_co
             ghost_densemat *writevec;
             ghost_densemat_traits writevectraits = vec->traits;
             writevectraits.storage = GHOST_DENSEMAT_ROWMAJOR;
-            ghost_densemat_create(&writevec,NULL,writevectraits);
+            ghost_densemat_create(&writevec,vec->context,writevectraits);
             ghost_densemat_init_densemat(writevec,vec,0,0);
             ghost_densemat_to_file(writevec,path,mpicomm);
             ghost_densemat_destroy(writevec);
@@ -772,7 +771,7 @@ static ghost_error FUNCNAME(fromFile(ghost_densemat *vec, char *path, ghost_mpi_
         ghost_densemat *readvec;
         ghost_densemat_traits readvectraits = vec->traits;
         readvectraits.storage = (ghost_densemat_storage)order;
-        ghost_densemat_create(&readvec,NULL,readvectraits);
+        ghost_densemat_create(&readvec,vec->context,readvectraits);
         ghost_densemat_init_file(readvec,path,mpicomm);
         ghost_densemat_init_densemat(vec,readvec,0,0);
         ghost_densemat_destroy(readvec);
@@ -787,7 +786,7 @@ static ghost_error FUNCNAME(fromFile(ghost_densemat *vec, char *path, ghost_mpi_
         ghost_densemat *readvec;
         ghost_densemat_traits readvectraits = vec->traits;
         readvectraits.storage = GHOST_DENSEMAT_ROWMAJOR;
-        ghost_densemat_create(&readvec,NULL,readvectraits);
+        ghost_densemat_create(&readvec,vec->context,readvectraits);
         ghost_densemat_init_file(readvec,path,mpicomm);
         ghost_densemat_init_densemat(vec,readvec,0,0);
         readvec->destroy(readvec);
@@ -852,7 +851,7 @@ static ghost_error FUNCNAME(fromFunc(ghost_densemat *vec, int (*fp)(ghost_gidx, 
         ghost_densemat_traits htraits = vec->traits;
         htraits.location = GHOST_LOCATION_HOST;
         htraits.flags &= (ghost_densemat_flags)~GHOST_DENSEMAT_VIEW;
-        GHOST_CALL_RETURN(ghost_densemat_create(&hostVec,NULL,htraits));
+        GHOST_CALL_RETURN(ghost_densemat_create(&hostVec,vec->context,htraits));
         GHOST_CALL_RETURN(ghost_densemat_init_func(hostVec,fp,arg));
         GHOST_CALL_RETURN(ghost_densemat_init_densemat(vec,hostVec,0,0));
         ghost_densemat_destroy(hostVec);

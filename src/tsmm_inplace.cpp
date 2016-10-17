@@ -235,8 +235,8 @@ end_of_loop:
 #ifdef GHOST_INSTR_TIMING
     ghost_gemm_perf_args tsmm_inplace_perfargs;
     tsmm_inplace_perfargs.n = w->traits.ncols;
-DM_NROWS(    tsmm_inplace_perfargs.k = w);
-    tsmm_inplace_perfargs.m = x->traits.gnrows;
+    tsmm_inplace_perfargs.k = DM_NROWS(w);
+    tsmm_inplace_perfargs.m = x->map->gdim;
     tsmm_inplace_perfargs.dt = x->traits.datatype;
     tsmm_inplace_perfargs.betaiszero = ghost_iszero(beta,x->traits.datatype);
     tsmm_inplace_perfargs.alphaisone = ghost_isone(alpha,x->traits.datatype);
