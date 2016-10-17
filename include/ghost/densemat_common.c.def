@@ -95,13 +95,16 @@ static ghost_error FUNCNAME(view(ghost_densemat *src, ghost_densemat **new, ghos
     newTraits.ncols = nc;
     newTraits.ncolspadded = nc;
     newTraits.flags |= (ghost_densemat_flags)GHOST_DENSEMAT_VIEW;
-
-    ghost_densemat_create(new,src->context,newTraits);
+    
+    if (src->context) {
+        ghost_densemat_create(new,src->context,newTraits);
+    } else {
+        ghost_densemat_noctx_create(new,nr,newTraits);
+    }
     FUNCNAME(malloc(*new,NULL));
 
     (*new)->stride = src->stride;
     (*new)->src = src->src;
-    (*new)->context=src->context;
 #ifdef GHOST_HAVE_MPI
     MPI_CALL_RETURN(MPI_Type_free(&((*new)->fullmpidt)));
     MPI_CALL_RETURN(MPI_Type_vector((*new)->nblock,(*new)->blocklen,(*new)->stride,(*new)->mpidt,&((*new)->fullmpidt)));
@@ -174,8 +177,12 @@ static ghost_error FUNCNAME(viewCols(ghost_densemat *src, ghost_densemat **new, 
     newTraits.ncolspadded = nc;
     newTraits.ncolsorig = src->traits.ncolsorig;
     newTraits.flags |= (ghost_densemat_flags)GHOST_DENSEMAT_VIEW;
-
-    ghost_densemat_create(new,src->context,newTraits);
+    
+    if (src->context) {
+        ghost_densemat_create(new,src->context,newTraits);
+    } else {
+        ghost_densemat_noctx_create(new,src->map->dim,newTraits);
+    }
     FUNCNAME(malloc(*new,NULL));
     (*new)->stride = src->stride;
     (*new)->src = src->src;
