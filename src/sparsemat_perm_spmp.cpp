@@ -30,8 +30,8 @@ static int cmp_coo_ent(const void* a, const void* b)
 extern "C" ghost_error ghost_sparsemat_perm_spmp(ghost_context *ctx, ghost_sparsemat *mat)
 {
 #if !defined(GHOST_HAVE_SPMP)
+    UNUSED(ctx);
     UNUSED(mat);
-    UNUSED(src);
     WARNING_LOG("SpMP not available. Will not create matrix permutation!");
     return GHOST_SUCCESS;
 #else
