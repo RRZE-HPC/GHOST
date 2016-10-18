@@ -28,6 +28,11 @@
 ghost_error FUNCNAME(malloc(ghost_densemat *vec, int* needsInit))
 {
     ghost_lidx allocrows;
+    if (vec->context) {
+        allocrows = MAX(vec->context->row_map->dimpad,vec->context->col_map->dimpad);
+    } else {
+        allocrows = vec->map->dimpad;
+    }
     if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         if (vec->rowmask == NULL) {
             vec->rowmask = ghost_bitmap_alloc();
@@ -44,11 +49,6 @@ ghost_error FUNCNAME(malloc(ghost_densemat *vec, int* needsInit))
     }
 
     if ((vec->traits.location & GHOST_LOCATION_HOST) && !vec->val) {
-        if (vec->context) {
-            allocrows = MAX(vec->context->row_map->dimpad,vec->context->col_map->dimpad);
-        } else {
-            allocrows = vec->map->dimpad;
-        }
 
         ghost_type mytype;
         ghost_type_get(&mytype);
