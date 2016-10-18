@@ -788,3 +788,23 @@ ghost_error ghost_norm(void *norm, ghost_densemat *x, void *pow)
     return ret;
 }
 
+ghost_error ghost_nrm2(void *norm, ghost_densemat *x)
+{
+    GHOST_CALL_RETURN(ghost_dot(norm,x,x));
+    if (x->traits.datatype & GHOST_DT_COMPLEX) {
+        if (x->traits.datatype & GHOST_DT_DOUBLE) {
+            (*(double complex *)norm) = csqrt(*(double complex *)norm);
+        } else {
+            (*(float complex *)norm) = csqrtf(*(float complex *)norm);
+        }
+    } else {
+        if (x->traits.datatype & GHOST_DT_DOUBLE) {
+            (*(double *)norm) = sqrt(*(double *)norm);
+        } else {
+            (*(float *)norm) = sqrtf(*(float *)norm);
+        }
+    }
+
+    return GHOST_SUCCESS;
+}
+

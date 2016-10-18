@@ -323,6 +323,16 @@ extern "C" {
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error ghost_norm(void *norm, ghost_densemat *vec, void *pow);
+    
+    /**
+     * @brief Compute the norm of a densemat: sum_i [conj(vec_i) * vec_i]^2
+     *
+     * @param norm Where to store the norm. Must be a pointer to the densemat's data type.
+     * @param vec The densemat.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error ghost_nrm2(void *norm, ghost_densemat *vec);
 
     int ghost_kacz_perf(double *perf, double time, void *arg);
     int ghost_spmv_perf(double *perf, double time, void *arg);
