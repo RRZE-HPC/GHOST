@@ -1,8 +1,3 @@
-/**
- * @file densemat.h
- * @brief Types and functions related to dense matrices/vectors.
- * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
- */
 #ifndef GHOST_DENSEMAT_H
 #define GHOST_DENSEMAT_H
 
@@ -89,6 +84,12 @@ typedef enum {
      * @brief Set this flag if the number of columns should be padded according to the SIMD width.
      */
     GHOST_DENSEMAT_PAD_COLS = 1024,
+    /**
+     * @brief Destroy the densemat's map when the densemat gets destroyed.
+     *
+     * This flag should not be set by the user.
+     */
+    GHOST_DENSEMAT_FREE_MAP = 2048,
 }  
 ghost_densemat_flags;
 
@@ -259,11 +260,6 @@ typedef struct
      */
     ghost_lidx ncols;
     /**
-     * @brief The number of columns of the densemat which is viewed by this 
-     * densemat.
-     */
-    ghost_lidx ncolsorig;
-    /**
      * @brief The padded number of columns (may differ from ncols for row-major 
      * densemats).
      */
@@ -280,10 +276,6 @@ typedef struct
      * @brief The data type.
      */
     ghost_datatype datatype;
-    /**
-     * @brief The initial map (may be changed afterwards).
-     */
-    ghost_maptype initial_map;
     /**
      * @brief Location of the densemat.
      */
@@ -329,7 +321,7 @@ struct ghost_densemat
     /**
      * @brief The context in which the densemat is living.
      */
-    ghost_context *context;
+    //ghost_context *context;
     /**
      * @brief The values of the densemat.
      */
@@ -395,9 +387,7 @@ struct ghost_densemat
     char * cu_val;
 
     /**
-     * @brief The active map. 
-     *
-     * May be one of ghost_densemat::context::col_map->or ghost_densemat::context::row_map->
+     * @brief The densemat's map. 
      */
     ghost_map *map;
 
@@ -430,21 +420,17 @@ extern "C" {
      * @brief Create a dense matrix/vector. 
      *
      * @param vec Where to store the matrix.
-     * @param ctx The context the matrix lives in or NULL.
+     * @param map The map of the matrix. This may be extracted from an existing context or created separately.
      * @param traits The matrix traits.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      *
      * @note No memory will be allocated in this function. Before any operation with the densemat is done,
      * an initialization function (see @ref denseinit) has to be called with the densemat.
-     *
-     * The context is only used to extract the size of the densemat. It will not be stored in the densemat.
-     * If the size is already correctly specified by the user in the traits, the context may be NULL.
      */
-    ghost_error ghost_densemat_create(ghost_densemat **vec, 
-            ghost_context *ctx, ghost_densemat_traits traits);
+    ghost_error ghost_densemat_create(ghost_densemat **vec, ghost_map *map, ghost_densemat_traits traits);
 
-    ghost_error ghost_densemat_noctx_create(ghost_densemat **vec, ghost_lidx nrows, ghost_densemat_traits traits);
+    //ghost_error ghost_densemat_noctx_create(ghost_densemat **vec, ghost_lidx nrows, ghost_densemat_traits traits);
     
     /**
      * @brief Create an array of chars ('0' or '1') of the densemat mask.
@@ -545,9 +531,6 @@ extern "C" {
      */
     ghost_lidx ghost_densemat_row_padding();
 
-    ghost_error ghost_densemat_swap_map( ghost_densemat *vec);
-    ghost_error ghost_densemat_set_map( ghost_densemat *vec, ghost_maptype mt);
-    
     int ghost_idx_of_densemat_storage(ghost_densemat_storage s); 
     
     /**
@@ -693,16 +676,14 @@ extern "C" {
     /**
      * @ingroup denseinit
      * @ingroup denseview
-     * @brief Create a ghost_densemat as a clone of another ghost_densemat at a given offset
+     * @brief Create a ghost_densemat as a clone of another ghost_densemat at a column given offset
      * @param x The clone.
      * @param src The source densemat.
-     * @param nr The number of rows of the new densemat.
-     * @param roffs The row offset into the source densemat.
      * @param nc The number of columsn of the new densemat.
      * @param coffs The column offset into the source densemat.
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error ghost_densemat_clone(ghost_densemat **x, ghost_densemat *src, ghost_lidx nr, ghost_lidx roffs, ghost_lidx nc, ghost_lidx coffs);
+    ghost_error ghost_densemat_clone(ghost_densemat **x, ghost_densemat *src, ghost_lidx nc, ghost_lidx coffs);
 
     /**
      * @ingroup stringification
@@ -722,7 +703,7 @@ extern "C" {
      * @param dir The permutation direction.
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error ghost_densemat_permute(ghost_densemat *x, ghost_context *ctx, ghost_permutation_direction dir);
+    ghost_error ghost_densemat_permute(ghost_densemat *x, ghost_permutation_direction dir);
     
     /**
      * @ingroup gputransfer
@@ -749,15 +730,14 @@ extern "C" {
     ghost_error ghost_densemat_upload(ghost_densemat *vec);
     
     /**
-     * @brief Reduces the densemats using addition in a given communicator.
+     * @brief Reduces the densemats using addition in its map's communicator.
      *
      * @param vec The densemat.
-     * @param comm The communicator.
      * @param dest The destination rank or GHOST_ALLREDUCE
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error ghost_densemat_reduce(ghost_densemat *vec, ghost_mpi_comm comm, int dest);
+    ghost_error ghost_densemat_reduce(ghost_densemat *vec, int dest);
 
     /**
      * @brief Initialize a halo communication data structure.
@@ -864,16 +844,6 @@ extern "C" {
      * @param localVec The local densemat.
      */
     ghost_error ghost_densemat_distribute(ghost_densemat *vec, ghost_densemat *localVec, ghost_context *ctx);
-
-    /**
-     * @brief Get the current maptype of a densemat
-     *
-     * @param vec The densemat.
-     *
-     * @return 
-     */
-    ghost_maptype ghost_densemat_maptype(const ghost_densemat *vec);
-
 #ifdef __cplusplus
 }
 #endif

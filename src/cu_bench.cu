@@ -97,8 +97,8 @@ extern "C" ghost_error ghost_cu_bench_stream(ghost_bench_stream_test_t test, dou
             case GHOST_BENCH_STREAM_LOAD:
                 ghost_densemat *a_dm, *b_dm;
                 ghost_densemat_traits dmtraits = GHOST_DENSEMAT_TRAITS_INITIALIZER;
-                ghost_densemat_noctx_create(&a_dm,N,dmtraits);
-                ghost_densemat_noctx_create(&b_dm,N,dmtraits);
+                ghost_densemat_create(&a_dm,ghost_map_create_light(N,MPI_COMM_NULL),dmtraits);
+                ghost_densemat_create(&b_dm,ghost_map_create_light(N,MPI_COMM_NULL),dmtraits);
                 ghost_densemat_view_plain(a_dm,da,1);
                 ghost_densemat_view_plain(b_dm,db,1);
                 ghost_localdot(&s,a_dm,b_dm);

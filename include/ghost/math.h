@@ -187,7 +187,7 @@ extern "C" {
     ghost_error ghost_spmv(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat *invec, ghost_spmv_opts opts);
     ghost_error ghost_spmv_nocomm(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat *invec, ghost_spmv_opts opts);
     ghost_error ghost_gemm_valid(ghost_densemat *x, ghost_densemat *v, const char * transv, 
-    ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce,ghost_context *ctx,ghost_gemm_flags flags, int printerror); 
+    ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce,ghost_gemm_flags flags, int printerror); 
     /**
      * @ingroup globops
      *
@@ -201,12 +201,11 @@ extern "C" {
      * @param alpha
      * @param beta
      * @param reduce
-     * @param ctx The context in which the reduction should be done if it is enabled.
      * @param flags
      *
      * @return 
      */
-    ghost_error ghost_gemm(ghost_densemat *x, ghost_densemat *v, const char *transv, ghost_densemat *w, const char * transw, void *alpha, void *beta, int reduce,ghost_context *ctx,ghost_gemm_flags flags); 
+    ghost_error ghost_gemm(ghost_densemat *x, ghost_densemat *v, const char *transv, ghost_densemat *w, const char * transw, void *alpha, void *beta, int reduce,ghost_gemm_flags flags); 
     ghost_error ghost_mpi_operations_create();
     ghost_error ghost_mpi_operations_destroy();
     ghost_error ghost_mpi_op_densemat_sum(ghost_mpi_op * op, ghost_datatype datatype);

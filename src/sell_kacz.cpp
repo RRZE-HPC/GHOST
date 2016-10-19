@@ -119,7 +119,7 @@ ghost_error ghost_carp_init(ghost_sparsemat *mat, ghost_densemat *rhs, ghost_car
 //This finds optimum parameters for the CARP, depending on the matrix
 //options like shift should be set before entering this
 template<typename m_t>
-ghost_error ghost_carp_perf_init_tmpl(ghost_sparsemat *mat, ghost_carp_opts *opts) {
+static ghost_error ghost_carp_perf_init_tmpl(ghost_sparsemat *mat, ghost_carp_opts *opts) {
     ghost_error ret = GHOST_SUCCESS; 
     if(opts->mode == GHOST_KACZ_MODE_PERFORMANCE) {
         //check for optimal block value
@@ -180,13 +180,11 @@ ghost_error ghost_carp_perf_init_tmpl(ghost_sparsemat *mat, ghost_carp_opts *opt
         }
 
         int nIter = 1;//things like alpha=0 wouldn't be considered, but the LC 
-        for (int i=0; i<total_sizes; ++i) { 
+        for (i=0; i<total_sizes; ++i) { 
             vtraits_col.ncols = block_size[i];
             vtraits_row.ncols = block_size[i];
-            ghost_densemat_create(&test_x, mat->context, vtraits_col);
-            ghost_densemat_create(&test_rhs, mat->context, vtraits_row);
-            test_x->map = test_x->context->col_map;
-            test_rhs->map = test_x->context->row_map;
+            ghost_densemat_create(&test_x, mat->context->col_map, vtraits_col);
+            ghost_densemat_create(&test_rhs, mat->context->row_map, vtraits_row);
             ghost_densemat_init_val(test_x,&zero);
             ghost_densemat_init_val(test_rhs,&one);
             ghost_barrier();
@@ -349,7 +347,7 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
     ghost_kacz_parameters p;
     
     //if rectangular matrix
-    if(x->map != x->context->col_map && SPM_NROWS(mat) != mat->context->col_map->dim) {
+    if(x->map->type != GHOST_MAP_COL && SPM_NROWS(mat) != mat->context->col_map->dim) {
         ERROR_LOG("Output vector is not COLUMN(Right sided) vector, please set the map to the column map")
     }
     

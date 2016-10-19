@@ -26,9 +26,6 @@ extern "C" ghost_error ghost_sparsemat_blockColor(ghost_context *ctx, ghost_spar
     ghost_lidx *rhs_split = NULL;
     ghost_lidx *zone;
     ghost_lidx nrows =0;
-    ghost_lidx nnz = 0;
-    ghost_gidx *rpt = NULL;
-    ghost_gidx *col = NULL;
     std::vector<int>  colvec;   
     
     #ifdef GHOST_HAVE_COLPACK
@@ -166,8 +163,6 @@ free(tmpval);
         zone[i] = -(n_zones+1) ; //an invalid number
     }
     
-    nnz = SPM_NNZ(mat); 
-    
     #pragma omp parallel for reduction(+:ctr_nrows_MC,ctr_nnz_MC) 
     for (ghost_lidx i=0; i<ctx->row_map->dim; i++) {
         
@@ -250,7 +245,6 @@ else if(k>0 && zone[i]<0 && (col_ptr[row_ptr[i]] >= rhs_split[k-1] && col_ptr[ro
         //anyway separate both permutations 
         GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->col_map->loc_perm,sizeof(ghost_gidx)*ncols_halo_padded), err, ret);
         GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->col_map->loc_perm_inv,sizeof(ghost_gidx)*ncols_halo_padded), err, ret);
-        ERROR_LOG("ncolshalopadded = %d",ncols_halo_padded);
         
         #pragma omp parallel for         
         for(int i=0; i<ncols_halo_padded; ++i) { 

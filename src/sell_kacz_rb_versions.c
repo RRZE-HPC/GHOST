@@ -402,7 +402,7 @@ ghost_error ghost_kacz_rb_v3(ghost_densemat *x, ghost_sparsemat *mat, ghost_dens
             idx += 1;
         }
 
-        for (ghost_lidx row=odd_start; row!=odd_end-1; row+=stride){
+        for (row=odd_start; row!=odd_end-1; row+=stride){
             //printf("projecting to row ........ %d\n",row);
             rownorm = 0.; 
             idx = mat->chunkStart[row];

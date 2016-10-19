@@ -14,7 +14,7 @@
 #include <float.h>
 #include <math.h>
 
-ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, ghost_gidx gncols, ghost_context_flags_t context_flags, void *matrixSource, ghost_sparsemat_src srcType, ghost_mpi_comm comm, double weight) 
+ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, ghost_gidx gncols, ghost_context_flags_t context_flags, ghost_mpi_comm comm, double weight) 
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_SETUP);
     if (weight < 0) {
@@ -27,7 +27,7 @@ ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, gho
         INFO_LOG("Automatically setting weight to %f according to STREAM copy bandwidth!",weight);
     }
     
-    int nranks, me, i;
+    int nranks, me;
     ghost_error ret = GHOST_SUCCESS;
     
     ghost_lidx *target_rows = NULL;
@@ -69,8 +69,8 @@ ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, gho
     (*context)->halo_elements = -1;
         
 
-    GHOST_CALL_GOTO(ghost_map_create(&((*context)->row_map),gnrows,comm),err,ret);
-    GHOST_CALL_GOTO(ghost_map_create(&((*context)->col_map),gncols,comm),err,ret);
+    GHOST_CALL_GOTO(ghost_map_create(&((*context)->row_map),gnrows,comm,GHOST_MAP_ROW,GHOST_MAP_IN_CONTEXT),err,ret);
+    GHOST_CALL_GOTO(ghost_map_create(&((*context)->col_map),gncols,comm,GHOST_MAP_COL,GHOST_MAP_IN_CONTEXT),err,ret);
 
     GHOST_CALL_GOTO(ghost_nrank(&nranks, (*context)->mpicomm),err,ret);
     GHOST_CALL_GOTO(ghost_rank(&me, (*context)->mpicomm),err,ret);
@@ -486,7 +486,7 @@ ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, gh
  
     ghost_lidx first_putpos = 0;
      
-     if(mat->context->flags & GHOST_PERM_NO_DISTINCTION) {
+     if(mat->context->col_map->flags & GHOST_PERM_NO_DISTINCTION) {
         ghost_lidx halo_ctr = 0;
         //we need to know number of halo elements now
         for(int k=0;k<nprocs;++k) {
@@ -525,7 +525,6 @@ ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, gh
 
     this_pseudo_col = ctx->row_map->ldim[me];
     
-    ghost_lidx rowpadding = ghost_densemat_row_padding();
     GHOST_CALL_RETURN(ghost_nrank(&nprocs, ctx->mpicomm));
     GHOST_CALL_RETURN(ghost_rank(&me, ctx->mpicomm));
 
@@ -727,22 +726,17 @@ char * ghost_context_workdist_string(ghost_context_flags_t flags)
     return ret;
 }
 
-int ghost_rank_of_row(ghost_context *ctx, ghost_gidx row)
-{
-    int i,nprocs;
-    GHOST_CALL_RETURN(ghost_nrank(&nprocs,ctx->mpicomm));
-
-    for (i=0; i<nprocs; i++) {
-        if (ctx->row_map->goffs[i] <= row && ctx->row_map->goffs[i]+ctx->row_map->ldim[i] > row) {
-            return i;
-        }
-    }
-
-    return -1;
-}
-
 ghost_map *ghost_context_map(const ghost_context *ctx, const ghost_maptype mt) 
 {
     return mt==GHOST_MAP_ROW?ctx->row_map:mt==GHOST_MAP_COL?ctx->col_map:ctx->row_map;
 }
 
+ghost_map *ghost_context_other_map(const ghost_context *ctx, const ghost_maptype mt)
+{
+    return mt==GHOST_MAP_ROW?ctx->col_map:mt==GHOST_MAP_COL?ctx->row_map:NULL;
+}
+    
+ghost_map *ghost_context_max_map(const ghost_context *ctx)
+{
+    return ctx->row_map->dimpad>ctx->col_map->dimpad?ctx->row_map:ctx->col_map;
+}

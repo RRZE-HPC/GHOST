@@ -411,11 +411,13 @@ if(tid == nthreads-1) \
 template <typename MT> // TODO, typename VT>
 static ghost_error ghost_kacz_BMC_u_plain_cm_CHUNKHEIGHT_NVECS_tmpl(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts)
 {
+#if NVECS == 1
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     //int flag_err = 0;
     //currently only implementation for SELL-1-1
     //const int CHUNKHEIGHT = 1; 
     //const int NVECS = 1;
+    MT *bval = NULL;
     
     #if CHUNKHEIGHT>1
     ghost_lidx start_rem, start_chunk, end_chunk, end_rem; 
@@ -427,13 +429,6 @@ static ghost_error ghost_kacz_BMC_u_plain_cm_CHUNKHEIGHT_NVECS_tmpl(ghost_densem
     if (mat->context->nzones == 0 || mat->context->zone_ptr == NULL){
         ERROR_LOG("Splitting of matrix by Block Multicoloring has not be done!");
     }
-    
-    if (NVECS > 1) {
-        ERROR_LOG("Multi-vec in COLUMN major format not implemented, change to ROW major!");
-        return GHOST_ERR_NOT_IMPLEMENTED;
-    }
-    
-    MT *bval = NULL;
     
     if(b!= NULL)
         bval = (MT *)(b->val);
@@ -661,6 +656,14 @@ static ghost_error ghost_kacz_BMC_u_plain_cm_CHUNKHEIGHT_NVECS_tmpl(ghost_densem
     
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     return GHOST_SUCCESS;
+#else
+    UNUSED(x);
+    UNUSED(mat);
+    UNUSED(b);
+    UNUSED(opts);
+    ERROR_LOG("Multi-vec in COLUMN major format not implemented, change to ROW major!");
+    return GHOST_ERR_NOT_IMPLEMENTED;
+#endif
 }
 
 ghost_error ghost_kacz__BMC_u_plain_x_x_cm_CHUNKHEIGHT_NVECS_0(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts)

@@ -40,7 +40,9 @@ const ghost_sparsemat_traits GHOST_SPARSEMAT_TRAITS_INITIALIZER = {
 
 static const char * ghost_sparsemat_formatName(ghost_sparsemat *mat);
 static ghost_error ghost_sparsemat_split(ghost_sparsemat *mat);
+#ifdef GHOST_HAVE_CUDA
 static ghost_error ghost_sparsemat_upload(ghost_sparsemat *mat);
+#endif
 static ghost_error ghost_set_kacz_ratio(ghost_context *ctx, ghost_sparsemat *mat); 
 
 const ghost_spmv_opts GHOST_SPMV_OPTS_INITIALIZER = {
@@ -757,7 +759,7 @@ size_t ghost_sparsemat_bytesize (ghost_sparsemat *mat)
     mat->nEnts*(sizeof(ghost_lidx)+mat->elSize));
 }
 
-ghost_error initHaloAvg(ghost_sparsemat *mat)
+static ghost_error initHaloAvg(ghost_sparsemat *mat)
 {
     ghost_error ret = GHOST_SUCCESS;
     int me,nprocs;
@@ -918,12 +920,12 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
         }
 
         ghost_context_flags_t ctxflags = GHOST_CONTEXT_DEFAULT;
-        if (mat->traits.flags & GHOST_SPARSEMAT_PERM_NO_DISTINCTION) {
-            ctxflags |= GHOST_PERM_NO_DISTINCTION;
-        }
-        ghost_context_create(&(mat->context),src->gnrows,src->gncols,ctxflags,src,GHOST_SPARSEMAT_SRC_FUNC,mpicomm,weight);
+        ghost_context_create(&(mat->context),src->gnrows,src->gncols,ctxflags,mpicomm,weight);
         GHOST_CALL_GOTO(ghost_nrank(&nprocs, mat->context->mpicomm),err,ret);
         ghost_map_create_distribution(mat->context->row_map,src,mat->context->mpicomm,mat->context->weight,GHOST_MAP_DIST_NROWS);
+        if (mat->traits.flags & GHOST_SPARSEMAT_PERM_NO_DISTINCTION) {
+            mat->context->col_map->flags = (ghost_map_flags)(mat->context->col_map->flags&GHOST_PERM_NO_DISTINCTION);
+        }
         if (nprocs == 1) {
             mat->context->col_map->dim = src->gncols;
             mat->context->col_map->dimpad = PAD(mat->context->col_map->dim,ghost_densemat_row_padding());
@@ -1002,7 +1004,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
     mat->context->upperBandwidth = 0;
     
     if (mat->traits.sortScope > 1) {
-        mat->traits.flags |= GHOST_SPARSEMAT_SORT_ROWS;
+        mat->traits.flags = (ghost_sparsemat_flags)(mat->traits.flags&GHOST_SPARSEMAT_SORT_ROWS);
     }
    
     // _Only_ global permutation:
@@ -1012,8 +1014,8 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
             !(mat->traits.flags & GHOST_SPARSEMAT_PERM_ANY_LOCAL)) {
         ghost_sparsemat *dummymat = NULL;
         ghost_sparsemat_traits mtraits = mat->traits;
-        mtraits.flags = mtraits.flags & ~(GHOST_SPARSEMAT_PERM_ANY_GLOBAL);
-        mtraits.flags = mtraits.flags | GHOST_SPARSEMAT_SAVE_ORIG_COLS;
+        mtraits.flags = (ghost_sparsemat_flags)(mtraits.flags & ~(GHOST_SPARSEMAT_PERM_ANY_GLOBAL));
+        mtraits.flags = (ghost_sparsemat_flags)(mtraits.flags | GHOST_SPARSEMAT_SAVE_ORIG_COLS);
         mtraits.C = 1;
         mtraits.sortScope = 1;
         ghost_sparsemat_create(&dummymat,NULL,&mtraits,1);
@@ -1034,10 +1036,10 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
     else if (mat->traits.flags & GHOST_SPARSEMAT_PERM_ANY) {
         ghost_sparsemat *dummymat = NULL;
         ghost_sparsemat_traits mtraits = mat->traits;
-        mtraits.flags = mtraits.flags & ~(GHOST_SPARSEMAT_PERM_ANY_LOCAL);
-        mtraits.flags = mtraits.flags | GHOST_SPARSEMAT_SAVE_ORIG_COLS;
+        mtraits.flags = (ghost_sparsemat_flags)(mtraits.flags & ~(GHOST_SPARSEMAT_PERM_ANY_LOCAL));
+        mtraits.flags = (ghost_sparsemat_flags)(mtraits.flags | GHOST_SPARSEMAT_SAVE_ORIG_COLS);
         if (mat->traits.flags & GHOST_SOLVER_KACZ && nprocs > 1) {
-            mtraits.flags = mtraits.flags | GHOST_SPARSEMAT_PERM_NO_DISTINCTION;
+            mtraits.flags = (ghost_sparsemat_flags)(mtraits.flags | GHOST_SPARSEMAT_PERM_NO_DISTINCTION);
         }
         mtraits.C = 1;
         mtraits.sortScope = 1;
@@ -1807,9 +1809,9 @@ ghost_error ghost_sparsemat_to_bin(ghost_sparsemat *mat, char *matrixPath)
     return GHOST_ERR_NOT_IMPLEMENTED;
 }
 
+#ifdef GHOST_HAVE_CUDA
 static ghost_error ghost_sparsemat_upload(ghost_sparsemat* mat) 
 {
-    #ifdef GHOST_HAVE_CUDA
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
     if (!(mat->traits.flags & GHOST_SPARSEMAT_HOST)) {
         DEBUG_LOG(1,"Creating matrix on CUDA device");
@@ -1828,12 +1830,7 @@ static ghost_error ghost_sparsemat_upload(ghost_sparsemat* mat)
         GHOST_CALL_RETURN(ghost_cu_upload(mat->cu_chunkLen, mat->chunkLen, (SPM_NROWSPAD(mat)/mat->traits.C)*sizeof(ghost_lidx)));
     }
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_COMMUNICATION);
-    #else
-    if (mat->traits.flags & GHOST_SPARSEMAT_DEVICE) {
-        ERROR_LOG("Device matrix cannot be created without CUDA");
-        return GHOST_ERR_CUDA;
-    }
-    #endif
     return GHOST_SUCCESS;
 }
+#endif
 

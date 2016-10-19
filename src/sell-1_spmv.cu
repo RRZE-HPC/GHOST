@@ -198,7 +198,7 @@ ghost_error ghost_cu_sell1_spmv_selector(ghost_densemat * lhs_in, ghost_sparsema
         lhstraits.location = GHOST_LOCATION_DEVICE;
         lhstraits.storage = GHOST_DENSEMAT_COLMAJOR;
         lhstraits.flags &= (ghost_densemat_flags)(~GHOST_DENSEMAT_VIEW);
-        GHOST_CALL_GOTO(ghost_densemat_create(&lhs,NULL,lhstraits),err,ret);
+        GHOST_CALL_GOTO(ghost_densemat_create(&lhs,lhs_in->map,lhstraits),err,ret);
         GHOST_CALL_GOTO(ghost_densemat_init_densemat(lhs,lhs_in,0,0),err,ret);
     } else {
         lhs = lhs_in;
@@ -215,9 +215,9 @@ ghost_error ghost_cu_sell1_spmv_selector(ghost_densemat * lhs_in, ghost_sparsema
         rhstraits.location = GHOST_LOCATION_DEVICE;
         rhstraits.storage = GHOST_DENSEMAT_COLMAJOR;
         rhstraits.flags &= (ghost_densemat_flags)(~GHOST_DENSEMAT_VIEW);
-        GHOST_CALL_GOTO(ghost_densemat_noctx_create(&rhs,DM_NROWS(rhs_in),rhstraits),err,ret);
+        GHOST_CALL_GOTO(ghost_densemat_create(&rhs,ghost_map_create_light(DM_NROWS(rhs_in),rhs_in->map->mpicomm),rhstraits),err,ret);
         GHOST_CALL_GOTO(ghost_densemat_init_densemat(rhs,rhs_in,0,0),err,ret);
-        GHOST_CALL_GOTO(ghost_cu_memtranspose(rhs->context->halo_elements,rhs->traits.ncols,&rhs->cu_val[rhs->context->row_map->dimpad*rhs->elSize],rhs->stride,&rhs_in->cu_val[rhs_in->context->row_map->dimpad*rhs_in->stride*rhs_in->elSize],rhs_in->stride,rhs->traits.datatype),err,ret);
+        GHOST_CALL_GOTO(ghost_cu_memtranspose(rhs->map->nhalo,rhs->traits.ncols,&rhs->cu_val[rhs->map->dimpad*rhs->elSize],rhs->stride,&rhs_in->cu_val[rhs_in->map->dimpad*rhs_in->stride*rhs_in->elSize],rhs_in->stride,rhs->traits.datatype),err,ret);
     } else {
         rhs = rhs_in;
     }

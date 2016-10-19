@@ -63,7 +63,7 @@ static ghost_error FUNCNAME(normalize_tmpl(ghost_densemat *vec))
         s[v] = (v_t)sqrt(s[v]);
         s[v] = (v_t)(((v_t)1.)/s[v]);
     }
-    GHOST_CALL_GOTO(FUNCNAME(vscale_selector)(vec,s),err,ret);
+    GHOST_CALL_GOTO(ghost_vscale(vec,s),err,ret);
 
     goto out;
 err:
@@ -233,7 +233,7 @@ static ghost_error FUNCNAME(vaxpy_tmpl(ghost_densemat *vec, ghost_densemat *vec2
     check.OUT = vec;
     check.C = vec2;
   
-    ret = ghost_check_vec_vec_compatibility(&check,vec2->context);
+    ret = ghost_check_vec_vec_compatibility(&check);
     ///////////////////////////////////////////////////
  
     
@@ -266,7 +266,7 @@ static ghost_error FUNCNAME(vaxpby_tmpl(ghost_densemat *vec, ghost_densemat *vec
     check.OUT = vec;
     check.C = vec2;
   
-    ret = ghost_check_vec_vec_compatibility(&check,vec2->context);
+    ret = ghost_check_vec_vec_compatibility(&check);
     ///////////////////////////////////////////////////
  
     v_t *s = (v_t *)scale;
@@ -392,7 +392,7 @@ static int densemat_perment_cmp (const void *a, const void *b)
 
 
     template <typename v_t> 
-static ghost_error FUNCNAME(permute_tmpl(ghost_densemat *vec, ghost_context *ctx, ghost_permutation_direction dir))
+static ghost_error FUNCNAME(permute_tmpl(ghost_densemat *vec, ghost_permutation_direction dir))
 {
 
     if(vec->map == NULL) {
@@ -418,7 +418,7 @@ static ghost_error FUNCNAME(permute_tmpl(ghost_densemat *vec, ghost_context *ctx
 
         if (dir == GHOST_PERMUTATION_PERM2ORIG && vec->map->loc_perm) {
             ghost_densemat *vecclone;
-            ghost_densemat_clone(&vecclone,vec,DM_NROWS(vec),0,vec->traits.ncols,0);
+            ghost_densemat_clone(&vecclone,vec,vec->traits.ncols,0);
             ghost_densemat_download(vecclone);
 
             if(ghost_omp_in_parallel()) {
@@ -457,24 +457,24 @@ static ghost_error FUNCNAME(permute_tmpl(ghost_densemat *vec, ghost_context *ctx
             ghost_malloc((void **)&req,DM_NROWS(vec)*2*sizeof(MPI_Request));
 
             ghost_densemat *vecclone;
-            ghost_densemat_clone(&vecclone,vec,DM_NROWS(vec),0,vec->traits.ncols,0);
+            ghost_densemat_clone(&vecclone,vec,vec->traits.ncols,0);
             ghost_densemat_download(vecclone);
             int dstrank,srcrank;
             ghost_lidx rowindst;
             for (c=0; c<vec->traits.ncols; c++) {
                 for (i=0; i<DM_NROWS(vec); i++) {
                     if (dir == GHOST_PERMUTATION_ORIG2PERM) {
-                        dstrank = ghost_rank_of_row(ctx,vec->map->glb_perm[i]);
-                        srcrank = ghost_rank_of_row(ctx,vec->map->glb_perm_inv[i]);
-                        rowindst = vec->map->glb_perm[i]-ctx->row_map->goffs[dstrank];
+                        dstrank = ghost_rank_of_row(vec->map,vec->map->glb_perm[i]);
+                        srcrank = ghost_rank_of_row(vec->map,vec->map->glb_perm_inv[i]);
+                        rowindst = vec->map->glb_perm[i]-vec->map->goffs[dstrank];
                     } else {
-                        dstrank = ghost_rank_of_row(ctx,vec->map->glb_perm_inv[i]);
-                        srcrank = ghost_rank_of_row(ctx,vec->map->glb_perm[i]);
-                        rowindst = vec->map->glb_perm_inv[i]-ctx->row_map->goffs[dstrank];
+                        dstrank = ghost_rank_of_row(vec->map,vec->map->glb_perm_inv[i]);
+                        srcrank = ghost_rank_of_row(vec->map,vec->map->glb_perm[i]);
+                        rowindst = vec->map->glb_perm_inv[i]-vec->map->goffs[dstrank];
                     }
 
-                    MPI_Isend(DENSEMAT_VALPTR(vecclone,i,c),1,vec->mpidt,dstrank,rowindst,ctx->mpicomm,&req[i]);
-                    MPI_Irecv(DENSEMAT_VALPTR(vec,i,c),1,vec->mpidt,srcrank,i,ctx->mpicomm,&req[DM_NROWS(vec)+i]);
+                    MPI_Isend(DENSEMAT_VALPTR(vecclone,i,c),1,vec->mpidt,dstrank,rowindst,vec->map->mpicomm,&req[i]);
+                    MPI_Irecv(DENSEMAT_VALPTR(vec,i,c),1,vec->mpidt,srcrank,i,vec->map->mpicomm,&req[DM_NROWS(vec)+i]);
                 }
                 MPI_Waitall(2*DM_NROWS(vec),req,MPI_STATUS_IGNORE);
             }
@@ -487,11 +487,11 @@ static ghost_error FUNCNAME(permute_tmpl(ghost_densemat *vec, ghost_context *ctx
         } 
         if (dir == GHOST_PERMUTATION_ORIG2PERM && vec->map->loc_perm) {
             ghost_densemat *vecclone;
-            ghost_densemat_clone(&vecclone,vec,DM_NROWS(vec),0,vec->traits.ncols,0);
+            ghost_densemat_clone(&vecclone,vec,vec->traits.ncols,0);
             ghost_densemat_download(vecclone);       
 
 
-            if (ctx->flags & GHOST_PERM_NO_DISTINCTION) {
+            if (vec->map->flags & GHOST_PERM_NO_DISTINCTION) {
                 WARNING_LOG("This will probably not work for views or non-standard densemats.");
                 //FIXME Fix this
                 //Accessing invPerm would be a problem if GHOST_PERM_NO_DISTINCTION is ON
@@ -643,7 +643,7 @@ static ghost_error FUNCNAME(fromVec_tmpl(ghost_densemat *vec, ghost_densemat *ve
     check.OUT = vec;
     check.C = vec2;
   
-    ret = ghost_check_vec_vec_compatibility(&check,vec2->context);
+    ret = ghost_check_vec_vec_compatibility(&check);
     ///////////////////////////////////////////////////
  
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
@@ -895,11 +895,11 @@ extern "C" ghost_error FUNCNAME(fromVec_selector(ghost_densemat *vec, ghost_dens
     return ret;
 }
 
-extern "C" ghost_error FUNCNAME(permute_selector(ghost_densemat *vec, ghost_context *ctx, ghost_permutation_direction dir))
+extern "C" ghost_error FUNCNAME(permute_selector(ghost_densemat *vec, ghost_permutation_direction dir))
 { 
     ghost_error ret = GHOST_SUCCESS;
 
-    SELECT_TMPL_1DATATYPE(vec->traits.datatype,std::complex,ret,FUNCNAME(permute_tmpl),vec,ctx,dir);
+    SELECT_TMPL_1DATATYPE(vec->traits.datatype,std::complex,ret,FUNCNAME(permute_tmpl),vec,dir);
 
     return ret;
 }

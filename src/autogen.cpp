@@ -78,7 +78,7 @@ ghost_error ghost_autogen_spmmv_nvecs(int **nvecs, int *n, int chunkheight)
     }
 
     size_t pos = 0, commapos = 0;
-    int cfg_chunkheight, cfg_nvecs, cfg_nshifts;
+    int cfg_chunkheight, cfg_nvecs;
     string configuration;
     vector<int> nvecs_vec;
 
@@ -102,6 +102,9 @@ ghost_error ghost_autogen_spmmv_nvecs(int **nvecs, int *n, int chunkheight)
             continue;
         } else {
             cfg_nvecs = stoi(cfg_nvecs_str);
+        }
+        if (chunkheight == cfg_chunkheight) {
+            nvecs_vec.push_back(cfg_nvecs);
         }
         configurations.erase(0, pos + 1);
     }

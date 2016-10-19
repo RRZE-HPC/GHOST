@@ -160,7 +160,7 @@ static ghost_error ghost_sparsemat_string_tmpl(ghost_sparsemat *mat, char **str,
 	    INFO_LOG("Original matrix without permutation is printed, since GHOST_PERM_NO_DISTINCTION is on");
     }
 
-    ghost_lidx chunk,i,j,row=0,col;
+    ghost_lidx chunk,i,j,row=0;
     m_t *val = (m_t *)mat->val;
 
     stringstream buffer;

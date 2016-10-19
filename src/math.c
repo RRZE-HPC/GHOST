@@ -566,7 +566,7 @@ ghost_error ghost_axpy(ghost_densemat *y, ghost_densemat *x, void *a)
 
     GHOST_DENSEMAT_CHECK_SIMILARITY(y,x);
 
-    ghost_location commonlocation = y->traits.location & x->traits.location;
+    ghost_location commonlocation = (ghost_location)(y->traits.location & x->traits.location);
 
     ghost_error ret;
 
@@ -589,7 +589,7 @@ ghost_error ghost_vaxpy(ghost_densemat *y, ghost_densemat *x, void *a)
 
     GHOST_DENSEMAT_CHECK_SIMILARITY(y,x);
 
-    ghost_location commonlocation = y->traits.location & x->traits.location;
+    ghost_location commonlocation = (ghost_location)(y->traits.location & x->traits.location);
 
     ghost_error ret;
 
@@ -612,7 +612,7 @@ ghost_error ghost_axpby(ghost_densemat *y, ghost_densemat *x, void *a, void *b)
 
     GHOST_DENSEMAT_CHECK_SIMILARITY(y,x);
 
-    ghost_location commonlocation = y->traits.location & x->traits.location;
+    ghost_location commonlocation = (ghost_location)(y->traits.location & x->traits.location);
 
     ghost_error ret;
 
@@ -635,7 +635,7 @@ ghost_error ghost_vaxpby(ghost_densemat *y, ghost_densemat *x, void *a, void *b)
 
     GHOST_DENSEMAT_CHECK_SIMILARITY(y,x);
 
-    ghost_location commonlocation = y->traits.location & x->traits.location;
+    ghost_location commonlocation = (ghost_location)(y->traits.location & x->traits.location);
 
     ghost_error ret;
 
@@ -659,7 +659,7 @@ ghost_error ghost_axpbypcz(ghost_densemat *y, ghost_densemat *x, void *a, void *
     GHOST_DENSEMAT_CHECK_SIMILARITY(y,x);
     GHOST_DENSEMAT_CHECK_SIMILARITY(y,z);
 
-    ghost_location commonlocation = y->traits.location & x->traits.location;
+    ghost_location commonlocation = (ghost_location)(y->traits.location & x->traits.location);
 
     ghost_error ret;
 
@@ -683,7 +683,7 @@ ghost_error ghost_vaxpbypcz(ghost_densemat *y, ghost_densemat *x, void *a, void 
     GHOST_DENSEMAT_CHECK_SIMILARITY(y,x);
     GHOST_DENSEMAT_CHECK_SIMILARITY(y,z);
 
-    ghost_location commonlocation = y->traits.location & x->traits.location;
+    ghost_location commonlocation = (ghost_location)(y->traits.location & x->traits.location);
 
     ghost_error ret;
 

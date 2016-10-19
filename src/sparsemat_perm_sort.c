@@ -17,7 +17,6 @@ ghost_error ghost_sparsemat_perm_sort(ghost_context *ctx, ghost_sparsemat *mat, 
     ghost_error ret = GHOST_SUCCESS;
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_SETUP);
     
-    int me;    
     ghost_lidx i,c,nrows;
     ghost_sorting_helper *rowSort = NULL;
     ghost_lidx *rpt = mat->chunkStart;

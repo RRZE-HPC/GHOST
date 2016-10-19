@@ -17,6 +17,8 @@
 #GHOST_SUBST NSHIFTS ${NSHIFTS}
 #GHOST_SUBST CHUNKHEIGHT 1
 
+#if NSHIFTS
+
 //Fix for gcc compile error
 #ifdef __GNUC__
 #ifndef __INTEL_COMPILER
@@ -203,12 +205,11 @@ for (ghost_lidx row=start; row<end; ++row){ \
     #GHOST_UNROLL#__m128d rownorm@ = _mm_setzero_pd();\#(NSHIFTS/2) \
     #GHOST_UNROLL#__m256d scal@ = _mm256_setzero_pd();\#((2*NSHIFTS*NVECS)/4) \
     #GHOST_UNROLL#__m256d mval_sigma@ = _mm256_setzero_pd();\#(2*NSHIFTS/4) \
-    __m256d rp_x,ip_x; \
-    __m256d xval_vec,mval_idx; \
+    __m256d xval_vec, mval_idx; \
     __m256d mval_diag = _mm256_setzero_pd(); \
     __m128d zero=_mm_setzero_pd(); \
     __m256d zero_256=_mm256_setzero_pd(); \
-    __m256d temp1, temp2; \
+    __m256d temp1; \
     __m128d templo_1, temphi_1, templo_2, mval_idx_128; \
     __m256d omega_vec; \
     ghost_lidx idx = mat->chunkStart[row]; \
@@ -269,12 +270,11 @@ for (ghost_lidx row=start; row>end; --row){ \
     #GHOST_UNROLL#__m128d rownorm@ = _mm_setzero_pd();\#(NSHIFTS/2) \
     #GHOST_UNROLL#__m256d scal@ = _mm256_setzero_pd();\#((2*NSHIFTS*NVECS)/4) \
     #GHOST_UNROLL#__m256d mval_sigma@ = _mm256_setzero_pd();\#(2*NSHIFTS/4) \
-    __m256d rp_x,ip_x; \
-    __m256d xval_vec,mval_idx; \
+    __m256d xval_vec, mval_idx; \
     __m256d mval_diag = _mm256_setzero_pd(); \
     __m128d zero=_mm_setzero_pd(); \
     __m256d zero_256=_mm256_setzero_pd(); \
-    __m256d temp1, temp2; \
+    __m256d temp1; \
     __m128d templo_1, temphi_1, templo_2, mval_idx_128; \
     __m256d omega_vec; \
     ghost_lidx idx = mat->chunkStart[row]; \
@@ -458,7 +458,7 @@ for (ghost_lidx row=start; row<end; ++row){ \
     #GHOST_UNROLL#double rp@ = 0;\#NSHIFTS \
     #GHOST_UNROLL#double ip@ = 0;\#NSHIFTS \
     \
-    double rp_x=0,ip_x=0; \
+    double rp_x=0, ip_x=0; \
     double mval_diag = 0; \
     ghost_lidx idx = mat->chunkStart[row]; \
     if(bval != NULL) { \
@@ -515,7 +515,7 @@ for (ghost_lidx row=start; row>end; --row){ \
     #GHOST_UNROLL#double rp@ = 0;\#NSHIFTS \
     #GHOST_UNROLL#double ip@ = 0;\#NSHIFTS \
     \
-    double rp_x=0,ip_x=0; \
+    double rp_x=0, ip_x=0; \
     double mval_diag = 0; \
     ghost_lidx idx = mat->chunkStart[row]; \
     if(bval != NULL) { \
@@ -948,8 +948,11 @@ if(start_chunk>end_chunk) { \
 
 */
 
+#endif // NSHIFTS
+
 ghost_error ghost_kacz_BMCshift_u_plain_rm_CHUNKHEIGHT_NVECS_NSHIFTS(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts)
 {
+#if NSHIFTS
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     
     typedef double MT;
@@ -1153,18 +1156,35 @@ ghost_error ghost_kacz_BMCshift_u_plain_rm_CHUNKHEIGHT_NVECS_NSHIFTS(ghost_dense
     
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     return GHOST_SUCCESS;
+#else
+    UNUSED(x);
+    UNUSED(mat);
+    UNUSED(b);
+    UNUSED(opts);
+    ERROR_LOG("This function should not have been called with 0 shifts!");
+    return GHOST_ERR_INVALID_ARG;
+#endif
 }
 
 ghost_error ghost_kacz__BMCshift_u_plain_x_x_rm_CHUNKHEIGHT_NVECS_NSHIFTS(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts)
 {
+#if NSHIFTS
     ghost_error ret = GHOST_SUCCESS;
     
     //SELECT_TMPL_1DATATYPE(mat->traits.datatype,std::complex,ret,ghost_kacz_BMCshift_u_plain_cm_CHUNKHEIGHT_NVECS_tmpl,x,mat,b,opts);
     // TODO mixed datatypes
-    ghost_kacz_BMCshift_u_plain_rm_CHUNKHEIGHT_NVECS_NSHIFTS(x,mat,b, opts);
+    ret = ghost_kacz_BMCshift_u_plain_rm_CHUNKHEIGHT_NVECS_NSHIFTS(x,mat,b, opts);
     //SELECT_TMPL_2DATATYPES_base_derived(mat->traits.datatype,x->traits.datatype,std::complex,ret,ghost_kacz_BMCshift_u_plain_rm_CHUNKHEIGHT_NVECS_tmpl,x,mat,b,opts);
     
     return ret;
+#else
+    UNUSED(x);
+    UNUSED(mat);
+    UNUSED(b);
+    UNUSED(opts);
+    ERROR_LOG("This function should not have been called with 0 shifts!");
+    return GHOST_ERR_INVALID_ARG;
+#endif
     
 }
 

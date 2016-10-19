@@ -98,11 +98,11 @@ ghost_error ghost_tsmm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w_i
 
     if ((ret = ghost_tsmm_valid(x,v,"N",w_in,"N",alpha,beta,GHOST_GEMM_NO_REDUCE,1)) != GHOST_SUCCESS) {
         INFO_LOG("TSMM cannot be applied. Checking whether GEMM is fine!");
-        if ((ret = ghost_gemm_valid(x,v,"N",w_in,"N",alpha,beta,GHOST_GEMM_NO_REDUCE,NULL,GHOST_GEMM_DEFAULT,1)) != GHOST_SUCCESS) {
+        if ((ret = ghost_gemm_valid(x,v,"N",w_in,"N",alpha,beta,GHOST_GEMM_NO_REDUCE,GHOST_GEMM_DEFAULT,1)) != GHOST_SUCCESS) {
             ERROR_LOG("GEMM cannot be applied!");
             return ret;
         } else {
-            return ghost_gemm(x,v,"N",w_in,"N",alpha,beta,GHOST_GEMM_NO_REDUCE,NULL,GHOST_GEMM_NOT_SPECIAL);
+            return ghost_gemm(x,v,"N",w_in,"N",alpha,beta,GHOST_GEMM_NO_REDUCE,GHOST_GEMM_NOT_SPECIAL);
         }
     }
     
@@ -134,7 +134,7 @@ ghost_error ghost_tsmm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w_i
         ghost_densemat_traits wtraits = w_in->traits;
         wtraits.flags &= (ghost_densemat_flags)~GHOST_DENSEMAT_VIEW;
         wtraits.storage = GHOST_DENSEMAT_COLMAJOR;
-        ghost_densemat_create(&w,NULL,wtraits);
+        ghost_densemat_create(&w,ghost_map_create_light(w_in->map->dim,w_in->map->mpicomm),wtraits);
         ghost_densemat_init_densemat(w,w_in,0,0);
     }
 
@@ -264,7 +264,7 @@ end_of_loop:
         ret = kernel(x,v,w,alpha,beta);
     } else {
         PERFWARNING_LOG("Could not find TSMM kernel. Fallback to GEMM");
-        ret = ghost_gemm(x,v,"N",w,"N",alpha,beta,GHOST_GEMM_NO_REDUCE,NULL,GHOST_GEMM_NOT_SPECIAL);
+        ret = ghost_gemm(x,v,"N",w,"N",alpha,beta,GHOST_GEMM_NO_REDUCE,GHOST_GEMM_NOT_SPECIAL);
     }
 
 #ifdef GHOST_INSTR_TIMING

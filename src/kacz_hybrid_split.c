@@ -489,12 +489,6 @@ ghost_error split_analytical(ghost_sparsemat *mat)
     kacz_analyze_print(mat);
     #endif
     
-    goto out;
-    
-    err:
-    
-    out:
-    
     return ret;
 }
 

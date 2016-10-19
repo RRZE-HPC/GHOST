@@ -355,7 +355,7 @@ if(tid == nthreads-1) \
 #endif
 
 template <typename MT> // TODO, typename VT>
-ghost_error ghost_kacz_BMCNORMAL_u_plain_rm_CHUNKHEIGHT_NVECS_tmpl(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts)
+static ghost_error ghost_kacz_BMCNORMAL_u_plain_rm_CHUNKHEIGHT_NVECS_tmpl(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     //int flag_err = 0;
