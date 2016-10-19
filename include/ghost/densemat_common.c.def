@@ -148,7 +148,6 @@ static ghost_error FUNCNAME(viewPlain(ghost_densemat *vec, void *data, ghost_lid
         vec->val = data;
     }
     vec->stride = lda;
-    vec->traits.ncolsorig = vec->traits.ncols;
     DM_NROWS(vec->src) = DM_NROWS(vec);
 #ifdef GHOST_HAVE_MPI
     MPI_CALL_RETURN(MPI_Type_free(&(vec->fullmpidt)));
@@ -167,7 +166,6 @@ static ghost_error FUNCNAME(viewCols(ghost_densemat *src, ghost_densemat **new, 
     ghost_densemat_traits newTraits = src->traits;
     newTraits.ncols = nc;
     newTraits.ncolspadded = nc;
-    newTraits.ncolsorig = src->traits.ncolsorig;
     newTraits.flags |= (ghost_densemat_flags)GHOST_DENSEMAT_VIEW;
     
     ghost_densemat_create(new,src->map,newTraits);
@@ -230,7 +228,7 @@ static ghost_error FUNCNAME(viewScatteredCols(ghost_densemat *src, ghost_densema
 
     ghost_lidx coloffset;
 
-    ghost_bitmap_clr_range((*new)->colmask,0,(*new)->traits.ncolsorig);
+    ghost_bitmap_clr_range((*new)->colmask,0,(*new)->src->traits.ncols);
 
     if (src->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         ghost_bitmap_copy((*new)->rowmask,src->rowmask);
@@ -271,7 +269,7 @@ static ghost_error FUNCNAME(viewScatteredVec(ghost_densemat *src, ghost_densemat
     MPI_CALL_RETURN(MPI_Type_commit(&((*new)->fullmpidt)));
 #endif
 
-    ghost_bitmap_clr_range((*new)->colmask,0,(*new)->traits.ncolsorig);
+    ghost_bitmap_clr_range((*new)->colmask,0,(*new)->src->traits.ncols);
     ghost_bitmap_clr_range((*new)->rowmask,0,DM_NROWS((*new)->src));
 
     if (src->traits.flags & GHOST_DENSEMAT_SCATTERED) {

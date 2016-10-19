@@ -212,7 +212,6 @@ ghost_error ghost_densemat_cm_compress(ghost_densemat *vec)
     ghost_bitmap_free(vec->colmask); vec->colmask = NULL;
     vec->traits.flags &= ~(ghost_densemat_flags)GHOST_DENSEMAT_VIEW;
     vec->traits.flags &= ~(ghost_densemat_flags)GHOST_DENSEMAT_SCATTERED;
-    vec->traits.ncolsorig = vec->traits.ncols;
     vec->stride = DM_NROWSPAD(vec);
     vec->src = vec;
 

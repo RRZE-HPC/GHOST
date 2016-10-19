@@ -1131,7 +1131,7 @@ extern "C" ghost_error FUNCNAME(fromRand)(ghost_densemat *vec)
     one[1] = 0.;
     ghost_densemat *compactvec;
     
-    if ((vec->traits.ncolsorig != vec->traits.ncols) || (vec->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
+    if ((vec->src->traits.ncols != vec->traits.ncols) || (vec->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
         INFO_LOG("Cloning (and compressing) vec before operation");
         ghost_densemat_clone(&compactvec,vec,vec->traits.ncols,0);
     } else {

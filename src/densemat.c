@@ -41,7 +41,6 @@ const ghost_densemat_traits GHOST_DENSEMAT_TRAITS_INITIALIZER = {
     //.gnrows = 0,
     //.goffs = 0,
     .ncols = 1,
-    .ncolsorig = 0,
     .ncolspadded = 0,
     .flags = GHOST_DENSEMAT_DEFAULT,
     .storage = GHOST_DENSEMAT_STORAGE_DEFAULT,
@@ -760,7 +759,6 @@ ghost_error ghost_densemat_clone(ghost_densemat **dst, ghost_densemat *src, ghos
 {
     ghost_densemat_traits newTraits = src->traits;
     newTraits.ncols = nc;
-    newTraits.ncolsorig = nc;
     newTraits.flags &= ~(ghost_densemat_flags)GHOST_DENSEMAT_VIEW;
     newTraits.flags &= ~(ghost_densemat_flags)GHOST_DENSEMAT_SCATTERED;
 

@@ -260,11 +260,6 @@ typedef struct
      */
     ghost_lidx ncols;
     /**
-     * @brief The number of columns of the densemat which is viewed by this 
-     * densemat.
-     */
-    ghost_lidx ncolsorig;
-    /**
      * @brief The padded number of columns (may differ from ncols for row-major 
      * densemats).
      */
