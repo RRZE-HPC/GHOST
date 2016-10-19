@@ -813,7 +813,7 @@ static ghost_error FUNCNAME(fromFunc(ghost_densemat *vec, int (*fp)(ghost_gidx, 
               DENSEMAT_ITER(vec,fp(offset+row,col,valptr,arg));
             }
         } else {
-            vec->traits.flags |= GHOST_DENSEMAT_PERMUTED;
+            vec->traits.flags = (ghost_densemat_flags)(vec->traits.flags|GHOST_DENSEMAT_PERMUTED);
             if (vec->map->loc_perm && !vec->map->glb_perm) {
                 if( needInit ) {
                   DENSEMAT_ITER_INIT(vec,fp(offset+vec->map->loc_perm_inv[row],col,valptr,arg));

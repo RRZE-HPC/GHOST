@@ -486,7 +486,7 @@ ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, gh
  
     ghost_lidx first_putpos = 0;
      
-     if(mat->context->flags & GHOST_PERM_NO_DISTINCTION) {
+     if(mat->context->col_map->flags & GHOST_PERM_NO_DISTINCTION) {
         ghost_lidx halo_ctr = 0;
         //we need to know number of halo elements now
         for(int k=0;k<nprocs;++k) {

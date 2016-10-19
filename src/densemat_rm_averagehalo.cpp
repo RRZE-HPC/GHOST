@@ -81,11 +81,11 @@ static ghost_error ghost_densemat_rm_averagehalo_tmpl(ghost_densemat *vec, ghost
         MPI_CALL_GOTO(MPI_Waitall(2*nrank,req,MPI_STATUSES_IGNORE),err,ret);
         GHOST_CALL_GOTO(ghost_malloc((void **)&sum,vec->traits.ncols*ctx->nElemAvg*sizeof(T)),err,ret);
 
-#pragma omp parallel for schedule(runtime)   //which one to parallelise(inner or outer) depends on the matrix
-        for(int i=0 ; i<ctx->nChunkAvg; ++i) {
+#pragma omp parallel for schedule(runtime) private(j,ctr)   //which one to parallelise(inner or outer) depends on the matrix
+        for(i=0 ; i<ctx->nChunkAvg; ++i) {
             // #pragma omp parallel for schedule(runtime) private(j,k,ctr)
-            for(int j=ctx->avg_ptr[2*i]; j<ctx->avg_ptr[2*i+1]; ++j) {       
-                int ctr = ctx->mapAvg[j];
+            for(j=ctx->avg_ptr[2*i]; j<ctx->avg_ptr[2*i+1]; ++j) {       
+                 ctr = ctx->mapAvg[j];
                 if(ctx->col_map->loc_perm_inv && ctx->col_map->loc_perm_inv[j]<ctx->row_map->ldim[rank]) {
                     if(ctx->entsInCol[ctx->col_map->loc_perm_inv[j]] != 0) {//this is necessary since there can be cases where only halos are present
                         for(int k=0; k<vec->traits.ncols; ++k) {
@@ -127,11 +127,11 @@ static ghost_error ghost_densemat_rm_averagehalo_tmpl(ghost_densemat *vec, ghost
             curwork += ctx->dues[i]*vec->traits.ncols;
         }
 
-#pragma omp parallel for schedule(runtime) 
-        for(int i=0 ; i<ctx->nChunkAvg; ++i) {
+#pragma omp parallel for schedule(runtime) private(j,ctr) 
+        for(i=0 ; i<ctx->nChunkAvg; ++i) {
             //  #pragma omp parallel for schedule(runtime) private(j,k,ctr)
-            for(int j=ctx->avg_ptr[2*i]; j<ctx->avg_ptr[2*i+1]; ++j) {
-                int ctr = ctx->mapAvg[j];
+            for(j=ctx->avg_ptr[2*i]; j<ctx->avg_ptr[2*i+1]; ++j) {
+                ctr = ctx->mapAvg[j];
                 for(int k=0; k<vec->traits.ncols; ++k) {
                     ((T *)vec->val)[j*vec->traits.ncols+k] = sum[ctr*vec->traits.ncols+k]/(T)ctx->nrankspresent[ctr];
                 }
