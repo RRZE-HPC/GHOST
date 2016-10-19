@@ -77,6 +77,10 @@ ghost_error ghost_densemat_create(ghost_densemat **vec, ghost_map *map, ghost_de
     (*vec)->rowmask = NULL;
     (*vec)->val = NULL;
     (*vec)->cu_val = NULL;
+
+    if (!(map->flags & GHOST_MAP_IN_CONTEXT)) {
+        (*vec)->traits.flags = (ghost_densemat_flags)((*vec)->traits.flags|GHOST_DENSEMAT_FREE_MAP);
+    }
   /* 
     if (ctx) {
 //        if (ctx->perm_global || ctx->perm_local) {
@@ -522,7 +526,7 @@ void ghost_densemat_destroy( ghost_densemat* vec )
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TEARDOWN);
     if (vec) {
-        if (!(vec->map->flags & GHOST_MAP_IN_CONTEXT)) {
+        if (vec->traits.flags & GHOST_DENSEMAT_FREE_MAP) {
             ghost_map_destroy(vec->map);
             free(vec->map);
         }
