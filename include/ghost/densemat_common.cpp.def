@@ -63,7 +63,7 @@ static ghost_error FUNCNAME(normalize_tmpl(ghost_densemat *vec))
         s[v] = (v_t)sqrt(s[v]);
         s[v] = (v_t)(((v_t)1.)/s[v]);
     }
-    GHOST_CALL_GOTO(FUNCNAME(vscale_selector)(vec,s),err,ret);
+    GHOST_CALL_GOTO(ghost_vscale(vec,s),err,ret);
 
     goto out;
 err:
