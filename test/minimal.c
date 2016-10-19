@@ -40,8 +40,8 @@ int main(int argc, char **argv)
     ghost_sparsemat_init_rowfunc(A,&matsrc,MPI_COMM_WORLD,1.);
 
     // create and initialize input vector x and output vector y
-    ghost_densemat_create(&x, A->context, vtraits);
-    ghost_densemat_create(&y, A->context, vtraits);
+    ghost_densemat_create(&x, A->context->col_map, vtraits);
+    ghost_densemat_create(&y, A->context->row_map, vtraits);
     ghost_densemat_init_rand(x);      // x = random
     ghost_densemat_init_val(y,&zero); // y = 0
 

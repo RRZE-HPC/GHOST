@@ -10,6 +10,14 @@
 #include "types.h"
 #include "sparsemat_src.h"
 
+typedef enum
+{
+    GHOST_MAP_NONE,
+    GHOST_MAP_ROW,
+    GHOST_MAP_COL
+} 
+ghost_maptype;
+
 /**
  * @brief Possible sources of a sparse matrix. 
  */
@@ -31,6 +39,23 @@ typedef enum {
      */
     GHOST_SPARSEMAT_SRC_NONE
 } ghost_sparsemat_src;
+
+typedef enum {
+    GHOST_MAP_DIST_NNZ,
+    GHOST_MAP_DIST_NROWS
+} ghost_map_dist_type;
+    
+typedef enum {
+    GHOST_MAP_DEFAULT=0,
+    /**
+    * @brief Does not make a distinction between local and remote entries if set; this might lead to higher communication time
+    */
+    GHOST_PERM_NO_DISTINCTION=1,
+    /**
+     * @brief This map is part of a context. Should not be set by the user!
+     */
+    GHOST_MAP_IN_CONTEXT=2
+} ghost_map_flags;
 
 typedef struct 
 {
@@ -59,6 +84,10 @@ typedef struct
      */
     ghost_lidx dimpad;
     /**
+     * @brief The number of halo elements.
+     */
+    ghost_lidx nhalo;
+    /**
      * @brief The local permutation 
      */
     ghost_lidx *loc_perm;
@@ -78,20 +107,32 @@ typedef struct
      * @brief The local permutation in CUDA memory. 
      */
     ghost_lidx *cu_loc_perm;
+    
+    ghost_maptype type;
+
+    ghost_mpi_comm mpicomm;
+    ghost_map_flags flags;
 } 
 ghost_map;
-
-typedef enum {
-    GHOST_MAP_DIST_NNZ,
-    GHOST_MAP_DIST_NROWS
-} ghost_map_dist_type;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
     ghost_error ghost_map_create_distribution(ghost_map *map, ghost_sparsemat_src_rowfunc *matsrc, ghost_mpi_comm mpicomm, double weight, ghost_map_dist_type distType);
-    ghost_error ghost_map_create(ghost_map **map, ghost_gidx gdim, ghost_mpi_comm comm);
+    ghost_error ghost_map_create(ghost_map **map, ghost_gidx gdim, ghost_mpi_comm comm, ghost_maptype type, ghost_map_flags flags);
+    /**
+     * @brief Create a light map with only a dimension and an MPI communicator.
+     *
+     * This map is used for non-distributed data
+     *
+     * @param dim
+     * @param mpicomm
+     *
+     * @return 
+     */
+    ghost_map *ghost_map_create_light(ghost_lidx dim, ghost_mpi_comm mpicomm);
     void ghost_map_destroy(ghost_map *map);
+    int ghost_rank_of_row(ghost_map *map, ghost_gidx row);
 #ifdef __cplusplus
 }
 #endif

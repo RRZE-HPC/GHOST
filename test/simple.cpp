@@ -116,8 +116,8 @@ int main(int argc, char **argv) {
         for (vector<ghost_densemat_traits>::iterator vtraits_it = vtraits_vec.begin(); vtraits_it != vtraits_vec.end(); ++vtraits_it) {
             if (!ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(vtraits_it->datatype,mtraits_it->datatype)]) continue;
 
-            GHOST_TEST_CALL(ghost_densemat_create(&x, A->context, *vtraits_it));
-            GHOST_TEST_CALL(ghost_densemat_create(&y, A->context, *vtraits_it));
+            GHOST_TEST_CALL(ghost_densemat_create(&x, A->context->col_map, *vtraits_it));
+            GHOST_TEST_CALL(ghost_densemat_create(&y, A->context->row_map, *vtraits_it));
             GHOST_TEST_CALL(ghost_densemat_init_rand(x));
             GHOST_TEST_CALL(ghost_densemat_init_val(y,&zero));
           

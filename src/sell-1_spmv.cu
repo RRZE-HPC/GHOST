@@ -198,7 +198,7 @@ ghost_error ghost_cu_sell1_spmv_selector(ghost_densemat * lhs_in, ghost_sparsema
         lhstraits.location = GHOST_LOCATION_DEVICE;
         lhstraits.storage = GHOST_DENSEMAT_COLMAJOR;
         lhstraits.flags &= (ghost_densemat_flags)(~GHOST_DENSEMAT_VIEW);
-        GHOST_CALL_GOTO(ghost_densemat_create(&lhs,NULL,lhstraits),err,ret);
+        GHOST_CALL_GOTO(ghost_densemat_create(&lhs,lhs_in->map,lhstraits),err,ret);
         GHOST_CALL_GOTO(ghost_densemat_init_densemat(lhs,lhs_in,0,0),err,ret);
     } else {
         lhs = lhs_in;

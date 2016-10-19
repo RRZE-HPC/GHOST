@@ -3,7 +3,7 @@
 #include "ghost/util.h"
 #include "ghost/error.h"
 
-ghost_error ghost_map_create(ghost_map **map, ghost_gidx gdim, ghost_mpi_comm comm)
+ghost_error ghost_map_create(ghost_map **map, ghost_gidx gdim, ghost_mpi_comm comm, ghost_maptype type, ghost_map_flags flags)
 {
     ghost_error ret = GHOST_SUCCESS;
     int nranks;
@@ -22,6 +22,10 @@ ghost_error ghost_map_create(ghost_map **map, ghost_gidx gdim, ghost_mpi_comm co
     (*map)->cu_loc_perm = NULL;
     (*map)->dim = 0;
     (*map)->dimpad = 0;
+    (*map)->offs = 0;
+    (*map)->mpicomm = comm;
+    (*map)->type = type;
+    (*map)->flags = flags;
 
     goto out;
 err:
@@ -158,4 +162,38 @@ void ghost_map_destroy(ghost_map *map)
         free(map->goffs); map->goffs = NULL;
         free(map->ldim); map->ldim = NULL;
 
+}
+
+int ghost_rank_of_row(ghost_map *map, ghost_gidx row)
+{
+    int i,nprocs;
+    GHOST_CALL_RETURN(ghost_nrank(&nprocs,map->mpicomm));
+
+    for (i=0; i<nprocs; i++) {
+        if (map->goffs[i] <= row && map->goffs[i]+map->ldim[i] > row) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+ghost_map *ghost_map_create_light(ghost_lidx dim, ghost_mpi_comm mpicomm)
+{
+    ghost_map *map;
+    ghost_malloc((void **)&map,sizeof(ghost_map));
+    map->dim = dim;
+    map->gdim = dim;
+    map->dimpad = dim;
+    map->offs = 0;
+    map->mpicomm = mpicomm;
+    map->ldim = NULL;
+    map->goffs = NULL;
+    map->loc_perm = NULL;
+    map->loc_perm_inv = NULL;
+    map->glb_perm = NULL;
+    map->glb_perm_inv = NULL;
+    map->cu_loc_perm = NULL;
+
+    return map;
 }

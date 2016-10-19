@@ -44,7 +44,7 @@ ghost_compatible_vec_vec;
 ghost_error ghost_check_mat_vec_compatibility(ghost_compatible_mat_vec *data, ghost_context *ctx);
 
 //Checks the compatibility for routines involving only densematrix
-ghost_error ghost_check_vec_vec_compatibility(ghost_compatible_vec_vec *data, ghost_context *ctx);
+ghost_error ghost_check_vec_vec_compatibility(ghost_compatible_vec_vec *data);
 
 
 #ifdef __cplusplus

@@ -458,8 +458,8 @@ for (ghost_lidx row=start; row<end; ++row){ \
     #GHOST_UNROLL#double rp@ = 0;\#NSHIFTS \
     #GHOST_UNROLL#double ip@ = 0;\#NSHIFTS \
     \
-    double rp_x=0,ip_x=0; \
-    double mval_diag = 0; \
+    double __attribute__((unused)) rp_x=0, __attribute__((unused)) ip_x=0; \
+    double __attribute__((unused)) mval_diag = 0; \
     ghost_lidx idx = mat->chunkStart[row]; \
     if(bval != NULL) { \
         #GHOST_UNROLL#scal_~(2*@)~ = bval[row*num_blocks+~@%NVECS~];\#NVECS*NSHIFTS \
@@ -474,8 +474,8 @@ for (ghost_lidx row=start; row<end; ++row){ \
     } \
     ghost_lidx j = 0; \
     for(j=0; j<mat->rowLen[row] && mat->col[idx+j]!=diag_idx; ++j) { \
-        MT mval_idx = mval[idx+j]; \
-        ghost_lidx col_idx = mat->col[idx+j]; \
+        MT __attribute__((unused)) mval_idx = mval[idx+j]; \
+        ghost_lidx __attribute__((unused)) col_idx = mat->col[idx+j]; \
         #GHOST_UNROLL#scal_@ -= mval_idx*xval[2*col_idx*NVECS*NSHIFTS + @];\#2*NSHIFTS*NVECS \
         #GHOST_UNROLL#rownorm@ += mval_idx * mval_idx;\#NSHIFTS \
     } \
@@ -490,8 +490,8 @@ for (ghost_lidx row=start; row<end; ++row){ \
     #GHOST_UNROLL#rownorm@ += rp~@~*rp~@~ + ip~@~*ip~@~;\#NSHIFTS \
     \
     for(int k=j+1; k<mat->rowLen[row]; ++k) { \
-        MT mval_idx = mval[idx+k]; \
-        ghost_lidx col_idx = mat->col[idx+k]; \
+        MT __attribute__((unused)) mval_idx = mval[idx+k]; \
+        ghost_lidx __attribute__((unused)) col_idx = mat->col[idx+k]; \
         #GHOST_UNROLL#scal_@ -= mval_idx*xval[2*col_idx*NVECS*NSHIFTS + @];\#2*NSHIFTS*NVECS \
         #GHOST_UNROLL#rownorm@ += mval_idx * mval_idx;\#NSHIFTS \
     } \
@@ -499,8 +499,8 @@ for (ghost_lidx row=start; row<end; ++row){ \
     #GHOST_UNROLL#scal_@ = (scal_@*omega)/rownorm~(@/(2*NVECS))~;\#2*NSHIFTS*NVECS \
     \
     for (j=0; j<mat->rowLen[row]; j++) { \
-        MT mval_idx = mval[idx+j]; \
-        ghost_lidx col_idx = mat->col[idx+j]; \
+        MT __attribute__((unused)) mval_idx = mval[idx+j]; \
+        ghost_lidx __attribute__((unused)) col_idx = mat->col[idx+j]; \
         #GHOST_UNROLL#xval[2*col_idx*NVECS*NSHIFTS + @] = xval[2*col_idx*NVECS*NSHIFTS + @] + scal_@ * mval_idx;\#2*NSHIFTS*NVECS \
     } \
     #GHOST_UNROLL#xval[2*(diag_idx*NVECS*NSHIFTS + @)] += scal_~(2*@)~*(-sigma[2*~@/NVECS~]) - scal_~(2*@+1)~*(sigma[2*~@/NVECS~+1]);xval[2*(diag_idx*NVECS*NSHIFTS + @)+1] += scal_~(2*@)~*sigma[2*~@/NVECS~+1] - scal_~(2*@+1)~*sigma[2*~@/NVECS~];\#NSHIFTS*NVECS \
@@ -515,8 +515,8 @@ for (ghost_lidx row=start; row>end; --row){ \
     #GHOST_UNROLL#double rp@ = 0;\#NSHIFTS \
     #GHOST_UNROLL#double ip@ = 0;\#NSHIFTS \
     \
-    double rp_x=0,ip_x=0; \
-    double mval_diag = 0; \
+    double __attribute__((unused)) rp_x=0, __attribute__((unused)) ip_x=0; \
+    double __attribute__((unused)) mval_diag = 0; \
     ghost_lidx idx = mat->chunkStart[row]; \
     if(bval != NULL) { \
         #GHOST_UNROLL#scal_~(2*@)~ = bval[row*num_blocks+~@%NVECS~];\#NVECS*NSHIFTS \
@@ -531,8 +531,8 @@ for (ghost_lidx row=start; row>end; --row){ \
     } \
     ghost_lidx j = 0; \
     for(j=0; j<mat->rowLen[row] && mat->col[idx+j]!=diag_idx; ++j) { \
-        MT mval_idx = mval[idx+j]; \
-        ghost_lidx col_idx = mat->col[idx+j]; \
+        MT __attribute__((unused)) mval_idx = mval[idx+j]; \
+        ghost_lidx __attribute__((unused)) col_idx = mat->col[idx+j]; \
         #GHOST_UNROLL#scal_@ -= mval_idx*xval[2*col_idx*NVECS*NSHIFTS + @];\#2*NSHIFTS*NVECS \
         #GHOST_UNROLL#rownorm@ += mval_idx * mval_idx;\#NSHIFTS \
     } \
@@ -547,8 +547,8 @@ for (ghost_lidx row=start; row>end; --row){ \
     #GHOST_UNROLL#rownorm@ += rp~@~*rp~@~ + ip~@~*ip~@~;\#NSHIFTS \
     \
     for(int k=j+1; k<mat->rowLen[row]; ++k) { \
-        MT mval_idx = mval[idx+k]; \
-        ghost_lidx col_idx = mat->col[idx+k]; \
+        MT __attribute__((unused)) mval_idx = mval[idx+k]; \
+        ghost_lidx __attribute__((unused)) col_idx = mat->col[idx+k]; \
         #GHOST_UNROLL#scal_@ -= mval_idx*xval[2*col_idx*NVECS*NSHIFTS + @];\#2*NSHIFTS*NVECS \
         #GHOST_UNROLL#rownorm@ += mval_idx * mval_idx;\#NSHIFTS \
     } \
@@ -556,8 +556,8 @@ for (ghost_lidx row=start; row>end; --row){ \
     #GHOST_UNROLL#scal_@ = (scal_@*omega)/rownorm~(@/(2*NVECS))~;\#2*NSHIFTS*NVECS \
     \
     for (j=0; j<mat->rowLen[row]; j++) { \
-        MT mval_idx = mval[idx+j]; \
-        ghost_lidx col_idx = mat->col[idx+j]; \
+        MT __attribute__((unused)) mval_idx = mval[idx+j]; \
+        ghost_lidx __attribute__((unused)) col_idx = mat->col[idx+j]; \
         #GHOST_UNROLL#xval[2*col_idx*NVECS*NSHIFTS + @] = xval[2*col_idx*NVECS*NSHIFTS + @] + scal_@ * mval_idx;\#2*NSHIFTS*NVECS \
     } \
     #GHOST_UNROLL#xval[2*(diag_idx*NVECS*NSHIFTS + @)] += scal_~(2*@)~*(-sigma[2*~@/NVECS~]) - scal_~(2*@+1)~*(sigma[2*~@/NVECS~+1]);xval[2*(diag_idx*NVECS*NSHIFTS + @)+1] += scal_~(2*@)~*sigma[2*~@/NVECS~+1] - scal_~(2*@+1)~*sigma[2*~@/NVECS~];\#NSHIFTS*NVECS \
@@ -956,7 +956,7 @@ ghost_error ghost_kacz_BMCshift_u_plain_rm_CHUNKHEIGHT_NVECS_NSHIFTS(ghost_dense
     typedef std::complex<double> VT;
     
     VT *sigma_z = (VT *)opts.shift;
-    double *sigma = (double *)sigma_z;
+    double __attribute__((unused)) *sigma = (double *)sigma_z;
     
     int num_shifts = 0, num_blocks = 0;
     
@@ -994,9 +994,9 @@ ghost_error ghost_kacz_BMCshift_u_plain_rm_CHUNKHEIGHT_NVECS_NSHIFTS(ghost_dense
         bval = (MT *)(b->val);
     
     //VT *xval_z = (VT *)(x->val);
-    double *xval = (double *)(x->val); //cast to double
+    double __attribute__((unused)) *xval = (double *)(x->val); //cast to double
     MT *mval = (MT *)mat->val;
-    MT omega = *(MT *)opts.omega;
+    MT __attribute__((unused)) omega = *(MT *)opts.omega;
     ghost_lidx *zone_ptr = (ghost_lidx*) mat->context->zone_ptr;
     //ghost_lidx nzones = mat->context->nzones;
     ghost_lidx *color_ptr= (ghost_lidx*) mat->context->color_ptr;

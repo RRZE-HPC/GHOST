@@ -49,7 +49,7 @@ ghost_error ghost_localdot(void *res, ghost_densemat *vec1, ghost_densemat *vec2
     check.transA = 'T';
     check.B = vec2;   
 
-    ret = ghost_check_vec_vec_compatibility(&check,vec1->context);
+    ret = ghost_check_vec_vec_compatibility(&check);
     ///////////////////////////////////////////////////
  
     if (ghost_dot_kernels.empty()) {

@@ -53,7 +53,7 @@ static unordered_map<ghost_tsmttsm_parameters, ghost_tsmttsm_kernel> ghost_tsmtt
 
 
 ghost_error ghost_tsmttsm_valid(ghost_densemat *x, ghost_densemat *v, const char * transv, 
-ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce, ghost_context *ctx, ghost_gemm_flags flags, int printerror) 
+ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce, ghost_gemm_flags flags, int printerror) 
 {
     /*if (w->traits.storage != GHOST_DENSEMAT_ROWMAJOR) {
         if (printerror) {
@@ -79,11 +79,6 @@ ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce, ghos
         }
         return GHOST_ERR_INVALID_ARG;
     }*/
-
-    if ((reduce != GHOST_GEMM_NO_REDUCE) && !ctx) {
-        ERROR_LOG("A reduction should be done but no context is given!");
-        return GHOST_ERR_INVALID_ARG;
-    }
 
     if (v->traits.datatype != w->traits.datatype || v->traits.datatype != x->traits.datatype) {
         if (printerror) {
@@ -119,7 +114,7 @@ ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce, ghos
 }
 
 
-ghost_error ghost_tsmttsm(ghost_densemat *x_in, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta,int reduce,ghost_context *ctx,int conjv,ghost_gemm_flags flags)
+ghost_error ghost_tsmttsm(ghost_densemat *x_in, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta,int reduce,int conjv,ghost_gemm_flags flags)
 {
     ghost_error ret;
 
@@ -130,13 +125,13 @@ ghost_error ghost_tsmttsm(ghost_densemat *x_in, ghost_densemat *v, ghost_densema
         vtrans = "T";
     }
 
-    if ((ret = ghost_tsmttsm_valid(x_in,v,vtrans,w,"N",alpha,beta,reduce,ctx,flags,1)) != GHOST_SUCCESS) {
+    if ((ret = ghost_tsmttsm_valid(x_in,v,vtrans,w,"N",alpha,beta,reduce,flags,1)) != GHOST_SUCCESS) {
         INFO_LOG("TSMTTSM cannot be applied. Checking whether GEMM is fine!");
-        if ((ret = ghost_gemm_valid(x_in,v,vtrans,w,"N",alpha,beta,reduce,ctx,GHOST_GEMM_DEFAULT,1)) != GHOST_SUCCESS) {
+        if ((ret = ghost_gemm_valid(x_in,v,vtrans,w,"N",alpha,beta,reduce,GHOST_GEMM_DEFAULT,1)) != GHOST_SUCCESS) {
             ERROR_LOG("GEMM cannot be applied!");
             return ret;
         } else {
-            return ghost_gemm(x_in,v,vtrans,w,"N",alpha,beta,reduce,ctx,GHOST_GEMM_NOT_SPECIAL);
+            return ghost_gemm(x_in,v,vtrans,w,"N",alpha,beta,reduce,GHOST_GEMM_NOT_SPECIAL);
         }
     }
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
@@ -168,7 +163,7 @@ ghost_error ghost_tsmttsm(ghost_densemat *x_in, ghost_densemat *v, ghost_densema
     }
 
     int me=0;
-    if (ctx) ghost_rank(&me,ctx->mpicomm);
+    ghost_rank(&me,v->map->mpicomm);
     // make sure that the initial x only gets added up once
     if (me) {
         memset(beta,0,x_in->elSize);
@@ -188,7 +183,7 @@ ghost_error ghost_tsmttsm(ghost_densemat *x_in, ghost_densemat *v, ghost_densema
         ghost_densemat_traits xtraits = x_in->traits;
         xtraits.flags &= (ghost_densemat_flags)~GHOST_DENSEMAT_VIEW;
         xtraits.storage = GHOST_DENSEMAT_COLMAJOR;
-        ghost_densemat_create(&x,NULL,xtraits);
+        ghost_densemat_create(&x,ghost_map_create_light(x_in->map->dim,x_in->map->mpicomm),xtraits);
         ghost_densemat_init_densemat(x,x_in,0,0);
     }
     
@@ -291,8 +286,8 @@ end_of_loop:
         }
 
         ret = kernel(x,v,w,alpha,beta,conjv);
-        if (reduce != GHOST_GEMM_NO_REDUCE && ctx) {
-            ghost_densemat_reduce(x,ctx->mpicomm,reduce);
+        if (reduce != GHOST_GEMM_NO_REDUCE) {
+            ghost_densemat_reduce(x,reduce);
         }
     } else if (flags & GHOST_GEMM_KAHAN) { 
         WARNING_LOG("Could not find TSMTTSM-Kahan kernel. Trying non-Kahan version!");
@@ -301,14 +296,14 @@ end_of_loop:
             ghost_densemat_destroy(x);
         }
         x = x_in;
-        ret = ghost_gemm(x_in,v,conjv?"C":"T",w,"N",alpha,beta,reduce,ctx,flags);
+        ret = ghost_gemm(x_in,v,conjv?"C":"T",w,"N",alpha,beta,reduce,flags);
     } else {
         PERFWARNING_LOG("Could not find TSMTTSM kernel. Fallback to GEMM");
         if (x != x_in) {
             ghost_densemat_destroy(x);
         }
         x = x_in;
-        ret = ghost_gemm(x_in,v,conjv?"C":"T",w,"N",alpha,beta,reduce,ctx,GHOST_GEMM_NOT_SPECIAL);
+        ret = ghost_gemm(x_in,v,conjv?"C":"T",w,"N",alpha,beta,reduce,GHOST_GEMM_NOT_SPECIAL);
     }
 
 

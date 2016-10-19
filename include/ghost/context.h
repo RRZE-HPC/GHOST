@@ -27,14 +27,6 @@ typedef enum
 }
 ghost_permutation_method;
 
-typedef enum
-{
-    GHOST_MAP_DEFAULT,
-    GHOST_MAP_ROW,
-    GHOST_MAP_COL
-} 
-ghost_maptype;
-
 /*typedef enum
 {
     GHOST_PERM_NO_DISTINCTION=1, 
@@ -113,10 +105,6 @@ typedef enum {
      * @brief Distribute work among the ranks by number of rows.
      */
     GHOST_CONTEXT_DIST_ROWS = 8,
-    /**
-    * @brief Does not make a distinction between local and remote entries if set; this might lead to higher communication time
-    */
-    GHOST_PERM_NO_DISTINCTION=16,
 
 } ghost_context_flags_t;
 
@@ -378,7 +366,7 @@ extern "C" {
      * Thus, A would be assigned 6 million matrix rows and B 2 million.
      * 
      */
-    ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, ghost_gidx gncols, ghost_context_flags_t flags, void *matrixSource, ghost_sparsemat_src srcType, ghost_mpi_comm comm, double weight); 
+    ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, ghost_gidx gncols, ghost_context_flags_t flags, ghost_mpi_comm comm, double weight); 
     
     /**
      * @ingroup stringification
@@ -415,8 +403,9 @@ extern "C" {
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
 ghost_error ghost_global_perm_inv(ghost_gidx *toPerm, ghost_gidx *fromPerm, ghost_context *context);
-    int ghost_rank_of_row(ghost_context *ctx, ghost_gidx row);
     ghost_map *ghost_context_map(const ghost_context *ctx, const ghost_maptype mt);
+    ghost_map *ghost_context_other_map(const ghost_context *ctx, const ghost_maptype mt);
+    ghost_map *ghost_context_max_map(const ghost_context *ctx);
 
 #ifdef __cplusplus
 } //extern "C"

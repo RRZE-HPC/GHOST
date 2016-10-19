@@ -40,7 +40,9 @@ const ghost_sparsemat_traits GHOST_SPARSEMAT_TRAITS_INITIALIZER = {
 
 static const char * ghost_sparsemat_formatName(ghost_sparsemat *mat);
 static ghost_error ghost_sparsemat_split(ghost_sparsemat *mat);
+#ifdef GHOST_HAVE_CUDA
 static ghost_error ghost_sparsemat_upload(ghost_sparsemat *mat);
+#endif
 static ghost_error ghost_set_kacz_ratio(ghost_context *ctx, ghost_sparsemat *mat); 
 
 const ghost_spmv_opts GHOST_SPMV_OPTS_INITIALIZER = {
@@ -921,7 +923,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
         if (mat->traits.flags & GHOST_SPARSEMAT_PERM_NO_DISTINCTION) {
             ctxflags |= GHOST_PERM_NO_DISTINCTION;
         }
-        ghost_context_create(&(mat->context),src->gnrows,src->gncols,ctxflags,src,GHOST_SPARSEMAT_SRC_FUNC,mpicomm,weight);
+        ghost_context_create(&(mat->context),src->gnrows,src->gncols,ctxflags,mpicomm,weight);
         GHOST_CALL_GOTO(ghost_nrank(&nprocs, mat->context->mpicomm),err,ret);
         ghost_map_create_distribution(mat->context->row_map,src,mat->context->mpicomm,mat->context->weight,GHOST_MAP_DIST_NROWS);
         if (nprocs == 1) {
@@ -1807,9 +1809,9 @@ ghost_error ghost_sparsemat_to_bin(ghost_sparsemat *mat, char *matrixPath)
     return GHOST_ERR_NOT_IMPLEMENTED;
 }
 
+#ifdef GHOST_HAVE_CUDA
 static ghost_error ghost_sparsemat_upload(ghost_sparsemat* mat) 
 {
-    #ifdef GHOST_HAVE_CUDA
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
     if (!(mat->traits.flags & GHOST_SPARSEMAT_HOST)) {
         DEBUG_LOG(1,"Creating matrix on CUDA device");
@@ -1828,12 +1830,7 @@ static ghost_error ghost_sparsemat_upload(ghost_sparsemat* mat)
         GHOST_CALL_RETURN(ghost_cu_upload(mat->cu_chunkLen, mat->chunkLen, (SPM_NROWSPAD(mat)/mat->traits.C)*sizeof(ghost_lidx)));
     }
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_COMMUNICATION);
-    #else
-    if (mat->traits.flags & GHOST_SPARSEMAT_DEVICE) {
-        ERROR_LOG("Device matrix cannot be created without CUDA");
-        return GHOST_ERR_CUDA;
-    }
-    #endif
     return GHOST_SUCCESS;
 }
+#endif
 

@@ -31,7 +31,7 @@ extern "C" {
     ghost_error ghost_densemat_rm_fromVec_selector(ghost_densemat *vec1, ghost_densemat *vec2, ghost_lidx, ghost_lidx); 
     ghost_error ghost_densemat_rm_fromReal_selector(ghost_densemat *vec, ghost_densemat *re, ghost_densemat *im); 
     ghost_error ghost_densemat_rm_fromComplex_selector(ghost_densemat *re, ghost_densemat *im, ghost_densemat *c); 
-    ghost_error ghost_densemat_rm_permute_selector(ghost_densemat *vec, ghost_context *ctx, ghost_permutation_direction dir);
+    ghost_error ghost_densemat_rm_permute_selector(ghost_densemat *vec, ghost_permutation_direction dir);
     ghost_error ghost_densemat_rm_norm_selector(ghost_densemat *vec, void *res, void *p);
     ghost_error ghost_densemat_rm_averagehalo_selector(ghost_densemat *vec, ghost_context *ctx);
     ghost_error ghost_densemat_rm_conj_selector(ghost_densemat *vec);
