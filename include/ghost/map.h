@@ -52,9 +52,9 @@ typedef enum {
     */
     GHOST_PERM_NO_DISTINCTION=1,
     /**
-     * @brief This map is part of a context. Should not be set by the user!
+     * @brief This map will be free'd. This is to avoid double frees and should not be set by the user!
      */
-    GHOST_MAP_IN_CONTEXT=2
+    GHOST_MAP_WILL_BE_FREED=2
 } ghost_map_flags;
 
 typedef struct 

@@ -77,8 +77,13 @@ ghost_error ghost_densemat_create(ghost_densemat **vec, ghost_map *map, ghost_de
     (*vec)->val = NULL;
     (*vec)->cu_val = NULL;
 
-    if (!(map->flags & GHOST_MAP_IN_CONTEXT)) {
+    if (!(map->flags & GHOST_MAP_WILL_BE_FREED)) {
+        // this densemat will free the map
         (*vec)->traits.flags = (ghost_densemat_flags)((*vec)->traits.flags|GHOST_DENSEMAT_FREE_MAP);
+        map->flags = (ghost_map_flags)(map->flags|GHOST_MAP_WILL_BE_FREED);
+    } else {
+        // this map will already be free'd, unset the flag if it is set (possibly for views)
+        (*vec)->traits.flags = (ghost_densemat_flags)((*vec)->traits.flags&~GHOST_DENSEMAT_FREE_MAP);
     }
   /* 
     if (ctx) {

@@ -69,8 +69,8 @@ ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, gho
     (*context)->halo_elements = -1;
         
 
-    GHOST_CALL_GOTO(ghost_map_create(&((*context)->row_map),gnrows,comm,GHOST_MAP_ROW,GHOST_MAP_IN_CONTEXT),err,ret);
-    GHOST_CALL_GOTO(ghost_map_create(&((*context)->col_map),gncols,comm,GHOST_MAP_COL,GHOST_MAP_IN_CONTEXT),err,ret);
+    GHOST_CALL_GOTO(ghost_map_create(&((*context)->row_map),gnrows,comm,GHOST_MAP_ROW,GHOST_MAP_WILL_BE_FREED),err,ret);
+    GHOST_CALL_GOTO(ghost_map_create(&((*context)->col_map),gncols,comm,GHOST_MAP_COL,GHOST_MAP_WILL_BE_FREED),err,ret);
 
     GHOST_CALL_GOTO(ghost_nrank(&nranks, (*context)->mpicomm),err,ret);
     GHOST_CALL_GOTO(ghost_rank(&me, (*context)->mpicomm),err,ret);
