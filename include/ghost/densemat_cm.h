@@ -45,6 +45,19 @@ extern "C" {
     ghost_error ghost_densemat_cm_compress(ghost_densemat *vec);
     ghost_error ghost_densemat_cm_halocommInit(ghost_densemat *vec, ghost_context *ctx, ghost_densemat_halo_comm *comm);
     ghost_error ghost_densemat_cm_halocommFinalize(ghost_densemat *vec, ghost_context *ctx, ghost_densemat_halo_comm *comm);
+    ghost_error ghost_densemat_cm_view(ghost_densemat *src, ghost_densemat **dst, ghost_lidx nr, ghost_lidx roffs, ghost_lidx nc, ghost_lidx coffs);
+    ghost_error ghost_densemat_cm_viewPlain(ghost_densemat *vec, void *data, ghost_lidx lda);
+    ghost_error ghost_densemat_cm_viewCols(ghost_densemat *src, ghost_densemat **dst, ghost_lidx nc, ghost_lidx coffs);
+    ghost_error ghost_densemat_cm_viewScatteredCols(ghost_densemat *src, ghost_densemat **dst, ghost_lidx nc, ghost_lidx *coffs);
+    ghost_error ghost_densemat_cm_viewScatteredVec(ghost_densemat *src, ghost_densemat **dst, ghost_lidx nr, ghost_lidx *roffs, ghost_lidx nc, ghost_lidx *coffs);
+    ghost_error ghost_densemat_cm_entry(ghost_densemat * vec, void *val, ghost_lidx r, ghost_lidx c); 
+    ghost_error ghost_densemat_cm_reduce(ghost_densemat * vec_in, int root); 
+    ghost_error ghost_densemat_cm_download(ghost_densemat * vec); 
+    ghost_error ghost_densemat_cm_upload(ghost_densemat * vec); 
+    ghost_error ghost_densemat_cm_syncValues(ghost_densemat *vec, ghost_mpi_comm comm, int root);
+    ghost_error ghost_densemat_cm_toFile(ghost_densemat *vec, char *path, ghost_mpi_comm mpicomm);
+    ghost_error ghost_densemat_cm_fromFile(ghost_densemat *vec, char *path, ghost_mpi_comm mpicomm);
+    ghost_error ghost_densemat_cm_fromFunc(ghost_densemat *vec, int (*fp)(ghost_gidx, ghost_lidx, void *, void *), void *arg);
 #ifdef __cplusplus
 }
 #endif

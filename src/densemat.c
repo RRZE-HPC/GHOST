@@ -15,6 +15,7 @@
 #include "ghost/bindensemat.h"
 #include "ghost/constants.h"
 #include "ghost/datatransfers.h"
+#include "ghost/math.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -26,12 +27,6 @@
 #ifdef GHOST_HAVE_CUDA
 #include <cuda_runtime.h>
 #endif
-
-#define COLMAJOR
-#include "ghost/densemat_common.c.def"
-#undef COLMAJOR
-#define ROWMAJOR
-#include "ghost/densemat_common.c.def"
 
 const ghost_densemat_traits GHOST_DENSEMAT_TRAITS_INITIALIZER = {
     //.nrows = 0,
@@ -356,8 +351,8 @@ ghost_error ghost_densemat_halocommInit_common(ghost_densemat *vec, ghost_contex
     ghost_error ret = GHOST_SUCCESS;
     int rowsize = vec->traits.ncols*vec->elSize;
 
-    if (vec->traits.flags & GHOST_DENSEMAT_NO_HALO) {
-        ERROR_LOG("The densemat has no halo buffer!");
+    if (vec->map->type != GHOST_MAP_COL) {
+        ERROR_LOG("The densemat is not in a column map!");
         return GHOST_ERR_INVALID_ARG;
     }
     if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {

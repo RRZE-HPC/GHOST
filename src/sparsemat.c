@@ -922,7 +922,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
         ghost_context_flags_t ctxflags = GHOST_CONTEXT_DEFAULT;
         ghost_context_create(&(mat->context),src->gnrows,src->gncols,ctxflags,mpicomm,weight);
         GHOST_CALL_GOTO(ghost_nrank(&nprocs, mat->context->mpicomm),err,ret);
-        ghost_map_create_distribution(mat->context->row_map,src,mat->context->mpicomm,mat->context->weight,GHOST_MAP_DIST_NROWS);
+        ghost_map_create_distribution(mat->context->row_map,src,mat->context->weight,GHOST_MAP_DIST_NROWS);
         if (mat->traits.flags & GHOST_SPARSEMAT_PERM_NO_DISTINCTION) {
             mat->context->col_map->flags = (ghost_map_flags)(mat->context->col_map->flags&GHOST_PERM_NO_DISTINCTION);
         }

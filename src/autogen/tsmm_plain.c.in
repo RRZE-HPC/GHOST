@@ -107,19 +107,12 @@ ghost_error ghost_tsmm__u_plain_d_OUTCOLS_INCOLS_OUTERUNROLL_1_rm(ghost_densemat
     if (fabs(dalpha-1.) > DBL_MIN || fabs(dbeta) > DBL_MIN) { // general case: X = b*X + a*V*W
 #pragma omp parallel for private(j,s,t,tmp) schedule(runtime)
         for (i=0; i<=n-OUTERUNROLL; i+=OUTERUNROLL) {
-#if OUTCOLS > 1
-#pragma simd
-#endif
             for (s=0; s<OUTCOLS; s++) {
                 for (t=0; t<OUTERUNROLL; t++) {
                     tmp[t] = dbeta*xval[(i+t)*ldx+s];
                 }
 #if OUTCOLS > 1
 #pragma unroll_and_jam
-#else
-#if INCOLS > 1
-#pragma simd
-#endif
 #endif
                 for (j=0; j<INCOLS; j++) {
                     for (t=0; t<OUTERUNROLL; t++) {
@@ -134,9 +127,6 @@ ghost_error ghost_tsmm__u_plain_d_OUTCOLS_INCOLS_OUTERUNROLL_1_rm(ghost_densemat
     } else { // common case: X = V*W
 #pragma omp parallel for private(j,s,t,tmp) schedule(runtime)
         for (i=0; i<=n-OUTERUNROLL; i+=OUTERUNROLL) {
-#if OUTCOLS > 1
-#pragma simd
-#endif
 #pragma vector always unaligned nontemporal
             for (s=0; s<OUTCOLS; s++) {
                 for (t=0; t<OUTERUNROLL; t++) {
@@ -144,10 +134,6 @@ ghost_error ghost_tsmm__u_plain_d_OUTCOLS_INCOLS_OUTERUNROLL_1_rm(ghost_densemat
                 }
 #if OUTCOLS > 1
 #pragma unroll_and_jam
-#else
-#if INCOLS > 1
-#pragma simd
-#endif
 #endif
                 for (j=0; j<INCOLS; j++) {
                     for (t=0; t<OUTERUNROLL; t++) {
