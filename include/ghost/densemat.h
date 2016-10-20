@@ -45,28 +45,21 @@ typedef int (*ghost_densemat_srcfunc)(ghost_gidx row, ghost_lidx col, void * val
  * @brief Flags to configure a densemat.
  */
 typedef enum {
-    GHOST_DENSEMAT_DEFAULT   = 0,
-    /**
-     * @brief Do not reserve space for halo elements.
-     * 
-     * This is applicable, e.g., if the densemat will never be an input (RHS) 
-     * densemat to a SpMV.
-     */
-    GHOST_DENSEMAT_NO_HALO   = 1,
+    GHOST_DENSEMAT_DEFAULT = 0,
     /**
      * @brief The densemat is a view of another densemat.
      */
-    GHOST_DENSEMAT_VIEW      = 32,
+    GHOST_DENSEMAT_VIEW = 1<<0,
     /**
      * @brief The densemat is scattered in leading dimension, i.e., the rows/columns are not 
      * consecutive in memory. This is only possible for views. 
      */
-    GHOST_DENSEMAT_SCATTERED_LD = 64,
+    GHOST_DENSEMAT_SCATTERED_LD = 1<<1,
     /**
      * @brief The densemat is scattered in trailing dimension, i.e., the rows/columns are not 
      * consecutive in memory. This is only possible for views. 
      */
-    GHOST_DENSEMAT_SCATTERED_TR = 128,
+    GHOST_DENSEMAT_SCATTERED_TR = 1<<2,
     /**
     * @brief The densemat has been permuted in #GHOST_PERMUTATION_ORIG2PERM 
     * direction via its ghost_densemat::permute() function. 
@@ -74,55 +67,25 @@ typedef enum {
     * This flag gets deleted once the densemat has been permuted back 
     * (#GHOST_PERMUTATION_PERM2ORIG).
     */
-    GHOST_DENSEMAT_PERMUTED = 256,
+    GHOST_DENSEMAT_PERMUTED = 1<<3,
    /**
      * @brief By default, a densemat's location gets set to #GHOST_DENSEMAT_HOST|#GHOST_DENSEMAT_DEVICE automatically
      * when the first up-/download occurs and the GHOST type is CUDA. This behavior can be disabled by setting this flag.
      */
-    GHOST_DENSEMAT_NOT_RELOCATE = 512,
+    GHOST_DENSEMAT_NOT_RELOCATE = 1<<4,
     /**
      * @brief Set this flag if the number of columns should be padded according to the SIMD width.
      */
-    GHOST_DENSEMAT_PAD_COLS = 1024,
+    GHOST_DENSEMAT_PAD_COLS = 1<<5,
     /**
      * @brief Destroy the densemat's map when the densemat gets destroyed.
      *
      * This flag should not be set by the user.
      */
-    GHOST_DENSEMAT_FREE_MAP = 2048,
+    GHOST_DENSEMAT_FREE_MAP = 1<<6,
 }  
 ghost_densemat_flags;
 
-
-/**
- * @brief enums to configure densemat permutations.
- */
-#if 0
-typedef enum {
-    GHOST_DENSEMAT_NOT_PERMUTED ,
-    GHOST_DENSEMAT_ROW_PERMUTED  ,
-    GHOST_DENSEMAT_COL_PERMUTED
-}
-ghost_densemat_permuted;
-
-typedef struct
-{
-    /**
-     * @brief Gets an original row index and returns the corresponding permuted position.
-     *
-     * NULL if no permutation applied to the matrix.
-     */
-    ghost_gidx *perm;
-    /**
-     * @brief Gets a row index in the permuted system and returns the original index.
-     *
-     * NULL if no permutation applied to the matrix.
-     */
-    ghost_gidx *invPerm;
-}
-ghost_densemat_permutation;
- 
-#endif
 
 #define GHOST_DENSEMAT_SCATTERED (GHOST_DENSEMAT_SCATTERED_LD|GHOST_DENSEMAT_SCATTERED_TR)
 
@@ -205,57 +168,6 @@ ghost_densemat_halo_comm;
 typedef struct
 {
     /**
-     * @brief The global number of rows (equal to nrows for non-distributed densemats).
-     */
-    //ghost_gidx gnrows;
-    /**
-     * @brief The offset into the global densemat (zero non-distributed densemats).
-     */
-    //ghost_gidx goffs;
-    /**
-     * @brief The number of rows.
-     */
-    //ghost_lidx nrows;
-    /**
-     * @brief The Maximum of nrows of Left and Right sided densemat 
-     * required if matrix is rectangular
-     */
-    //ghost_lidx maxnrows;
-    /**
-     * @brief The number of rows of the densemat which is viewed by this 
-     * densemat.
-     */
-    //ghost_lidx nrowsorig;
-    /**
-     * @brief The number of rows including padding and halo elements.
-     */
-    //ghost_lidx nrowshalo;
-    /**
-     * @brief The Maximum of nrowshalo of Left and Right sided densemat 
-     * required if matrix is rectangular
-     */
-    //ghost_lidx maxnrowshalo;
-    /**
-     * @brief The padded number of rows (may differ from nrows for col-major 
-     * densemats).
-     */
-    //ghost_lidx nrowspadded;
-    /**
-     * @brief The Maximum of nrowspadded of Left and Right sided densemat 
-     * required if matrix is rectangular
-     */
-    //ghost_lidx maxnrowspadded;
-    /**
-     * @brief The number of rows including padding, halo, and halo-padding elements
-     * There is another padding after the halo elements to guarantee aligned access to successive columns for col-major densemats.
-     */
-    //ghost_lidx nrowshalopadded;
-     /**
-     * @brief The Maximum of nrowspadded of Left and Right sided densemat 
-     * required if matrix is rectangular
-     */
-    //ghost_lidx maxnrowshalopadded;
-    /**
      * @brief The number of columns.
      */
     ghost_lidx ncols;
@@ -280,17 +192,6 @@ typedef struct
      * @brief Location of the densemat.
      */
     ghost_location location;
-    /**
-     * @brief Gives the information on which permutation is 
-     *        carried out on the densemat rows,
-     *        Possible values NONE, ROW, COLUMN
-     *
-     *        if NONE- no permutation would be possible by densemat->permute (default)
-     *        if ROW - row permutations are done by densemat->permute
-     *        if COLUMN - column permutations are done by densemat->permute 
-     */
-    //ghost_densemat_permuted permutemethod;
-
     /**
      * @brief If the densemat is the result of a computation, decide where to execute the computation.
      *
@@ -318,10 +219,6 @@ struct ghost_densemat
      * @brief The densemat's traits.
      */
     ghost_densemat_traits traits;
-    /**
-     * @brief The context in which the densemat is living.
-     */
-    //ghost_context *context;
     /**
      * @brief The values of the densemat.
      */
@@ -355,16 +252,6 @@ struct ghost_densemat
      * nrowshalopadded if it has col-major storage.
      */
     ghost_lidx stride;
-    /**
-     * @brief Densemat local permutation
-     *
-     */
-    //ghost_densemat_permutation *perm_local;
-     /**
-     * @brief Densemat global permutation
-     *
-     */
-    //ghost_densemat_permutation *perm_global;
      /**
      * @brief Masked out columns for scattered views
      */
@@ -385,12 +272,10 @@ struct ghost_densemat
      * @brief The values of the densemat on the CUDA device.
      */
     char * cu_val;
-
     /**
      * @brief The densemat's map. 
      */
     ghost_map *map;
-
 };
 
 #define DM_NROWS(dm) dm->map->dim
@@ -429,8 +314,6 @@ extern "C" {
      * an initialization function (see @ref denseinit) has to be called with the densemat.
      */
     ghost_error ghost_densemat_create(ghost_densemat **vec, ghost_map *map, ghost_densemat_traits traits);
-
-    //ghost_error ghost_densemat_noctx_create(ghost_densemat **vec, ghost_lidx nrows, ghost_densemat_traits traits);
     
     /**
      * @brief Create an array of chars ('0' or '1') of the densemat mask.
@@ -531,6 +414,13 @@ extern "C" {
      */
     ghost_lidx ghost_densemat_row_padding();
 
+    /**
+     * @brief Translates a ghost_densemat_storage into an consectuive index.
+     *
+     * @param s The storage type.
+     *
+     * @return The index.
+     */
     int ghost_idx_of_densemat_storage(ghost_densemat_storage s); 
     
     /**

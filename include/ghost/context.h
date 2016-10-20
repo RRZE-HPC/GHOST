@@ -13,84 +13,21 @@
 
 typedef struct ghost_context ghost_context;
 
+/**
+ * @brief Possible permutation directions.
+ */
 typedef enum
 {
+    /**
+     * @brief Permute from original to permuted space.
+     */
     GHOST_PERMUTATION_ORIG2PERM,
+    /**
+     * @brief Permute from permuted to original space.
+     */
     GHOST_PERMUTATION_PERM2ORIG
 }
 ghost_permutation_direction;
-
-typedef enum
-{
-    GHOST_PERMUTATION_SYMMETRIC,
-    GHOST_PERMUTATION_UNSYMMETRIC
-}
-ghost_permutation_method;
-
-/*typedef enum
-{
-    GHOST_PERM_NO_DISTINCTION=1, 
-}
-ghost_permutation_flags;
-  
-#ifdef __cplusplus
-inline ghost_permutation_flags operator|(const ghost_permutation_flags &a,
-        const ghost_permutation_flags &b)
-{
-    return static_cast<ghost_permutation_flags>(
-            static_cast<int>(a) | static_cast<int>(b));
-}
-
-inline ghost_permutation_flags operator&(const ghost_permutation_flags &a,
-        const ghost_permutation_flags &b)
-{
-    return static_cast<ghost_permutation_flags>(
-            static_cast<int>(a) & static_cast<int>(b));
-}
-#endif
-*/
-
-
- 
-typedef struct
-{
-    /**
-     * @brief Gets an original index and returns the corresponding permuted position.
-     *
-     * NULL if no permutation applied to the matrix.
-     */
-    ghost_gidx *perm;
-    /**
-     * @brief Gets an index in the permuted system and returns the original index.
-     *
-     * NULL if no permutation applied to the matrix.
-     */
-    ghost_gidx *invPerm;
-    /**
-     * @brief Gets an original index and returns the corresponding permuted position of columns.
-     *
-     * NULL if no permutation applied to the matrix, or if the perm=colPerm.
-     */
-    ghost_gidx *colPerm;
-    /**
-     * @brief Gets an index in the permuted system and returns the original index of columns.
-     *
-     * NULL if no permutation applied to the matrix, or if the invPerm=invColPerm.
-     */
-    ghost_gidx *colInvPerm;
-    /**
-    * @brief A flag to indicate whether symmetric or unsymmetric permutation is carried out
-    * 	     (internal) Its necessary for destruction of permutations, since we need to know whether 
-    * 	     both perm and colPerm point to same array. 
-    *
-    * GHOST_PERMUTATION_SYMMETRIC - if symmetric (both point to same array)
-    * GHOST_PERMUTATION_UNSYMMETRIC - if unsymmetric (points to different array) 
-    */
-    ghost_permutation_method method;   
-
-    ghost_gidx *cu_perm;
-}
-ghost_permutation;
 
 /**
  * @brief This struct holds all possible flags for a context.
@@ -127,19 +64,30 @@ inline ghost_context_flags_t operator&(const ghost_context_flags_t &a,
 
 /**
  * @brief internal to differentiate between different KACZ sweep methods
- * MC - Multicolored
- * BMC_RB - Block Multicolored with RCM ( condition : nrows/(2*(total_bw+1)) > threads)
- * BMC_one_trans_sweep - Block Multicolored with RCM ( condition : nrows/(total_bw+1) > threads, and transition does not overlap)
- * BMC_two_trans_sweep - Block Multicolored with RCM ( condition : nrows/(total_bw+1) > threads, and transition can overlap)
  */
 typedef enum{
+      /**
+       * @brief Multicolored 
+       */
       GHOST_KACZ_METHOD_MC,
+      /**
+       * @brief Block Multicolored with RCM ( condition : nrows/(2*(total_bw+1)) > threads)
+       */
       GHOST_KACZ_METHOD_BMC_RB,
+      /**
+       * @brief Block Multicolored with RCM ( condition : nrows/(total_bw+1) > threads, and transition does not overlap)
+       */
       GHOST_KACZ_METHOD_BMC_one_sweep,
+      /**
+       * @brief Block Multicolored with RCM ( condition : nrows/(total_bw+1) > threads, and transition can overlap)
+       */
       GHOST_KACZ_METHOD_BMC_two_sweep,
       GHOST_KACZ_METHOD_BMC,
       GHOST_KACZ_METHOD_BMCshift,
-      GHOST_KACZ_METHOD_BMCNORMAL //for system normalized at start
+      /**
+       * @brief For system normalized at start
+       */
+      GHOST_KACZ_METHOD_BMCNORMAL
 }
 ghost_kacz_method;
 
@@ -402,9 +350,32 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-ghost_error ghost_global_perm_inv(ghost_gidx *toPerm, ghost_gidx *fromPerm, ghost_context *context);
+    ghost_error ghost_global_perm_inv(ghost_gidx *toPerm, ghost_gidx *fromPerm, ghost_context *context);
+    /**
+     * @brief Get the context's map with the given map type.
+     *
+     * @param ctx The context.
+     * @param mt The map type.
+     *
+     * @return The map corresponding to the map type.
+     */
     ghost_map *ghost_context_map(const ghost_context *ctx, const ghost_maptype mt);
+    /**
+     * @brief Get the context's map which does not have the given map type.
+     *
+     * @param ctx The context.
+     * @param mt The map type.
+     *
+     * @return The map not corresponding to the map type.
+     */
     ghost_map *ghost_context_other_map(const ghost_context *ctx, const ghost_maptype mt);
+    /**
+     * @brief Get the largest map of the context.
+     *
+     * @param ctx The context.
+     *
+     * @return The map with the larger local dimension.
+     */
     ghost_map *ghost_context_max_map(const ghost_context *ctx);
 
 #ifdef __cplusplus

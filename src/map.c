@@ -35,14 +35,14 @@ out:
     return ret;
 }
     
-ghost_error ghost_map_create_distribution(ghost_map *map, ghost_sparsemat_src_rowfunc *matsrc, ghost_mpi_comm mpicomm, double weight, ghost_map_dist_type distType)
+ghost_error ghost_map_create_distribution(ghost_map *map, ghost_sparsemat_src_rowfunc *matsrc, double weight, ghost_map_dist_type distType)
 {
     int me,nranks,i;
     ghost_error ret = GHOST_SUCCESS;
     ghost_gidx row;
     
-    GHOST_CALL_GOTO(ghost_nrank(&nranks, mpicomm),err,ret);
-    GHOST_CALL_GOTO(ghost_rank(&me,mpicomm),err,ret);
+    GHOST_CALL_GOTO(ghost_nrank(&nranks, map->mpicomm),err,ret);
+    GHOST_CALL_GOTO(ghost_rank(&me,map->mpicomm),err,ret);
     
     if (distType == GHOST_MAP_DIST_NNZ)
     { // read rpt and fill lfrow, lnrows, lfent, lnents
@@ -96,9 +96,9 @@ ghost_error ghost_map_create_distribution(ghost_map *map, ghost_sparsemat_src_ro
 
             //fclose(filed);
         }
-        MPI_CALL_GOTO(MPI_Bcast(map->goffs,  nranks, ghost_mpi_dt_gidx, 0, mpicomm),err,ret);
+        MPI_CALL_GOTO(MPI_Bcast(map->goffs,  nranks, ghost_mpi_dt_gidx, 0, map->mpicomm),err,ret);
         //MPI_CALL_GOTO(MPI_Bcast((*context)->lfEnt,  nranks, ghost_mpi_dt_gidx, 0, mpicomm),err,ret);
-        MPI_CALL_GOTO(MPI_Bcast(map->ldim, nranks, ghost_mpi_dt_lidx, 0, mpicomm),err,ret);
+        MPI_CALL_GOTO(MPI_Bcast(map->ldim, nranks, ghost_mpi_dt_lidx, 0, map->mpicomm),err,ret);
         //MPI_CALL_GOTO(MPI_Bcast((*context)->lnEnts, nranks, ghost_mpi_dt_lidx, 0, mpicomm),err,ret);
         //MPI_CALL_GOTO(MPI_Allreduce(&((*context)->lnEnts[me]),&((*context)->gnnz),1,ghost_mpi_dt_gidx,MPI_SUM,mpicomm),err,ret);
 
@@ -106,7 +106,7 @@ ghost_error ghost_map_create_distribution(ghost_map *map, ghost_sparsemat_src_ro
     { // don't read rpt, only fill lfrow, lnrows, rest will be done after some matrix from*() function
         ghost_lidx *target_rows = NULL;
         double allweights;
-        MPI_CALL_GOTO(MPI_Allreduce(&weight,&allweights,1,MPI_DOUBLE,MPI_SUM,mpicomm),err,ret)
+        MPI_CALL_GOTO(MPI_Allreduce(&weight,&allweights,1,MPI_DOUBLE,MPI_SUM,map->mpicomm),err,ret)
 
         ghost_lidx my_target_rows = (ghost_lidx)(map->gdim*((double)weight/(double)allweights));
         if (my_target_rows == 0) {
@@ -115,7 +115,7 @@ ghost_error ghost_map_create_distribution(ghost_map *map, ghost_sparsemat_src_ro
 
         GHOST_CALL_GOTO(ghost_malloc((void **)&target_rows,nranks*sizeof(ghost_lidx)),err,ret);
 
-        MPI_CALL_GOTO(MPI_Allgather(&my_target_rows,1,ghost_mpi_dt_lidx,target_rows,1,ghost_mpi_dt_lidx,mpicomm),err,ret);
+        MPI_CALL_GOTO(MPI_Allgather(&my_target_rows,1,ghost_mpi_dt_lidx,target_rows,1,ghost_mpi_dt_lidx,map->mpicomm),err,ret);
                    
         map->goffs[0] = 0;
 

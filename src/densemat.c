@@ -356,8 +356,8 @@ ghost_error ghost_densemat_halocommInit_common(ghost_densemat *vec, ghost_contex
     ghost_error ret = GHOST_SUCCESS;
     int rowsize = vec->traits.ncols*vec->elSize;
 
-    if (vec->traits.flags & GHOST_DENSEMAT_NO_HALO) {
-        ERROR_LOG("The densemat has no halo buffer!");
+    if (vec->map->type != GHOST_MAP_COL) {
+        ERROR_LOG("The densemat is not in a column map!");
         return GHOST_ERR_INVALID_ARG;
     }
     if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {

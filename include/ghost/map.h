@@ -10,10 +10,22 @@
 #include "types.h"
 #include "sparsemat_src.h"
 
+/**
+ * @brief Possible types of maps.
+ */
 typedef enum
 {
+    /**
+     * @brief No type associated yet.
+     */
     GHOST_MAP_NONE,
+    /**
+     * @brief A row map.
+     */
     GHOST_MAP_ROW,
+    /**
+     * @brief A column map.
+     */
     GHOST_MAP_COL
 } 
 ghost_maptype;
@@ -40,11 +52,23 @@ typedef enum {
     GHOST_SPARSEMAT_SRC_NONE
 } ghost_sparsemat_src;
 
+/**
+ * @brief Possible distribution criteria of maps.
+ */
 typedef enum {
+    /**
+     * @brief Distribute by number of non zero entries.
+     */
     GHOST_MAP_DIST_NNZ,
+    /**
+     * @brief Distribute by number of rows.
+     */
     GHOST_MAP_DIST_NROWS
 } ghost_map_dist_type;
     
+/**
+ * @brief Possible flags to maps.
+ */
 typedef enum {
     GHOST_MAP_DEFAULT=0,
     /**
@@ -52,11 +76,14 @@ typedef enum {
     */
     GHOST_PERM_NO_DISTINCTION=1,
     /**
-     * @brief This map will be free'd. This is to avoid double frees and should not be set by the user!
+     * @brief This map will be free'd. This is to avoid double frees and should not be set by the user.
      */
     GHOST_MAP_WILL_BE_FREED=2
 } ghost_map_flags;
 
+/**
+ * @brief A GHOST map.
+ */
 typedef struct 
 {
     /**
@@ -107,10 +134,17 @@ typedef struct
      * @brief The local permutation in CUDA memory. 
      */
     ghost_lidx *cu_loc_perm;
-    
+    /**
+     * @brief The map's type.
+     */
     ghost_maptype type;
-
+    /**
+     * @brief The associated MPI communicator.
+     */
     ghost_mpi_comm mpicomm;
+    /**
+     * @brief The map's flags.
+     */
     ghost_map_flags flags;
 } 
 ghost_map;
@@ -118,20 +152,39 @@ ghost_map;
 #ifdef __cplusplus
 extern "C" {
 #endif
-    ghost_error ghost_map_create_distribution(ghost_map *map, ghost_sparsemat_src_rowfunc *matsrc, ghost_mpi_comm mpicomm, double weight, ghost_map_dist_type distType);
+    /**
+     * @brief Initialize a map's distribution with a given sparse matrix.
+     *
+     * @param map The map.
+     * @param matsrc The sparse matrix construction function.
+     * @param weight The weight of this rank.
+     * @param distType The distribution scheme.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error ghost_map_create_distribution(ghost_map *map, ghost_sparsemat_src_rowfunc *matsrc, double weight, ghost_map_dist_type distType);
     ghost_error ghost_map_create(ghost_map **map, ghost_gidx gdim, ghost_mpi_comm comm, ghost_maptype type, ghost_map_flags flags);
     /**
      * @brief Create a light map with only a dimension and an MPI communicator.
      *
-     * This map is used for non-distributed data
+     * This map is usually used for non-distributed dense matrices.
+     * The map does not have to be free'd by the user but will be free'd in ghost_densemat_destroy().
      *
-     * @param dim
-     * @param mpicomm
+     * @param dim The dimension.
+     * @param mpicomm The MPI communicator.
      *
-     * @return 
+     * @return The map.
      */
     ghost_map *ghost_map_create_light(ghost_lidx dim, ghost_mpi_comm mpicomm);
     void ghost_map_destroy(ghost_map *map);
+    /**
+     * @brief Get the rank of a given global row in a given map.
+     *
+     * @param map The map.
+     * @param row The global row.
+     *
+     * @return The rank inside the map's MPI communicator which owns the given row.
+     */
     int ghost_rank_of_row(ghost_map *map, ghost_gidx row);
 #ifdef __cplusplus
 }
