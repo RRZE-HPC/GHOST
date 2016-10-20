@@ -48,11 +48,16 @@ static bool checkLeft(ghost_densemat *left, ghost_context *ctx)
 #else
         if(left->map->type == GHOST_MAP_COL)
         {
-            left->map = ctx->row_map;
+           if(left->traits.flags & (ghost_densemat_flags)GHOST_DENSEMAT_PERMUTED)
+           {
+              ghost_densemat_permute(left,GHOST_PERMUTATION_PERM2ORIG);
+           }
+           left->map = ctx->row_map;
         }
+      ghost_densemat_permute(left,GHOST_PERMUTATION_ORIG2PERM);       
 #endif
     }
-    return flag;
+  return flag;
 }
 
 static bool checkRight(ghost_densemat *right, ghost_context *ctx)
@@ -66,11 +71,18 @@ static bool checkRight(ghost_densemat *right, ghost_context *ctx)
 #else
         if(right->map->type == GHOST_MAP_ROW)
         {
-            right->map = ctx->col_map;
+           if(right->traits.flags & (ghost_densemat_flags)GHOST_DENSEMAT_PERMUTED)
+           {
+              printf("Right in permuted space");
+              ghost_densemat_permute(right,GHOST_PERMUTATION_PERM2ORIG);
+           }
+           printf("Right swapped");
+           right->map = ctx->col_map;
         }
+      ghost_densemat_permute(right,GHOST_PERMUTATION_ORIG2PERM);      
 #endif
     }
-    return flag;
+  return flag;
 }
 
 //make vec2 similar to vec1
@@ -113,7 +125,16 @@ static bool makeSimilar(ghost_densemat *vec1, ghost_densemat *vec2)
             }
             else 
             {
-                vec2->map = vec1->map;
+                if(permuted_vec1)
+                {
+                   ghost_densemat_permute(vec2,GHOST_PERMUTATION_PERM2ORIG);                  
+                   vec2->map = vec1->map;
+                   ghost_densemat_permute(vec2,GHOST_PERMUTATION_ORIG2PERM);                  
+                } 
+                else
+                {
+                  vec2->map = vec1->map;
+                }
             }  
         } 
         else if(vec2_dim != GHOST_MAP_NONE)
@@ -148,14 +169,12 @@ ghost_error ghost_check_mat_vec_compatibility(ghost_compatible_mat_vec *data, gh
             if(left[i] != NULL)
             {
                 flag = checkLeft(left[i],ctx);
-                ghost_densemat_permute(left[i],GHOST_PERMUTATION_ORIG2PERM);      
             }
         }
         for(int i=0; i<4; ++i) {
             if(right[i] != NULL)
             {
                 flag = checkRight(right[i],ctx);      
-                ghost_densemat_permute(right[i],GHOST_PERMUTATION_ORIG2PERM);      
             }
         }
     } else {
@@ -178,7 +197,6 @@ ghost_error ghost_check_vec_vec_compatibility(ghost_compatible_vec_vec *data)
     bool flag = true;
 
     ghost_maptype row_E, col_E, row_A, col_A, row_B, col_B;
-    bool permuted_E = false;
 
     if((data->A != NULL) && (data->B != NULL)) 
     {
@@ -214,11 +232,12 @@ ghost_error ghost_check_vec_vec_compatibility(ghost_compatible_vec_vec *data)
 #ifndef GHOST_COMPATIBLE_PERM
                 WARNING_LOG("DENSEMAT inner dimension not compatible for multiplication")
 #else
-                    //B is made to be compatible with A if col_A != GHOST_MAP_NONE (TODO: It might or might not be optimal)
-                    makeSimilar(data->A, data->B); 
+                //B is made to be compatible with A if col_A != GHOST_MAP_NONE (TODO: It might or might not be optimal)
+                makeSimilar(data->A, data->B); 
 #endif            
             }
-            permuted_A = false;
+
+            /*permuted_A = false;
             permuted_B = false;
             if( (row_A!= GHOST_MAP_NONE) && ((data->A)->traits.flags & (ghost_densemat_flags)GHOST_DENSEMAT_PERMUTED) ) {
                 permuted_A = true;
@@ -228,13 +247,16 @@ ghost_error ghost_check_vec_vec_compatibility(ghost_compatible_vec_vec *data)
                 ERROR_LOG("COMPATIBILITY CHECK : Shouldn't have been here")
             } 
             permuted_E = permuted_A | permuted_B; 
+            */
 
             if(data->OUT != NULL)
             {
-                if(col_E == GHOST_MAP_NONE) {
+                if(col_E != GHOST_MAP_NONE) {
                   ERROR_LOG("COMPATIBILITY CHECK: Transposed densemat cannot be stored")
                 }            
-                flag = makeSimilar(data->A, data->OUT); 
+                if(row_E != (data->OUT)->map->type) {
+                  flag = makeSimilar(data->A, data->OUT); 
+                }
             }
         }
 

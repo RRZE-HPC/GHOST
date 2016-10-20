@@ -195,6 +195,7 @@ ghost_map *ghost_map_create_light(ghost_lidx dim, ghost_mpi_comm mpicomm)
     map->glb_perm = NULL;
     map->glb_perm_inv = NULL;
     map->cu_loc_perm = NULL;
+    map->type = GHOST_MAP_NONE; //required for checking compatibility
 
     return map;
 }
