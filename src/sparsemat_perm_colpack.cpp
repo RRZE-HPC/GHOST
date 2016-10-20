@@ -88,7 +88,7 @@ extern "C" ghost_error ghost_sparsemat_perm_color(ghost_context *ctx, ghost_spar
     
     
     if (!ctx->row_map->loc_perm) {
-        GHOST_CALL_GOTO(ghost_malloc((void **)ctx->row_map->loc_perm,sizeof(ghost_permutation)),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)ctx->row_map->loc_perm,sizeof(ghost_map)),err,ret);
         //ctx->row_map->loc_perm->method = GHOST_PERMUTATION_UNSYMMETRIC; //you can also make it symmetric
         GHOST_CALL_GOTO(ghost_malloc((void **)ctx->row_map->loc_perm,sizeof(ghost_gidx)*ctx->row_map->dim),err,ret);
         GHOST_CALL_GOTO(ghost_malloc((void **)ctx->row_map->loc_perm_inv,sizeof(ghost_gidx)*ctx->row_map->dim),err,ret);   
