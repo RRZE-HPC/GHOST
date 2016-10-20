@@ -10,7 +10,6 @@
 static bool checkLeft(ghost_densemat *left, ghost_context *ctx);
 static bool checkRight(ghost_densemat *right, ghost_context *ctx);
 static bool makeSimilar(ghost_densemat *vec1, ghost_densemat *vec2);
-static bool clonePermProperties(ghost_densemat *vec1, ghost_maptype vec2_row, ghost_maptype vec2_col, bool permuted_vec2);
 
 const ghost_compatible_mat_vec GHOST_COMPATIBLE_MAT_VEC_INITIALIZER = {
     .mat    = NULL,
@@ -135,78 +134,6 @@ static bool makeSimilar(ghost_densemat *vec1, ghost_densemat *vec2)
     return flag; 
 }
 
-//make vec1 satisfy the map specified in argument
-bool clonePermProperties(ghost_densemat *vec1, ghost_maptype vec2_row, ghost_maptype vec2_col, bool permuted_vec2)
-{
-    bool flag = true;
-    if(vec2_col != GHOST_MAP_NONE) 
-    {
-        flag = false;
-        ERROR_LOG("COMPATIBILITY CHECK: Transposed densemat cannot be stored")
-    }
-    else 
-    { 
-        ghost_maptype vec1_dim, vec2_dim;
-
-        vec1_dim = vec1->map->type;
-        vec2_dim = vec2_row;
-
-        bool permuted_vec1=false;
-
-        permuted_vec1 = vec1->traits.flags & (ghost_densemat_flags)GHOST_DENSEMAT_PERMUTED;
-
-        if( (vec1_dim != vec2_dim) || (permuted_vec1 != permuted_vec2)  ) 
-        {
-            flag = false;
-            if(vec2_dim != GHOST_MAP_NONE) 
-            {
-                if(vec1_dim == GHOST_MAP_NONE) 
-                {
-                    ERROR_LOG("Not implemented"); //TODO
-                    //vec1->map = vec2->map;
-                    if (permuted_vec2) {
-                        ghost_densemat_permute(vec1,GHOST_PERMUTATION_ORIG2PERM);
-                    }
-                } 
-                else if(permuted_vec1 != permuted_vec2) 
-                {
-                    if(permuted_vec2) 
-                    {
-                        ERROR_LOG("Not implemented"); //TODO
-                        //vec1->map = vec2->map;
-                        ghost_densemat_permute(vec1, GHOST_PERMUTATION_ORIG2PERM); 
-                    } 
-                    else 
-                    {
-                        ERROR_LOG("Not implemented"); //TODO
-                        ghost_densemat_permute(vec1,GHOST_PERMUTATION_PERM2ORIG); 
-                        //vec1->map = vec2->map;
-                    }
-                }
-                else
-                {
-                    ERROR_LOG("Not implemented"); //TODO
-                    //vec1->map = vec2->map;
-                }  
-            } 
-            else if(vec2_dim != GHOST_MAP_NONE)
-            {   
-                flag  = false;   
-                ERROR_LOG("Cannot convert back to GHOST_MAP_NONE")
-            }    
-        }
-    }
-
-
-    if(flag == false)
-    { 
-#ifndef GHOST_COMPATIBLE_PERM
-        WARNING_LOG("DENSEMAT not in same space")
-#endif
-    }
-    return flag; 
-}
-
 ghost_error ghost_check_mat_vec_compatibility(ghost_compatible_mat_vec *data, ghost_context *ctx)
 {
     ghost_error ret = GHOST_SUCCESS;
@@ -304,7 +231,10 @@ ghost_error ghost_check_vec_vec_compatibility(ghost_compatible_vec_vec *data)
 
             if(data->OUT != NULL)
             {
-                flag = clonePermProperties(data->OUT, row_E, col_E, permuted_E); 
+                if(col_E == GHOST_MAP_NONE) {
+                  ERROR_LOG("COMPATIBILITY CHECK: Transposed densemat cannot be stored")
+                }            
+                flag = makeSimilar(data->A, data->OUT); 
             }
         }
 
