@@ -18,7 +18,6 @@
 #include "ghost/sell_spmv_varblock_avx_gen.h"
 #include "ghost/sell_spmv_varblock_sse_gen.h"
 #include "ghost/sell_spmv_varblock_plain_gen.h"
-#include "ghost/compatibility_check.h"
 
 #include <complex>
 #include <unordered_map>
@@ -385,16 +384,6 @@ extern "C" ghost_error ghost_sell_spmv_selector(ghost_densemat *lhs,
 {
     ghost_error ret = GHOST_SUCCESS;
 
-
-    //////////////// check compatibility /////////////
-    ghost_compatible_mat_vec check = GHOST_COMPATIBLE_MAT_VEC_INITIALIZER;
-    check.mat = mat;
-    check.right1 = rhs;
-    check.left1 = lhs;
-    
-    ret = ghost_check_mat_vec_compatibility(&check,mat->context);
-    ///////////////////////////////////////////////////
- 
 
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     if (rhs->traits.storage != lhs->traits.storage) {

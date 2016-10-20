@@ -4,6 +4,7 @@
 #include "ghost/instr.h"
 #include "ghost/util.h"
 #include "ghost/spmv_solvers.h"
+#include "ghost/compatibility_check.h"
 
 #define GHOST_MAX_SPMMV_WIDTH INT_MAX
 
@@ -31,6 +32,17 @@ ghost_error ghost_spmv(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat
         ERROR_LOG("The SpMV solver as specified in options cannot be found.");
         return GHOST_ERR_INVALID_ARG;
     }
+    
+    //////////////// check compatibility /////////////
+    ghost_compatible_mat_vec check = GHOST_COMPATIBLE_MAT_VEC_INITIALIZER;
+    check.mat = mat;
+    check.right1 = invec;
+    check.left1 = res;
+    
+    GHOST_CALL_RETURN(ghost_check_mat_vec_compatibility(&check,mat->context));
+    ///////////////////////////////////////////////////
+ 
+
 
     // TODO only if densemats are compact!
     while (remcols > GHOST_MAX_SPMMV_WIDTH) {
