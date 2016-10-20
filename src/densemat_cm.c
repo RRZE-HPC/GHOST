@@ -27,6 +27,7 @@
 
 #define COLMAJOR
 #include "ghost/densemat_iter_macros.h"
+#include "ghost/densemat_common.c.def"
 
 ghost_error ghost_densemat_cm_distributeVector(ghost_densemat *vec, ghost_densemat *nodeVec, ghost_context *ctx)
 {

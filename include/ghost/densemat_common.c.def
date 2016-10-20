@@ -82,7 +82,7 @@ ghost_error FUNCNAME(malloc(ghost_densemat *vec, int* needsInit))
     return GHOST_SUCCESS; 
 }
 
-static ghost_error FUNCNAME(view(ghost_densemat *src, ghost_densemat **new, ghost_lidx nr, ghost_lidx roffs, ghost_lidx nc, ghost_lidx coffs))
+ghost_error FUNCNAME(view(ghost_densemat *src, ghost_densemat **new, ghost_lidx nr, ghost_lidx roffs, ghost_lidx nc, ghost_lidx coffs))
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     DEBUG_LOG(1,"Viewing a %"PRLIDX"x%"PRLIDX" densemat from a %"PRLIDX"x%"PRLIDX" densemat with offset %"PRLIDX"x%"PRLIDX,nr,nc,DM_NROWS(src),src->traits.ncols,roffs,coffs);
@@ -133,7 +133,7 @@ static ghost_error FUNCNAME(view(ghost_densemat *src, ghost_densemat **new, ghos
     return GHOST_SUCCESS;
 }
 
-static ghost_error FUNCNAME(viewPlain(ghost_densemat *vec, void *data, ghost_lidx lda))
+ghost_error FUNCNAME(viewPlain(ghost_densemat *vec, void *data, ghost_lidx lda))
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
@@ -165,7 +165,7 @@ static ghost_error FUNCNAME(viewPlain(ghost_densemat *vec, void *data, ghost_lid
     return GHOST_SUCCESS;
 }
 
-static ghost_error FUNCNAME(viewCols(ghost_densemat *src, ghost_densemat **new, ghost_lidx nc, ghost_lidx coffs))
+ghost_error FUNCNAME(viewCols(ghost_densemat *src, ghost_densemat **new, ghost_lidx nc, ghost_lidx coffs))
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     DEBUG_LOG(1,"Viewing a %"PRLIDX"x%"PRLIDX" contiguous dense matrix",DM_NROWS(src),nc);
@@ -205,7 +205,7 @@ static ghost_error FUNCNAME(viewCols(ghost_densemat *src, ghost_densemat **new, 
     return GHOST_SUCCESS;
 }
 
-static ghost_error FUNCNAME(viewScatteredCols(ghost_densemat *src, ghost_densemat **new, ghost_lidx nc, ghost_lidx *coffs))
+ghost_error FUNCNAME(viewScatteredCols(ghost_densemat *src, ghost_densemat **new, ghost_lidx nc, ghost_lidx *coffs))
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
 
@@ -254,7 +254,7 @@ static ghost_error FUNCNAME(viewScatteredCols(ghost_densemat *src, ghost_densema
     return GHOST_SUCCESS;
 }
 
-static ghost_error FUNCNAME(viewScatteredVec(ghost_densemat *src, ghost_densemat **new, ghost_lidx nr, ghost_lidx *roffs, ghost_lidx nc, ghost_lidx *coffs))
+ghost_error FUNCNAME(viewScatteredVec(ghost_densemat *src, ghost_densemat **new, ghost_lidx nr, ghost_lidx *roffs, ghost_lidx nc, ghost_lidx *coffs))
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     DEBUG_LOG(1,"Viewing a %"PRLIDX"x%"PRLIDX" scattered dense matrix",DM_NROWS(src),nc);
@@ -408,7 +408,7 @@ out:
     return GHOST_SUCCESS;
 }
 
-static ghost_error FUNCNAME(entry(ghost_densemat * vec, void *val, ghost_lidx r, ghost_lidx c)) 
+ghost_error FUNCNAME(entry(ghost_densemat * vec, void *val, ghost_lidx r, ghost_lidx c)) 
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     ghost_densemat *singleent;
@@ -421,7 +421,7 @@ static ghost_error FUNCNAME(entry(ghost_densemat * vec, void *val, ghost_lidx r,
     return GHOST_SUCCESS;
 }
 
-static ghost_error FUNCNAME(reduce(ghost_densemat * vec_in, int root)) 
+ghost_error FUNCNAME(reduce(ghost_densemat * vec_in, int root)) 
 {
 #ifdef GHOST_HAVE_MPI
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
@@ -490,7 +490,7 @@ out:
 #endif
 }
 
-static ghost_error FUNCNAME(download(ghost_densemat * vec)) 
+ghost_error FUNCNAME(download(ghost_densemat * vec)) 
 {
 #ifdef GHOST_HAVE_CUDA
     ghost_type type;
@@ -524,7 +524,7 @@ static ghost_error FUNCNAME(download(ghost_densemat * vec))
     return GHOST_SUCCESS;
 }
 
-static ghost_error FUNCNAME(upload(ghost_densemat * vec)) 
+ghost_error FUNCNAME(upload(ghost_densemat * vec)) 
 {
 #ifdef GHOST_HAVE_CUDA
     ghost_type type;
@@ -558,7 +558,7 @@ static ghost_error FUNCNAME(upload(ghost_densemat * vec))
     return GHOST_SUCCESS;
 }
 
-static ghost_error FUNCNAME(syncValues(ghost_densemat *vec, ghost_mpi_comm comm, int root))
+ghost_error FUNCNAME(syncValues(ghost_densemat *vec, ghost_mpi_comm comm, int root))
 {
 #ifdef GHOST_HAVE_MPI
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
@@ -583,7 +583,7 @@ static ghost_error FUNCNAME(syncValues(ghost_densemat *vec, ghost_mpi_comm comm,
     return GHOST_SUCCESS;
 }
 
-static ghost_error FUNCNAME(toFile(ghost_densemat *vec, char *path, ghost_mpi_comm mpicomm))
+ghost_error FUNCNAME(toFile(ghost_densemat *vec, char *path, ghost_mpi_comm mpicomm))
 {
     int32_t endianess = ghost_machine_bigendian();
     int32_t version = 1;
@@ -678,7 +678,7 @@ static ghost_error FUNCNAME(toFile(ghost_densemat *vec, char *path, ghost_mpi_co
     return GHOST_SUCCESS;
 }
 
-static ghost_error FUNCNAME(fromFile(ghost_densemat *vec, char *path, ghost_mpi_comm mpicomm))
+ghost_error FUNCNAME(fromFile(ghost_densemat *vec, char *path, ghost_mpi_comm mpicomm))
 {
     int needInit = 0;
     FUNCNAME(malloc(vec,&needInit));
@@ -800,7 +800,7 @@ static ghost_error FUNCNAME(fromFile(ghost_densemat *vec, char *path, ghost_mpi_
 
 }
 
-static ghost_error FUNCNAME(fromFunc(ghost_densemat *vec, int (*fp)(ghost_gidx, ghost_lidx, void *, void *), void *arg))
+ghost_error FUNCNAME(fromFunc(ghost_densemat *vec, int (*fp)(ghost_gidx, ghost_lidx, void *, void *), void *arg))
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     ghost_gidx offset = 0;
