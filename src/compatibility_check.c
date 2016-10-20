@@ -73,10 +73,8 @@ static bool checkRight(ghost_densemat *right, ghost_context *ctx)
         {
            if(right->traits.flags & (ghost_densemat_flags)GHOST_DENSEMAT_PERMUTED)
            {
-              printf("Right in permuted space");
               ghost_densemat_permute(right,GHOST_PERMUTATION_PERM2ORIG);
            }
-           printf("Right swapped");
            right->map = ctx->col_map;
         }
       ghost_densemat_permute(right,GHOST_PERMUTATION_ORIG2PERM);      
