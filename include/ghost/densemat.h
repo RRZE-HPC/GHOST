@@ -77,12 +77,6 @@ typedef enum {
      * @brief Set this flag if the number of columns should be padded according to the SIMD width.
      */
     GHOST_DENSEMAT_PAD_COLS = 1<<5,
-    /**
-     * @brief Destroy the densemat's map when the densemat gets destroyed.
-     *
-     * This flag should not be set by the user.
-     */
-    GHOST_DENSEMAT_FREE_MAP = 1<<6,
 }  
 ghost_densemat_flags;
 

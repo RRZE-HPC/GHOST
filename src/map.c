@@ -14,6 +14,7 @@ ghost_error ghost_map_create(ghost_map **map, ghost_gidx gdim, ghost_mpi_comm co
     GHOST_CALL_GOTO(ghost_malloc((void **)&((*map)->goffs),sizeof(ghost_gidx)*nranks),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&((*map)->ldim),sizeof(ghost_lidx)*nranks),err,ret);
 
+    (*map)->ref_count = 1; /* the scope or context which creates the map is the first referrer */
     (*map)->gdim = gdim;
     (*map)->loc_perm = NULL;
     (*map)->loc_perm_inv = NULL;
@@ -158,10 +159,14 @@ out:
 
 void ghost_map_destroy(ghost_map *map)
 {
-        free(map->cu_loc_perm); map->cu_loc_perm = NULL;
-        free(map->goffs); map->goffs = NULL;
-        free(map->ldim); map->ldim = NULL;
-
+        map->ref_count--;
+        if (map->ref_count==0)
+        {
+          free(map->cu_loc_perm); map->cu_loc_perm = NULL;
+          free(map->goffs); map->goffs = NULL;
+          free(map->ldim); map->ldim = NULL;
+          free(map);
+        }
 }
 
 int ghost_rank_of_row(ghost_map *map, ghost_gidx row)

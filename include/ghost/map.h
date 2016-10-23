@@ -75,10 +75,7 @@ typedef enum {
     * @brief Does not make a distinction between local and remote entries if set; this might lead to higher communication time
     */
     GHOST_PERM_NO_DISTINCTION=1,
-    /**
-     * @brief This map will be free'd. This is to avoid double frees and should not be set by the user.
-     */
-    GHOST_MAP_WILL_BE_FREED=2
+
 } ghost_map_flags;
 
 /**
@@ -146,6 +143,14 @@ typedef struct
      * @brief The map's flags.
      */
     ghost_map_flags flags;
+    /**
+     if the reference counter is 0, ghost_map_destroy deletes the 
+     data structure. Otherwise, it just decreases the reference count.
+     Whenever the map is passed to a densemat or other ghost object,  
+     its reference count is incremented. Such objects should call 
+     ghost_map_destroy when deleted themselves.
+    */
+    int ref_count;
 } 
 ghost_map;
 

@@ -69,8 +69,8 @@ ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, gho
     (*context)->halo_elements = -1;
         
 
-    GHOST_CALL_GOTO(ghost_map_create(&((*context)->row_map),gnrows,comm,GHOST_MAP_ROW,GHOST_MAP_WILL_BE_FREED),err,ret);
-    GHOST_CALL_GOTO(ghost_map_create(&((*context)->col_map),gncols,comm,GHOST_MAP_COL,GHOST_MAP_WILL_BE_FREED),err,ret);
+    GHOST_CALL_GOTO(ghost_map_create(&((*context)->row_map),gnrows,comm,GHOST_MAP_ROW,GHOST_MAP_DEFAULT),err,ret);
+    GHOST_CALL_GOTO(ghost_map_create(&((*context)->col_map),gncols,comm,GHOST_MAP_COL,GHOST_MAP_DEFAULT),err,ret);
 
     GHOST_CALL_GOTO(ghost_nrank(&nranks, (*context)->mpicomm),err,ret);
     GHOST_CALL_GOTO(ghost_rank(&me, (*context)->mpicomm),err,ret);
@@ -156,8 +156,8 @@ void ghost_context_destroy(ghost_context *context)
         
         ghost_map_destroy(context->row_map);
         ghost_map_destroy(context->col_map);
-        free(context->row_map); context->row_map = NULL;
-        free(context->col_map); context->col_map = NULL;
+        context->row_map = NULL;
+        context->col_map = NULL;
 
         if(context->avg_ptr){
           free(context->avg_ptr); context->avg_ptr = NULL;

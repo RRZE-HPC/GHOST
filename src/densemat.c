@@ -72,14 +72,7 @@ ghost_error ghost_densemat_create(ghost_densemat **vec, ghost_map *map, ghost_de
     (*vec)->val = NULL;
     (*vec)->cu_val = NULL;
 
-    if (!(map->flags & GHOST_MAP_WILL_BE_FREED)) {
-        // this densemat will free the map
-        (*vec)->traits.flags = (ghost_densemat_flags)((*vec)->traits.flags|GHOST_DENSEMAT_FREE_MAP);
-        map->flags = (ghost_map_flags)(map->flags|GHOST_MAP_WILL_BE_FREED);
-    } else {
-        // this map will already be free'd, unset the flag if it is set (possibly for views)
-        (*vec)->traits.flags = (ghost_densemat_flags)((*vec)->traits.flags&~GHOST_DENSEMAT_FREE_MAP);
-    }
+    map->ref_count++;
   /* 
     if (ctx) {
 //        if (ctx->perm_global || ctx->perm_local) {
@@ -525,10 +518,7 @@ void ghost_densemat_destroy( ghost_densemat* vec )
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TEARDOWN);
     if (vec) {
-        if (vec->traits.flags & GHOST_DENSEMAT_FREE_MAP) {
-            ghost_map_destroy(vec->map);
-            free(vec->map);
-        }
+        ghost_map_destroy(vec->map);
             
         if (!(vec->traits.flags & GHOST_DENSEMAT_VIEW)) {
             if (vec->traits.location & GHOST_LOCATION_DEVICE) {
