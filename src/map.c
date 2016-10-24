@@ -187,6 +187,7 @@ ghost_map *ghost_map_create_light(ghost_lidx dim, ghost_mpi_comm mpicomm)
 {
     ghost_map *map;
     ghost_malloc((void **)&map,sizeof(ghost_map));
+    map->ref_count=1;
     map->flags = GHOST_MAP_DEFAULT;
     map->dim = dim;
     map->gdim = dim;
