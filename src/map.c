@@ -35,6 +35,15 @@ out:
 
     return ret;
 }
+
+static int diag(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *col, void *val, __attribute__((unused)) void *arg)
+{
+    *rowlen = 1;
+    col[0] = row;
+    ((double *)val)[0] = (double)(row+1);
+    
+    return 0;
+}
     
 ghost_error ghost_map_create_distribution(ghost_map *map, ghost_sparsemat_src_rowfunc *matsrc, double weight, ghost_map_dist_type distType)
 {
@@ -44,9 +53,21 @@ ghost_error ghost_map_create_distribution(ghost_map *map, ghost_sparsemat_src_ro
     
     GHOST_CALL_GOTO(ghost_nrank(&nranks, map->mpicomm),err,ret);
     GHOST_CALL_GOTO(ghost_rank(&me,map->mpicomm),err,ret);
-    
-    if (distType == GHOST_MAP_DIST_NNZ)
-    { // read rpt and fill lfrow, lnrows, lfent, lnents
+   
+    if (matsrc == NULL) {
+        if (distType == GHOST_MAP_DIST_NNZ) {
+            ERROR_LOG("Distribution by nnz can only be done if a matrix source is given");
+            return GHOST_ERR_INVALID_ARG;
+        } else {
+            ghost_sparsemat_src_rowfunc diagsrc = GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER;
+            diagsrc.func = diag;
+            diagsrc.maxrowlen = 1;
+            diagsrc.gnrows = map->gdim;
+            return ghost_map_create_distribution(map,&diagsrc,weight,distType);
+        }
+    }
+
+    if (distType == GHOST_MAP_DIST_NNZ) {
         ghost_gidx *rpt;
         ghost_gidx gnnz;
 
@@ -103,8 +124,7 @@ ghost_error ghost_map_create_distribution(ghost_map *map, ghost_sparsemat_src_ro
         //MPI_CALL_GOTO(MPI_Bcast((*context)->lnEnts, nranks, ghost_mpi_dt_lidx, 0, mpicomm),err,ret);
         //MPI_CALL_GOTO(MPI_Allreduce(&((*context)->lnEnts[me]),&((*context)->gnnz),1,ghost_mpi_dt_gidx,MPI_SUM,mpicomm),err,ret);
 
-    } else if (distType == GHOST_MAP_DIST_NROWS)
-    { // don't read rpt, only fill lfrow, lnrows, rest will be done after some matrix from*() function
+    } else if (distType == GHOST_MAP_DIST_NROWS) {
         ghost_lidx *target_rows = NULL;
         double allweights;
         MPI_CALL_GOTO(MPI_Allreduce(&weight,&allweights,1,MPI_DOUBLE,MPI_SUM,map->mpicomm),err,ret)
@@ -147,6 +167,7 @@ ghost_error ghost_map_create_distribution(ghost_map *map, ghost_sparsemat_src_ro
         free(target_rows); target_rows = NULL;
     }
     map->dim = map->ldim[me];
+    map->dimpad = map->dim; // may be increased by some padding at a later point
     map->offs = map->goffs[me];
 
     goto out;

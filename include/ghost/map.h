@@ -158,12 +158,14 @@ ghost_map;
 extern "C" {
 #endif
     /**
-     * @brief Initialize a map's distribution with a given sparse matrix.
+     * @brief Initialize a map's distribution.
      *
      * @param map The map.
-     * @param matsrc The sparse matrix construction function.
+     * @param matsrc The sparse matrix construction function or NULL.
      * @param weight The weight of this rank.
      * @param distType The distribution scheme.
+     *
+     * In case matsrc is NULL, the only possible distType is ::GHOST_MAP_DIST_NROWS.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
