@@ -32,13 +32,16 @@ set(GHOST_SPARSEMAT_GLOBALSTATS 0 CACHE BOOL "Gather some global statistics on s
 set(GHOST_SPARSEMAT_STATS 0 CACHE BOOL "Gather statistics about sparse matrices (slows down matrix construction)")
 set(GHOST_KACZ_ANALYZE 0 CACHE BOOL "Gather data about load balancing for KACZ method (might slow down initial splitting)")  
 set(GHOST_LOG_RANK "-1" CACHE STRING "The MPI rank for which the log messages will be printed. -1 for full verbosity.")
+#set(GHOST_GEN_DENSEMAT_DIM "1,2,4,8" CACHE STRING "The block vector sizes for which generated kernels are being created (comma-separated list)")
+#set(GHOST_GEN_SELL_C "1,32" CACHE STRING "The SELL chunk heights for which generated kernels are being created (comma-separated list)")
 set(GHOST_AUTOGEN_SPMMV "32,1;1,4;32,*;1,*" CACHE STRING "SpM(M)V kernels to be auto-generated. Semicolon-separated list of 2-tuples: (CHUNKHEIGHT, NVECS)")
-set(GHOST_AUTOGEN_SPMMV_CUDA "32,1,0,0,0,0,0,0,0;1,4,0,0,0,0,0,0,0;32,*,0,0,0,0,0,0,0;1,*,0,0,0,0,0,0,0" CACHE STRING "SpM(M)V kernels to be auto-generated. Semicolon-separated list of 9-tuples: (CHUNKHEIGHT, NVECS,AXP(B)Y,SCALE,(V)SHIFT,DOT_YY,DOT_XY,DOT_XX,CHAIN_AXPBY)")
 set(GHOST_AUTOGEN_TSMM "4,4,1" CACHE STRING "TSMM kernels to be auto-generated. Semicolon-separated list of 3-tuples: (K, N, UNROLL)")
 set(GHOST_AUTOGEN_TSMM-INPLACE "4,4" CACHE STRING "TSMM-inplace kernels to be auto-generated. Semicolon-separated list of 2-tuples: (K, N)")
 set(GHOST_AUTOGEN_TSMTTSM "4,4,1" CACHE STRING "TSMTTSM kernels to be auto-generated. Semicolon-separated list of 3-tuples: (M, N, UNROLL)")
 set(GHOST_AUTOGEN_DOT "1;4" CACHE STRING "DOT kernels to be auto-generated. Semicolon-separated list of 1-tuples: (NVECS)")
 set(GHOST_AUTOGEN_KACZ "32,1,0;32,4,0;1,4,0;1,4,4" CACHE STRING "KACZ kernels to be auto-generated. Semicolon-separated list of 3-tuples: (CHUNKHEIGHT, NVECS, NSHIFTS)")
+#set(GHOST_GEN_TSM_UNROLL "2" CACHE STRING "Outer loop unrolling dimensions to be generated for tall&skinny GEMM kernels")
+set(GHOST_GEN_CUSELLSPMV "true,true,true,true,true,true,true;true,false,false,false,false,false,false;false,false,false,false,false,false,false" CACHE STRING "The permutations of SELL SpMV CUDA kernels to instantiate (semicolon-separated list of comma-separated lists). AXP(B)Y,SCALE,(V)SHIFT,DOT_YY,DOT_XY,DOT_XX,CHAIN_AXPBY")
 set(GHOST_VERBOSITY 1 CACHE STRING "Level of verbosity information. Valid values: 0 (be totally silent), 1 (print warnings, errors and further important information), 2, 3, 4 (increasing level of verbosity)")
 set(GHOST_INSTRUMENT "" CACHE STRING "Type of instrumentation (semicolon separated list). Valid values: TIMING, LIKWID, IACA")
 set(GHOST_INSTRUMENT_FUNCTYPES "(functype) & GHOST_FUNCTYPE_ANY" CACHE STRING "Logical selection of function types to instrument. Possible values are defined in func_util.h and functype should be put in parentheses.")
@@ -201,6 +204,28 @@ set (HEADERS
     include/ghost/compatibility_check.h
    )
 
+#string(REPLACE "," ";" GHOST_GEN_SELL_C_LIST ${GHOST_GEN_SELL_C})
+#string(REPLACE "," ";" GHOST_GEN_DENSEMAT_DIM_LIST ${GHOST_GEN_DENSEMAT_DIM})
+#string(REPLACE "," ";" GHOST_GEN_UNROLL_LIST ${GHOST_GEN_TSM_UNROLL})
+
+set(SELL_CU_SPMV_SWITCHCASCADE "bool do_fallback = false;\\\nswitch \(mat->traits.C) {\\\n")
+foreach (SELL_CHUNKHEIGHT ${GHOST_GEN_SELL_C_LIST})
+    set(SELL_CU_SPMV_SWITCHCASCADE "${SELL_CU_SPMV_SWITCHCASCADE}    case ${SELL_CHUNKHEIGHT}:\\\n")
+    set(SELL_CU_SPMV_SWITCHCASCADE "${SELL_CU_SPMV_SWITCHCASCADE}        switch \(rhs->traits.ncols) {\\\n")
+    foreach (SELL_NCOLS ${GHOST_GEN_DENSEMAT_DIM_LIST})
+        set(SELL_CU_SPMV_SWITCHCASCADE "${SELL_CU_SPMV_SWITCHCASCADE}            case ${SELL_NCOLS}:\\\n")
+        foreach(SELL_CUDA_VARIANT ${GHOST_GEN_CUSELLSPMV})
+            set(SELL_CU_SPMV_SWITCHCASCADE "${SELL_CU_SPMV_SWITCHCASCADE}                if(!(strcmp(boolstr,\"${SELL_CUDA_VARIANT}\"))) { kernel<dt1,dt2,dt2_b,nrowsinblock,${SELL_CHUNKHEIGHT},${SELL_NCOLS},${SELL_CUDA_VARIANT}><<<grid,block,smem>>>((dt2 *)lhsval,(int)(lhs->stride),(dt2 *)rhsval,(int)rhs->stride,traits.flags,mat->nrows,mat->cu_rowLen,mat->cu_col,(dt1 *)mat->cu_val,mat->cu_chunkStart,(dt2 *)cu_shift,(dt2)scale,(dt2)beta,(dt2 *)cu_localdot,(dt2 *)zval,zstride,(dt2)sdelta,(dt2)seta); } else \\\n")
+        endforeach()
+        set(SELL_CU_SPMV_SWITCHCASCADE "${SELL_CU_SPMV_SWITCHCASCADE}                { PERFWARNING_LOG(\"Non-configured bool variant: %s\",boolstr);\\\n                do_fallback = true; }\\\n")
+        set(SELL_CU_SPMV_SWITCHCASCADE "${SELL_CU_SPMV_SWITCHCASCADE}        break;\\\n")
+    endforeach() 
+    set(SELL_CU_SPMV_SWITCHCASCADE "${SELL_CU_SPMV_SWITCHCASCADE}            default:\\\n                PERFWARNING_LOG(\"Non-configured ncols %d!\",rhs->traits.ncols);\\\n                do_fallback = true;\\\n        }\\\n        break;\\\n")
+endforeach()
+set(SELL_CU_SPMV_SWITCHCASCADE "${SELL_CU_SPMV_SWITCHCASCADE}    default:\\\n        PERFWARNING_LOG(\"Non-configured chunk height: %d!\",mat->traits.C);\\\n        do_fallback = true;\\\n}\\\n")
+configure_file ("${CMAKE_SOURCE_DIR}/src/sell_spmv.cu.in" "${PROJECT_BINARY_DIR}/src_generated/sell_spmv.cu")
+list(APPEND CU_GENERATED_SOURCES "${PROJECT_BINARY_DIR}/src_generated/sell_spmv.cu")
+
 set (PP_SCRIPT ${PROJECT_SOURCE_DIR}/bin/ghost_unroll.pl)
 set (PP_HEADER_SCRIPT ${PROJECT_SOURCE_DIR}/bin/ghost_extractfunc.pl)
 set (PP_KERNELMAP_SCRIPT ${PROJECT_SOURCE_DIR}/bin/ghost_mapfunc.pl)
@@ -317,6 +342,126 @@ foreach(TEMPLATE_SRCFILE ${TEMPLATE_SRCFILES})
     list(APPEND GLOB_GENERATED_HEADERS ${GENERATED_HEADER})
     list(APPEND GLOB_GENERATED_KERNELMAPS ${GENERATED_KERNELMAP})
 endforeach()
+
+#[[
+file(GLOB TEMPLATE_SRCFILES "${CMAKE_SOURCE_DIR}/src/*.in")
+foreach(TEMPLATE_SRCFILE ${TEMPLATE_SRCFILES})
+    set(GENERATED_FILES "")
+    set(UNROLLED_FILES "")
+    get_filename_component(AUTOGEN_FUNCTION ${TEMPLATE_SRCFILE} NAME_WE)
+    get_filename_component(TEMPLATE_SRCFILE_FULLEXT ${TEMPLATE_SRCFILE} EXT)
+    string(REPLACE ".in" "" TEMPLATE_SRCFILE_EXT ${TEMPLATE_SRCFILE_FULLEXT})
+
+    file(READ ${TEMPLATE_SRCFILE} TEMPLATE_HEADER OFFSET 0 LIMIT 17)
+    string(STRIP ${TEMPLATE_HEADER} TEMPLATE_HEADER_STRIPPED)
+    if (NOT "${TEMPLATE_HEADER_STRIPPED}" STREQUAL "/*!GHOST_AUTOGEN")
+        message(FATAL_ERROR "AUTOGEN header missing or wrong in file ${TEMPLATE_SRCFILE}. Is ${TEMPLATE_HEADER}, should be /*!GHOST_AUTOGEN")
+    endif()
+
+    file(READ ${TEMPLATE_SRCFILE} TEMPLATE_DEPS_RAW OFFSET 17 LIMIT 31)
+    string(FIND "${TEMPLATE_DEPS_RAW}" " " ENDPOS)
+    string(SUBSTRING "${TEMPLATE_DEPS_RAW}" 0 ${ENDPOS} TEMPLATE_DEPS)
+    set(TEMPLATE_DEPS_LIST ${TEMPLATE_DEPS})
+   
+    if (DEFINED TEMPLATE_DEPS_LIST)
+        list(SORT TEMPLATE_DEPS_LIST)
+    endif()
+   
+    if(TEMPLATE_DEPS_LIST MATCHES "^BLOCKDIM1$")
+        foreach(BLOCKDIM1 ${GHOST_GEN_DENSEMAT_DIM_LIST})
+            configure_file (
+                ${TEMPLATE_SRCFILE}
+                ${PROJECT_BINARY_DIR}/src_generated/${AUTOGEN_FUNCTION}__${BLOCKDIM1}${TEMPLATE_SRCFILE_EXT}
+                )
+            list(APPEND GENERATED_FILES ${PROJECT_BINARY_DIR}/src_generated/${AUTOGEN_FUNCTION}__${BLOCKDIM1}${TEMPLATE_SRCFILE_EXT})
+        endforeach()
+    elseif(TEMPLATE_DEPS_LIST MATCHES "^CHUNKHEIGHT$")
+        foreach(CHUNKHEIGHT ${GHOST_GEN_SELL_C_LIST})
+configure_file (
+                ${TEMPLATE_SRCFILE}
+                ${PROJECT_BINARY_DIR}/src_generated/${AUTOGEN_FUNCTION}__${CHUNKHEIGHT}${TEMPLATE_SRCFILE_EXT}
+                )
+            list(APPEND GENERATED_FILES ${PROJECT_BINARY_DIR}/src_generated/${AUTOGEN_FUNCTION}__${CHUNKHEIGHT}${TEMPLATE_SRCFILE_EXT})
+        endforeach()
+    elseif(TEMPLATE_DEPS_LIST MATCHES "^BLOCKDIM1;CHUNKHEIGHT$")
+        foreach(BLOCKDIM1 ${GHOST_GEN_DENSEMAT_DIM_LIST})
+            foreach(CHUNKHEIGHT ${GHOST_GEN_SELL_C_LIST})
+                configure_file (
+                    ${TEMPLATE_SRCFILE}
+                    ${PROJECT_BINARY_DIR}/src_generated/${AUTOGEN_FUNCTION}__${BLOCKDIM1}_${CHUNKHEIGHT}${TEMPLATE_SRCFILE_EXT}
+                    )
+                list(APPEND GENERATED_FILES ${PROJECT_BINARY_DIR}/src_generated/${AUTOGEN_FUNCTION}__${BLOCKDIM1}_${CHUNKHEIGHT}${TEMPLATE_SRCFILE_EXT})
+            endforeach()
+        endforeach()
+   elseif(TEMPLATE_DEPS_LIST MATCHES "^BLOCKDIM1;BLOCKDIM2$")
+        foreach(BLOCKDIM1 ${GHOST_GEN_DENSEMAT_DIM_LIST})
+            foreach(BLOCKDIM2 ${GHOST_GEN_DENSEMAT_DIM_LIST})
+                configure_file (
+                    ${TEMPLATE_SRCFILE}
+                    ${PROJECT_BINARY_DIR}/src_generated/${AUTOGEN_FUNCTION}__${BLOCKDIM1}_${BLOCKDIM2}${TEMPLATE_SRCFILE_EXT}
+                    )
+                list(APPEND GENERATED_FILES ${PROJECT_BINARY_DIR}/src_generated/${AUTOGEN_FUNCTION}__${BLOCKDIM1}_${BLOCKDIM2}${TEMPLATE_SRCFILE_EXT})
+            endforeach()
+        endforeach()
+    elseif(TEMPLATE_DEPS_LIST MATCHES "^BLOCKDIM1;BLOCKDIM2;UNROLL$")
+        foreach(BLOCKDIM1 ${GHOST_GEN_DENSEMAT_DIM_LIST})
+            foreach(BLOCKDIM2 ${GHOST_GEN_DENSEMAT_DIM_LIST})
+                foreach(UNROLL ${GHOST_GEN_UNROLL_LIST})
+                    configure_file (
+                        ${TEMPLATE_SRCFILE}
+                        ${PROJECT_BINARY_DIR}/src_generated/${AUTOGEN_FUNCTION}__${BLOCKDIM1}_${BLOCKDIM2}_${UNROLL}${TEMPLATE_SRCFILE_EXT}
+                        )
+                    list(APPEND GENERATED_FILES ${PROJECT_BINARY_DIR}/src_generated/${AUTOGEN_FUNCTION}__${BLOCKDIM1}_${BLOCKDIM2}_${UNROLL}${TEMPLATE_SRCFILE_EXT})
+                endforeach()
+            endforeach()
+        endforeach()
+    elseif(TEMPLATE_DEPS_LIST MATCHES "")
+        configure_file (
+            ${TEMPLATE_SRCFILE}
+            ${PROJECT_BINARY_DIR}/src_generated/${AUTOGEN_FUNCTION}${TEMPLATE_SRCFILE_EXT}
+            )
+        list(APPEND GENERATED_FILES ${PROJECT_BINARY_DIR}/src_generated/${AUTOGEN_FUNCTION}${TEMPLATE_SRCFILE_EXT})
+    else ()
+        message(FATAL_ERROR "Unsupported AUTOGEN dependency list: ${TEMPLATE_DEPS_LIST}")
+    endif()
+
+    foreach (TO_UNROLL_FILE ${GENERATED_FILES})
+        get_filename_component(TO_UNROLL_FILENAME ${TO_UNROLL_FILE} NAME)
+        get_filename_component(TO_UNROLL_FILENAME_WE ${TO_UNROLL_FILE} NAME_WE)
+        set(UNROLLED_FILE ${UNROLLED_SRC_DIR}/${TO_UNROLL_FILENAME})
+        add_custom_command(
+            OUTPUT ${UNROLLED_FILE}
+            DEPENDS ${TO_UNROLL_FILE} ${UNROLL_SCRIPT} 
+            COMMAND mkdir -p ${UNROLLED_SRC_DIR} && perl ${PP_SCRIPT} ${TO_UNROLL_FILE} > ${UNROLLED_FILE}
+            )
+        list(APPEND UNROLLED_FILES ${UNROLLED_FILE})
+    endforeach()
+
+    set(GENERATED_HEADER ${GENERATED_INC_DIR}/${AUTOGEN_FUNCTION}_gen.h)
+    set(GENERATED_KERNELMAP ${GENERATED_INC_DIR}/${AUTOGEN_FUNCTION}.def)
+    add_custom_command(
+        OUTPUT ${GENERATED_HEADER}
+        DEPENDS ${UNROLLED_FILES} ${PP_HEADER_SCRIPT} 
+        COMMAND mkdir -p ${GENERATED_INC_DIR} && perl ${PP_HEADER_SCRIPT} ${UNROLLED_FILES} > ${GENERATED_HEADER}
+        )
+    add_custom_command(
+        OUTPUT ${GENERATED_KERNELMAP}
+        DEPENDS ${GENERATED_HEADER} ${PP_KERNELMAP_SCRIPT} 
+        COMMAND mkdir -p ${GENERATED_INC_DIR} && perl ${PP_KERNELMAP_SCRIPT} ${GENERATED_HEADER} > ${GENERATED_KERNELMAP}
+        )
+    list(APPEND HEADERS ${GENERATED_HEADER})
+    if (${TEMPLATE_SRCFILE_EXT} STREQUAL ".cu")
+        list(APPEND CU_GENERATED_SOURCES ${UNROLLED_FILES})
+    else()
+        list(APPEND SOURCES ${UNROLLED_FILES})
+    endif()
+    list(APPEND GLOB_UNROLLED_FILES ${UNROLLED_FILES})
+    list(APPEND GLOB_GENERATED_FILES ${GENERATED_FILES})
+    list(APPEND GLOB_GENERATED_HEADERS ${GENERATED_HEADER})
+    list(APPEND GLOB_GENERATED_KERNELMAPS ${GENERATED_KERNELMAP})
+    set(GLOB_UNROLLED_FILES ${GLOB_UNROLLED_FILES} ${UNROLLED_FILES})
+endforeach()
+]]
 
 add_custom_target(autogen DEPENDS ${GLOB_UNROLLED_FILES} ${GLOB_GENERATED_FILES} ${GLOB_GENERATED_HEADERS} ${GLOB_GENERATED_KERNELMAPS})
 
