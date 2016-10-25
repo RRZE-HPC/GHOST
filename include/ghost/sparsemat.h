@@ -176,6 +176,53 @@ typedef struct
 }
 ghost_sellspmv_parameters;
 
+/**
+ * @brief The parameters to identify a CUDA SELL SpMV kernel.
+ *
+ * On kernel execution, GHOST will try to find an auto-generated kernel which
+ * matches all of these parameters.
+ */
+typedef struct 
+{
+    /**
+     * @brief The data access alignment.
+     */
+    ghost_alignment alignment;
+    /**
+     * @brief The implementation.
+     */
+    ghost_implementation impl;
+    /**
+     * @brief The matrix data type.
+     */
+    ghost_datatype mdt;
+    /**
+     * @brief The densemat data type.
+     */
+    ghost_datatype vdt;
+    /**
+     * @brief The densemat width.
+     */
+    int blocksz;
+    /**
+     * @brief The SELL matrix chunk height.
+     */
+    int chunkheight;
+    /**
+     * @brief The densemat storage order.
+     */
+    ghost_densemat_storage storage;
+    
+    bool do_axpby;
+    bool do_scale;
+    bool do_vshift;
+    bool do_dot_yy;
+    bool do_dot_xy;
+    bool do_dot_xx;
+    bool do_chain_axpby;
+    
+}
+ghost_cusellspmv_parameters;
 
 
 /**
@@ -798,6 +845,20 @@ extern "C" {
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error ghost_sell_spmv_selector(ghost_densemat *lhs, 
+            ghost_sparsemat *mat, 
+            ghost_densemat *rhs, 
+            ghost_spmv_opts traits);
+    /**
+     * @brief Select and call the right CUDA SELL SpMV kernel. 
+     *
+     * @param mat The matrix.
+     * @param lhs The result densemat.
+     * @param rhs The input densemat.
+     * @param traits The SpMV traits.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error ghost_cu_sell_spmv_selector(ghost_densemat *lhs, 
             ghost_sparsemat *mat, 
             ghost_densemat *rhs, 
             ghost_spmv_opts traits);

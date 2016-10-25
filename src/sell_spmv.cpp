@@ -7,12 +7,14 @@
 #include "ghost/log.h"
 #include "ghost/machine.h"
 #include "ghost/timing.h"
+#include "ghost/sell_spmv_cu_fallback.h"
 
 #include "ghost/sell_spmv_mic_gen.h"
 #include "ghost/sell_spmv_avx2_gen.h"
 #include "ghost/sell_spmv_avx_gen.h"
 #include "ghost/sell_spmv_sse_gen.h"
 #include "ghost/sell_spmv_plain_gen.h"
+#include "ghost/sell_spmv_cuda_gen.h"
 
 #include "ghost/sell_spmv_varblock_mic_gen.h"
 #include "ghost/sell_spmv_varblock_avx_gen.h"
@@ -21,6 +23,7 @@
 
 #include <complex>
 #include <unordered_map>
+#include <vector>
 
 using namespace std;
 
@@ -355,6 +358,34 @@ static ghost_error ghost_sell_spmv_plain_cm_selector(ghost_densemat *lhs,
 // Hash function for unordered_map
 namespace std
 {
+    template<> struct hash<ghost_cusellspmv_parameters>
+    {
+        typedef ghost_cusellspmv_parameters argument_type;
+        typedef std::size_t result_type;
+        result_type operator()(argument_type const& a) const
+        {
+            return ghost_hash(ghost_hash(a.mdt,a.blocksz,a.storage),
+                    ghost_hash(a.vdt,a.impl,a.chunkheight),
+                    ghost_hash(a.alignment,a.do_axpby,
+                    ghost_hash(a.do_scale,a.do_vshift,
+                    ghost_hash(a.do_dot_yy,a.do_dot_xy,
+                    ghost_hash(a.do_dot_xx,a.do_chain_axpby,1)))));
+        }
+    };
+}
+
+static bool operator==(const ghost_cusellspmv_parameters& a, const ghost_cusellspmv_parameters& b)
+{
+    return a.mdt == b.mdt && a.blocksz == b.blocksz && a.storage == b.storage && 
+           a.vdt == b.vdt && a.impl == b.impl && a.chunkheight == b.chunkheight &&
+           a.alignment == b.alignment && a.do_axpby == b.do_axpby &&
+           a.do_scale == b.do_scale && a.do_vshift == b.do_vshift &&
+           a.do_dot_yy == b.do_dot_yy && a.do_dot_xy == b.do_dot_xy &&
+           a.do_dot_xx == b.do_dot_xx && a.do_chain_axpby == b.do_chain_axpby;
+}
+
+namespace std
+{
     template<> struct hash<ghost_sellspmv_parameters>
     {
         typedef ghost_sellspmv_parameters argument_type;
@@ -374,8 +405,12 @@ static bool operator==(const ghost_sellspmv_parameters& a, const ghost_sellspmv_
            a.alignment == b.alignment;
 }
 
+
 static unordered_map<ghost_sellspmv_parameters, ghost_spmv_kernel> 
 ghost_sellspmv_kernels = unordered_map<ghost_sellspmv_parameters,ghost_spmv_kernel>();
+
+static unordered_map<ghost_cusellspmv_parameters, ghost_spmv_kernel> 
+ghost_cusellspmv_kernels = unordered_map<ghost_cusellspmv_parameters,ghost_spmv_kernel>();
 
 extern "C" ghost_error ghost_sell_spmv_selector(ghost_densemat *lhs, 
         ghost_sparsemat *mat, 
@@ -423,18 +458,10 @@ extern "C" ghost_error ghost_sell_spmv_selector(ghost_densemat *lhs,
 
     ghost_spmv_kernel kernel = NULL;
     ghost_sellspmv_parameters p;
-    ghost_implementation opt_impl;
     ghost_alignment opt_align;
+    ghost_implementation opt_impl;
     
-    
-    p.vdt = rhs->traits.datatype;
-    p.mdt = mat->traits.datatype;
-    p.storage = rhs->traits.storage;
-    if (p.storage == GHOST_DENSEMAT_ROWMAJOR && rhs->stride == 1 && lhs->stride == 1) {
-        INFO_LOG("Chose col-major kernel for row-major densemat with 1 column");
-        p.storage = GHOST_DENSEMAT_COLMAJOR;
-    }
-
+    std::vector<ghost_implementation> try_impl;
     if ((lhs->traits.flags & GHOST_DENSEMAT_SCATTERED) || 
             (rhs->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
         PERFWARNING_LOG("Use plain implementation for scattered views");
@@ -451,6 +478,26 @@ extern "C" ghost_error ghost_sell_spmv_selector(ghost_densemat *lhs,
             opt_impl = ghost_get_best_implementation_for_bytesize(mat->traits.C*mat->elSize);
         }
     }
+#ifdef GHOST_BUILD_MIC
+    try_impl.push_back(opt_impl);
+    if (opt_impl == GHOST_IMPLEMENTATION_MIC) {
+        try_impl.push_back(GHOST_IMPLEMENTATION_PLAIN);
+    }
+#else
+    for (; opt_impl>=0; opt_impl = static_cast<ghost_implementation>(static_cast<int>(opt_impl)-1)) {
+        try_impl.push_back(opt_impl);
+    }
+#endif
+    
+    
+    p.vdt = rhs->traits.datatype;
+    p.mdt = mat->traits.datatype;
+    p.storage = rhs->traits.storage;
+    if (p.storage == GHOST_DENSEMAT_ROWMAJOR && rhs->stride == 1 && lhs->stride == 1) {
+        INFO_LOG("Chose col-major kernel for row-major densemat with 1 column");
+        p.storage = GHOST_DENSEMAT_COLMAJOR;
+    }
+
     
     int try_chunkheight[2] = {mat->traits.C,-1}; 
     int try_blocksz[2] = {rhs->traits.ncols,-1}; 
@@ -459,30 +506,24 @@ extern "C" ghost_error ghost_sell_spmv_selector(ghost_densemat *lhs,
     int n_blocksz = sizeof(try_blocksz)/sizeof(int);
     int pos_chunkheight, pos_blocksz;
 
+    void *lval, *rval;
+    lval = lhs->val;
+    rval = rhs->val;
+
     bool optimal = true;
 
     for (pos_chunkheight = 0; pos_chunkheight < n_chunkheight; pos_chunkheight++) {  
         for (pos_blocksz = 0; pos_blocksz < n_blocksz; pos_blocksz++) {  
-            for (p.impl = opt_impl; (int)p.impl >= GHOST_IMPLEMENTATION_PLAIN; p.impl  = (ghost_implementation)((int)p.impl-1)) {
-#ifdef GHOST_BUILD_MIC
-                // TODO iterate only over possible implementations
-                if (p.impl != GHOST_IMPLEMENTATION_MIC && p.impl != GHOST_IMPLEMENTATION_PLAIN) {
-                    continue;
-                }
-#endif
-                /*if (p.impl == GHOST_IMPLEMENTATION_SSE && p.storage == GHOST_DENSEMAT_ROWMAJOR && try_blocksz[pos_blocksz] % 2) {
-                    PERFWARNING_LOG("Remainder loops not yet implemented for SSE, fallback to plain");
-                    p.impl  = (ghost_implementation)((int)p.impl-1);
-                }*/
-
+            for (std::vector<ghost_implementation>::iterator impl = try_impl.begin(); impl != try_impl.end(); impl++) {
+                p.impl = *impl;
                 int al = ghost_implementation_alignment(p.impl);
-                if (IS_ALIGNED(lhs->val,al) && IS_ALIGNED(rhs->val,al) && ((lhs->traits.ncols == 1 && lhs->stride == 1) || (!((lhs->stride*lhs->elSize) % al) && !((rhs->stride*rhs->elSize) % al)))) {
+                if (IS_ALIGNED(lval,al) && IS_ALIGNED(rval,al) && ((lhs->traits.ncols == 1 && lhs->stride == 1) || (!((lhs->stride*lhs->elSize) % al) && !((rhs->stride*rhs->elSize) % al)))) {
                     opt_align = GHOST_ALIGNED;
                 } else {
-                    if (!IS_ALIGNED(lhs->val,al)) {
+                    if (!IS_ALIGNED(lval,al)) {
                         PERFWARNING_LOG("Using unaligned kernel because base address of result vector is not aligned");
                     }
-                    if (!IS_ALIGNED(rhs->val,al)) {
+                    if (!IS_ALIGNED(rval,al)) {
                         PERFWARNING_LOG("Using unaligned kernel because base address of input vector is not aligned");
                     }
                     if (lhs->stride*lhs->elSize % al) {
@@ -498,7 +539,7 @@ extern "C" ghost_error ghost_sell_spmv_selector(ghost_densemat *lhs,
                     p.chunkheight = try_chunkheight[pos_chunkheight];
                     p.blocksz = try_blocksz[pos_blocksz];
 
-                    DEBUG_LOG(1,"Try chunkheight=%s, blocksz=%s, impl=%s, %s",
+                    INFO_LOG("Try chunkheight=%s, blocksz=%s, impl=%s, %s",
                             p.chunkheight==-1?"arbitrary":std::to_string((long long)p.chunkheight).c_str(),
                             p.blocksz==-1?"arbitrary":std::to_string((long long)p.blocksz).c_str(),
                             ghost_implementation_string(p.impl),p.alignment==GHOST_UNALIGNED?"unaligned":"aligned");
@@ -535,6 +576,76 @@ end_of_loop:
                     ghost_sell_spmv_plain_rm_selector,lhs,mat,rhs,traits);
         }
     } 
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
+    return ret;
+}
+
+
+extern "C" ghost_error ghost_cu_sell_spmv_selector(ghost_densemat *lhs, 
+        ghost_sparsemat *mat, 
+        ghost_densemat *rhs, 
+        ghost_spmv_opts traits)
+{
+    ghost_error ret = GHOST_SUCCESS;
+
+
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
+    if (rhs->traits.storage != lhs->traits.storage) {
+        ERROR_LOG("Different storage layout for in- and output densemats!");
+        return GHOST_ERR_INVALID_ARG;
+    }
+    if (rhs->traits.ncols != lhs->traits.ncols) {
+        ERROR_LOG("The number of columns for the densemats does not match!");
+        return GHOST_ERR_INVALID_ARG;
+    }
+    if (!(mat->context->flags & GHOST_PERM_NO_DISTINCTION) && DM_NROWS(lhs) != SPM_NROWS(mat)) {
+        ERROR_LOG("Different number of rows for the densemats and matrix!");
+        return GHOST_ERR_INVALID_ARG;
+    }
+    if (((rhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) && 
+                (DM_NROWS(rhs->src) != DM_NROWS(rhs))) || 
+            ((lhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) && 
+            (DM_NROWS(lhs->src) != DM_NROWS(lhs)))) {
+        ERROR_LOG("Col-major densemats with masked out rows currently not "
+                "supported!");
+        return GHOST_ERR_NOT_IMPLEMENTED;
+    }
+
+
+    // if map is empty include generated code for map construction
+    if (ghost_cusellspmv_kernels.empty()) {
+#include "sell_spmv_cuda.def"
+    }
+
+    ghost_spmv_kernel kernel = NULL;
+    ghost_cusellspmv_parameters p;
+    
+    p.alignment = GHOST_UNALIGNED; // CUDA SpMV kernels do not pose any alignment requirements 
+    p.impl = GHOST_IMPLEMENTATION_CUDA; 
+    p.vdt = GHOST_DT_ANY; // CUDA SpMV kernels are always templated and work for all data types
+    p.mdt = GHOST_DT_ANY;
+    p.storage = GHOST_DENSEMAT_STORAGE_DEFAULT; // The storage is selected inside the kernels
+    p.chunkheight = mat->traits.C;
+    p.blocksz = rhs->traits.ncols;
+    p.do_axpby = traits.flags&(GHOST_SPMV_AXPY|GHOST_SPMV_AXPBY);
+    p.do_scale = traits.flags&GHOST_SPMV_SCALE;
+    p.do_vshift = traits.flags&(GHOST_SPMV_SHIFT|GHOST_SPMV_VSHIFT);
+    p.do_dot_yy = traits.flags&GHOST_SPMV_DOT_YY;
+    p.do_dot_xy = traits.flags&GHOST_SPMV_DOT_XY;
+    p.do_dot_xx = traits.flags&GHOST_SPMV_DOT_XX;
+    p.do_chain_axpby = traits.flags&GHOST_SPMV_CHAIN_AXPBY;
+    
+    kernel = ghost_cusellspmv_kernels[p];
+
+    if (kernel) {
+        INFO_LOG("Found kernel with highest specialization grade: C=%d blocksz=%d align=%d impl=%s",p.chunkheight,p.blocksz,p.alignment,ghost_implementation_string(p.impl));
+        ret = kernel(lhs,mat,rhs,traits);
+    } else {
+        PERFWARNING_LOG("Execute fallback SELL SpMV kernel which is potentially slow!");
+        ret = ghost_sellspmv_cu_fallback_selector(lhs,mat,rhs,traits);
+    }
+
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
     return ret;
