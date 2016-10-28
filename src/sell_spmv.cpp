@@ -72,7 +72,7 @@ static ghost_error ghost_sell_spmv_plain_rm(ghost_densemat *lhs,
         m_t matrixval;
 
 #pragma omp for schedule(runtime) 
-        for (c=0; c<SPM_NROWSPAD(mat)/ch; c++) { // loop over chunks
+        for (c=0; c<CEILDIV(SPM_NROWS(mat),ch); c++) { // loop over chunks
 
             for (i=0; i<ch; i++) {
                 for (rcol=0; rcol<rhs->traits.ncols; rcol++) {
