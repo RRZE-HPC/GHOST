@@ -10,6 +10,7 @@ my %datatypes = (
 my %storages = (
         'cm' => '(ghost_densemat_storage)(GHOST_DENSEMAT_COLMAJOR)',
         'rm' => '(ghost_densemat_storage)(GHOST_DENSEMAT_ROWMAJOR)',
+        'x' => '(ghost_densemat_storage)(GHOST_DENSEMAT_STORAGE_DEFAULT)',
         );
 
 my %implementations = (
@@ -65,6 +66,36 @@ while (<>) {
                 print "spmv_perfargs.flags = traits.flags;\n";
                 print "ghost_timing_set_perfFunc(__ghost_functag,\"".$funcname_noprefix."\",ghost_spmv_perf,(void *)&spmv_perfargs,sizeof(spmv_perfargs),GHOST_SPMV_PERF_UNIT);\n";
             }
+            print "}\n";
+        } elsif ($funcname eq "ghost_cusellspmv") {
+            print "{\n";
+            print $funcname."_parameters pars;\n";
+            print "pars.alignment = ".$alignments{$funcpars[0]}.";\n";
+            print "pars.impl = ".$implementations{$funcpars[1]}.";\n";
+            print "pars.mdt = ".$datatypes{$funcpars[2]}.";\n";
+            print "pars.vdt = ".$datatypes{$funcpars[3]}.";\n";
+            print "pars.storage = ".$storages{$funcpars[4]}.";\n";
+            print "pars.chunkheight = ".$funcpars[5].";\n";
+            print "pars.blocksz = ".$funcpars[6].";\n";
+            print "pars.do_axpby = ".$funcpars[7].";\n";
+            print "pars.do_scale = ".$funcpars[8].";\n";
+            print "pars.do_vshift = ".$funcpars[9].";\n";
+            print "pars.do_dot_yy = ".$funcpars[10].";\n";
+            print "pars.do_dot_xy = ".$funcpars[11].";\n";
+            print "pars.do_dot_xx = ".$funcpars[12].";\n";
+            print "pars.do_chain_axpby = ".$funcpars[13].";\n";
+            print $funcname."_kernels[pars] = ".$funcname_full.";\n"; 
+            print "ghost_gidx nnz;\n";
+            print "ghost_gidx nrow;\n";
+            print "ghost_sparsemat_nnz(&nnz,mat);\n";
+            print "ghost_sparsemat_nrows(&nrow,mat);\n";
+            print "ghost_spmv_perf_args spmv_perfargs;\n";
+            print "spmv_perfargs.vecncols = rhs->traits.ncols;\n";
+            print "spmv_perfargs.globalnnz = nnz;\n";
+            print "spmv_perfargs.globalrows = nrow;\n";
+            print "spmv_perfargs.dt = rhs->traits.datatype;\n";
+            print "spmv_perfargs.flags = traits.flags;\n";
+            print "ghost_timing_set_perfFunc(__ghost_functag,\"".$funcname_noprefix."\",ghost_spmv_perf,(void *)&spmv_perfargs,sizeof(spmv_perfargs),GHOST_SPMV_PERF_UNIT);\n";
             print "}\n";
         } elsif ($funcname eq "ghost_kacz") {
             print "{\n";
