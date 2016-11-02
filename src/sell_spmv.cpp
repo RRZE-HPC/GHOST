@@ -14,7 +14,10 @@
 #include "ghost/sell_spmv_avx_gen.h"
 #include "ghost/sell_spmv_sse_gen.h"
 #include "ghost/sell_spmv_plain_gen.h"
+
+#ifdef GHOST_HAVE_CUDA
 #include "ghost/sell_spmv_cuda_gen.h"
+#endif
 
 #include "ghost/sell_spmv_varblock_mic_gen.h"
 #include "ghost/sell_spmv_varblock_avx_gen.h"
@@ -358,6 +361,32 @@ static ghost_error ghost_sell_spmv_plain_cm_selector(ghost_densemat *lhs,
 // Hash function for unordered_map
 namespace std
 {
+    template<> struct hash<ghost_sellspmv_parameters>
+    {
+        typedef ghost_sellspmv_parameters argument_type;
+        typedef std::size_t result_type;
+        result_type operator()(argument_type const& a) const
+        {
+            return ghost_hash(ghost_hash(a.mdt,a.blocksz,a.storage),
+                    ghost_hash(a.vdt,a.impl,a.chunkheight),a.alignment);
+        }
+    };
+}
+
+static bool operator==(const ghost_sellspmv_parameters& a, const ghost_sellspmv_parameters& b)
+{
+    return a.mdt == b.mdt && a.blocksz == b.blocksz && a.storage == b.storage && 
+           a.vdt == b.vdt && a.impl == b.impl && a.chunkheight == b.chunkheight &&
+           a.alignment == b.alignment;
+}
+
+
+static unordered_map<ghost_sellspmv_parameters, ghost_spmv_kernel> 
+ghost_sellspmv_kernels = unordered_map<ghost_sellspmv_parameters,ghost_spmv_kernel>();
+
+#ifdef GHOST_HAVE_CUDA
+namespace std
+{
     template<> struct hash<ghost_cusellspmv_parameters>
     {
         typedef ghost_cusellspmv_parameters argument_type;
@@ -384,33 +413,9 @@ static bool operator==(const ghost_cusellspmv_parameters& a, const ghost_cusells
            a.do_dot_xx == b.do_dot_xx && a.do_chain_axpby == b.do_chain_axpby;
 }
 
-namespace std
-{
-    template<> struct hash<ghost_sellspmv_parameters>
-    {
-        typedef ghost_sellspmv_parameters argument_type;
-        typedef std::size_t result_type;
-        result_type operator()(argument_type const& a) const
-        {
-            return ghost_hash(ghost_hash(a.mdt,a.blocksz,a.storage),
-                    ghost_hash(a.vdt,a.impl,a.chunkheight),a.alignment);
-        }
-    };
-}
-
-static bool operator==(const ghost_sellspmv_parameters& a, const ghost_sellspmv_parameters& b)
-{
-    return a.mdt == b.mdt && a.blocksz == b.blocksz && a.storage == b.storage && 
-           a.vdt == b.vdt && a.impl == b.impl && a.chunkheight == b.chunkheight &&
-           a.alignment == b.alignment;
-}
-
-
-static unordered_map<ghost_sellspmv_parameters, ghost_spmv_kernel> 
-ghost_sellspmv_kernels = unordered_map<ghost_sellspmv_parameters,ghost_spmv_kernel>();
-
 static unordered_map<ghost_cusellspmv_parameters, ghost_spmv_kernel> 
 ghost_cusellspmv_kernels = unordered_map<ghost_cusellspmv_parameters,ghost_spmv_kernel>();
+#endif
 
 extern "C" ghost_error ghost_sell_spmv_selector(ghost_densemat *lhs, 
         ghost_sparsemat *mat, 
@@ -587,6 +592,7 @@ extern "C" ghost_error ghost_cu_sell_spmv_selector(ghost_densemat *lhs,
         ghost_densemat *rhs, 
         ghost_spmv_opts traits)
 {
+#ifdef GHOST_HAVE_CUDA
     ghost_error ret = GHOST_SUCCESS;
 
 
@@ -649,5 +655,13 @@ extern "C" ghost_error ghost_cu_sell_spmv_selector(ghost_densemat *lhs,
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
     return ret;
+#else
+    ERROR_LOG("CUDA not enabled!");
+    UNUSED(mat);
+    UNUSED(rhs);
+    UNUSED(lhs);
+    UNUSED(traits);
+    return GHOST_ERR_NOT_IMPLEMENTED;
+#endif
 }
 

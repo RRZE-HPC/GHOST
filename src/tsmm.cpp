@@ -6,14 +6,16 @@
 #include "ghost/tsmm.h"
 #include "ghost/tsmm_var2_plain_gen.h"
 #include "ghost/tsmm_var2_sse_gen.h"
-#include "ghost/tsmm_var2_cu_gen.h"
 #include "ghost/tsmm_plain_gen.h"
 #include "ghost/tsmm_varincols_plain_gen.h"
 #include "ghost/tsmm_varoutcols_plain_gen.h"
 #include "ghost/tsmm_var2_avx_gen.h"
 #include "ghost/tsmm_avx_gen.h"
 #include "ghost/tsmm_sse_gen.h"
+#ifdef GHOST_HAVE_CUDA
+#include "ghost/tsmm_var2_cu_gen.h"
 #include "ghost/tsmm_cu_gen.h"
+#endif
 #include "ghost/timing.h"
 #include "ghost/machine.h"
 #include "ghost/constants.h"

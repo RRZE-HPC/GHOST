@@ -201,6 +201,53 @@ set (HEADERS
     include/ghost/compatibility_check.h
    )
 
+if (NOT DEFINED GHOST_USE_CUDA OR GHOST_USE_CUDA)
+    option(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
+    find_package(CUDA)
+endif()
+
+if (NOT CUDA_FOUND)
+    set(GHOST_USE_CUDA 0 CACHE BOOL "Build with CUDA")
+    set(CUDA_LIBRARIES "")
+else ()
+    set(GHOST_USE_CUDA 1 CACHE BOOL "Build with CUDA")
+    set(GHOST_HAVE_CUDA 1)
+    cuda_include_directories(${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_BINARY_DIR} ${PROJECT_BINARY_DIR}/ghost ${HWLOC_INCLUDE_DIR} ${LIKWID_INCLUE_DIR} ${MPI_INCLUDE_PATH})
+    list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fPIC;-arch=sm_35;-std=c++11)
+    if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+        list(APPEND CUDA_NVCC_FLAGS -O0)
+    endif()
+    if (GHOST_USE_OPENMP)
+        list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fopenmp)
+    endif()
+    if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+        list(APPEND CUDA_NVCC_FLAGS -G -g)
+    endif()
+    file(GLOB CU_SOURCES "${PROJECT_SOURCE_DIR}/src/*.cu")
+    cuda_compile(CU_OBJS ${CU_SOURCES})
+    cuda_compile(CU_GENERATED_OBJS ${CU_GENERATED_SOURCES})
+    
+    set (SOURCES 
+        ${SOURCES}
+        ${CU_GENERATED_OBJS}
+        ${CU_OBJS})
+    include_directories(SYSTEM ${CUDA_INCLUDE_DIRS})
+    set (HEADERS ${HEADERS}
+        include/ghost/cu_densemat_cm.h
+        include/ghost/cu_densemat_rm.h
+        )
+    mark_as_advanced(
+        CUDA_BUILD_CUBIN
+        CUDA_BUILD_EMULATION
+        CUDA_HOST_COMPILER
+        CUDA_SDK_ROOT_DIR
+        CUDA_SEPARABLE_COMPILATION
+        CUDA_VERBOSE_BUILD
+        )
+set(CUDA_LIBRARIES ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${CUDA_cusparse_LIBRARY})
+endif()
+
 set (PP_SCRIPT ${PROJECT_SOURCE_DIR}/bin/ghost_unroll.pl)
 set (PP_HEADER_SCRIPT ${PROJECT_SOURCE_DIR}/bin/ghost_extractfunc.pl)
 set (PP_KERNELMAP_SCRIPT ${PROJECT_SOURCE_DIR}/bin/ghost_mapfunc.pl)
@@ -223,7 +270,12 @@ endfunction()
 
 getListOfVarsStartingWith(GHOST_AUTOGEN GHOST_AUTOGEN_FUNC_LIST)
 
-file(GLOB TEMPLATE_SRCFILES "${CMAKE_SOURCE_DIR}/src/autogen/*.in")
+if (GHOST_HAVE_CUDA)
+    file(GLOB TEMPLATE_SRCFILES "${CMAKE_SOURCE_DIR}/src/autogen/*.in")
+else()
+    file(GLOB TEMPLATE_SRCFILES "${CMAKE_SOURCE_DIR}/src/autogen/*.c.in" "${CMAKE_SOURCE_DIR}/src/autogen/*.cpp.in")
+endif()
+
 foreach(TEMPLATE_SRCFILE ${TEMPLATE_SRCFILES})
     set(GENERATED_FILES "")
     set(UNROLLED_FILES "")
@@ -425,52 +477,6 @@ else ()
     set(GHOST_HAVE_MPI 0)
 endif()
 
-if (NOT DEFINED GHOST_USE_CUDA OR GHOST_USE_CUDA)
-    option(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
-    find_package(CUDA)
-endif()
-
-if (NOT CUDA_FOUND)
-    set(GHOST_USE_CUDA 0 CACHE BOOL "Build with CUDA")
-    set(CUDA_LIBRARIES "")
-else ()
-    set(GHOST_USE_CUDA 1 CACHE BOOL "Build with CUDA")
-    set(GHOST_HAVE_CUDA 1)
-    cuda_include_directories(${PROJECT_SOURCE_DIR}/include
-        ${PROJECT_BINARY_DIR} ${PROJECT_BINARY_DIR}/ghost ${HWLOC_INCLUDE_DIR} ${LIKWID_INCLUE_DIR} ${MPI_INCLUDE_PATH})
-    list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fPIC;-arch=sm_35;-std=c++11)
-    if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
-        list(APPEND CUDA_NVCC_FLAGS -O0)
-    endif()
-    if (GHOST_USE_OPENMP)
-        list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fopenmp)
-    endif()
-    if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-        list(APPEND CUDA_NVCC_FLAGS -G -g)
-    endif()
-    file(GLOB CU_SOURCES "${PROJECT_SOURCE_DIR}/src/*.cu")
-    cuda_compile(CU_OBJS ${CU_SOURCES})
-    cuda_compile(CU_GENERATED_OBJS ${CU_GENERATED_SOURCES})
-    
-    set (SOURCES 
-        ${SOURCES}
-        ${CU_GENERATED_OBJS}
-        ${CU_OBJS})
-    include_directories(SYSTEM ${CUDA_INCLUDE_DIRS})
-    set (HEADERS ${HEADERS}
-        include/ghost/cu_densemat_cm.h
-        include/ghost/cu_densemat_rm.h
-        )
-    mark_as_advanced(
-        CUDA_BUILD_CUBIN
-        CUDA_BUILD_EMULATION
-        CUDA_HOST_COMPILER
-        CUDA_SDK_ROOT_DIR
-        CUDA_SEPARABLE_COMPILATION
-        CUDA_VERBOSE_BUILD
-        )
-set(CUDA_LIBRARIES ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${CUDA_cusparse_LIBRARY})
-endif()
 
 add_library(ghost ${SOURCES})
 add_dependencies(ghost autogen)

@@ -8,8 +8,10 @@
 #include "ghost/tsmm_inplace_varincols_plain_gen.h"
 #include "ghost/tsmm_inplace_varoutcols_plain_gen.h"
 #include "ghost/tsmm_inplace_var2_plain_gen.h"
+#ifdef GHOST_HAVE_CUDA
 #include "ghost/tsmm_inplace_var2_cu_gen.h"
 #include "ghost/tsmm_inplace_cu_gen.h"
+#endif
 #include "ghost/tsmm_inplace.h"
 #include "ghost/math.h"
 #include "ghost/timing.h"
