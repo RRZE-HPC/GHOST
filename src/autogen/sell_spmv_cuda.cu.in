@@ -26,8 +26,10 @@ static ghost_error ghost_sellspmv_cu_dt_CHUNKHEIGHT_NVECS_AXPBY_SCALE_SHIFT_DOTY
 
 ghost_error ghost_cusellspmv__u_cuda_x_x_x_CHUNKHEIGHT_NVECS_AXPBY_SCALE_SHIFT_DOTYY_DOTXY_DOTXX_CHAIN(ghost_densemat *lhs, ghost_sparsemat *mat, ghost_densemat *rhs, ghost_spmv_opts opts)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error ret;
     SELECT_TMPL_4DATATYPES(mat->traits.datatype,rhs->traits.datatype,std::complex,ret,ghost_sellspmv_cu_dt_CHUNKHEIGHT_NVECS_AXPBY_SCALE_SHIFT_DOTYY_DOTXY_DOTXX_CHAIN,lhs,mat,rhs,opts);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
     return ret;
 }
 
