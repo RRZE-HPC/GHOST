@@ -616,9 +616,6 @@ if (GHOST_USE_SPMP)
                 INSTALL_COMMAND ""
                 )
         endif()
-        target_link_libraries(ghost "${PROJECT_BINARY_DIR}/SpMP/src/SpMP/libspmp.a")
-        include_directories(SYSTEM ${PROJECT_BINARY_DIR}/SpMP/src)
-        add_dependencies(ghost SpMP)
     else()
         message(FATAL_ERROR "SpMP will not build with a compiler which is not Clang/GNU/Intel. Please disable SpMP or use a different compiler!")
     endif()
@@ -663,6 +660,12 @@ endif()
 
 add_library(ghost ${SOURCES})
 add_dependencies(ghost autogen)
+
+if (GHOST_USE_SPMP)
+    target_link_libraries(ghost "${PROJECT_BINARY_DIR}/SpMP/src/SpMP/libspmp.a")
+    include_directories(SYSTEM ${PROJECT_BINARY_DIR}/SpMP/src)
+    add_dependencies(ghost SpMP)
+endif()
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Cray")
     # msg 193 complains about commented out lines in config.h
