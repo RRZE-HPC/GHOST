@@ -212,40 +212,6 @@ if (NOT CUDA_FOUND)
 else ()
     set(GHOST_USE_CUDA 1 CACHE BOOL "Build with CUDA")
     set(GHOST_HAVE_CUDA 1)
-    cuda_include_directories(${PROJECT_SOURCE_DIR}/include
-        ${PROJECT_BINARY_DIR} ${PROJECT_BINARY_DIR}/ghost ${HWLOC_INCLUDE_DIR} ${LIKWID_INCLUE_DIR} ${MPI_INCLUDE_PATH})
-    list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fPIC;-arch=sm_35;-std=c++11)
-    if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
-        list(APPEND CUDA_NVCC_FLAGS -O0)
-    endif()
-    if (GHOST_USE_OPENMP)
-        list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fopenmp)
-    endif()
-    if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-        list(APPEND CUDA_NVCC_FLAGS -G -g)
-    endif()
-    file(GLOB CU_SOURCES "${PROJECT_SOURCE_DIR}/src/*.cu")
-    cuda_compile(CU_OBJS ${CU_SOURCES})
-    cuda_compile(CU_GENERATED_OBJS ${CU_GENERATED_SOURCES})
-    
-    set (SOURCES 
-        ${SOURCES}
-        ${CU_GENERATED_OBJS}
-        ${CU_OBJS})
-    include_directories(SYSTEM ${CUDA_INCLUDE_DIRS})
-    set (HEADERS ${HEADERS}
-        include/ghost/cu_densemat_cm.h
-        include/ghost/cu_densemat_rm.h
-        )
-    mark_as_advanced(
-        CUDA_BUILD_CUBIN
-        CUDA_BUILD_EMULATION
-        CUDA_HOST_COMPILER
-        CUDA_SDK_ROOT_DIR
-        CUDA_SEPARABLE_COMPILATION
-        CUDA_VERBOSE_BUILD
-        )
-set(CUDA_LIBRARIES ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${CUDA_cusparse_LIBRARY})
 endif()
 
 set (PP_SCRIPT ${PROJECT_SOURCE_DIR}/bin/ghost_unroll.pl)
@@ -478,9 +444,6 @@ else ()
 endif()
 
 
-add_library(ghost ${SOURCES})
-add_dependencies(ghost autogen)
-
 if (GHOST_USE_SCOTCH)
     set(GHOST_HAVE_SCOTCH 1)
     set(SCOTCH_INCLUDE_DIR "${SCOTCH_INCLUDE_DIR}" CACHE PATH "Location of PT-Scotch headers")
@@ -660,6 +623,46 @@ if (GHOST_USE_SPMP)
         message(FATAL_ERROR "SpMP will not build with a compiler which is not Clang/GNU/Intel. Please disable SpMP or use a different compiler!")
     endif()
 endif()
+
+if (GHOST_HAVE_CUDA)
+    cuda_include_directories(${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_BINARY_DIR} ${PROJECT_BINARY_DIR}/ghost ${HWLOC_INCLUDE_DIR} ${LIKWID_INCLUE_DIR} ${MPI_INCLUDE_PATH})
+    list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fPIC;-arch=sm_35;-std=c++11)
+    if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+        list(APPEND CUDA_NVCC_FLAGS -O0)
+    endif()
+    if (GHOST_USE_OPENMP)
+        list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fopenmp)
+    endif()
+    if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+        list(APPEND CUDA_NVCC_FLAGS -G -g)
+    endif()
+    file(GLOB CU_SOURCES "${PROJECT_SOURCE_DIR}/src/*.cu")
+    cuda_compile(CU_OBJS ${CU_SOURCES})
+    cuda_compile(CU_GENERATED_OBJS ${CU_GENERATED_SOURCES})
+    
+    set (SOURCES 
+        ${SOURCES}
+        ${CU_GENERATED_OBJS}
+        ${CU_OBJS})
+    include_directories(SYSTEM ${CUDA_INCLUDE_DIRS})
+    set (HEADERS ${HEADERS}
+        include/ghost/cu_densemat_cm.h
+        include/ghost/cu_densemat_rm.h
+        )
+    mark_as_advanced(
+        CUDA_BUILD_CUBIN
+        CUDA_BUILD_EMULATION
+        CUDA_HOST_COMPILER
+        CUDA_SDK_ROOT_DIR
+        CUDA_SEPARABLE_COMPILATION
+        CUDA_VERBOSE_BUILD
+        )
+    set(CUDA_LIBRARIES ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${CUDA_cusparse_LIBRARY})
+endif()
+
+add_library(ghost ${SOURCES})
+add_dependencies(ghost autogen)
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Cray")
     # msg 193 complains about commented out lines in config.h
