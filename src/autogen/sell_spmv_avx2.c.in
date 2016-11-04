@@ -165,7 +165,7 @@ ghost_error ghost_sellspmv__a_avx2_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res,
     }
     if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
         PERFWARNING_LOG("AXPBY will not be done on-the-fly!");
-        z->axpby(z,res,&seta,&sdelta);
+        ghost_axpby(z,res,&seta,&sdelta);
     }
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
