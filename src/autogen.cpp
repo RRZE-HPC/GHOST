@@ -124,7 +124,7 @@ ghost_error ghost_autogen_spmmv_nvecs(int **nvecs, int *n, int chunkheight)
 int ghost_autogen_spmmv_next_nvecs(int desired_nvecs, int chunkheight)
 {
     int *nvecs = NULL;
-    int n,i,found_nvecs;
+    int n,i,found_nvecs=0;
 
     if (ghost_autogen_spmmv_nvecs(&nvecs,&n,chunkheight) != GHOST_SUCCESS) {
         return 0;
