@@ -1,4 +1,4 @@
-/*!GHOST_AUTOGEN_TSMM K,N,UNROLL */
+/*!GHOST_AUTOGEN_TSMM K,N,1 */
 #include "ghost/config.h"
 #include "ghost/types.h"
 #include "ghost/math.h"
@@ -13,7 +13,6 @@
 
 #GHOST_SUBST INCOLS ${K}
 #GHOST_SUBST OUTCOLS ${N}
-#GHOST_SUBST OUTERUNROLL ${UNROLL}
 
 ghost_error ghost_tsmm__a_sse_d_OUTCOLS_INCOLS_1_2_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
 {
@@ -94,4 +93,3 @@ ghost_error ghost_tsmm__a_sse_d_OUTCOLS_INCOLS_1_2_rm(ghost_densemat *x, ghost_d
     return GHOST_ERR_UNKNOWN;
 #endif
 }
-
