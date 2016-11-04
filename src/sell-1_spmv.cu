@@ -281,13 +281,13 @@ ghost_error ghost_cu_sell1_spmv_selector(ghost_densemat * lhs_in, ghost_sparsema
         if (mat->traits.datatype & GHOST_DT_REAL) {
             GHOST_CALL_GOTO((ghost_cu_sell1spmv_augfunc_tmpl<double,double>(lhs_in,rhs_in,traits)),err,ret);
         } else {
-            GHOST_CALL_GOTO((ghost_cu_sell1spmv_augfunc_tmpl<cuDoubleComplex,std::complex<double>>(lhs_in,rhs_in,traits)),err,ret);
+            GHOST_CALL_GOTO((ghost_cu_sell1spmv_augfunc_tmpl<cuDoubleComplex,std::complex<double> >(lhs_in,rhs_in,traits)),err,ret);
         }
     } else {
         if (mat->traits.datatype & GHOST_DT_REAL) {
             GHOST_CALL_GOTO((ghost_cu_sell1spmv_augfunc_tmpl<float,float>(lhs_in,rhs_in,traits)),err,ret);
         } else {
-            GHOST_CALL_GOTO((ghost_cu_sell1spmv_augfunc_tmpl<cuFloatComplex,std::complex<float>>(lhs_in,rhs_in,traits)),err,ret);
+            GHOST_CALL_GOTO((ghost_cu_sell1spmv_augfunc_tmpl<cuFloatComplex,std::complex<float> >(lhs_in,rhs_in,traits)),err,ret);
         }
     }
     
