@@ -1004,7 +1004,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
     mat->context->upperBandwidth = 0;
     
     if (mat->traits.sortScope > 1) {
-        mat->traits.flags = (ghost_sparsemat_flags)(mat->traits.flags&GHOST_SPARSEMAT_SORT_ROWS);
+        mat->traits.flags = (ghost_sparsemat_flags)(mat->traits.flags|GHOST_SPARSEMAT_SORT_ROWS);
     }
    
     // _Only_ global permutation:
