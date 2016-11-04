@@ -18,11 +18,11 @@ typedef struct
      */
     ghost_datatype dt;
     /**
-     * @brief The first configured block size K.
+     * @brief The first configured block size N.
      */
     int xcols;
     /**
-     * @brief The second configure block size M.
+     * @brief The second configure block size K.
      */
     int vcols;
     ghost_implementation impl;
@@ -56,15 +56,15 @@ extern "C" {
      *
      * Compute \f$ x = \alpha \cdot v \cdot w  + \beta \cdot x\f$.
      *
-     * v is NxM, distributed.
+     * v is MxK, distributed.
      *
-     * w is MxK, redundant.
+     * w is KxN, redundant.
      *
-     * x is NxK, distributed.
+     * x is MxN, distributed.
      *
      * M<<N
      *
-     * This kernel is auto-generated at compile time for given values of K and M.
+     * This kernel is auto-generated at compile time for given values of K and N.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
