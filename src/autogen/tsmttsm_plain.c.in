@@ -6,28 +6,28 @@
 #include "ghost/util.h"
 #include "ghost/tsmttsm_plain_gen.h"
 
-#GHOST_SUBST CFGK ${N}
+#GHOST_SUBST CFGN ${N}
 #GHOST_SUBST CFGM ${M}
 #GHOST_SUBST OUTERUNROLL ${UNROLL}
 
 #if 0
-#GHOST_FUNC_BEGIN#CFGK=${BLOCKDIM1}#CFGM=${BLOCKDIM2}
-struct dCFGKxCFGM { double v[CFGK*CFGM]; };
-static void add_CFGKxCFGM(struct dCFGKxCFGM * x,struct dCFGKxCFGM * y){
+#GHOST_FUNC_BEGIN#CFGN=${BLOCKDIM1}#CFGM=${BLOCKDIM2}
+struct dCFGNxCFGM { double v[CFGN*CFGM]; };
+static void add_CFGNxCFGM(struct dCFGNxCFGM * x,struct dCFGNxCFGM * y){
       int i;
-        for (i=0;i<CFGK*CFGM;i++) {
+        for (i=0;i<CFGN*CFGM;i++) {
             x->v[i] += y->v[i];
         }
 }
-#pragma omp declare reduction(dCFGKxCFGMAdd: struct dCFGKxCFGM: \
-        add_CFGKxCFGM(&omp_out,&omp_in)) initializer(\
+#pragma omp declare reduction(dCFGNxCFGMAdd: struct dCFGNxCFGM: \
+        add_CFGNxCFGM(&omp_out,&omp_in)) initializer(\
         omp_priv={{\
-#GHOST_UNROLL#0,\#CFGK*CFGM
+#GHOST_UNROLL#0,\#CFGN*CFGM
         }} )
 #GHOST_FUNC_END
 #endif
 
-ghost_error ghost_tsmttsm__u_plain_d_CFGK_CFGM_OUTERUNROLL_cm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
+ghost_error ghost_tsmttsm__u_plain_d_CFGN_CFGM_OUTERUNROLL_cm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
 {
     UNUSED(conjv);
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
@@ -38,7 +38,7 @@ ghost_error ghost_tsmttsm__u_plain_d_CFGK_CFGM_OUTERUNROLL_cm(ghost_densemat *x,
         n+=(OUTERUNROLL-n%OUTERUNROLL);
         INFO_LOG("Padding large dimension to %d\n",n);
     }
-    INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
+    INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGN,CFGM,n,n,CFGN);
     
     double * restrict vval = (double *) v->val, * restrict wval = (double *) w->val, * restrict xval = (double *) x->val;
     ghost_lidx ldv, ldw, ldx;
@@ -53,47 +53,47 @@ ghost_error ghost_tsmttsm__u_plain_d_CFGK_CFGM_OUTERUNROLL_cm(ghost_densemat *x,
     ghost_lidx i;
 #if 0
     ghost_lidx j,k;
-    struct dCFGKxCFGM xnopad;
+    struct dCFGNxCFGM xnopad;
 
-    for (k=0; k<CFGK; k++) {
+    for (k=0; k<CFGN; k++) {
         for (j=0; j<CFGM; j++) {
-            xnopad.v[j*CFGK+k] = 0;
+            xnopad.v[j*CFGN+k] = 0;
         }
     }
 #endif
     
 #if 0
-#pragma omp parallel for private(j,k) reduction(dCFGKxCFGMAdd: xnopad)
+#pragma omp parallel for private(j,k) reduction(dCFGNxCFGMAdd: xnopad)
     for (i=0; i<n; i++) {
         for (j=0; j<CFGM; j++) {
-            for (k=0; k<CFGK; k++) {
-                xnopad.v[j*CFGK+k] += dalpha*vval[j*ldv+i]*wval[k*ldw+i];
+            for (k=0; k<CFGN; k++) {
+                xnopad.v[j*CFGN+k] += dalpha*vval[j*ldv+i]*wval[k*ldw+i];
             }
         }
     }
-    for (k=0; k<CFGK; k++) {
+    for (k=0; k<CFGN; k++) {
         for (j=0; j<CFGM; j++) {
-            xval[k*ldx+j] = dbeta*xval[k*ldx+j] + xnopad.v[j*CFGK+k];
+            xval[k*ldx+j] = dbeta*xval[k*ldx+j] + xnopad.v[j*CFGN+k];
         }
     }
 #endif
-#GHOST_UNROLL#double sum@ = 0;#CFGM*CFGK
-#if 1//CFGM == 1 && CFGK == 1
+#GHOST_UNROLL#double sum@ = 0;#CFGM*CFGN
+#if 1//CFGM == 1 && CFGN == 1
 #pragma omp parallel for \
-#GHOST_UNROLL#reduction(+:sum@)\#CFGM*CFGK
+#GHOST_UNROLL#reduction(+:sum@)\#CFGM*CFGN
         schedule(runtime) 
     for (i=0; i<n; i++) {
-#GHOST_UNROLL#sum@ += dalpha*vval[(@/CFGK)*ldv+i]*wval[(@%CFGK)*ldw+i];#CFGM*CFGK
-                    //x_priv[j*CFGK+k] += vval[j*ldv+i]*wval[k*ldw+i];
+#GHOST_UNROLL#sum@ += dalpha*vval[(@/CFGN)*ldv+i]*wval[(@%CFGN)*ldw+i];#CFGM*CFGN
+                    //x_priv[j*CFGN+k] += vval[j*ldv+i]*wval[k*ldw+i];
     }
-#GHOST_UNROLL#xval[(@%CFGK)*ldx+(@/CFGK)] = dbeta*xval[(@%CFGK)*ldx+(@/CFGK)] + sum@;#CFGM*CFGK
+#GHOST_UNROLL#xval[(@%CFGN)*ldx+(@/CFGN)] = dbeta*xval[(@%CFGN)*ldx+(@/CFGN)] + sum@;#CFGM*CFGN
 //    xval[0] = sum;
    /* 
 #pragma omp critical
         {
-            for (k=0; k<CFGK; k++) {
+            for (k=0; k<CFGN; k++) {
                 for (j=0; j<CFGM; j++) {
-                    xval[k*ldx+j] += dalpha*x_priv[j*CFGK+k];
+                    xval[k*ldx+j] += dalpha*x_priv[j*CFGN+k];
                 }
             }
         }
@@ -104,18 +104,18 @@ ghost_error ghost_tsmttsm__u_plain_d_CFGK_CFGM_OUTERUNROLL_cm(ghost_densemat *x,
     {
         ghost_lidx t;
         double *x_priv;
-        ghost_malloc_align((void **)&x_priv,CFGM*CFGK*sizeof(double),64);
-        memset(x_priv,0,CFGM*CFGK*sizeof(double));
+        ghost_malloc_align((void **)&x_priv,CFGM*CFGN*sizeof(double),64);
+        memset(x_priv,0,CFGM*CFGN*sizeof(double));
         
 #pragma omp for schedule(runtime)
         for (i=0; i<=n-OUTERUNROLL; i+=OUTERUNROLL) {
             for (j=0; j<CFGM; j++) {
-                for (k=0; k<CFGK; k++) {
+                for (k=0; k<CFGN; k++) {
 #pragma vector always
 #pragma ivdep
 #pragma simd
                   for (t=0; t<OUTERUNROLL; t++) {
-                        x_priv[j*CFGK+k] += vval[j*ldv+i+t]*wval[k*ldw+i+t];
+                        x_priv[j*CFGN+k] += vval[j*ldv+i+t]*wval[k*ldw+i+t];
                   }
                 }
             }
@@ -123,9 +123,9 @@ ghost_error ghost_tsmttsm__u_plain_d_CFGK_CFGM_OUTERUNROLL_cm(ghost_densemat *x,
 
 #pragma omp critical
         {
-            for (k=0; k<CFGK; k++) {
+            for (k=0; k<CFGN; k++) {
                 for (j=0; j<CFGM; j++) {
-                    xval[k*ldx+j] += dalpha*x_priv[j*CFGK+k];
+                    xval[k*ldx+j] += dalpha*x_priv[j*CFGN+k];
                 }
             }
         }
@@ -137,14 +137,14 @@ ghost_error ghost_tsmttsm__u_plain_d_CFGK_CFGM_OUTERUNROLL_cm(ghost_densemat *x,
     return ret;
 }
 
-ghost_error ghost_tsmttsm__a_plain_z_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
+ghost_error ghost_tsmttsm__a_plain_z_CFGN_CFGM_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
 {
     UNUSED(conjv);
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
 
     ghost_lidx n = DM_NROWS(v);
-    INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
+    INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGN,CFGM,n,n,CFGN);
     
     complex double * restrict vval = (complex double *) v->val, * restrict wval = (complex double *) w->val, * restrict xval = (complex double *) x->val;
     ghost_lidx ldv, ldw, ldx;
@@ -164,10 +164,10 @@ ghost_error ghost_tsmttsm__a_plain_z_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_den
     ghost_lidx i,j;
     
     ghost_lidx k;
-#if CFGK>1
+#if CFGN>1
 #pragma simd
 #endif
-    for (k=0; k<CFGK; k++) {
+    for (k=0; k<CFGN; k++) {
         for (j=0; j<CFGM; j++) {
             xval[k*ldx+j] = dbeta*xval[k*ldx+j];
         }
@@ -175,21 +175,21 @@ ghost_error ghost_tsmttsm__a_plain_z_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_den
 #pragma omp parallel private(j,k)
     {
         complex double *x_priv;
-        ghost_malloc((void **)&x_priv,CFGM*CFGK*sizeof(complex double));
-        memset(x_priv,0,CFGM*CFGK*sizeof(complex double));
+        ghost_malloc((void **)&x_priv,CFGM*CFGN*sizeof(complex double));
+        memset(x_priv,0,CFGM*CFGN*sizeof(complex double));
         
         if (conjv) {
 #pragma omp for schedule(runtime)
             for (i=0; i<n; i++) {
-#if CFGK>1
+#if CFGN>1
 #pragma simd
 #pragma vector aligned
 #pragma ivdep
 #endif
-                for (k=0; k<CFGK; k++) {
+                for (k=0; k<CFGN; k++) {
 #pragma unroll_and_jam
                   for (j=0; j<CFGM; j++) {
-                        x_priv[j*CFGK+k] += dalpha*conj(vval[i*ldv+j])*wval[i*ldw+k];
+                        x_priv[j*CFGN+k] += dalpha*conj(vval[i*ldv+j])*wval[i*ldw+k];
                     }
                 }
 
@@ -197,15 +197,15 @@ ghost_error ghost_tsmttsm__a_plain_z_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_den
         } else {
 #pragma omp for schedule(runtime)
             for (i=0; i<n; i++) {
-#if CFGK>1
+#if CFGN>1
 #pragma simd
 #pragma vector aligned
 #pragma ivdep
 #endif
-                for (k=0; k<CFGK; k++) {
+                for (k=0; k<CFGN; k++) {
 #pragma unroll_and_jam
                   for (j=0; j<CFGM; j++) {
-                        x_priv[j*CFGK+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
+                        x_priv[j*CFGN+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
                     }
                 }
 
@@ -213,15 +213,15 @@ ghost_error ghost_tsmttsm__a_plain_z_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_den
         }
 
 #pragma omp critical
-#if CFGK>1
+#if CFGN>1
 #pragma simd
 #pragma vector aligned
 #pragma ivdep
 #endif
-        for (k=0; k<CFGK; k++) {
+        for (k=0; k<CFGN; k++) {
 #pragma unroll_and_jam
             for (j=0; j<CFGM; j++) {
-                xval[k*ldx+j] += x_priv[j*CFGK+k];
+                xval[k*ldx+j] += x_priv[j*CFGN+k];
             }
         }
 
@@ -232,16 +232,18 @@ ghost_error ghost_tsmttsm__a_plain_z_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_den
     return ret;
 }
 
-ghost_error ghost_tsmttsm__a_plain_d_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
+ghost_error ghost_tsmttsm__a_plain_d_CFGN_CFGM_2_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
 {
     UNUSED(conjv);
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
 
     ghost_lidx n = DM_NROWS(v);
-    INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
+    INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGN,CFGM,n,n,CFGN);
     
-    double * restrict vval = (double *) v->val, * restrict wval = (double *) w->val, * restrict xval = (double *) x->val;
+    const double * const restrict vval = (const double *) v->val;
+    const double * const restrict wval = (const double *) w->val;
+    double * const restrict xval = (double *) x->val;
     ghost_lidx ldv, ldw, ldx;
 
     ldv = v->stride;
@@ -254,44 +256,39 @@ ghost_error ghost_tsmttsm__a_plain_d_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_den
     ghost_lidx i,j;
     
     ghost_lidx k;
-#if CFGK>1
+#if CFGN>1
 #pragma simd
 #endif
-    for (k=0; k<CFGK; k++) {
+    for (k=0; k<CFGN; k++) {
         for (j=0; j<CFGM; j++) {
             xval[k*ldx+j] = dbeta*xval[k*ldx+j];
         }
     }
 #pragma omp parallel private(j,k)
     {
-        double *x_priv;
-        ghost_malloc((void **)&x_priv,CFGM*CFGK*sizeof(double));
-        memset(x_priv,0,CFGM*CFGK*sizeof(double));
+        double * restrict x_priv;
+        const ghost_lidx ldxpriv = PAD(CFGM,4);
+        ghost_malloc_align((void **)&x_priv,ldxpriv*CFGN*sizeof(double),32);
+        memset(x_priv,0,ldxpriv*CFGN*sizeof(double));
 #pragma omp for schedule(runtime)
-        for (i=0; i<n; i++) {
-#if CFGK>1
+        for (i=0; i<=n-2; i+=2) {
+            for (k=0; k<CFGN; k++) {
 #pragma simd
 #pragma vector aligned
-#pragma ivdep
-#endif
-            for (k=0; k<CFGK; k++) {
-#pragma unroll_and_jam
+#pragma vector always
               for (j=0; j<CFGM; j++) {
-                    x_priv[j*CFGK+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
+                    x_priv[j+k*ldxpriv] += vval[i*ldv+j]*wval[i*ldw+k]+vval[(i+1)*ldv+j]*wval[(i+1)*ldw+k];
                 }
             }
 
         }
 #pragma omp critical
-#if CFGK>1
+        for (k=0; k<CFGN; k++) {
 #pragma simd
 #pragma vector aligned
-#pragma ivdep
-#endif
-        for (k=0; k<CFGK; k++) {
-#pragma unroll_and_jam
+#pragma vector always
             for (j=0; j<CFGM; j++) {
-                xval[k*ldx+j] += x_priv[j*CFGK+k];
+                xval[k*ldx+j] += dalpha*x_priv[j+k*ldxpriv];
             }
         }
         free(x_priv);
@@ -301,7 +298,7 @@ ghost_error ghost_tsmttsm__a_plain_d_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_den
     return ret;
 }
 
-ghost_error ghost_tsmttsm__a_plain_d_CFGK_CFGM_4_cm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
+ghost_error ghost_tsmttsm__a_plain_d_CFGN_CFGM_4_cm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
 {
     UNUSED(conjv);
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
@@ -312,7 +309,7 @@ ghost_error ghost_tsmttsm__a_plain_d_CFGK_CFGM_4_cm(ghost_densemat *x, ghost_den
         n+=(4-n%4);
         INFO_LOG("Padding large dimension to %d",n);
     }
-    INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
+    INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGN,CFGM,n,n,CFGN);
     
     double * restrict vval = (double *) v->val, * restrict wval = (double *) w->val, * restrict xval = (double *) x->val;
     ghost_lidx ldv, ldw, ldx;
@@ -327,7 +324,7 @@ ghost_error ghost_tsmttsm__a_plain_d_CFGK_CFGM_4_cm(ghost_densemat *x, ghost_den
     ghost_lidx i,j,t;
     
     ghost_lidx k;
-    for (k=0; k<CFGK; k++) {
+    for (k=0; k<CFGN; k++) {
         for (j=0; j<CFGM; j++) {
             xval[k*ldx+j] = dbeta*xval[k*ldx+j];
         }
@@ -336,19 +333,19 @@ ghost_error ghost_tsmttsm__a_plain_d_CFGK_CFGM_4_cm(ghost_densemat *x, ghost_den
 #pragma omp parallel private(j,k,t)
     {
         double *x_priv;
-        ghost_malloc_align((void **)&x_priv,CFGM*CFGK*sizeof(double),32);
-        memset(x_priv,0,CFGM*CFGK*sizeof(double));
+        ghost_malloc_align((void **)&x_priv,CFGM*CFGN*sizeof(double),32);
+        memset(x_priv,0,CFGM*CFGN*sizeof(double));
         
 #pragma omp for schedule(runtime)
         for (i=0; i<=n-4; i+=4) {
             for (j=0; j<CFGM; j++) {
-                for (k=0; k<CFGK; k++) {
+                for (k=0; k<CFGN; k++) {
                     double tmp = 0;
 #pragma simd reduction(+:tmp)
                      for (t=0; t<4; t++) {
                            tmp += vval[j*ldv+i+t]*wval[k*ldw+i+t];
                      }
-                     x_priv[j*CFGK+k] += tmp;
+                     x_priv[j*CFGN+k] += tmp;
                 }
             }
         }
@@ -356,8 +353,8 @@ ghost_error ghost_tsmttsm__a_plain_d_CFGK_CFGM_4_cm(ghost_densemat *x, ghost_den
 #pragma omp critical
         {
             for (j=0; j<CFGM; j++) {
-                for (k=0; k<CFGK; k++) {
-                    xval[k*ldx+j] += dalpha*x_priv[j*CFGK+k];
+                for (k=0; k<CFGN; k++) {
+                    xval[k*ldx+j] += dalpha*x_priv[j*CFGN+k];
                 }
             }
         }
