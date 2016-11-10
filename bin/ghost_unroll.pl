@@ -4,7 +4,10 @@ use strict;
 use warnings;
 use integer;
 
+my $savelines = 0;
+my $savedlines;
 my %substitutions;
+my $spaces;
 while (<>) {
     if (/#GHOST_SUBST/) {
         my @split = split / /,$_;
@@ -15,25 +18,46 @@ while (<>) {
         }
         $_ =~ s/~([()\d\-\+\*\/%]+)~/$1/gee; # evaulate constant expresssion between "~" markers (usually used to construct variable names)
         if ($_ =~ /#GHOST_UNROLL/) {
-            unroll($_);
+            $spaces =  (split /#/,$_)[0];
+            my $codeline =  (split /#/,$_)[2];
+            my $unrollsize = (split /#/,$_)[3];
+            $unrollsize =~ s/\\//g; # delete backslash from unrollsize (happens in macros)
+            chomp($unrollsize);
+            $unrollsize =~ s/([()\d\-\+\*\/%]+)/$1/gee; # evaluate unroll size 
+            
+            $_ = unroll($spaces,$codeline,$unrollsize);
         } 
+        if ($savelines == 0 and $_ =~ /#GHOST_MUNROLL/) {
+            $savelines = 1;
+            $savedlines = "";
+            $spaces = "";
+            next;
+        } 
+        if ($savelines == 1) {
+            if ($_ =~ /#GHOST_MUNROLL#/) { # end of multi-line unrolling
+                my $unrollsize = (split /#/,$_)[2];
+                $unrollsize =~ s/\\//g; # delete backslash from unrollsize (happens in macros)
+                chomp($unrollsize);
+                $unrollsize =~ s/([()\d\-\+\*\/%]+)/$1/gee; # evaluate unroll size 
+                
+                $_ = unroll($spaces,$savedlines,$unrollsize);
+                $savelines = 0;
+            } else { # save codeline
+                $savedlines .= $_;
+                next;
+            }
+        }
         print $_;
     } 
 }
 
 sub unroll {
-    my $spaces =  (split /#/,$_[0])[0];
-    my $codeline =  (split /#/,$_[0])[2];
-    my $unrollsize = (split /#/,$_[0])[3];
-    $unrollsize =~ s/\\//g; # delete backslash from unrollsize (happens in macros)
-    chomp($unrollsize);
-    $unrollsize =~ s/([()\d\-\+\*\/%]+)/$1/gee; # evaluate unroll size 
-    
-    $_[0] = "";
-    for (my $i=0; $i<$unrollsize; $i++) {
-        my $modcodeline = $codeline;
+    my $unrolledcode = "";
+    for (my $i=0; $i<$_[2]; $i++) {
+        my $modcodeline = $_[1];
         $modcodeline =~ s/@/$i/g;
         $modcodeline =~ s/~([()\d\-\+\*\/%]+)~/$1/gee; # evaulate constant expresssion between "~" markers (usually used to construct variable names)
-        $_[0] = $_[0].$spaces.$modcodeline."\n";
+        $unrolledcode = $unrolledcode.$_[0].$modcodeline."\n";
     }
+    return $unrolledcode;
 }

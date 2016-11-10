@@ -233,8 +233,8 @@ while (<>) {
             print $funcname."_kernels[pars] = ".$funcname_full.";\n"; 
             if ($funcpars[3] ne "x" and $funcpars[4] ne "x" ) {
                 print "ghost_gemm_perf_args tsmm_perfargs;\n";
-                print "tsmm_perfargs.n = ".$funcpars[3].";\n";
-                print "tsmm_perfargs.k = ".$funcpars[4].";\n";
+                print "tsmm_perfargs.k = ".$funcpars[3].";\n";
+                print "tsmm_perfargs.n = ".$funcpars[4].";\n";
                 print "tsmm_perfargs.m = DM_GNROWS(x);\n";
                 print "tsmm_perfargs.dt = x->traits.datatype;\n";
                 print "tsmm_perfargs.betaiszero = ghost_iszero(beta,x->traits.datatype);\n";

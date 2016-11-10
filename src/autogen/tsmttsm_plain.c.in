@@ -137,13 +137,17 @@ ghost_error ghost_tsmttsm__u_plain_d_CFGN_CFGM_OUTERUNROLL_cm(ghost_densemat *x,
     return ret;
 }
 
-ghost_error ghost_tsmttsm__a_plain_z_CFGN_CFGM_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
+ghost_error ghost_tsmttsm__a_plain_z_CFGN_CFGM_2_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
 {
     UNUSED(conjv);
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
 
     ghost_lidx n = DM_NROWS(v);
+    if (n%2) {
+        n+=(2-n%2);
+        INFO_LOG("Padding large dimension to %d\n",n);
+    }
     INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGN,CFGM,n,n,CFGN);
     
     complex double * restrict vval = (complex double *) v->val, * restrict wval = (complex double *) w->val, * restrict xval = (complex double *) x->val;
@@ -156,14 +160,7 @@ ghost_error ghost_tsmttsm__a_plain_z_CFGN_CFGM_1_rm(ghost_densemat *x, ghost_den
     complex double dalpha = *(complex double *)alpha;
     complex double dbeta = *(complex double *)beta;
     
-    ghost_mpi_op mpiop_zadd;
-    ghost_mpi_datatype mpidt_z;
-    ghost_mpi_op_sum(&mpiop_zadd,(ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
-    ghost_mpi_datatype_get(&mpidt_z,(ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
-    
-    ghost_lidx i,j;
-    
-    ghost_lidx k;
+    ghost_lidx i,j,k;
 #if CFGN>1
 #pragma simd
 #endif
@@ -174,38 +171,58 @@ ghost_error ghost_tsmttsm__a_plain_z_CFGN_CFGM_1_rm(ghost_densemat *x, ghost_den
     }
 #pragma omp parallel private(j,k)
     {
-        complex double *x_priv;
-        ghost_malloc((void **)&x_priv,CFGM*CFGN*sizeof(complex double));
-        memset(x_priv,0,CFGM*CFGN*sizeof(complex double));
+        complex double * restrict x_priv;
+        const ghost_lidx ldxpriv = PAD(CFGM,2);
+        ghost_malloc_align((void **)&x_priv,ldxpriv*CFGN*sizeof(complex double),32);
+        memset(x_priv,0,ldxpriv*CFGN*sizeof(complex double));
+        complex double __attribute__((unused)) wval0,wval1;
         
         if (conjv) {
 #pragma omp for schedule(runtime)
-            for (i=0; i<n; i++) {
-#if CFGN>1
+            for (i=0; i<=n-2; i+=2) {
+#if CFGN<8
+                #GHOST_MUNROLL
+                wval0=wval[i*ldw+@]; 
+                wval1=wval[(i+1)*ldw+@]; 
+#pragma simd 
+#pragma vector aligned
+#pragma vector always
+                for (j=0; j<CFGM; j++) {
+                    x_priv[j+@*ldxpriv] += conj(vval[i*ldv+j])*wval0 + conj(vval[(i+1)*ldv+j])*wval1;
+                }
+                #GHOST_MUNROLL#CFGN
+#else
+#pragma unroll_and_jam(2)
+                for (k=0; k<CFGN; k++) {
 #pragma simd
 #pragma vector aligned
-#pragma ivdep
+#pragma vector always
+#if CFGM>=8
+#pragma unroll(CFGM)
 #endif
-                for (k=0; k<CFGN; k++) {
-#pragma unroll_and_jam
-                  for (j=0; j<CFGM; j++) {
-                        x_priv[j*CFGN+k] += dalpha*conj(vval[i*ldv+j])*wval[i*ldw+k];
+                    for (j=0; j<CFGM; j++) {
+                      x_priv[j+k*ldxpriv] += conj(vval[i*ldv+j])*wval[i*ldw+k] + conj(vval[(i+1)*ldv+j])*wval[(i+1)*ldw+k];
                     }
                 }
+#endif
 
             }
         } else {
 #pragma omp for schedule(runtime)
-            for (i=0; i<n; i++) {
-#if CFGN>1
-#pragma simd
-#pragma vector aligned
-#pragma ivdep
+            for (i=0; i<=n-2; i+=2) {
+#if CFGN>=8
+#pragma unroll_and_jam(2)
 #endif
                 for (k=0; k<CFGN; k++) {
-#pragma unroll_and_jam
+#pragma simd
+#pragma vector aligned
+#pragma vector always
+#if CFGM>=8
+#pragma unroll(CFGM)
+#endif
                   for (j=0; j<CFGM; j++) {
-                        x_priv[j*CFGN+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
+                        x_priv[j+k*ldxpriv] += vval[i*ldv+j]*wval[i*ldw+k] + 
+                            vval[(i+1)*ldv+j]*wval[i*ldw+k];
                     }
                 }
 
@@ -213,15 +230,12 @@ ghost_error ghost_tsmttsm__a_plain_z_CFGN_CFGM_1_rm(ghost_densemat *x, ghost_den
         }
 
 #pragma omp critical
-#if CFGN>1
+        for (k=0; k<CFGN; k++) {
 #pragma simd
 #pragma vector aligned
-#pragma ivdep
-#endif
-        for (k=0; k<CFGN; k++) {
-#pragma unroll_and_jam
+#pragma vector always
             for (j=0; j<CFGM; j++) {
-                xval[k*ldx+j] += x_priv[j*CFGN+k];
+                xval[k*ldx+j] += dalpha*x_priv[j+k*ldxpriv];
             }
         }
 
@@ -239,6 +253,10 @@ ghost_error ghost_tsmttsm__a_plain_d_CFGN_CFGM_2_rm(ghost_densemat *x, ghost_den
     ghost_error ret = GHOST_SUCCESS;
 
     ghost_lidx n = DM_NROWS(v);
+    if (n%2) {
+        n+=(2-n%2);
+        INFO_LOG("Padding large dimension to %d\n",n);
+    }
     INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGN,CFGM,n,n,CFGN);
     
     const double * const restrict vval = (const double *) v->val;
