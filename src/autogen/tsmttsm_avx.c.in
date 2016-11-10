@@ -637,7 +637,7 @@ ghost_error ghost_tsmttsm__a_avx_s_CFGN_CFGM_OUTERUNROLL_rm(ghost_densemat *x, g
 #endif
 }
 
-ghost_error ghost_tsmttsm__a_avx_z_CFGN_CFGM_2_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
+ghost_error ghost_tsmttsm__u_avx_z_CFGN_CFGM_2_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
 {
     UNUSED(conjv);
 #ifdef GHOST_BUILD_AVX
