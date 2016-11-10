@@ -35,7 +35,7 @@ set(GHOST_LOG_RANK "-1" CACHE STRING "The MPI rank for which the log messages wi
 set(GHOST_AUTOGEN_SPMMV "32,1;1,4;32,*;1,*" CACHE STRING "SpM(M)V kernels to be auto-generated. Semicolon-separated list of 2-tuples: (CHUNKHEIGHT, NVECS)")
 set(GHOST_AUTOGEN_SPMMV_CUDA "32,1,0,0,0,0,0,0,0;1,4,0,0,0,0,0,0,0;32,*,0,0,0,0,0,0,0;1,*,0,0,0,0,0,0,0" CACHE STRING "SpM(M)V kernels to be auto-generated. Semicolon-separated list of 9-tuples: (CHUNKHEIGHT, NVECS,AXP(B)Y,SCALE,(V)SHIFT,DOT_YY,DOT_XY,DOT_XX,CHAIN_AXPBY)")
 set(GHOST_AUTOGEN_TSMM "4,4,1" CACHE STRING "TSMM kernels to be auto-generated. Semicolon-separated list of 3-tuples: (K, N, UNROLL)")
-set(GHOST_AUTOGEN_TSMM-INPLACE "4,4" CACHE STRING "TSMM-inplace kernels to be auto-generated. Semicolon-separated list of 2-tuples: (K, N)")
+set(GHOST_AUTOGEN_TSMM-INPLACE "4,4" CACHE STRING "TSMM-inplace kernels to be auto-generated. Semicolon-separated list of 2-tuples: (K, N) where K>=N")
 set(GHOST_AUTOGEN_TSMTTSM "4,4,1" CACHE STRING "TSMTTSM kernels to be auto-generated. Semicolon-separated list of 3-tuples: (M, N, UNROLL)")
 set(GHOST_AUTOGEN_DOT "1;4" CACHE STRING "DOT kernels to be auto-generated. Semicolon-separated list of 1-tuples: (NVECS)")
 set(GHOST_AUTOGEN_KACZ "32,1,0;32,4,0;1,4,0;1,4,4" CACHE STRING "KACZ kernels to be auto-generated. Semicolon-separated list of 3-tuples: (CHUNKHEIGHT, NVECS, NSHIFTS)")
@@ -304,7 +304,7 @@ foreach(TEMPLATE_SRCFILE ${TEMPLATE_SRCFILES})
         set(UNROLLED_FILE ${UNROLLED_SRC_DIR}/${TO_UNROLL_FILENAME})
         add_custom_command(
             OUTPUT ${UNROLLED_FILE}
-            DEPENDS ${GENERATED_FILE} ${UNROLL_SCRIPT} 
+            DEPENDS ${GENERATED_FILE} ${PP_SCRIPT} 
             COMMAND mkdir -p ${UNROLLED_SRC_DIR} && perl ${PP_SCRIPT} ${GENERATED_FILE} > ${UNROLLED_FILE}
             )
         list(APPEND UNROLLED_FILES ${UNROLLED_FILE})
