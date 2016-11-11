@@ -1,4 +1,4 @@
-/*!GHOST_AUTOGEN_TSMTTSM M,N,1 */
+/*!GHOST_AUTOGEN_TSMTTSM M,N,2 */
 #include "ghost/config.h"
 #include "ghost/types.h"
 #include "ghost/math.h"
@@ -16,7 +16,7 @@
 #define complex_mul(a,b) _mm256_fmaddsub_pd(_mm256_shuffle_pd(b,b,0),a,_mm256_mul_pd(_mm256_shuffle_pd(b,b,0xF),_mm256_shuffle_pd(a,a,5)))
 #define complex_mul_conj1(b,a) _mm256_fmaddsub_pd(_mm256_shuffle_pd(b,b,0),a,_mm256_mul_pd(_mm256_mul_pd(_mm256_shuffle_pd(b,b,0xF),_mm256_set1_pd(-1.)),_mm256_shuffle_pd(a,a,5)))
 
-ghost_error ghost_tsmttsm__a_avx2_d_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conmv)
+ghost_error ghost_tsmttsm__a_avx2_d_CFGK_CFGM_2_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conmv)
 {
     UNUSED(conmv);
 #ifdef GHOST_BUILD_AVX2
@@ -164,7 +164,7 @@ ghost_error ghost_tsmttsm__a_avx2_d_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_dens
 #endif
 }
 
-ghost_error ghost_tsmttsm__a_avx2_z_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conmv)
+ghost_error ghost_tsmttsm__a_avx2_z_CFGK_CFGM_2_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conmv)
 {
     UNUSED(conmv);
 #ifdef GHOST_BUILD_AVX2
