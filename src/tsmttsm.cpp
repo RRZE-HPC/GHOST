@@ -40,7 +40,7 @@ namespace std
         typedef std::size_t result_type;
         result_type operator()(argument_type const& a) const
         {
-            return ghost_hash(a.dt,a.wcols,ghost_hash(a.vcols,a.impl,ghost_hash(a.wstor,a.alignment,a.unroll)));
+            return ghost_hash(a.dt,a.wcols,ghost_hash(a.vcols,a.impl,ghost_hash(a.wstor,a.unroll,a.alignment)));
         }
     };
 }
