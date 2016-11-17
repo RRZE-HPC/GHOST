@@ -95,8 +95,6 @@ ghost_error FUNCNAME(view(ghost_densemat *src, ghost_densemat **new, ghost_lidx 
     if (nr!=src->map->dim) {
         // create new map
         ghost_densemat_create(new,ghost_map_create_light(nr,src->map->mpicomm),newTraits);
-        // decrement ref_count of the new map because this scope will not delete it
-        (*new)->map->ref_count--;
     } else {
         // use existing map
         ghost_densemat_create(new,src->map,newTraits);
