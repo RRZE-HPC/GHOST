@@ -728,6 +728,17 @@ extern "C" {
      * @param localVec The local densemat.
      */
     ghost_error ghost_densemat_distribute(ghost_densemat *vec, ghost_densemat *localVec, ghost_context *ctx);
+
+    /**
+     * @brief Sets a densemat's active map.
+     *
+     * @param vec The densemat.
+     * @param map The map.
+     *
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error ghost_densemat_set_map(ghost_densemat *vec, ghost_map *map);
 #ifdef __cplusplus
 }
 #endif

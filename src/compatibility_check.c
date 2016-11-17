@@ -53,7 +53,7 @@ static bool checkLeft(ghost_densemat *left, ghost_context *ctx)
            {
               ghost_densemat_permute(left,GHOST_PERMUTATION_PERM2ORIG);
            }
-           left->map = ctx->row_map;
+           ghost_densemat_set_map(left,ctx->row_map);
         }
       ghost_densemat_permute(left,GHOST_PERMUTATION_ORIG2PERM);       
 #endif
@@ -77,7 +77,7 @@ static bool checkRight(ghost_densemat *right, ghost_context *ctx)
            {
               ghost_densemat_permute(right,GHOST_PERMUTATION_PERM2ORIG);
            }
-           right->map = ctx->col_map;
+           ghost_densemat_set_map(right,ctx->col_map);
         }
       ghost_densemat_permute(right,GHOST_PERMUTATION_ORIG2PERM);      
 #endif
@@ -105,7 +105,7 @@ static bool makeSimilar(ghost_densemat *vec1, ghost_densemat *vec2)
         {
             if(vec2_dim == GHOST_MAP_NONE) 
             {
-                vec2->map = vec1->map;
+                ghost_densemat_set_map(vec2,vec1->map);
                 if (permuted_vec1) {
                     ghost_densemat_permute(vec2,GHOST_PERMUTATION_ORIG2PERM);
                 }
@@ -114,13 +114,13 @@ static bool makeSimilar(ghost_densemat *vec1, ghost_densemat *vec2)
             {
                 if(permuted_vec1) 
                 {
-                    vec2->map = vec1->map;
+                    ghost_densemat_set_map(vec2,vec1->map);
                     ghost_densemat_permute(vec2,GHOST_PERMUTATION_ORIG2PERM);
                 } 
                 else 
                 {
                     ghost_densemat_permute(vec2,GHOST_PERMUTATION_PERM2ORIG);
-                    vec2->map = vec1->map;
+                    ghost_densemat_set_map(vec2,vec1->map);
                 }
             }
             else 
@@ -128,18 +128,18 @@ static bool makeSimilar(ghost_densemat *vec1, ghost_densemat *vec2)
                 if(permuted_vec1)
                 {
                    ghost_densemat_permute(vec2,GHOST_PERMUTATION_PERM2ORIG);                  
-                   vec2->map = vec1->map;
+                   ghost_densemat_set_map(vec2,vec1->map);
                    ghost_densemat_permute(vec2,GHOST_PERMUTATION_ORIG2PERM);                  
                 } 
                 else
                 {
-                  vec2->map = vec1->map;
+                  ghost_densemat_set_map(vec2,vec1->map);
                 }
             }  
         } 
         else if(vec2_dim != GHOST_MAP_NONE)
         {   
-            vec1->map = vec2->map;
+            ghost_densemat_set_map(vec1,vec2->map);
             if (permuted_vec2) {
                 ghost_densemat_permute(vec1,GHOST_PERMUTATION_ORIG2PERM);
             }

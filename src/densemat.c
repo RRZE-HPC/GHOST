@@ -758,3 +758,11 @@ ghost_error ghost_densemat_clone(ghost_densemat **dst, ghost_densemat *src, ghos
     return GHOST_SUCCESS;
 }
     
+ghost_error ghost_densemat_set_map(ghost_densemat *vec, ghost_map *map)
+{
+    vec->map->ref_count--;
+    vec->map = map;
+    vec->map->ref_count++;
+
+    return GHOST_SUCCESS;
+}
