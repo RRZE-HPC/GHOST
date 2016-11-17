@@ -22,6 +22,7 @@ ghost_error ghost_map_create(ghost_map **map, ghost_gidx gdim, ghost_mpi_comm co
     (*map)->glb_perm_inv = NULL;
     (*map)->cu_loc_perm = NULL;
     (*map)->dim = 0;
+    (*map)->dimhalo = 0;
     (*map)->dimpad = 0;
     (*map)->offs = 0;
     (*map)->mpicomm = comm;

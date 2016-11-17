@@ -104,7 +104,11 @@ typedef struct
      */
     ghost_lidx dim;
     /**
-     * @brief The padded local dimension for this rank.
+     * @brief The local dimension including halo elements for this rank.
+     */
+    ghost_lidx dimhalo;
+    /**
+     * @brief The local dimension including halo elements and padding for this rank.
      */
     ghost_lidx dimpad;
     /**
