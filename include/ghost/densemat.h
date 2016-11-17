@@ -709,6 +709,8 @@ extern "C" {
      * If the densemat is a view, it will no longer be one afterwards.
      *
      * @param vec The densemat.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error ghost_densemat_compress(ghost_densemat *vec);
     /**
@@ -718,6 +720,8 @@ extern "C" {
      * @param vec The distributed densemat.
      * @param globvec The global densemat.
      * @param ctx The context.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error ghost_densemat_collect(ghost_densemat *vec, ghost_densemat *globvec, ghost_context *ctx);
  
@@ -726,6 +730,8 @@ extern "C" {
      *
      * @param vec The global densemat.
      * @param localVec The local densemat.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error ghost_densemat_distribute(ghost_densemat *vec, ghost_densemat *localVec, ghost_context *ctx);
 
