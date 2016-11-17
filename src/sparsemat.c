@@ -923,13 +923,9 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
         ghost_context_create(&(mat->context),src->gnrows,src->gncols,ctxflags,mpicomm,weight);
         GHOST_CALL_GOTO(ghost_nrank(&nprocs, mat->context->mpicomm),err,ret);
         ghost_map_create_distribution(mat->context->row_map,src,mat->context->weight,GHOST_MAP_DIST_NROWS);
+        ghost_map_create_distribution(mat->context->col_map,src,mat->context->weight,GHOST_MAP_DIST_NROWS);
         if (mat->traits.flags & GHOST_SPARSEMAT_PERM_NO_DISTINCTION) {
             mat->context->col_map->flags = (ghost_map_flags)(mat->context->col_map->flags&GHOST_PERM_NO_DISTINCTION);
-        }
-        if (nprocs == 1) {
-            mat->context->col_map->dim = src->gncols;
-            mat->context->col_map->dimpad = PAD(mat->context->col_map->dim,ghost_densemat_row_padding());
-            mat->context->col_map->gdim = src->gncols;
         }
     } else {
         GHOST_CALL_GOTO(ghost_nrank(&nprocs, mat->context->mpicomm),err,ret);
@@ -1578,18 +1574,15 @@ static ghost_error ghost_sparsemat_split(ghost_sparsemat *mat)
     GHOST_CALL_GOTO(ghost_context_comm_init(mat->context,mat->col_orig,mat,mat->col),err,ret);
    
     if (nproc > 1) { 
-        if (mat->context->col_map->dim != 0) {
-            ERROR_LOG("This should be zero and is %d!",mat->context->col_map->dim);
-        }
-        if (mat->context->col_map->dimpad) {
-            ERROR_LOG("This should be zero and is %d!",mat->context->col_map->dimpad);
+        if (mat->context->col_map->dimhalo) {
+            ERROR_LOG("This should be zero and is %d!",mat->context->col_map->dimhalo);
         }
         if(mat->context->flags & GHOST_PERM_NO_DISTINCTION) {
-            mat->context->col_map->dim = mat->context->row_map->dimpad+2*mat->context->halo_elements;
+            mat->context->col_map->dimhalo = mat->context->row_map->dimpad+2*mat->context->halo_elements;
             mat->context->col_map->dimpad = PAD(mat->context->row_map->dimpad+2*mat->context->halo_elements,ghost_densemat_row_padding());
             initHaloAvg(mat);
         } else {
-            mat->context->col_map->dim = mat->context->row_map->dimpad+mat->context->halo_elements;
+            mat->context->col_map->dimhalo = mat->context->row_map->dimpad+mat->context->halo_elements;
             mat->context->col_map->dimpad = PAD(mat->context->row_map->dimpad+mat->context->halo_elements,ghost_densemat_row_padding());
         }
     }
