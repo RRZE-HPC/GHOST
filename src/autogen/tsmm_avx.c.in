@@ -567,8 +567,8 @@ ghost_error ghost_tsmm__u_avx_d_OUTCOLS_INCOLS_OUTERUNROLL_1_rm(ghost_densemat *
 #ifdef KREMAINDER
 #pragma unroll(INCOLS/4)
                 for (m=0; m<INCOLS/4; m++) {
-                    #GHOST_UNROLL#vrow@ = _mm256_load_pd(&vval[(i+@)*ldv+m*4]);#OUTERUNROLL
-                    #GHOST_UNROLL#tmp@ = _mm256_add_pd(tmp@,_mm256_mul_pd(vrow~@/4~,_mm256_load_pd(&wnonpad[(k*4+(@%4))*nrows_wnonpad+m*4])));#4*OUTERUNROLL
+                    #GHOST_UNROLL#vrow@ = _mm256_loadu_pd(&vval[(i+@)*ldv+m*4]);#OUTERUNROLL
+                    #GHOST_UNROLL#tmp@ = _mm256_add_pd(tmp@,_mm256_mul_pd(vrow~@/4~,_mm256_loadu_pd(&wnonpad[(k*4+(@%4))*nrows_wnonpad+m*4])));#4*OUTERUNROLL
                 }
 #if INCOLS%4
                 #GHOST_UNROLL#vrow@ = _mm256_maskload_pd(&vval[(i+@)*ldv+m*4],kmask);#OUTERUNROLL
@@ -577,8 +577,8 @@ ghost_error ghost_tsmm__u_avx_d_OUTCOLS_INCOLS_OUTERUNROLL_1_rm(ghost_densemat *
 #else
 #pragma unroll((INCOLS+3)/4)
                 for (m=0; m<(INCOLS+3)/4; m++) {
-                    #GHOST_UNROLL#vrow@ = _mm256_load_pd(&vval[(i+@)*ldv+m*4]);#OUTERUNROLL
-                    #GHOST_UNROLL#tmp@ = _mm256_add_pd(tmp@,_mm256_mul_pd(vrow~@/4~,_mm256_load_pd(&wnonpad[(k*4+(@%4))*nrows_wnonpad+m*4])));#4*OUTERUNROLL
+                    #GHOST_UNROLL#vrow@ = _mm256_loadu_pd(&vval[(i+@)*ldv+m*4]);#OUTERUNROLL
+                    #GHOST_UNROLL#tmp@ = _mm256_add_pd(tmp@,_mm256_mul_pd(vrow~@/4~,_mm256_loadu_pd(&wnonpad[(k*4+(@%4))*nrows_wnonpad+m*4])));#4*OUTERUNROLL
                 }
 #endif
 
@@ -589,8 +589,8 @@ ghost_error ghost_tsmm__u_avx_d_OUTCOLS_INCOLS_OUTERUNROLL_1_rm(ghost_densemat *
             #GHOST_UNROLL#tmp@ = _mm256_setzero_pd();#4*OUTERUNROLL
 
             for (m=0; m<INCOLS/4; m++) {
-                #GHOST_UNROLL#vrow@ = _mm256_load_pd(&vval[(i+@)*ldv+m*4]);#OUTERUNROLL
-                #GHOST_UNROLL#if(@%4 < OUTCOLS%4) { tmp@ = _mm256_add_pd(tmp@,_mm256_mul_pd(vrow~@/4~,_mm256_load_pd(&wnonpad[(k*4+(@%4))*nrows_wnonpad+m*4])));}#4*OUTERUNROLL
+                #GHOST_UNROLL#vrow@ = _mm256_loadu_pd(&vval[(i+@)*ldv+m*4]);#OUTERUNROLL
+                #GHOST_UNROLL#if(@%4 < OUTCOLS%4) { tmp@ = _mm256_add_pd(tmp@,_mm256_mul_pd(vrow~@/4~,_mm256_loadu_pd(&wnonpad[(k*4+(@%4))*nrows_wnonpad+m*4])));}#4*OUTERUNROLL
             }
 #if INCOLS%4
             #GHOST_UNROLL#vrow@ = _mm256_maskload_pd(&vval[(i+@)*ldv+m*4],kmask);#OUTERUNROLL
