@@ -193,25 +193,25 @@ static ghost_error ghost_sparsemat_string_tmpl(ghost_sparsemat *mat, char **str,
             if (nranks > 1) { 
                 buffer << " | ";
                 
-                for (j=0; j<mat->context->row_map->offs; j++) {
+                for (j=0; j<mat->context->col_map->offs; j++) {
                     buffer << rowStrings[j];
                 }
                 
                 buffer << " | ";
                 
-                for (; j<mat->context->row_map->offs+SPM_NROWS(mat); j++) {
+                for (; j<mat->context->col_map->offs+mat->context->col_map->dim; j++) {
                     buffer << rowStrings[j];
                 }
                 
                 buffer << " | ";
                 
-                for (; j<SPM_GNCOLS(mat); j++) {
+                for (; j<mat->context->col_map->gdim; j++) {
                     buffer << rowStrings[j];
                 }
                 
                 buffer << " | ";
             } else {
-                for (j=0; j<SPM_GNCOLS(mat); j++) {
+                for (j=0; j<mat->context->col_map->gdim; j++) {
                     buffer << rowStrings[j];
                 }
             }
