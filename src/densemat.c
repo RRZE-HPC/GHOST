@@ -66,13 +66,13 @@ ghost_error ghost_densemat_create(ghost_densemat **vec, ghost_map *map, ghost_de
     ghost_error ret = GHOST_SUCCESS;
     GHOST_CALL_GOTO(ghost_malloc((void **)vec,sizeof(ghost_densemat)),err,ret);
     (*vec)->traits = traits;
-    (*vec)->map = map;
+    (*vec)->map = NULL;
+    ghost_densemat_set_map(*vec,map);
     (*vec)->colmask = NULL;
     (*vec)->rowmask = NULL;
     (*vec)->val = NULL;
     (*vec)->cu_val = NULL;
 
-    map->ref_count++;
   /* 
     if (ctx) {
 //        if (ctx->perm_global || ctx->perm_local) {
@@ -760,7 +760,9 @@ ghost_error ghost_densemat_clone(ghost_densemat **dst, ghost_densemat *src, ghos
     
 ghost_error ghost_densemat_set_map(ghost_densemat *vec, ghost_map *map)
 {
-    vec->map->ref_count--;
+    if (vec->map) {
+        vec->map->ref_count--;
+    }
     vec->map = map;
     vec->map->ref_count++;
 
