@@ -940,6 +940,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
     //ERROR_LOG("set no_distinction");
     //mat->context->flags = mat->context->flags | GHOST_PERM_NO_DISTINCTION;
     mat->context->row_map->dimpad = PAD(SPM_NROWS(mat),ghost_densemat_row_padding());
+    mat->context->col_map->dimpad = PAD(mat->context->col_map->dim,ghost_densemat_row_padding());
     
     ghost_lidx nChunks = CEILDIV(SPM_NROWS(mat),mat->traits.C);
     
@@ -1579,11 +1580,11 @@ static ghost_error ghost_sparsemat_split(ghost_sparsemat *mat)
         }
         if(mat->context->flags & GHOST_PERM_NO_DISTINCTION) {
             mat->context->col_map->dimhalo = mat->context->row_map->dimpad+2*mat->context->halo_elements;
-            mat->context->col_map->dimpad = PAD(mat->context->row_map->dimpad+2*mat->context->halo_elements,ghost_densemat_row_padding());
+            mat->context->col_map->dimpad = PAD(mat->context->col_map->dimpad+2*mat->context->halo_elements,ghost_densemat_row_padding());
             initHaloAvg(mat);
         } else {
             mat->context->col_map->dimhalo = mat->context->row_map->dimpad+mat->context->halo_elements;
-            mat->context->col_map->dimpad = PAD(mat->context->row_map->dimpad+mat->context->halo_elements,ghost_densemat_row_padding());
+            mat->context->col_map->dimpad = PAD(mat->context->col_map->dimpad+mat->context->halo_elements,ghost_densemat_row_padding());
         }
     }
 

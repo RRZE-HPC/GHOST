@@ -500,11 +500,11 @@ ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, gh
 //        ctx->col_map->dimpad = PAD(ctx->row_map->dim+halo_ctr,ghost_densemat_row_padding());
 //        ctx->nrowspadded   =  PAD(ctx->row_map->ldim[me]+halo_ctr,rowpadding);
 //        rowpaddingoffset   =  ctx->nrowspadded-ctx->row_map->ldim[me];
-        first_putpos = ctx->row_map->dimpad+halo_ctr;
+        first_putpos = ctx->col_map->dimpad+halo_ctr;
     } else {
 //	    ctx->nrowspadded = PAD(ctx->row_map->ldim[me],rowpadding);// this is set already
 //        ctx->col_map->dimpad = PAD(ctx->row_map->dim,ghost_densemat_row_padding());
-        first_putpos = ctx->row_map->dimpad;
+        first_putpos = ctx->col_map->dimpad;
     }
 
 //	rowpaddingoffset = MAX(ctx->row_map->dimpad,ctx->col_map->dimpad)-ctx->row_map->dim;

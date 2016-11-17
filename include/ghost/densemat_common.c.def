@@ -58,7 +58,7 @@ ghost_error FUNCNAME(malloc(ghost_densemat *vec, int* needsInit))
                         (size_t)vec->traits.ncolspadded*allocrows*
                         vec->elSize));
         } else {
-          GHOST_CALL_RETURN(ghost_malloc_align((void **)&vec->val,
+            GHOST_CALL_RETURN(ghost_malloc_align((void **)&vec->val,
                         (size_t)vec->traits.ncolspadded*allocrows*
                         vec->elSize,GHOST_DATA_ALIGNMENT));
         }
