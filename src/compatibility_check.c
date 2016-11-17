@@ -39,6 +39,7 @@ const ghost_compatible_vec_vec GHOST_COMPATIBLE_VEC_VEC_INITIALIZER = {
 
 static bool checkLeft(ghost_densemat *left, ghost_context *ctx)
 {
+    (void)ctx;
     bool flag = true;
     if(left->map->type != GHOST_MAP_ROW)
     {
@@ -62,6 +63,7 @@ static bool checkLeft(ghost_densemat *left, ghost_context *ctx)
 
 static bool checkRight(ghost_densemat *right, ghost_context *ctx)
 {
+    (void)ctx;
     bool flag = true;
     if(right->map->type != GHOST_MAP_COL)
     {
