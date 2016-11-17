@@ -181,14 +181,20 @@ out:
 
 void ghost_map_destroy(ghost_map *map)
 {
+    if (map) {
         map->ref_count--;
+        if (map->ref_count < 0) {
+            ERROR_LOG("Negative ref_count! This should not have happened.");
+            return;
+        }
         if (map->ref_count==0)
         {
-          free(map->cu_loc_perm); map->cu_loc_perm = NULL;
-          free(map->goffs); map->goffs = NULL;
-          free(map->ldim); map->ldim = NULL;
-          free(map);
+            ghost_cu_free(map->cu_loc_perm); map->cu_loc_perm = NULL;
+            free(map->goffs); map->goffs = NULL;
+            free(map->ldim); map->ldim = NULL;
+            free(map);
         }
+    }
 }
 
 int ghost_rank_of_row(ghost_map *map, ghost_gidx row)
