@@ -201,8 +201,11 @@ set (HEADERS
     include/ghost/compatibility_check.h
    )
 
-if (NOT DEFINED GHOST_USE_CUDA OR GHOST_USE_CUDA)
+# only do this in the initial run: either if GHOST_USE_CUDA is undefined or it is enabled by the user but no libraries are found yet
+if (NOT DEFINED GHOST_USE_CUDA OR (GHOST_USE_CUDA AND ("${CUDA_LIBRARIES}" STREQUAL "")))
     option(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
+    find_package(CUDA)
+    set(CUDA_USE_STATIC_CUDA_RUNTIME OFF CACHE BOOL "" FORCE) # unfortunately, this gets overwritten in FindCUDA.cmake, so we have to force set it again
     find_package(CUDA)
 endif()
 
