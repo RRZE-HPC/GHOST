@@ -168,12 +168,13 @@ extern "C" {
      * @param matsrc The sparse matrix construction function or NULL.
      * @param weight The weight of this rank.
      * @param distType The distribution scheme.
+     * @param el_per_rank An array of length $nranks which prescribed the distribution or NULL.
      *
      * In case matsrc is NULL, the only possible distType is ::GHOST_MAP_DIST_NROWS.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error ghost_map_create_distribution(ghost_map *map, ghost_sparsemat_src_rowfunc *matsrc, double weight, ghost_map_dist_type distType);
+    ghost_error ghost_map_create_distribution(ghost_map *map, ghost_sparsemat_src_rowfunc *matsrc, double weight, ghost_map_dist_type distType,ghost_lidx *el_per_rank);
     ghost_error ghost_map_create(ghost_map **map, ghost_gidx gdim, ghost_mpi_comm comm, ghost_maptype type, ghost_map_flags flags);
     /**
      * @brief Create a light map with only a dimension and an MPI communicator.

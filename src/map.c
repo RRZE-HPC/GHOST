@@ -25,6 +25,7 @@ ghost_error ghost_map_create(ghost_map **map, ghost_gidx gdim, ghost_mpi_comm co
     (*map)->dimhalo = 0;
     (*map)->dimpad = 0;
     (*map)->offs = 0;
+    (*map)->nhalo = 0;
     (*map)->mpicomm = comm;
     (*map)->type = type;
     (*map)->flags = flags;
@@ -46,7 +47,7 @@ static int diag(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *col, void *val, 
     return 0;
 }
     
-ghost_error ghost_map_create_distribution(ghost_map *map, ghost_sparsemat_src_rowfunc *matsrc, double weight, ghost_map_dist_type distType)
+ghost_error ghost_map_create_distribution(ghost_map *map, ghost_sparsemat_src_rowfunc *matsrc, double weight, ghost_map_dist_type distType, ghost_lidx *el_per_rank)
 {
     int me,nranks,i;
     ghost_error ret = GHOST_SUCCESS;
@@ -55,7 +56,7 @@ ghost_error ghost_map_create_distribution(ghost_map *map, ghost_sparsemat_src_ro
     GHOST_CALL_GOTO(ghost_nrank(&nranks, map->mpicomm),err,ret);
     GHOST_CALL_GOTO(ghost_rank(&me,map->mpicomm),err,ret);
    
-    if (matsrc == NULL) {
+    if (matsrc == NULL && el_per_rank == NULL) {
         if (distType == GHOST_MAP_DIST_NNZ) {
             ERROR_LOG("Distribution by nnz can only be done if a matrix source is given");
             return GHOST_ERR_INVALID_ARG;
@@ -64,7 +65,7 @@ ghost_error ghost_map_create_distribution(ghost_map *map, ghost_sparsemat_src_ro
             diagsrc.func = diag;
             diagsrc.maxrowlen = 1;
             diagsrc.gnrows = map->gdim;
-            return ghost_map_create_distribution(map,&diagsrc,weight,distType);
+            return ghost_map_create_distribution(map,&diagsrc,weight,distType,NULL);
         }
     }
 
@@ -77,28 +78,33 @@ ghost_error ghost_map_create_distribution(ghost_map *map, ghost_sparsemat_src_ro
 
 
         if (me == 0) {
-            GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,sizeof(ghost_gidx)*(map->gdim+1)),err,ret);
-#pragma omp parallel for schedule(runtime)
-            for( row = 0; row < map->gdim+1; row++ ) {
-                rpt[row] = 0;
-            }
-            char *tmpval = NULL;
-            ghost_gidx *tmpcol = NULL;
-
-            GHOST_CALL_GOTO(ghost_malloc((void **)&tmpval,matsrc->maxrowlen*GHOST_DT_MAX_SIZE),err,ret);
-            GHOST_CALL_GOTO(ghost_malloc((void **)&tmpcol,matsrc->maxrowlen*sizeof(ghost_gidx)),err,ret);
-            rpt[0] = 0;
-            ghost_lidx rowlen;
-            for(row = 0; row < map->gdim; row++) {
-                matsrc->func(row,&rowlen,tmpcol,tmpval,matsrc->arg);
-                rpt[row+1] = rpt[row]+rowlen;
-            }
-            free(tmpval); tmpval = NULL;
-            free(tmpcol); tmpcol = NULL;
-
-            gnnz = rpt[map->gdim];
             ghost_lidx target_nnz;
-            target_nnz = (gnnz/nranks)+1; /* sonst bleiben welche uebrig! */
+
+            if (!el_per_rank) {
+                GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,sizeof(ghost_gidx)*(map->gdim+1)),err,ret);
+#pragma omp parallel for schedule(runtime)
+                for( row = 0; row < map->gdim+1; row++ ) {
+                    rpt[row] = 0;
+                }
+                char *tmpval = NULL;
+                ghost_gidx *tmpcol = NULL;
+
+                GHOST_CALL_GOTO(ghost_malloc((void **)&tmpval,matsrc->maxrowlen*GHOST_DT_MAX_SIZE),err,ret);
+                GHOST_CALL_GOTO(ghost_malloc((void **)&tmpcol,matsrc->maxrowlen*sizeof(ghost_gidx)),err,ret);
+                rpt[0] = 0;
+                ghost_lidx rowlen;
+                for(row = 0; row < map->gdim; row++) {
+                    matsrc->func(row,&rowlen,tmpcol,tmpval,matsrc->arg);
+                    rpt[row+1] = rpt[row]+rowlen;
+                }
+                free(tmpval); tmpval = NULL;
+                free(tmpcol); tmpcol = NULL;
+
+                gnnz = rpt[map->gdim];
+                target_nnz = (gnnz/nranks)+1; /* sonst bleiben welche uebrig! */
+            } else {
+                target_nnz = el_per_rank[me];
+            }
 
             map->goffs[0]  = 0;
             ghost_lidx j = 1;
@@ -111,33 +117,30 @@ ghost_error ghost_map_create_distribution(ghost_map *map, ghost_sparsemat_src_ro
             }
             for (i=0; i<nranks-1; i++){
                 map->ldim[i] = map->goffs[i+1] - map->goffs[i] ;
-                //(*context)->lnEnts[i] = (*context)->lfEnt[i+1] - (*context)->lfEnt[i] ;
             }
 
             map->ldim[nranks-1] = map->gdim - map->goffs[nranks-1] ;
-            //(*context)->lnEnts[nranks-1] = gnnz - (*context)->lfEnt[nranks-1];
-
-            //fclose(filed);
         }
         MPI_CALL_GOTO(MPI_Bcast(map->goffs,  nranks, ghost_mpi_dt_gidx, 0, map->mpicomm),err,ret);
-        //MPI_CALL_GOTO(MPI_Bcast((*context)->lfEnt,  nranks, ghost_mpi_dt_gidx, 0, mpicomm),err,ret);
         MPI_CALL_GOTO(MPI_Bcast(map->ldim, nranks, ghost_mpi_dt_lidx, 0, map->mpicomm),err,ret);
-        //MPI_CALL_GOTO(MPI_Bcast((*context)->lnEnts, nranks, ghost_mpi_dt_lidx, 0, mpicomm),err,ret);
-        //MPI_CALL_GOTO(MPI_Allreduce(&((*context)->lnEnts[me]),&((*context)->gnnz),1,ghost_mpi_dt_gidx,MPI_SUM,mpicomm),err,ret);
 
     } else if (distType == GHOST_MAP_DIST_NROWS) {
         ghost_lidx *target_rows = NULL;
-        double allweights;
-        MPI_CALL_GOTO(MPI_Allreduce(&weight,&allweights,1,MPI_DOUBLE,MPI_SUM,map->mpicomm),err,ret)
+        if (!el_per_rank) {
+            double allweights;
+            MPI_CALL_GOTO(MPI_Allreduce(&weight,&allweights,1,MPI_DOUBLE,MPI_SUM,map->mpicomm),err,ret)
 
-        ghost_lidx my_target_rows = (ghost_lidx)(map->gdim*((double)weight/(double)allweights));
-        if (my_target_rows == 0) {
-            WARNING_LOG("This rank will have zero rows assigned!");
+            ghost_lidx my_target_rows = (ghost_lidx)(map->gdim*((double)weight/(double)allweights));
+            if (my_target_rows == 0) {
+                WARNING_LOG("This rank will have zero rows assigned!");
+            }
+
+            GHOST_CALL_GOTO(ghost_malloc((void **)&target_rows,nranks*sizeof(ghost_lidx)),err,ret);
+
+            MPI_CALL_GOTO(MPI_Allgather(&my_target_rows,1,ghost_mpi_dt_lidx,target_rows,1,ghost_mpi_dt_lidx,map->mpicomm),err,ret);
+        } else {
+            target_rows = el_per_rank;
         }
-
-        GHOST_CALL_GOTO(ghost_malloc((void **)&target_rows,nranks*sizeof(ghost_lidx)),err,ret);
-
-        MPI_CALL_GOTO(MPI_Allgather(&my_target_rows,1,ghost_mpi_dt_lidx,target_rows,1,ghost_mpi_dt_lidx,map->mpicomm),err,ret);
                    
         map->goffs[0] = 0;
 
@@ -158,14 +161,10 @@ ghost_error ghost_map_create_distribution(ghost_map *map, ghost_sparsemat_src_ro
             return GHOST_ERR_DATATYPE;
         }
         map->ldim[nranks-1] = (ghost_lidx)lnrows;
-        
-        //MPI_CALL_GOTO(MPI_Bcast(map->goffs,  nranks, ghost_mpi_dt_gidx, 0, mpicomm),err,ret);
-        //MPI_CALL_GOTO(MPI_Bcast(map->ldim, nranks, ghost_mpi_dt_lidx, 0, mpicomm),err,ret);
-        //(*context)->lnEnts[0] = -1;
-        //(*context)->lfEnt[0] = -1;
-        //(*context)->gnnz = -1;
 
-        free(target_rows); target_rows = NULL;
+        if (!el_per_rank) {
+            free(target_rows); target_rows = NULL;
+        }
     }
     map->dim = map->ldim[me];
     map->dimpad = map->dim; // may be increased by some padding at a later point

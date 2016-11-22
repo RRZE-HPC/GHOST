@@ -36,7 +36,7 @@ ghost_error ghost_densemat_cm_distributeVector(ghost_densemat *vec, ghost_densem
     int nprocs;
     GHOST_CALL_RETURN(ghost_rank(&me, ctx->mpicomm));
     GHOST_CALL_RETURN(ghost_nrank(&nprocs, ctx->mpicomm));
-    
+
     bool uniformstorage;
     GHOST_CALL_RETURN(ghost_densemat_uniformstorage(&uniformstorage,vec,ctx->mpicomm));
     if (!uniformstorage) {
@@ -107,8 +107,8 @@ ghost_error ghost_densemat_cm_collectVectors(ghost_densemat *vec, ghost_densemat
         ERROR_LOG("Cannot collect vectors of different storage order");
         return GHOST_ERR_INVALID_ARG;
     }
-//    if (ctx != NULL)
-//        vec->permute(vec,ctx->invRowPerm); 
+    //    if (ctx != NULL)
+    //        vec->permute(vec,ctx->invRowPerm); 
 
     int i;
 
@@ -137,9 +137,9 @@ ghost_error ghost_densemat_cm_collectVectors(ghost_densemat *vec, ghost_densemat
     MPI_CALL_RETURN(MPI_Waitall(msgcount,req,stat));
 #else
     if (ctx != NULL) {
-//        vec->permute(vec,ctx->invRowPerm);
+        //        vec->permute(vec,ctx->invRowPerm);
         for (c=0; c<vec->traits.ncols; c++) {
-DM_NROWS(            memcpy(DENSEMAT_VALPTR(totalVec,0,c),DENSEMAT_VALPTR(vec,0,c),totalVec)*vec->elSize);
+            DM_NROWS(            memcpy(DENSEMAT_VALPTR(totalVec,0,c),DENSEMAT_VALPTR(vec,0,c),totalVec)*vec->elSize);
         }
     }
 #endif
@@ -177,28 +177,28 @@ ghost_error ghost_densemat_cm_compress(ghost_densemat *vec)
             }
         }
 
-        
+
         DENSEMAT_ITER(vec,memcpy(&val[((col)*DM_NROWSPAD(vec)+(row))*vec->elSize],valptr,vec->elSize));
 
         vec->val = val;
-        
-/*        for (v=0; v<vec->traits.ncols; v++)
-        {
-            memcpy(&val[(v*DM_NROWS(vec)padded)*vec->elSize],
-                    DENSEMAT_VALPTR(vec,0,v),DM_NROWS(vec)padded*vec->elSize);
 
-            if (!(vec->traits.flags & GHOST_DENSEMAT_VIEW)) {
-                free(vec->val[v]);
-            }
-            vec->val[v] = &val[(v*DM_NROWS(vec)padded)*vec->elSize];
-        }*/
+        /*        for (v=0; v<vec->traits.ncols; v++)
+                  {
+                  memcpy(&val[(v*DM_NROWS(vec)padded)*vec->elSize],
+                  DENSEMAT_VALPTR(vec,0,v),DM_NROWS(vec)padded*vec->elSize);
+
+                  if (!(vec->traits.flags & GHOST_DENSEMAT_VIEW)) {
+                  free(vec->val[v]);
+                  }
+                  vec->val[v] = &val[(v*DM_NROWS(vec)padded)*vec->elSize];
+                  }*/
     }
     if (vec->traits.location & GHOST_LOCATION_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
 
         char *cu_val;
         GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_val,DM_NROWSPAD(vec)*vec->traits.ncols*vec->elSize));
-        
+
         DENSEMAT_ITER(vec,ghost_cu_memcpy(&cu_val[(col*DM_NROWSPAD(vec)+col)*vec->elSize],
                     DENSEMAT_CUVALPTR(vec,memrow,memcol),vec->elSize));
 
@@ -218,7 +218,7 @@ ghost_error ghost_densemat_cm_compress(ghost_densemat *vec)
 
     return GHOST_SUCCESS;
 }
-    
+
 ghost_error ghost_densemat_cm_halocommInit(ghost_densemat *vec, ghost_context *ctx, ghost_densemat_halo_comm *comm)
 {
 #ifdef GHOST_HAVE_MPI
@@ -230,7 +230,7 @@ ghost_error ghost_densemat_cm_halocommInit(ghost_densemat *vec, ghost_context *c
     GHOST_CALL_GOTO(ghost_rank(&me, ctx->mpicomm),err,ret);
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, ctx->mpicomm),err,ret);
     GHOST_CALL_GOTO(ghost_densemat_halocommInit_common(vec,ctx,comm),err,ret);
-    
+
     GHOST_CALL_GOTO(ghost_malloc((void **)&comm->tmprecv,nprocs*sizeof(char *)),err,ret);
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&comm->tmprecv_mem,vec->traits.ncols*vec->elSize*comm->acc_wishes),err,ret);
@@ -238,8 +238,8 @@ ghost_error ghost_densemat_cm_halocommInit(ghost_densemat *vec, ghost_context *c
     for (from_PE=0; from_PE<nprocs; from_PE++){
         comm->tmprecv[from_PE] = &comm->tmprecv_mem[comm->wishptr[from_PE]*vec->traits.ncols*vec->elSize];
     }
-        
-    
+
+
     if (ctx->col_map->loc_perm) {
 #ifdef GHOST_HAVE_CUDA
         if (vec->traits.location & GHOST_LOCATION_DEVICE) {
@@ -279,7 +279,7 @@ ghost_error ghost_densemat_cm_halocommInit(ghost_densemat *vec, ghost_context *c
                 }
             }
     }
-      
+
 #ifdef GHOST_HAVE_CUDA
     if (vec->traits.location & GHOST_LOCATION_DEVICE) {
         GHOST_INSTR_START("downloadcomm->work");
@@ -310,50 +310,50 @@ out:
 ghost_error ghost_densemat_cm_halocommFinalize(ghost_densemat *vec, ghost_context *ctx, ghost_densemat_halo_comm *comm)
 {
 #ifdef GHOST_HAVE_MPI
-GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
-ghost_error ret = GHOST_SUCCESS;
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
+    ghost_error ret = GHOST_SUCCESS;
 
-int nprocs;
-int i, from_PE, partner;
+    int nprocs;
+    int i, from_PE, partner;
 
-GHOST_CALL_GOTO(ghost_nrank(&nprocs, ctx->mpicomm),err,ret);
+    GHOST_CALL_GOTO(ghost_nrank(&nprocs, ctx->mpicomm),err,ret);
 
-            
-ghost_densemat_halocommFinalize_common(comm);
-    
-if (vec->traits.location & GHOST_LOCATION_HOST) {
-    GHOST_INSTR_START("Assemble row-major view");
-    for (partner=0; partner<ctx->nwishpartners; partner++){
-        from_PE = ctx->wishpartners[partner];
-/*        if( (ctx->perm_local) && (ctx->flags & GHOST_PERM_NO_DISTINCTION) ){
-        //copy to permuted position
+
+    ghost_densemat_halocommFinalize_common(comm);
+
+    if (vec->traits.location & GHOST_LOCATION_HOST) {
+        GHOST_INSTR_START("Assemble row-major view");
+        for (partner=0; partner<ctx->nwishpartners; partner++){
+            from_PE = ctx->wishpartners[partner];
+            /*        if( (ctx->perm_local) && (ctx->flags & GHOST_PERM_NO_DISTINCTION) ){
+            //copy to permuted position
             for (i=0; i<ctx->wishes[from_PE]; i++){
-                for (c=0; c<vec->traits.ncols; c++) {
-                       memcpy(DENSEMAT_VALPTR(vec,ctx->perm_local->colPerm[ctx->hput_pos[from_PE]+i],c),
-                                &comm->tmprecv[from_PE][(c*ctx->wishes[from_PE]+i)*vec->elSize],vec->elSize);
-                }
+            for (c=0; c<vec->traits.ncols; c++) {
+            memcpy(DENSEMAT_VALPTR(vec,ctx->perm_local->colPerm[ctx->hput_pos[from_PE]+i],c),
+            &comm->tmprecv[from_PE][(c*ctx->wishes[from_PE]+i)*vec->elSize],vec->elSize);
             }
-        } else { */
-     for (i=0; i<vec->traits.ncols; i++){
+            }
+            } else { */
+            for (i=0; i<vec->traits.ncols; i++){
                 memcpy(DENSEMAT_VALPTR(vec,ctx->hput_pos[from_PE],i),&comm->tmprecv[from_PE][(i*ctx->wishes[from_PE])*vec->elSize],vec->elSize*ctx->wishes[from_PE]);
- //           }
+                //           }
         }
+        }
+
+        GHOST_INSTR_STOP("Assemble row-major view");
     }
-   
-    GHOST_INSTR_STOP("Assemble row-major view");
-}
 
 #ifdef GHOST_HAVE_CUDA 
-GHOST_INSTR_START("upload")
-if (vec->traits.location & GHOST_LOCATION_DEVICE) {
+    GHOST_INSTR_START("upload")
+        if (vec->traits.location & GHOST_LOCATION_DEVICE) {
 #ifdef GHOST_TRACK_DATATRANSFERS
-    ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_OUT,GHOST_DATATRANSFER_RANK_GPU,ctx->halo_elements*vec->traits.ncols*vec->elSize);
+            ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_OUT,GHOST_DATATRANSFER_RANK_GPU,ctx->col_map->nhalo*vec->traits.ncols*vec->elSize);
 #endif
-    for (from_PE=0; from_PE<nprocs; from_PE++){
-        ghost_cu_upload2d(DENSEMAT_CUVALPTR(vec,ctx->hput_pos[from_PE],0),vec->stride*vec->elSize,comm->tmprecv[from_PE],ctx->wishes[from_PE]*vec->elSize,ctx->wishes[from_PE]*vec->elSize,vec->traits.ncols);
-    }
-}
-GHOST_INSTR_STOP("upload");
+            for (from_PE=0; from_PE<nprocs; from_PE++){
+                ghost_cu_upload2d(DENSEMAT_CUVALPTR(vec,ctx->hput_pos[from_PE],0),vec->stride*vec->elSize,comm->tmprecv[from_PE],ctx->wishes[from_PE]*vec->elSize,ctx->wishes[from_PE]*vec->elSize,vec->traits.ncols);
+            }
+        }
+    GHOST_INSTR_STOP("upload");
 #endif
 
     if (vec->traits.location & GHOST_LOCATION_DEVICE) {
@@ -364,24 +364,24 @@ GHOST_INSTR_STOP("upload");
     } else {
         free(comm->work); comm->work = NULL;
     }
-free(comm->tmprecv_mem); comm->tmprecv_mem = NULL;
-free(comm->tmprecv); comm->tmprecv = NULL;
-free(comm->request); comm->request = NULL;
-free(comm->status); comm->status = NULL;
-free(comm->dueptr); comm->dueptr = NULL;
-free(comm->wishptr); comm->wishptr = NULL;
+    free(comm->tmprecv_mem); comm->tmprecv_mem = NULL;
+    free(comm->tmprecv); comm->tmprecv = NULL;
+    free(comm->request); comm->request = NULL;
+    free(comm->status); comm->status = NULL;
+    free(comm->dueptr); comm->dueptr = NULL;
+    free(comm->wishptr); comm->wishptr = NULL;
 
-goto out;
+    goto out;
 err:
 
 out:
-GHOST_FUNC_EXIT(GHOST_FUNCTYPE_COMMUNICATION);
-return ret;
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_COMMUNICATION);
+    return ret;
 
 #else
-UNUSED(vec);
-UNUSED(comm);
-return GHOST_ERR_NOT_IMPLEMENTED;
+    UNUSED(vec);
+    UNUSED(comm);
+    return GHOST_ERR_NOT_IMPLEMENTED;
 #endif
 
 

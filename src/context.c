@@ -26,6 +26,13 @@ ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, gho
         ghost_bench_stream(GHOST_BENCH_STREAM_COPY,&weight,&max_bw);
         INFO_LOG("Automatically setting weight to %f according to STREAM copy bandwidth!",weight);
     }
+    if (!gnrows) {
+        ERROR_LOG("The global number of rows (and columns for non-square matrices) must not be zero!");
+        return GHOST_ERR_INVALID_ARG;
+    }
+    if (!gncols) {
+        gncols = gnrows;
+    }
     
     int nranks, me;
     ghost_error ret = GHOST_SUCCESS;
@@ -66,7 +73,6 @@ ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, gho
     (*context)->mappedDuelist = NULL;
     (*context)->nrankspresent = NULL;   
     (*context)->nmats = 1; 
-    (*context)->halo_elements = -1;
         
 
     GHOST_CALL_GOTO(ghost_map_create(&((*context)->row_map),gnrows,comm,GHOST_MAP_ROW,GHOST_MAP_DEFAULT),err,ret);
@@ -190,7 +196,7 @@ void ghost_context_destroy(ghost_context *context)
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TEARDOWN);
 }
 
-ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, ghost_sparsemat *mat, ghost_lidx *col)
+ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, ghost_sparsemat *mat, ghost_lidx *col, ghost_lidx *nhalo)
 {
     if (ctx->wishlist != NULL) {
         INFO_LOG("The context already has communication information. This will not be done again! Destroy the context in case the matrix has changed!");
@@ -239,23 +245,23 @@ ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, gh
     MPI_Status stat[2*nprocs];
 #endif
 
-    GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->entsInCol,ctx->row_map->dim*sizeof(ghost_lidx)),err,ret); 
+    GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->entsInCol,ctx->col_map->dim*sizeof(ghost_lidx)),err,ret); 
     GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->wishlist,nprocs*sizeof(ghost_lidx *)),err,ret); 
     GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->duelist,nprocs*sizeof(ghost_lidx *)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->wishes,nprocs*sizeof(ghost_lidx)),err,ret); 
     GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->dues,nprocs*sizeof(ghost_lidx)),err,ret);
 
-    memset(ctx->entsInCol,0,ctx->row_map->dim*sizeof(ghost_lidx));
+    memset(ctx->entsInCol,0,ctx->col_map->dim*sizeof(ghost_lidx));
        
     ghost_lidx chunk,rowinchunk,entinrow,globalent,globalrow;
-    for(chunk = 0; chunk < SPM_NCHUNKS(mat); chunk++) {
+    for(chunk = 0; chunk < mat->nchunks; chunk++) {
         for (rowinchunk=0; rowinchunk<mat->traits.C; rowinchunk++) {
             globalrow = chunk*mat->traits.C+rowinchunk;
-            if (globalrow < ctx->row_map->ldim[me]) {
+            if (globalrow < ctx->row_map->dim) { // avoid chunk padding rows
                 for (entinrow=0; entinrow<mat->rowLen[globalrow]; entinrow++) {
                     globalent = mat->chunkStart[chunk] + entinrow*mat->traits.C + rowinchunk;
-		    if (col_orig[globalent] >= ctx->row_map->goffs[me] && col_orig[globalent]<(ctx->row_map->goffs[me]+ctx->row_map->ldim[me])) {
-                        ctx->entsInCol[col_orig[globalent]-ctx->row_map->goffs[me]]++;
+		            if (col_orig[globalent] >= ctx->col_map->offs && col_orig[globalent]<(ctx->col_map->offs+ctx->col_map->dim)) {
+                        ctx->entsInCol[col_orig[globalent]-ctx->col_map->offs]++;
                     }
                 }
             }
@@ -478,7 +484,7 @@ ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, gh
      * acc_transfer_dues = <3,2,2>
      */
 
-    ctx->halo_elements = 0;
+    (*nhalo) = 0;
     ghost_lidx tt = 0;
     i = me;
     int meHandled = 0;
@@ -500,11 +506,11 @@ ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, gh
 //        ctx->col_map->dimpad = PAD(ctx->row_map->dim+halo_ctr,ghost_densemat_row_padding());
 //        ctx->nrowspadded   =  PAD(ctx->row_map->ldim[me]+halo_ctr,rowpadding);
 //        rowpaddingoffset   =  ctx->nrowspadded-ctx->row_map->ldim[me];
-        first_putpos = ctx->col_map->dimpad+halo_ctr;
+        first_putpos = PAD(mat->context->col_map->dim,ghost_densemat_row_padding())+halo_ctr;
     } else {
 //	    ctx->nrowspadded = PAD(ctx->row_map->ldim[me],rowpadding);// this is set already
 //        ctx->col_map->dimpad = PAD(ctx->row_map->dim,ghost_densemat_row_padding());
-        first_putpos = ctx->col_map->dimpad;
+        first_putpos = PAD(mat->context->col_map->dim,ghost_densemat_row_padding());
     }
 
 //	rowpaddingoffset = MAX(ctx->row_map->dimpad,ctx->col_map->dimpad)-ctx->row_map->dim;
@@ -536,9 +542,9 @@ ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, gh
 
         if (i != me){ 
             for (j=0;j<ctx->wishes[i];j++){
-                pseudocol[ctx->halo_elements] = this_pseudo_col; 
-                globcol[ctx->halo_elements]   = ctx->row_map->goffs[i]+cwishlist[i][j]; 
-                ctx->halo_elements++;
+                pseudocol[(*nhalo)] = this_pseudo_col; 
+                globcol[(*nhalo)]   = ctx->row_map->goffs[i]+cwishlist[i][j]; 
+                (*nhalo)++;
                 this_pseudo_col++;
             }
             /*

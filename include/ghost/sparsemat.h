@@ -1063,6 +1063,7 @@ extern "C" {
      * @param[inout] ctx The context.
      * @param[in] col_orig The original column indices of the sparse matrix which is bound to the context.
      * @param[out] col The compressed column indices of the sparse matrix which is bound to the context.
+     * @param[out] nhalo The number of halo elements. 
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      * 
@@ -1070,7 +1071,7 @@ extern "C" {
      * wishes, wishlist, dues, duelist, hput_pos, wishpartners, nwishpartners, duepartners, nduepartners.
      * Additionally, the columns in col_orig are being compressed and stored in col.
      */
-    ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, ghost_sparsemat *mat, ghost_lidx *col);
+    ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, ghost_sparsemat *mat, ghost_lidx *col, ghost_lidx *nhalo);
 
     ghost_error ghost_sparsemat_perm_global_cols(ghost_gidx *cols, ghost_lidx ncols, ghost_context *context);
 

@@ -320,7 +320,7 @@ ghost_error ghost_densemat_rm_halocommFinalize(ghost_densemat *vec, ghost_contex
     GHOST_INSTR_START("upload")
     if (vec->traits.location & GHOST_LOCATION_DEVICE) {
 #ifdef GHOST_TRACK_DATATRANSFERS
-        ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_OUT,GHOST_DATATRANSFER_RANK_GPU,ctx->halo_elements*vec->traits.ncols*vec->elSize);
+        ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_OUT,GHOST_DATATRANSFER_RANK_GPU,ctx->col_map->nhalo*vec->traits.ncols*vec->elSize);
 #endif
         ghost_cu_upload2d(DENSEMAT_CUVALPTR(vec,DM_NROWSPAD(vec),0),vec->stride*vec->elSize,comm->tmprecv_mem,vec->traits.ncols*vec->elSize,vec->traits.ncols*vec->elSize,comm->acc_wishes);
         INFO_LOG("upload halo");

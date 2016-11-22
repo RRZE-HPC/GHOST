@@ -139,10 +139,6 @@ struct ghost_context
      */
     ghost_mpi_comm mpicomm_parent;
     /**
-     * @brief Number of remote elements with unique colidx
-     */
-    ghost_lidx halo_elements; 
-    /**
      * @brief The row map of this context
      */
     ghost_map *row_map;

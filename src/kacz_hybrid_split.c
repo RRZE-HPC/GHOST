@@ -10,7 +10,7 @@ typedef enum {
 
 //returns the virtual column index; ie takes into account the permutation of halo elements also
 #define virtual_col(col_idx)\
-(mat->context->flags & GHOST_PERM_NO_DISTINCTION)?( (col_ptr[col_idx]<(mat->context->col_map->dim-mat->context->halo_elements))?col_ptr[col_idx]:mat->context->col_map->loc_perm[col_ptr[col_idx]] ):col_ptr[col_idx]\
+(mat->context->flags & GHOST_PERM_NO_DISTINCTION)?( (col_ptr[col_idx]<(mat->context->col_map->dim-mat->context->col_map->nhalo))?col_ptr[col_idx]:mat->context->col_map->loc_perm[col_ptr[col_idx]] ):col_ptr[col_idx]\
 
 
 

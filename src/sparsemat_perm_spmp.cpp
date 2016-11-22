@@ -64,7 +64,6 @@ extern "C" ghost_error ghost_sparsemat_perm_spmp(ghost_context *ctx, ghost_spars
     if (mat->traits.flags & GHOST_PERM_NO_DISTINCTION) {
         ncols_halo_padded = mat->context->col_map->dim;
     }
-    ERROR_LOG("ncolshalopadded = %d row_map->dim %d halo %d",ncols_halo_padded,mat->context->row_map->dim,mat->context->halo_elements);
 
 #ifdef GHOST_HAVE_CUDA
     GHOST_CALL_GOTO(ghost_cu_malloc((void **)ctx->perm_local->cu_perm,sizeof(ghost_gidx)*ctx->row_map->dim),err,ret);

@@ -908,27 +908,19 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
     ghost_error ret = GHOST_SUCCESS;
 
     int me,nprocs;
+    GHOST_CALL_GOTO(ghost_nrank(&nprocs, mpicomm),err,ret);
     
     if (!(mat->context)) {
-        if (!src->gnrows) {
-            ERROR_LOG("The global number of rows (and possibly columns) has to be set in the matrix source!");
-            ret = GHOST_ERR_INVALID_ARG;
-            goto err;
-        }
-        if (!src->gncols) {
-            src->gncols = src->gnrows;
-        }
-
-        ghost_context_flags_t ctxflags = GHOST_CONTEXT_DEFAULT;
-        ghost_context_create(&(mat->context),src->gnrows,src->gncols,ctxflags,mpicomm,weight);
-        GHOST_CALL_GOTO(ghost_nrank(&nprocs, mat->context->mpicomm),err,ret);
-        ghost_map_create_distribution(mat->context->row_map,src,mat->context->weight,GHOST_MAP_DIST_NROWS);
-        ghost_map_create_distribution(mat->context->col_map,src,mat->context->weight,GHOST_MAP_DIST_NROWS);
-        if (mat->traits.flags & GHOST_SPARSEMAT_PERM_NO_DISTINCTION) {
-            mat->context->col_map->flags = (ghost_map_flags)(mat->context->col_map->flags&GHOST_PERM_NO_DISTINCTION);
-        }
-    } else {
-        GHOST_CALL_GOTO(ghost_nrank(&nprocs, mat->context->mpicomm),err,ret);
+        ghost_context_create(&(mat->context),src->gnrows,src->gncols,GHOST_CONTEXT_DEFAULT,mpicomm,weight);
+    } 
+    if (!mat->context->row_map->dim) {
+        ghost_map_create_distribution(mat->context->row_map,src,mat->context->weight,GHOST_MAP_DIST_NROWS,NULL);
+    }
+    if (!mat->context->col_map->dim) {
+        ghost_map_create_distribution(mat->context->col_map,src,mat->context->weight,GHOST_MAP_DIST_NROWS,NULL);
+    }
+    if (mat->traits.flags & GHOST_SPARSEMAT_PERM_NO_DISTINCTION) {
+        mat->context->col_map->flags = (ghost_map_flags)(mat->context->col_map->flags&GHOST_PERM_NO_DISTINCTION);
     }
 
     if (mat->traits.C == GHOST_SELL_CHUNKHEIGHT_ELLPACK) {
@@ -939,8 +931,12 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
     mat->nchunks = CEILDIV(SPM_NROWS(mat),mat->traits.C);
     //ERROR_LOG("set no_distinction");
     //mat->context->flags = mat->context->flags | GHOST_PERM_NO_DISTINCTION;
-    mat->context->row_map->dimpad = PAD(SPM_NROWS(mat),ghost_densemat_row_padding());
-    mat->context->col_map->dimpad = PAD(mat->context->col_map->dim,ghost_densemat_row_padding());
+    if (mat->context->row_map->dimpad == mat->context->row_map->dim) {
+        mat->context->row_map->dimpad = PAD(SPM_NROWS(mat),ghost_densemat_row_padding());
+    }
+    if (mat->context->col_map->dimpad == mat->context->col_map->dim) {
+        mat->context->col_map->dimpad = PAD(mat->context->col_map->dim,ghost_densemat_row_padding());
+    }
     
     ghost_lidx nChunks = CEILDIV(SPM_NROWS(mat),mat->traits.C);
     
@@ -1248,11 +1244,12 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
     MPI_CALL_GOTO(MPI_Allreduce(&gnnz,&(mat->context->gnnz),1,ghost_mpi_dt_gidx,MPI_SUM,mat->context->mpicomm),err,ret);
     #endif
     
-    
+    /* 
     if (src->maxrowlen != mat->maxRowLen) {
         DEBUG_LOG(1,"The maximum row length was not correct. Setting it from %"PRLIDX" to %"PRGIDX,src->maxrowlen,mat->maxRowLen); 
         src->maxrowlen = mat->maxRowLen;
     }
+    */
     
     
     bool readcols = 0; // we only need to read the columns the first time the matrix is created
@@ -1571,20 +1568,27 @@ static ghost_error ghost_sparsemat_split(ghost_sparsemat *mat)
         }
     }
     GHOST_INSTR_STOP("init_compressed_cols");
-   
-    GHOST_CALL_GOTO(ghost_context_comm_init(mat->context,mat->col_orig,mat,mat->col),err,ret);
-   
+  
+    ghost_lidx nhalo; 
+    GHOST_CALL_GOTO(ghost_context_comm_init(mat->context,mat->col_orig,mat,mat->col,&nhalo),err,ret);
+    
     if (nproc > 1) { 
-        if (mat->context->col_map->dimhalo) {
-            ERROR_LOG("This should be zero and is %d!",mat->context->col_map->dimhalo);
-        }
-        if(mat->context->flags & GHOST_PERM_NO_DISTINCTION) {
-            mat->context->col_map->dimhalo = mat->context->row_map->dimpad+2*mat->context->halo_elements;
-            mat->context->col_map->dimpad = PAD(mat->context->col_map->dimpad+2*mat->context->halo_elements,ghost_densemat_row_padding());
-            initHaloAvg(mat);
+        if (mat->context->col_map->nhalo) {
+            if (nhalo > mat->context->col_map->nhalo) {
+                ERROR_LOG("The maps are not compatible!");
+                ret = GHOST_ERR_INVALID_ARG;
+                goto err;
+            }
         } else {
-            mat->context->col_map->dimhalo = mat->context->row_map->dimpad+mat->context->halo_elements;
-            mat->context->col_map->dimpad = PAD(mat->context->col_map->dimpad+mat->context->halo_elements,ghost_densemat_row_padding());
+            mat->context->col_map->nhalo = nhalo;
+            if(mat->context->flags & GHOST_PERM_NO_DISTINCTION) {
+                mat->context->col_map->dimhalo = mat->context->col_map->dimpad+2*mat->context->col_map->nhalo;
+                mat->context->col_map->dimpad = PAD(mat->context->col_map->dimpad+2*mat->context->col_map->nhalo,ghost_densemat_row_padding());
+                initHaloAvg(mat);
+            } else {
+                mat->context->col_map->dimhalo = mat->context->col_map->dimpad+mat->context->col_map->nhalo;
+                mat->context->col_map->dimpad = PAD(mat->context->col_map->dimpad+mat->context->col_map->nhalo,ghost_densemat_row_padding());
+            }
         }
     }
 
