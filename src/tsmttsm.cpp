@@ -167,7 +167,7 @@ ghost_error ghost_tsmttsm(ghost_densemat *x_in, ghost_densemat *v, ghost_densema
     int me=0;
     ghost_rank(&me,v->map->mpicomm);
     // make sure that the initial x only gets added up once
-    if (me) {
+    if (me && (reduce != GHOST_GEMM_NO_REDUCE)) {
         memset(beta,0,x_in->elSize);
     }
 
