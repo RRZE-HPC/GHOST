@@ -198,10 +198,6 @@ void ghost_context_destroy(ghost_context *context)
 
 ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, ghost_sparsemat *mat, ghost_lidx *col, ghost_lidx *nhalo)
 {
-    if (ctx->wishlist != NULL) {
-        INFO_LOG("The context already has communication information. This will not be done again! Destroy the context in case the matrix has changed!");
-        return GHOST_SUCCESS;
-    }
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION|GHOST_FUNCTYPE_SETUP);
 
     ghost_error ret = GHOST_SUCCESS;
