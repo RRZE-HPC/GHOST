@@ -209,12 +209,13 @@ if (NOT DEFINED GHOST_USE_CUDA OR (GHOST_USE_CUDA AND ("${CUDA_LIBRARIES}" STREQ
     find_package(CUDA)
 endif()
 
-if (NOT CUDA_FOUND)
-    set(GHOST_USE_CUDA 0 CACHE BOOL "Build with CUDA")
-    set(CUDA_LIBRARIES "")
-else ()
+if (CUDA_FOUND OR GHOST_USE_CUDA)
+    find_package(CUDA)
     set(GHOST_USE_CUDA 1 CACHE BOOL "Build with CUDA")
     set(GHOST_HAVE_CUDA 1)
+else ()
+    set(GHOST_USE_CUDA 0 CACHE BOOL "Build with CUDA")
+    set(CUDA_LIBRARIES "")
 endif()
 
 set (PP_SCRIPT ${PROJECT_SOURCE_DIR}/bin/ghost_unroll.pl)
