@@ -8,11 +8,12 @@
 
 #include <string>
 #include <sstream>
+#include <complex>
 
 template<typename T> 
 static inline T conj(const T& a)
 {
-    return conj(a);
+    return std::conj(a);
 }
 
 #if __cplusplus < 201103L
@@ -30,7 +31,7 @@ static inline double conj(const double &a)
 template<typename T> 
 static inline T norm(const T& a)
 {
-    return norm(a);
+    return std::norm(a);
 }
 
 #if __cplusplus < 201103L
