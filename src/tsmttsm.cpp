@@ -22,14 +22,13 @@
 #include "ghost/machine.h"
 #include "ghost/constants.h"
 #include "ghost/locality.h"
+#include "ghost/cpp11_fixes.h"
 
 #include <unordered_map>
 #include <vector>
 
 typedef ghost_tsmttsm_parameters ghost_tsmttsm_kahan_parameters;
 typedef ghost_tsmttsm_parameters ghost_tsmttsm_kahan_parameters;
-
-using namespace std;
 
 // Hash function for unordered_map
 namespace std
@@ -50,8 +49,8 @@ static bool operator==(const ghost_tsmttsm_parameters& a, const ghost_tsmttsm_pa
     return a.dt == b.dt && a.wcols == b.wcols && a.vcols == b.vcols && a.impl == b.impl && a.wstor == b.wstor && a.alignment == b.alignment && a.unroll == b.unroll;
 }
 
-static unordered_map<ghost_tsmttsm_parameters, ghost_tsmttsm_kernel> ghost_tsmttsm_kernels;
-static unordered_map<ghost_tsmttsm_parameters, ghost_tsmttsm_kernel> ghost_tsmttsm_kahan_kernels;
+static std::unordered_map<ghost_tsmttsm_parameters, ghost_tsmttsm_kernel> ghost_tsmttsm_kernels;
+static std::unordered_map<ghost_tsmttsm_parameters, ghost_tsmttsm_kernel> ghost_tsmttsm_kahan_kernels;
 
 
 ghost_error ghost_tsmttsm_valid(ghost_densemat *x, ghost_densemat *v, const char * transv, 
@@ -138,7 +137,7 @@ ghost_error ghost_tsmttsm(ghost_densemat *x_in, ghost_densemat *v, ghost_densema
     }
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
    
-    unordered_map<ghost_tsmttsm_parameters, ghost_tsmttsm_kernel> kernels;
+    std::unordered_map<ghost_tsmttsm_parameters, ghost_tsmttsm_kernel> kernels;
     if (flags & GHOST_GEMM_KAHAN) { 
         if (ghost_tsmttsm_kahan_kernels.empty()) {
 #include "tsmttsm_kahan_plain.def"

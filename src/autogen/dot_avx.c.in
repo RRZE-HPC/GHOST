@@ -6,7 +6,10 @@
 #include "ghost/instr.h"
 #include "ghost/omp.h"
 #include "ghost/dot_avx_gen.h"
+
+#ifndef __FUJITSU
 #include <immintrin.h>
+#endif
 
 #GHOST_SUBST NVECS ${NVECS}
 

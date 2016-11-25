@@ -5,7 +5,11 @@
 #include "ghost/instr.h"
 #include "ghost/util.h"
 #include "ghost/tsmttsm_avx_gen.h"
+
+#ifndef __FUJITSU
 #include <immintrin.h>
+#endif
+
 #include <math.h>
 #include <float.h>
 #include "iaca/iacaMarks.h"

@@ -16,11 +16,10 @@
 #include "ghost/math.h"
 #include "ghost/timing.h"
 #include "ghost/machine.h"
+#include "ghost/cpp11_fixes.h"
 
 #include <unordered_map>
 #include <vector>
-
-using namespace std;
 
 // Hash function for unordered_map
 namespace std
@@ -41,7 +40,7 @@ static bool operator==(const ghost_tsmm_inplace_parameters& a, const ghost_tsmm_
     return a.dt == b.dt && a.ncolsin == b.ncolsin && a.ncolsout == b.ncolsout && a.impl == b.impl;
 }
 
-static unordered_map<ghost_tsmm_inplace_parameters, ghost_tsmm_inplace_kernel> ghost_tsmm_inplace_kernels;
+static std::unordered_map<ghost_tsmm_inplace_parameters, ghost_tsmm_inplace_kernel> ghost_tsmm_inplace_kernels;
 
 ghost_error ghost_tsmm_inplace_valid(ghost_densemat *x, ghost_densemat *v, const char * transv, 
 ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce, int printerror)

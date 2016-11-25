@@ -11,7 +11,10 @@
 #include "ghost/locality.h"
 #include "ghost/sell_kacz_bmc_shift_gen.h"
 #include <complex>
+
+#ifndef __FUJITSU
 #include <immintrin.h> 
+#endif
 
 #GHOST_SUBST NVECS ${NVECS}
 #GHOST_SUBST NSHIFTS ${NSHIFTS}
@@ -27,12 +30,14 @@ _mm256_insertf128_pd(_mm256_castpd128_pd256(vb), va, 1)
 #endif
 #endif
 
+#ifndef __FUJITSU
 //AVX
 #define complex_mul(a,b) _mm256_addsub_pd(_mm256_mul_pd(_mm256_shuffle_pd(b,b,0),a),_mm256_mul_pd(_mm256_shuffle_pd(b,b,0xF),_mm256_shuffle_pd(a,a,5)))
 #define complex_mul_conj256(b,a) _mm256_addsub_pd(_mm256_mul_pd(_mm256_shuffle_pd(b,b,0),a),_mm256_mul_pd(_mm256_mul_pd(_mm256_shuffle_pd(b,b,0xF),_mm256_set1_pd(-1.)),_mm256_shuffle_pd(a,a,5)))
 //SSE
 #define complex_mul_128(b,a) _mm_addsub_pd(_mm_mul_pd(_mm_shuffle_pd(a,a,0), b),_mm_mul_pd(_mm_shuffle_pd(a,a,3), _mm_shuffle_pd(b,b,1))) 
 #define complex_mul_conj128(b,a) _mm_addsub_pd(_mm_mul_pd(_mm_shuffle_pd(b,b,0), a),_mm_mul_pd(_mm_set1_pd(-1.),_mm_mul_pd(_mm_shuffle_pd(b,b,3), _mm_shuffle_pd(a,a,1)))) 
+#endif
 
 /*
  * //for debuging

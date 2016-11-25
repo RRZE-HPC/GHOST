@@ -6,12 +6,16 @@
 #ifndef GHOST_CPP11_FIXES_H
 #define GHOST_CPP11_FIXES_H
 
+#include <string>
+#include <sstream>
+
 template<typename T> 
 static inline T conj(const T& a)
 {
     return conj(T);
 }
 
+#if __cplusplus < 201103L
 static inline float conj(const float &a)
 {
     return a;
@@ -21,6 +25,7 @@ static inline double conj(const double &a)
 {
     return a;
 }
+#endif
 
 template<typename T> 
 static inline T norm(const T& a)
@@ -28,6 +33,7 @@ static inline T norm(const T& a)
     return norm(T);
 }
 
+#if __cplusplus < 201103L
 static inline float norm(const float &a)
 {
     return std::fabs(a);
@@ -37,5 +43,16 @@ static inline double norm(const double &a)
 {
     return std::fabs(a);
 }
+
+
+template<typename T>
+static inline std::string to_string(T value)
+{
+    std::stringstream ss;
+    ss << value;
+    return ss.str();
+}
+#endif
+
 
 #endif

@@ -5,6 +5,10 @@ if(NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "PGI")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-strict-aliasing ${GHOST_CXX_FLAGS}")
 endif()
 
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Fujitsu")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -SSL2BLAMP")
+endif()
+
 add_executable(simple simple.cpp)
 add_executable(minimal minimal.c)
 set(TESTS simple minimal)
@@ -20,5 +24,4 @@ foreach(TEST ${TESTS})
     endif()
 
     target_link_libraries(${TEST} ${HWLOC_LIBRARIES} ${MPI_LIBRARIES} ${SCOTCH_LIBRARIES} ${CUDA_LIBRARIES} ${LIKWID_LIBRARIES} ${COLPACK_LIBRARIES} ${ZOLTAN_LIBRARIES} ${LAPACK_LIBRARIES} ${BLAS_LIBRARIES} -lpthread)
-
 endforeach()

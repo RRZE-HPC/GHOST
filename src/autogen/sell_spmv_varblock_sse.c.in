@@ -8,7 +8,10 @@
 #include "ghost/sparsemat.h"
 #include "ghost/sell_spmv_varblock_sse_gen.h"
 #include "ghost/math.h"
+
+#ifndef __FUJITSU
 #include <immintrin.h>
+#endif
 
 #GHOST_SUBST CHUNKHEIGHT ${CHUNKHEIGHT}
 

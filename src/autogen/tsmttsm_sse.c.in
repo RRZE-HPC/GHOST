@@ -5,7 +5,10 @@
 #include "ghost/instr.h"
 #include "ghost/util.h"
 #include "ghost/tsmttsm_sse_gen.h"
+
+#ifndef __FUJITSU
 #include <immintrin.h>
+#endif
 
 #GHOST_SUBST CFGK ${N}
 #GHOST_SUBST CFGM ${M}

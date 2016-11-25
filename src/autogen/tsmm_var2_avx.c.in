@@ -9,7 +9,10 @@
 #include "ghost/tsmm_var2_avx_gen.h"
 #include <math.h>
 #include <float.h>
+
+#ifndef __FUJITSU
 #include <immintrin.h>
+#endif
 
 ghost_error ghost_tsmm__a_avx_d_x_x_1_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
 {

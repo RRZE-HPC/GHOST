@@ -7,7 +7,10 @@
 #include "ghost/omp.h"
 #include "ghost/sparsemat.h"
 #include "ghost/sell_spmv_mic_gen.h"
+
+#ifndef __FUJITSU
 #include <immintrin.h>
+#endif
 
 #GHOST_SUBST NVECS ${NVECS}
 #GHOST_SUBST CHUNKHEIGHT ${CHUNKHEIGHT}
