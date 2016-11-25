@@ -1,4 +1,4 @@
-/*!GHOST_AUTOGEN_TSMTTSM M,N,UNROLL */
+/*!GHOST_AUTOGEN_TSMTTSM M,N */
 #include "ghost/config.h"
 #include "ghost/types.h"
 #include "ghost/math.h"
@@ -8,7 +8,7 @@
 
 #GHOST_SUBST CFGN ${N}
 #GHOST_SUBST CFGM ${M}
-#GHOST_SUBST OUTERUNROLL ${UNROLL}
+#GHOST_SUBST OUTERUNROLL 2
 
 #if 0
 #GHOST_FUNC_BEGIN#CFGN=${BLOCKDIM1}#CFGM=${BLOCKDIM2}

@@ -1,4 +1,4 @@
-/*!GHOST_AUTOGEN_TSMM K,N,1 */
+/*!GHOST_AUTOGEN_TSMM K,N */
 #include "ghost/config.h"
 #include "ghost/types.h"
 #include "ghost/math.h"

@@ -34,9 +34,9 @@ set(GHOST_KACZ_ANALYZE 0 CACHE BOOL "Gather data about load balancing for KACZ m
 set(GHOST_LOG_RANK "-1" CACHE STRING "The MPI rank for which the log messages will be printed. -1 for full verbosity.")
 set(GHOST_AUTOGEN_SPMMV "32,1;1,4;32,*;1,*" CACHE STRING "SpM(M)V kernels to be auto-generated. Semicolon-separated list of 2-tuples: (CHUNKHEIGHT, NVECS)")
 set(GHOST_AUTOGEN_SPMMV_CUDA "32,1,0,0,0,0,0,0,0;1,4,0,0,0,0,0,0,0;32,*,0,0,0,0,0,0,0;1,*,0,0,0,0,0,0,0" CACHE STRING "SpM(M)V kernels to be auto-generated. Semicolon-separated list of 9-tuples: (CHUNKHEIGHT, NVECS,AXP(B)Y,SCALE,(V)SHIFT,DOT_YY,DOT_XY,DOT_XX,CHAIN_AXPBY)")
-set(GHOST_AUTOGEN_TSMM "4,4,1" CACHE STRING "TSMM kernels to be auto-generated. Semicolon-separated list of 3-tuples: (K, N, UNROLL)")
+set(GHOST_AUTOGEN_TSMM "4,4" CACHE STRING "TSMM kernels to be auto-generated. Semicolon-separated list of 3-tuples: (K, N, UNROLL)")
 set(GHOST_AUTOGEN_TSMM-INPLACE "4,4" CACHE STRING "TSMM-inplace kernels to be auto-generated. Semicolon-separated list of 2-tuples: (K, N) where K>=N")
-set(GHOST_AUTOGEN_TSMTTSM "4,4,1" CACHE STRING "TSMTTSM kernels to be auto-generated. Semicolon-separated list of 3-tuples: (M, N, UNROLL)")
+set(GHOST_AUTOGEN_TSMTTSM "4,4" CACHE STRING "TSMTTSM kernels to be auto-generated. Semicolon-separated list of 3-tuples: (M, N, UNROLL)")
 set(GHOST_AUTOGEN_DOT "1;4" CACHE STRING "DOT kernels to be auto-generated. Semicolon-separated list of 1-tuples: (NVECS)")
 set(GHOST_AUTOGEN_KACZ "32,1,0;32,4,0;1,4,0;1,4,4" CACHE STRING "KACZ kernels to be auto-generated. Semicolon-separated list of 3-tuples: (CHUNKHEIGHT, NVECS, NSHIFTS)")
 set(GHOST_VERBOSITY 1 CACHE STRING "Level of verbosity information. Valid values: 0 (be totally silent), 1 (print warnings, errors and further important information), 2, 3, 4 (increasing level of verbosity)")
@@ -46,9 +46,9 @@ option(GHOST_INSTRUMENT_BARRIER "Place a barrier after each instrumented functio
 option(GHOST_COMPATIBLE_PERM "Allows GHOST to permute for compatibility, please  set it if you are not sure of the permutations" 0)  
 
 set(GHOST_AUTOGEN_SPMMV_BASE "*,*" CACHE INTERNAL "SpM(M)V kernels to be always auto-generated. Semicolon-separated list of 2-tuples: (CHUNKHEIGHT, NVECS)")
-set(GHOST_AUTOGEN_TSMM_BASE "*,*,1" CACHE INTERNAL "TSMM kernels to be auto-generated. Semicolon-separated list of 3-tuples: (K, N, UNROLL)")
+set(GHOST_AUTOGEN_TSMM_BASE "*,*" CACHE INTERNAL "TSMM kernels to be auto-generated. Semicolon-separated list of 3-tuples: (K, N, UNROLL)")
 set(GHOST_AUTOGEN_TSMM-INPLACE_BASE "*,*" CACHE INTERNAL "TSMM-inplace kernels to be auto-generated. Semicolon-separated list of 2-tuples: (K, N)")
-set(GHOST_AUTOGEN_TSMTTSM_BASE "*,*,1" CACHE INTERNAL "TSMTTSM kernels to be auto-generated. Semicolon-separated list of 3-tuples: (M, N, UNROLL)")
+set(GHOST_AUTOGEN_TSMTTSM_BASE "*,*" CACHE INTERNAL "TSMTTSM kernels to be auto-generated. Semicolon-separated list of 3-tuples: (M, N, UNROLL)")
 set(GHOST_AUTOGEN_DOT_BASE "*" CACHE INTERNAL "DOT kernels to be auto-generated. Semicolon-separated list of 1-tuples: (NVECS)")
 set(GHOST_AUTOGEN_KACZ_BASE "*,*,*" CACHE INTERNAL "KACZ kernels to be auto-generated. Semicolon-separated list of 3-tuples: (CHUNKHEIGHT, NVECS, NSHIFTS)")
 

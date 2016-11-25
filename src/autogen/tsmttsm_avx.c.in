@@ -1,4 +1,4 @@
-/*!GHOST_AUTOGEN_TSMTTSM M,N,UNROLL */
+/*!GHOST_AUTOGEN_TSMTTSM M,N */
 #include "ghost/config.h"
 #include "ghost/types.h"
 #include "ghost/math.h"
@@ -12,7 +12,7 @@
 
 #GHOST_SUBST CFGN ${N}
 #GHOST_SUBST CFGM ${M}
-#GHOST_SUBST OUTERUNROLL ${UNROLL}
+#GHOST_SUBST OUTERUNROLL 2
 
 #define complex_mul(a,b) _mm256_addsub_pd(_mm256_mul_pd(_mm256_shuffle_pd(b,b,0),a),_mm256_mul_pd(_mm256_shuffle_pd(b,b,0xF),_mm256_shuffle_pd(a,a,5)))
 #define complex_mul_conj1(b,a) _mm256_addsub_pd(_mm256_mul_pd(_mm256_shuffle_pd(b,b,0),a),_mm256_mul_pd(_mm256_xor_pd(_mm256_shuffle_pd(b,b,0xF),_mm256_set1_pd(-0.)),_mm256_shuffle_pd(a,a,5)))

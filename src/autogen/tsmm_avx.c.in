@@ -1,4 +1,4 @@
-/*!GHOST_AUTOGEN_TSMM K,N,UNROLL */
+/*!GHOST_AUTOGEN_TSMM K,N */
 #include "ghost/config.h"
 #include "ghost/types.h"
 #include "ghost/densemat.h"
@@ -14,7 +14,7 @@
 
 #GHOST_SUBST INCOLS ${K}
 #GHOST_SUBST OUTCOLS ${N}
-#GHOST_SUBST OUTERUNROLL ${UNROLL}
+#GHOST_SUBST OUTERUNROLL 2
 
 // general complex multiplication
 #define complex_mul(a,b) _mm256_addsub_pd(_mm256_mul_pd(_mm256_shuffle_pd(a,a,0),b),_mm256_mul_pd(_mm256_shuffle_pd(a,a,0xF),_mm256_shuffle_pd(b,b,5)))
