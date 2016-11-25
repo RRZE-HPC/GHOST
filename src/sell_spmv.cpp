@@ -29,8 +29,6 @@
 #include <unordered_map>
 #include <vector>
 
-using namespace std;
-
     template<typename m_t, typename v_t, bool scatteredvecs> 
 static ghost_error ghost_sell_spmv_plain_rm(ghost_densemat *lhs, 
         ghost_sparsemat *mat, ghost_densemat *rhs, 
@@ -382,8 +380,8 @@ static bool operator==(const ghost_sellspmv_parameters& a, const ghost_sellspmv_
 }
 
 
-static unordered_map<ghost_sellspmv_parameters, ghost_spmv_kernel> 
-ghost_sellspmv_kernels = unordered_map<ghost_sellspmv_parameters,ghost_spmv_kernel>();
+static std::unordered_map<ghost_sellspmv_parameters, ghost_spmv_kernel> 
+ghost_sellspmv_kernels = std::unordered_map<ghost_sellspmv_parameters,ghost_spmv_kernel>();
 
 #ifdef GHOST_HAVE_CUDA
 namespace std
@@ -414,8 +412,8 @@ static bool operator==(const ghost_cusellspmv_parameters& a, const ghost_cusells
            a.do_dot_xx == b.do_dot_xx && a.do_chain_axpby == b.do_chain_axpby;
 }
 
-static unordered_map<ghost_cusellspmv_parameters, ghost_spmv_kernel> 
-ghost_cusellspmv_kernels = unordered_map<ghost_cusellspmv_parameters,ghost_spmv_kernel>();
+static std::unordered_map<ghost_cusellspmv_parameters, ghost_spmv_kernel> 
+ghost_cusellspmv_kernels = std::unordered_map<ghost_cusellspmv_parameters,ghost_spmv_kernel>();
 #endif
 
 extern "C" ghost_error ghost_sell_spmv_selector(ghost_densemat *lhs, 
