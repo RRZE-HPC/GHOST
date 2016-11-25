@@ -373,6 +373,16 @@ extern "C" {
      * @return The map with the larger local dimension.
      */
     ghost_map *ghost_context_max_map(const ghost_context *ctx);
+    /**
+     * @brief Set a context's map.
+     *
+     * @param ctx The context.
+     * @param which The map type to be set.
+     * @param map The map.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error ghost_context_set_map(ghost_context *ctx, ghost_maptype which, ghost_map *map);
 
 #ifdef __cplusplus
 } //extern "C"

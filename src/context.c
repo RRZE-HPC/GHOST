@@ -742,3 +742,24 @@ ghost_map *ghost_context_max_map(const ghost_context *ctx)
 {
     return ctx->row_map->dimpad>ctx->col_map->dimpad?ctx->row_map:ctx->col_map;
 }
+
+ghost_error ghost_context_set_map(ghost_context *ctx, ghost_maptype which, ghost_map *map)
+{
+    ghost_map *oldmap = ghost_context_map(ctx,which);
+
+    if (oldmap) {
+        oldmap->ref_count--;
+    }
+    if (which == GHOST_MAP_ROW) {
+        ctx->row_map = map;
+    } else if (which == GHOST_MAP_COL) {
+        ctx->col_map = map;
+    } else {
+        ERROR_LOG("The map is to be either a column or row map!");
+        return GHOST_ERR_INVALID_ARG;
+    }
+
+    map->ref_count++;
+
+    return GHOST_SUCCESS;
+}
