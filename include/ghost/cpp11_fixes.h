@@ -12,7 +12,7 @@
 template<typename T> 
 static inline T conj(const T& a)
 {
-    return conj(T);
+    return conj(a);
 }
 
 #if __cplusplus < 201103L
@@ -30,7 +30,7 @@ static inline double conj(const double &a)
 template<typename T> 
 static inline T norm(const T& a)
 {
-    return norm(T);
+    return norm(a);
 }
 
 #if __cplusplus < 201103L
