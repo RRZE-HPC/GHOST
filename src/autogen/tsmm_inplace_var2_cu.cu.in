@@ -107,7 +107,7 @@ template <typename T>
 void tsmm_varip3(ghost_lidx M, ghost_lidx N, ghost_lidx K, T *A, ghost_lidx lda,
                  T alpha, const T *B, ghost_lidx ldb, T beta) {
   const int threadsPerBlock = (256 / N) * N;
-  int newBlockCount = K * N / threadsPerBlock;
+  int newBlockCount = CEILDIV(K * N, threadsPerBlock);
 
   if (M % 4 == 0)
     tsmm_varip3_kernel<T, 0><<<newBlockCount, threadsPerBlock>>>(
@@ -130,7 +130,7 @@ template <typename T>
 void tsmm_varip2(ghost_lidx M, ghost_lidx N, ghost_lidx K, T *A, ghost_lidx lda,
                  T alpha, const T *B, ghost_lidx ldb, T beta) {
   const int threadsPerBlock = (256 / N) * N;
-  int blockCount = K * N / threadsPerBlock;
+  int blockCount = CEILDIV(K * N, threadsPerBlock);
 
   T Tzero;
   zero(Tzero);
