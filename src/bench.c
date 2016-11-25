@@ -5,7 +5,9 @@
 #include "ghost/timing.h"
 #include "ghost/cu_bench.h"
 
+#ifndef __FUJITSU
 #include <immintrin.h>
+#endif
 
 #ifdef GHOST_BUILD_AVX512
 #define MIC_STREAMINGSTORE _mm512_stream_pd
