@@ -46,7 +46,21 @@
 #define EVALUATOR(x,y) PASTER(x,y)
 #define FUNCNAME(fun) EVALUATOR(ghost_densemat,EVALUATOR(PREFIX,fun))
 
-using namespace std;
+template<typename T> 
+static inline T conj(const T& a)
+{
+    return conj(T);
+}
+
+static inline float conj(const float &a)
+{
+    return a;
+}
+
+static inline double conj(const double &a)
+{
+    return a;
+}
 
     template<typename v_t>
 static ghost_error FUNCNAME(normalize_tmpl(ghost_densemat *vec))
@@ -98,7 +112,7 @@ static ghost_error FUNCNAME(dotprod_tmpl(ghost_densemat *vec, void *res, ghost_d
                 v_t result = 0.;
 #pragma omp for schedule(runtime)
                 for (row=0; row<DM_NROWS(vec); row++) {
-                    result += std::conj(*(v1+row)) * v1[row];
+                    result += conj(*(v1+row)) * v1[row];
                 }
 
 #pragma omp critical
@@ -110,7 +124,7 @@ static ghost_error FUNCNAME(dotprod_tmpl(ghost_densemat *vec, void *res, ghost_d
                 v_t result = 0.;
 #pragma omp for schedule(runtime)
                 for (row=0; row<DM_NROWS(vec); row++) {
-                    result += std::conj(*(v1+row)) * v2[row];
+                    result += conj(*(v1+row)) * v2[row];
                 }
 
 #pragma omp critical
@@ -139,14 +153,14 @@ static ghost_error FUNCNAME(dotprod_tmpl(ghost_densemat *vec, void *res, ghost_d
             {
                 int tid = ghost_omp_threadnum();
                 DENSEMAT_ITER(vec,
-                        partsums[ncolsPadded*tid+col] += std::conj(*valptr) * *valptr);
+                        partsums[ncolsPadded*tid+col] += conj(*valptr) * *valptr);
             }
         }else {
 #pragma omp parallel shared(partsums) 
             {
                 int tid = ghost_omp_threadnum();
                 DENSEMAT_ITER2(vec,vec2,
-                        partsums[ncolsPadded*tid+col] += std::conj(*valptr1) * *valptr2);
+                        partsums[ncolsPadded*tid+col] += conj(*valptr1) * *valptr2);
             }
         }
         ghost_lidx col;
@@ -197,8 +211,8 @@ static ghost_error FUNCNAME(norm_tmpl(ghost_densemat *vec, void *res, void *p))
 #pragma omp parallel shared(partsums) 
     {
         int tid = ghost_omp_threadnum();
-        DENSEMAT_ITER(vec,partsums[(padding+vec->traits.ncols)*tid+col] += pow(*(v_t *)valptr * 
-                    std::conj(*(v_t *)valptr),*(v_t *)p));
+        DENSEMAT_ITER(vec,partsums[(padding+vec->traits.ncols)*tid+col] += std::pow(*(v_t *)valptr * 
+                    conj(*(v_t *)valptr),*(v_t *)p));
     }
 
     ghost_lidx col;
@@ -342,7 +356,7 @@ static ghost_error FUNCNAME(conj_tmpl(ghost_densemat *vec))
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
 
-    DENSEMAT_ITER(vec,*(v_t *)valptr = std::conj(*(v_t *)valptr));
+    DENSEMAT_ITER(vec,*(v_t *)valptr = conj(*(v_t *)valptr));
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     return GHOST_SUCCESS;
@@ -619,7 +633,7 @@ static ghost_error FUNCNAME(fromScalar_tmpl(ghost_densemat *vec, void *val))
     template <typename v_t> 
 static ghost_error FUNCNAME(string_tmpl(char **str, ghost_densemat *vec))
 {
-    stringstream buffer;
+    std::stringstream buffer;
     buffer << std::setprecision(6)
         << std::right
         << std::scientific;
