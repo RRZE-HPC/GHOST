@@ -22,6 +22,7 @@
 #include "ghost/log.h"
 #include "ghost/machine.h"
 #include "ghost/compatibility_check.h"
+#include "ghost/cpp11_fixes.h"
 
 #define DENSEMAT_DT v_t
 #include "ghost/densemat_iter_macros.h"
@@ -46,21 +47,6 @@
 #define EVALUATOR(x,y) PASTER(x,y)
 #define FUNCNAME(fun) EVALUATOR(ghost_densemat,EVALUATOR(PREFIX,fun))
 
-template<typename T> 
-static inline T conj(const T& a)
-{
-    return conj(T);
-}
-
-static inline float conj(const float &a)
-{
-    return a;
-}
-
-static inline double conj(const double &a)
-{
-    return a;
-}
 
     template<typename v_t>
 static ghost_error FUNCNAME(normalize_tmpl(ghost_densemat *vec))

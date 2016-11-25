@@ -28,7 +28,7 @@ ghost_error ghost_autogen_kacz_nvecs(int **nvecs, int *n, int chunkheight, int n
         if (!cfg_chunkheight_str.compare("*")) {
             cfg_chunkheight = chunkheight;
         } else {
-            cfg_chunkheight = stoi(cfg_chunkheight_str);
+            cfg_chunkheight = atoi(cfg_chunkheight_str.c_str());
         }
         configuration.erase(0, commapos + 1);
         
@@ -38,7 +38,7 @@ ghost_error ghost_autogen_kacz_nvecs(int **nvecs, int *n, int chunkheight, int n
             configurations.erase(0, pos + 1);
             continue;
         } else {
-            cfg_nvecs = stoi(cfg_nvecs_str);
+            cfg_nvecs = atoi(cfg_nvecs_str.c_str());
         }
         configuration.erase(0, commapos + 1);
 
@@ -46,7 +46,7 @@ ghost_error ghost_autogen_kacz_nvecs(int **nvecs, int *n, int chunkheight, int n
         if (!cfg_nshifts_str.compare("*")) {
             cfg_nshifts = nshifts;
         } else {
-            cfg_nshifts = stoi(cfg_nshifts_str);
+            cfg_nshifts = atoi(cfg_nshifts_str.c_str());
         }
 
         if (chunkheight == cfg_chunkheight && nshifts == cfg_nshifts) {
@@ -91,7 +91,7 @@ ghost_error ghost_autogen_spmmv_nvecs(int **nvecs, int *n, int chunkheight)
         if (!cfg_chunkheight_str.compare("*")) {
             cfg_chunkheight = chunkheight;
         } else {
-            cfg_chunkheight = stoi(cfg_chunkheight_str);
+            cfg_chunkheight = atoi(cfg_chunkheight_str.c_str());
         }
         configuration.erase(0, commapos + 1);
         
@@ -101,7 +101,7 @@ ghost_error ghost_autogen_spmmv_nvecs(int **nvecs, int *n, int chunkheight)
             configurations.erase(0, pos + 1);
             continue;
         } else {
-            cfg_nvecs = stoi(cfg_nvecs_str);
+            cfg_nvecs = atoi(cfg_nvecs_str.c_str());
         }
         if (chunkheight == cfg_chunkheight) {
             nvecs_vec.push_back(cfg_nvecs);
