@@ -24,7 +24,7 @@ static void dummy(double *a) {
     }
 }
 
-static void ghost_load_kernel(const double * __restrict__ a, double * s)
+static void ghost_load_kernel(const double * restrict a, double * s)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_KERNEL|GHOST_FUNCTYPE_BENCH);
     ghost_lidx i;
@@ -90,7 +90,7 @@ static void ghost_load_kernel(const double * __restrict__ a, double * s)
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_KERNEL|GHOST_FUNCTYPE_BENCH);
 }
 
-static void ghost_triad_kernel(double * __restrict__ a, const double * __restrict__ b, const double * __restrict__ c, const double s)
+static void ghost_triad_kernel(double * restrict a, const double * restrict b, const double * restrict c, const double s)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_KERNEL|GHOST_FUNCTYPE_BENCH);
     ghost_lidx i;
@@ -136,7 +136,7 @@ static void ghost_triad_kernel(double * __restrict__ a, const double * __restric
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_KERNEL|GHOST_FUNCTYPE_BENCH);
 }
 
-static void ghost_copy_kernel(double * __restrict__ a, const double * __restrict__ b)
+static void ghost_copy_kernel(double * restrict a, const double * restrict b)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_KERNEL|GHOST_FUNCTYPE_BENCH);
     ghost_lidx i;
@@ -173,7 +173,7 @@ static void ghost_copy_kernel(double * __restrict__ a, const double * __restrict
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_KERNEL|GHOST_FUNCTYPE_BENCH);
 }
 
-static void ghost_store_kernel(double * __restrict__ a, const double s)
+static void ghost_store_kernel(double * restrict a, const double s)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_KERNEL|GHOST_FUNCTYPE_BENCH);
     ghost_lidx i;
