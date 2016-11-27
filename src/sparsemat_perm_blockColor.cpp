@@ -24,7 +24,7 @@ extern "C" ghost_error ghost_sparsemat_blockColor(ghost_context *ctx, ghost_spar
     int max_col_idx = 0;
     ghost_lidx local_size;
     ghost_lidx *rhs_split = NULL;
-    ghost_lidx *zone;
+    ghost_lidx *zone = NULL;
     ghost_lidx nrows =0;
     std::vector<int>  colvec;   
     
