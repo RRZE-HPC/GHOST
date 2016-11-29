@@ -1096,6 +1096,9 @@ extern "C" ghost_error FUNCNAME(fromScalar)(ghost_densemat *vec, void *a)
         GHOST_CALL_GOTO(ghost_densemat_init_densemat(vec,veccompact,0,0),err,ret);
         ghost_densemat_destroy(veccompact);
     }
+    if (vec->map->loc_perm || vec->map->glb_perm) {
+        vec->traits.flags |= GHOST_DENSEMAT_PERMUTED;
+    }
     
     goto out;
 err:
@@ -1163,6 +1166,9 @@ extern "C" ghost_error FUNCNAME(fromRand)(ghost_densemat *vec)
     if (compactvec != vec) {
         ghost_densemat_init_densemat(vec,compactvec,0,0);
         ghost_densemat_destroy(compactvec);
+    }
+    if (vec->map->loc_perm || vec->map->glb_perm) {
+        vec->traits.flags |= GHOST_DENSEMAT_PERMUTED;
     }
     goto out;
 err:
