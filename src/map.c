@@ -222,6 +222,7 @@ ghost_map *ghost_map_create_light(ghost_lidx dim, ghost_mpi_comm mpicomm)
     map->mpicomm = mpicomm;
     map->ldim = NULL;
     map->goffs = NULL;
+    map->cu_loc_perm = NULL;
     map->loc_perm = NULL;
     map->loc_perm_inv = NULL;
     map->glb_perm = NULL;
