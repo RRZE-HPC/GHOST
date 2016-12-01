@@ -1067,6 +1067,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
         ghost_sparsemat_destroy(dummymat);
 
         if (mat->context->row_map->loc_perm && mat->context->col_map->loc_perm == NULL) {
+            mat->context->col_map->cu_loc_perm = mat->context->row_map->cu_loc_perm;
             mat->context->col_map->loc_perm = mat->context->row_map->loc_perm;
             mat->context->col_map->loc_perm_inv = mat->context->row_map->loc_perm_inv;
         }

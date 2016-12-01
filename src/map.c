@@ -188,7 +188,6 @@ void ghost_map_destroy(ghost_map *map)
         }
         if (map->ref_count==0)
         {
-            ghost_cu_free(map->cu_loc_perm); map->cu_loc_perm = NULL;
             free(map->goffs); map->goffs = NULL;
             free(map->ldim); map->ldim = NULL;
             free(map);

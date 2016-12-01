@@ -147,9 +147,11 @@ void ghost_context_destroy(ghost_context *context)
         free(context->entsInCol); context->entsInCol = NULL;
     
         if (context->col_map->loc_perm != context->row_map->loc_perm) {
+            ghost_cu_free(context->col_map->cu_loc_perm); context->col_map->cu_loc_perm = NULL;
             free(context->col_map->loc_perm); context->col_map->loc_perm = NULL;
             free(context->col_map->loc_perm_inv); context->col_map->loc_perm_inv = NULL;
         }
+        ghost_cu_free(context->row_map->cu_loc_perm); context->row_map->cu_loc_perm = NULL;
         free(context->row_map->loc_perm); context->row_map->loc_perm = NULL;
         free(context->row_map->loc_perm_inv); context->row_map->loc_perm_inv = NULL;
         
