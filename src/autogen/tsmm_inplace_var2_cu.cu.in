@@ -47,7 +47,7 @@ static __global__ void __launch_bounds__(256, 4)
   int n = tidx % N;
 
   int row = tidx / N;
-  if (row > K) return;
+  if (row >= K) return;
   //  for (int row = tidx / N; row < K; row += gridDim.x * blockDim.x / N) {
   T sum;
   zero(sum);
@@ -84,7 +84,7 @@ static __global__ void __launch_bounds__(256, 8)
   int n = tidx % N;
 
   int row = tidx / N;
-  if (row > K) return;
+  if (row >= K) return;
   //  for (int row = tidx / N; row < K; row += gridDim.x * blockDim.x / N) {
   T sum;
   zero(sum);
