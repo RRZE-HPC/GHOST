@@ -233,7 +233,7 @@ ghost_error ghost_tsmttsm(ghost_densemat *x_in, ghost_densemat *v, ghost_densema
     ghost_lidx try_vcols[2] = {v->traits.ncols,-1};
     ghost_datatype try_dt[2] = {v->traits.datatype,GHOST_DT_ANY};
 
-    if (x->traits.flags & GHOST_DENSEMAT_VIEW || v->traits.flags & GHOST_DENSEMAT_VIEW) {
+    if (x->traits.flags & GHOST_DENSEMAT_VIEW || v->traits.flags & GHOST_DENSEMAT_VIEW || x->map->dimpad % 2 || v->map->dimpad % 2) {
         opt_unroll = 1;
     } else {
         opt_unroll = GHOST_MAX_ROWS_UNROLL;
