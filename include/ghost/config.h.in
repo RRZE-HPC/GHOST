@@ -60,10 +60,11 @@
 #cmakedefine GHOST_SPARSEMAT_STATS
 #cmakedefine GHOST_SPARSEMAT_GLOBALSTATS
 
-/*kacz analytics*/
+/* Kaczmarz analytics*/
 #cmakedefine GHOST_KACZ_ANALYZE
 
-/* Allow ghost to permute for compatibility */
+/* Compatibility checking */
+#cmakedefine GHOST_COMPATIBLE_CHECK
 #cmakedefine GHOST_COMPATIBLE_PERM
 
 #endif

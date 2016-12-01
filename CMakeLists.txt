@@ -43,7 +43,8 @@ set(GHOST_VERBOSITY 1 CACHE STRING "Level of verbosity information. Valid values
 set(GHOST_INSTRUMENT "" CACHE STRING "Type of instrumentation (semicolon separated list). Valid values: TIMING, LIKWID, IACA")
 set(GHOST_INSTRUMENT_FUNCTYPES "(functype) & GHOST_FUNCTYPE_ANY" CACHE STRING "Logical selection of function types to instrument. Possible values are defined in func_util.h and functype should be put in parentheses.")
 option(GHOST_INSTRUMENT_BARRIER "Place a barrier after each instrumented function (may be necessary for correct timings)" 0)
-option(GHOST_COMPATIBLE_PERM "Allows GHOST to permute for compatibility, please  set it if you are not sure of the permutations" 0)  
+option(GHOST_COMPATIBLE_CHECK "Check for compatible data in kernels" 1)
+option(GHOST_COMPATIBLE_PERM "Allows GHOST to permute and assign maps for compatibility. Set to ON if you are not sure about the permutations." 0)  
 
 set(GHOST_AUTOGEN_SPMMV_BASE "*,*" CACHE INTERNAL "SpM(M)V kernels to be always auto-generated. Semicolon-separated list of 2-tuples: (CHUNKHEIGHT, NVECS)")
 set(GHOST_AUTOGEN_TSMM_BASE "*,*" CACHE INTERNAL "TSMM kernels to be auto-generated. Semicolon-separated list of 3-tuples: (K, N, UNROLL)")

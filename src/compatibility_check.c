@@ -7,9 +7,6 @@
 #include "ghost/math.h"
 
 //Internal functions
-static bool checkLeft(ghost_densemat *left, ghost_context *ctx);
-static bool checkRight(ghost_densemat *right, ghost_context *ctx);
-static bool makeSimilar(ghost_densemat *vec1, ghost_densemat *vec2);
 
 const ghost_compatible_mat_vec GHOST_COMPATIBLE_MAT_VEC_INITIALIZER = {
     .mat    = NULL,
@@ -36,15 +33,15 @@ const ghost_compatible_vec_vec GHOST_COMPATIBLE_VEC_VEC_INITIALIZER = {
     .transD = 'N'
 };
 
-
+#ifdef GHOST_COMPATIBLE_CHECK
 static bool checkLeft(ghost_densemat *left, ghost_context *ctx)
 {
     (void)ctx;
     bool flag = true;
-    if((left->map->dim != ctx->row_map->dim) || (left->map->loc_perm != ctx->row_map->loc_perm))
+    if((left->map->dim != ctx->row_map->dim) || ((left->traits.flags & GHOST_DENSEMAT_PERMUTED) && (left->map->loc_perm != ctx->row_map->loc_perm)))
     {
 #ifndef GHOST_COMPATIBLE_PERM
-        WARNING_LOG("Left Vector not in Row space or dimensions/permutations mismatch!")
+        WARNING_LOG("Left vector dimensions/permutations mismatch: %"PRLIDX" <-> %"PRLIDX" (dim), %p <-> %p (permutation)",left->map->dim, ctx->row_map->dim, left->map->loc_perm, ctx->row_map->loc_perm);
         flag = false;
 #else
         if(left->map->type == GHOST_MAP_COL)
@@ -65,10 +62,10 @@ static bool checkRight(ghost_densemat *right, ghost_context *ctx)
 {
     (void)ctx;
     bool flag = true;
-    if((right->map->dimhalo != ctx->col_map->dimhalo) || (right->map->loc_perm != ctx->col_map->loc_perm))
+    if((right->map->dimhalo != ctx->col_map->dimhalo) || ((right->traits.flags & GHOST_DENSEMAT_PERMUTED) && (right->map->loc_perm != ctx->col_map->loc_perm)))
     {
 #ifndef GHOST_COMPATIBLE_PERM
-        WARNING_LOG("Right Vector not in Column space or dimensions/permutations mismatch!")
+        WARNING_LOG("Right vector dimensions/permutations mismatch: %"PRLIDX" <-> %"PRLIDX" (dim), %p <-> %p (permutation)",right->map->dim, ctx->col_map->dim, right->map->loc_perm, ctx->col_map->loc_perm);
         flag = false;
 #else
         if(right->map->type == GHOST_MAP_ROW)
@@ -100,10 +97,11 @@ static bool makeSimilar(ghost_densemat *vec1, ghost_densemat *vec2)
     permuted_vec1 = vec1->traits.flags & (ghost_densemat_flags)GHOST_DENSEMAT_PERMUTED;
     permuted_vec2 = vec2->traits.flags & (ghost_densemat_flags)GHOST_DENSEMAT_PERMUTED;
 
+    // TODO check for the case where only one has a permutation but is not permuted
     if ((vec1->map->dim != vec2->map->dim) || (permuted_vec1 != permuted_vec2) || (vec1->map->loc_perm != vec2->map->loc_perm)) 
     {
 #ifndef GHOST_COMPATIBLE_PERM
-        WARNING_LOG("DENSEMAT not in same space")
+        WARNING_LOG("Densemat mismatch: %"PRLIDX" <-> %"PRLIDX" (dim), %d <-> %d (permuted), %p <-> %p (permutation)",vec1->map->dim,vec2->map->dim,permuted_vec1,permuted_vec2,vec1->map->loc_perm,vec2->map->loc_perm)
         flag = false;
 #else
         if(vec1_type != GHOST_MAP_NONE) 
@@ -154,9 +152,15 @@ static bool makeSimilar(ghost_densemat *vec1, ghost_densemat *vec2)
 
     return flag; 
 }
+#endif
 
 ghost_error ghost_check_mat_vec_compatibility(ghost_compatible_mat_vec *data, ghost_context *ctx)
 {
+#ifndef GHOST_COMPATIBLE_CHECK
+    UNUSED(data);
+    UNUSED(ctx);
+    return GHOST_SUCCESS;
+#else
     ghost_error ret = GHOST_SUCCESS;
     bool flag = true;
 
@@ -188,11 +192,16 @@ ghost_error ghost_check_mat_vec_compatibility(ghost_compatible_mat_vec *data, gh
     }
 
     return ret;
+#endif
 }
 
 
 ghost_error ghost_check_vec_vec_compatibility(ghost_compatible_vec_vec *data)
 {
+#ifndef GHOST_COMPATIBLE_CHECK
+    UNUSED(data);
+    return GHOST_SUCCESS;
+#else 
     ghost_error ret = GHOST_SUCCESS;
     bool flag = true;
 
@@ -277,5 +286,6 @@ ghost_error ghost_check_vec_vec_compatibility(ghost_compatible_vec_vec *data)
         ret = GHOST_ERR_COMPATIBILITY;
     }
     return ret;
+#endif
 }
 
