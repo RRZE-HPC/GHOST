@@ -78,6 +78,10 @@ if (GHOST_IDX64_LOCAL)
     endif()
 endif()
 
+if (GHOST_COMPATIBLE_PERM AND NOT GHOST_COMPATIBLE_CHECK)
+    message(FATAL_ERROR "GHOST_COMPATIBLE_PERM can only be enabled together with GHOST_COMPATIBLE_CHECK!")
+endif()
+
 set (SOURCES
     src/autogen.cpp
     src/compatibility_check.c
