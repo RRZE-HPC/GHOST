@@ -47,6 +47,10 @@ extern "C" ghost_error ghost_sparsemat_perm_spmp(ghost_context *ctx, ghost_spars
     int *useperm = NULL, *useinvperm = NULL;
     int nnzlocal = 0;
     SpMP::CSR *csr = NULL, *csrperm = NULL;
+#ifdef GHOST_HAVE_CUDA
+    ghost_type type;
+    ghost_type_get(&type);
+#endif
 
 #ifdef NONSYM_RCM_MIRROR
     int *symcol = NULL, *symrpt = NULL;
@@ -66,7 +70,9 @@ extern "C" ghost_error ghost_sparsemat_perm_spmp(ghost_context *ctx, ghost_spars
     }
 
 #ifdef GHOST_HAVE_CUDA
-    GHOST_CALL_GOTO(ghost_cu_malloc((void **)ctx->row_map->cu_loc_perm,sizeof(ghost_gidx)*ctx->row_map->dim),err,ret);
+    if (type == GHOST_TYPE_CUDA) {
+        GHOST_CALL_GOTO(ghost_cu_malloc((void **)&ctx->row_map->cu_loc_perm,sizeof(ghost_lidx)*ctx->row_map->dim),err,ret);
+    }
 #endif
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&rptlocal,(ctx->row_map->dim+1)*sizeof(int)),err,ret);
@@ -93,8 +99,8 @@ extern "C" ghost_error ghost_sparsemat_perm_spmp(ghost_context *ctx, ghost_spars
         }
     }
 
-    GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->row_map->loc_perm,sizeof(ghost_gidx)*ctx->row_map->dim),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->row_map->loc_perm_inv,sizeof(ghost_gidx)*ctx->row_map->dim),err,ret);   
+    GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->row_map->loc_perm,sizeof(ghost_lidx)*ctx->row_map->dim),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->row_map->loc_perm_inv,sizeof(ghost_lidx)*ctx->row_map->dim),err,ret);   
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&val,sizeof(double)*nnzlocal),err,ret);
     memset(val,0,sizeof(double)*nnzlocal);
@@ -218,10 +224,12 @@ extern "C" ghost_error ghost_sparsemat_perm_spmp(ghost_context *ctx, ghost_spars
 
         //ctx->perm_local->method = GHOST_PERMUTATION_UNSYMMETRIC;
 #ifdef GHOST_HAVE_CUDA
-        GHOST_CALL_GOTO(ghost_cu_malloc((void **)ctx->col_map->cu_loc_perm,sizeof(ghost_gidx)*ncols_halo_padded),err,ret);
+        if (type == GHOST_TYPE_CUDA) {
+            GHOST_CALL_GOTO(ghost_cu_malloc((void **)&ctx->col_map->cu_loc_perm,sizeof(ghost_lidx)*ncols_halo_padded),err,ret);
+        }
 #endif
-        GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->col_map->loc_perm,sizeof(ghost_gidx)*ncols_halo_padded),err,ret);
-        GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->col_map->loc_perm_inv,sizeof(ghost_gidx)*ncols_halo_padded),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->col_map->loc_perm,sizeof(ghost_lidx)*ncols_halo_padded),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->col_map->loc_perm_inv,sizeof(ghost_lidx)*ncols_halo_padded),err,ret);
 
 
         /*    printf("Row perm\n");
@@ -248,7 +256,9 @@ extern "C" ghost_error ghost_sparsemat_perm_spmp(ghost_context *ctx, ghost_spars
             ctx->col_map->loc_perm_inv[i] = intcolinvperm[i];
         }
 #ifdef GHOST_HAVE_CUDA
-        ghost_cu_upload(ctx->col_map->cu_loc_perm,ctx->col_map->loc_perm,ncols_halo_padded);
+        if (type == GHOST_TYPE_CUDA) {
+            ghost_cu_upload(ctx->col_map->cu_loc_perm,ctx->col_map->loc_perm,ncols_halo_padded);
+        }
 #endif
 
 #endif
@@ -282,7 +292,9 @@ extern "C" ghost_error ghost_sparsemat_perm_spmp(ghost_context *ctx, ghost_spars
     }
 
 #ifdef GHOST_HAVE_CUDA
-    ghost_cu_upload(ctx->row_map->cu_loc_perm,ctx->row_map->loc_perm,ctx->row_map->dim*sizeof(ghost_gidx));
+    if (type == GHOST_TYPE_CUDA) {
+        ghost_cu_upload(ctx->row_map->cu_loc_perm,ctx->row_map->loc_perm,ctx->row_map->dim*sizeof(ghost_lidx));
+    }
 #endif
 
 
@@ -296,7 +308,9 @@ err:
     free(ctx->col_map->loc_perm_inv); ctx->col_map->loc_perm_inv = NULL;
 
 #ifdef GHOST_HAVE_CUDA
-    ghost_cu_free(ctx->row_map->cu_loc_perm); ctx->row_map->cu_loc_perm = NULL;
+    if (type == GHOST_TYPE_CUDA) {
+        ghost_cu_free(ctx->row_map->cu_loc_perm); ctx->row_map->cu_loc_perm = NULL;
+    }
 #endif
 
 out:
