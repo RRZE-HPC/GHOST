@@ -134,7 +134,7 @@ ghost_error ghost_spmv_nocomm(ghost_densemat *res, ghost_sparsemat *mat, ghost_d
 
     #ifdef GHOST_HAVE_CUDA
     if ((ghost_type == GHOST_TYPE_CUDA) && mat->traits.flags & GHOST_SPARSEMAT_DEVICE) {
-        if (mat->traits.C == 1) {
+        if (mat->traits.C == 1 && !(traits.flags & (GHOST_SPMV_SHIFT|GHOST_SPMV_VSHIFT)) && !(traits.flags & GHOST_SPMV_CHAIN_AXPBY)) {
             return ghost_cu_sell1_spmv_selector(res,mat,invec,traits); // use a function which calls CUSPARSE as they can do better for CRS matrices
         } else {
             return ghost_cu_sell_spmv_selector(res,mat,invec,traits);
