@@ -6,6 +6,7 @@
 #include "ghost/machine.h"
 #include "ghost/omp.h"
 #include "ghost/sparsemat.h"
+#include "ghost/math.h"
 #include "ghost/sell_spmv_varblock_mic_gen.h"
 
 #ifndef __FUJITSU
@@ -36,13 +37,11 @@ ghost_error ghost_sellspmv__a_mic_d_d_cm_CHUNKHEIGHT_x(ghost_densemat *res, ghos
     ghost_densemat *z = NULL;
     double sscale = 1., sbeta = 1., sdelta = 0., seta = 0.;
     double *sshift = NULL;
-    __m512d shift, scale, beta, delta, eta;
+    __m512d shift, scale, beta;
 
     GHOST_SPMV_PARSE_TRAITS(traits,sscale,sbeta,sshift,local_dot_product,z,sdelta,seta,double,double);
     scale = _mm512_set1_pd(sscale);
     beta = _mm512_set1_pd(sbeta);
-    delta = _mm512_set1_pd(sdelta);
-    eta = _mm512_set1_pd(seta);
 
     int nthreads = 1;
     unsigned clsize;
@@ -177,13 +176,11 @@ ghost_error ghost_sellspmv__a_mic_d_d_rm_CHUNKHEIGHT_x(ghost_densemat *res, ghos
     ghost_densemat *z = NULL;
     double sscale = 1., sbeta = 1., sdelta = 0., seta = 0.;
     double *sshift = NULL;
-    __m512d shift, scale, beta, delta, eta;
+    __m512d shift, scale, beta;
 
     GHOST_SPMV_PARSE_TRAITS(traits,sscale,sbeta,sshift,local_dot_product,z,sdelta,seta,double,double);
     scale = _mm512_set1_pd(sscale);
     beta = _mm512_set1_pd(sbeta);
-    delta = _mm512_set1_pd(sdelta);
-    eta = _mm512_set1_pd(seta);
     int axpy = traits.flags & (GHOST_SPMV_AXPY | GHOST_SPMV_AXPBY);
     
     if (traits.flags & GHOST_SPMV_DOT) {
@@ -262,6 +259,10 @@ ghost_error ghost_sellspmv__a_mic_d_d_rm_CHUNKHEIGHT_x(ghost_densemat *res, ghos
             
         }
         free(tmpresult);
+    }
+    if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
+        PERFWARNING_LOG("AXPBY will not be done on-the-fly!");
+        ghost_axpby(z,res,&seta,&sdelta);
     }
     if (traits.flags & GHOST_SPMV_DOT) {
         for (col=0; col<invec->traits.ncols; col++) {
