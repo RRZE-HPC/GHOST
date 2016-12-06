@@ -6,6 +6,7 @@
 #include "ghost/machine.h"
 #include "ghost/omp.h"
 #include "ghost/sparsemat.h"
+#include "ghost/math.h"
 #include "ghost/sell_spmv_mic_gen.h"
 
 #ifndef __FUJITSU
@@ -23,9 +24,9 @@
 
 ghost_error ghost_sellspmvSTRIPPED__a_mic_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat* invec, ghost_spmv_opts traits)
 {
-    
+    UNUSED(traits);    
 #if defined(GHOST_BUILD_MIC) && CHUNKHEIGHT>=16
-    ghost_lidx c,j,i;
+    ghost_lidx c,j;
     ghost_lidx offs;
     double *mval = (double *)mat->val;
     __m512d val;
@@ -78,13 +79,11 @@ ghost_error ghost_sellspmv__a_mic_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
     ghost_densemat *z = NULL;
     double sscale = 1., sbeta = 1., sdelta = 0., seta = 0.;
     double *sshift = NULL;
-    __m512d shift, scale, beta, delta, eta;
+    __m512d shift, scale, beta;
 
     GHOST_SPMV_PARSE_TRAITS(traits,sscale,sbeta,sshift,local_dot_product,z,sdelta,seta,double,double);
     scale = _mm512_set1_pd(sscale);
     beta = _mm512_set1_pd(sbeta);
-    delta = _mm512_set1_pd(sdelta);
-    eta = _mm512_set1_pd(seta);
 
     int nthreads = 1;
     unsigned clsize;
@@ -125,9 +124,9 @@ ghost_error ghost_sellspmv__a_mic_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
                 for (j=0; j<(mat->chunkStart[c+1]-mat->chunkStart[c])/CHUNKHEIGHT; j++) 
                 { // loop inside chunk
 #ifdef GHOST_BUILD_AVX512
-                    #GHOST_UNROLL#val = _mm512_load_pd(&mval[offs]);idx = _mm256_load_si256((__m256i *)(&SELL(mat)->col[offs]));rhs = _mm512_i32gather_pd(idx,rval,8); tmp@ = _mm512_fmadd_pd(val,rhs,tmp@); offs+=8;#CHUNKHEIGHT/8
+                    #GHOST_UNROLL#val = _mm512_load_pd(&mval[offs]);idx = _mm256_load_si256((__m256i *)(&mat->col[offs]));rhs = _mm512_i32gather_pd(idx,rval,8); tmp@ = _mm512_fmadd_pd(val,rhs,tmp@); offs+=8;#CHUNKHEIGHT/8
 #else
-                    #GHOST_UNROLL#val = _mm512_load_pd(&mval[offs]);idx = _mm512_load_epi32(&SELL(mat)->col[offs]);rhs = _mm512_i32logather_pd(idx,rval,8);tmp~2*@~ = _mm512_add_pd(tmp~2*@~,_mm512_mul_pd(val,rhs));offs += 8;val = _mm512_load_pd(&mval[offs]);idx = _mm512_permute4f128_epi32(idx,_MM_PERM_BADC);rhs = _mm512_i32logather_pd(idx,rval,8);tmp~2*@+1~ = _mm512_add_pd(tmp~2*@+1~,_mm512_mul_pd(val,rhs));offs += 8;#CHUNKHEIGHT/16
+                    #GHOST_UNROLL#val = _mm512_load_pd(&mval[offs]);idx = _mm512_load_epi32(&mat->col[offs]);rhs = _mm512_i32logather_pd(idx,rval,8);tmp~2*@~ = _mm512_add_pd(tmp~2*@~,_mm512_mul_pd(val,rhs));offs += 8;val = _mm512_load_pd(&mval[offs]);idx = _mm512_permute4f128_epi32(idx,_MM_PERM_BADC);rhs = _mm512_i32logather_pd(idx,rval,8);tmp~2*@+1~ = _mm512_add_pd(tmp~2*@+1~,_mm512_mul_pd(val,rhs));offs += 8;#CHUNKHEIGHT/16
 #endif
                 }
                 if (traits.flags & (GHOST_SPMV_SHIFT | GHOST_SPMV_VSHIFT)) {
@@ -217,13 +216,11 @@ ghost_error ghost_sellspmv__a_mic_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
     ghost_densemat *z = NULL;
     double sscale = 1., sbeta = 1., sdelta = 0., seta = 0.;
     double *sshift = NULL;
-    __m512d shift, scale, beta, delta, eta;
+    __m512d scale, beta;
 
     GHOST_SPMV_PARSE_TRAITS(traits,sscale,sbeta,sshift,local_dot_product,z,sdelta,seta,double,double);
     scale = _mm512_set1_pd(sscale);
     beta = _mm512_set1_pd(sbeta);
-    delta = _mm512_set1_pd(sdelta);
-    eta = _mm512_set1_pd(seta);
     
     if (traits.flags & GHOST_SPMV_DOT) {
 
