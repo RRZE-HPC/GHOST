@@ -482,7 +482,8 @@ extern "C" ghost_error ghost_sell_spmv_selector(ghost_densemat *lhs,
             opt_impl = ghost_get_best_implementation_for_bytesize(mat->traits.C*mat->elSize);
         }
     }
-#ifdef GHOST_BUILD_MIC
+#if defined(GHOST_BUILD_MIC) && !defined(GHOST_BUILD_AVX512) 
+    // on KNC: only MIC and Plain possible
     try_impl.push_back(opt_impl);
     if (opt_impl == GHOST_IMPLEMENTATION_MIC) {
         try_impl.push_back(GHOST_IMPLEMENTATION_PLAIN);
