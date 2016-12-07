@@ -10,15 +10,16 @@ typedef enum
 {
     GHOST_BENCH_STREAM_COPY,
     GHOST_BENCH_STREAM_TRIAD,
-    GHOST_BENCH_STREAM_LOAD,
-    GHOST_BENCH_STREAM_STORE
-} ghost_bench_stream_test_t;
+    GHOST_BENCH_LOAD,
+    GHOST_BENCH_STORE,
+    GHOST_BENCH_UPDATE
+} ghost_bench_bw_test;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-ghost_error ghost_bench_stream(ghost_bench_stream_test_t, double *mean_bw, double *max_bw);
+ghost_error ghost_bench_bw(ghost_bench_bw_test, double *mean_bw, double *max_bw);
 ghost_error ghost_bench_pingpong(double *bw);
 ghost_error ghost_bench_peakperformance(double *gf);
 

@@ -23,8 +23,8 @@ ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, gho
     }
     if (fabs(weight) < DBL_MIN) {
         double max_bw=0.0;
-        ghost_bench_stream(GHOST_BENCH_STREAM_COPY,&weight,&max_bw);
-        INFO_LOG("Automatically setting weight to %f according to STREAM copy bandwidth!",weight);
+        ghost_bench_bw(GHOST_BENCH_UPDATE,&weight,&max_bw);
+        INFO_LOG("Automatically setting weight to %f according to UPDATE bandwidth!",weight);
     }
     if (!gnrows) {
         ERROR_LOG("The global number of rows (and columns for non-square matrices) must not be zero!");
