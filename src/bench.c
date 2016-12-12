@@ -9,10 +9,12 @@
 #include <immintrin.h>
 #endif
 
+#ifdef GHOST_BUILD_MIC
 #ifdef GHOST_BUILD_AVX512
 #define MIC_STREAMINGSTORE _mm512_stream_pd
 #else
 #define MIC_STREAMINGSTORE _mm512_storenrngo_pd
+#endif
 #endif
 
 #define N PAD((ghost_lidx)1e8,16)
