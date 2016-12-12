@@ -103,7 +103,7 @@ extern "C" ghost_error ghost_cu_bench_bw(ghost_bench_bw_test test, double *mean_
                 cu_store_kernel<<<CEILDIV(N,THREADSPERBLOCK),THREADSPERBLOCK>>> (da,s);
                 break;
             case GHOST_BENCH_UPDATE:
-                cu_store_kernel<<<CEILDIV(N,THREADSPERBLOCK),THREADSPERBLOCK>>> (da,s);
+                cu_update_kernel<<<CEILDIV(N,THREADSPERBLOCK),THREADSPERBLOCK>>> (da,s);
                 break;
             case GHOST_BENCH_LOAD:
                 ghost_densemat *a_dm, *b_dm;
