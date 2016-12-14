@@ -567,11 +567,16 @@ ghost_error ghost_init(int argc, char **argv)
 #ifdef GHOST_INSTR_LIKWID
     likwid_markerInit();
 
-    ghost_task *t;
-    ghost_task_create(&t,GHOST_TASK_FILL_ALL,0,&likwidThreadInitTask,NULL,GHOST_TASK_DEFAULT, NULL, 0);
-    ghost_task_enqueue(t);
-    ghost_task_wait(t);
-    ghost_task_destroy(t);
+    if (ghost_tasking_enabled()) {
+        ghost_task *t;
+        ghost_task_create(&t,GHOST_TASK_FILL_ALL,0,&likwidThreadInitTask,NULL,GHOST_TASK_DEFAULT, NULL, 0);
+        ghost_task_enqueue(t);
+        ghost_task_wait(t);
+        ghost_task_destroy(t);
+    } else {
+#pragma omp parallel
+        likwid_markerThreadInit();
+    }
 #endif
    
 

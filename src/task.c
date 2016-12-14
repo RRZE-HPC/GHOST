@@ -6,6 +6,7 @@
 #include <semaphore.h>
 #include <errno.h>
 #include <unistd.h>
+#include <strings.h>
 
 #include "ghost/types.h"
 #include "ghost/locality.h"
@@ -63,33 +64,38 @@ ghost_error ghost_task_string(char **str, ghost_task *t)
 ghost_error ghost_task_enqueue(ghost_task *t)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING);
+    
+    if (!ghost_tasking_enabled()) {
+        t->ret = t->func(t->arg);
+        t->state = GHOST_TASK_FINISHED;
+    } else {
+        if (!taskq) {
+            ghost_taskq_create();
+        }
 
-    if (!taskq) {
-        ghost_taskq_create();
+        pthread_mutex_lock(t->stateMutex);
+        t->state = GHOST_TASK_INVALID;
+        pthread_mutex_unlock(t->stateMutex);
+
+        pthread_mutex_lock(t->mutex);
+        hwloc_bitmap_zero(t->coremap);
+        hwloc_bitmap_zero(t->childusedmap);
+        pthread_mutex_unlock(t->mutex);
+
+        if( t->parent != NULL ) {
+          DEBUG_LOG(1,"Task's parent overwritten!");
+        }
+        else {
+          GHOST_CALL_RETURN(ghost_task_cur(&t->parent));
+        }
+
+        pthread_mutex_lock(t->stateMutex);
+        ghost_taskq_add(t);
+        t->state = GHOST_TASK_ENQUEUED;
+        pthread_mutex_unlock(t->stateMutex);
+
+        DEBUG_LOG(1,"Task added successfully");
     }
-
-    pthread_mutex_lock(t->stateMutex);
-    t->state = GHOST_TASK_INVALID;
-    pthread_mutex_unlock(t->stateMutex);
-
-    pthread_mutex_lock(t->mutex);
-    hwloc_bitmap_zero(t->coremap);
-    hwloc_bitmap_zero(t->childusedmap);
-    pthread_mutex_unlock(t->mutex);
-
-    if( t->parent != NULL ) {
-      DEBUG_LOG(1,"Task's parent overwritten!");
-    }
-    else {
-      GHOST_CALL_RETURN(ghost_task_cur(&t->parent));
-    }
-
-    pthread_mutex_lock(t->stateMutex);
-    ghost_taskq_add(t);
-    t->state = GHOST_TASK_ENQUEUED;
-    pthread_mutex_unlock(t->stateMutex);
-
-    DEBUG_LOG(1,"Task added successfully");
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING);
     return GHOST_SUCCESS;
@@ -113,29 +119,34 @@ ghost_task_state ghost_taskest(ghost_task * t)
 ghost_error ghost_task_wait(ghost_task * task)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING);
-    DEBUG_LOG(1,"Waiting for task %p whose state is %s",(void *)task,ghost_task_state_string(task->state));
+    
+    if (!ghost_tasking_enabled()) {
+        return GHOST_SUCCESS;
+    } else {
+        DEBUG_LOG(1,"Waiting for task %p whose state is %s",(void *)task,ghost_task_state_string(task->state));
 
 
-    //    ghost_task *parent = (ghost_task *)pthread_getspecific(ghost_thread_key);
-    //    if (parent != NULL) {
-    //    WARNING_LOG("Waiting on a task from within a task ===> free'ing the parent task's resources, idle PUs: %d",NIDLECORES);
-    //    ghost_task_unpin(parent);
-    //    WARNING_LOG("Now idle PUs: %d",NIDLECORES);
-    //    }
-    ghost_task *cur;
-    ghost_task_cur(&cur);
-    if (cur == task) {
-        WARNING_LOG("Should wait on myself. Bad idea!");
+        //    ghost_task *parent = (ghost_task *)pthread_getspecific(ghost_thread_key);
+        //    if (parent != NULL) {
+        //    WARNING_LOG("Waiting on a task from within a task ===> free'ing the parent task's resources, idle PUs: %d",NIDLECORES);
+        //    ghost_task_unpin(parent);
+        //    WARNING_LOG("Now idle PUs: %d",NIDLECORES);
+        //    }
+        ghost_task *cur;
+        ghost_task_cur(&cur);
+        if (cur == task) {
+            WARNING_LOG("Should wait on myself. Bad idea!");
+        }
+
+        pthread_mutex_lock(task->stateMutex);
+        while (task->state != GHOST_TASK_FINISHED) {
+            DEBUG_LOG(1,"Waiting for signal @ cond %p from task %p",(void *)task->finishedCond,(void *)task);
+            pthread_cond_wait(task->finishedCond,task->stateMutex);
+        }
+        pthread_mutex_unlock(task->stateMutex);
+        DEBUG_LOG(1,"Finished waitung for task %p!",(void *)task);
+
     }
-
-    pthread_mutex_lock(task->stateMutex);
-    while (task->state != GHOST_TASK_FINISHED) {
-        DEBUG_LOG(1,"Waiting for signal @ cond %p from task %p",(void *)task->finishedCond,(void *)task);
-        pthread_cond_wait(task->finishedCond,task->stateMutex);
-    }
-    pthread_mutex_unlock(task->stateMutex);
-    DEBUG_LOG(1,"Finished waitung for task %p!",(void *)task);
-
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING);
     return GHOST_SUCCESS;
 
@@ -285,3 +296,12 @@ ghost_error ghost_task_cur(ghost_task **task)
 
 }
 
+bool ghost_tasking_enabled()
+{
+    char *envtask = getenv("GHOST_TASK");
+    if (envtask && !strncasecmp(envtask,"disable",7)) {
+        return false;
+    } else {
+        return true;
+    }
+}

@@ -250,6 +250,14 @@ extern "C" {
 
     ghost_error ghost_task_cur(ghost_task **task);
 
+    /**
+     * @brief Check whether tasking is globally enabled.
+     *
+     * @return false if the GHOST_TASK environment variable is set to "disable", true otherwise.
+     */
+    bool ghost_tasking_enabled();
+
+
 #ifdef __cplusplus
 }// extern "C"
 #endif
