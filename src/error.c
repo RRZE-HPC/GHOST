@@ -54,6 +54,9 @@ char * ghost_error_string(ghost_error e)
         case GHOST_ERR_BLAS:
             ret = "Error in BLAS";
             break;
+        case GHOST_ERR_COMPATIBILITY:
+            ret = "Error incompatibility between densematrix and/or sparsematrix";
+            break;
         case GHOST_ERR_UNKNOWN:
             ret = "Unknown error";
             break;

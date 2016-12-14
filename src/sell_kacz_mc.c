@@ -9,20 +9,20 @@
   for (int rowinchunk = start; rowinchunk < end; rowinchunk++) { \
         row = rowinchunk + fchunk*CHUNKHEIGHT;\
         rownorm = 0.; \
-        ghost_lidx idx = sellmat->chunkStart[fchunk]+rowinchunk;\
+        ghost_lidx idx = mat->chunkStart[fchunk]+rowinchunk;\
         scal  = -bval[row];\
         \
-        for (int j=0; j<sellmat->rowLen[row]; ++j) {\
-            scal += (double)mval[idx] * xval[sellmat->col[idx]];\
+        for (int j=0; j<mat->rowLen[row]; ++j) {\
+            scal += (double)mval[idx] * xval[mat->col[idx]];\
             rownorm[rowinchunk] += mval[idx]*mval[idx];\
             idx += CHUNKHEIGHT;\
         }\
         \
-        idx -= CHUNKHEIGHT*sellmat->rowLen[row];\
+        idx -= CHUNKHEIGHT*mat->rowLen[row];\
         scal /= (double)rownorm[rowinchunk];\
         \
-        for (int j=0; j<sellmat->rowLen[row]; j++) {\
-            xval[sellmat->col[idx]] = xval[sellmat->col[idx]] - omega * scal * (double)mval[idx];\
+        for (int j=0; j<mat->rowLen[row]; j++) {\
+            xval[mat->col[idx]] = xval[mat->col[idx]] - omega * scal * (double)mval[idx];\
             idx += CHUNKHEIGHT;\
          }\
     }\
@@ -35,7 +35,7 @@ ghost_error ghost_kacz_mc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densema
 
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
    
-    if (!mat->color_ptr || mat->ncolors == 0 ) {
+    if (!mat->context->color_ptr || mat->context->ncolors == 0 ) {
     
     ghost_lidx threads[1] ;
 
@@ -52,12 +52,12 @@ ghost_error ghost_kacz_mc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densema
      GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
      return GHOST_ERR_NOT_COLORED;
    } else {
-     mat->ncolors = 1;
+     mat->context->ncolors = 1;
      int *new_color;
      new_color = (int*) malloc(2);
      new_color[0]=0;
-     new_color[1]=mat->nrows ;
-     mat->color_ptr = new_color;        
+     new_color[1]=SPM_NROWS(mat) ;
+     mat->context->color_ptr = new_color;        
   } 
  } 
 
@@ -71,7 +71,6 @@ ghost_error ghost_kacz_mc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densema
     ghost_lidx rowinchunk;
     ghost_lidx j;
     ghost_lidx color;
-    ghost_sell *sellmat = SELL(mat);
     ghost_lidx fchunk, lchunk, rem_fchunk, rem_lchunk;
 
     double *bval = NULL;
@@ -79,17 +78,17 @@ ghost_error ghost_kacz_mc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densema
        bval = (double *)(b->val);
 
     double *xval = (double *)(x->val);
-    double *mval = (double *)sellmat->val;
+    double *mval = (double *)mat->val;
     double omega = *(double *)opts.omega;
 
     ghost_lidx firstcolor, lastcolor, stride;
     
     if (opts.direction == GHOST_KACZ_DIRECTION_FORWARD) {
         firstcolor = 0;
-        lastcolor = mat->ncolors;
+        lastcolor = mat->context->ncolors;
         stride = 1;
     } else {
-        firstcolor = mat->ncolors;
+        firstcolor = mat->context->ncolors;
         lastcolor = 0;
         stride = -1;
     }
@@ -97,16 +96,16 @@ ghost_error ghost_kacz_mc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densema
     
     for (color=firstcolor; color!=lastcolor; color+=stride) {
        if (opts.direction == GHOST_KACZ_DIRECTION_FORWARD) {
-  		 fchunk = mat->color_ptr[color]/CHUNKHEIGHT;
-                 rem_fchunk = mat->color_ptr[color]%CHUNKHEIGHT;
-       		 lchunk = mat->color_ptr[color+1]/CHUNKHEIGHT;
-                 rem_lchunk = (mat->color_ptr[color+1]-1)%CHUNKHEIGHT;
+  		 fchunk = mat->context->color_ptr[color]/CHUNKHEIGHT;
+                 rem_fchunk = mat->context->color_ptr[color]%CHUNKHEIGHT;
+       		 lchunk = mat->context->color_ptr[color+1]/CHUNKHEIGHT;
+                 rem_lchunk = (mat->context->color_ptr[color+1]-1)%CHUNKHEIGHT;
   
         } else {
-	 	 fchunk = (mat->color_ptr[color]-1)/CHUNKHEIGHT;
-                 rem_fchunk = (mat->color_ptr[color]-1)%CHUNKHEIGHT;
-                 lchunk = (mat->color_ptr[color-1]-1)/CHUNKHEIGHT;
-                 rem_lchunk = (mat->color_ptr[color-1])%CHUNKHEIGHT;
+	 	 fchunk = (mat->context->color_ptr[color]-1)/CHUNKHEIGHT;
+                 rem_fchunk = (mat->context->color_ptr[color]-1)%CHUNKHEIGHT;
+                 lchunk = (mat->context->color_ptr[color-1]-1)/CHUNKHEIGHT;
+                 rem_lchunk = (mat->context->color_ptr[color-1])%CHUNKHEIGHT;
           }
 
 #pragma omp parallel
@@ -120,25 +119,25 @@ ghost_error ghost_kacz_mc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densema
                     row = rowinchunk + fchunk*CHUNKHEIGHT;
                     //printf("projecting to row ........ %d\n",row);
                     rownorm = 0.;
-                    ghost_lidx idx = sellmat->chunkStart[fchunk]+rowinchunk;
+                    ghost_lidx idx = mat->chunkStart[fchunk]+rowinchunk;
                     double scal = 0;
                     if(bval!=NULL)
                      scal  = -bval[row];
                     
-                    for (j=0; j<sellmat->rowLen[row]; ++j) {
+                    for (j=0; j<mat->rowLen[row]; ++j) {
                         
-                        scal += (double)mval[idx] * xval[sellmat->col[idx]];
+                        scal += (double)mval[idx] * xval[mat->col[idx]];
                         rownorm += mval[idx]*mval[idx];
                         idx += CHUNKHEIGHT;
                     }
                  
-                    idx -= CHUNKHEIGHT*sellmat->rowLen[row];
+                    idx -= CHUNKHEIGHT*mat->rowLen[row];
                     
                    scal /= (double)rownorm;
 
  		#pragma simd vectorlength(4)
-                   for (j=0; j<sellmat->rowLen[row]; j++) {
-                        xval[sellmat->col[idx]] = xval[sellmat->col[idx]] - omega * scal * (double)mval[idx];
+                   for (j=0; j<mat->rowLen[row]; j++) {
+                        xval[mat->col[idx]] = xval[mat->col[idx]] - omega * scal * (double)mval[idx];
                         idx += CHUNKHEIGHT;
                     }
                 }
@@ -149,24 +148,24 @@ ghost_error ghost_kacz_mc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densema
                     row = rowinchunk + c*CHUNKHEIGHT;
                     //printf("projecting to row ........ %d\n",row); 
                     rownorm = 0.;
-                    ghost_lidx idx = sellmat->chunkStart[c]+rowinchunk;
+                    ghost_lidx idx = mat->chunkStart[c]+rowinchunk;
                     double scal  = 0;
                     if(bval!=NULL)
                       scal = -bval[row];
                    
-                    for (j=0; j<sellmat->rowLen[row]; ++j) {
-                        scal += (double)mval[idx] * xval[sellmat->col[idx]];
+                    for (j=0; j<mat->rowLen[row]; ++j) {
+                        scal += (double)mval[idx] * xval[mat->col[idx]];
                         rownorm += mval[idx]*mval[idx];
                         idx += CHUNKHEIGHT;
                     }
                     
-                    idx -= CHUNKHEIGHT*sellmat->rowLen[row];
+                    idx -= CHUNKHEIGHT*mat->rowLen[row];
                     scal /= (double)rownorm;
                     scal *= omega;
 
 		 #pragma simd vectorlength(4)
-                    for (j=0; j<sellmat->rowLen[row]; j++) {
-                        xval[sellmat->col[idx]] = xval[sellmat->col[idx]] -  scal * (double)mval[idx];
+                    for (j=0; j<mat->rowLen[row]; j++) {
+                        xval[mat->col[idx]] = xval[mat->col[idx]] -  scal * (double)mval[idx];
                         idx += CHUNKHEIGHT;
                     } 
                 }
@@ -178,25 +177,25 @@ ghost_error ghost_kacz_mc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densema
                     row = rowinchunk + (lchunk-1)*CHUNKHEIGHT;
                     //printf("projecting to row ........ %d\n",row);
                     rownorm = 0.;
-                    ghost_lidx idx = sellmat->chunkStart[lchunk-1]+rowinchunk;
+                    ghost_lidx idx = mat->chunkStart[lchunk-1]+rowinchunk;
 
                     double scal  = 0;
                     if(bval!=NULL)  
                       scal = -bval[row];
 
-                    for (j=0; j<sellmat->rowLen[row]; ++j) {
-                        scal += (double)mval[idx] * xval[sellmat->col[idx]];
+                    for (j=0; j<mat->rowLen[row]; ++j) {
+                        scal += (double)mval[idx] * xval[mat->col[idx]];
                         rownorm += mval[idx]*mval[idx];
                         idx += CHUNKHEIGHT;
                     }
 
-                    idx -= CHUNKHEIGHT*sellmat->rowLen[row];
+                    idx -= CHUNKHEIGHT*mat->rowLen[row];
                     scal /= (double)rownorm;
                     scal *= omega;
 
  		 #pragma simd vectorlength(4)
-                    for (j=0; j<sellmat->rowLen[row]; j++) {
-                        xval[sellmat->col[idx]] = xval[sellmat->col[idx]] - scal * (double)mval[idx];
+                    for (j=0; j<mat->rowLen[row]; j++) {
+                        xval[mat->col[idx]] = xval[mat->col[idx]] - scal * (double)mval[idx];
                         idx += CHUNKHEIGHT;
                     }
                 }
@@ -208,25 +207,25 @@ ghost_error ghost_kacz_mc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densema
                     //  printf("Reverse row .....................%d color .........%d\n",row);
                     //printf("projecting to row ........ %d\n",row);
                     rownorm = 0.;
-                    ghost_lidx idx = sellmat->chunkStart[fchunk]+rowinchunk;
+                    ghost_lidx idx = mat->chunkStart[fchunk]+rowinchunk;
 
                     double scal  = 0;
                     if(bval!=NULL)
                      scal = -bval[row];
                   
-		    for (j=0; j<sellmat->rowLen[row]; ++j) {
-                        scal += (double)mval[idx] * xval[sellmat->col[idx]];
+		    for (j=0; j<mat->rowLen[row]; ++j) {
+                        scal += (double)mval[idx] * xval[mat->col[idx]];
                         rownorm += mval[idx]*mval[idx];
                         idx += CHUNKHEIGHT;
                     }
 
-                    idx -= CHUNKHEIGHT*sellmat->rowLen[row];
+                    idx -= CHUNKHEIGHT*mat->rowLen[row];
                     scal /= (double)rownorm;
                     scal *= omega;
 
 		 #pragma simd vectorlength(4)
-                    for (j=0; j<sellmat->rowLen[row]; j++) {
-                        xval[sellmat->col[idx]] = xval[sellmat->col[idx]] - scal * (double)mval[idx];
+                    for (j=0; j<mat->rowLen[row]; j++) {
+                        xval[mat->col[idx]] = xval[mat->col[idx]] - scal * (double)mval[idx];
                         idx += CHUNKHEIGHT;
                     }
                 }
@@ -237,25 +236,25 @@ ghost_error ghost_kacz_mc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densema
                     row = rowinchunk + c*CHUNKHEIGHT;
                     //printf("projecting to row ........ %d\n",row);
                     rownorm = 0.;
-                    ghost_lidx idx = sellmat->chunkStart[c]+rowinchunk;
+                    ghost_lidx idx = mat->chunkStart[c]+rowinchunk;
 
                     double scal  = 0;
                     if(bval!=NULL)
                      scal = -bval[row];
                     
- 		    for (j=0; j<sellmat->rowLen[row]; ++j) {
-                        scal += (double)mval[idx] * xval[sellmat->col[idx]];
+ 		    for (j=0; j<mat->rowLen[row]; ++j) {
+                        scal += (double)mval[idx] * xval[mat->col[idx]];
                         rownorm += mval[idx]*mval[idx];
                         idx += CHUNKHEIGHT;
                     }
 
-                    idx -= CHUNKHEIGHT*sellmat->rowLen[row];
+                    idx -= CHUNKHEIGHT*mat->rowLen[row];
                     scal /= (double)rownorm;
                     scal *= omega;
 
                    #pragma simd vectorlength(4)
-                    for (j=0; j<sellmat->rowLen[row]; j++) {
-                        xval[sellmat->col[idx]] = xval[sellmat->col[idx]] -  scal * (double)mval[idx];
+                    for (j=0; j<mat->rowLen[row]; j++) {
+                        xval[mat->col[idx]] = xval[mat->col[idx]] -  scal * (double)mval[idx];
                         idx += CHUNKHEIGHT;
                     }
                 }
@@ -267,25 +266,25 @@ ghost_error ghost_kacz_mc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densema
                     row = rowinchunk + (lchunk+1)*CHUNKHEIGHT;
                     //printf("projecting to row ........ %d\n",row);
                     rownorm = 0.;
-                    ghost_lidx idx = sellmat->chunkStart[lchunk+1]+rowinchunk;
+                    ghost_lidx idx = mat->chunkStart[lchunk+1]+rowinchunk;
 
                     double scal  = 0;
                     if(bval!=NULL)    
                      scal = -bval[row];
                     
- 		    for (j=0; j<sellmat->rowLen[row]; ++j) {
-                        scal += (double)mval[idx] * xval[sellmat->col[idx]];
+ 		    for (j=0; j<mat->rowLen[row]; ++j) {
+                        scal += (double)mval[idx] * xval[mat->col[idx]];
                         rownorm += mval[idx]*mval[idx];
                         idx += CHUNKHEIGHT;
                     }
 
-                    idx -= CHUNKHEIGHT*sellmat->rowLen[row];
+                    idx -= CHUNKHEIGHT*mat->rowLen[row];
                     scal /= (double)rownorm;
                     scal *= omega;
                      
                   #pragma simd vectorlength(4)
-                    for (j=0; j<sellmat->rowLen[row]; j++) {
-                        xval[sellmat->col[idx]] = xval[sellmat->col[idx]] - scal * (double)mval[idx];
+                    for (j=0; j<mat->rowLen[row]; j++) {
+                        xval[mat->col[idx]] = xval[mat->col[idx]] - scal * (double)mval[idx];
                         idx += CHUNKHEIGHT;
                     }
                 }

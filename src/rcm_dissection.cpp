@@ -9,17 +9,17 @@
 
 //returns the virtual column index; ie takes into account the permutation of halo elements also
 #define virtual_col(col_idx)\
-   (mat->context->flags & GHOST_PERM_NO_DISTINCTION && mat->context->perm_local )?( (col_ptr[col_idx]<mat->context->nrowspadded)?col_ptr[col_idx]:mat->context->perm_local->colPerm[col_ptr[col_idx]] ):col_ptr[col_idx]\
+   (mat->context->flags & GHOST_PERM_NO_DISTINCTION && mat->context->col_map->loc_perm)?( (col_ptr[col_idx]<mat->context->col_map->dimpad)?col_ptr[col_idx]:mat->context->col_map->loc_perm[col_ptr[col_idx]] ):col_ptr[col_idx]\
 
 
 ghost_error find_transition_zone(ghost_sparsemat *mat, int n_threads)
 { 
 if(n_threads>1)
 {
-   int nrows    = mat->nrows;
-   int ncols    = mat->maxColRange+1;
+   int nrows    = SPM_NROWS(mat);
+   int ncols    = mat->context->maxColRange+1;
    int n_zones  = 2* n_threads;//odd zone = even zone
-   int total_bw = mat->bandwidth;
+   int total_bw = mat->context->bandwidth;
    double diagonal_slope = static_cast<double>(nrows)/ncols;
    int min_local_height  = static_cast<int>((diagonal_slope*total_bw));// + 1 ;//min. required height by transition zone
    int max_local_height  = static_cast<int>(static_cast<double>(nrows)/n_zones);
@@ -28,8 +28,8 @@ if(n_threads>1)
    int total_odd_rows    = n_threads*height;
    int total_even_rows   = nrows - total_odd_rows;
  
-   mat->zone_ptr         = new ghost_lidx[n_zones+1]; 
-   int* zone_ptr         = mat->zone_ptr; 
+   mat->context->zone_ptr         = new ghost_lidx[n_zones+1]; 
+   int* zone_ptr         = mat->context->zone_ptr; 
  
    bool flag_level = true; //flag for recursive call in current thread does not fit
    bool flag_lb    = true; //flag for load balancing
@@ -62,7 +62,7 @@ if(n_threads>1)
                 
 	} else {
        
-            int nnz = mat->nnz;
+            int nnz = SPM_NNZ(mat);
             int* load;
             load  =  new int[n_zones];
  
@@ -73,7 +73,7 @@ if(n_threads>1)
             for(int i=0; i<n_zones; ++i){
                     int ctr_nnz = 0;
                     for(int row=zone_ptr[i]; row<zone_ptr[i+1]; ++row){
-                        ctr_nnz += mat->sell->rowLen[row];
+                        ctr_nnz += mat->rowLen[row];
                     }
             load[i] = static_cast<int>( static_cast<double>(uniform_nnz)/ctr_nnz * (zone_ptr[i+1] - zone_ptr[i]) );
 
@@ -106,45 +106,45 @@ if(n_threads>1)
   }//flag_level && flag_lb
  if(flag_level)
      {
-        mat->nzones = n_zones;
-        mat->zone_ptr = zone_ptr;  
+        mat->context->nzones = n_zones;
+        mat->context->zone_ptr = zone_ptr;  
      }
       
 }
 else{
-  mat->nzones = 2;
-  mat->zone_ptr = new int[mat->nzones+1];
-  mat->zone_ptr[0] = 0;
-  mat->zone_ptr[1] = static_cast<int>(static_cast<double>(mat->nrows)/mat->nzones);
-  mat->zone_ptr[2] = mat->nrows;
+  mat->context->nzones = 2;
+  mat->context->zone_ptr = new int[mat->context->nzones+1];
+  mat->context->zone_ptr[0] = 0;
+  mat->context->zone_ptr[1] = static_cast<int>(static_cast<double>(SPM_NROWS(mat))/mat->context->nzones);
+  mat->context->zone_ptr[2] = SPM_NROWS(mat);
 }
 
 //make it compatible for bmc kernel, so only one kernel is enough
-  ghost_lidx new_nzones = 2*mat->nzones; //double the zones
+  ghost_lidx new_nzones = 2*mat->context->nzones; //double the zones
   ghost_lidx *new_zone_ptr; // = new ghost_lidx[new_nzones+1];
 
   ghost_malloc((void **)&new_zone_ptr, (new_nzones+1)*sizeof(ghost_lidx));
 //  ghost_malloc((void **)&new_zone_ptr,(new_nzones+1)*sizeof(ghost_lidx)); 
  
-  for(int i=0; i< mat->nzones; i+=2) {
-	new_zone_ptr[2*i] = mat->zone_ptr[i];
-	new_zone_ptr[2*i+1] = mat->zone_ptr[i+1];
-	new_zone_ptr[2*i+2] = mat->zone_ptr[i+1];
- 	new_zone_ptr[2*i+3] = mat->zone_ptr[i+1];
+  for(int i=0; i< mat->context->nzones; i+=2) {
+	new_zone_ptr[2*i] = mat->context->zone_ptr[i];
+	new_zone_ptr[2*i+1] = mat->context->zone_ptr[i+1];
+	new_zone_ptr[2*i+2] = mat->context->zone_ptr[i+1];
+ 	new_zone_ptr[2*i+3] = mat->context->zone_ptr[i+1];
    }
-  new_zone_ptr[new_nzones] = mat->zone_ptr[mat->nzones];
-//  new_zone_ptr[new_nzones+1] = mat->zone_ptr[mat->nzones];
+  new_zone_ptr[new_nzones] = mat->context->zone_ptr[mat->context->nzones];
+//  new_zone_ptr[new_nzones+1] = mat->context->zone_ptr[mat->context->nzones];
  
-  delete[] mat->zone_ptr;
-  mat->zone_ptr = new_zone_ptr;
-  mat->nzones   = new_nzones;
-  mat->kacz_setting.kacz_method = BMC_one_sweep;
+  delete[] mat->context->zone_ptr;
+  mat->context->zone_ptr = new_zone_ptr;
+  mat->context->nzones   = new_nzones;
+  mat->context->kacz_setting.kacz_method = GHOST_KACZ_METHOD_BMC_one_sweep;
 
-  mat->ncolors = 1;//mat->zone_ptr[mat->nzones+1] - mat->zone_ptr[mat->nzones];
-  ghost_malloc((void **)&mat->color_ptr,(mat->ncolors+1)*sizeof(ghost_lidx)); 
+  mat->context->ncolors = 1;//mat->context->zone_ptr[mat->context->nzones+1] - mat->context->zone_ptr[mat->context->nzones];
+  ghost_malloc((void **)&mat->context->color_ptr,(mat->context->ncolors+1)*sizeof(ghost_lidx)); 
   
-  for(int i=0; i<mat->ncolors+1; ++i) {
-	mat->color_ptr[i] = mat->zone_ptr[mat->nzones];
+  for(int i=0; i<mat->context->ncolors+1; ++i) {
+	mat->context->color_ptr[i] = mat->context->zone_ptr[mat->context->nzones];
   }
  
   return GHOST_SUCCESS;
@@ -153,19 +153,19 @@ else{
 //checks whether the partitioning was correct, its just for debugging
 ghost_error checker_rcm(ghost_sparsemat *mat)
 {
-  ghost_lidx *row_ptr = mat->sell->chunkStart;
-  ghost_lidx *col_ptr = mat->sell->col;
+  ghost_lidx *row_ptr = mat->chunkStart;
+  ghost_lidx *col_ptr = mat->col;
 
-  ghost_lidx *upper_col_ptr = new ghost_lidx[mat->nzones];
-  ghost_lidx *lower_col_ptr = new ghost_lidx[mat->nzones];
+  ghost_lidx *upper_col_ptr = new ghost_lidx[mat->context->nzones];
+  ghost_lidx *lower_col_ptr = new ghost_lidx[mat->context->nzones];
 
-  for(int i=0; i<mat->nzones; ++i){
+  for(int i=0; i<mat->context->nzones; ++i){
     upper_col_ptr[i] = 0;
     lower_col_ptr[i] = 0;
   }
 
-  for(int i=0; i<mat->nzones;++i){
-   for(int j=mat->zone_ptr[i]; j<mat->zone_ptr[i+1] ; ++j){
+  for(int i=0; i<mat->context->nzones;++i){
+   for(int j=mat->context->zone_ptr[i]; j<mat->context->zone_ptr[i+1] ; ++j){
        ghost_lidx upper_virtual_col = virtual_col(row_ptr[j+1]-1);
        ghost_lidx lower_virtual_col = virtual_col(row_ptr[j]); 
        upper_col_ptr[i] = std::max(upper_virtual_col , upper_col_ptr[i]);
@@ -173,7 +173,7 @@ ghost_error checker_rcm(ghost_sparsemat *mat)
    }
   }
 
-  for(int i=0; i<mat->nzones-2; ++i){
+  for(int i=0; i<mat->context->nzones-2; ++i){
    if(upper_col_ptr[i] >= lower_col_ptr[i+1] ){
      return  GHOST_ERR_RED_BLACK;
     }
@@ -195,7 +195,7 @@ extern "C" ghost_error ghost_rcm_dissect(ghost_sparsemat *mat){
         n_threads = ghost_omp_nthread();
 	find_transition_zone(mat, n_threads);
  
-        int n_zones = mat->nzones;
+        int n_zones = mat->context->nzones;
 
 	if(mat->traits.C == 1) {
         	INFO_LOG("CHECKING BLOCK COLORING")
@@ -207,7 +207,7 @@ extern "C" ghost_error ghost_rcm_dissect(ghost_sparsemat *mat){
             WARNING_LOG("RED BLACK splitting: Can't use all the threads , Usable threads = %d",n_zones/2);
          }
 
-	mat->kacz_setting.active_threads = int( (double)(n_zones)/4);
+	mat->context->kacz_setting.active_threads = int( (double)(n_zones)/4);
      }    
   }  
 
@@ -233,7 +233,7 @@ extern "C" ghost_error ghost_rcm_dissect(ghost_sparsemat *mat){
     std::vector<int> compressed_transition;
      
     int n_t_zones = n_zones-1;
-    int nrows     =  mat->nrows;
+    int nrows     =  SPM_NROWS(mat);
 
     int* lower_col_ptr = new int[n_t_zones];
     int* upper_col_ptr = new int[n_t_zones];
@@ -243,11 +243,11 @@ extern "C" ghost_error ghost_rcm_dissect(ghost_sparsemat *mat){
         upper_col_ptr[i] = -1;
     }
     
-    ghost_lidx *row_ptr = mat->sell->chunkStart;
-    ghost_lidx *col_ptr = mat->sell->col;
+    ghost_lidx *row_ptr = mat->chunkStart;
+    ghost_lidx *col_ptr = mat->col;
     
     //approximate
-    ghost_lidx local_size = (int) (mat->nrows / n_zones);
+    ghost_lidx local_size = (int) (SPM_NROWS(mat) / n_zones);
     std::cout<<"local_size = "<<local_size<<std::endl;
 
     int *rhs_split;
@@ -338,7 +338,7 @@ ghost_error ghost_rcm_dissect_not_used(ghost_sparsemat *mat, int n_zones){
     std::vector<int> compressed_transition;
     int n_zones_out;
     transition_zone = find_transition_zone_not_used(mat, n_zones);
-    std::cout<<"% of Transition_zone = "<< 100*(static_cast<double> (transition_zone.size())/mat->nrows)<<std::endl;
+    std::cout<<"% of Transition_zone = "<< 100*(static_cast<double> (transition_zone.size())/SPM_NROWS(mat))<<std::endl;
     compressed_transition = compress_vec(transition_zone);
     std::cout<<"Transition_zones are :\n";
     for(int i=0; i!=compressed_transition.size(); ++i)

@@ -38,10 +38,9 @@ GHOST_REGISTER_DT_Z(dt_z)
 GHOST_REGISTER_DT_C(dt_c)
 
 int main(int argc, char **argv) {
-    ghost_context *ctx;
     ghost_sparsemat *A;
     ghost_densemat *y, *x;
-    ghost_complex<double> zero = 0.;
+    std::complex<double> zero = 0.;
 
     vector<ghost_sparsemat_traits> mtraits_vec;
     vector<ghost_densemat_traits> vtraits_vec;
@@ -75,33 +74,35 @@ int main(int argc, char **argv) {
 
     map<ghost_datatype,ghost_sparsemat_src_rowfunc> mat_funcs_diag;
     ghost_sparsemat_src_rowfunc matsrc = GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER;
-    matsrc.maxrowlen = N;
+    matsrc.maxrowlen = 1;
+    matsrc.gnrows = N;
+    matsrc.gncols = N;
     matsrc.func = diag<double>;
     mat_funcs_diag[(ghost_datatype)(GHOST_DT_REAL|GHOST_DT_DOUBLE)] = matsrc;
     matsrc.func = diag<float>;
     mat_funcs_diag[(ghost_datatype)(GHOST_DT_REAL|GHOST_DT_FLOAT)] = matsrc;
-    matsrc.func = diag<ghost_complex<double>>;
+    matsrc.func = diag<std::complex<double>>;
     mat_funcs_diag[(ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE)] = matsrc;
-    matsrc.func = diag<ghost_complex<float>>;
+    matsrc.func = diag<std::complex<float>>;
     mat_funcs_diag[(ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_FLOAT)] = matsrc;
     
     map<pair<ghost_datatype,ghost_datatype>,ref_func_t> ref_funcs_diag;
     ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_d,dt_d)] = diag_ref<double,double>;
-    ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_d,dt_s)] = diag_ref<double,float>;
-    ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_d,dt_z)] = diag_ref<double,ghost_complex<double>>;
-    ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_d,dt_c)] = diag_ref<double,ghost_complex<float>>;
-    ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_s,dt_d)] = diag_ref<float,double>;
+    //ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_d,dt_s)] = diag_ref<double,float>;
+    //ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_d,dt_z)] = diag_ref<double,std::complex<double>>;
+    //ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_d,dt_c)] = diag_ref<double,std::complex<float>>;
+    //ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_s,dt_d)] = diag_ref<float,double>;
     ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_s,dt_s)] = diag_ref<float,float>;
-    ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_s,dt_z)] = diag_ref<float,ghost_complex<double>>;
-    ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_s,dt_c)] = diag_ref<float,ghost_complex<float>>;
-    ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_z,dt_d)] = diag_ref<ghost_complex<double>,double>;
-    ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_z,dt_s)] = diag_ref<ghost_complex<double>,float>;
-    ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_z,dt_z)] = diag_ref<ghost_complex<double>,ghost_complex<double>>;
-    ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_z,dt_c)] = diag_ref<ghost_complex<double>,ghost_complex<float>>;
-    ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_c,dt_d)] = diag_ref<ghost_complex<float>,double>;
-    ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_c,dt_s)] = diag_ref<ghost_complex<float>,float>;
-    ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_c,dt_z)] = diag_ref<ghost_complex<float>,ghost_complex<double>>;
-    ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_c,dt_c)] = diag_ref<ghost_complex<float>,ghost_complex<float>>;
+    //ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_s,dt_z)] = diag_ref<float,std::complex<double>>;
+    //ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_s,dt_c)] = diag_ref<float,std::complex<float>>;
+    //ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_z,dt_d)] = diag_ref<std::complex<double>,double>;
+    //ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_z,dt_s)] = diag_ref<std::complex<double>,float>;
+    ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_z,dt_z)] = diag_ref<std::complex<double>,std::complex<double>>;
+    //ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_z,dt_c)] = diag_ref<std::complex<double>,std::complex<float>>;
+    //ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_c,dt_d)] = diag_ref<std::complex<float>,double>;
+    //ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_c,dt_s)] = diag_ref<std::complex<float>,float>;
+    //ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_c,dt_z)] = diag_ref<std::complex<float>,std::complex<double>>;
+    ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_c,dt_c)] = diag_ref<std::complex<float>,std::complex<float>>;
 
     GHOST_TEST_CALL(ghost_init(argc,argv));
     
@@ -109,17 +110,18 @@ int main(int argc, char **argv) {
     for (vector<ghost_sparsemat_traits>::iterator mtraits_it = mtraits_vec.begin(); mtraits_it != mtraits_vec.end(); ++mtraits_it) {
         
         // create sparsemat with traits and set according source function
-        GHOST_TEST_CALL(ghost_context_create(&ctx,N,N,GHOST_CONTEXT_DEFAULT,&matsrc,GHOST_SPARSEMAT_SRC_FUNC,MPI_COMM_WORLD,1.));
-        GHOST_TEST_CALL(ghost_sparsemat_create(&A, ctx, &(*mtraits_it), 1));
-        GHOST_TEST_CALL(A->fromRowFunc(A,&mat_funcs_diag[mtraits_it->datatype]));
+        GHOST_TEST_CALL(ghost_sparsemat_create(&A, NULL, &(*mtraits_it), 1));
+        GHOST_TEST_CALL(ghost_sparsemat_init_rowfunc(A,&mat_funcs_diag[mtraits_it->datatype],MPI_COMM_WORLD,1.));
 
         for (vector<ghost_densemat_traits>::iterator vtraits_it = vtraits_vec.begin(); vtraits_it != vtraits_vec.end(); ++vtraits_it) {
-            GHOST_TEST_CALL(ghost_densemat_create(&x, ctx, *vtraits_it));
-            GHOST_TEST_CALL(ghost_densemat_create(&y, ctx, *vtraits_it));
-            GHOST_TEST_CALL(x->fromRand(x));
-            GHOST_TEST_CALL(y->fromScalar(y,&zero));
+            if (!ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(vtraits_it->datatype,mtraits_it->datatype)]) continue;
+
+            GHOST_TEST_CALL(ghost_densemat_create(&x, A->context->col_map, *vtraits_it));
+            GHOST_TEST_CALL(ghost_densemat_create(&y, A->context->row_map, *vtraits_it));
+            GHOST_TEST_CALL(ghost_densemat_init_rand(x));
+            GHOST_TEST_CALL(ghost_densemat_init_val(y,&zero));
           
-            printf("Test SpMV with %s matrix (%s) and %s vectors (%s)\n",ghost_datatype_string(A->traits.datatype),A->formatName(A),ghost_datatype_string(x->traits.datatype),ghost_densemat_storage_string(x->traits.storage));
+            printf("Test SpMV with %s matrix (SELL-%d-%d) and %s vectors (%s)\n",ghost_datatype_string(A->traits.datatype),A->traits.C,A->traits.sortScope,ghost_datatype_string(x->traits.datatype),ghost_densemat_storage_string(x->traits.storage));
             GHOST_TEST_CALL(ghost_spmv(y,A,x,GHOST_SPMV_OPTS_INITIALIZER));
 
             size_t vecdtsize;
@@ -131,17 +133,17 @@ int main(int argc, char **argv) {
             GHOST_TEST_CALL(ghost_type_get(&ghost_type));
             if (ghost_type == GHOST_TYPE_CUDA)
             {
-               GHOST_TEST_CALL(x->download(x));
-               GHOST_TEST_CALL(y->download(y));
+               GHOST_TEST_CALL(ghost_densemat_download(x));
+               GHOST_TEST_CALL(ghost_densemat_download(y));
             }
 #endif
 
 
             ghost_lidx i;
 
-            for (i=0; i<y->traits.nrows; i++) {
-                GHOST_TEST_CALL(y->entry(y,&yent,i,0));
-                GHOST_TEST_CALL(x->entry(x,&xent,i,0));
+            for (i=0; i<DM_NROWS(y); i++) {
+                GHOST_TEST_CALL(ghost_densemat_entry(&yent,y,i,0));
+                GHOST_TEST_CALL(ghost_densemat_entry(&xent,x,i,0));
                 ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(vtraits_it->datatype,mtraits_it->datatype)](yent_ref,i,xent);
                 RETURN_IF_DIFFER((void *)yent,(void *)yent_ref,1,vtraits_it->datatype);
             }
@@ -151,8 +153,6 @@ int main(int argc, char **argv) {
         }
             
         ghost_sparsemat_destroy(A);
-        ghost_context_destroy(ctx);
-        ctx = NULL;
 
     }
 

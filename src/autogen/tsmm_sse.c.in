@@ -1,0 +1,98 @@
+/*!GHOST_AUTOGEN_TSMM K,N */
+#include "ghost/config.h"
+#include "ghost/types.h"
+#include "ghost/math.h"
+#include "ghost/instr.h"
+#include "ghost/util.h"
+#include "ghost/tsmm_sse_gen.h"
+
+#ifndef __FUJITSU
+#include <immintrin.h>
+#endif
+
+#include <math.h>
+#include <float.h>
+#include <stdlib.h>
+
+#GHOST_SUBST INCOLS ${K}
+#GHOST_SUBST OUTCOLS ${N}
+
+ghost_error ghost_tsmm__a_sse_d_OUTCOLS_INCOLS_1_2_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
+{
+#ifdef GHOST_BUILD_SSE
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
+    ghost_error ret = GHOST_SUCCESS;
+
+    ghost_lidx k = w->traits.ncols;
+    ghost_lidx m = v->traits.ncols;
+    ghost_lidx n = DM_NROWS(v);
+
+    INFO_LOG("In SSE TSMM with two fixed block sizes [OUTCOLS][INCOLS] %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
+
+    const double * const restrict vval = (const double *) v->val;
+    const double * const restrict wval = (const double *) w->val;
+    double * const restrict xval = (double *) x->val;
+
+    const ghost_lidx ldv = v->stride;
+    const ghost_lidx ldw = w->stride;
+    const ghost_lidx ldx = x->stride;
+
+    double dalpha = *(double *)alpha;
+    double dbeta = *(double *)beta;
+    __m128d betavec, alphavec;
+   
+    betavec = _mm_set1_pd(dbeta);
+    alphavec = _mm_set1_pd(dalpha);
+    ghost_lidx i,j,s;
+
+    double * restrict wtran = NULL;
+    ghost_lidx ncols_wtran = PAD(w->traits.ncols,2);
+    ghost_malloc_align((void **)&wtran,sizeof(double)*DM_NROWS(w)*ncols_wtran,32);
+    memset(wtran,0,sizeof(double)*DM_NROWS(w)*ncols_wtran);
+    for (s=0; s<w->traits.ncols; s++) {
+        for (j=0; j<DM_NROWS(w); j++) {
+            wtran[j*ncols_wtran+s] = wval[s*ldw+j];
+        }
+    }
+
+    __m128d tmp;
+    if (fabs(dalpha-1.) > DBL_MIN || fabs(dbeta) > DBL_MIN) { // general case: X = b*X + a*V*W
+#pragma omp parallel for private(j,s,tmp) schedule(runtime)
+        for (i=0; i<n; i++) {
+            for (s=0; s+2<=OUTCOLS; s+=2) {
+                tmp = _mm_mul_pd(betavec,_mm_load_pd(&xval[i*ldx+s]));
+                for (j=0; j<INCOLS; j++) {
+                    tmp = _mm_add_pd(tmp,_mm_mul_pd(alphavec,_mm_mul_pd(
+                                    _mm_set1_pd(vval[i*ldv+j]),_mm_load_pd(&wtran[j*ncols_wtran+s]))));
+                }
+                _mm_store_pd(&xval[i*ldx+s],tmp);
+            }
+        }
+    } else { // common case: X = V*W
+        INFO_LOG("Fast case: alpha=1 and beta=0");
+#pragma omp parallel for private(j,s,tmp) schedule(runtime)
+        for (i=0; i<n; i++) {
+            for (s=0; s+2<=OUTCOLS; s+=2) {
+                tmp = _mm_setzero_pd();
+                for (j=0; j<INCOLS; j++) {
+                    tmp = _mm_add_pd(tmp,_mm_mul_pd(
+                                    _mm_set1_pd(vval[i*ldv+j]),_mm_load_pd(&wtran[j*ncols_wtran+s])));
+                }
+                _mm_stream_pd(&xval[i*ldx+s],tmp);
+            }
+        }
+    }
+
+    free(wtran);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
+    return ret;
+#else
+    UNUSED(x);
+    UNUSED(v);
+    UNUSED(w);
+    UNUSED(alpha);
+    UNUSED(beta);
+    ERROR_LOG("SSE not available!");
+    return GHOST_ERR_UNKNOWN;
+#endif
+}

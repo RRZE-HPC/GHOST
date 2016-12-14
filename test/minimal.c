@@ -14,7 +14,6 @@ static int diag(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *col, void *val, 
 
 int main(int argc, char **argv) 
 {
-    ghost_context *ctx;
     ghost_sparsemat *A;
     ghost_densemat *y, *x;
     double zero = 0.;
@@ -30,17 +29,19 @@ int main(int argc, char **argv)
     ghost_sparsemat_src_rowfunc matsrc = GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER;
     matsrc.func = diag;
     matsrc.maxrowlen = 1;
+    matsrc.gnrows = N;
+    matsrc.gncols = N;
 
     // create context
-    ghost_context_create(&ctx,N,N,GHOST_CONTEXT_DEFAULT,&matsrc,GHOST_SPARSEMAT_SRC_FUNC,MPI_COMM_WORLD,1.);
+    //ghost_context_create(&ctx,N,N,GHOST_CONTEXT_DEFAULT,&matsrc,GHOST_SPARSEMAT_SRC_FUNC,MPI_COMM_WORLD,1.);
    
     // create sparse matrix A from row-wise function    
-    ghost_sparsemat_create(&A, ctx, &mtraits, 1);
-    ghost_sparsemat_init_rowfunc(A,&matsrc);
+    ghost_sparsemat_create(&A, NULL, &mtraits, 1);
+    ghost_sparsemat_init_rowfunc(A,&matsrc,MPI_COMM_WORLD,1.);
 
     // create and initialize input vector x and output vector y
-    ghost_densemat_create(&x, ctx, vtraits);
-    ghost_densemat_create(&y, ctx, vtraits);
+    ghost_densemat_create(&x, A->context->col_map, vtraits);
+    ghost_densemat_create(&y, A->context->row_map, vtraits);
     ghost_densemat_init_rand(x);      // x = random
     ghost_densemat_init_val(y,&zero); // y = 0
 
@@ -60,7 +61,6 @@ int main(int argc, char **argv)
     ghost_sparsemat_destroy(A);
     ghost_densemat_destroy(x);
     ghost_densemat_destroy(y);
-    ghost_context_destroy(ctx);
 
     ghost_finalize();
 

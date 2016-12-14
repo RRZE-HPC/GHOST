@@ -234,3 +234,13 @@ const char * ghost_implementation_string(ghost_implementation implementation)
             return "unknown";
     }
 }
+    
+int ghost_idx_of_location(ghost_location l)
+{
+    if (l == GHOST_LOCATION_HOST) {
+        return GHOST_HOST_IDX;
+    } else {
+        return GHOST_DEVICE_IDX;
+    }
+}
+

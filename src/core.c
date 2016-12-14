@@ -560,7 +560,6 @@ ghost_error ghost_init(int argc, char **argv)
         } 
     hwloc_bitmap_foreach_end();
 
-    ghost_taskq_create();
     ghost_pumap_create(mycpuset);
 
     ghost_rand_create();
@@ -568,11 +567,16 @@ ghost_error ghost_init(int argc, char **argv)
 #ifdef GHOST_INSTR_LIKWID
     likwid_markerInit();
 
-    ghost_task *t;
-    ghost_task_create(&t,GHOST_TASK_FILL_ALL,0,&likwidThreadInitTask,NULL,GHOST_TASK_DEFAULT, NULL, 0);
-    ghost_task_enqueue(t);
-    ghost_task_wait(t);
-    ghost_task_destroy(t);
+    if (ghost_tasking_enabled()) {
+        ghost_task *t;
+        ghost_task_create(&t,GHOST_TASK_FILL_ALL,0,&likwidThreadInitTask,NULL,GHOST_TASK_DEFAULT, NULL, 0);
+        ghost_task_enqueue(t);
+        ghost_task_wait(t);
+        ghost_task_destroy(t);
+    } else {
+#pragma omp parallel
+        likwid_markerThreadInit();
+    }
 #endif
    
 
@@ -622,7 +626,8 @@ ghost_error ghost_finalize()
     ghost_topology_destroy();
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TEARDOWN);
-    
+
+    ghost_timing_destroy();    
     ghost_instr_destroy();
 #ifdef GHOST_HAVE_MPI
     if (!MPIwasInitialized) {
@@ -672,8 +677,6 @@ ghost_error ghost_string(char **str)
 #else
     ghost_line_string(str,"CUDA support",NULL,"Disabled");
 #endif
-    ghost_line_string(str,"Configured SELL chunk heights",NULL,"%s",GHOST_GEN_SELL_C);
-    ghost_line_string(str,"Configured blockvector widths",NULL,"%s",GHOST_GEN_DENSEMAT_DIM);
 #ifdef GHOST_INSTR_LIKWID
 #ifdef GHOST_INSTR_TIMING
     ghost_line_string(str,"Instrumentation",NULL,"Likwid+Timing");

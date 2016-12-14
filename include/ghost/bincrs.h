@@ -41,16 +41,7 @@
 #define GHOST_BINCRS_DT_REAL    GHOST_DT_REAL
 #define GHOST_BINCRS_DT_COMPLEX GHOST_DT_COMPLEX
 
-#define GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_INIT -1
-#define GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_FINALIZE -2
-#define GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_GETRPT -3
 #define GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_GETDIM -4
-
-typedef struct 
-{
-    char *filename;
-    ghost_datatype dt;
-} ghost_sparsemat_rowfunc_bincrs_initargs;
 
 /**
  * @brief The header of a sparse matrix file.

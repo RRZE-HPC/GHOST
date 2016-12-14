@@ -9,87 +9,25 @@
 #include "config.h"
 #include "types.h"
 #include "error.h"
+#include "map.h"
 
 typedef struct ghost_context ghost_context;
 
+/**
+ * @brief Possible permutation directions.
+ */
 typedef enum
 {
+    /**
+     * @brief Permute from original to permuted space.
+     */
     GHOST_PERMUTATION_ORIG2PERM,
+    /**
+     * @brief Permute from permuted to original space.
+     */
     GHOST_PERMUTATION_PERM2ORIG
 }
 ghost_permutation_direction;
-
-typedef enum
-{
-    GHOST_PERMUTATION_SYMMETRIC,
-    GHOST_PERMUTATION_UNSYMMETRIC
-}
-ghost_permutation_method;
-
-/*typedef enum
-{
-    GHOST_PERM_NO_DISTINCTION=1, 
-}
-ghost_permutation_flags;
-  
-#ifdef __cplusplus
-inline ghost_permutation_flags operator|(const ghost_permutation_flags &a,
-        const ghost_permutation_flags &b)
-{
-    return static_cast<ghost_permutation_flags>(
-            static_cast<int>(a) | static_cast<int>(b));
-}
-
-inline ghost_permutation_flags operator&(const ghost_permutation_flags &a,
-        const ghost_permutation_flags &b)
-{
-    return static_cast<ghost_permutation_flags>(
-            static_cast<int>(a) & static_cast<int>(b));
-}
-#endif
-*/
-
-
- 
-typedef struct
-{
-    /**
-     * @brief Gets an original index and returns the corresponding permuted position.
-     *
-     * NULL if no permutation applied to the matrix.
-     */
-    ghost_gidx *perm;
-    /**
-     * @brief Gets an index in the permuted system and returns the original index.
-     *
-     * NULL if no permutation applied to the matrix.
-     */
-    ghost_gidx *invPerm;
-    /**
-     * @brief Gets an original index and returns the corresponding permuted position of columns.
-     *
-     * NULL if no permutation applied to the matrix, or if the perm=colPerm.
-     */
-    ghost_gidx *colPerm;
-    /**
-     * @brief Gets an index in the permuted system and returns the original index of columns.
-     *
-     * NULL if no permutation applied to the matrix, or if the invPerm=invColPerm.
-     */
-    ghost_gidx *colInvPerm;
-    /**
-    * @brief A flag to indicate whether symmetric or unsymmetric permutation is carried out
-    * 	     (internal) Its necessary for destruction of permutations, since we need to know whether 
-    * 	     both perm and colPerm point to same array. 
-    *
-    * GHOST_PERMUTATION_SYMMETRIC - if symmetric (both point to same array)
-    * GHOST_PERMUTATION_UNSYMMETRIC - if unsymmetric (points to different array) 
-    */
-    ghost_permutation_method method;   
-
-    ghost_gidx *cu_perm;
-}
-ghost_permutation;
 
 /**
  * @brief This struct holds all possible flags for a context.
@@ -104,10 +42,6 @@ typedef enum {
      * @brief Distribute work among the ranks by number of rows.
      */
     GHOST_CONTEXT_DIST_ROWS = 8,
-    /**
-    * @brief Does not make a distinction between local and remote entries if set; this might lead to higher communication time
-    */
-    GHOST_PERM_NO_DISTINCTION=16,
 
 } ghost_context_flags_t;
 
@@ -126,6 +60,46 @@ inline ghost_context_flags_t operator&(const ghost_context_flags_t &a,
             static_cast<int>(a) & static_cast<int>(b));
 }
 #endif
+
+
+/**
+ * @brief internal to differentiate between different KACZ sweep methods
+ */
+typedef enum{
+      /**
+       * @brief Multicolored 
+       */
+      GHOST_KACZ_METHOD_MC,
+      /**
+       * @brief Block Multicolored with RCM ( condition : nrows/(2*(total_bw+1)) > threads)
+       */
+      GHOST_KACZ_METHOD_BMC_RB,
+      /**
+       * @brief Block Multicolored with RCM ( condition : nrows/(total_bw+1) > threads, and transition does not overlap)
+       */
+      GHOST_KACZ_METHOD_BMC_one_sweep,
+      /**
+       * @brief Block Multicolored with RCM ( condition : nrows/(total_bw+1) > threads, and transition can overlap)
+       */
+      GHOST_KACZ_METHOD_BMC_two_sweep,
+      GHOST_KACZ_METHOD_BMC,
+      GHOST_KACZ_METHOD_BMCshift,
+      /**
+       * @brief For system normalized at start
+       */
+      GHOST_KACZ_METHOD_BMCNORMAL
+}
+ghost_kacz_method;
+
+//TODO zone ptr can be moved here 
+typedef struct {
+      
+      ghost_kacz_method kacz_method;
+      ghost_lidx active_threads;
+}
+ghost_kacz_setting;
+    
+
 /**
  * @brief The GHOST context.
  *
@@ -134,25 +108,13 @@ inline ghost_context_flags_t operator&(const ghost_context_flags_t &a,
 struct ghost_context
 {
     /**
-     * @brief Row pointers
-     * 
-     * if the context is distributed by nnz, the row pointers are being read
-     * at context creation in order to create the distribution. once the matrix
-     * is being created, the row pointers are distributed
-     */
-    ghost_gidx *rpt;
-    /**
      * @brief The global number of non-zeros
      */
     ghost_gidx gnnz;
     /**
-     * @brief The global number of rows
+     * @brief Local number of non-zeros.
      */
-    ghost_gidx gnrows;
-    /**
-     * @brief The global number of columns.
-     */
-    ghost_gidx gncols;
+    ghost_lidx nnz;
     /**
      * @brief The context's property flags.
      */
@@ -177,65 +139,56 @@ struct ghost_context
      */
     ghost_mpi_comm mpicomm_parent;
     /**
-     * @brief The matrix' global permutation.
+     * @brief The row map of this context
      */
-    ghost_permutation *perm_global;
+    ghost_map *row_map;
     /**
-     * @brief The matrix' local permutation.
+     * @brief The column map of this context
      */
-    ghost_permutation *perm_local;
-    /**
-     * @brief Number of remote elements with unique colidx
-     */
-    ghost_lidx halo_elements; // TODO rename nHaloElements
-    /**
-     * @brief Number of matrix elements for each rank
-     */
-    ghost_lidx* lnEnts; // TODO rename nLclEnts
-    /**
-     * @brief Index of first element into the global matrix for each rank
-     */
-    ghost_gidx* lfEnt; // TODO rename firstLclEnt
-    /**
-     * @brief Number of matrix rows for each rank
-     */
-    ghost_lidx* lnrows; // TODO rename nLclRows
-    /**
-     * @brief Index of first matrix row for each rank
-     */
-    ghost_gidx* lfRow; // TODO rename firstLclRow
-    /**
-     * @brief Number of densemat rows (or sparsemat columns) with padding 
-     * Required if GHOST_PERM_NO_DISTINCTION is set
-     */
-    ghost_lidx nrowspadded;
+    ghost_map *col_map;
      /**
      * @brief Number of wishes (= unique RHS elements to get) from each rank
      */
-    ghost_lidx * wishes; // TODO rename nWishes
+    ghost_lidx * wishes; 
     /**
      * @brief Column idx of wishes from each rank
      */
-    ghost_lidx ** wishlist; // TODO rename wishes
+    ghost_lidx ** wishlist; 
     /**
      * @brief Number of dues (= unique RHS elements from myself) to each rank
      */
-    ghost_lidx * dues; // TODO rename nDues
+    ghost_lidx * dues; 
     /**
      * @brief Column indices of dues to each rank
      */
-    ghost_lidx ** duelist; // TODO rename dues
+    ghost_lidx ** duelist;
     /**
      * @brief Column indices of dues to each rank (CUDA)
      */
-    ghost_lidx ** cu_duelist; // TODO rename dues
+    ghost_lidx ** cu_duelist;
     /**
      * @brief First index to get RHS elements coming from each rank
      */
-    ghost_lidx* hput_pos; // TODO rename
+    ghost_lidx* hput_pos; 
+    /**
+     * @brief The list of ranks to which this rank has to send RHS vector elements in SpMV communcations.
+     *
+     * Length: ghost_context::nduepartners
+     */
     int *duepartners;
+    /**
+     * @brief The number of ranks to which this rank has to send RHS vector elements in SpMV communication
+     */
     int nduepartners;
+    /**
+     * @brief The list of ranks from which this rank has to receive RHS vector elements in SpMV communcations.
+     *
+     * Length: ghost_context::nwishpartners
+     */
     int *wishpartners;
+    /**
+     * @brief The number of ranks from which this rank has to receive RHS vector elements in SpMV communication
+     */
     int nwishpartners;
     /**
      * @brief Number of matrix entries in each local column.
@@ -270,31 +223,59 @@ struct ghost_context
     *         (eg: used in densemat averaging)
     */ 
     int *nrankspresent;
+
+    /**
+     * @brief The number of matrices in this context.
+     *
+     * This is used to destroy the context once the last matrix in this context gets destroyed.
+     */
+    int nmats;
+    /**
+     * @brief The bandwidth of the lower triangular part of the matrix.
+     */
+    ghost_gidx lowerBandwidth;
+    /**
+     * @brief The bandwidth of the upper triangular part of the matrix.
+     */
+    ghost_gidx upperBandwidth;
+    /**
+     * @brief The bandwidth of the matrix.
+     */
+    ghost_gidx bandwidth;
+    /**
+     * @brief The maximum column index in the matrix
+     * (Required for example if we permute the (local + remote) part of matrix
+     */
+    ghost_gidx maxColRange; 
+    /**
+     * @brief The number of colors from distance-2 coloring.
+     */
+    ghost_lidx ncolors;
+    /**
+     * @brief The number of rows with each color (length: ncolors+1).
+     */
+    ghost_lidx *color_ptr;
+     /**
+     * @brief The number of total zones (odd+even)
+     **/
+    ghost_lidx nzones;
+    /**
+    * @brief Pointer to odd-even (Red-Black coloring) zones of a matrix (length: nzones+1)  
+    * Ordering [even_begin_1 odd_begin_1 even_begin_2 odd_begin_2 ..... nrows]
+    **/
+    ghost_lidx *zone_ptr;
+    /**
+    * @brief details regarding kacz is stored here
+    */ 
+    ghost_kacz_setting kacz_setting;
+    /**
+     * @brief Store the ratio between nrows and bandwidth
+     */ 	
+    double kaczRatio;
  
 };
 
-
-/**
- * @brief Possible sources of a sparse matrix. 
- */
-typedef enum {
-    /**
-     * @brief The matrix comes from a binary CRS file.
-     */
-    GHOST_SPARSEMAT_SRC_FILE,
-    /**
-     * @brief The matrix comes from a Matrix Market file.
-     */
-    GHOST_SPARSEMAT_SRC_MM,
-    /**
-     * @brief The matrix is generated by a function.
-     */
-    GHOST_SPARSEMAT_SRC_FUNC,
-    /**
-     * @brief Empty source.
-     */
-    GHOST_SPARSEMAT_SRC_NONE
-} ghost_sparsemat_src;
+extern const ghost_context GHOST_CONTEXT_INITIALIZER;
 
 
 #ifdef __cplusplus
@@ -329,7 +310,7 @@ extern "C" {
      * Thus, A would be assigned 6 million matrix rows and B 2 million.
      * 
      */
-    ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, ghost_gidx gncols, ghost_context_flags_t flags, void *matrixSource, ghost_sparsemat_src srcType, ghost_mpi_comm comm, double weight); 
+    ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, ghost_gidx gncols, ghost_context_flags_t flags, ghost_mpi_comm comm, double weight); 
     
     /**
      * @ingroup stringification
@@ -365,8 +346,43 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-ghost_error ghost_global_perm_inv(ghost_gidx *toPerm, ghost_gidx *fromPerm, ghost_context *context);
-    int ghost_rank_of_row(ghost_context *ctx, ghost_gidx row);
+    ghost_error ghost_global_perm_inv(ghost_gidx *toPerm, ghost_gidx *fromPerm, ghost_context *context);
+    /**
+     * @brief Get the context's map with the given map type.
+     *
+     * @param ctx The context.
+     * @param mt The map type.
+     *
+     * @return The map corresponding to the map type.
+     */
+    ghost_map *ghost_context_map(const ghost_context *ctx, const ghost_maptype mt);
+    /**
+     * @brief Get the context's map which does not have the given map type.
+     *
+     * @param ctx The context.
+     * @param mt The map type.
+     *
+     * @return The map not corresponding to the map type.
+     */
+    ghost_map *ghost_context_other_map(const ghost_context *ctx, const ghost_maptype mt);
+    /**
+     * @brief Get the largest map of the context.
+     *
+     * @param ctx The context.
+     *
+     * @return The map with the larger local dimension.
+     */
+    ghost_map *ghost_context_max_map(const ghost_context *ctx);
+    /**
+     * @brief Set a context's map.
+     *
+     * @param ctx The context.
+     * @param which The map type to be set.
+     * @param map The map.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error ghost_context_set_map(ghost_context *ctx, ghost_maptype which, ghost_map *map);
 
 #ifdef __cplusplus
 } //extern "C"

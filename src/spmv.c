@@ -4,6 +4,7 @@
 #include "ghost/instr.h"
 #include "ghost/util.h"
 #include "ghost/spmv_solvers.h"
+#include "ghost/compatibility_check.h"
 
 #define GHOST_MAX_SPMMV_WIDTH INT_MAX
 
@@ -18,12 +19,12 @@ ghost_error ghost_spmv(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat
     } else if (traits.flags & GHOST_SPMV_MODE_TASK) {
         solver = &ghost_spmv_taskmode; 
     } else if (traits.flags & GHOST_SPMV_MODE_NOCOMM) {
-        solver = &ghost_spmv_nompi; 
+        solver = &ghost_spmv_nocomm; 
     } else {
 #ifdef GHOST_HAVE_MPI
         solver = &ghost_spmv_vectormode;
 #else
-        solver = &ghost_spmv_nompi; 
+        solver = &ghost_spmv_nocomm; 
 #endif
     }
 
@@ -31,6 +32,17 @@ ghost_error ghost_spmv(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat
         ERROR_LOG("The SpMV solver as specified in options cannot be found.");
         return GHOST_ERR_INVALID_ARG;
     }
+    
+    //////////////// check compatibility /////////////
+    ghost_compatible_mat_vec check = GHOST_COMPATIBLE_MAT_VEC_INITIALIZER;
+    check.mat = mat;
+    check.right1 = invec;
+    check.left1 = res;
+    
+    GHOST_CALL_RETURN(ghost_check_mat_vec_compatibility(&check,mat->context));
+    ///////////////////////////////////////////////////
+ 
+
 
     // TODO only if densemats are compact!
     while (remcols > GHOST_MAX_SPMMV_WIDTH) {
@@ -115,3 +127,21 @@ ghost_error ghost_spmv(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat
 }
 
 
+ghost_error ghost_spmv_nocomm(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat *invec, ghost_spmv_opts traits)
+{
+    ghost_type ghost_type;
+    GHOST_CALL_RETURN(ghost_type_get(&ghost_type));
+
+    #ifdef GHOST_HAVE_CUDA
+    if ((ghost_type == GHOST_TYPE_CUDA) && mat->traits.flags & GHOST_SPARSEMAT_DEVICE) {
+        if (mat->traits.C == 1 && !(traits.flags & (GHOST_SPMV_SHIFT|GHOST_SPMV_VSHIFT)) && !(traits.flags & GHOST_SPMV_CHAIN_AXPBY)) {
+            return ghost_cu_sell1_spmv_selector(res,mat,invec,traits); // use a function which calls CUSPARSE as they can do better for CRS matrices
+        } else {
+            return ghost_cu_sell_spmv_selector(res,mat,invec,traits);
+        }
+    }
+    #endif
+
+    return ghost_sell_spmv_selector(res,mat,invec,traits);
+
+}

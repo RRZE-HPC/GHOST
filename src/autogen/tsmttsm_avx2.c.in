@@ -1,0 +1,351 @@
+/*!GHOST_AUTOGEN_TSMTTSM M,N */
+#include "ghost/config.h"
+#include "ghost/types.h"
+#include "ghost/math.h"
+#include "ghost/instr.h"
+#include "ghost/util.h"
+#include "ghost/tsmttsm_avx2_gen.h"
+
+#ifndef __FUJITSU
+#include <immintrin.h>
+#endif
+
+#include <math.h>
+#include <float.h>
+#include "iaca/iacaMarks.h"
+
+#GHOST_SUBST CFGK ${N}
+#GHOST_SUBST CFGM ${M}
+
+#define complex_mul(a,b) _mm256_fmaddsub_pd(_mm256_shuffle_pd(b,b,0),a,_mm256_mul_pd(_mm256_shuffle_pd(b,b,0xF),_mm256_shuffle_pd(a,a,5)))
+#define complex_mul_conj1(b,a) _mm256_fmaddsub_pd(_mm256_shuffle_pd(b,b,0),a,_mm256_mul_pd(_mm256_mul_pd(_mm256_shuffle_pd(b,b,0xF),_mm256_set1_pd(-1.)),_mm256_shuffle_pd(a,a,5)))
+
+ghost_error ghost_tsmttsm__a_avx2_d_CFGK_CFGM_2_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conmv)
+{
+    UNUSED(conmv);
+#ifdef GHOST_BUILD_AVX2
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
+    ghost_error ret = GHOST_SUCCESS;
+
+    ghost_lidx n = DM_NROWS(v);
+    INFO_LOG("In AVX2 TSMTTSM with two fixed block sizes [CFGK][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
+
+    if (n%2) {
+        n+=1;
+        INFO_LOG("Padding large dimension to %d\n",n);
+    }
+    
+    const double * const restrict vval = (const double *) v->val;
+    const double * const restrict wval = (const double *) w->val;
+    double * const restrict xval = (double *) x->val;
+
+    const ghost_lidx ldv = v->stride;
+    const ghost_lidx ldw = w->stride;
+    const ghost_lidx ldx = x->stride;
+
+    __m256d betavec, alphavec;
+   
+    betavec = _mm256_broadcast_sd(beta);
+    alphavec = _mm256_broadcast_sd(alpha);
+    
+    double dalpha = *(double *)alpha;
+    double dbeta = *(double *)beta;
+    
+    ghost_lidx i,m;
+
+    ghost_lidx k;
+    for (k=0; k<CFGK; k++) {
+        for (m=0; m+4<=CFGM; m+=4) {
+            _mm256_store_pd(&xval[k*ldx+m],_mm256_mul_pd(_mm256_load_pd(&xval[k*ldx+m]),betavec));
+        }
+        for (; m<CFGM; m++) {
+            xval[k*ldx+m] = dbeta*xval[k*ldx+m];
+        }
+    }
+#pragma omp parallel private(m,k)
+    {
+        m=0;
+        #GHOST_UNROLL#__m256d wvec@;#2
+        __m256d vvec0, vvec1;
+
+        double * restrict x_priv;
+        ghost_lidx ldxpriv = PAD(CFGM,4);
+        ghost_malloc_align((void **)&x_priv,ldxpriv*CFGK*sizeof(double),32);
+        memset(x_priv,0,ldxpriv*CFGK*sizeof(double));
+
+        if (fabs(dalpha-1.) > DBL_MIN) { 
+
+#pragma omp for schedule(runtime)
+            for (i=0; i<=n-2; i+=2) {
+
+                for (k=0; k<CFGK; k++) {
+                    wvec0 = _mm256_mul_pd(_mm256_set1_pd(wval[(i+0)*ldw+k]),alphavec);
+                    wvec1 = _mm256_mul_pd(_mm256_set1_pd(wval[(i+1)*ldw+k]),alphavec);
+#if CFGM>50
+#pragma unroll(MAX(1,CFGM/4))
+#endif
+                    for (m=0; m<=CFGM-4; m+=4) {
+                        vvec0 = _mm256_load_pd(&vval[(i+0)*ldv+m]);
+                        vvec1 = _mm256_load_pd(&vval[(i+1)*ldv+m]);
+                        _mm256_store_pd(&x_priv[m+k*ldxpriv],_mm256_add_pd(_mm256_load_pd(&x_priv[m+k*ldxpriv]),_mm256_add_pd(_mm256_mul_pd(vvec0,wvec0),_mm256_mul_pd(vvec1,wvec1))));
+
+                    }
+#if CFGM%4
+                    for (; m<CFGM; m++) {
+                        x_priv[m+k*ldxpriv] += dalpha*(vval[i*ldv+m]*wval[i*ldw+k] + vval[(i+1)*ldv+m]*wval[(i+1)*ldw+k]);
+                    }
+#endif
+                }
+            }
+        } else {
+            INFO_LOG("fast case alpha=1");
+
+#pragma omp for schedule(runtime)
+            for (i=0; i<=n-2; i+=2) {
+
+#pragma unroll(CFGK)
+                    for (k=0; k<CFGK; k++) {
+                IACA_START
+                    wvec0 = _mm256_set1_pd(wval[(i+0)*ldw+k]);
+                    wvec1 = _mm256_set1_pd(wval[(i+1)*ldw+k]);
+#if CFGM>=32
+#pragma unroll(MAX(1,CFGM/4))
+#endif
+                    for (m=0; m<=CFGM-4; m+=4) {
+                        vvec0 = _mm256_load_pd(&vval[(i+0)*ldv+m]);
+                        vvec1 = _mm256_load_pd(&vval[(i+1)*ldv+m]);
+                        _mm256_store_pd(&x_priv[m+k*ldxpriv],_mm256_fmadd_pd(vvec1,wvec1,_mm256_fmadd_pd(vvec0,wvec0,_mm256_load_pd(&x_priv[m+k*ldxpriv]))));
+
+                    }
+#if CFGM%4
+                    for (; m<CFGM; m++) {
+                        x_priv[m+k*ldxpriv] += vval[i*ldv+m]*wval[i*ldw+k] + vval[(i+1)*ldv+m]*wval[(i+1)*ldw+k];
+                    }
+#endif
+                }
+                IACA_END
+                
+            }
+        }
+        
+#pragma omp critical
+        {
+            m=0;
+            for (k=0; k+4<=CFGK; k+=4) {
+                for (m=0; m+4<=CFGM; m+=4) {
+                    #GHOST_UNROLL#_mm256_store_pd(&xval[(k+@)*ldx+m],_mm256_add_pd(_mm256_load_pd(&xval[(k+@)*ldx+m]),_mm256_load_pd(&x_priv[(k+@)*ldxpriv+m])));#4
+                }
+#if CFGM%4
+                for (; m<CFGM; m++) {
+                    #GHOST_UNROLL#xval[(k+@)*ldx+m] += x_priv[(k+@)*ldxpriv+m];#4
+                }
+#endif
+            }
+#if CFGK%4
+            for (; k<CFGK; k++) {
+                for (m=0; m+4<=CFGM; m+=4) {
+                    _mm256_store_pd(&xval[(k+0)*ldx+m],_mm256_add_pd(_mm256_load_pd(&xval[(k+0)*ldx+m]),_mm256_load_pd(&x_priv[m+k*ldxpriv])));
+                }
+                for (; m<CFGM; m++) {
+                    xval[k*ldx+m] += x_priv[m+k*ldxpriv];
+                }
+            }
+#endif
+        }
+        free(x_priv);
+    }
+   
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
+    return ret;
+#else
+    UNUSED(x);
+    UNUSED(v);
+    UNUSED(w);
+    UNUSED(alpha);
+    UNUSED(beta);
+    ERROR_LOG("No AVX2 available!");
+    return GHOST_ERR_UNKNOWN;
+#endif
+}
+
+ghost_error ghost_tsmttsm__a_avx2_z_CFGK_CFGM_2_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conmv)
+{
+    UNUSED(conmv);
+#ifdef GHOST_BUILD_AVX2
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
+    ghost_error ret = GHOST_SUCCESS;
+
+    ghost_lidx n = DM_NROWS(v);
+    INFO_LOG("In AVX2 TSMTTSM with two fixed block sizes [CFGK][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
+
+    if (n%2) {
+        n+=1;
+        INFO_LOG("Padding large dimension to %d\n",n);
+    }
+    
+    const double complex * const restrict vval = (const double complex*) v->val;
+    const double complex * const restrict wval = (const double complex*) w->val;
+    double complex * const restrict xval = (double complex*) x->val;
+
+    const ghost_lidx ldv = v->stride;
+    const ghost_lidx ldw = w->stride;
+    const ghost_lidx ldx = x->stride;
+
+    __m256d alphavec;
+   
+    alphavec = _mm256_broadcast_pd(alpha);
+    
+    double complex dalpha = *(double complex *)alpha;
+    double complex dbeta = *(double complex *)beta;
+    
+    ghost_lidx i,m;
+
+    ghost_lidx k;
+    for (k=0; k<CFGK; k++) {
+        for (m=0; m<CFGM; m++) {
+            xval[k*ldx+m] = dbeta*xval[k*ldx+m];
+        }
+    }
+
+#pragma omp parallel private(m,k)
+    {
+        m=0;
+        #GHOST_UNROLL#__m256d wvec@;#2
+        __m256d vvec0, vvec1;
+
+        double complex * restrict x_priv;
+        ghost_malloc_align((void **)&x_priv,CFGM*CFGK*sizeof(double complex),32);
+        memset(x_priv,0,CFGM*CFGK*sizeof(double complex));
+
+
+        if (conmv) {
+            if (fabs(creal(dalpha)-1.) > DBL_MIN || fabs(cimag(dalpha)) > DBL_MIN) { 
+
+#pragma omp for schedule(runtime)
+                for (i=0; i<=n-2; i+=2) {
+
+                    for (k=0; k<CFGK; k++) {
+                        wvec0 = complex_mul(_mm256_broadcast_pd((const __m128d *)&wval[(i+0)*ldw+k]),alphavec);
+                        wvec1 = complex_mul(_mm256_broadcast_pd((const __m128d *)&wval[(i+1)*ldw+k]),alphavec);
+#if CFGM>=16
+#pragma unroll(MAX(1,CFGM/2))
+#endif
+                        for (m=0; m<=CFGM-2; m+=2) {
+                            vvec0 = _mm256_load_pd((double *)&vval[(i+0)*ldv+m]);
+                            vvec1 = _mm256_load_pd((double *)&vval[(i+1)*ldv+m]);
+                            _mm256_store_pd((double *)&x_priv[m+k*CFGM],_mm256_add_pd(_mm256_load_pd((double *)&x_priv[m+k*CFGM]),_mm256_add_pd(complex_mul_conj1(vvec0,wvec0),complex_mul_conj1(vvec1,wvec1))));
+
+                        }
+#if CFGM%2
+                        for (; m<CFGM; m++) {
+                            x_priv[m+k*CFGM] += dalpha*(conj(vval[i*ldv+m])*wval[i*ldw+k] + conj(vval[(i+1)*ldv+m])*wval[(i+1)*ldw+k]);
+                        }
+#endif
+                    }
+                }
+            } else {
+                INFO_LOG("fast case alpha=1");
+
+#pragma omp for schedule(runtime)
+                for (i=0; i<=n-2; i+=2) {
+
+                    for (k=0; k<CFGK; k++) {
+                        wvec0 = _mm256_broadcast_pd((const __m128d *)&wval[(i+0)*ldw+k]);
+                        wvec1 = _mm256_broadcast_pd((const __m128d *)&wval[(i+1)*ldw+k]);
+#if CFGM>=16
+#pragma unroll(MAX(1,CFGM/2))
+#endif
+                        for (m=0; m<=CFGM-2; m+=2) {
+                            vvec0 = _mm256_load_pd((double *)&vval[(i+0)*ldv+m]);
+                            vvec1 = _mm256_load_pd((double *)&vval[(i+1)*ldv+m]);
+                            _mm256_store_pd((double *)&x_priv[m+k*CFGM],_mm256_add_pd(_mm256_load_pd((double *)&x_priv[m+k*CFGM]),_mm256_add_pd(complex_mul_conj1(vvec0,wvec0),complex_mul_conj1(vvec1,wvec1))));
+
+                        }
+#if CFGM%2
+                        for (; m<CFGM; m++) {
+                            x_priv[m+k*CFGM] += conj(vval[i*ldv+m])*wval[i*ldw+k] + conj(vval[(i+1)*ldv+m])*wval[(i+1)*ldw+k];
+                        }
+#endif
+                    }
+                    
+                }
+            }
+        } else {
+            if (fabs(creal(dalpha)-1.) > DBL_MIN || fabs(cimag(dalpha)) > DBL_MIN) { 
+
+#pragma omp for schedule(runtime)
+                for (i=0; i<=n-2; i+=2) {
+
+                    for (k=0; k<CFGK; k++) {
+                        wvec0 = complex_mul(_mm256_broadcast_pd((const __m128d *)&wval[(i+0)*ldw+k]),alphavec);
+                        wvec1 = complex_mul(_mm256_broadcast_pd((const __m128d *)&wval[(i+1)*ldw+k]),alphavec);
+#if CFGM>=16
+#pragma unroll(MAX(1,CFGM/2))
+#endif
+                        for (m=0; m<=CFGM-2; m+=2) {
+                            vvec0 = _mm256_load_pd((double *)&vval[(i+0)*ldv+m]);
+                            vvec1 = _mm256_load_pd((double *)&vval[(i+1)*ldv+m]);
+                            _mm256_store_pd((double *)&x_priv[m+k*CFGM],_mm256_add_pd(_mm256_load_pd((double *)&x_priv[m+k*CFGM]),_mm256_add_pd(complex_mul(vvec0,wvec0),complex_mul(vvec1,wvec1))));
+
+                        }
+#if CFGM%2
+                        for (; m<CFGM; m++) {
+                            x_priv[m+k*CFGM] += dalpha*(vval[i*ldv+m]*wval[i*ldw+k] + vval[(i+1)*ldv+m]*wval[(i+1)*ldw+k]);
+                        }
+#endif
+                    }
+                }
+            } else {
+                INFO_LOG("fast case alpha=1");
+
+#pragma omp for schedule(runtime)
+                for (i=0; i<=n-2; i+=2) {
+
+                    for (k=0; k<CFGK; k++) {
+                IACA_START
+                        wvec0 = _mm256_broadcast_pd((const __m128d *)&wval[(i+0)*ldw+k]);
+                        wvec1 = _mm256_broadcast_pd((const __m128d *)&wval[(i+1)*ldw+k]);
+#if CFGM>=16
+#pragma unroll(MAX(1,CFGM/2))
+#endif
+                        for (m=0; m<=CFGM-2; m+=2) {
+                            vvec0 = _mm256_load_pd((double *)&vval[(i+0)*ldv+m]);
+                            vvec1 = _mm256_load_pd((double *)&vval[(i+1)*ldv+m]);
+                            _mm256_store_pd((double *)&x_priv[m+k*CFGM],_mm256_add_pd(_mm256_load_pd((double *)&x_priv[m+k*CFGM]),_mm256_add_pd(complex_mul(vvec0,wvec0),complex_mul(vvec1,wvec1))));
+            IACA_END
+
+                        }
+#if CFGM%2
+                        for (; m<CFGM; m++) {
+                            x_priv[m+k*CFGM] += vval[i*ldv+m]*wval[i*ldw+k] + vval[(i+1)*ldv+m]*wval[(i+1)*ldw+k];
+                        }
+#endif
+                    }
+                    
+                }
+            }
+        }
+        
+#pragma omp critical
+        {
+            for (k=0; k<CFGK; k++) {
+                for (m=0; m<CFGM; m++) {
+                    xval[k*ldx+m] += x_priv[m+k*CFGM];
+                }
+            }
+        }
+        free(x_priv);
+    }
+   
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
+    return ret;
+#else
+    UNUSED(x);
+    UNUSED(v);
+    UNUSED(w);
+    UNUSED(alpha);
+    UNUSED(beta);
+    ERROR_LOG("No AVX2 available!");
+    return GHOST_ERR_UNKNOWN;
+#endif
+}

@@ -49,12 +49,23 @@ module() { eval `/usr/bin/modulecmd bash $*`; }
 # load modules
 module load "PrgEnv/$PRGENV"
 # set compiler names
-set -- $(mpicc -show)
-export CC=$1
-set -- $(mpicxx -show)
-export CXX=$1
-set -- $(mpif90 -show)
-export FC=$1
+# use ccache to speed up build
+if [[ "$PRGENV" =~ gcc* ]]; then
+  if [ "${VECT_EXT}" = "CUDA" ]; then
+    export FC="gfortran" CC="gcc" CXX="g++"
+  else
+    export FC="ccache gfortran" CC="ccache gcc" CXX="ccache g++"
+  fi
+elif [[ "$PRGENV" =~ intel* ]]; then
+  export FC=ifort CC=icc CXX=icpc
+else
+  set -- $(mpicc -show)
+  export CC=$1
+  set -- $(mpicxx -show)
+  export CXX=$1
+  set -- $(mpif90 -show)
+  export FC=$1
+fi
 
 echo "compilers: CC=$CC, CXX=$CXX, FC=$FC"
 

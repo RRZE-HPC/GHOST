@@ -1,0 +1,474 @@
+/*!GHOST_AUTOGEN_TSMM K,N */
+#include "ghost/config.h"
+#include "ghost/types.h"
+#include "ghost/instr.h"
+#include "ghost/util.h"
+#include "ghost/densemat.h"
+#include "ghost/tsmm_plain_gen.h"
+#include <math.h>
+#include <float.h>
+
+#GHOST_SUBST INCOLS ${K}
+#GHOST_SUBST OUTCOLS ${N}
+#GHOST_SUBST OUTERUNROLL 2
+
+ghost_error ghost_tsmm__a_plain_d_OUTCOLS_INCOLS_OUTERUNROLL_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
+    ghost_error ret = GHOST_SUCCESS;
+
+    ghost_lidx k = w->traits.ncols;
+    ghost_lidx m = v->traits.ncols;
+    ghost_lidx n = DM_NROWS(v);
+    
+    if (n%OUTERUNROLL) {
+        n+=(OUTERUNROLL-n%OUTERUNROLL);
+        INFO_LOG("Padding large dimension to %d\n",n);
+    }
+
+    INFO_LOG("In TSMM with two fixed block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
+
+    const double * const restrict vval = (const double *) v->val;
+    const double * const restrict wval = (const double *) w->val;
+    double * const restrict xval = (double *) x->val;
+
+    const ghost_lidx ldv = v->stride;
+    const ghost_lidx ldw = w->stride;
+    const ghost_lidx ldx = x->stride;
+
+    const double dalpha = *(double *)alpha;
+    const double dbeta = *(double *)beta;
+    ghost_lidx i,j,s;
+
+    double tmp[OUTERUNROLL];
+    
+    if (fabs(dalpha-1.) > DBL_MIN || fabs(dbeta) > DBL_MIN) { // general case: X = b*X + a*V*W
+#pragma omp parallel for private(j,s,tmp) schedule(runtime)
+        for (i=0; i<=n-OUTERUNROLL; i+=OUTERUNROLL) {
+#pragma unroll_and_jam(MIN(OUTCOLS,4))
+            for (s=0; s<OUTCOLS; s++) {
+                #GHOST_UNROLL#tmp[@] = dbeta*xval[(i+@)*ldx+s];#OUTERUNROLL
+#pragma simd
+#pragma vector always 
+#pragma vector aligned
+                for (j=0; j<INCOLS; j++) {
+                    #GHOST_UNROLL#tmp[@] += dalpha*vval[(i+@)*ldv+j]*wval[s*ldw+j];#OUTERUNROLL
+                }
+                #GHOST_UNROLL#xval[(i+@)*ldx+s] = tmp[@];#OUTERUNROLL
+            }
+        }
+    } else { // common case: X = V*W
+#pragma omp parallel for private(j,s,tmp) schedule(runtime)
+        for (i=0; i<=n-OUTERUNROLL; i+=OUTERUNROLL) {
+#pragma unroll_and_jam(MIN(OUTCOLS,4))
+            for (s=0; s<OUTCOLS; s++) {
+                #GHOST_UNROLL#tmp[@] = 0.;#OUTERUNROLL
+#pragma simd
+#pragma vector always
+#pragma vector aligned
+                for (j=0; j<INCOLS; j++) {
+                    #GHOST_UNROLL#tmp[@] += vval[(i+@)*ldv+j]*wval[s*ldw+j];#OUTERUNROLL
+                }
+                #GHOST_UNROLL#xval[(i+@)*ldx+s] = tmp[@];#OUTERUNROLL
+            }
+        }
+    }
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
+    return ret;
+}
+
+ghost_error ghost_tsmm__u_plain_d_OUTCOLS_INCOLS_OUTERUNROLL_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
+    ghost_error ret = GHOST_SUCCESS;
+
+    ghost_lidx k = w->traits.ncols;
+    ghost_lidx m = v->traits.ncols;
+    ghost_lidx n = DM_NROWS(v);
+    
+    if (n%OUTERUNROLL) {
+        n+=(OUTERUNROLL-n%OUTERUNROLL);
+        INFO_LOG("Padding large dimension to %d\n",n);
+    }
+
+    INFO_LOG("In TSMM with two fixed block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
+
+    const double * const restrict vval = (const double *) v->val;
+    const double * const restrict wval = (const double *) w->val;
+    double * const restrict xval = (double *) x->val;
+
+    const ghost_lidx ldv = v->stride;
+    const ghost_lidx ldw = w->stride;
+    const ghost_lidx ldx = x->stride;
+
+    const double dalpha = *(double *)alpha;
+    const double dbeta = *(double *)beta;
+    ghost_lidx i,j,s,t;
+
+    double tmp[OUTERUNROLL];
+    
+    if (fabs(dalpha-1.) > DBL_MIN || fabs(dbeta) > DBL_MIN) { // general case: X = b*X + a*V*W
+#pragma omp parallel for private(j,s,t,tmp) schedule(runtime)
+        for (i=0; i<=n-OUTERUNROLL; i+=OUTERUNROLL) {
+            for (s=0; s<OUTCOLS; s++) {
+                for (t=0; t<OUTERUNROLL; t++) {
+                    tmp[t] = dbeta*xval[(i+t)*ldx+s];
+                }
+#if OUTCOLS > 1
+#pragma unroll_and_jam
+#endif
+                for (j=0; j<INCOLS; j++) {
+                    for (t=0; t<OUTERUNROLL; t++) {
+                        tmp[t] += dalpha*vval[(i+t)*ldv+j]*wval[s*ldw+j];
+                    }
+                }
+                for (t=0; t<OUTERUNROLL; t++) {
+                    xval[(i+t)*ldx+s] = tmp[t];
+                }
+            }
+        }
+    } else { // common case: X = V*W
+#pragma omp parallel for private(j,s,t,tmp) schedule(runtime)
+        for (i=0; i<=n-OUTERUNROLL; i+=OUTERUNROLL) {
+#pragma vector always unaligned nontemporal
+            for (s=0; s<OUTCOLS; s++) {
+                for (t=0; t<OUTERUNROLL; t++) {
+                    tmp[t] = 0.;
+                }
+#if OUTCOLS > 1
+#pragma unroll_and_jam
+#endif
+                for (j=0; j<INCOLS; j++) {
+                    for (t=0; t<OUTERUNROLL; t++) {
+                        tmp[t] += vval[(i+t)*ldv+j]*wval[s*ldw+j];
+                    }
+                }
+                for (t=0; t<OUTERUNROLL; t++) {
+                    xval[(i+t)*ldx+s] = tmp[t];
+                }
+            }
+        }
+    }
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
+    return ret;
+}
+
+ghost_error ghost_tsmm__a_plain_d_OUTCOLS_INCOLS_OUTERUNROLL_1_cm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
+    ghost_error ret = GHOST_SUCCESS;
+
+    ghost_lidx k = w->traits.ncols;
+    ghost_lidx m = v->traits.ncols;
+    ghost_lidx n = DM_NROWS(v);
+    
+    if (n%OUTERUNROLL) {
+        n+=(OUTERUNROLL-n%OUTERUNROLL);
+        INFO_LOG("Padding large dimension to %d\n",n);
+    }
+
+    INFO_LOG("In TSMM with two fixed block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
+
+    const double * const restrict vval = (const double *) v->val;
+    const double * const restrict wval = (const double *) w->val;
+    double * const restrict xval = (double *) x->val;
+
+    const ghost_lidx ldv = v->stride;
+    const ghost_lidx ldw = w->stride;
+    const ghost_lidx ldx = x->stride;
+
+    const double dalpha = *(double *)alpha;
+    const double dbeta = *(double *)beta;
+    ghost_lidx i,j,s,t;
+    
+    double *wscale = NULL;
+    ghost_malloc_align((void **)&wscale,INCOLS*OUTCOLS*sizeof(double),64);
+        
+    for (s=0; s<OUTCOLS; s++) {
+        for (j=0; j<INCOLS; j++) {
+            wscale[s*INCOLS+j] = dalpha*wval[s*ldw+j];
+        }
+    }
+    
+  
+    if (fabs(dbeta) > DBL_MIN) { 
+#pragma omp parallel 
+        {
+            double *tmp;
+            ghost_malloc_align((void **)&tmp,OUTERUNROLL*sizeof(double),64);
+            
+#pragma omp for private(j,s,t) schedule(runtime)
+            for (i=0; i<=n-OUTERUNROLL; i+=OUTERUNROLL) {
+
+#pragma unroll_and_jam(MIN(16,OUTCOLS))
+                for (s=0; s<OUTCOLS; s++) {
+
+#pragma vector aligned
+#pragma simd
+                    for (t=0; t<OUTERUNROLL; t++) {
+                        tmp[t] = dbeta*xval[s*ldx+i+t];
+                    }
+
+#pragma unroll_and_jam(MIN(16,INCOLS))
+                    for (j=0; j<INCOLS; j++) {
+                        double wtmp = wscale[s*INCOLS+j];
+
+#pragma vector always
+#pragma ivdep
+#pragma vector aligned
+#pragma simd
+                        for (t=0; t<OUTERUNROLL; t++) {
+                            tmp[t] += vval[j*ldv+i+t]*wtmp;
+                        }
+                    }
+
+#pragma vector aligned
+#pragma simd
+                    for (t=0; t<OUTERUNROLL; t++) {
+                        xval[s*ldx+i+t] = tmp[t];
+                    }
+                }
+            }
+            free(tmp);
+        }
+    } else {
+#pragma omp parallel 
+        {
+            double *tmp;
+            ghost_malloc_align((void **)&tmp,OUTERUNROLL*sizeof(double),64);
+            
+#pragma omp for private(j,s,t) schedule(runtime)
+            for (i=0; i<=n-OUTERUNROLL; i+=OUTERUNROLL) {
+
+#pragma unroll_and_jam(MIN(16,OUTCOLS))
+                for (s=0; s<OUTCOLS; s++) {
+
+                    for (t=0; t<OUTERUNROLL; t++) {
+                        tmp[t] = 0.;
+                    }
+
+#pragma unroll_and_jam(MIN(16,INCOLS))
+                    for (j=0; j<INCOLS; j++) {
+                        double wtmp = wscale[s*INCOLS+j];
+
+#pragma simd
+                        for (t=0; t<OUTERUNROLL; t++) {
+                            tmp[t] += vval[j*ldv+i+t]*wtmp;
+                        }
+                    }
+
+#pragma vector aligned
+#pragma vector nontemporal
+#pragma simd
+                    for (t=0; t<OUTERUNROLL; t++) {
+                        xval[s*ldx+i+t] = tmp[t];
+                    }
+                }
+            }
+            free(tmp);
+        }
+    }
+
+    free(wscale);
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
+    return ret;
+}
+
+ghost_error ghost_tsmm__u_plain_d_OUTCOLS_INCOLS_OUTERUNROLL_1_cm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
+    ghost_error ret = GHOST_SUCCESS;
+
+    ghost_lidx k = w->traits.ncols;
+    ghost_lidx m = v->traits.ncols;
+    ghost_lidx n = DM_NROWS(v);
+    
+    if (n%OUTERUNROLL) {
+        n+=(OUTERUNROLL-n%OUTERUNROLL);
+        INFO_LOG("Padding large dimension to %d\n",n);
+    }
+
+    INFO_LOG("In TSMM with two fixed block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
+
+    const double * const restrict vval = (const double *) v->val;
+    const double * const restrict wval = (const double *) w->val;
+    double * const restrict xval = (double *) x->val;
+
+    const ghost_lidx ldv = v->stride;
+    const ghost_lidx ldw = w->stride;
+    const ghost_lidx ldx = x->stride;
+
+    const double dalpha = *(double *)alpha;
+    const double dbeta = *(double *)beta;
+    ghost_lidx i,j,s,t;
+    
+    double *wscale;
+    ghost_malloc((void **)&wscale,INCOLS*OUTCOLS*sizeof(double));
+        
+    for (s=0; s<OUTCOLS; s++) {
+        for (j=0; j<INCOLS; j++) {
+            wscale[s*INCOLS+j] = dalpha*wval[s*ldw+j];
+        }
+    }
+    
+#pragma omp parallel 
+    {
+    double *tmp;
+    ghost_malloc_align((void **)&tmp,OUTERUNROLL*sizeof(double),64);
+    
+    if (fabs(dbeta) > DBL_MIN) { 
+#pragma omp for private(j,s,t) schedule(runtime)
+        for (i=0; i<=n-OUTERUNROLL; i+=OUTERUNROLL) {
+
+#pragma unroll_and_jam(MIN(16,OUTCOLS))
+            for (s=0; s<OUTCOLS; s++) {
+
+#pragma vector unaligned
+#pragma simd
+                for (t=0; t<OUTERUNROLL; t++) {
+                    tmp[t] = dbeta*xval[s*ldx+i+t];
+                }
+
+#pragma unroll_and_jam(MIN(16,INCOLS))
+                for (j=0; j<INCOLS; j++) {
+
+#pragma vector always
+#pragma ivdep
+#pragma vector unaligned
+#pragma simd
+                    for (t=0; t<OUTERUNROLL; t++) {
+                        tmp[t] += vval[j*ldv+i+t]*wscale[s*INCOLS+j];
+                    }
+                }
+
+#pragma vector always
+#pragma ivdep
+#pragma vector unaligned
+#pragma simd
+                for (t=0; t<OUTERUNROLL; t++) {
+                    xval[s*ldx+i+t] = tmp[t];
+                }
+            }
+        }
+    } else {
+#pragma omp for private(j,s,t) schedule(runtime)
+        for (i=0; i<=n-OUTERUNROLL; i+=OUTERUNROLL) {
+
+#pragma unroll_and_jam(MIN(16,OUTCOLS))
+            for (s=0; s<OUTCOLS; s++) {
+
+#pragma vector unaligned
+#pragma simd
+                for (t=0; t<OUTERUNROLL; t++) {
+                    tmp[t] = 0.;
+                }
+
+#pragma unroll_and_jam(MIN(16,INCOLS))
+                for (j=0; j<INCOLS; j++) {
+
+#pragma vector always
+#pragma ivdep
+#pragma vector unaligned
+#pragma simd
+                    for (t=0; t<OUTERUNROLL; t++) {
+                        tmp[t] += vval[j*ldv+i+t]*wscale[s*INCOLS+j];
+                    }
+                }
+
+#pragma vector always
+#pragma ivdep
+#pragma vector unaligned
+#pragma vector nontemporal
+#pragma simd
+                for (t=0; t<OUTERUNROLL; t++) {
+                    xval[s*ldx+i+t] = tmp[t];
+                }
+            }
+        }
+    }
+
+    free(tmp);
+    }
+    free(wscale);
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
+    return ret;
+}
+
+ghost_error ghost_tsmm__a_plain_z_OUTCOLS_INCOLS_OUTERUNROLL_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
+    ghost_error ret = GHOST_SUCCESS;
+
+    ghost_lidx k = w->traits.ncols;
+    ghost_lidx m = v->traits.ncols;
+    ghost_lidx n = DM_NROWS(v);
+    
+    if (n%OUTERUNROLL) {
+        n+=(OUTERUNROLL-n%OUTERUNROLL);
+        INFO_LOG("Padding large dimension to %d\n",n);
+    }
+
+    INFO_LOG("In TSMM with two fixed block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
+
+    const double complex * const restrict vval = (const double complex*) v->val;
+    const double complex * const restrict wval = (const double complex*) w->val;
+    double complex * const restrict xval = (double complex*) x->val;
+
+    const ghost_lidx ldv = v->stride;
+    const ghost_lidx ldw = w->stride;
+    const ghost_lidx ldx = x->stride;
+
+    const double complex dalpha = *(double complex *)alpha;
+    const double complex dbeta = *(double complex *)beta;
+    ghost_lidx i,j,s;
+
+    
+    if (fabs(creal(dbeta)) > DBL_MIN || fabs(cimag(dbeta)) > DBL_MIN || OUTERUNROLL < 2 || ldx != OUTCOLS) { // general case: X = b*X + a*V*W
+        double complex tmp[OUTERUNROLL];
+#pragma omp parallel for private(j,s,tmp) schedule(runtime)
+        for (i=0; i<=n-OUTERUNROLL; i+=OUTERUNROLL) {
+#pragma unroll_and_jam(MIN(OUTCOLS,4))
+            for (s=0; s<OUTCOLS; s++) {
+                #GHOST_UNROLL#tmp[@] = dbeta*xval[(i+@)*ldx+s];#OUTERUNROLL
+#pragma simd
+#pragma vector always 
+#pragma vector aligned
+                for (j=0; j<INCOLS; j++) {
+                    #GHOST_UNROLL#tmp[@] += dalpha*vval[(i+@)*ldv+j]*wval[s*ldw+j];#OUTERUNROLL
+                }
+                #GHOST_UNROLL#xval[(i+@)*ldx+s] = tmp[@];#OUTERUNROLL
+            }
+        }
+    } else {
+        INFO_LOG("fast case beta=0");
+        double complex tmp[OUTERUNROLL*OUTCOLS];
+#pragma omp parallel for private(j,s,tmp) schedule(runtime)
+        for (i=0; i<=n-OUTERUNROLL; i+=OUTERUNROLL) {
+#pragma unroll_and_jam(MIN(OUTCOLS,4))
+            for (s=0; s<OUTCOLS; s++) {
+                #GHOST_UNROLL#tmp[@*OUTCOLS+s] = 0.;#OUTERUNROLL
+#pragma simd
+#pragma vector always 
+#pragma vector aligned
+                for (j=0; j<INCOLS; j++) {
+                    #GHOST_UNROLL#tmp[@*OUTCOLS+s] += vval[(i+@)*ldv+j]*wval[s*ldw+j];#OUTERUNROLL
+                }
+            }
+            // streaming stores only work for OUTERUNROLL>=2 and ldx == OUTCOLS
+#pragma simd
+#pragma vector nontemporal
+#pragma vector aligned
+#pragma vector always
+            for (s=0; s<OUTCOLS*OUTERUNROLL; s++) {
+                xval[i*OUTCOLS+s] = dalpha*tmp[s];
+            }
+        }
+    }
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
+    return ret;
+}

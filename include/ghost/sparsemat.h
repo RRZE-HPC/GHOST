@@ -11,6 +11,7 @@
 #include "spmv.h"
 #include "context.h"
 #include "densemat.h"
+#include "sparsemat_src.h"
 
 #include <stdarg.h>
 
@@ -63,23 +64,9 @@ typedef struct
     ghost_gidx offs;
 } 
 ghost_sparsemat_rowfunc_crs_arg;
-
     
 typedef struct ghost_sparsemat_traits ghost_sparsemat_traits;
 typedef struct ghost_sparsemat ghost_sparsemat;
-
-/**
- * @brief Callback function to construct a ghost_sparsemat
- *
- * @param[in] row The global row index.
- * @param[out] nnz The number of values in this row.
- * @param[out] val The values in the specified row.
- * @param[out] col The column indices of the given values.
- * @param[inout] arg Additional arguments.
- *
- * @return  
- */
-typedef int (*ghost_sparsemat_rowfunc)(ghost_gidx row, ghost_lidx *nnz, ghost_gidx *col, void *val, void *arg);
 
 typedef struct{
     ghost_spmv_flags flags;
@@ -101,15 +88,15 @@ typedef enum {
 ghost_kacz_direction;
 
 typedef enum{
-     yes,
-     no
+     GHOST_KACZ_NORMALIZE_YES,
+     GHOST_KACZ_NORMALIZE_NO
 }
 ghost_kacz_normalize;
 
 typedef enum{
-     normal,
-     eco,
-     performance
+     GHOST_KACZ_MODE_NORMAL,
+     GHOST_KACZ_MODE_ECO,
+     GHOST_KACZ_MODE_PERFORMANCE
 }
 ghost_kacz_mode;
 
@@ -139,127 +126,6 @@ typedef struct {
 }
 ghost_carp_opts; //no direction since forward followed by backward done
 
-
-/**
- * @brief internal to differentiate between different KACZ sweep methods
- * MC - Multicolored
- * BMC_RB - Block Multicolored with RCM ( condition : nrows/(2*(total_bw+1)) > threads)
- * BMC_one_trans_sweep - Block Multicolored with RCM ( condition : nrows/(total_bw+1) > threads, and transition does not overlap)
- * BMC_two_trans_sweep - Block Multicolored with RCM ( condition : nrows/(total_bw+1) > threads, and transition can overlap)
- */
-typedef enum{
-      MC,
-      BMC_RB,
-      BMC_one_sweep,
-      BMC_two_sweep,
-      BMC,
-      BMCshift,
-      BMCNORMAL //for system normalized at start
-}
-ghost_kacz_method;
-
-//TODO zone ptr can be moved here 
-typedef struct {
-      
-      ghost_kacz_method kacz_method;
-      ghost_lidx active_threads;
-}
-ghost_kacz_setting;
-    
-/**
- * @brief A CUDA SELL-C-sigma matrix.
- */
-typedef struct 
-{
-    /**
-     * @brief The values.
-     */
-    char * val;
-    /**
-     * @brief The column indices.
-     */
-    ghost_lidx * col;
-    /**
-     * @brief The length of each row.
-     */
-    ghost_lidx * rowLen;
-    /**
-     * @brief Needed if T>1.
-     */
-    ghost_lidx * rowLenPadded;
-    /**
-     * @brief Pointer to start of each chunk.
-     */
-    ghost_lidx * chunkStart;
-    /**
-     * @brief The length of each chunk.
-     */
-    ghost_lidx * chunkLen;
-}
-ghost_cu_sell;
-
-/**
- * @brief Struct defining a SELL-C-sigma matrix.
- */
-typedef struct 
-{
-    /**
-     * @brief The values.
-     */
-    char *val;
-    /**
-     * @brief The column indices.
-     */
-    ghost_lidx *col;
-    /**
-     * @brief Pointer to start of each chunk.
-     */
-    ghost_lidx *chunkStart;
-    /**
-     * @brief Minimal row length in a chunk.
-     */
-    ghost_lidx *chunkMin;
-    /**
-     * @brief The length of each chunk.
-     */
-    ghost_lidx *chunkLen;
-    /**
-     * @brief Needed if T>1.
-     */
-    ghost_lidx *chunkLenPadded;
-    /**
-     * @brief Longest length of each quadruple of rows.
-     */
-    ghost_lidx *rowLen4;
-    /**
-     * @brief Longest length of each tuple of rows.
-     */
-    ghost_lidx *rowLen2;
-    /**
-     * @brief Length of each row.
-     *
-     * Especially useful in SELL-1 kernels.
-     */
-    ghost_lidx *rowLen;
-    /**
-     * @brief Needed if T>1.
-     */
-    ghost_lidx *rowLenPadded; 
-    /**
-     * @brief The CUDA matrix.
-     */
-    ghost_cu_sell *cumat;
-}
-ghost_sell;
-
-/**
- * @brief Get the SELL data of a general sparsemat.
- *
- * @param mat The sparsemat.
- *
- * @return Pointer to the SELL data.
- */
-#define SELL(mat) (mat->sell)
 
 /**
  * @brief Create only a single chunk, i.e., use the ELLPACK storage format.
@@ -310,6 +176,53 @@ typedef struct
 }
 ghost_sellspmv_parameters;
 
+/**
+ * @brief The parameters to identify a CUDA SELL SpMV kernel.
+ *
+ * On kernel execution, GHOST will try to find an auto-generated kernel which
+ * matches all of these parameters.
+ */
+typedef struct 
+{
+    /**
+     * @brief The data access alignment.
+     */
+    ghost_alignment alignment;
+    /**
+     * @brief The implementation.
+     */
+    ghost_implementation impl;
+    /**
+     * @brief The matrix data type.
+     */
+    ghost_datatype mdt;
+    /**
+     * @brief The densemat data type.
+     */
+    ghost_datatype vdt;
+    /**
+     * @brief The densemat width.
+     */
+    int blocksz;
+    /**
+     * @brief The SELL matrix chunk height.
+     */
+    int chunkheight;
+    /**
+     * @brief The densemat storage order.
+     */
+    ghost_densemat_storage storage;
+    
+    bool do_axpby;
+    bool do_scale;
+    bool do_vshift;
+    bool do_dot_yy;
+    bool do_dot_xy;
+    bool do_dot_xx;
+    bool do_chain_axpby;
+    
+}
+ghost_cusellspmv_parameters;
 
 
 /**
@@ -351,6 +264,11 @@ typedef struct
 
     ghost_kacz_method method;
 
+    /**
+     * @brief The number of shifts (zero if no shift should be applied).
+     */
+    int nshifts;
+
 }
 ghost_kacz_parameters;
 
@@ -363,40 +281,6 @@ typedef ghost_error (*ghost_spmv_kernel)(ghost_densemat*, ghost_sparsemat *, gho
 typedef ghost_error (*ghost_kacz_kernel)(ghost_densemat*, ghost_sparsemat *, ghost_densemat*, ghost_kacz_opts);
 typedef ghost_error (*ghost_kacz_shift_kernel)(ghost_densemat*, ghost_densemat*, ghost_sparsemat *, ghost_densemat*, double, double, ghost_kacz_opts);
 
-
-/**
- * @brief Flags to be passed to a row-wise matrix assembly function.
- */
-typedef enum {
-    /**
-     * @brief Default behaviour.
-     */
-    GHOST_SPARSEMAT_ROWFUNC_DEFAULT = 0
-} ghost_sparsemat_rowfunc_flags;
-
-/**
- * @brief Defines a rowfunc-based sparsemat source.
- */
-typedef struct {
-    /**
-     * @brief The callback function which assembled the matrix row-wise.
-     * @note The function func may be called several times for each row concurrently by multiple threads.
-     */
-    ghost_sparsemat_rowfunc func;
-    /**
-     * @brief Maximum row length of the matrix.
-     */
-    ghost_lidx maxrowlen;
-    /**
-     * @brief 0 for C, 1 for Fortran-like indexing.
-     */
-    int base;
-    /**
-     * @brief Flags to the row function.
-     */
-    ghost_sparsemat_rowfunc_flags flags;
-    void *arg;
-} ghost_sparsemat_src_rowfunc;
 
 /**
  * @brief Flags to a sparse matrix.
@@ -470,8 +354,23 @@ typedef enum {
     * depending on the bandwidth of the matrix
     */
     GHOST_SOLVER_KACZ = 16384,
+    /**
+    * @brief Sort matrix rows according to their length (SELL-C-Sigma sorting)
+    */
+    GHOST_SPARSEMAT_SORT_ROWS = 32768,
+    /**
+    * @brief Does not make a distinction between local and remote entries if set; this might lead to higher communication time
+    */
+    GHOST_SPARSEMAT_PERM_NO_DISTINCTION=65536,
 
 } ghost_sparsemat_flags;
+
+/**
+ * @brief Combination of flags which apply any permutation to a ::ghost_sparsemat 
+ */
+#define GHOST_SPARSEMAT_PERM_ANY (GHOST_SPARSEMAT_PERM_ANY_LOCAL|GHOST_SPARSEMAT_PERM_ANY_GLOBAL)
+#define GHOST_SPARSEMAT_PERM_ANY_LOCAL (GHOST_SPARSEMAT_COLOR|GHOST_SPARSEMAT_RCM|GHOST_SPARSEMAT_BLOCKCOLOR|GHOST_SPARSEMAT_SORT_ROWS|GHOST_SOLVER_KACZ)
+#define GHOST_SPARSEMAT_PERM_ANY_GLOBAL (GHOST_SPARSEMAT_SCOTCHIFY|GHOST_SPARSEMAT_ZOLTAN)
 
 #ifdef __cplusplus
 inline ghost_sparsemat_flags operator|(const ghost_sparsemat_flags &a,
@@ -517,7 +416,7 @@ struct ghost_sparsemat_traits {
     /**
      * @brief The sorting scope if sorting should be applied.
      */
-    ghost_gidx sortScope;
+    ghost_lidx sortScope;
     /**
      * @brief The data type.
      */
@@ -578,11 +477,75 @@ struct ghost_sparsemat
      */
     char *name;
     /**
-     * @brief Pointer to actual SELL sparse matrix data
-     * 
-     * This is a relict from times where we had CRS and SELL and may be removed in the future.
+     * @brief The values.
      */
-    ghost_sell *sell;
+    char *val;
+    /**
+     * @brief The column indices.
+     */
+    ghost_lidx *col;
+    /**
+     * @brief Pointer to start of each chunk.
+     */
+    ghost_lidx *chunkStart;
+    /**
+     * @brief Minimal row length in a chunk.
+     */
+    ghost_lidx *chunkMin;
+    /**
+     * @brief The length of each chunk.
+     */
+    ghost_lidx *chunkLen;
+    /**
+     * @brief Needed if T>1.
+     */
+    ghost_lidx *chunkLenPadded;
+    /**
+     * @brief Length of each row.
+     *
+     * Especially useful in SELL-1 kernels.
+     */
+    ghost_lidx *rowLen;
+    /**
+     * @brief Longest length of each quadruple of rows.
+     */
+    ghost_lidx *rowLen4;
+    /**
+     * @brief Longest length of each tuple of rows.
+     */
+    ghost_lidx *rowLen2;
+    /**
+     * @brief Needed if T>1.
+     */
+    ghost_lidx *rowLenPadded; 
+    /**
+     * @brief The CUDA matrix.
+     */
+    //ghost_cu_sell *cumat;
+    /**
+     * @brief The values.
+     */
+    char * cu_val;
+    /**
+     * @brief The column indices.
+     */
+    ghost_lidx * cu_col;
+    /**
+     * @brief The length of each row.
+     */
+    ghost_lidx * cu_rowLen;
+    /**
+     * @brief Needed if T>1.
+     */
+    ghost_lidx * cu_rowLenPadded;
+    /**
+     * @brief Pointer to start of each chunk.
+     */
+    ghost_lidx * cu_chunkStart;
+    /**
+     * @brief The length of each chunk.
+     */
+    ghost_lidx * cu_chunkLen;
     /**
      * @brief Size (in bytes) of one matrix element.
      */
@@ -601,71 +564,29 @@ struct ghost_sparsemat
      */
     ghost_gidx *col_orig;
     /**
-     * @brief The number of colors from distance-2 coloring.
-     */
-    ghost_lidx ncolors;
-    /**
-     * @brief The number of rows with each color (length: ncolors+1).
-     */
-    ghost_lidx *color_ptr;
-     /**
-     * @brief The number of total zones (odd+even)
-     **/
-    ghost_lidx nzones;
-    /**
-    * @brief Pointer to odd-even (Red-Black coloring) zones of a matrix (length: nzones+1)  
-    * Ordering [even_begin_1 odd_begin_1 even_begin_2 odd_begin_2 ..... nrows]
-    **/
-    ghost_lidx *zone_ptr;
-    /**
-    * @brief details regarding kacz is stored here
-    */ 
-    ghost_kacz_setting kacz_setting;
-    /**
      * @brief The number of rows.
      */
-    ghost_lidx nrows;
+    //ghost_lidx nrows;
     /**
      * @brief The padded number of rows.
      *
      * In the SELL data format, the number of rows is padded to a multiple of C.
      */
-    ghost_lidx nrowsPadded;
+    //ghost_lidx nrowsPadded;
     /**
      * @brief The number of columns.
      */
-    ghost_gidx ncols;
+    //ghost_gidx ncols;
     /**
      * @brief The number of non-zero entries in the matrix.
      */
-    ghost_lidx nnz;
+    //ghost_lidx nnz;
     /**
      * @brief The number of stored entries in the matrix.
      *
      * For CRS or SELL-1, this is equal to nnz.
      */
     ghost_lidx nEnts;
-    /**
-     * @brief The bandwidth of the lower triangular part of the matrix.
-     */
-    ghost_gidx lowerBandwidth;
-    /**
-     * @brief The bandwidth of the upper triangular part of the matrix.
-     */
-    ghost_gidx upperBandwidth;
-    /**
-     * @brief The bandwidth of the matrix.
-     */
-    ghost_gidx bandwidth;
-    /**
-     * @brief The maximum column index in the matrix
-     * (Required for example if we permute the (local + remote) part of matrix
-     */
-    ghost_gidx maxColRange; 
-    /**
-     * @brief Store the ratio between nrows and bandwidth
-     */ 	
-    double kaczRatio;
     /**
      * @brief The average width of the rows wrt. the diagonal.
      */
@@ -705,81 +626,23 @@ struct ghost_sparsemat
      * with distance i from diagonal
      */
     ghost_gidx *nzDist;
-    /**
-     * Compute a sparse matrix-vector product.
-     * This function should not be called directly, see ghost_spmv().
-     */
-    ghost_spmv_kernel spmv;
-    /**
-     * Solve using Kacz kernel.
-     * This function should not be called directly, see ghost_carp().
-     */
-    ghost_kacz_kernel kacz;
-    /**
-     * Solve using Kacz kernel with shift.
-     * This function should not be called directly, see ghost_carp_shift().
-     */
-    ghost_kacz_shift_kernel kacz_shift;
-     /**
-     * Documented in ghost_sparsemat_string()
-     */
-    ghost_error (*string) (ghost_sparsemat *mat, char **str, int dense);
-    /**
-     * @ingroup stringification
-     *
-     * @brief Return the name of the storage format.
-     *
-     * @param mat The matrix.
-     *
-     * @return A string containing the storage format name. 
-     */
-    const char *  (*formatName) (ghost_sparsemat *mat);
-    /**
-     * Documented in ghost_sparsemat_init_bin() 
-     */
-    ghost_error (*fromFile)(ghost_sparsemat *mat, char *path);
-    /**
-     * Documented in ghost_sparsemat_init_mm()
-     */
-    ghost_error (*fromMM)(ghost_sparsemat *mat, char *path);
-    /**
-     * Documented in ghost_sparsemat_init_crs()
-     */
-    ghost_error (*fromCRS)(ghost_sparsemat *mat, ghost_gidx offs, ghost_lidx n, ghost_gidx *col, void *val, ghost_lidx *rpt);
-    /**
-     * Documented in ghost_sparsemat_init_rowfunc() 
-     */
-    ghost_error (*fromRowFunc)(ghost_sparsemat *, 
-            ghost_sparsemat_src_rowfunc *src);
-    /**
-     * @brief Write a matrix to a binary CRS file.
-     *
-     * @param mat The matrix. 
-     * @param path Path of the file.
-     */
-    ghost_error (*toFile)(ghost_sparsemat *mat, char *path);
-    /**
-     * @brief Upload the matrix to the CUDA device.
-     *
-     * @param mat The matrix.
-     */
-    ghost_error (*upload)(ghost_sparsemat * mat);
-    /**
-     * @brief Get the entire memory footprint of the matrix.
-     *
-     * @param mat The matrix.
-     *
-     * @return The memory footprint of the matrix in bytes or zero if the 
-     * matrix is not valid.
-     */
-    size_t     (*byteSize)(ghost_sparsemat *mat);
-    /**
-     * @brief Split the matrix into a local and a remote part.
-     *
-     * @param mat The matrix.
-     */
-    ghost_error       (*split)(ghost_sparsemat *mat);
+    ghost_lidx nchunks;
 };
+
+typedef struct 
+{
+    char *filename;
+    ghost_datatype dt;
+    ghost_sparsemat *mat;
+} 
+ghost_sparsemat_rowfunc_file_initargs;
+
+#define SPM_NROWS(mat) mat->context->row_map->dim
+#define SPM_NNZ(mat) mat->context->nnz
+#define SPM_NCOLS(mat) mat->context->col_map->dim
+#define SPM_GNCOLS(mat) mat->context->col_map->gdim
+#define SPM_NROWSPAD(mat) mat->context->row_map->dimpad
+#define SPM_NCHUNKS(mat) (mat->nchunks)
 
 
 #ifdef __cplusplus
@@ -792,7 +655,7 @@ extern "C" {
      * @brief Create a sparse matrix. 
      *
      * @param[out] mat Where to store the matrix
-     * @param[in] ctx The context the matrix lives in.
+     * @param[in] ctx An existing context or ::GHOST_CONTEXT_INITIALIZER.
      * @param[in] traits The matrix traits. They can be specified for the full 
      * matrix, the local and the remote part.
      * @param[in] nTraits The number of traits. 
@@ -867,7 +730,7 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error ghost_sparsemat_perm_scotch(ghost_sparsemat *mat, void *matrixSource, ghost_sparsemat_src srcType);
+    ghost_error ghost_sparsemat_perm_scotch(ghost_context *ctx, ghost_sparsemat *mat);
     /**
      * @brief Create a matrix permutation based on row length sorting within a 
      * given scope.
@@ -880,27 +743,23 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error ghost_sparsemat_perm_sort(ghost_sparsemat *mat, 
-            void *matrixSource, ghost_sparsemat_src srcType, ghost_gidx scope);
+    ghost_error ghost_sparsemat_perm_sort(ghost_context *ctx, ghost_sparsemat *mat, ghost_lidx scope);
 
-    ghost_error ghost_sparsemat_perm_spmp(ghost_sparsemat *mat, void *matrixSource, ghost_sparsemat_src srcType);
+    ghost_error ghost_sparsemat_perm_spmp(ghost_context *ctx, ghost_sparsemat *mat);
 
     /**
      * @brief Create a matrix permutation based on 2-way coloring using ColPack.
      *
-     * @param[inout] mat The sparse matrix.
-     * @param[in] matrixSource The matrix source. This will be casted depending 
-     * on \p srcType.
-     * @param[in] srcType Type of the matrix source.
+     * @param[out] ctx The context in which to store the permutations and color information.
+     * @param[in] ctx The unpermuted SELL-1-1 source sparse matrix.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error ghost_sparsemat_perm_color(ghost_sparsemat *mat, 
-            void *matrixSource, ghost_sparsemat_src srcType);
+    ghost_error ghost_sparsemat_perm_color(ghost_context *ctx, ghost_sparsemat *mat);
 
-    ghost_error ghost_sparsemat_blockColor(ghost_sparsemat *mat, void *matrixSource, ghost_sparsemat_src srcType);
+    ghost_error ghost_sparsemat_blockColor(ghost_context *ctx, ghost_sparsemat *mat);
  
-    ghost_error ghost_sparsemat_perm_zoltan(ghost_sparsemat *mat, void *matrixSource, ghost_sparsemat_src srcType);
+    ghost_error ghost_sparsemat_perm_zoltan(ghost_context *ctx, ghost_sparsemat *mat);
     /**
      * @brief Sort the entries in a given row physically to have increasing 
      * column indices.
@@ -997,6 +856,20 @@ extern "C" {
             ghost_sparsemat *mat, 
             ghost_densemat *rhs, 
             ghost_spmv_opts traits);
+    /**
+     * @brief Select and call the right CUDA SELL SpMV kernel. 
+     *
+     * @param mat The matrix.
+     * @param lhs The result densemat.
+     * @param rhs The input densemat.
+     * @param traits The SpMV traits.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error ghost_cu_sell_spmv_selector(ghost_densemat *lhs, 
+            ghost_sparsemat *mat, 
+            ghost_densemat *rhs, 
+            ghost_spmv_opts traits);
     
     /**
      * @brief Select and call the right SELL stringification function.
@@ -1009,6 +882,101 @@ extern "C" {
      */
     ghost_error ghost_sell_stringify_selector(ghost_sparsemat *mat, 
             char **str, int dense);
+    /**
+     * @ingroup stringification
+     * @brief Creates a string of the sparsemat's contents.
+     * @param mat The matrix.
+     * @param str Where to store the string.
+     * @param dense If 0, only the elements stored in the sparse matrix will 
+     * be included. If 1, the matrix will be interpreted as a dense matrix.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     *
+     * The string has to be freed by the caller.
+     */
+    ghost_error ghost_sparsemat_string(char **str, ghost_sparsemat *mat, int dense);
+    /**
+     * @ingroup sparseinit
+     * @brief Initializes a sparsemat from a row-based callback function.
+     * @param mat The matrix.
+     * @param src The source.
+     * @param mpicomm The MPI communicator in which to create this sparsemat.
+     * @param weight The weight of each rank in the given MPI communicator.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     * 
+     * Requires the matrix to have a valid and compatible datatype.
+     */
+    ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_src_rowfunc *src, ghost_mpi_comm mpicomm, double weight);
+
+    /**
+     * @ingroup sparseinit
+     * @brief Initializes a sparsemat from a binary CRS file.
+     * @param mat The matrix.
+     * @param path The source file.
+     * @param mpicomm The MPI communicator in which to create this sparsemat.
+     * @param weight The weight of each rank in the given MPI communicator.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     * 
+     * Allows the matrix' datatype to be @c GHOST_DT_NONE. In this case the
+     * datatype for the matrix is read from file. Otherwise the matrix 
+     * datatype has to be valid and compatible.
+     */
+    ghost_error ghost_sparsemat_init_bin(ghost_sparsemat *mat, char *path, ghost_mpi_comm mpicomm, double weight);
+
+    /**
+     * @ingroup sparseinit
+     * @brief Initializes a sparsemat from a Matrix Market file.
+     * @param mat The matrix.
+     * @param path The source file.
+     * @param mpicomm The MPI communicator in which to create this sparsemat.
+     * @param weight The weight of each rank in the given MPI communicator.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     * 
+     * Allows the matrix' datatype to be @c GHOST_DT_NONE or one of the
+     * incomplete datatypes @c GHOST_DT_FLOAT and @c GHOST_DT_DOUBLE. 
+     * If the matrix' datatype on entry is @c GHOST_DT_FLOAT or @c GHOST_DT_DOUBLE,
+     * the file will be interpreted either in single or double precision, 
+     * respectively. In this case, the datatype will be completed with
+     * @c GHOST_DT_REAL or @c GHOST_DT_COMPLEX as specified in the input file.
+     * If the matrix' datatype on entry is @c GHOST_DT_NONE, @c GHOST_DT_DOUBLE
+     * is assumed.
+     * Otherwise the matrix datatype has to be valid and compatible.
+     */
+    ghost_error ghost_sparsemat_init_mm(ghost_sparsemat *mat, char *path, ghost_mpi_comm mpicomm, double weight);
+
+    /**
+     * @ingroup sparseinit
+     * @brief Initializes a sparsemat from local CRS data.
+     * @param mat The matrix.
+     * @param offs The global index of this rank's first row.
+     * @param n The local number of rows.
+     * @param col The (global) column indices.
+     * @param val The values.
+     * @param rpt The row pointers.
+     * @param mpicomm The MPI communicator in which to create this sparsemat.
+     * @param weight The weight of each rank in the given MPI communicator.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     * 
+     * Requires the matrix to have a valid and compatible datatype.
+     */
+    ghost_error ghost_sparsemat_init_crs(ghost_sparsemat *mat, ghost_gidx offs, ghost_lidx n, ghost_gidx *col, void *val, ghost_lidx *rpt, ghost_mpi_comm mpicomm, double weight);
+    
+    /**
+     * @brief Write a matrix to a binary CRS file.
+     *
+     * @param mat The matrix. 
+     * @param path Path of the file.
+     */
+    ghost_error ghost_sparsemat_to_bin(ghost_sparsemat *mat, char *path);
+    
+    /**
+     * @brief Get the entire memory footprint of the matrix.
+     *
+     * @param mat The matrix.
+     *
+     * @return The memory footprint of the matrix in bytes or zero if the 
+     * matrix is not valid.
+     */
+    size_t ghost_sparsemat_bytesize(ghost_sparsemat *mat);
     
     /**
      * @brief Select and call the right CUDA SELL SpMV kernel. 
@@ -1096,19 +1064,14 @@ extern "C" {
      */ 
     ghost_error kacz_analyze_print(ghost_sparsemat *mat);
     
-    /**
-    * @brief Writes a matrix to file 
-    *
-    *@param A sparse matrix to write
-    *@param name Name of file 
-   */                
-    ghost_error sparsemat_write(ghost_sparsemat *A, char *name);
+    ghost_error ghost_sparsemat_to_mm(char *path, ghost_sparsemat *mat);
 
     /**
      * @brief Assemble communication information in the given context.
      * @param[inout] ctx The context.
      * @param[in] col_orig The original column indices of the sparse matrix which is bound to the context.
      * @param[out] col The compressed column indices of the sparse matrix which is bound to the context.
+     * @param[out] nhalo The number of halo elements. 
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      * 
@@ -1116,18 +1079,9 @@ extern "C" {
      * wishes, wishlist, dues, duelist, hput_pos, wishpartners, nwishpartners, duepartners, nduepartners.
      * Additionally, the columns in col_orig are being compressed and stored in col.
      */
-    ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, ghost_sparsemat *mat, ghost_lidx *col);
-
-    ghost_error ghost_sparsemat_from_bincrs(ghost_sparsemat *mat, char *path);
-    ghost_error ghost_sparsemat_from_mm(ghost_sparsemat *mat, char *path);
-    ghost_error ghost_sparsemat_from_crs(ghost_sparsemat *mat, ghost_gidx offs, ghost_lidx n, ghost_gidx *col, void *val, ghost_lidx *rpt);
+    ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, ghost_sparsemat *mat, ghost_lidx *col, ghost_lidx *nhalo);
 
     ghost_error ghost_sparsemat_perm_global_cols(ghost_gidx *cols, ghost_lidx ncols, ghost_context *context);
-
-
-    ghost_error ghost_sparsemat_fromfunc_common(ghost_lidx *rl, ghost_lidx *rlp, ghost_lidx *cl, ghost_lidx *clp, ghost_lidx **chunkptr, char **val, ghost_gidx **col, ghost_sparsemat_src_rowfunc *src, ghost_sparsemat *mat, ghost_lidx C, ghost_lidx P);
-
-    ghost_error ghost_sparsemat_fromfunc_common_dummy(ghost_lidx *rl, ghost_lidx *rlp, ghost_lidx *cl, ghost_lidx *clp, ghost_lidx **chunkptr, char **val, ghost_gidx **col, ghost_sparsemat_src_rowfunc *src, ghost_sparsemat *mat, ghost_lidx C, ghost_lidx P);
 
  static inline int ghost_sparsemat_rowfunc_crs(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *col, void *val, void *crsdata)
 {
@@ -1151,10 +1105,6 @@ ghost_error set_kacz_ratio(ghost_sparsemat *mat, void *matrixSource, ghost_spars
 #ifdef __cplusplus
 } 
 #endif
-
-
-extern const ghost_sparsemat_src_rowfunc 
-GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER;
 
 
 #endif

@@ -151,6 +151,11 @@ extern "C" {
      */
     void ghost_timing_set_perfFunc(const char *prefix, const char *tag, ghost_compute_performance_func func, void *arg, size_t sizeofarg, const char *unit);
 
+    /**
+     * @brief Free timing data structures.
+     */
+    void ghost_timing_destroy();
+
 #ifdef __cplusplus
 }
 #endif

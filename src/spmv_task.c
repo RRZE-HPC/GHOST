@@ -10,6 +10,7 @@
 #include "ghost/instr.h"
 #include "ghost/sparsemat.h"
 #include "ghost/spmv_solvers.h"
+#include "ghost/math.h"
 
 #ifdef GHOST_HAVE_MPI
 #include <mpi.h>
@@ -40,8 +41,8 @@ static void *communicate(void *vargs)
     ghost_error *ret = NULL;
     GHOST_CALL_GOTO(ghost_malloc((void **)&ret,sizeof(ghost_error)),err,*ret);
     *ret = GHOST_SUCCESS;
-    GHOST_CALL_GOTO(args->rhs->halocommStart(args->rhs,args->ctx,args->comm),err,*ret);
-    GHOST_CALL_GOTO(args->rhs->halocommFinalize(args->rhs,args->ctx,args->comm),err,*ret);
+    GHOST_CALL_GOTO(ghost_densemat_halocomm_start(args->rhs,args->ctx,args->comm),err,*ret);
+    GHOST_CALL_GOTO(ghost_densemat_halocomm_finalize(args->rhs,args->ctx,args->comm),err,*ret);
 
     goto out;
 err:
@@ -68,7 +69,7 @@ static void *computeLocal(void *vargs)
     *ret = GHOST_SUCCESS;
 
     compArgs *args = (compArgs *)vargs;
-    GHOST_CALL_GOTO(args->mat->spmv(args->res,args->mat,args->invec,args->spmvtraits),err,*ret);
+    GHOST_CALL_GOTO(ghost_spmv_nocomm(args->res,args->mat,args->invec,args->spmvtraits),err,*ret);
 
     goto out;
 err:
@@ -98,7 +99,7 @@ ghost_error ghost_spmv_taskmode(ghost_densemat* res, ghost_sparsemat* mat, ghost
 /*    int remoteExists;
     ghost_nrank(&remoteExists,mat->context->mpicomm);
     remoteExists -= 1;*/
-    int remoteExists = mat->remotePart->nnz > 0;
+    int remoteExists = mat->remotePart->nEnts > 0;
     MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&remoteExists,1,MPI_INT,MPI_MAX,mat->context->mpicomm));
    
     if (remoteExists) {
@@ -142,7 +143,7 @@ ghost_error ghost_spmv_taskmode(ghost_densemat* res, ghost_sparsemat* mat, ghost
     
     GHOST_INSTR_START("haloassembly");
     
-    GHOST_CALL_GOTO(invec->halocommInit(invec,mat->context,&comm),err,ret);
+    GHOST_CALL_GOTO(ghost_densemat_halocomm_init(invec,mat->context,&comm),err,ret);
     
     GHOST_INSTR_STOP("haloassembly");
 
@@ -165,7 +166,7 @@ ghost_error ghost_spmv_taskmode(ghost_densemat* res, ghost_sparsemat* mat, ghost
 
     GHOST_INSTR_START("remote");
     if (remoteExists) {
-        mat->remotePart->spmv(res,mat->remotePart,invec,remotetraits);
+        ghost_spmv_nocomm(res,mat->remotePart,invec,remotetraits);
     }
     GHOST_INSTR_STOP("remote");
        

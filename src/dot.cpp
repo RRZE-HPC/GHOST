@@ -1,12 +1,15 @@
 #include "ghost/config.h"
 #include "ghost/types.h"
 #include "ghost/densemat.h"
+#include "ghost/densemat_rm.h"
+#include "ghost/densemat_cm.h"
 #include "ghost/util.h"
 #include "ghost/dot_avx_gen.h"
 #include "ghost/dot_plain_gen.h"
 #include "ghost/machine.h"
 #include "ghost/dot.h"
 #include "ghost/timing.h"
+#include "ghost/compatibility_check.h"
 
 #include <unordered_map>
 
@@ -34,12 +37,21 @@ static bool operator==(const ghost_dot_parameters& a, const ghost_dot_parameters
 
 static unordered_map<ghost_dot_parameters, ghost_dot_kernel> ghost_dot_kernels;
 
-ghost_error ghost_dot(void *res, ghost_densemat *vec1, ghost_densemat *vec2, ghost_mpi_comm mpicomm)
+ghost_error ghost_localdot(void *res, ghost_densemat *vec1, ghost_densemat *vec2)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
 
     ghost_error ret = GHOST_SUCCESS;
 
+    //////////////// check compatibility /////////////
+    ghost_compatible_vec_vec check = GHOST_COMPATIBLE_VEC_VEC_INITIALIZER;
+    check.A = vec1;
+    check.transA = 'T';
+    check.B = vec2;   
+
+    ret = ghost_check_vec_vec_compatibility(&check);
+    ///////////////////////////////////////////////////
+ 
     if (ghost_dot_kernels.empty()) {
 #include "dot_avx.def"
 #include "dot_plain.def"
@@ -105,7 +117,7 @@ out:
     if (!kernel) {
         ghost_dot_perf_args dot_perfargs;
         dot_perfargs.ncols = vec1->traits.ncols;
-        dot_perfargs.globnrows = vec1->traits.gnrows;
+        dot_perfargs.globnrows = DM_GNROWS(vec1);
         dot_perfargs.dt = vec1->traits.datatype;
         if (vec1 == vec2) {
             dot_perfargs.samevec = true;
@@ -114,10 +126,35 @@ out:
         }
         ghost_timing_set_perfFunc(NULL,__ghost_functag,ghost_dot_perf,(void *)&dot_perfargs,sizeof(dot_perfargs),"GB/s");
         PERFWARNING_LOG("Fallback to vanilla dot implementation");
-        ret = vec1->localdot_vanilla(vec1,res,vec2);
+        
+        ghost_location commonlocation = vec1->traits.location & vec2->traits.location;
+        
+        typedef ghost_error (*ghost_dot_kernel)(ghost_densemat*, void*, ghost_densemat*);
+        ghost_dot_kernel kernels[2][2] = {{NULL,NULL},{NULL,NULL}};
+        kernels[GHOST_HOST_IDX][GHOST_RM_IDX] = &ghost_densemat_rm_dotprod_selector;
+        kernels[GHOST_HOST_IDX][GHOST_CM_IDX] = &ghost_densemat_cm_dotprod_selector;
+#ifdef GHOST_HAVE_CUDA
+        kernels[GHOST_DEVICE_IDX][GHOST_RM_IDX] = &ghost_densemat_cu_rm_dotprod;
+        kernels[GHOST_DEVICE_IDX][GHOST_CM_IDX] = &ghost_densemat_cu_cm_dotprod;
+#endif
+
+        SELECT_BLAS1_KERNEL(kernels,commonlocation,vec1->traits.compute_at,vec1->traits.storage,ret,vec1,res,vec2);
     }
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
+    return ret;
+}
+
+ghost_error ghost_dot(void *res, ghost_densemat *vec1, ghost_densemat *vec2)
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
+
+    ghost_error ret = GHOST_SUCCESS;
+    GHOST_CALL_RETURN(ghost_localdot(res,vec1,vec2));
+
 #ifdef GHOST_HAVE_MPI
+    ghost_mpi_comm mpicomm = MPI_COMM_WORLD;
+    // TODO use MPI comm of densemat
     if (mpicomm != MPI_COMM_NULL) {
         GHOST_INSTR_START("reduce")
         ghost_mpi_op sumOp;

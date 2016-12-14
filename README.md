@@ -49,7 +49,7 @@ you can decide to enable (some of) the following optional dependencies:
 # Documentation #
 ---
 
-The main point of documentation is located in the Doxygen pages: [mkreutzer.bitbucket.org/ghost_doc/](http://mkreutzer.bitbucket.org/ghost_doc/).
+The main point of documentation is located in the Doxygen pages: [https://mkreutzer.bitbucket.io/ghost_doc/](https://mkreutzer.bitbucket.io/ghost_doc/).
 
 Our preprint available at the arXiv describes a lot of the concepts of GHOST: [arxiv.org/abs/1507.08101](http://arxiv.org/abs/1507.08101).
 
@@ -105,8 +105,7 @@ The same applies for hwloc and the variables `HWLOC_INCLUDE_DIR` and `HWLOC_LIBR
 1. **An overview paper of GHOST**  
 *GHOST: Building blocks for high performance sparse linear algebra on heterogeneous systems*  
 Moritz Kreutzer, Jonas Thies, Melven Röhrig-Zöllner, Andreas Pieper, Faisal Shahzad, Martin Galgon, Achim Basermann, Holger Fehske, Georg Hager, and Gerhard Wellein  
-Preprint  
-http://arxiv.org/abs/1507.08101
+http://link.springer.com/article/10.1007/s10766-016-0464-z / http://arxiv.org/abs/1507.08101
 
 2. **An overview poster of GHOST**  
 http://isc-hpc.com/isc16_ap/presentationdetails.htm?t=presentation&o=999&a=select
@@ -124,13 +123,15 @@ http://epubs.siam.org/doi/abs/10.1137/130930352 / http://arxiv.org/abs/1307.6209
 
 If you are using GHOST in your publication please use the following reference:
 
-
     @article{GHOST,
-        author    = {Moritz Kreutzer and Jonas Thies and Melven R{\"{o}}hrig{-}Z{\"{o}}llner and
-                     Andreas Pieper and Faisal Shahzad and Martin Galgon and Achim Basermann and
-                     Holger Fehske and Georg Hager and Gerhard Wellein},
-        title     = {{GHOST:} Building blocks for high performance sparse linear algebra on heterogeneous systems},
-        journal   = {preprint},
-        year      = {2015},
-        note      = {http://arxiv.org/abs/1507.08101}
+        author  = {Kreutzer, Moritz and Thies, Jonas and R{\"o}hrig-Z{\"o}llner, Melven and 
+                  Pieper, Andreas and Shahzad, Faisal and Galgon, Martin and Basermann, Achim and 
+                  Fehske, Holger and Hager, Georg and Wellein, Gerhard},
+        title   = {{GHOST}: Building Blocks for High Performance Sparse Linear Algebra on Heterogeneous Systems},
+        journal = {International Journal of Parallel Programming},
+        year    = {2016},
+        pages   = {1--27},
+        issn    = {1573-7640],
+        doi     = {10.1007/s10766-016-0464-z},
+        url     = {http://dx.doi.org/10.1007/s10766-016-0464-z}
     }

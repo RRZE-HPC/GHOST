@@ -1,0 +1,204 @@
+/*!GHOST_AUTOGEN_TSMM-INPLACE *,* */
+#include "ghost/config.h"
+#include "ghost/densemat.h"
+#include "ghost/instr.h"
+#include "ghost/locality.h"
+#include "ghost/log.h"
+#include "ghost/rand.h"
+#include "ghost/timing.h"
+#include "ghost/tsmm_inplace_var2_cu_gen.h"
+#include "ghost/types.h"
+#include "ghost/util.h"
+
+#include <complex.h>
+#include <cublas_v2.h>
+#include <cuda_runtime.h>
+#include <curand.h>
+#include <stdio.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <iostream>
+
+#include "ghost/cu_complex.h"
+
+namespace {
+
+template <typename T>
+bool eq(const T lhs, const T rhs) {
+  return lhs == rhs;
+};
+
+template <>
+bool eq<cuDoubleComplex>(const cuDoubleComplex lhs, const cuDoubleComplex rhs) {
+  return lhs.x == rhs.x && lhs.y == rhs.y;
+}
+
+template <>
+bool eq<cuFloatComplex>(const cuFloatComplex lhs, const cuFloatComplex rhs) {
+  return lhs.x == rhs.x && lhs.y == rhs.y;
+}
+
+template <typename T, int REMAINDER>
+static __global__ void __launch_bounds__(256, 4)
+    tsmm_varip3_kernel(const T *A, const T *B, T *out, const int M, const int N,
+                       const int K, const int lda, const int ldb, const int ldc,
+                       T alpha, T beta) {
+  int tidx = blockIdx.x * blockDim.x + threadIdx.x;
+  int n = tidx % N;
+
+  int row = tidx / N;
+  if (row >= K) return;
+  //  for (int row = tidx / N; row < K; row += gridDim.x * blockDim.x / N) {
+  T sum;
+  zero(sum);
+
+  int offset1 = (n + 0) % 4;
+  int offset2 = (n + 1) % 4;
+  int offset3 = (n + 2) % 4;
+  int offset4 = (n + 3) % 4;
+
+  const T *Abase = A + row * lda;
+  const T *Bbase = B + n * ldb;
+  for (int m = 0; m < M - 3; m += 4) {
+    sum = axpy(sum, __ldg(Abase + m + offset1), __ldg(Bbase + m + offset1));
+    sum = axpy(sum, __ldg(Abase + m + offset2), __ldg(Bbase + m + offset2));
+    sum = axpy(sum, __ldg(Abase + m + offset3), __ldg(Bbase + m + offset3));
+    sum = axpy(sum, __ldg(Abase + m + offset4), __ldg(Bbase + m + offset4));
+  }
+  for (int i = 0; i < REMAINDER; i++) {
+    sum = axpy(sum, __ldg(Abase + M - REMAINDER + i),
+               __ldg(Bbase + M - REMAINDER + i));
+  }
+
+  __syncthreads();
+
+  out[row * ldc + n] = axpby(sum, out[row * ldc + n], alpha, beta);
+}
+
+template <typename T, bool BETAISZERO>
+static __global__ void __launch_bounds__(256, 8)
+    tsmm_varip2_kernel(const T *A, const T *B, T *out, const int M, const int N,
+                       const int K, const int lda, const int ldb, const int ldc,
+                       T alpha, T beta) {
+  int tidx = blockIdx.x * blockDim.x + threadIdx.x;
+  int n = tidx % N;
+
+  int row = tidx / N;
+  if (row >= K) return;
+  //  for (int row = tidx / N; row < K; row += gridDim.x * blockDim.x / N) {
+  T sum;
+  zero(sum);
+#pragma unroll 4
+  for (int m = 0; m < M; m++) {
+    sum = axpy(sum, __ldg(A + row * lda + m), __ldg(B + n * ldb + m));
+  }
+
+  __syncthreads();
+
+  if (BETAISZERO) {
+    out[row * ldc + n] = scale(alpha, sum);
+  } else {
+    out[row * ldc + n] = axpby(sum, out[row * ldc + n], alpha, beta);
+  }
+  //}
+}
+
+template <typename T>
+void tsmm_varip3(ghost_lidx M, ghost_lidx N, ghost_lidx K, T *A, ghost_lidx lda,
+                 T alpha, const T *B, ghost_lidx ldb, T beta) {
+  const int threadsPerBlock = (256 / N) * N;
+  int newBlockCount = CEILDIV(K * N, threadsPerBlock);
+
+  if (M % 4 == 0)
+    tsmm_varip3_kernel<T, 0><<<newBlockCount, threadsPerBlock>>>(
+        A, B, A, M, N, K, lda, ldb, lda, alpha, beta);
+
+  if (M % 4 == 1)
+    tsmm_varip3_kernel<T, 1><<<newBlockCount, threadsPerBlock>>>(
+        A, B, A, M, N, K, lda, ldb, lda, alpha, beta);
+
+  if (M % 4 == 2)
+    tsmm_varip3_kernel<T, 2><<<newBlockCount, threadsPerBlock>>>(
+        A, B, A, M, N, K, lda, ldb, lda, alpha, beta);
+
+  if (M % 4 == 3)
+    tsmm_varip3_kernel<T, 3><<<newBlockCount, threadsPerBlock>>>(
+        A, B, A, M, N, K, lda, ldb, lda, alpha, beta);
+}
+
+template <typename T>
+void tsmm_varip2(ghost_lidx M, ghost_lidx N, ghost_lidx K, T *A, ghost_lidx lda,
+                 T alpha, const T *B, ghost_lidx ldb, T beta) {
+  const int threadsPerBlock = (256 / N) * N;
+  int blockCount = CEILDIV(K * N, threadsPerBlock);
+
+  T Tzero;
+  zero(Tzero);
+  if (eq(beta, Tzero)) {
+    tsmm_varip2_kernel<T, true><<<blockCount, threadsPerBlock>>>(
+        A, B, A, M, N, K, lda, ldb, lda, alpha, beta);
+  } else {
+    tsmm_varip2_kernel<T, false><<<blockCount, threadsPerBlock>>>(
+        A, B, A, M, N, K, lda, ldb, lda, alpha, beta);
+  }
+}
+
+template <typename T>
+void tsmm_varip_dispatch(ghost_lidx M, ghost_lidx N, ghost_lidx K, T *A,
+                         ghost_lidx lda, T alpha, const T *B, ghost_lidx ldb,
+                         T beta) {
+  if (N < 8 && (M + 2) > 5 * N)
+    tsmm_varip3(M, N, K, A, lda, alpha, B, ldb, beta);
+  else  // if (sqrt((47 - N) * (47 - N) + 0.35 * (75 - M) * (75 - M)) > 35 &&
+    //    !(N > 12 && M > 70) && !(M > 16 && N > 50))
+    tsmm_varip2(M, N, K, A, lda, alpha, B, ldb, beta);
+}
+}
+
+ghost_error ghost_tsmm_inplace__u_cuda_x_x_x(ghost_densemat *x, ghost_densemat *w, void *alpha, void *beta)
+{
+  GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH | GHOST_FUNCTYPE_KERNEL);
+  ghost_error ret = GHOST_SUCCESS;
+
+  /* int M = DM_NROWS(w);
+  int N = w->traits.ncols;
+  if (!(sqrt((47 - N) * (47 - N) + 0.35 * (75 - M) * (75 - M)) > 35 &&
+        !(N > 12 && M > 70) && !(M > 16 && N > 50))) {
+    ghost_gemm(x, x, "N", w, "N", &alpha, &beta, GHOST_GEMM_NO_REDUCE,
+               GHOST_GEMM_NOT_SPECIAL);
+    return;
+    }*/
+
+  if (x->traits.datatype & GHOST_DT_COMPLEX) {
+    if (x->traits.datatype & GHOST_DT_DOUBLE) {
+      tsmm_varip_dispatch<cuDoubleComplex>(
+          DM_NROWS(w), w->traits.ncols, DM_NROWS(x),
+          (cuDoubleComplex *)x->cu_val, x->stride, *(cuDoubleComplex *)alpha,
+          (const cuDoubleComplex *)w->cu_val, w->stride,
+          *(cuDoubleComplex *)beta);
+    } else {
+      tsmm_varip_dispatch<cuFloatComplex>(
+          DM_NROWS(w), w->traits.ncols, DM_NROWS(x),
+          (cuFloatComplex *)x->cu_val, x->stride, *(cuFloatComplex *)alpha,
+          (const cuFloatComplex *)w->cu_val, w->stride,
+          *(cuFloatComplex *)beta);
+    }
+  } else {
+    if (x->traits.datatype & GHOST_DT_DOUBLE) {
+      tsmm_varip_dispatch<double>(DM_NROWS(w), w->traits.ncols, DM_NROWS(x),
+                                  (double *)x->cu_val, x->stride,
+                                  *(double *)alpha, (const double *)w->cu_val,
+                                  w->stride, *(double *)beta);
+
+    } else {
+      tsmm_varip_dispatch<float>(DM_NROWS(w), w->traits.ncols, DM_NROWS(x),
+                                 (float *)x->cu_val, x->stride, *(float *)alpha,
+                                 (const float *)w->cu_val, w->stride,
+                                 *(float *)beta);
+    }
+  }
+
+  GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH | GHOST_FUNCTYPE_KERNEL);
+  CUDA_CALL_RETURN(cudaGetLastError());
+  return ret;
+}

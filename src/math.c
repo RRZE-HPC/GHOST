@@ -3,6 +3,8 @@
 #include "ghost/util.h"
 #include "ghost/math.h"
 #include "ghost/densemat.h"
+#include "ghost/densemat_cm.h"
+#include "ghost/densemat_rm.h"
 #include "ghost/locality.h"
 #include "ghost/instr.h"
 #include "ghost/log.h"
@@ -557,3 +559,252 @@ bool ghost_isone(void *vnumber, ghost_datatype dt)
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return ret;
 }
+   
+
+ghost_error ghost_axpy(ghost_densemat *y, ghost_densemat *x, void *a)
+{
+
+    GHOST_DENSEMAT_CHECK_SIMILARITY(y,x);
+
+    ghost_location commonlocation = (ghost_location)(y->traits.location & x->traits.location);
+
+    ghost_error ret;
+
+    typedef ghost_error (*ghost_axpy_kernel)(ghost_densemat*, ghost_densemat*, void*);
+    ghost_axpy_kernel kernels[2][2] = {{NULL,NULL},{NULL,NULL}};
+    kernels[GHOST_HOST_IDX][GHOST_RM_IDX] = &ghost_densemat_rm_axpy;
+    kernels[GHOST_HOST_IDX][GHOST_CM_IDX] = &ghost_densemat_cm_axpy;
+#ifdef GHOST_HAVE_CUDA
+    kernels[GHOST_DEVICE_IDX][GHOST_RM_IDX] = &ghost_densemat_cu_rm_axpy;
+    kernels[GHOST_DEVICE_IDX][GHOST_CM_IDX] = &ghost_densemat_cu_cm_axpy;
+#endif
+
+    SELECT_BLAS1_KERNEL(kernels,commonlocation,y->traits.compute_at,y->traits.storage,ret,y,x,a);
+
+    return ret;
+}
+
+ghost_error ghost_vaxpy(ghost_densemat *y, ghost_densemat *x, void *a)
+{
+
+    GHOST_DENSEMAT_CHECK_SIMILARITY(y,x);
+
+    ghost_location commonlocation = (ghost_location)(y->traits.location & x->traits.location);
+
+    ghost_error ret;
+
+    typedef ghost_error (*ghost_vaxpy_kernel)(ghost_densemat*, ghost_densemat*, void*);
+    ghost_vaxpy_kernel kernels[2][2] = {{NULL,NULL},{NULL,NULL}};
+    kernels[GHOST_HOST_IDX][GHOST_RM_IDX] = &ghost_densemat_rm_vaxpy_selector;
+    kernels[GHOST_HOST_IDX][GHOST_CM_IDX] = &ghost_densemat_cm_vaxpy_selector;
+#ifdef GHOST_HAVE_CUDA
+    kernels[GHOST_DEVICE_IDX][GHOST_RM_IDX] = &ghost_densemat_cu_rm_vaxpy;
+    kernels[GHOST_DEVICE_IDX][GHOST_CM_IDX] = &ghost_densemat_cu_cm_vaxpy;
+#endif
+
+    SELECT_BLAS1_KERNEL(kernels,commonlocation,y->traits.compute_at,y->traits.storage,ret,y,x,a);
+
+    return ret;
+}
+
+ghost_error ghost_axpby(ghost_densemat *y, ghost_densemat *x, void *a, void *b)
+{
+
+    GHOST_DENSEMAT_CHECK_SIMILARITY(y,x);
+
+    ghost_location commonlocation = (ghost_location)(y->traits.location & x->traits.location);
+
+    ghost_error ret;
+
+    typedef ghost_error (*ghost_axpby_kernel)(ghost_densemat*, ghost_densemat*, void*, void*);
+    ghost_axpby_kernel kernels[2][2] = {{NULL,NULL},{NULL,NULL}};
+    kernels[GHOST_HOST_IDX][GHOST_RM_IDX] = &ghost_densemat_rm_axpby;
+    kernels[GHOST_HOST_IDX][GHOST_CM_IDX] = &ghost_densemat_cm_axpby;
+#ifdef GHOST_HAVE_CUDA
+    kernels[GHOST_DEVICE_IDX][GHOST_RM_IDX] = &ghost_densemat_cu_rm_axpby;
+    kernels[GHOST_DEVICE_IDX][GHOST_CM_IDX] = &ghost_densemat_cu_cm_axpby;
+#endif
+
+    SELECT_BLAS1_KERNEL(kernels,commonlocation,y->traits.compute_at,y->traits.storage,ret,y,x,a,b);
+
+    return ret;
+}
+
+ghost_error ghost_vaxpby(ghost_densemat *y, ghost_densemat *x, void *a, void *b)
+{
+
+    GHOST_DENSEMAT_CHECK_SIMILARITY(y,x);
+
+    ghost_location commonlocation = (ghost_location)(y->traits.location & x->traits.location);
+
+    ghost_error ret;
+
+    typedef ghost_error (*ghost_vaxpby_kernel)(ghost_densemat*, ghost_densemat*, void*, void*);
+    ghost_vaxpby_kernel kernels[2][2] = {{NULL,NULL},{NULL,NULL}};
+    kernels[GHOST_HOST_IDX][GHOST_RM_IDX] = &ghost_densemat_rm_vaxpby_selector;
+    kernels[GHOST_HOST_IDX][GHOST_CM_IDX] = &ghost_densemat_cm_vaxpby_selector;
+#ifdef GHOST_HAVE_CUDA
+    kernels[GHOST_DEVICE_IDX][GHOST_RM_IDX] = &ghost_densemat_cu_rm_vaxpby;
+    kernels[GHOST_DEVICE_IDX][GHOST_CM_IDX] = &ghost_densemat_cu_cm_vaxpby;
+#endif
+
+    SELECT_BLAS1_KERNEL(kernels,commonlocation,y->traits.compute_at,y->traits.storage,ret,y,x,a,b);
+
+    return ret;
+}
+
+ghost_error ghost_axpbypcz(ghost_densemat *y, ghost_densemat *x, void *a, void *b, ghost_densemat *z, void *c)
+{
+
+    GHOST_DENSEMAT_CHECK_SIMILARITY(y,x);
+    GHOST_DENSEMAT_CHECK_SIMILARITY(y,z);
+
+    ghost_location commonlocation = (ghost_location)(y->traits.location & x->traits.location);
+
+    ghost_error ret;
+
+    typedef ghost_error (*ghost_axpbypcz_kernel)(ghost_densemat*, ghost_densemat*, void*, void*, ghost_densemat*, void*);
+    ghost_axpbypcz_kernel kernels[2][2] = {{NULL,NULL},{NULL,NULL}};
+    kernels[GHOST_HOST_IDX][GHOST_RM_IDX] = &ghost_densemat_rm_axpbypcz;
+    kernels[GHOST_HOST_IDX][GHOST_CM_IDX] = &ghost_densemat_cm_axpbypcz;
+#ifdef GHOST_HAVE_CUDA
+    kernels[GHOST_DEVICE_IDX][GHOST_RM_IDX] = &ghost_densemat_cu_rm_axpbypcz;
+    kernels[GHOST_DEVICE_IDX][GHOST_CM_IDX] = &ghost_densemat_cu_cm_axpbypcz;
+#endif
+
+    SELECT_BLAS1_KERNEL(kernels,commonlocation,y->traits.compute_at,y->traits.storage,ret,y,x,a,b,z,c);
+
+    return ret;
+}
+
+ghost_error ghost_vaxpbypcz(ghost_densemat *y, ghost_densemat *x, void *a, void *b, ghost_densemat *z, void *c)
+{
+
+    GHOST_DENSEMAT_CHECK_SIMILARITY(y,x);
+    GHOST_DENSEMAT_CHECK_SIMILARITY(y,z);
+
+    ghost_location commonlocation = (ghost_location)(y->traits.location & x->traits.location);
+
+    ghost_error ret;
+
+    typedef ghost_error (*ghost_vaxpbypcz_kernel)(ghost_densemat*, ghost_densemat*, void*, void*, ghost_densemat*, void*);
+    ghost_vaxpbypcz_kernel kernels[2][2] = {{NULL,NULL},{NULL,NULL}};
+    kernels[GHOST_HOST_IDX][GHOST_RM_IDX] = &ghost_densemat_rm_vaxpbypcz_selector;
+    kernels[GHOST_HOST_IDX][GHOST_CM_IDX] = &ghost_densemat_cm_vaxpbypcz_selector;
+#ifdef GHOST_HAVE_CUDA
+    kernels[GHOST_DEVICE_IDX][GHOST_RM_IDX] = &ghost_densemat_cu_rm_vaxpbypcz;
+    kernels[GHOST_DEVICE_IDX][GHOST_CM_IDX] = &ghost_densemat_cu_cm_vaxpbypcz;
+#endif
+
+    SELECT_BLAS1_KERNEL(kernels,commonlocation,y->traits.compute_at,y->traits.storage,ret,y,x,a,b,z,c);
+
+    return ret;
+}
+
+ghost_error ghost_scale(ghost_densemat *x, void *a)
+{
+    ghost_error ret;
+
+    typedef ghost_error (*ghost_scale_kernel)(ghost_densemat*, void*);
+    ghost_scale_kernel kernels[2][2] = {{NULL,NULL},{NULL,NULL}};
+    kernels[GHOST_HOST_IDX][GHOST_RM_IDX] = &ghost_densemat_rm_scale;
+    kernels[GHOST_HOST_IDX][GHOST_CM_IDX] = &ghost_densemat_cm_scale;
+#ifdef GHOST_HAVE_CUDA
+    kernels[GHOST_DEVICE_IDX][GHOST_RM_IDX] = &ghost_densemat_cu_rm_scale;
+    kernels[GHOST_DEVICE_IDX][GHOST_CM_IDX] = &ghost_densemat_cu_cm_scale;
+#endif
+
+    SELECT_BLAS1_KERNEL(kernels,x->traits.location,x->traits.compute_at,x->traits.storage,ret,x,a);
+
+    return ret;
+}
+
+ghost_error ghost_vscale(ghost_densemat *x, void *a)
+{
+    ghost_error ret;
+
+    typedef ghost_error (*ghost_vscale_kernel)(ghost_densemat*, void*);
+    ghost_vscale_kernel kernels[2][2] = {{NULL,NULL},{NULL,NULL}};
+    kernels[GHOST_HOST_IDX][GHOST_RM_IDX] = &ghost_densemat_rm_vscale_selector;
+    kernels[GHOST_HOST_IDX][GHOST_CM_IDX] = &ghost_densemat_cm_vscale_selector;
+#ifdef GHOST_HAVE_CUDA
+    kernels[GHOST_DEVICE_IDX][GHOST_RM_IDX] = &ghost_densemat_cu_rm_vscale;
+    kernels[GHOST_DEVICE_IDX][GHOST_CM_IDX] = &ghost_densemat_cu_cm_vscale;
+#endif
+
+    SELECT_BLAS1_KERNEL(kernels,x->traits.location,x->traits.compute_at,x->traits.storage,ret,x,a);
+
+    return ret;
+}
+
+ghost_error ghost_normalize(ghost_densemat *x)
+{
+    ghost_error ret;
+
+    typedef ghost_error (*ghost_normalize_kernel)(ghost_densemat*);
+    ghost_normalize_kernel kernels[2][2] = {{NULL,NULL},{NULL,NULL}};
+    kernels[GHOST_HOST_IDX][GHOST_RM_IDX] = &ghost_densemat_rm_normalize_selector;
+    kernels[GHOST_HOST_IDX][GHOST_CM_IDX] = &ghost_densemat_cm_normalize_selector;
+#ifdef GHOST_HAVE_CUDA
+    kernels[GHOST_DEVICE_IDX][GHOST_RM_IDX] = &ghost_densemat_rm_normalize_selector;
+    kernels[GHOST_DEVICE_IDX][GHOST_CM_IDX] = &ghost_densemat_cm_normalize_selector;
+#endif
+
+    SELECT_BLAS1_KERNEL(kernels,x->traits.location,x->traits.compute_at,x->traits.storage,ret,x);
+
+    return ret;
+}
+
+ghost_error ghost_conj(ghost_densemat *x)
+{
+    ghost_error ret;
+
+    typedef ghost_error (*ghost_conj_kernel)(ghost_densemat*);
+    ghost_conj_kernel kernels[2][2] = {{NULL,NULL},{NULL,NULL}};
+    kernels[GHOST_HOST_IDX][GHOST_RM_IDX] = &ghost_densemat_rm_conj_selector;
+    kernels[GHOST_HOST_IDX][GHOST_CM_IDX] = &ghost_densemat_cm_conj_selector;
+#ifdef GHOST_HAVE_CUDA
+    kernels[GHOST_DEVICE_IDX][GHOST_RM_IDX] = &ghost_densemat_cu_rm_conj;
+    kernels[GHOST_DEVICE_IDX][GHOST_CM_IDX] = &ghost_densemat_cu_cm_conj;
+#endif
+
+    SELECT_BLAS1_KERNEL(kernels,x->traits.location,x->traits.compute_at,x->traits.storage,ret,x);
+
+    return ret;
+}
+
+ghost_error ghost_norm(void *norm, ghost_densemat *x, void *pow)
+{
+    ghost_error ret;
+
+    typedef ghost_error (*ghost_norm_kernel)(ghost_densemat*, void*, void*);
+    ghost_norm_kernel kernels[2][2] = {{NULL,NULL},{NULL,NULL}};
+    kernels[GHOST_HOST_IDX][GHOST_RM_IDX] = &ghost_densemat_rm_norm_selector;
+    kernels[GHOST_HOST_IDX][GHOST_CM_IDX] = &ghost_densemat_cm_norm_selector;
+    // TODO GPU implementation
+
+    SELECT_BLAS1_KERNEL(kernels,x->traits.location,x->traits.compute_at,x->traits.storage,ret,x,norm,pow);
+
+    return ret;
+}
+
+ghost_error ghost_nrm2(void *norm, ghost_densemat *x)
+{
+    GHOST_CALL_RETURN(ghost_dot(norm,x,x));
+    if (x->traits.datatype & GHOST_DT_COMPLEX) {
+        if (x->traits.datatype & GHOST_DT_DOUBLE) {
+            (*(double complex *)norm) = csqrt(*(double complex *)norm);
+        } else {
+            (*(float complex *)norm) = csqrtf(*(float complex *)norm);
+        }
+    } else {
+        if (x->traits.datatype & GHOST_DT_DOUBLE) {
+            (*(double *)norm) = sqrt(*(double *)norm);
+        } else {
+            (*(float *)norm) = sqrtf(*(float *)norm);
+        }
+    }
+
+    return GHOST_SUCCESS;
+}
+

@@ -6,6 +6,7 @@
 #include "ghost/instr.h"
 #include "ghost/sparsemat.h"
 #include "ghost/spmv_solvers.h"
+#include "ghost/math.h"
 
 #ifdef GHOST_HAVE_MPI
 #include <mpi.h>
@@ -39,13 +40,13 @@ ghost_error ghost_spmv_vectormode(ghost_densemat* res, ghost_sparsemat* mat, gho
     
     GHOST_INSTR_START("comm");
     ghost_densemat_halo_comm comm = GHOST_DENSEMAT_HALO_COMM_INITIALIZER;
-    GHOST_CALL_GOTO(invec->halocommInit(invec,mat->context,&comm),err,ret);
-    GHOST_CALL_GOTO(invec->halocommStart(invec,mat->context,&comm),err,ret);
-    GHOST_CALL_GOTO(invec->halocommFinalize(invec,mat->context,&comm),err,ret);
+    GHOST_CALL_GOTO(ghost_densemat_halocomm_init(invec,mat->context,&comm),err,ret);
+    GHOST_CALL_GOTO(ghost_densemat_halocomm_start(invec,mat->context,&comm),err,ret);
+    GHOST_CALL_GOTO(ghost_densemat_halocomm_finalize(invec,mat->context,&comm),err,ret);
     GHOST_INSTR_STOP("comm");
 
     GHOST_INSTR_START("comp");
-    GHOST_CALL_GOTO(mat->spmv(res,mat,invec,traits),err,ret);    
+    GHOST_CALL_GOTO(ghost_spmv_nocomm(res,mat,invec,traits),err,ret);    
     GHOST_INSTR_STOP("comp");
 
     goto out;

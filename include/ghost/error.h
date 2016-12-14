@@ -100,7 +100,11 @@ typedef enum {
     /**
      * @brief An error in a BLAS call occured.
      */
-    GHOST_ERR_BLAS
+    GHOST_ERR_BLAS,
+     /**
+      brief Incompatibly permuted sparsemat and/or densemat.
+     */
+    GHOST_ERR_COMPATIBILITY 
 } ghost_error;
 
 #include "errorhandler.h"

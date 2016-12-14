@@ -4,7 +4,6 @@
 #include "ghost/cu_sell_kernel.h"
 #include "ghost/bench.h"
 #include "ghost/densemat.h"
-#include "ghost/funcptr_wrappers.h"
 #include "ghost/dot.h"
 
 #define NITER 20
@@ -41,9 +40,17 @@ __global__ static void cu_store_kernel(double * __restrict__ a, const double s)
         a[row] = s;
     }
 } 
+
+__global__ static void cu_update_kernel(double * __restrict__ a, const double s)
+{
+    ghost_lidx row = blockIdx.x*blockDim.x+threadIdx.x;
+    for (; row<N; row+=gridDim.x*blockDim.x) {
+        a[row] = s*a[row];
+    }
+} 
 #endif
 
-extern "C" ghost_error ghost_cu_bench_stream(ghost_bench_stream_test_t test, double *mean_bw, double *max_bw)
+extern "C" ghost_error ghost_cu_bench_bw(ghost_bench_bw_test test, double *mean_bw, double *max_bw)
 {
 
     ghost_error ret = GHOST_SUCCESS;
@@ -92,18 +99,20 @@ extern "C" ghost_error ghost_cu_bench_stream(ghost_bench_stream_test_t test, dou
             case GHOST_BENCH_STREAM_TRIAD:
                 cu_triad_kernel<<<CEILDIV(N,THREADSPERBLOCK),THREADSPERBLOCK>>> (da,db,dc,s);
                 break;
-            case GHOST_BENCH_STREAM_STORE:
+            case GHOST_BENCH_STORE:
                 cu_store_kernel<<<CEILDIV(N,THREADSPERBLOCK),THREADSPERBLOCK>>> (da,s);
                 break;
-            case GHOST_BENCH_STREAM_LOAD:
+            case GHOST_BENCH_UPDATE:
+                cu_update_kernel<<<CEILDIV(N,THREADSPERBLOCK),THREADSPERBLOCK>>> (da,s);
+                break;
+            case GHOST_BENCH_LOAD:
                 ghost_densemat *a_dm, *b_dm;
                 ghost_densemat_traits dmtraits = GHOST_DENSEMAT_TRAITS_INITIALIZER;
-                dmtraits.nrows = N;
-                ghost_densemat_create(&a_dm,NULL,dmtraits);
-                ghost_densemat_create(&b_dm,NULL,dmtraits);
+                ghost_densemat_create(&a_dm,ghost_map_create_light(N,MPI_COMM_NULL),dmtraits);
+                ghost_densemat_create(&b_dm,ghost_map_create_light(N,MPI_COMM_NULL),dmtraits);
                 ghost_densemat_view_plain(a_dm,da,1);
                 ghost_densemat_view_plain(b_dm,db,1);
-                ghost_dot(&s,a_dm,b_dm,MPI_COMM_NULL);
+                ghost_localdot(&s,a_dm,b_dm);
                 ghost_densemat_destroy(a_dm);
                 ghost_densemat_destroy(b_dm);
                 break;
@@ -129,11 +138,15 @@ extern "C" ghost_error ghost_cu_bench_stream(ghost_bench_stream_test_t test, dou
             *mean_bw = 3*N/1.e9*NITER*sizeof(double)/(stop-start);
             *max_bw = 3*N/1.e9*sizeof(double)/tmin;
             break;
-        case GHOST_BENCH_STREAM_STORE:
+        case GHOST_BENCH_STORE:
             *mean_bw = N/1.e9*NITER*sizeof(double)/(stop-start);
             *max_bw = N/1.e9*sizeof(double)/tmin;
             break;
-        case GHOST_BENCH_STREAM_LOAD:
+        case GHOST_BENCH_UPDATE:
+            *mean_bw = 2*N/1.e9*NITER*sizeof(double)/(stop-start);
+            *max_bw = 2*N/1.e9*sizeof(double)/tmin;
+            break;
+        case GHOST_BENCH_LOAD:
             *mean_bw = 2*N/1.e9*NITER*sizeof(double)/(stop-start);
             *max_bw = 2*N/1.e9*sizeof(double)/tmin;
             break;

@@ -159,6 +159,21 @@ void ghost_timing_region_destroy(ghost_timing_region * ri)
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
 }
 
+void ghost_timing_destroy()
+{
+    map<string,ghost_timing_region_accu>::iterator iter;
+    vector<ghost_timing_perfFunc>::iterator pf_iter;
+    
+    for (iter = timings.begin(); iter != timings.end(); ++iter) {
+        for (pf_iter = iter->second.perfFuncs.begin(); pf_iter != iter->second.perfFuncs.end(); ++pf_iter) {
+            if (pf_iter->perfFuncArg != NULL) {
+                free(pf_iter->perfFuncArg);
+            }
+            pf_iter->perfFuncArg = NULL;
+        }
+    }
+    timings.clear();
+}
 
 ghost_error ghost_timing_summarystring(char **str)
 {
@@ -279,15 +294,6 @@ ghost_error ghost_timing_summarystring(char **str)
         }
     }
 
-    // clear all timings to prevent memory leaks
-    for (iter = timings.begin(); iter != timings.end(); ++iter) {
-        for (pf_iter = iter->second.perfFuncs.begin(); pf_iter != iter->second.perfFuncs.end(); ++pf_iter) {
-            if( pf_iter->perfFuncArg != NULL )
-                free(pf_iter->perfFuncArg);
-            pf_iter->perfFuncArg = NULL;
-        }
-    }
-    timings.clear();
 
     GHOST_CALL_RETURN(ghost_malloc((void **)str,buffer.str().length()+1));
     strcpy(*str,buffer.str().c_str());

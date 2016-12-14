@@ -4,8 +4,8 @@
 ghost_error kacz_analyze_print(ghost_sparsemat *mat)
 {
  ghost_lidx line_size = 12;
- ghost_lidx n_lines = mat->kacz_setting.active_threads / line_size;
- ghost_lidx rem_lines =  mat->kacz_setting.active_threads % line_size;
+ ghost_lidx n_lines = mat->context->kacz_setting.active_threads / line_size;
+ ghost_lidx rem_lines =  mat->context->kacz_setting.active_threads % line_size;
  int start=0 ;
  int end=0;
  ghost_lidx *rows;
@@ -24,8 +24,8 @@ ghost_error kacz_analyze_print(ghost_sparsemat *mat)
         printf("%10s:","");
   }
  
-  start = mat->kacz_setting.active_threads - rem_lines;
-  end   = mat->kacz_setting.active_threads;
+  start = mat->context->kacz_setting.active_threads - rem_lines;
+  end   = mat->context->kacz_setting.active_threads;
 
   for(int i=start ; i<end; ++i){
          printf("|%10d",i+1);
@@ -39,8 +39,8 @@ ghost_error kacz_analyze_print(ghost_sparsemat *mat)
  zone_name[2] = "TRANS IN TRANS ZONE";
  zone_name[3] = "BLACK TRANS ZONE";
 
- rows = malloc(mat->kacz_setting.active_threads*sizeof(ghost_lidx));
- nnz  = malloc(mat->kacz_setting.active_threads*sizeof(ghost_lidx));
+ rows = malloc(mat->context->kacz_setting.active_threads*sizeof(ghost_lidx));
+ nnz  = malloc(mat->context->kacz_setting.active_threads*sizeof(ghost_lidx));
 
  #ifdef GHOST_HAVE_OPENMP
 	#pragma omp parallel shared(line_size,n_lines,rem_lines) private(start,end)
@@ -49,12 +49,12 @@ ghost_error kacz_analyze_print(ghost_sparsemat *mat)
          ghost_lidx tid = ghost_omp_threadnum();
 
          for(ghost_lidx zone=0; zone<4; ++zone) {
-         	rows[tid] = mat->zone_ptr[4*tid+zone+1] - mat->zone_ptr[4*tid+zone];
+         	rows[tid] = mat->context->zone_ptr[4*tid+zone+1] - mat->context->zone_ptr[4*tid+zone];
                 nnz[tid]  = 0;
         
                 if(rows[tid]!=0) {
-			for(int j=mat->zone_ptr[4*tid+zone]; j<mat->zone_ptr[4*tid+zone+1]; ++j) {
-                		nnz[tid] += mat->sell->rowLen[j];   
+			for(int j=mat->context->zone_ptr[4*tid+zone]; j<mat->context->zone_ptr[4*tid+zone+1]; ++j) {
+                		nnz[tid] += mat->rowLen[j];   
         		}
                 }
 
@@ -80,8 +80,8 @@ ghost_error kacz_analyze_print(ghost_sparsemat *mat)
                          printf("%10s:","");
                         }
  
-			start = mat->kacz_setting.active_threads - rem_lines;
-  			end   = mat->kacz_setting.active_threads;
+			start = mat->context->kacz_setting.active_threads - rem_lines;
+  			end   = mat->context->kacz_setting.active_threads;
 
                           for(int i=start ; i<end; ++i){
                                   printf("|%10d",rows[i]);
@@ -104,8 +104,8 @@ ghost_error kacz_analyze_print(ghost_sparsemat *mat)
                          	 printf("%10s:","");
                         	}
 			
-				start = mat->kacz_setting.active_threads - rem_lines;
-  				end   = mat->kacz_setting.active_threads;
+				start = mat->context->kacz_setting.active_threads - rem_lines;
+  				end   = mat->context->kacz_setting.active_threads;
 
 
 		                for(int i=start ; i<end; ++i){
@@ -131,8 +131,8 @@ ghost_error kacz_analyze_print(ghost_sparsemat *mat)
 
                          }
  	         	 
-		  	 start = mat->kacz_setting.active_threads - rem_lines;
-  			 end   = mat->kacz_setting.active_threads;
+		  	 start = mat->context->kacz_setting.active_threads - rem_lines;
+  			 end   = mat->context->kacz_setting.active_threads;
 
                         for(int i=start ; i<end; ++i){
                                   printf("|%10d",nnz[i]);
@@ -155,8 +155,8 @@ ghost_error kacz_analyze_print(ghost_sparsemat *mat)
                          	 printf("%10s:","");
                         	}
 
-				start = mat->kacz_setting.active_threads - rem_lines;
-  				end   = mat->kacz_setting.active_threads;
+				start = mat->context->kacz_setting.active_threads - rem_lines;
+  				end   = mat->context->kacz_setting.active_threads;
 
                         	for(int i=start ; i<end; ++i){
                                 	printf("|%10d",(int)(((double)nnz[i]/ctr)*100));          

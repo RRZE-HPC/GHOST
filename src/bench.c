@@ -5,7 +5,17 @@
 #include "ghost/timing.h"
 #include "ghost/cu_bench.h"
 
+#ifndef __FUJITSU
 #include <immintrin.h>
+#endif
+
+#ifdef GHOST_BUILD_MIC
+#ifdef GHOST_BUILD_AVX512
+#define MIC_STREAMINGSTORE _mm512_stream_pd
+#else
+#define MIC_STREAMINGSTORE _mm512_storenrngo_pd
+#endif
+#endif
 
 #define N PAD((ghost_lidx)1e8,16)
 #define NITER 40
@@ -16,7 +26,7 @@ static void dummy(double *a) {
     }
 }
 
-static void ghost_load_kernel(const double * __restrict__ a, double * s)
+static void ghost_load_kernel(const double * restrict a, double * s)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_KERNEL|GHOST_FUNCTYPE_BENCH);
     ghost_lidx i;
@@ -71,7 +81,7 @@ static void ghost_load_kernel(const double * __restrict__ a, double * s)
     *s = ((double *)&sv)[0]+((double *)&sv)[1];
 #else
     PERFWARNING_LOG("Cannot guarantee streaming stores for triad benchmark!");
-    double res;
+    double res = 0.;
 #pragma omp parallel for reduction(+:res)
     for (i=0; i<N; i++) {
         res += a[i];
@@ -82,7 +92,7 @@ static void ghost_load_kernel(const double * __restrict__ a, double * s)
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_KERNEL|GHOST_FUNCTYPE_BENCH);
 }
 
-static void ghost_triad_kernel(double * __restrict__ a, const double * __restrict__ b, const double * __restrict__ c, const double s)
+static void ghost_triad_kernel(double * restrict a, const double * restrict b, const double * restrict c, const double s)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_KERNEL|GHOST_FUNCTYPE_BENCH);
     ghost_lidx i;
@@ -95,7 +105,7 @@ static void ghost_triad_kernel(double * __restrict__ a, const double * __restric
     for (i=0; i<N; i+=8) {
         bv = _mm512_load_pd(&b[i]);
         cv = _mm512_load_pd(&c[i]);
-        _mm512_storenrngo_pd(&a[i],_mm512_add_pd(bv,_mm512_mul_pd(cv,sv)));
+        MIC_STREAMINGSTORE(&a[i],_mm512_add_pd(bv,_mm512_mul_pd(cv,sv)));
     }
 #elif defined(GHOST_BUILD_AVX)
     __m256d bv;
@@ -128,7 +138,7 @@ static void ghost_triad_kernel(double * __restrict__ a, const double * __restric
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_KERNEL|GHOST_FUNCTYPE_BENCH);
 }
 
-static void ghost_copy_kernel(double * __restrict__ a, const double * __restrict__ b)
+static void ghost_copy_kernel(double * restrict a, const double * restrict b)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_KERNEL|GHOST_FUNCTYPE_BENCH);
     ghost_lidx i;
@@ -138,7 +148,7 @@ static void ghost_copy_kernel(double * __restrict__ a, const double * __restrict
 #pragma omp parallel for private(bv)
     for (i=0; i<N; i+=8) {
         bv = _mm512_load_pd(&b[i]);
-        _mm512_storenrngo_pd(&a[i],bv);
+        MIC_STREAMINGSTORE(&a[i],bv);
     }
 #elif defined(GHOST_BUILD_AVX)
     __m256d bv;
@@ -165,7 +175,7 @@ static void ghost_copy_kernel(double * __restrict__ a, const double * __restrict
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_KERNEL|GHOST_FUNCTYPE_BENCH);
 }
 
-static void ghost_store_kernel(double * __restrict__ a, const double s)
+static void ghost_store_kernel(double * restrict a, const double s)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_KERNEL|GHOST_FUNCTYPE_BENCH);
     ghost_lidx i;
@@ -174,7 +184,7 @@ static void ghost_store_kernel(double * __restrict__ a, const double s)
     __m512d sv = _mm512_set1_pd(s);;
 #pragma omp parallel for
     for (i=0; i<N; i+=8) {
-        _mm512_storenrngo_pd(&a[i],sv);
+        MIC_STREAMINGSTORE(&a[i],sv);
     }
 #elif defined(GHOST_BUILD_AVX)
     __m256d sv = _mm256_set1_pd(s);
@@ -199,7 +209,40 @@ static void ghost_store_kernel(double * __restrict__ a, const double s)
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_KERNEL|GHOST_FUNCTYPE_BENCH);
 }
 
-ghost_error ghost_bench_stream(ghost_bench_stream_test_t test, double *mean_bw, double *max_bw)
+static void ghost_update_kernel(double * restrict a, const double s)
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_KERNEL|GHOST_FUNCTYPE_BENCH);
+    ghost_lidx i;
+
+#ifdef GHOST_BUILD_MIC
+    __m512d sv = _mm512_set1_pd(s);;
+#pragma omp parallel for
+    for (i=0; i<N; i+=8) {
+        _mm512_store_pd(&a[i],_mm512_mul_pd(_mm512_load_pd(&a[i]),sv));
+    }
+#elif defined(GHOST_BUILD_AVX)
+    __m256d sv = _mm256_set1_pd(s);
+#pragma omp parallel for
+    for (i=0; i<N; i+=4) {
+        _mm256_store_pd(&a[i],_mm256_mul_pd(_mm256_load_pd(&a[i]),sv));
+    }
+#elif defined(GHOST_BUILD_SSE)
+    __m128d sv = _mm_set1_pd(s);
+#pragma omp parallel for
+    for (i=0; i<N; i+=2) {
+        _mm512_store_pd(&a[i],_mm512_mul_pd(_mm512_load_pd(&a[i]),sv));
+    }
+#else
+#pragma omp parallel for
+    for (i=0; i<N; i++) {
+        a[i] = s*a[i];
+    }
+#endif
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_KERNEL|GHOST_FUNCTYPE_BENCH);
+}
+
+ghost_error ghost_bench_bw(ghost_bench_bw_test test, double *mean_bw, double *max_bw)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_BENCH);
     ghost_type mytype;
@@ -207,7 +250,7 @@ ghost_error ghost_bench_stream(ghost_bench_stream_test_t test, double *mean_bw, 
     
     if (mytype == GHOST_TYPE_CUDA) {
 #ifdef GHOST_HAVE_CUDA
-        ghost_error cuda_err = ghost_cu_bench_stream(test,mean_bw,max_bw);
+        ghost_error cuda_err = ghost_cu_bench_bw(test,mean_bw,max_bw);
         *max_bw=*mean_bw; /* cuda kernel is executed only once? */
         return cuda_err;
 #endif
@@ -268,7 +311,7 @@ ghost_error ghost_bench_stream(ghost_bench_stream_test_t test, double *mean_bw, 
             *mean_bw = 3*N/1.e9*NITER*sizeof(double)/(stop-start);
             *max_bw = 3*N/1.e9*sizeof(double)/tmin;
             break;
-        case GHOST_BENCH_STREAM_LOAD:
+        case GHOST_BENCH_LOAD:
             ghost_load_kernel(a,&s); // warm up
             ghost_timing_wc(&start);
             for (i=0; i<NITER; i++) {
@@ -281,7 +324,7 @@ ghost_error ghost_bench_stream(ghost_bench_stream_test_t test, double *mean_bw, 
             *mean_bw = N/1.e9*NITER*sizeof(double)/(stop-start);
             *max_bw = N/1.e9*sizeof(double)/tmin;
             break;
-        case GHOST_BENCH_STREAM_STORE:
+        case GHOST_BENCH_STORE:
             ghost_store_kernel(a,s); // warm up
             ghost_timing_wc(&start);
             for (i=0; i<NITER; i++) {
@@ -293,6 +336,19 @@ ghost_error ghost_bench_stream(ghost_bench_stream_test_t test, double *mean_bw, 
             ghost_timing_wc(&stop);
             *mean_bw = N/1.e9*NITER*sizeof(double)/(stop-start);
             *max_bw = N/1.e9*sizeof(double)/tmin;
+            break;
+        case GHOST_BENCH_UPDATE:
+            ghost_update_kernel(a,s); // warm up
+            ghost_timing_wc(&start);
+            for (i=0; i<NITER; i++) {
+                ghost_timing_wc(&start1);
+                ghost_update_kernel(a,s);
+                ghost_timing_wc(&stop1);
+                tmin=MIN(tmin,stop1-start1);
+            }
+            ghost_timing_wc(&stop);
+            *mean_bw = 2*N/1.e9*NITER*sizeof(double)/(stop-start);
+            *max_bw = 2*N/1.e9*sizeof(double)/tmin;
             break;
     }
 

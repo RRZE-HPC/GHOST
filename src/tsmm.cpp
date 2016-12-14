@@ -6,21 +6,23 @@
 #include "ghost/tsmm.h"
 #include "ghost/tsmm_var2_plain_gen.h"
 #include "ghost/tsmm_var2_sse_gen.h"
-#include "ghost/tsmm_var2_cu_gen.h"
 #include "ghost/tsmm_plain_gen.h"
-#include "ghost/tsmm_var1_plain_gen.h"
+#include "ghost/tsmm_varincols_plain_gen.h"
+#include "ghost/tsmm_varoutcols_plain_gen.h"
 #include "ghost/tsmm_var2_avx_gen.h"
 #include "ghost/tsmm_avx_gen.h"
 #include "ghost/tsmm_sse_gen.h"
+#ifdef GHOST_HAVE_CUDA
+#include "ghost/tsmm_var2_cu_gen.h"
 #include "ghost/tsmm_cu_gen.h"
+#endif
 #include "ghost/timing.h"
 #include "ghost/machine.h"
 #include "ghost/constants.h"
+#include "ghost/cpp11_fixes.h"
 
 #include <unordered_map>
 #include <vector>
-
-using namespace std;
 
 // Hash function for unordered_map
 namespace std
@@ -41,7 +43,7 @@ static bool operator==(const ghost_tsmm_parameters& a, const ghost_tsmm_paramete
     return a.dt == b.dt && a.xcols == b.xcols && a.vcols == b.vcols && a.impl == b.impl && a.xstor == b.xstor && a.alignment == b.alignment && a.unroll == b.unroll && a.multipleof == b.multipleof;
 }
 
-static unordered_map<ghost_tsmm_parameters, ghost_tsmm_kernel> ghost_tsmm_kernels;
+static std::unordered_map<ghost_tsmm_parameters, ghost_tsmm_kernel> ghost_tsmm_kernels;
 
 ghost_error ghost_tsmm_valid(ghost_densemat *x, ghost_densemat *v,  const char * transv, 
 ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce, int printerror)
@@ -97,11 +99,11 @@ ghost_error ghost_tsmm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w_i
 
     if ((ret = ghost_tsmm_valid(x,v,"N",w_in,"N",alpha,beta,GHOST_GEMM_NO_REDUCE,1)) != GHOST_SUCCESS) {
         INFO_LOG("TSMM cannot be applied. Checking whether GEMM is fine!");
-        if ((ret = ghost_gemm_valid(x,v,"N",w_in,"N",alpha,beta,GHOST_GEMM_NO_REDUCE,NULL,GHOST_GEMM_DEFAULT,1)) != GHOST_SUCCESS) {
+        if ((ret = ghost_gemm_valid(x,v,"N",w_in,"N",alpha,beta,GHOST_GEMM_NO_REDUCE,GHOST_GEMM_DEFAULT,1)) != GHOST_SUCCESS) {
             ERROR_LOG("GEMM cannot be applied!");
             return ret;
         } else {
-            return ghost_gemm(x,v,"N",w_in,"N",alpha,beta,GHOST_GEMM_NO_REDUCE,NULL,GHOST_GEMM_NOT_SPECIAL);
+            return ghost_gemm(x,v,"N",w_in,"N",alpha,beta,GHOST_GEMM_NO_REDUCE,GHOST_GEMM_NOT_SPECIAL);
         }
     }
     
@@ -109,7 +111,8 @@ ghost_error ghost_tsmm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w_i
 #include "tsmm_var2_plain.def"
 #include "tsmm_avx.def"
 #include "tsmm_var2_avx.def"
-#include "tsmm_var1_plain.def"
+#include "tsmm_varincols_plain.def"
+#include "tsmm_varoutcols_plain.def"
 #include "tsmm_sse.def"
 #include "tsmm_var2_sse.def"
 #include "tsmm_plain.def"
@@ -132,7 +135,7 @@ ghost_error ghost_tsmm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w_i
         ghost_densemat_traits wtraits = w_in->traits;
         wtraits.flags &= (ghost_densemat_flags)~GHOST_DENSEMAT_VIEW;
         wtraits.storage = GHOST_DENSEMAT_COLMAJOR;
-        ghost_densemat_create(&w,NULL,wtraits);
+        ghost_densemat_create(&w,ghost_map_create_light(w_in->map->dim,w_in->map->mpicomm),wtraits);
         ghost_densemat_init_densemat(w,w_in,0,0);
     }
 
@@ -148,7 +151,7 @@ ghost_error ghost_tsmm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w_i
     // possible implementations
     std::vector<ghost_implementation> try_impl;
 #ifdef GHOST_HAVE_CUDA
-    if (x->traits.location & GHOST_LOCATION_DEVICE) {
+    if (x->traits.location & GHOST_LOCATION_DEVICE && x->traits.compute_at != GHOST_LOCATION_HOST) {
         try_impl.push_back(GHOST_IMPLEMENTATION_CUDA);
     } else {
 #endif
@@ -188,14 +191,14 @@ ghost_error ghost_tsmm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w_i
     ghost_lidx try_vcols[2] = {v->traits.ncols,-1};
     ghost_datatype try_dt[2] = {v->traits.datatype,GHOST_DT_ANY};
 
-    if (w->traits.flags & GHOST_DENSEMAT_VIEW || v->traits.flags & GHOST_DENSEMAT_VIEW) {
+    if (w->traits.flags & GHOST_DENSEMAT_VIEW || v->traits.flags & GHOST_DENSEMAT_VIEW || v->map->dimpad % 2 || w->map->dimpad % 2) {
         opt_unroll = 1;
     } else {
         opt_unroll = 2;
     }
 
 #ifdef GHOST_HAVE_CUDA
-    if (x->traits.location & GHOST_LOCATION_DEVICE) {
+    if (x->traits.location & GHOST_LOCATION_DEVICE && x->traits.compute_at != GHOST_LOCATION_HOST) {
         try_dt[0] = GHOST_DT_ANY;
         opt_align = GHOST_UNALIGNED;
     }
@@ -262,14 +265,14 @@ end_of_loop:
         ret = kernel(x,v,w,alpha,beta);
     } else {
         PERFWARNING_LOG("Could not find TSMM kernel. Fallback to GEMM");
-        ret = ghost_gemm(x,v,"N",w,"N",alpha,beta,GHOST_GEMM_NO_REDUCE,NULL,GHOST_GEMM_NOT_SPECIAL);
+        ret = ghost_gemm(x,v,"N",w,"N",alpha,beta,GHOST_GEMM_NO_REDUCE,GHOST_GEMM_NOT_SPECIAL);
     }
 
 #ifdef GHOST_INSTR_TIMING
     ghost_gemm_perf_args tsmm_perfargs;
     tsmm_perfargs.n = x->traits.ncols;
     tsmm_perfargs.k = v->traits.ncols;
-    tsmm_perfargs.m = v->traits.gnrows;
+    tsmm_perfargs.m = v->map->gdim;
     tsmm_perfargs.dt = x->traits.datatype;
     tsmm_perfargs.betaiszero = ghost_iszero(beta,x->traits.datatype);
     tsmm_perfargs.alphaisone = ghost_isone(alpha,x->traits.datatype);

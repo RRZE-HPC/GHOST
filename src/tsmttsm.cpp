@@ -6,27 +6,29 @@
 #include "ghost/tsmttsm.h"
 #include "ghost/tsmttsm_var2_plain_gen.h"
 #include "ghost/tsmttsm_var2_avx_gen.h"
-#include "ghost/tsmttsm_var2_cu_gen.h"
 #include "ghost/tsmttsm_plain_gen.h"
-#include "ghost/tsmttsm_var1_plain_gen.h"
+#include "ghost/tsmttsm_varcols1_plain_gen.h"
+#include "ghost/tsmttsm_varcols2_plain_gen.h"
 #include "ghost/tsmttsm_avx2_gen.h"
 #include "ghost/tsmttsm_avx_gen.h"
 #include "ghost/tsmttsm_sse_gen.h"
+#ifdef GHOST_HAVE_CUDA
+#include "ghost/tsmttsm_var2_cu_gen.h"
 #include "ghost/tsmttsm_cu_gen.h"
+#endif
 #include "ghost/tsmttsm_kahan_var2_plain_gen.h"
 #include "ghost/tsmttsm_kahan_plain_gen.h"
 #include "ghost/timing.h"
 #include "ghost/machine.h"
 #include "ghost/constants.h"
 #include "ghost/locality.h"
+#include "ghost/cpp11_fixes.h"
 
 #include <unordered_map>
 #include <vector>
 
 typedef ghost_tsmttsm_parameters ghost_tsmttsm_kahan_parameters;
 typedef ghost_tsmttsm_parameters ghost_tsmttsm_kahan_parameters;
-
-using namespace std;
 
 // Hash function for unordered_map
 namespace std
@@ -37,7 +39,7 @@ namespace std
         typedef std::size_t result_type;
         result_type operator()(argument_type const& a) const
         {
-            return ghost_hash(a.dt,a.wcols,ghost_hash(a.vcols,a.impl,ghost_hash(a.wstor,a.alignment,a.unroll)));
+            return ghost_hash(a.dt,a.wcols,ghost_hash(a.vcols,a.impl,ghost_hash(a.wstor,a.unroll,a.alignment)));
         }
     };
 }
@@ -47,12 +49,12 @@ static bool operator==(const ghost_tsmttsm_parameters& a, const ghost_tsmttsm_pa
     return a.dt == b.dt && a.wcols == b.wcols && a.vcols == b.vcols && a.impl == b.impl && a.wstor == b.wstor && a.alignment == b.alignment && a.unroll == b.unroll;
 }
 
-static unordered_map<ghost_tsmttsm_parameters, ghost_tsmttsm_kernel> ghost_tsmttsm_kernels;
-static unordered_map<ghost_tsmttsm_parameters, ghost_tsmttsm_kernel> ghost_tsmttsm_kahan_kernels;
+static std::unordered_map<ghost_tsmttsm_parameters, ghost_tsmttsm_kernel> ghost_tsmttsm_kernels;
+static std::unordered_map<ghost_tsmttsm_parameters, ghost_tsmttsm_kernel> ghost_tsmttsm_kahan_kernels;
 
 
 ghost_error ghost_tsmttsm_valid(ghost_densemat *x, ghost_densemat *v, const char * transv, 
-ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce, ghost_context *ctx, ghost_gemm_flags flags, int printerror) 
+ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce, ghost_gemm_flags flags, int printerror) 
 {
     /*if (w->traits.storage != GHOST_DENSEMAT_ROWMAJOR) {
         if (printerror) {
@@ -78,11 +80,6 @@ ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce, ghos
         }
         return GHOST_ERR_INVALID_ARG;
     }*/
-
-    if ((reduce != GHOST_GEMM_NO_REDUCE) && !ctx) {
-        ERROR_LOG("A reduction should be done but no context is given!");
-        return GHOST_ERR_INVALID_ARG;
-    }
 
     if (v->traits.datatype != w->traits.datatype || v->traits.datatype != x->traits.datatype) {
         if (printerror) {
@@ -118,7 +115,7 @@ ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce, ghos
 }
 
 
-ghost_error ghost_tsmttsm(ghost_densemat *x_in, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta,int reduce,ghost_context *ctx,int conjv,ghost_gemm_flags flags)
+ghost_error ghost_tsmttsm(ghost_densemat *x_in, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta,int reduce,int conjv,ghost_gemm_flags flags)
 {
     ghost_error ret;
 
@@ -129,18 +126,18 @@ ghost_error ghost_tsmttsm(ghost_densemat *x_in, ghost_densemat *v, ghost_densema
         vtrans = "T";
     }
 
-    if ((ret = ghost_tsmttsm_valid(x_in,v,vtrans,w,"N",alpha,beta,reduce,ctx,flags,1)) != GHOST_SUCCESS) {
+    if ((ret = ghost_tsmttsm_valid(x_in,v,vtrans,w,"N",alpha,beta,reduce,flags,1)) != GHOST_SUCCESS) {
         INFO_LOG("TSMTTSM cannot be applied. Checking whether GEMM is fine!");
-        if ((ret = ghost_gemm_valid(x_in,v,vtrans,w,"N",alpha,beta,reduce,ctx,GHOST_GEMM_DEFAULT,1)) != GHOST_SUCCESS) {
+        if ((ret = ghost_gemm_valid(x_in,v,vtrans,w,"N",alpha,beta,reduce,GHOST_GEMM_DEFAULT,1)) != GHOST_SUCCESS) {
             ERROR_LOG("GEMM cannot be applied!");
             return ret;
         } else {
-            return ghost_gemm(x_in,v,vtrans,w,"N",alpha,beta,reduce,ctx,GHOST_GEMM_NOT_SPECIAL);
+            return ghost_gemm(x_in,v,vtrans,w,"N",alpha,beta,reduce,GHOST_GEMM_NOT_SPECIAL);
         }
     }
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
    
-    unordered_map<ghost_tsmttsm_parameters, ghost_tsmttsm_kernel> kernels;
+    std::unordered_map<ghost_tsmttsm_parameters, ghost_tsmttsm_kernel> kernels;
     if (flags & GHOST_GEMM_KAHAN) { 
         if (ghost_tsmttsm_kahan_kernels.empty()) {
 #include "tsmttsm_kahan_plain.def"
@@ -151,7 +148,8 @@ ghost_error ghost_tsmttsm(ghost_densemat *x_in, ghost_densemat *v, ghost_densema
         if (ghost_tsmttsm_kernels.empty()) {
 #include "tsmttsm_plain.def"
 #include "tsmttsm_var2_plain.def"
-#include "tsmttsm_var1_plain.def"
+#include "tsmttsm_varcols1_plain.def"
+#include "tsmttsm_varcols2_plain.def"
 #include "tsmttsm_var2_avx.def"
 #include "tsmttsm_avx2.def"
 #include "tsmttsm_avx.def"
@@ -166,9 +164,9 @@ ghost_error ghost_tsmttsm(ghost_densemat *x_in, ghost_densemat *v, ghost_densema
     }
 
     int me=0;
-    if (ctx) ghost_rank(&me,ctx->mpicomm);
+    ghost_rank(&me,v->map->mpicomm);
     // make sure that the initial x only gets added up once
-    if (me) {
+    if (me && (reduce != GHOST_GEMM_NO_REDUCE)) {
         memset(beta,0,x_in->elSize);
     }
 
@@ -186,7 +184,7 @@ ghost_error ghost_tsmttsm(ghost_densemat *x_in, ghost_densemat *v, ghost_densema
         ghost_densemat_traits xtraits = x_in->traits;
         xtraits.flags &= (ghost_densemat_flags)~GHOST_DENSEMAT_VIEW;
         xtraits.storage = GHOST_DENSEMAT_COLMAJOR;
-        ghost_densemat_create(&x,NULL,xtraits);
+        ghost_densemat_create(&x,ghost_map_create_light(x_in->map->dim,x_in->map->mpicomm),xtraits);
         ghost_densemat_init_densemat(x,x_in,0,0);
     }
     
@@ -196,7 +194,7 @@ ghost_error ghost_tsmttsm(ghost_densemat *x_in, ghost_densemat *v, ghost_densema
     // possible implementations
     std::vector<ghost_implementation> try_impl;
 #ifdef GHOST_HAVE_CUDA
-    if (x->traits.location & GHOST_LOCATION_DEVICE) {
+    if (x->traits.location & GHOST_LOCATION_DEVICE && x->traits.compute_at != GHOST_LOCATION_HOST) {
         try_impl.push_back(GHOST_IMPLEMENTATION_CUDA);
     } else {
 #endif
@@ -235,14 +233,14 @@ ghost_error ghost_tsmttsm(ghost_densemat *x_in, ghost_densemat *v, ghost_densema
     ghost_lidx try_vcols[2] = {v->traits.ncols,-1};
     ghost_datatype try_dt[2] = {v->traits.datatype,GHOST_DT_ANY};
 
-    if (x->traits.flags & GHOST_DENSEMAT_VIEW || v->traits.flags & GHOST_DENSEMAT_VIEW) {
+    if (x->traits.flags & GHOST_DENSEMAT_VIEW || v->traits.flags & GHOST_DENSEMAT_VIEW || x->map->dimpad % 2 || v->map->dimpad % 2) {
         opt_unroll = 1;
     } else {
         opt_unroll = GHOST_MAX_ROWS_UNROLL;
     }
     
 #ifdef GHOST_HAVE_CUDA
-    if (x->traits.location & GHOST_LOCATION_DEVICE) {
+    if (x->traits.location & GHOST_LOCATION_DEVICE && x->traits.compute_at != GHOST_LOCATION_HOST) {
         try_dt[0] = GHOST_DT_ANY;
         opt_align = GHOST_UNALIGNED;
     }
@@ -289,8 +287,8 @@ end_of_loop:
         }
 
         ret = kernel(x,v,w,alpha,beta,conjv);
-        if (reduce != GHOST_GEMM_NO_REDUCE && ctx) {
-            x->reduce(x,ctx->mpicomm,reduce);
+        if (reduce != GHOST_GEMM_NO_REDUCE) {
+            ghost_densemat_reduce(x,reduce);
         }
     } else if (flags & GHOST_GEMM_KAHAN) { 
         WARNING_LOG("Could not find TSMTTSM-Kahan kernel. Trying non-Kahan version!");
@@ -299,14 +297,14 @@ end_of_loop:
             ghost_densemat_destroy(x);
         }
         x = x_in;
-        ret = ghost_gemm(x_in,v,conjv?"C":"T",w,"N",alpha,beta,reduce,ctx,flags);
+        ret = ghost_gemm(x_in,v,conjv?"C":"T",w,"N",alpha,beta,reduce,flags);
     } else {
         PERFWARNING_LOG("Could not find TSMTTSM kernel. Fallback to GEMM");
         if (x != x_in) {
             ghost_densemat_destroy(x);
         }
         x = x_in;
-        ret = ghost_gemm(x_in,v,conjv?"C":"T",w,"N",alpha,beta,reduce,ctx,GHOST_GEMM_NOT_SPECIAL);
+        ret = ghost_gemm(x_in,v,conjv?"C":"T",w,"N",alpha,beta,reduce,GHOST_GEMM_NOT_SPECIAL);
     }
 
 
@@ -314,7 +312,7 @@ end_of_loop:
     ghost_gemm_perf_args tsmttsm_perfargs;
     tsmttsm_perfargs.n = w->traits.ncols;
     tsmttsm_perfargs.m = v->traits.ncols;
-    tsmttsm_perfargs.k = v->traits.gnrows;
+    tsmttsm_perfargs.k = v->map->gdim;
     tsmttsm_perfargs.dt = x->traits.datatype;
     tsmttsm_perfargs.betaiszero = ghost_iszero(beta,x->traits.datatype);
     tsmttsm_perfargs.alphaisone = ghost_isone(alpha,x->traits.datatype);

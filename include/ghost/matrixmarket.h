@@ -13,11 +13,6 @@
 #define GHOST_SPARSEMAT_ROWFUNC_MM_ROW_GETRPT -3
 #define GHOST_SPARSEMAT_ROWFUNC_MM_ROW_GETDIM -4
 
-typedef struct 
-{
-    char *filename;
-    ghost_datatype dt;
-} ghost_sparsemat_rowfunc_mm_initargs;
 
 /**
  * @brief 
@@ -38,5 +33,4 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *c
 
 int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *col, void *val, void *arg);
 
-ghost_error ghost_sparsemat_to_mm(char *path, ghost_sparsemat *mat);
 #endif

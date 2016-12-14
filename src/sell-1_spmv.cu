@@ -5,8 +5,10 @@
 #include "ghost/cu_complex.h"
 #include "ghost/util.h"
 #include "ghost/sparsemat.h"
+#include "ghost/math.h"
+#include "ghost/locality.h"
 
-#include <complex.h>
+#include <complex>
 #include <cuda_runtime.h>
 #include <cusparse_v2.h>
 
@@ -58,8 +60,15 @@ static ghost_error ghost_cu_sell1spmv_tmpl(ghost_sparsemat *mat, ghost_densemat 
     } else if (!(traits.flags & GHOST_SPMV_AXPBY)) {
         zero<dt1>(beta);
     }
-     
-    CUSPARSE_CALL_RETURN(sell1kernel(cusparse_handle,CUSPARSE_OPERATION_NON_TRANSPOSE,mat->nrows,rhs->traits.nrowshalo,mat->nnz,&scale,descr,(dt1 *)SELL(mat)->cumat->val, SELL(mat)->cumat->chunkStart, SELL(mat)->cumat->col, (dt1 *)rhs->cu_val, &beta, (dt1 *)lhs->cu_val));
+    
+    int matncols,nrank;
+    ghost_nrank(&nrank,mat->context->mpicomm);
+    if (nrank > 1) {
+        matncols = mat->context->col_map->dimhalo;
+    } else {
+        matncols = mat->context->col_map->dim;
+    }
+    CUSPARSE_CALL_RETURN(sell1kernel(cusparse_handle,CUSPARSE_OPERATION_NON_TRANSPOSE,SPM_NROWS(mat),matncols,mat->nEnts,&scale,descr,(dt1 *)mat->cu_val, mat->cu_chunkStart, mat->cu_col, (dt1 *)rhs->cu_val, &beta, (dt1 *)lhs->cu_val));
    
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
     return GHOST_SUCCESS;
@@ -88,7 +97,14 @@ static ghost_error ghost_cu_sell1spmmv_cm_tmpl(ghost_sparsemat *mat, ghost_dense
     } else if (!(traits.flags & GHOST_SPMV_AXPBY)) {
         zero<dt1>(beta);
     }
-    CUSPARSE_CALL_RETURN(sell1kernel(cusparse_handle,CUSPARSE_OPERATION_NON_TRANSPOSE,mat->nrows,rhs->traits.ncols,rhs->traits.nrowshalo,mat->nnz,&scale,descr,(dt1 *)SELL(mat)->cumat->val, SELL(mat)->cumat->chunkStart, SELL(mat)->cumat->col, (dt1 *)rhs->cu_val, rhs->stride, &beta, (dt1 *)lhs->cu_val, lhs->stride));
+    int matncols,nrank;
+    ghost_nrank(&nrank,mat->context->mpicomm);
+    if (nrank > 1) {
+        matncols = mat->context->col_map->dimhalo;
+    } else {
+        matncols = mat->context->col_map->dim;
+    }
+    CUSPARSE_CALL_RETURN(sell1kernel(cusparse_handle,CUSPARSE_OPERATION_NON_TRANSPOSE,SPM_NROWS(mat),rhs->traits.ncols,matncols,mat->nEnts,&scale,descr,(dt1 *)mat->cu_val, mat->cu_chunkStart, mat->cu_col, (dt1 *)rhs->cu_val, rhs->stride, &beta, (dt1 *)lhs->cu_val, lhs->stride));
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
     return GHOST_SUCCESS;
@@ -118,7 +134,14 @@ static ghost_error ghost_cu_sell1spmmv_rm_tmpl(ghost_sparsemat *mat, ghost_dense
         zero<dt1>(beta);
     }
     
-    CUSPARSE_CALL_RETURN(sell1kernel(cusparse_handle,CUSPARSE_OPERATION_NON_TRANSPOSE,CUSPARSE_OPERATION_TRANSPOSE,mat->nrows,rhs->traits.ncols,rhs->traits.nrowshalo,mat->nnz,&scale,descr,(dt1 *)SELL(mat)->cumat->val, SELL(mat)->cumat->chunkStart, SELL(mat)->cumat->col, (dt1 *)rhs->cu_val, rhs->stride, &beta, (dt1 *)lhs->cu_val,lhs->stride));
+    int matncols,nrank;
+    ghost_nrank(&nrank,mat->context->mpicomm);
+    if (nrank > 1) {
+        matncols = mat->context->col_map->dimhalo;
+    } else {
+        matncols = mat->context->col_map->dim;
+    }
+    CUSPARSE_CALL_RETURN(sell1kernel(cusparse_handle,CUSPARSE_OPERATION_NON_TRANSPOSE,CUSPARSE_OPERATION_TRANSPOSE,SPM_NROWS(mat),rhs->traits.ncols,matncols,mat->nEnts,&scale,descr,(dt1 *)mat->cu_val, mat->cu_chunkStart, mat->cu_col, (dt1 *)rhs->cu_val, rhs->stride, &beta, (dt1 *)lhs->cu_val,lhs->stride));
     
     
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
@@ -141,33 +164,33 @@ static ghost_error ghost_cu_sell1spmv_augfunc_tmpl(ghost_densemat * lhs, ghost_d
         ghost_lidx col;
         if (traits.flags & GHOST_SPMV_SHIFT) {
             for (col=0; col<rhs->traits.ncols; col++) {
-                minusshift[col] = -1.*(*(dt2 *)&scale)*(*(dt2 *)shift);
+                minusshift[col] = (dt2)-1.*(*(dt2 *)&scale)*(*(dt2 *)shift);
             }
         } else {
             for (col=0; col<rhs->traits.ncols; col++) {
-                minusshift[col] = -1.*(*(dt2 *)&scale)*(((dt2 *)shift)[col]);
+                minusshift[col] = (dt2)-1.*(*(dt2 *)&scale)*(((dt2 *)shift)[col]);
             }
         }
-        lhs->vaxpy(lhs,rhs,minusshift);
+        ghost_vaxpy(lhs,rhs,minusshift);
     }
     
     if (traits.flags & GHOST_SPMV_DOT) {
         PERFWARNING_LOG("Dot product computation will be not be done on-the-fly!");
         memset(localdot,0,lhs->traits.ncols*3*sizeof(dt1));
         if (traits.flags & GHOST_SPMV_DOT_YY) {
-            lhs->localdot_vanilla(lhs,&localdot[0],lhs);
+            ghost_localdot(&localdot[0],lhs,lhs);
         }
         if (traits.flags & GHOST_SPMV_DOT_XY) {
-            rhs->localdot_vanilla(rhs,&localdot[lhs->traits.ncols],lhs);
+            ghost_localdot(&localdot[lhs->traits.ncols],rhs,lhs);
         }
         if (traits.flags & GHOST_SPMV_DOT_XX) {
-            rhs->localdot_vanilla(rhs,&localdot[2*lhs->traits.ncols],rhs);
+            ghost_localdot(&localdot[2*lhs->traits.ncols],rhs,rhs);
         }
             
     }
     if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
         PERFWARNING_LOG("AXPBY will not be done on-the-fly!");
-        z->axpby(z,lhs,&seta,&sdelta);
+        ghost_axpby(z,lhs,&seta,&sdelta);
     }
    
     return GHOST_SUCCESS; 
@@ -185,39 +208,41 @@ ghost_error ghost_cu_sell1_spmv_selector(ghost_densemat * lhs_in, ghost_sparsema
         ret = GHOST_ERR_NOT_IMPLEMENTED;
         goto err;
     }
-    if ((lhs_in->traits.flags & GHOST_DENSEMAT_SCATTERED) || (lhs_in->traits.storage == GHOST_DENSEMAT_ROWMAJOR)) {
+    if ((lhs_in->traits.flags & GHOST_DENSEMAT_SCATTERED) || ((lhs_in->traits.storage == GHOST_DENSEMAT_ROWMAJOR) && (lhs_in->stride != 1))) {
         PERFWARNING_LOG("Cloning lhs");
         if (lhs_in->traits.flags & GHOST_DENSEMAT_SCATTERED) {
             PERFWARNING_LOG("Cloning and compressing lhs before operation because it is scattered");
         }
-        if (lhs_in->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
+        if ((lhs_in->traits.storage == GHOST_DENSEMAT_ROWMAJOR) && (lhs_in->stride != 1)) {
             PERFWARNING_LOG("Cloning and transposing lhs before operation because it is row-major");
         }
         ghost_densemat_traits lhstraits = lhs_in->traits;
         lhstraits.location = GHOST_LOCATION_DEVICE;
         lhstraits.storage = GHOST_DENSEMAT_COLMAJOR;
         lhstraits.flags &= (ghost_densemat_flags)(~GHOST_DENSEMAT_VIEW);
-        GHOST_CALL_GOTO(ghost_densemat_create(&lhs,NULL,lhstraits),err,ret);
-        GHOST_CALL_GOTO(lhs->fromVec(lhs,lhs_in,0,0),err,ret);
+        GHOST_CALL_GOTO(ghost_densemat_create(&lhs,lhs_in->map,lhstraits),err,ret);
+        GHOST_CALL_GOTO(ghost_densemat_init_densemat(lhs,lhs_in,0,0),err,ret);
     } else {
         lhs = lhs_in;
     }
-    if ((rhs_in->traits.flags & GHOST_DENSEMAT_SCATTERED) || ((rhs_in->traits.ncols == 1) && (rhs_in->traits.storage == GHOST_DENSEMAT_ROWMAJOR))) {
+    if ((rhs_in->traits.flags & GHOST_DENSEMAT_SCATTERED) || ((rhs_in->traits.ncols == 1) && (rhs_in->traits.storage == GHOST_DENSEMAT_ROWMAJOR) && (rhs_in->stride != 1))) {
         PERFWARNING_LOG("Cloning rhs");
         if (rhs_in->traits.flags & GHOST_DENSEMAT_SCATTERED) {
             PERFWARNING_LOG("Cloning and compressing rhs before operation because it is scattered");
         }
-        if ((rhs_in->traits.ncols == 1) && (rhs_in->traits.storage == GHOST_DENSEMAT_ROWMAJOR)) {
+        if ((rhs_in->traits.ncols == 1) && (rhs_in->traits.storage == GHOST_DENSEMAT_ROWMAJOR) && (rhs_in->stride != 1)) {
             PERFWARNING_LOG("Cloning and transposing rhs before operation because it is row-major");
         }
         ghost_densemat_traits rhstraits = rhs_in->traits;
         rhstraits.location = GHOST_LOCATION_DEVICE;
         rhstraits.storage = GHOST_DENSEMAT_COLMAJOR;
         rhstraits.flags &= (ghost_densemat_flags)(~GHOST_DENSEMAT_VIEW);
-        GHOST_CALL_GOTO(ghost_densemat_create(&rhs,NULL,rhstraits),err,ret);
-        GHOST_CALL_GOTO(rhs->fromVec(rhs,rhs_in,0,0),err,ret);
-        ghost_lidx nhalo = rhs->traits.nrowshalo - rhs->traits.nrowspadded;
-        GHOST_CALL_GOTO(ghost_cu_memtranspose(nhalo,rhs->traits.ncols,&rhs->cu_val[rhs->traits.nrowspadded*rhs->elSize],rhs->stride,&rhs_in->cu_val[rhs_in->traits.nrowspadded*rhs_in->stride*rhs_in->elSize],rhs_in->stride,rhs->traits.datatype),err,ret);
+        GHOST_CALL_GOTO(ghost_densemat_create(&rhs,rhs_in->map,rhstraits),err,ret);
+        GHOST_CALL_GOTO(ghost_densemat_init_densemat(rhs,rhs_in,0,0),err,ret);
+        GHOST_CALL_GOTO(ghost_cu_memtranspose(rhs->map->nhalo,rhs->traits.ncols,
+                    &rhs->cu_val[(rhs->map->dimhalo-rhs->map->nhalo)*rhs->elSize],rhs->stride,
+                    &rhs_in->cu_val[(rhs_in->map->dimhalo-rhs_in->map->nhalo)*rhs_in->stride*rhs_in->elSize],rhs_in->stride,
+                    rhs->traits.datatype),err,ret);
     } else {
         rhs = rhs_in;
     }
@@ -228,13 +253,13 @@ ghost_error ghost_cu_sell1_spmv_selector(ghost_densemat * lhs_in, ghost_sparsema
             if (mat->traits.datatype & GHOST_DT_REAL) {
                 GHOST_CALL_GOTO((ghost_cu_sell1spmv_tmpl<double,double>(mat,lhs,rhs,traits,(cusparse_sell1_spmv_kernel_t)cusparseDcsrmv)),err,ret);
             } else {
-                GHOST_CALL_GOTO((ghost_cu_sell1spmv_tmpl<cuDoubleComplex,complex double>(mat,lhs,rhs,traits,(cusparse_sell1_spmv_kernel_t)cusparseZcsrmv)),err,ret);
+                GHOST_CALL_GOTO((ghost_cu_sell1spmv_tmpl<cuDoubleComplex,std::complex<double> >(mat,lhs,rhs,traits,(cusparse_sell1_spmv_kernel_t)cusparseZcsrmv)),err,ret);
             }
         } else {
             if (mat->traits.datatype & GHOST_DT_REAL) {
                 GHOST_CALL_GOTO((ghost_cu_sell1spmv_tmpl<float,float>(mat,lhs,rhs,traits,(cusparse_sell1_spmv_kernel_t)cusparseScsrmv)),err,ret);
             } else {
-                GHOST_CALL_GOTO((ghost_cu_sell1spmv_tmpl<cuFloatComplex,complex float>(mat,lhs,rhs,traits,(cusparse_sell1_spmv_kernel_t)cusparseCcsrmv)),err,ret);
+                GHOST_CALL_GOTO((ghost_cu_sell1spmv_tmpl<cuFloatComplex,std::complex<float> >(mat,lhs,rhs,traits,(cusparse_sell1_spmv_kernel_t)cusparseCcsrmv)),err,ret);
             }
         }
     } else if (rhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
@@ -243,13 +268,13 @@ ghost_error ghost_cu_sell1_spmv_selector(ghost_densemat * lhs_in, ghost_sparsema
             if (mat->traits.datatype & GHOST_DT_REAL) {
                 GHOST_CALL_GOTO((ghost_cu_sell1spmmv_cm_tmpl<double,double>(mat,lhs,rhs,traits,(cusparse_sell1_spmmv_cm_kernel_t)cusparseDcsrmm)),err,ret);
             } else {
-                GHOST_CALL_GOTO((ghost_cu_sell1spmmv_cm_tmpl<cuDoubleComplex,complex double>(mat,lhs,rhs,traits,(cusparse_sell1_spmmv_cm_kernel_t)cusparseZcsrmm)),err,ret);
+                GHOST_CALL_GOTO((ghost_cu_sell1spmmv_cm_tmpl<cuDoubleComplex,std::complex<double> >(mat,lhs,rhs,traits,(cusparse_sell1_spmmv_cm_kernel_t)cusparseZcsrmm)),err,ret);
             }
         } else {
             if (mat->traits.datatype & GHOST_DT_REAL) {
                 GHOST_CALL_GOTO((ghost_cu_sell1spmmv_cm_tmpl<float,float>(mat,lhs,rhs,traits,(cusparse_sell1_spmmv_cm_kernel_t)cusparseScsrmm)),err,ret);
             } else {
-                GHOST_CALL_GOTO((ghost_cu_sell1spmmv_cm_tmpl<cuFloatComplex,complex float>(mat,lhs,rhs,traits,(cusparse_sell1_spmmv_cm_kernel_t)cusparseCcsrmm)),err,ret);
+                GHOST_CALL_GOTO((ghost_cu_sell1spmmv_cm_tmpl<cuFloatComplex,std::complex<float> >(mat,lhs,rhs,traits,(cusparse_sell1_spmmv_cm_kernel_t)cusparseCcsrmm)),err,ret);
             }
         }
     } else {
@@ -258,19 +283,19 @@ ghost_error ghost_cu_sell1_spmv_selector(ghost_densemat * lhs_in, ghost_sparsema
             if (mat->traits.datatype & GHOST_DT_REAL) {
                 GHOST_CALL_GOTO((ghost_cu_sell1spmmv_rm_tmpl<double,double>(mat,lhs,rhs,traits,(cusparse_sell1_spmmv_rm_kernel_t)cusparseDcsrmm2)),err,ret);
             } else {
-                GHOST_CALL_GOTO((ghost_cu_sell1spmmv_rm_tmpl<cuDoubleComplex,complex double>(mat,lhs,rhs,traits,(cusparse_sell1_spmmv_rm_kernel_t)cusparseZcsrmm2)),err,ret);
+                GHOST_CALL_GOTO((ghost_cu_sell1spmmv_rm_tmpl<cuDoubleComplex,std::complex<double> >(mat,lhs,rhs,traits,(cusparse_sell1_spmmv_rm_kernel_t)cusparseZcsrmm2)),err,ret);
             }
         } else {
             if (mat->traits.datatype & GHOST_DT_REAL) {
                 GHOST_CALL_GOTO((ghost_cu_sell1spmmv_rm_tmpl<float,float>(mat,lhs,rhs,traits,(cusparse_sell1_spmmv_rm_kernel_t)cusparseScsrmm2)),err,ret);
             } else {
-                GHOST_CALL_GOTO((ghost_cu_sell1spmmv_rm_tmpl<cuFloatComplex,complex float>(mat,lhs,rhs,traits,(cusparse_sell1_spmmv_rm_kernel_t)cusparseCcsrmm2)),err,ret);
+                GHOST_CALL_GOTO((ghost_cu_sell1spmmv_rm_tmpl<cuFloatComplex,std::complex<float> >(mat,lhs,rhs,traits,(cusparse_sell1_spmmv_rm_kernel_t)cusparseCcsrmm2)),err,ret);
             }
         }
     }
     
     if (lhs != lhs_in) {
-        lhs_in->fromVec(lhs_in,lhs,0,0);
+        ghost_densemat_init_densemat(lhs_in,lhs,0,0);
         ghost_densemat_destroy(lhs);
     }
     if (rhs != rhs_in) {
@@ -281,13 +306,13 @@ ghost_error ghost_cu_sell1_spmv_selector(ghost_densemat * lhs_in, ghost_sparsema
         if (mat->traits.datatype & GHOST_DT_REAL) {
             GHOST_CALL_GOTO((ghost_cu_sell1spmv_augfunc_tmpl<double,double>(lhs_in,rhs_in,traits)),err,ret);
         } else {
-            GHOST_CALL_GOTO((ghost_cu_sell1spmv_augfunc_tmpl<cuDoubleComplex,complex double>(lhs_in,rhs_in,traits)),err,ret);
+            GHOST_CALL_GOTO((ghost_cu_sell1spmv_augfunc_tmpl<cuDoubleComplex,std::complex<double> >(lhs_in,rhs_in,traits)),err,ret);
         }
     } else {
         if (mat->traits.datatype & GHOST_DT_REAL) {
             GHOST_CALL_GOTO((ghost_cu_sell1spmv_augfunc_tmpl<float,float>(lhs_in,rhs_in,traits)),err,ret);
         } else {
-            GHOST_CALL_GOTO((ghost_cu_sell1spmv_augfunc_tmpl<cuFloatComplex,complex float>(lhs_in,rhs_in,traits)),err,ret);
+            GHOST_CALL_GOTO((ghost_cu_sell1spmv_augfunc_tmpl<cuFloatComplex,std::complex<float> >(lhs_in,rhs_in,traits)),err,ret);
         }
     }
     

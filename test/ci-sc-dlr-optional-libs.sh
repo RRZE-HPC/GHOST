@@ -83,9 +83,13 @@ fi
 INSTALL_DIR=$INSTALL_PREFIX/install-${PRGENV}-${BUILD_TYPE}-${VECT_EXT}
 
 if [ "${FLAGS}" = "optional-libs" ]; then
-  module load trilinos
   module load ColPack
-  ADD_CMAKE_FLAGS="${ADD_CMAKE_FLAGS} -DGHOST_USE_ZOLTAN:BOOL=ON -DGHOST_USE_COLPACK:BOOL=ON"
+  ADD_CMAKE_FLAGS="${ADD_CMAKE_FLAGS} -DGHOST_USE_COLPACK:BOOL=ON"
+  if [ "${PRGENV}" ~= "gcc" ]; then
+    # we currently have no Trilinos installation with icc
+    module load trilinos
+    ADD_CMAKE_FLAGS="${ADD_CMAKE_FLAGS} -DGHOST_USE_ZOLTAN:BOOL=ON"
+  fi
   INSTALL_DIR=${INSTALL_DIR}_optional-libs
 fi
 

@@ -2,10 +2,12 @@
 
 print "#ifdef __cplusplus\nextern \"C\" {\n#endif\n";
 
-while (<>) {
-    if ($_ =~ /(ghost_error .+\(.+\))/ and $_ !~ /static/) {
-        chomp($_);
-        print "$_;\n";
+if (@ARGV) {
+    while (<>) {
+        if ($_ =~ /(ghost_error .+\(.+\))/ and $_ !~ /static/) {
+            chomp($_);
+            print "$_;\n";
+        }
     }
 }
 
