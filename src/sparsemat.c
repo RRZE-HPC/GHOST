@@ -1272,8 +1272,8 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
     #pragma omp parallel private(i,colidx,row,tmpval,tmpcol)
     {
         int funcret = 0;
-        GHOST_CALL(ghost_malloc((void **)&tmpval,C*src->maxrowlen*mat->elSize),ret);
-        GHOST_CALL(ghost_malloc((void **)&tmpcol,C*src->maxrowlen*sizeof(ghost_gidx)),ret);
+        GHOST_CALL(ghost_malloc((void **)&tmpval,C*mat->maxRowLen*mat->elSize),ret);
+        GHOST_CALL(ghost_malloc((void **)&tmpcol,C*mat->maxRowLen*sizeof(ghost_gidx)),ret);
         
         if (src->func == ghost_sparsemat_rowfunc_crs) {
             ghost_gidx *crscol;
@@ -1342,70 +1342,71 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
             }
         } else {
             #pragma omp for schedule(runtime)
-            for( chunk = 0; chunk < nChunks; chunk++ ) {
-                memset(tmpval,0,mat->elSize*src->maxrowlen*C);  
+            for (chunk = 0; chunk < nChunks; chunk++) {
                 if(mat->context->flags & GHOST_PERM_NO_DISTINCTION) {
-                    for (i=0; i<src->maxrowlen*C; i++) {    
-                        tmpcol[i] = 0;
-                    }
+                    memset(&(*col)[(*chunkptr)[chunk]],0,C*clp[chunk]*sizeof(ghost_gidx));
                 } else {
-                    for (i=0; i<src->maxrowlen*C; i++) {    
-                        tmpcol[i] = mat->context->row_map->goffs[me];
+                    for (i=0; i<clp[chunk]*C; i++) {    
+                        (*col)[(*chunkptr)[chunk]] = mat->context->row_map->offs;
                     }
                 }
+                memset(&(*val)[(*chunkptr)[chunk]*mat->elSize],0,C*clp[chunk]*mat->elSize);
+            }
+            #pragma omp for schedule(runtime)
+            for (chunk = 0; chunk < nChunks; chunk++) {
                 for (i=0, row = chunk*C; (i<C) && (chunk*C+i < SPM_NROWS(mat)); i++, row++) {
                     if (mat->traits.flags & GHOST_SPARSEMAT_PERM_ANY) {
                         if (mat->context->row_map->glb_perm && mat->context->row_map->loc_perm) {
-                            funcret = src->func(mat->context->row_map->glb_perm_inv[mat->context->row_map->loc_perm_inv[row]],&rl[row],&tmpcol[src->maxrowlen*i],&tmpval[src->maxrowlen*i*mat->elSize],src->arg);
+                            funcret = src->func(mat->context->row_map->glb_perm_inv[mat->context->row_map->loc_perm_inv[row]],&rl[row],&tmpcol[mat->maxRowLen*i],&tmpval[mat->maxRowLen*i*mat->elSize],src->arg);
                         } else if (mat->context->row_map->glb_perm) {
-                            funcret = src->func(mat->context->row_map->glb_perm_inv[row],&rl[row],&tmpcol[src->maxrowlen*i],&tmpval[src->maxrowlen*i*mat->elSize],src->arg);
+                            funcret = src->func(mat->context->row_map->glb_perm_inv[row],&rl[row],&tmpcol[mat->maxRowLen*i],&tmpval[mat->maxRowLen*i*mat->elSize],src->arg);
                         } else if (mat->context->row_map->loc_perm) {
-                            funcret = src->func(mat->context->row_map->goffs[me]+mat->context->row_map->loc_perm_inv[row],&rl[row],&tmpcol[src->maxrowlen*i],&tmpval[src->maxrowlen*i*mat->elSize],src->arg);
+                            funcret = src->func(mat->context->row_map->goffs[me]+mat->context->row_map->loc_perm_inv[row],&rl[row],&tmpcol[mat->maxRowLen*i],&tmpval[mat->maxRowLen*i*mat->elSize],src->arg);
                         }
                         
                     } else {
-                        funcret = src->func(mat->context->row_map->goffs[me]+row,&rl[row],&tmpcol[src->maxrowlen*i],&tmpval[src->maxrowlen*i*mat->elSize],src->arg);
+                        funcret = src->func(mat->context->row_map->goffs[me]+row,&rl[row],&tmpcol[mat->maxRowLen*i],&tmpval[mat->maxRowLen*i*mat->elSize],src->arg);
                     }
                     if (funcret) {
                         ERROR_LOG("Matrix construction function returned error");
                         ret = GHOST_ERR_UNKNOWN;
                     }
-                    for (colidx = 0; colidx<clp[chunk]; colidx++) {
-                        memcpy(*val+mat->elSize*((*chunkptr)[chunk]+colidx*C+i),&tmpval[mat->elSize*(i*src->maxrowlen+colidx)],mat->elSize);
+                    for (colidx = 0; colidx<rl[row]; colidx++) {
+                        memcpy(*val+mat->elSize*((*chunkptr)[chunk]+colidx*C+i),&tmpval[mat->elSize*(i*mat->maxRowLen+colidx)],mat->elSize);
                         if (mat->traits.flags & GHOST_SPARSEMAT_PERM_ANY) {
                             if (mat->context->row_map->glb_perm) {
                                 // no distinction between global and local entries
                                 // global permutation will be done after all rows are read
-                                (*col)[(*chunkptr)[chunk]+colidx*C+i] = tmpcol[i*src->maxrowlen+colidx];
+                                (*col)[(*chunkptr)[chunk]+colidx*C+i] = tmpcol[i*mat->maxRowLen+colidx];
                             } else { 
                                 // local permutation: distinction between global and local entries, if GHOST_PERM_NO_DISTINCTION is not set 
-                                if ((mat->context->flags & GHOST_PERM_NO_DISTINCTION) || ((tmpcol[i*src->maxrowlen+colidx] >= mat->context->row_map->goffs[me]) && (tmpcol[i*src->maxrowlen+colidx] < (mat->context->row_map->goffs[me]+SPM_NROWS(mat))))) { 
+                                if ((mat->context->flags & GHOST_PERM_NO_DISTINCTION) || ((tmpcol[i*mat->maxRowLen+colidx] >= mat->context->row_map->goffs[me]) && (tmpcol[i*mat->maxRowLen+colidx] < (mat->context->row_map->goffs[me]+SPM_NROWS(mat))))) { 
                                     // local entry: copy with permutation
                                     if (mat->traits.flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS) {
-                                        (*col)[(*chunkptr)[chunk]+colidx*C+i] = tmpcol[i*src->maxrowlen+colidx];
+                                        (*col)[(*chunkptr)[chunk]+colidx*C+i] = tmpcol[i*mat->maxRowLen+colidx];
                                     } else if(mat->context->flags & GHOST_PERM_NO_DISTINCTION) {
-                                        // (*col)[(*chunkptr)[chunk]+colidx*C+i] = mat->context->row_map->loc_perm->colPerm[tmpcol[i*src->maxrowlen+colidx]]   
+                                        // (*col)[(*chunkptr)[chunk]+colidx*C+i] = mat->context->row_map->loc_perm->colPerm[tmpcol[i*mat->maxRowLen+colidx]]   
                                         // do not permute remote and do not allow local to go to remote
-                                        if(tmpcol[i*src->maxrowlen+colidx] < mat->context->col_map->dimpad) {
-                                            if( mat->context->col_map->loc_perm[tmpcol[i*src->maxrowlen+colidx]]>=mat->context->col_map->dimpad ) {       
+                                        if(tmpcol[i*mat->maxRowLen+colidx] < mat->context->col_map->dimpad) {
+                                            if( mat->context->col_map->loc_perm[tmpcol[i*mat->maxRowLen+colidx]]>=mat->context->col_map->dimpad ) {       
                                                 ERROR_LOG("Ensure you have halo number of paddings, since GHOST_PERM_NO_DISTINCTION is switched on");       
                                             }
-                                            (*col)[(*chunkptr)[chunk]+colidx*C+i] = mat->context->col_map->loc_perm[tmpcol[i*src->maxrowlen+colidx]];
+                                            (*col)[(*chunkptr)[chunk]+colidx*C+i] = mat->context->col_map->loc_perm[tmpcol[i*mat->maxRowLen+colidx]];
                                         } else {
-                                            (*col)[(*chunkptr)[chunk]+colidx*C+i] = tmpcol[i*src->maxrowlen+colidx];
+                                            (*col)[(*chunkptr)[chunk]+colidx*C+i] = tmpcol[i*mat->maxRowLen+colidx];
                                         }
                                     } else {
                                         
-                                        (*col)[(*chunkptr)[chunk]+colidx*C+i] = mat->context->col_map->loc_perm[tmpcol[i*src->maxrowlen+colidx]-mat->context->row_map->goffs[me]]+mat->context->row_map->goffs[me];
-                                        //                                        (*col)[(*chunkptr)[chunk]+colidx*C+i] = mat->context->row_map->loc_perm->colPerm[tmpcol[i*src->maxrowlen+colidx]-mat->context->row_map->goffs[me]]+mat->context->row_map->goffs[me];
+                                        (*col)[(*chunkptr)[chunk]+colidx*C+i] = mat->context->col_map->loc_perm[tmpcol[i*mat->maxRowLen+colidx]-mat->context->row_map->goffs[me]]+mat->context->row_map->goffs[me];
+                                        //                                        (*col)[(*chunkptr)[chunk]+colidx*C+i] = mat->context->row_map->loc_perm->colPerm[tmpcol[i*mat->maxRowLen+colidx]-mat->context->row_map->goffs[me]]+mat->context->row_map->goffs[me];
                                     }
                                 } else { 
                                     // remote entry: copy without permutation
-                                    (*col)[(*chunkptr)[chunk]+colidx*C+i] = tmpcol[i*src->maxrowlen+colidx];
+                                    (*col)[(*chunkptr)[chunk]+colidx*C+i] = tmpcol[i*mat->maxRowLen+colidx];
                                 }
                             }
                         } else {
-                            (*col)[(*chunkptr)[chunk]+colidx*C+i] = tmpcol[i*src->maxrowlen+colidx];
+                            (*col)[(*chunkptr)[chunk]+colidx*C+i] = tmpcol[i*mat->maxRowLen+colidx];
                         }
                     }
                 }
