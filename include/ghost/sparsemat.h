@@ -228,6 +228,14 @@ typedef struct
      */
     ghost_lidx *chunkLenPadded;
     /**
+     * @brief Longest length of each quadruple of rows.
+     */
+    ghost_lidx *rowLen4;
+    /**
+     * @brief Longest length of each tuple of rows.
+     */
+    ghost_lidx *rowLen2;
+    /**
      * @brief Length of each row.
      *
      * Especially useful in SELL-1 kernels.

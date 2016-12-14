@@ -160,6 +160,8 @@ ghost_error ghost_sparsemat_create(ghost_sparsemat ** mat, ghost_context *contex
     (*mat)->sell->chunkLen = NULL;
     (*mat)->sell->chunkLenPadded = NULL;
     (*mat)->sell->rowLen = NULL;
+    (*mat)->sell->rowLen2 = NULL;
+    (*mat)->sell->rowLen4 = NULL;
     (*mat)->sell->rowLenPadded = NULL;
     (*mat)->sell->chunkStart = NULL;
     (*mat)->sell->cumat = NULL;
@@ -1555,6 +1557,8 @@ void ghost_sparsemat_destroy(ghost_sparsemat *mat)
         free(SELL(mat)->chunkLen); SELL(mat)->chunkLen = NULL;
         free(SELL(mat)->chunkLenPadded); SELL(mat)->chunkLenPadded = NULL;
         free(SELL(mat)->rowLen); SELL(mat)->rowLen = NULL;
+        free(SELL(mat)->rowLen2); SELL(mat)->rowLen2 = NULL;
+        free(SELL(mat)->rowLen4); SELL(mat)->rowLen4 = NULL;
         free(SELL(mat)->rowLenPadded); SELL(mat)->rowLenPadded = NULL;
     }
 
@@ -2093,6 +2097,33 @@ if(mat->traits.flags & GHOST_SOLVER_KACZ) {
     if (!(mat->traits.flags & GHOST_SPARSEMAT_HOST))
         mat->upload(mat);
 #endif
+
+
+    GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->rowLen2,mat->nrowsPadded/2*sizeof(ghost_lidx)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->rowLen4,mat->nrowsPadded/4*sizeof(ghost_lidx)),err,ret);
+    ghost_lidx max4,max2,i;
+    for (i=0; i<mat->nrowsPadded; i++) {
+        if (!(i%2)) {
+            max2 = 0;
+        }
+        if (!(i%4)) {
+            max4 = 0;
+        }
+        if (SELL(mat)->rowLen[i] > max2) {
+            max2 = SELL(mat)->rowLen[i];
+        }
+        if (SELL(mat)->rowLen[i] > max4) {
+            max4 = SELL(mat)->rowLen[i];
+        }
+        if (!((i+1)%2)) {
+            SELL(mat)->rowLen2[i/2] = max2;
+        }
+        if (!((i+1)%4)) {
+            SELL(mat)->rowLen4[i/4] = max4;
+        }
+    }
+        
+        
 
     goto out;
 err:
