@@ -37,6 +37,13 @@ typedef enum {
         GHOST_SPMV_DOT_XX)
 
 /**
+ * @brief All flags which case an SpMV augmentation.
+ */
+#define GHOST_SPMV_AUG_FLAGS (GHOST_SPMV_SHIFT|GHOST_SPMV_VSHIFT|\
+        GHOST_SPMV_SCALE|GHOST_SPMV_AXPY|GHOST_SPMV_AXPBY|\
+        GHOST_SPMV_DOT|GHOST_SPMV_CHAIN_AXPBY)
+
+/**
  * @brief Parse the SPMV arguments.
  *
  * This macro parses the varargs given to an SpMV call and initializes given
