@@ -44,9 +44,9 @@ ghost_error ghost_sellspmv__a_plain_z_z_rm_CHUNKHEIGHT_x(ghost_densemat *res, gh
    
 #pragma omp parallel shared (partsums) private(v)
     {
-        ghost_lidx j,c,r,row;
+        ghost_lidx j,r;
         ghost_lidx offs;
-        complex double tmp[CHUNKHEIGHT][res->traits.ncols];
+        complex double tmp;
         complex double *rhsval = (complex double *)invec->val;
         complex double *zval = NULL;
         if (z) {
@@ -55,89 +55,88 @@ ghost_error ghost_sellspmv__a_plain_z_z_rm_CHUNKHEIGHT_x(ghost_densemat *res, gh
         int tid = ghost_omp_threadnum();
 
 #pragma omp for schedule(runtime)
-        for (c=0; c<SPM_NCHUNKS(mat); c++) 
-        { // loop over chunks
-            offs = mat->chunkStart[c];
-                    
-            memset(tmp,0,sizeof(tmp));
-            for (j=0; j<mat->chunkLen[c]; j++) { // loop inside chunk
-                for (v=0; v<res->traits.ncols; v++) {
-#pragma simd
-                    for (r=0; r<CHUNKHEIGHT; r++) {
-                        row = c*CHUNKHEIGHT+r;
-                        complex double matval = mval[offs+j*CHUNKHEIGHT+r];
-                        ghost_lidx matcol = mat->col[offs+j*CHUNKHEIGHT+r];
-                        tmp[r][v] += matval*rhsval[invec->stride*matcol+v];
-                    }
-                }
+        for (r=0; r<SPM_NROWS(mat); r++) 
+        { // loop over rows
+            offs = mat->chunkStart[r/CHUNKHEIGHT]+r%CHUNKHEIGHT;
+            complex double *lrow = ((complex double *)(res->val))+res->stride*r;
+            complex double *rrow = rhsval+invec->stride*r;
+            complex double *zrow = NULL;
+            complex double matval;
+            ghost_lidx matcol;
+            if (z) {
+                zrow = zval+z->stride*r;
             }
+                
+            if ((traits.flags&GHOST_SPMV_AUG_FLAGS) == (GHOST_SPMV_SCALE|GHOST_SPMV_AXPBY)) {
+                // make common case fast
+#pragma simd
+#pragma vector always aligned
+                for (v=0; v<res->traits.ncols; v++) {
+                    tmp = 0;
+                    for (j=0; j<mat->rowLen[r]; j++) {
+                        matval = mval[offs+j*CHUNKHEIGHT];
+                        matcol = mat->col[offs+j*CHUNKHEIGHT];
+                        tmp += matval*rhsval[invec->stride*matcol+v];
+                    }
+                    lrow[v] = beta*lrow[v] + scale*tmp;
+                }
+            } else if ((traits.flags&GHOST_SPMV_AUG_FLAGS) == (GHOST_SPMV_SCALE|GHOST_SPMV_AXPBY|GHOST_SPMV_SHIFT|GHOST_SPMV_CHAIN_AXPBY)) {
+               // make ChebFD case fast
+#pragma simd
+#pragma vector always aligned
+                for (v=0; v<res->traits.ncols; v++) {
+                    tmp = 0;
+                    for (j=0; j<mat->rowLen[r]; j++) {
+                        matval = mval[offs+j*CHUNKHEIGHT];
+                        matcol = mat->col[offs+j*CHUNKHEIGHT];
+                        tmp += matval*rhsval[invec->stride*matcol+v];
+                    }
+                    lrow[v] = beta*lrow[v] + scale*(tmp-shift[0]*rrow[v]);
+                    zrow[v] = delta*zrow[v] + eta*lrow[v];
+                }
+            } else { // fallback
+#pragma simd
+#pragma vector always aligned
+                for (v=0; v<res->traits.ncols; v++) {
+                    tmp = 0;
+                    for (j=0; j<mat->rowLen[r]; j++) {
+                        matval = mval[offs+j*CHUNKHEIGHT];
+                        matcol = mat->col[offs+j*CHUNKHEIGHT];
+                        tmp += matval*rhsval[invec->stride*matcol+v];
+                    }
 
-            for (r=0; (r<CHUNKHEIGHT) && (c*CHUNKHEIGHT+r < SPM_NROWS(mat)); r++) {
-                row = c*CHUNKHEIGHT+r;
-                complex double *lrow = ((complex double *)(res->val))+res->stride*row;
-                complex double *rrow = rhsval+invec->stride*row;
-                complex double *zrow = NULL;
-                if (z) {
-                    zrow = zval+z->stride*row;
-                }
-                if ((traits.flags & GHOST_SPMV_SHIFT) && shift) {
-#pragma simd
-                    for (v=0; v<res->traits.ncols; v++) {
-                        tmp[r][v] = tmp[r][v]-shift[0]*rrow[v];
+                    if ((traits.flags & GHOST_SPMV_SHIFT) && shift) {
+                            tmp = tmp-shift[0]*rrow[v];
                     }
-                }
-                if ((traits.flags & GHOST_SPMV_VSHIFT) && shift) {
-#pragma simd
-                    for (v=0; v<res->traits.ncols; v++) {
-                        tmp[r][v] = tmp[r][v]-shift[v]*rrow[v];
+                    if ((traits.flags & GHOST_SPMV_VSHIFT) && shift) {
+                            tmp = tmp-shift[v]*rrow[v];
                     }
-                }
-                if (traits.flags & GHOST_SPMV_SCALE) {
-#pragma simd
-                    for (v=0; v<res->traits.ncols; v++) {
-                        tmp[r][v] = tmp[r][v]*scale;
+                    if (traits.flags & GHOST_SPMV_SCALE) {
+                            tmp = tmp*scale;
                     }
-                }
-                if (traits.flags & GHOST_SPMV_AXPY) {
-#pragma simd
-                    for (v=0; v<res->traits.ncols; v++) {
-                        lrow[v] += tmp[r][v];
-                    }
-                } else if (traits.flags & GHOST_SPMV_AXPBY) {
-#pragma simd
-                    for (v=0; v<res->traits.ncols; v++) {
-                        lrow[v] = beta*lrow[v] + tmp[r][v];
-                    }
-                } else {
-                    if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
-#pragma simd
-                        for (v=0; v<res->traits.ncols; v++) {
-                            lrow[v] = tmp[r][v];
-                        }
+                    if (traits.flags & GHOST_SPMV_AXPY) {
+                            lrow[v] += tmp;
+                    } else if (traits.flags & GHOST_SPMV_AXPBY) {
+                            lrow[v] = beta*lrow[v] + tmp;
                     } else {
-#pragma vector nontemporal
-#pragma simd
-                        for (v=0; v<res->traits.ncols; v++) {
-                            lrow[v] = tmp[r][v];
+                        if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
+                                lrow[v] = tmp;
+                        } else {
+                            // TODO streaming store in this case
+                                lrow[v] = tmp;
                         }
                     }
-                }
-                if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
-#pragma simd
-                    for (v=0; v<res->traits.ncols; v++) {
-                        zrow[v] = delta*zrow[v] + eta*lrow[v];
+                    if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
+                            zrow[v] = delta*zrow[v] + eta*lrow[v];
                     }
-                }
-                    
-                if (traits.flags & GHOST_SPMV_DOT) {
-#pragma simd
-                    for (v=0; v<res->traits.ncols; v++) {
-                        partsums[((pad+3*res->traits.ncols)*tid)+3*v+0] += 
-                            conj(lrow[v])*lrow[v];
-                        partsums[((pad+3*res->traits.ncols)*tid)+3*v+1] += 
-                            conj(rrow[v])*lrow[v];
-                        partsums[((pad+3*res->traits.ncols)*tid)+3*v+2] += 
-                            conj(rrow[v])*rrow[v];
+                        
+                    if (traits.flags & GHOST_SPMV_DOT) {
+                            partsums[((pad+3*res->traits.ncols)*tid)+3*v+0] += 
+                                conj(lrow[v])*lrow[v];
+                            partsums[((pad+3*res->traits.ncols)*tid)+3*v+1] += 
+                                conj(rrow[v])*lrow[v];
+                            partsums[((pad+3*res->traits.ncols)*tid)+3*v+2] += 
+                                conj(rrow[v])*rrow[v];
                     }
                 }
             }

@@ -234,7 +234,6 @@ ghost_error ghost_sellspmv__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
         __m256d val;
         __m256d rhs = _mm256_setzero_pd();
         __m256d shift;
-        __m128d rhstmp = _mm_setzero_pd();
         #GHOST_UNROLL#__m256d tmp@;#CHUNKHEIGHT/4
         int tid = ghost_omp_threadnum();
         __m256d dot1[invec->traits.ncols],dot2[invec->traits.ncols],dot3[invec->traits.ncols];
@@ -258,7 +257,7 @@ ghost_error ghost_sellspmv__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
                 for (j=0; j<mat->chunkLenPadded[c]; j++) 
                 { // loop inside chunk
 
-                    #GHOST_UNROLL#val    = _mm256_load_pd(&mval[offs]);rhstmp = _mm_loadl_pd(rhstmp,&rval[(mat->col[offs++])]);rhstmp = _mm_loadh_pd(rhstmp,&rval[(mat->col[offs++])]);rhs    = _mm256_insertf128_pd(rhs,rhstmp,0);rhstmp = _mm_loadl_pd(rhstmp,&rval[(mat->col[offs++])]);rhstmp = _mm_loadh_pd(rhstmp,&rval[(mat->col[offs++])]);rhs    = _mm256_insertf128_pd(rhs,rhstmp,1);tmp@    = _mm256_add_pd(tmp@,_mm256_mul_pd(val,rhs));#CHUNKHEIGHT/4
+                    #GHOST_UNROLL#val    = _mm256_load_pd(&mval[offs]);rhs = _mm256_setr_pd(rval[mat->col[offs++]],rval[mat->col[offs++]],rval[mat->col[offs++]],rval[mat->col[offs++]]);tmp@    = _mm256_add_pd(tmp@,_mm256_mul_pd(val,rhs));#CHUNKHEIGHT/4
                 }
 
                 if (traits.flags & (GHOST_SPMV_SHIFT | GHOST_SPMV_VSHIFT)) {
@@ -1156,7 +1155,7 @@ ghost_error ghost_sellspmv__a_avx_z_z_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
 #if 0
 
 #GHOST_FUNC_BEGIN#CHUNKHEIGHT=${CHUNKHEIGHT}
-ghost_error ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_x(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat* invec, ghost_spmv_opts traits)
+ghost_error ghost_sellspmvasdf__a_avx_d_d_rm_CHUNKHEIGHT_x(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat* invec, ghost_spmv_opts traits)
 {
 #ifdef GHOST_BUILD_AVX
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
