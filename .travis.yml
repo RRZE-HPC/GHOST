@@ -18,6 +18,6 @@ before_install:
     - sudo apt-get update
     - sudo apt-get install libhwloc-dev cuda-toolkit-8-0 libopenmpi-dev libgsl0-dev
 
-script: make -j
+script: make VERBOSE=1
 
 after_success:
