@@ -633,7 +633,7 @@ endif()
 
 if (GHOST_HAVE_CUDA)
     cuda_include_directories(${PROJECT_SOURCE_DIR}/include ${PROJECT_BINARY_DIR} ${PROJECT_BINARY_DIR}/ghost)
-    list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fPIC;-arch=sm_35;-std=c++11;-Xcompiler;-Werror;-Xcompiler;-Wall;-Xcompiler;-pedantic)
+    list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fPIC;-arch=sm_35;-std=c++11;-Xcompiler;-Werror;-Xcompiler;-Wall)
     list(APPEND CUDA_NVCC_FLAGS -isystem;${HWLOC_INCLUDE_DIR})
     if (NOT "${MPI_INCLUDE_PATH}" STREQUAL "")
         list(APPEND CUDA_NVCC_FLAGS -isystem;${MPI_INCLUDE_PATH})
