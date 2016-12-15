@@ -273,7 +273,7 @@ ghost_error ghost_sellspmv_cu_tmpl(ghost_densemat *lhs, ghost_sparsemat *mat, gh
     }
     if (opts.flags & GHOST_SPMV_AXPY) {
         v_dt_host hbeta = 1.;
-        beta = *((v_dt_device *)&hbeta);
+        memcpy(&beta,&hbeta,sizeof(beta)); // use memcpy because no conversion between "complex double" and cuDoubleComplex exists but they are compatible
     }
     if (opts.flags & (GHOST_SPMV_SHIFT|GHOST_SPMV_VSHIFT)) {
         size_t shiftsize = sizeof(v_dt_device)*(opts.flags & (GHOST_SPMV_VSHIFT|GHOST_SPMV_SHIFT)?rhs->traits.ncols:0);
