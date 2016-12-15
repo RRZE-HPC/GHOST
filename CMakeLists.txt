@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.0)
+cmake_minimum_required (VERSION 2.8)
 project (GHOST)
 
 set(GHOST_VERSION_MAJOR 1)
@@ -265,7 +265,7 @@ foreach(TEMPLATE_SRCFILE ${TEMPLATE_SRCFILES})
         #        message(FATAL_ERROR "AUTOGEN header missing or wrong in file ${TEMPLATE_SRCFILE}. Is ${TEMPLATE_HEADER}, should be /*!GHOST_AUTOGEN_*")
     else ()
         foreach (GHOST_AUTOGEN_FUNC ${GHOST_AUTOGEN_FUNC_LIST})
-            string(CONCAT FUNC_HEADER "/*!" ${GHOST_AUTOGEN_FUNC})
+            set(FUNC_HEADER "/*!${GHOST_AUTOGEN_FUNC}")
             foreach (COMBINATION ${${GHOST_AUTOGEN_FUNC}})
                 if ("${TEMPLATE_HEADER} " MATCHES "${FUNC_HEADER} ") # File matches AUTOGEN function
                     string(REGEX MATCH " .* " TEMPLATE_CONF ${TEMPLATE_HEADER}) # match string between spaces which contains the conf
