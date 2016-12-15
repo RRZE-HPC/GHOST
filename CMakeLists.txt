@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.0)
+cmake_minimum_required (VERSION 2.8)
 project (GHOST)
 
 set(GHOST_VERSION_MAJOR 1)
@@ -84,7 +84,6 @@ endif()
 
 set (SOURCES
     src/autogen.cpp
-    src/compatibility_check.c
     src/datatransfers.cpp 
     src/densemat_cm_averagehalo.cpp
     src/densemat_cm.cpp 
@@ -110,6 +109,7 @@ set (SOURCES
     src/blas_util.c
     src/carp.c
     src/carp_rb.c
+    src/compatibility_check.c
     src/context.c
     src/core.c
     src/cu_util.c
@@ -265,7 +265,7 @@ foreach(TEMPLATE_SRCFILE ${TEMPLATE_SRCFILES})
         #        message(FATAL_ERROR "AUTOGEN header missing or wrong in file ${TEMPLATE_SRCFILE}. Is ${TEMPLATE_HEADER}, should be /*!GHOST_AUTOGEN_*")
     else ()
         foreach (GHOST_AUTOGEN_FUNC ${GHOST_AUTOGEN_FUNC_LIST})
-            string(CONCAT FUNC_HEADER "/*!" ${GHOST_AUTOGEN_FUNC})
+            set(FUNC_HEADER "/*!${GHOST_AUTOGEN_FUNC}")
             foreach (COMBINATION ${${GHOST_AUTOGEN_FUNC}})
                 if ("${TEMPLATE_HEADER} " MATCHES "${FUNC_HEADER} ") # File matches AUTOGEN function
                     string(REGEX MATCH " .* " TEMPLATE_CONF ${TEMPLATE_HEADER}) # match string between spaces which contains the conf
@@ -634,15 +634,12 @@ endif()
 if (GHOST_HAVE_CUDA)
     cuda_include_directories(${PROJECT_SOURCE_DIR}/include
         ${PROJECT_BINARY_DIR} ${PROJECT_BINARY_DIR}/ghost ${HWLOC_INCLUDE_DIR} ${LIKWID_INCLUE_DIR} ${MPI_INCLUDE_PATH})
-    list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fPIC;-arch=sm_35;-std=c++11)
+    list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fPIC;-arch=sm_35;-std=c++11;-Xcompiler;-Werror;-Xcompiler;-Wall;-Xcompiler;-pedantic)
     if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
-        list(APPEND CUDA_NVCC_FLAGS -O0)
+        list(APPEND CUDA_NVCC_FLAGS -O0;-G;-g)
     endif()
     if (GHOST_USE_OPENMP)
         list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fopenmp)
-    endif()
-    if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-        list(APPEND CUDA_NVCC_FLAGS -G -g)
     endif()
     file(GLOB CU_SOURCES "${PROJECT_SOURCE_DIR}/src/*.cu")
     cuda_compile(CU_OBJS ${CU_SOURCES})
@@ -701,8 +698,8 @@ else ()
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DGHOST_FUJITSU -noansi")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DGHOST_FUJITSU")
     else()
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -std=c99 -Wall -Wextra -Werror")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -std=c++11 -Wall -Wextra -Werror")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -std=c99 -Wall -Wextra -Werror -pedantic")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -std=c++0x -Wall -Wextra -Werror -pedantic")
     if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
         set(CMAKE_INCLUDE_SYSTEM_FLAG_C "-isystem ") # Not present in Cmake 2.8.11.2
         set(CMAKE_INCLUDE_SYSTEM_FLAG_CXX "-isystem ") # Not present in Cmake 2.8.11.2
@@ -776,16 +773,21 @@ else()
             set(GHOST_BUILD_SSE 0 CACHE BOOL "Generate SSE kernels")
         endif()
 
-        if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-            set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native")
-            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
-        elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
-            if (GHOST_BUILD_AVX512)
+        if (GHOST_BUILD_AVX512)
+            if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
                 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -xMIC-AVX512")
                 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -xMIC-AVX512")
-            else ()
+            elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+                set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mavx512f")
+                set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx512f")
+            endif()
+        else ()
+            if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
                 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -xHost")
                 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -xHost")
+            elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+                set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native")
+                set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
             endif()
         endif()
     endif()

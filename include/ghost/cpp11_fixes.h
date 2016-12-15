@@ -10,6 +10,8 @@
 #include <sstream>
 #include <complex>
 
+namespace ghost {
+
 template<typename T> 
 static inline T conj(const T& a)
 {
@@ -46,12 +48,6 @@ static inline double norm(const double &a)
 }
 #endif
 
-template<typename T>
-static inline std::string to_string(T value)
-{
-    return std::to_string(value);
-}
-
 #if __cplusplus < 201103L
 template<typename T>
 static inline std::string to_string(T value)
@@ -60,7 +56,14 @@ static inline std::string to_string(T value)
     ss << value;
     return ss.str();
 }
+#else
+template<typename T>
+static inline std::string to_string(T value)
+{
+    return std::to_string(value);
+}
 #endif
 
+}
 
 #endif

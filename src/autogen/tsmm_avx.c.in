@@ -108,9 +108,9 @@ ghost_error ghost_tsmm__u_avx_z_OUTCOLS_INCOLS_OUTERUNROLL_1_rm(ghost_densemat *
                     #GHOST_UNROLL#tmpref@ = _mm256_sub_pd(_mm256_mul_pd(alphare,tmpre@),_mm256_mul_pd(alphaim,tmpim@));#OUTERUNROLL
                     #GHOST_UNROLL#tmpimf@ = _mm256_add_pd(_mm256_mul_pd(alphare,tmpim@),_mm256_mul_pd(alphaim,tmpre@));#OUTERUNROLL
 
-                    #GHOST_UNROLL#tmpimf@ = _mm256_shuffle_pd(tmpimf@,tmpimf@,0b0101);#OUTERUNROLL
-                    #GHOST_UNROLL#res0@ = _mm256_permute2f128_pd(_mm256_blend_pd(tmpref@,tmpimf@,0b1010),_mm256_shuffle_pd(_mm256_blend_pd(tmpref@,tmpimf@,0b0101),_mm256_blend_pd(tmpref@,tmpimf@,0b0101),0b0101),0x20);#OUTERUNROLL
-                    #GHOST_UNROLL#res1@ = _mm256_permute2f128_pd(_mm256_blend_pd(tmpref@,tmpimf@,0b1010),_mm256_shuffle_pd(_mm256_blend_pd(tmpref@,tmpimf@,0b0101),_mm256_blend_pd(tmpref@,tmpimf@,0b0101),0b0101),0x31);#OUTERUNROLL
+                    #GHOST_UNROLL#tmpimf@ = _mm256_shuffle_pd(tmpimf@,tmpimf@,0x5);#OUTERUNROLL
+                    #GHOST_UNROLL#res0@ = _mm256_permute2f128_pd(_mm256_blend_pd(tmpref@,tmpimf@,0xA),_mm256_shuffle_pd(_mm256_blend_pd(tmpref@,tmpimf@,0x5),_mm256_blend_pd(tmpref@,tmpimf@,0x5),0x5),0x20);#OUTERUNROLL
+                    #GHOST_UNROLL#res1@ = _mm256_permute2f128_pd(_mm256_blend_pd(tmpref@,tmpimf@,0xA),_mm256_shuffle_pd(_mm256_blend_pd(tmpref@,tmpimf@,0x5),_mm256_blend_pd(tmpref@,tmpimf@,0x5),0x5),0x31);#OUTERUNROLL
                     #GHOST_UNROLL#_mm256_storeu_pd((double *)&xval[(i+@)*ldx+(4*k)],_mm256_add_pd(complex_mul(betavec,_mm256_loadu_pd((double *)&xval[(i+@)*ldx+(4*k)])),res0@));#OUTERUNROLL
                     #GHOST_UNROLL#_mm256_storeu_pd((double *)&xval[(i+@)*ldx+(4*k)+2],_mm256_add_pd(complex_mul(betavec,_mm256_loadu_pd((double *)&xval[(i+@)*ldx+(4*k)+2])),res1@));#OUTERUNROLL
                 }
@@ -128,10 +128,10 @@ ghost_error ghost_tsmm__u_avx_z_OUTCOLS_INCOLS_OUTERUNROLL_1_rm(ghost_densemat *
                 #GHOST_UNROLL#tmpref@ = _mm256_sub_pd(_mm256_mul_pd(alphare,tmpre@),_mm256_mul_pd(alphaim,tmpim@));#OUTERUNROLL
                 #GHOST_UNROLL#tmpimf@ = _mm256_add_pd(_mm256_mul_pd(alphare,tmpim@),_mm256_mul_pd(alphaim,tmpre@));#OUTERUNROLL
 
-                #GHOST_UNROLL#tmpimf@ = _mm256_shuffle_pd(tmpimf@,tmpimf@,0b0101);#OUTERUNROLL
-                #GHOST_UNROLL#res0@ = _mm256_permute2f128_pd(_mm256_blend_pd(tmpref@,tmpimf@,0b1010),_mm256_shuffle_pd(_mm256_blend_pd(tmpref@,tmpimf@,0b0101),_mm256_blend_pd(tmpref@,tmpimf@,0b0101),0b0101),0x20);#OUTERUNROLL
+                #GHOST_UNROLL#tmpimf@ = _mm256_shuffle_pd(tmpimf@,tmpimf@,0x5);#OUTERUNROLL
+                #GHOST_UNROLL#res0@ = _mm256_permute2f128_pd(_mm256_blend_pd(tmpref@,tmpimf@,0xA),_mm256_shuffle_pd(_mm256_blend_pd(tmpref@,tmpimf@,0x5),_mm256_blend_pd(tmpref@,tmpimf@,0x5),0x5),0x20);#OUTERUNROLL
 #if OUTCOLS%4 > 2
-                #GHOST_UNROLL#res1@ = _mm256_permute2f128_pd(_mm256_blend_pd(tmpref@,tmpimf@,0b1010),_mm256_shuffle_pd(_mm256_blend_pd(tmpref@,tmpimf@,0b0101),_mm256_blend_pd(tmpref@,tmpimf@,0b0101),0b0101),0x31);#OUTERUNROLL
+                #GHOST_UNROLL#res1@ = _mm256_permute2f128_pd(_mm256_blend_pd(tmpref@,tmpimf@,0xA),_mm256_shuffle_pd(_mm256_blend_pd(tmpref@,tmpimf@,0x5),_mm256_blend_pd(tmpref@,tmpimf@,0x5),0x5),0x31);#OUTERUNROLL
 #endif
 #if OUTCOLS%4 <= 2
                 #GHOST_UNROLL#_mm256_maskstore_pd((double *)&xval[(i+@)*ldx+(4*k)],halfmask,_mm256_add_pd(complex_mul(betavec,_mm256_maskload_pd((double *)&xval[(i+@)*ldx+(4*k)],halfmask)),res0@));#OUTERUNROLL
@@ -160,9 +160,9 @@ ghost_error ghost_tsmm__u_avx_z_OUTCOLS_INCOLS_OUTERUNROLL_1_rm(ghost_densemat *
                         #GHOST_UNROLL#tmpre@ = _mm256_add_pd(tmpre@,_mm256_sub_pd(_mm256_mul_pd(vrev@,_mm256_loadu_pd(&wre[m*OUTCOLS+(k*4)])),_mm256_mul_pd(vimv@,_mm256_loadu_pd(&wim[m*OUTCOLS+(k*4)]))));#OUTERUNROLL
                         #GHOST_UNROLL#tmpim@ = _mm256_add_pd(tmpim@,_mm256_add_pd(_mm256_mul_pd(vimv@,_mm256_loadu_pd(&wre[m*OUTCOLS+(k*4)])),_mm256_mul_pd(vrev@,_mm256_loadu_pd(&wim[m*OUTCOLS+(k*4)]))));#OUTERUNROLL
                     }
-                    #GHOST_UNROLL#tmpim@ = _mm256_shuffle_pd(tmpim@,tmpim@,0b0101);#OUTERUNROLL
-                    #GHOST_UNROLL#res0@ = _mm256_permute2f128_pd(_mm256_blend_pd(tmpre@,tmpim@,0b1010),_mm256_shuffle_pd(_mm256_blend_pd(tmpre@,tmpim@,0b0101),_mm256_blend_pd(tmpre@,tmpim@,0b0101),0b0101),0x20);#OUTERUNROLL
-                    #GHOST_UNROLL#res1@ = _mm256_permute2f128_pd(_mm256_blend_pd(tmpre@,tmpim@,0b1010),_mm256_shuffle_pd(_mm256_blend_pd(tmpre@,tmpim@,0b0101),_mm256_blend_pd(tmpre@,tmpim@,0b0101),0b0101),0x31);#OUTERUNROLL
+                    #GHOST_UNROLL#tmpim@ = _mm256_shuffle_pd(tmpim@,tmpim@,0x5);#OUTERUNROLL
+                    #GHOST_UNROLL#res0@ = _mm256_permute2f128_pd(_mm256_blend_pd(tmpre@,tmpim@,0xA),_mm256_shuffle_pd(_mm256_blend_pd(tmpre@,tmpim@,0x5),_mm256_blend_pd(tmpre@,tmpim@,0x5),0x5),0x20);#OUTERUNROLL
+                    #GHOST_UNROLL#res1@ = _mm256_permute2f128_pd(_mm256_blend_pd(tmpre@,tmpim@,0xA),_mm256_shuffle_pd(_mm256_blend_pd(tmpre@,tmpim@,0x5),_mm256_blend_pd(tmpre@,tmpim@,0x5),0x5),0x31);#OUTERUNROLL
                     #GHOST_UNROLL#_mm256_storeu_pd((double *)&xval[(i+@)*ldx+(4*k)],res0@);#OUTERUNROLL
                     #GHOST_UNROLL#_mm256_storeu_pd((double *)&xval[(i+@)*ldx+(4*k)+2],res1@);#OUTERUNROLL
                 }
@@ -177,10 +177,10 @@ ghost_error ghost_tsmm__u_avx_z_OUTCOLS_INCOLS_OUTERUNROLL_1_rm(ghost_densemat *
                     #GHOST_UNROLL#tmpim@ = _mm256_add_pd(tmpim@,_mm256_add_pd(_mm256_mul_pd(vimv@,_mm256_maskload_pd(&wre[m*OUTCOLS+(k*4)],mask)),_mm256_mul_pd(vrev@,_mm256_maskload_pd(&wim[m*OUTCOLS+(k*4)],mask))));#OUTERUNROLL
                 }
 
-                #GHOST_UNROLL#tmpim@ = _mm256_shuffle_pd(tmpim@,tmpim@,0b0101);#OUTERUNROLL
-                #GHOST_UNROLL#res0@ = _mm256_permute2f128_pd(_mm256_blend_pd(tmpre@,tmpim@,0b1010),_mm256_shuffle_pd(_mm256_blend_pd(tmpre@,tmpim@,0b0101),_mm256_blend_pd(tmpre@,tmpim@,0b0101),0b0101),0x20);#OUTERUNROLL
+                #GHOST_UNROLL#tmpim@ = _mm256_shuffle_pd(tmpim@,tmpim@,0x5);#OUTERUNROLL
+                #GHOST_UNROLL#res0@ = _mm256_permute2f128_pd(_mm256_blend_pd(tmpre@,tmpim@,0xA),_mm256_shuffle_pd(_mm256_blend_pd(tmpre@,tmpim@,0x5),_mm256_blend_pd(tmpre@,tmpim@,0x5),0x5),0x20);#OUTERUNROLL
 #if OUTCOLS%4 > 2
-                #GHOST_UNROLL#res1@ = _mm256_permute2f128_pd(_mm256_blend_pd(tmpre@,tmpim@,0b1010),_mm256_shuffle_pd(_mm256_blend_pd(tmpre@,tmpim@,0b0101),_mm256_blend_pd(tmpre@,tmpim@,0b0101),0b0101),0x31);#OUTERUNROLL
+                #GHOST_UNROLL#res1@ = _mm256_permute2f128_pd(_mm256_blend_pd(tmpre@,tmpim@,0xA),_mm256_shuffle_pd(_mm256_blend_pd(tmpre@,tmpim@,0x5),_mm256_blend_pd(tmpre@,tmpim@,0x5),0x5),0x31);#OUTERUNROLL
 #endif
 #if OUTCOLS%4 <= 2
                 #GHOST_UNROLL#_mm256_maskstore_pd((double *)&xval[(i+@)*ldx+(4*k)],halfmask,res0@);#OUTERUNROLL
@@ -287,9 +287,9 @@ ghost_error ghost_tsmm__a_avx_z_OUTCOLS_INCOLS_OUTERUNROLL_1_rm(ghost_densemat *
                     #GHOST_UNROLL#tmpref@ = _mm256_sub_pd(_mm256_mul_pd(alphare,tmpre@),_mm256_mul_pd(alphaim,tmpim@));#OUTERUNROLL
                     #GHOST_UNROLL#tmpimf@ = _mm256_add_pd(_mm256_mul_pd(alphare,tmpim@),_mm256_mul_pd(alphaim,tmpre@));#OUTERUNROLL
 
-                    #GHOST_UNROLL#tmpimf@ = _mm256_shuffle_pd(tmpimf@,tmpimf@,0b0101);#OUTERUNROLL
-                    #GHOST_UNROLL#res0@ = _mm256_permute2f128_pd(_mm256_blend_pd(tmpref@,tmpimf@,0b1010),_mm256_shuffle_pd(_mm256_blend_pd(tmpref@,tmpimf@,0b0101),_mm256_blend_pd(tmpref@,tmpimf@,0b0101),0b0101),0x20);#OUTERUNROLL
-                    #GHOST_UNROLL#res1@ = _mm256_permute2f128_pd(_mm256_blend_pd(tmpref@,tmpimf@,0b1010),_mm256_shuffle_pd(_mm256_blend_pd(tmpref@,tmpimf@,0b0101),_mm256_blend_pd(tmpref@,tmpimf@,0b0101),0b0101),0x31);#OUTERUNROLL
+                    #GHOST_UNROLL#tmpimf@ = _mm256_shuffle_pd(tmpimf@,tmpimf@,0x5);#OUTERUNROLL
+                    #GHOST_UNROLL#res0@ = _mm256_permute2f128_pd(_mm256_blend_pd(tmpref@,tmpimf@,0xA),_mm256_shuffle_pd(_mm256_blend_pd(tmpref@,tmpimf@,0x5),_mm256_blend_pd(tmpref@,tmpimf@,0x5),0x5),0x20);#OUTERUNROLL
+                    #GHOST_UNROLL#res1@ = _mm256_permute2f128_pd(_mm256_blend_pd(tmpref@,tmpimf@,0xA),_mm256_shuffle_pd(_mm256_blend_pd(tmpref@,tmpimf@,0x5),_mm256_blend_pd(tmpref@,tmpimf@,0x5),0x5),0x31);#OUTERUNROLL
                     #GHOST_UNROLL#_mm256_store_pd((double *)&xval[(i+@)*ldx+(4*k)],_mm256_add_pd(complex_mul(betavec,_mm256_load_pd((double *)&xval[(i+@)*ldx+(4*k)])),res0@));#OUTERUNROLL
                     #GHOST_UNROLL#_mm256_store_pd((double *)&xval[(i+@)*ldx+(4*k)+2],_mm256_add_pd(complex_mul(betavec,_mm256_load_pd((double *)&xval[(i+@)*ldx+(4*k)+2])),res1@));#OUTERUNROLL
                 }
@@ -307,10 +307,10 @@ ghost_error ghost_tsmm__a_avx_z_OUTCOLS_INCOLS_OUTERUNROLL_1_rm(ghost_densemat *
                 #GHOST_UNROLL#tmpref@ = _mm256_sub_pd(_mm256_mul_pd(alphare,tmpre@),_mm256_mul_pd(alphaim,tmpim@));#OUTERUNROLL
                 #GHOST_UNROLL#tmpimf@ = _mm256_add_pd(_mm256_mul_pd(alphare,tmpim@),_mm256_mul_pd(alphaim,tmpre@));#OUTERUNROLL
 
-                #GHOST_UNROLL#tmpimf@ = _mm256_shuffle_pd(tmpimf@,tmpimf@,0b0101);#OUTERUNROLL
-                #GHOST_UNROLL#res0@ = _mm256_permute2f128_pd(_mm256_blend_pd(tmpref@,tmpimf@,0b1010),_mm256_shuffle_pd(_mm256_blend_pd(tmpref@,tmpimf@,0b0101),_mm256_blend_pd(tmpref@,tmpimf@,0b0101),0b0101),0x20);#OUTERUNROLL
+                #GHOST_UNROLL#tmpimf@ = _mm256_shuffle_pd(tmpimf@,tmpimf@,0x5);#OUTERUNROLL
+                #GHOST_UNROLL#res0@ = _mm256_permute2f128_pd(_mm256_blend_pd(tmpref@,tmpimf@,0xA),_mm256_shuffle_pd(_mm256_blend_pd(tmpref@,tmpimf@,0x5),_mm256_blend_pd(tmpref@,tmpimf@,0x5),0x5),0x20);#OUTERUNROLL
 #if OUTCOLS%4 > 2
-                #GHOST_UNROLL#res1@ = _mm256_permute2f128_pd(_mm256_blend_pd(tmpref@,tmpimf@,0b1010),_mm256_shuffle_pd(_mm256_blend_pd(tmpref@,tmpimf@,0b0101),_mm256_blend_pd(tmpref@,tmpimf@,0b0101),0b0101),0x31);#OUTERUNROLL
+                #GHOST_UNROLL#res1@ = _mm256_permute2f128_pd(_mm256_blend_pd(tmpref@,tmpimf@,0xA),_mm256_shuffle_pd(_mm256_blend_pd(tmpref@,tmpimf@,0x5),_mm256_blend_pd(tmpref@,tmpimf@,0x5),0x5),0x31);#OUTERUNROLL
 #endif
 #if OUTCOLS%4 == 1
                 #GHOST_UNROLL#_mm256_maskstore_pd((double *)&xval[(i+@)*ldx+(4*k)],halfmask,_mm256_add_pd(complex_mul(betavec,_mm256_maskload_pd((double *)&xval[(i+@)*ldx+(4*k)],halfmask)),res0@));#OUTERUNROLL
@@ -342,9 +342,9 @@ ghost_error ghost_tsmm__a_avx_z_OUTCOLS_INCOLS_OUTERUNROLL_1_rm(ghost_densemat *
                         #GHOST_UNROLL#tmpre@ = _mm256_add_pd(tmpre@,_mm256_sub_pd(_mm256_mul_pd(vrev@,_mm256_load_pd(&wre[m*OUTCOLS+(k*4)])),_mm256_mul_pd(vimv@,_mm256_load_pd(&wim[m*OUTCOLS+(k*4)]))));#OUTERUNROLL
                         #GHOST_UNROLL#tmpim@ = _mm256_add_pd(tmpim@,_mm256_add_pd(_mm256_mul_pd(vimv@,_mm256_load_pd(&wre[m*OUTCOLS+(k*4)])),_mm256_mul_pd(vrev@,_mm256_load_pd(&wim[m*OUTCOLS+(k*4)]))));#OUTERUNROLL
                     }
-                    #GHOST_UNROLL#tmpim@ = _mm256_shuffle_pd(tmpim@,tmpim@,0b0101);#OUTERUNROLL
-                    #GHOST_UNROLL#res0@ = _mm256_permute2f128_pd(_mm256_blend_pd(tmpre@,tmpim@,0b1010),_mm256_shuffle_pd(_mm256_blend_pd(tmpre@,tmpim@,0b0101),_mm256_blend_pd(tmpre@,tmpim@,0b0101),0b0101),0x20);#OUTERUNROLL
-                    #GHOST_UNROLL#res1@ = _mm256_permute2f128_pd(_mm256_blend_pd(tmpre@,tmpim@,0b1010),_mm256_shuffle_pd(_mm256_blend_pd(tmpre@,tmpim@,0b0101),_mm256_blend_pd(tmpre@,tmpim@,0b0101),0b0101),0x31);#OUTERUNROLL
+                    #GHOST_UNROLL#tmpim@ = _mm256_shuffle_pd(tmpim@,tmpim@,0x5);#OUTERUNROLL
+                    #GHOST_UNROLL#res0@ = _mm256_permute2f128_pd(_mm256_blend_pd(tmpre@,tmpim@,0xA),_mm256_shuffle_pd(_mm256_blend_pd(tmpre@,tmpim@,0x5),_mm256_blend_pd(tmpre@,tmpim@,0x5),0x5),0x20);#OUTERUNROLL
+                    #GHOST_UNROLL#res1@ = _mm256_permute2f128_pd(_mm256_blend_pd(tmpre@,tmpim@,0xA),_mm256_shuffle_pd(_mm256_blend_pd(tmpre@,tmpim@,0x5),_mm256_blend_pd(tmpre@,tmpim@,0x5),0x5),0x31);#OUTERUNROLL
                     #GHOST_UNROLL#_mm256_stream_pd((double *)&xval[(i+@)*ldx+(4*k)],res0@);#OUTERUNROLL
                     #GHOST_UNROLL#_mm256_stream_pd((double *)&xval[(i+@)*ldx+(4*k)+2],res1@);#OUTERUNROLL
                 }
@@ -359,10 +359,10 @@ ghost_error ghost_tsmm__a_avx_z_OUTCOLS_INCOLS_OUTERUNROLL_1_rm(ghost_densemat *
                     #GHOST_UNROLL#tmpim@ = _mm256_add_pd(tmpim@,_mm256_add_pd(_mm256_mul_pd(vimv@,_mm256_maskload_pd(&wre[m*OUTCOLS+(k*4)],mask)),_mm256_mul_pd(vrev@,_mm256_maskload_pd(&wim[m*OUTCOLS+(k*4)],mask))));#OUTERUNROLL
                 }
 
-                #GHOST_UNROLL#tmpim@ = _mm256_shuffle_pd(tmpim@,tmpim@,0b0101);#OUTERUNROLL
-                #GHOST_UNROLL#res0@ = _mm256_permute2f128_pd(_mm256_blend_pd(tmpre@,tmpim@,0b1010),_mm256_shuffle_pd(_mm256_blend_pd(tmpre@,tmpim@,0b0101),_mm256_blend_pd(tmpre@,tmpim@,0b0101),0b0101),0x20);#OUTERUNROLL
+                #GHOST_UNROLL#tmpim@ = _mm256_shuffle_pd(tmpim@,tmpim@,0x5);#OUTERUNROLL
+                #GHOST_UNROLL#res0@ = _mm256_permute2f128_pd(_mm256_blend_pd(tmpre@,tmpim@,0xA),_mm256_shuffle_pd(_mm256_blend_pd(tmpre@,tmpim@,0x5),_mm256_blend_pd(tmpre@,tmpim@,0x5),0x5),0x20);#OUTERUNROLL
 #if OUTCOLS%4 > 2
-                #GHOST_UNROLL#res1@ = _mm256_permute2f128_pd(_mm256_blend_pd(tmpre@,tmpim@,0b1010),_mm256_shuffle_pd(_mm256_blend_pd(tmpre@,tmpim@,0b0101),_mm256_blend_pd(tmpre@,tmpim@,0b0101),0b0101),0x31);#OUTERUNROLL
+                #GHOST_UNROLL#res1@ = _mm256_permute2f128_pd(_mm256_blend_pd(tmpre@,tmpim@,0xA),_mm256_shuffle_pd(_mm256_blend_pd(tmpre@,tmpim@,0x5),_mm256_blend_pd(tmpre@,tmpim@,0x5),0x5),0x31);#OUTERUNROLL
 #endif
 #if OUTCOLS%4 == 1
                 #GHOST_UNROLL#_mm256_maskstore_pd((double *)&xval[(i+@)*ldx+(4*k)],halfmask,res0@);#OUTERUNROLL

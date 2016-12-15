@@ -257,7 +257,7 @@ ghost_error ghost_sellspmvUNROLLEDINCHUNK__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(ghost_
                 for (j=0; j<mat->chunkLenPadded[c]; j++) 
                 { // loop inside chunk
 
-                    #GHOST_UNROLL#val    = _mm256_load_pd(&mval[offs]);rhs = _mm256_setr_pd(rval[mat->col[offs++]],rval[mat->col[offs++]],rval[mat->col[offs++]],rval[mat->col[offs++]]);tmp@    = _mm256_add_pd(tmp@,_mm256_mul_pd(val,rhs));#CHUNKHEIGHT/4
+                    #GHOST_UNROLL#val    = _mm256_load_pd(&mval[offs]);rhs = _mm256_setr_pd(rval[mat->col[offs]],rval[mat->col[offs+1]],rval[mat->col[offs+2]],rval[mat->col[offs+3]]);tmp@    = _mm256_add_pd(tmp@,_mm256_mul_pd(val,rhs));offs+=4;#CHUNKHEIGHT/4
                 }
 
                 if (traits.flags & (GHOST_SPMV_SHIFT | GHOST_SPMV_VSHIFT)) {

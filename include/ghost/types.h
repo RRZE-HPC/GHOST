@@ -278,7 +278,7 @@ typedef enum {
     /**
      * @brief Data is located on device (accelerator, GPU).
      */
-    GHOST_LOCATION_DEVICE = 2,
+    GHOST_LOCATION_DEVICE = 2
 }
 ghost_location;
 

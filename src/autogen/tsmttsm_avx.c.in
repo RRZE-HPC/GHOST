@@ -255,7 +255,7 @@ ghost_error ghost_tsmttsm__a_avx_d_CFGN_CFGM_OUTERUNROLL_rm(ghost_densemat *x, g
                     for (k=0; k<CFGN; k+=4) {
                         #GHOST_UNROLL#wtmp@ = _mm256_load_pd(&wval[(i+@)*ldw+k]);#OUTERUNROLL
                        
-                        #GHOST_UNROLL#wshuf = _mm256_shuffle_pd(wtmp@,wtmp@,0b0000);wvec@ = _mm256_permute2f128_pd(wshuf,wshuf,0x02);wvec~2*OUTERUNROLL+@~ = _mm256_permute2f128_pd(wshuf,wshuf,0x13);wshuf = _mm256_shuffle_pd(wtmp@,wtmp@,0b1111);wvec~OUTERUNROLL+@~ = _mm256_permute2f128_pd(wshuf,wshuf,0x02);wvec~3*OUTERUNROLL+@~ = _mm256_permute2f128_pd(wshuf,wshuf,0x13);#OUTERUNROLL
+                        #GHOST_UNROLL#wshuf = _mm256_shuffle_pd(wtmp@,wtmp@,0x0);wvec@ = _mm256_permute2f128_pd(wshuf,wshuf,0x02);wvec~2*OUTERUNROLL+@~ = _mm256_permute2f128_pd(wshuf,wshuf,0x13);wshuf = _mm256_shuffle_pd(wtmp@,wtmp@,0xF);wvec~OUTERUNROLL+@~ = _mm256_permute2f128_pd(wshuf,wshuf,0x02);wvec~3*OUTERUNROLL+@~ = _mm256_permute2f128_pd(wshuf,wshuf,0x13);#OUTERUNROLL
 
 #pragma unroll(MAX(1,CFGM/4))
                         for (m=0; m<CFGM; m+=4) {
@@ -406,7 +406,7 @@ ghost_error ghost_tsmttsm__u_avx_d_CFGN_CFGM_OUTERUNROLL_rm(ghost_densemat *x, g
                     for (k=0; k<CFGN; k+=4) {
                         #GHOST_UNROLL#wtmp@ = _mm256_loadu_pd(&wval[(i+@)*ldw+k]);#OUTERUNROLL
                        
-                        #GHOST_UNROLL#wshuf = _mm256_shuffle_pd(wtmp@,wtmp@,0b0000);wvec@ = _mm256_permute2f128_pd(wshuf,wshuf,0x02);wvec~2*OUTERUNROLL+@~ = _mm256_permute2f128_pd(wshuf,wshuf,0x13);wshuf = _mm256_shuffle_pd(wtmp@,wtmp@,0b1111);wvec~OUTERUNROLL+@~ = _mm256_permute2f128_pd(wshuf,wshuf,0x02);wvec~3*OUTERUNROLL+@~ = _mm256_permute2f128_pd(wshuf,wshuf,0x13);#OUTERUNROLL
+                        #GHOST_UNROLL#wshuf = _mm256_shuffle_pd(wtmp@,wtmp@,0x0);wvec@ = _mm256_permute2f128_pd(wshuf,wshuf,0x02);wvec~2*OUTERUNROLL+@~ = _mm256_permute2f128_pd(wshuf,wshuf,0x13);wshuf = _mm256_shuffle_pd(wtmp@,wtmp@,0xF);wvec~OUTERUNROLL+@~ = _mm256_permute2f128_pd(wshuf,wshuf,0x02);wvec~3*OUTERUNROLL+@~ = _mm256_permute2f128_pd(wshuf,wshuf,0x13);#OUTERUNROLL
 
 #pragma unroll(MAX(1,CFGM/4))
                         for (m=0; m<CFGM; m+=4) {
@@ -567,7 +567,7 @@ ghost_error ghost_tsmttsm__a_avx_s_CFGN_CFGM_OUTERUNROLL_rm(ghost_densemat *x, g
                       
 #if 0
                         #GHOST_UNROLL#wtmp@ = _mm256_load_ps(&wval[(i+@)*ldw+k]);#OUTERUNROLL
-                        #GHOST_UNROLL#wshuf = _mm256_shuffle_ps(wtmp@,wtmp@,0b00000000);wvec@ = _mm256_permute2f128_ps(wshuf,wshuf,0x02);wvec4*OUTERUNROLL+@ = _mm256_permute2f128_ps(wshuf,wshuf,0x13);wshuf = _mm256_shuffle_ps(wtmp@,wtmp@,0b01010101);wvecOUTERUNROLL+@ = _mm256_permute2f128_ps(wshuf,wshuf,0x02);wvec5*OUTERUNROLL+@ = _mm256_permute2f128_ps(wshuf,wshuf,0x13);wshuf = _mm256_shuffle_ps(wtmp@,wtmp@,0b10101010);wvec2*OUTERUNROLL+@ = _mm256_permute2f128_ps(wshuf,wshuf,0x02);wvec6*OUTERUNROLL+@ = _mm256_permute2f128_ps(wshuf,wshuf,0x13);wshuf = _mm256_shuffle_ps(wtmp@,wtmp@,0b11111111);wvec3*OUTERUNROLL+@ = _mm256_permute2f128_ps(wshuf,wshuf,0x02);wvec7*OUTERUNROLL+@ = _mm256_permute2f128_ps(wshuf,wshuf,0x13);#OUTERUNROLL
+                        #GHOST_UNROLL#wshuf = _mm256_shuffle_ps(wtmp@,wtmp@,0x00000);wvec@ = _mm256_permute2f128_ps(wshuf,wshuf,0x02);wvec4*OUTERUNROLL+@ = _mm256_permute2f128_ps(wshuf,wshuf,0x13);wshuf = _mm256_shuffle_ps(wtmp@,wtmp@,0b01010101);wvecOUTERUNROLL+@ = _mm256_permute2f128_ps(wshuf,wshuf,0x02);wvec5*OUTERUNROLL+@ = _mm256_permute2f128_ps(wshuf,wshuf,0x13);wshuf = _mm256_shuffle_ps(wtmp@,wtmp@,0b10101010);wvec2*OUTERUNROLL+@ = _mm256_permute2f128_ps(wshuf,wshuf,0x02);wvec6*OUTERUNROLL+@ = _mm256_permute2f128_ps(wshuf,wshuf,0x13);wshuf = _mm256_shuffle_ps(wtmp@,wtmp@,0xF1111);wvec3*OUTERUNROLL+@ = _mm256_permute2f128_ps(wshuf,wshuf,0x02);wvec7*OUTERUNROLL+@ = _mm256_permute2f128_ps(wshuf,wshuf,0x13);#OUTERUNROLL
 #endif
                        
 #pragma unroll(MAX(1,CFGM/8))

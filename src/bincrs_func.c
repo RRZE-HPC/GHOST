@@ -159,6 +159,7 @@ ghost_error ghost_bincrs_header_read(ghost_bincrs_header_t *header, char *matrix
     FILE* file;
     long filesize;
     int swapReq = 0;
+    size_t ret;
 
     DEBUG_LOG(1,"Reading header from %s",matrixPath);
 
@@ -171,7 +172,10 @@ ghost_error ghost_bincrs_header_read(ghost_bincrs_header_t *header, char *matrix
     filesize = ftell(file);
     fseek(file,0L,SEEK_SET);
 
-    fread(&header->endianess, 4, 1, file);
+    if ((ret = fread(&header->endianess, 4, 1, file)) != (size_t)1) {
+        ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
+        return GHOST_ERR_IO;
+    }
     if (header->endianess == GHOST_BINCRS_LITTLE_ENDIAN && ghost_machine_bigendian()) {
         DEBUG_LOG(1,"Need to convert from little to big endian.");
         swapReq = 1;
@@ -182,25 +186,46 @@ ghost_error ghost_bincrs_header_read(ghost_bincrs_header_t *header, char *matrix
         DEBUG_LOG(1,"OK, file and library have same endianess.");
     }
 
-    fread(&header->version, 4, 1, file);
+    if ((ret = fread(&header->version, 4, 1, file)) != (size_t)1) {
+        ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
+        return GHOST_ERR_IO;
+    }
     if (swapReq) header->version = bswap_32(header->version);
 
-    fread(&header->base, 4, 1, file);
+    if ((ret = fread(&header->base, 4, 1, file)) != (size_t)1) {
+        ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
+        return GHOST_ERR_IO;
+    }
     if (swapReq) header->base = bswap_32(header->base);
 
-    fread(&header->symmetry, 4, 1, file);
+    if ((ret = fread(&header->symmetry, 4, 1, file)) != (size_t)1) {
+        ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
+        return GHOST_ERR_IO;
+    }
     if (swapReq) header->symmetry = bswap_32(header->symmetry);
 
-    fread(&header->datatype, 4, 1, file);
+    if ((ret = fread(&header->datatype, 4, 1, file)) != (size_t)1) {
+        ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
+        return GHOST_ERR_IO;
+    }
     if (swapReq) header->datatype = bswap_32(header->datatype);
 
-    fread(&header->nrows, 8, 1, file);
+    if ((ret = fread(&header->nrows, 8, 1, file)) != (size_t)1) {
+        ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
+        return GHOST_ERR_IO;
+    }
     if (swapReq) header->nrows  = bswap_64(header->nrows);
 
-    fread(&header->ncols, 8, 1, file);
+    if ((ret = fread(&header->ncols, 8, 1, file)) != (size_t)1) {
+        ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
+        return GHOST_ERR_IO;
+    }
     if (swapReq)  header->ncols  = bswap_64(header->ncols);
 
-    fread(&header->nnz, 8, 1, file);
+    if ((ret = fread(&header->nnz, 8, 1, file)) != (size_t)1) {
+        ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
+        return GHOST_ERR_IO;
+    }
     if (swapReq)  header->nnz  = bswap_64(header->nnz);
 
     size_t valSize;

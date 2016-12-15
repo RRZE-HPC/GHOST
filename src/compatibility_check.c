@@ -41,7 +41,7 @@ static bool checkLeft(ghost_densemat *left, ghost_context *ctx)
     if((left->map->dim != ctx->row_map->dim) || ((left->traits.flags & GHOST_DENSEMAT_PERMUTED) && (left->map->loc_perm != ctx->row_map->loc_perm)))
     {
 #ifndef GHOST_COMPATIBLE_PERM
-        WARNING_LOG("Left vector dimensions/permutations mismatch: %"PRLIDX" <-> %"PRLIDX" (dim), %p <-> %p (permutation)",left->map->dim, ctx->row_map->dim, left->map->loc_perm, ctx->row_map->loc_perm);
+        WARNING_LOG("Left vector dimensions/permutations mismatch: %"PRLIDX" <-> %"PRLIDX" (dim), %p <-> %p (permutation)",left->map->dim, ctx->row_map->dim,(void *)left->map->loc_perm, (void *)ctx->row_map->loc_perm);
         flag = false;
 #else
         if(left->map->type == GHOST_MAP_COL)
@@ -65,7 +65,7 @@ static bool checkRight(ghost_densemat *right, ghost_context *ctx)
     if((right->map->dimhalo != ctx->col_map->dimhalo) || ((right->traits.flags & GHOST_DENSEMAT_PERMUTED) && (right->map->loc_perm != ctx->col_map->loc_perm)))
     {
 #ifndef GHOST_COMPATIBLE_PERM
-        WARNING_LOG("Right vector dimensions/permutations mismatch: %"PRLIDX" <-> %"PRLIDX" (dim), %p <-> %p (permutation)",right->map->dim, ctx->col_map->dim, right->map->loc_perm, ctx->col_map->loc_perm);
+        WARNING_LOG("Right vector dimensions/permutations mismatch: %"PRLIDX" <-> %"PRLIDX" (dim), %p <-> %p (permutation)",right->map->dim, ctx->col_map->dim, (void *)right->map->loc_perm, (void *)ctx->col_map->loc_perm);
         flag = false;
 #else
         if(right->map->type == GHOST_MAP_ROW)
@@ -101,7 +101,7 @@ static bool makeSimilar(ghost_densemat *vec1, ghost_densemat *vec2)
     if ((vec1->map->dim != vec2->map->dim) || (permuted_vec1 != permuted_vec2) || (vec1->map->loc_perm != vec2->map->loc_perm)) 
     {
 #ifndef GHOST_COMPATIBLE_PERM
-        WARNING_LOG("Densemat mismatch: %"PRLIDX" <-> %"PRLIDX" (dim), %d <-> %d (permuted), %p <-> %p (permutation)",vec1->map->dim,vec2->map->dim,permuted_vec1,permuted_vec2,vec1->map->loc_perm,vec2->map->loc_perm)
+        WARNING_LOG("Densemat mismatch: %"PRLIDX" <-> %"PRLIDX" (dim), %d <-> %d (permuted), %p <-> %p (permutation)",vec1->map->dim,vec2->map->dim,permuted_vec1,permuted_vec2,(void *)vec1->map->loc_perm,(void *)vec2->map->loc_perm)
         flag = false;
 #else
         if(vec1_type != GHOST_MAP_NONE) 

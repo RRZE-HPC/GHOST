@@ -19,7 +19,7 @@
 
 #ifdef GHOST_BUILD_AVX512
 #define complex_broadcast(addr) _mm512_broadcast_f64x4(_mm256_broadcast_pd((__m128d *)(addr)))
-#define complex_mul(a,b) _mm512_fmaddsub_pd(_mm512_shuffle_pd(b,b,0),a,_mm512_mul_pd(_mm512_shuffle_pd(b,b,0xFF),_mm512_shuffle_pd(a,a,0b1010101)))
+#define complex_mul(a,b) _mm512_fmaddsub_pd(_mm512_shuffle_pd(b,b,0),a,_mm512_mul_pd(_mm512_shuffle_pd(b,b,0xFF),_mm512_shuffle_pd(a,a,0x55)))
 #define complex_mul_noshuf(a,b) _mm512_fmaddsub_pd(b,a,_mm512_mul_pd(b,a))
 #define complex_mul2(a,b_re,b_im) _mm512_fmaddsub_pd(b_re,a,_mm512_mul_pd(b_im,_mm512_swizzle_pd(a,_MM_SWIZ_REG_CDAB)))
 #define STREAMINGSTORE _mm512_stream_pd
@@ -325,13 +325,13 @@ ghost_error ghost_sellspmv__a_mic_z_z_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
 #if NVECS%4
     __mmask8 mask;
 #if NVECS%4 == 1
-    mask = (__mmask8) _mm512_int2mask(0b00000011);
+    mask = (__mmask8) _mm512_int2mask(0x3);
 #endif
 #if NVECS%4 == 2
-    mask = (__mmask8) _mm512_int2mask(0b00001111);
+    mask = (__mmask8) _mm512_int2mask(0xF);
 #endif
 #if NVECS%4 == 3
-    mask = (__mmask8) _mm512_int2mask(0b00111111);
+    mask = (__mmask8) _mm512_int2mask(0x3F);
 #endif
 #endif
     
@@ -350,10 +350,7 @@ ghost_error ghost_sellspmv__a_mic_z_z_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
     complex double *sshift = NULL;
     complex double sdelta = 0., seta = 0.;
     ghost_densemat *z = NULL;
-    __m512d scale, beta, beta_re, beta_im, scale_re, scale_im;
-    __m512d shift = _mm512_setzero_pd();
-    __m512d delta = _mm512_setzero_pd();
-    __m512d eta = _mm512_setzero_pd();
+    __m512d beta_re, beta_im, scale_re, scale_im;
     __m512d shift_re, shift_im, delta_re, delta_im, eta_re, eta_im;
 
     GHOST_SPMV_PARSE_TRAITS(traits,sscale,sbeta,sshift,local_dot_product,z,sdelta,seta,complex double,complex double);
@@ -367,8 +364,6 @@ ghost_error ghost_sellspmv__a_mic_z_z_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
         sshiftcopied = 1;
     }
         
-    scale = _mm512_set_pd(cimag(sscale),creal(sscale),cimag(sscale),creal(sscale),cimag(sscale),creal(sscale),cimag(sscale),creal(sscale));
-    beta = _mm512_set_pd(cimag(sbeta),creal(sbeta),cimag(sbeta),creal(sbeta),cimag(sbeta),creal(sbeta),cimag(sbeta),creal(sbeta));
     beta_re = _mm512_set1_pd(creal(sbeta));
     beta_im = _mm512_set1_pd(cimag(sbeta));
     scale_re = _mm512_set1_pd(creal(sscale));
@@ -377,17 +372,8 @@ ghost_error ghost_sellspmv__a_mic_z_z_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
     delta_im = _mm512_set1_pd(cimag(sdelta));
     eta_re = _mm512_set1_pd(creal(seta));
     eta_im = _mm512_set1_pd(cimag(seta));
-
-    if (traits.flags & GHOST_SPMV_SHIFT) {
-        shift = _mm512_set_pd(cimag(*sshift),creal(*sshift),cimag(*sshift),creal(*sshift),cimag(*sshift),creal(*sshift),cimag(*sshift),creal(*sshift));
-        shift_re = _mm512_set1_pd(creal(sshift[0]));
-        shift_im = _mm512_set1_pd(cimag(sshift[0]));
-    }
-    if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
-        delta = _mm512_set_pd(cimag(sdelta),creal(sdelta),cimag(sdelta),creal(sdelta),cimag(sdelta),creal(sdelta),cimag(sdelta),creal(sdelta));
-        eta = _mm512_set_pd(cimag(seta),creal(seta),cimag(seta),creal(seta),cimag(seta),creal(seta),cimag(seta),creal(seta));
-    }
-
+    shift_re = _mm512_set1_pd(creal(sshift[0]));
+    shift_im = _mm512_set1_pd(cimag(sshift[0]));
     
     if (traits.flags & GHOST_SPMV_DOT) {
 
@@ -444,8 +430,8 @@ ghost_error ghost_sellspmv__a_mic_z_z_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
                 #GHOST_UNROLL#tmp@ = _mm512_add_pd(tmp@,complex_mul2(_mm512_load_pd(rhs_row+(@*8)),matval_re,matval_im));#NVECS/4
 #if NVECS%4
                 matval = complex_broadcast(&(mval[offs+j*CHUNKHEIGHT]));
-                rhs~NVECS/4~ = _mm512_mask_load_pd(_mm512_setzero_pd(),mask,((double *)(invec->val))+invec->stride*(mat->col[offs+j*CHUNKHEIGHT])*2+((~NVECS/4~)*8));
-                tmp~NVECS/4~ = _mm512_add_pd(tmp~NVECS/4~,complex_mul(rhs~NVECS/4~,matval));
+                rhs~NVECS/4~ = _mm512_mask_load_pd(_mm512_setzero_pd(),mask,rhs_row+((~NVECS/4~)*8));
+                tmp~NVECS/4~ = _mm512_add_pd(tmp~NVECS/4~,complex_mul2(rhs~NVECS/4~,matval_re,matval_im));
 #endif
             }
             if (traits.flags & GHOST_SPMV_SHIFT) {
@@ -464,7 +450,7 @@ ghost_error ghost_sellspmv__a_mic_z_z_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
             } else if (traits.flags & GHOST_SPMV_AXPBY) {
                 #GHOST_UNROLL#_mm512_store_pd(((double *)lval)+@*8,_mm512_add_pd(tmp@,complex_mul2(_mm512_load_pd(((double *)lval)+@*8),beta_re,beta_im)));#NVECS/4
 #if NVECS%4
-                _mm512_mask_store_pd(((double *)lval)+(~NVECS/4~)*8,mask,_mm512_add_pd(tmp~NVECS/4~,complex_mul(_mm512_load_pd(((double *)lval)+(~NVECS/4~)*8),beta)));
+                _mm512_mask_store_pd(((double *)lval)+(~NVECS/4~)*8,mask,_mm512_add_pd(tmp~NVECS/4~,complex_mul2(_mm512_load_pd(((double *)lval)+(~NVECS/4~)*8),beta_re,beta_im)));
 #endif
             } else if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
                 #GHOST_UNROLL#_mm512_store_pd(((double *)lval)+@*8,tmp@);#NVECS/4
@@ -481,7 +467,7 @@ ghost_error ghost_sellspmv__a_mic_z_z_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
             if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
                 #GHOST_UNROLL#_mm512_store_pd(((double *)zval)+@*8,_mm512_add_pd(complex_mul2(_mm512_load_pd(((double *)zval)+@*8),delta_re,delta_im),complex_mul2(_mm512_load_pd(((double *)lval)+@*8),eta_re,eta_im)));#NVECS/4
 #if NVECS%4
-                _mm512_mask_store_pd(((double *)zval)+(~NVECS/4~)*8,mask,_mm512_add_pd(complex_mul(_mm512_mask_load_pd(_mm512_setzero_pd(),mask,((double *)zval)+(~NVECS/4~)*8),delta),complex_mul(_mm512_mask_load_pd(_mm512_setzero_pd(),mask,((double *)lval)+(~NVECS/4~)*8),eta)));
+                _mm512_mask_store_pd(((double *)zval)+(~NVECS/4~)*8,mask,_mm512_add_pd(complex_mul2(_mm512_mask_load_pd(_mm512_setzero_pd(),mask,((double *)zval)+(~NVECS/4~)*8),delta_re,delta_im),complex_mul2(_mm512_mask_load_pd(_mm512_setzero_pd(),mask,((double *)lval)+(~NVECS/4~)*8),eta_re,eta_im)));
 #endif
             }
             if (traits.flags & GHOST_SPMV_DOT) {
@@ -537,25 +523,25 @@ ghost_error ghost_sellspmv__a_mic_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
 #if NVECS%8
     __mmask8 mask;
 #if NVECS%8 == 1
-    mask = (__mmask8) _mm512_int2mask(0b00000001);
+    mask = (__mmask8) _mm512_int2mask(0x1);
 #endif
 #if NVECS%8 == 2
-    mask = (__mmask8) _mm512_int2mask(0b00000011);
+    mask = (__mmask8) _mm512_int2mask(0x3);
 #endif
 #if NVECS%8 == 3
-    mask = (__mmask8) _mm512_int2mask(0b00000111);
+    mask = (__mmask8) _mm512_int2mask(0x7);
 #endif
 #if NVECS%8 == 4
-    mask = (__mmask8) _mm512_int2mask(0b00001111);
+    mask = (__mmask8) _mm512_int2mask(0xF);
 #endif
 #if NVECS%8 == 5
-    mask = (__mmask8) _mm512_int2mask(0b00011111);
+    mask = (__mmask8) _mm512_int2mask(0x1F);
 #endif
 #if NVECS%8 == 6
-    mask = (__mmask8) _mm512_int2mask(0b00111111);
+    mask = (__mmask8) _mm512_int2mask(0x3F);
 #endif
 #if NVECS%8 == 7
-    mask = (__mmask8) _mm512_int2mask(0b01111111);
+    mask = (__mmask8) _mm512_int2mask(0x7F);
 #endif
 #endif
     
@@ -645,7 +631,7 @@ ghost_error ghost_sellspmv__a_mic_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
                 rhs_row = ((double *)(invec->val))+invec->stride*(mat->col[offs+j*CHUNKHEIGHT]);
                 #GHOST_UNROLL#tmp@ = _mm512_add_pd(tmp@,_mm512_mul_pd(_mm512_load_pd(rhs_row+(@*8)),matval));#NVECS/8
 #if NVECS%8
-                rhs~NVECS/8~ = _mm512_mask_load_pd(_mm512_setzero_pd(),mask,((double *)(invec->val))+invec->stride*(mat->col[offs+j*CHUNKHEIGHT])+((~NVECS/8~)*8));
+                rhs~NVECS/8~ = _mm512_mask_load_pd(_mm512_setzero_pd(),mask,rhs_row+((~NVECS/8~)*8));
                 tmp~NVECS/8~ = _mm512_add_pd(tmp~NVECS/8~,_mm512_mul_pd(rhs~NVECS/8~,matval));
 #endif
             }
@@ -687,9 +673,9 @@ ghost_error ghost_sellspmv__a_mic_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
             }
             if (traits.flags & GHOST_SPMV_DOT) {
                 for (col = 0; col<invec->traits.ncols; col++) {
-                    partsums[((padding+3*invec->traits.ncols)*tid)+3*col+0] += conj(lval[col])*lval[col];
-                    partsums[((padding+3*invec->traits.ncols)*tid)+3*col+1] += conj(lval[col])*rval[col];
-                    partsums[((padding+3*invec->traits.ncols)*tid)+3*col+2] += conj(rval[col])*rval[col];
+                    partsums[((padding+3*invec->traits.ncols)*tid)+3*col+0] += lval[col]*lval[col];
+                    partsums[((padding+3*invec->traits.ncols)*tid)+3*col+1] += lval[col]*rval[col];
+                    partsums[((padding+3*invec->traits.ncols)*tid)+3*col+2] += rval[col]*rval[col];
                 }
             }
         }

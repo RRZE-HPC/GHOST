@@ -75,7 +75,8 @@ int mm_read_unsymmetric_sparse(const char *fname, int *M_, int *N_, int *nz_,
  
     for (i=0; i<nz; i++)
     {
-        fscanf(f, "%d %d %lg\n", &II[i], &J[i], &val[i]);
+        if (fscanf(f, "%d %d %lg\n", &II[i], &J[i], &val[i])
+                != 3) return MM_PREMATURE_EOF;
         II[i]--;  /* adjust from 1-based to 0-based */
         J[i]--;
     }
