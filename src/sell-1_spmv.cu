@@ -148,27 +148,27 @@ static ghost_error ghost_cu_sell1spmmv_rm_tmpl(ghost_sparsemat *mat, ghost_dense
     return GHOST_SUCCESS;
 }
     
-    template<typename dt1, typename dt2>
+    template<typename dt>
 static ghost_error ghost_cu_sell1spmv_augfunc_tmpl(ghost_densemat * lhs, ghost_densemat * rhs, ghost_spmv_opts traits)
 {
-    dt2 *localdot = NULL;
-    dt1 *shift = NULL, scale, __attribute__((unused)) beta, sdelta, seta;
+    dt *localdot = NULL;
+    dt *shift = NULL, scale, __attribute__((unused)) beta, sdelta, seta;
     ghost_densemat *z = NULL;
 
-    one<dt1>(scale); //required because we need scale for SHIFT (i.e., even if we don't SCALE)
-    GHOST_SPMV_PARSE_TRAITS(traits,scale,beta,shift,localdot,z,sdelta,seta,dt2,dt1);
+    scale = 1.; //required because we need scale for SHIFT (i.e., even if we don't SCALE)
+    GHOST_SPMV_PARSE_TRAITS(traits,scale,beta,shift,localdot,z,sdelta,seta,dt,dt);
 
     if (traits.flags & (GHOST_SPMV_SHIFT|GHOST_SPMV_VSHIFT)) {
         PERFWARNING_LOG("Shift will not be applied on-the-fly!");
-        dt2 minusshift[rhs->traits.ncols];
+        dt minusshift[rhs->traits.ncols];
         ghost_lidx col;
         if (traits.flags & GHOST_SPMV_SHIFT) {
             for (col=0; col<rhs->traits.ncols; col++) {
-                minusshift[col] = (dt2)-1.*(*(dt2 *)&scale)*(*(dt2 *)shift);
+                minusshift[col] = (dt)-1.*(*(dt *)&scale)*(*(dt *)shift);
             }
         } else {
             for (col=0; col<rhs->traits.ncols; col++) {
-                minusshift[col] = (dt2)-1.*(*(dt2 *)&scale)*(((dt2 *)shift)[col]);
+                minusshift[col] = (dt)-1.*(*(dt *)&scale)*(((dt *)shift)[col]);
             }
         }
         ghost_vaxpy(lhs,rhs,minusshift);
@@ -176,7 +176,7 @@ static ghost_error ghost_cu_sell1spmv_augfunc_tmpl(ghost_densemat * lhs, ghost_d
     
     if (traits.flags & GHOST_SPMV_DOT) {
         PERFWARNING_LOG("Dot product computation will be not be done on-the-fly!");
-        memset(localdot,0,lhs->traits.ncols*3*sizeof(dt1));
+        memset(localdot,0,lhs->traits.ncols*3*sizeof(dt));
         if (traits.flags & GHOST_SPMV_DOT_YY) {
             ghost_localdot(&localdot[0],lhs,lhs);
         }
@@ -304,15 +304,15 @@ ghost_error ghost_cu_sell1_spmv_selector(ghost_densemat * lhs_in, ghost_sparsema
 
     if (mat->traits.datatype & GHOST_DT_DOUBLE) {
         if (mat->traits.datatype & GHOST_DT_REAL) {
-            GHOST_CALL_GOTO((ghost_cu_sell1spmv_augfunc_tmpl<double,double>(lhs_in,rhs_in,traits)),err,ret);
+            GHOST_CALL_GOTO((ghost_cu_sell1spmv_augfunc_tmpl<double>(lhs_in,rhs_in,traits)),err,ret);
         } else {
-            GHOST_CALL_GOTO((ghost_cu_sell1spmv_augfunc_tmpl<cuDoubleComplex,std::complex<double> >(lhs_in,rhs_in,traits)),err,ret);
+            GHOST_CALL_GOTO((ghost_cu_sell1spmv_augfunc_tmpl<std::complex<double> >(lhs_in,rhs_in,traits)),err,ret);
         }
     } else {
         if (mat->traits.datatype & GHOST_DT_REAL) {
-            GHOST_CALL_GOTO((ghost_cu_sell1spmv_augfunc_tmpl<float,float>(lhs_in,rhs_in,traits)),err,ret);
+            GHOST_CALL_GOTO((ghost_cu_sell1spmv_augfunc_tmpl<float>(lhs_in,rhs_in,traits)),err,ret);
         } else {
-            GHOST_CALL_GOTO((ghost_cu_sell1spmv_augfunc_tmpl<cuFloatComplex,std::complex<float> >(lhs_in,rhs_in,traits)),err,ret);
+            GHOST_CALL_GOTO((ghost_cu_sell1spmv_augfunc_tmpl<std::complex<float> >(lhs_in,rhs_in,traits)),err,ret);
         }
     }
     
