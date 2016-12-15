@@ -17,7 +17,6 @@ include(CheckCCompilerFlag)
 include(${PROJECT_SOURCE_DIR}/cmake/OptimizeForArchitecture.cmake)
 
 set(GHOST_USE_MPI 1 CACHE BOOL "Build with MPI")
-set(GHOST_USE_OPENMP 1 CACHE BOOL "Build with OpenMP")
 set(GHOST_USE_SCOTCH 0 CACHE BOOL "Use PT-Scotch for matrix re-ordering")
 set(GHOST_USE_COLPACK 0 CACHE BOOL "Use ColPack for matrix coloring")
 set(GHOST_USE_ZOLTAN 0 CACHE BOOL "Use Zoltan for matrix re-ordering")
@@ -385,6 +384,18 @@ endif()
 
 set(HWLOC_LIBRARIES ${LIBHWLOC})
 
+find_package(OpenMP)
+
+if (OPENMP_FOUND)	
+    set(GHOST_USE_OPENMP 1 CACHE BOOL "Build with OpenMP")
+    set(GHOST_HAVE_OPENMP 1)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+else ()
+    set(GHOST_USE_OPENMP 0 CACHE BOOL "Build with OpenMP")
+    set(GHOST_HAVE_OPENMP 0)
+endif()
+
 
 mark_as_advanced(LIBHWLOC)
 mark_as_advanced(CLEAR HWLOC_INCLUDE_DIR)
@@ -510,13 +521,6 @@ if (GHOST_USE_COLPACK)
     if (NOT COLPACK_LIBRARIES)
         message(FATAL_ERROR "COLPACK_INCLUDE_DIR not set correctly!")
     endif()
-endif()
-
-if (GHOST_USE_OPENMP)	
-    find_package(OpenMP REQUIRED)
-    set(GHOST_HAVE_OPENMP 1)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 endif()
 
 set(CBLAS_INCLUDE_DIR CBLAS_INCLUDE_DIR-NOTFOUND CACHE PATH "Location of *cblas.h")
