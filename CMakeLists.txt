@@ -84,7 +84,6 @@ endif()
 
 set (SOURCES
     src/autogen.cpp
-    src/compatibility_check.c
     src/datatransfers.cpp 
     src/densemat_cm_averagehalo.cpp
     src/densemat_cm.cpp 
@@ -110,6 +109,7 @@ set (SOURCES
     src/blas_util.c
     src/carp.c
     src/carp_rb.c
+    src/compatibility_check.c
     src/context.c
     src/core.c
     src/cu_util.c
@@ -701,8 +701,8 @@ else ()
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DGHOST_FUJITSU -noansi")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DGHOST_FUJITSU")
     else()
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -std=c99 -Wall -Wextra -Werror")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -std=c++0x -Wall -Wextra -Werror")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -std=c99 -Wall -Wextra -Werror -pedantic")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -std=c++0x -Wall -Wextra -Werror -pedantic")
     if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
         set(CMAKE_INCLUDE_SYSTEM_FLAG_C "-isystem ") # Not present in Cmake 2.8.11.2
         set(CMAKE_INCLUDE_SYSTEM_FLAG_CXX "-isystem ") # Not present in Cmake 2.8.11.2
