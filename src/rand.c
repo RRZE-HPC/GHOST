@@ -71,7 +71,7 @@ ghost_error ghost_rand_get(unsigned int **s)
     return GHOST_SUCCESS;
 }
 
-ghost_error ghost_rand_seed(ghost_rand_seed_t which, unsigned int seed)
+ghost_error ghost_rand_seed(ghost_rand_seed_type which, unsigned int seed)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     

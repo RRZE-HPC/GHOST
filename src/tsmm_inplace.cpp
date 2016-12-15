@@ -205,7 +205,7 @@ DM_NROWS(    ghost_lidx try_ncolsin[2] = {w),-1};
                         p.dt = try_dt[pos_dt];
                         p.impl = *impl;
                         INFO_LOG("Try ncolsout=%s, ncolsin=%s, impl=%s, %s, dt=%s",
-                                p.ncolsout==-1?"arbitrary":to_string((long long)p.ncolsout).c_str(),p.ncolsin==-1?"arbitrary":to_string((long long)p.ncolsin).c_str(),
+                                p.ncolsout==-1?"arbitrary":ghost::to_string((long long)p.ncolsout).c_str(),p.ncolsin==-1?"arbitrary":ghost::to_string((long long)p.ncolsin).c_str(),
                                 ghost_implementation_string(p.impl),p.alignment==GHOST_UNALIGNED?"unaligned":"aligned",ghost_datatype_string(p.dt));
                         kernel = ghost_tsmm_inplace_kernels[p];
                         if (kernel) {

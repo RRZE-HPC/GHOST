@@ -13,8 +13,8 @@ typedef enum
     GHOST_RAND_SEED_NONE = 0,
     GHOST_RAND_SEED_PU = 1,
     GHOST_RAND_SEED_RANK = 2,
-    GHOST_RAND_SEED_TIME = 4,
-} ghost_rand_seed_t;
+    GHOST_RAND_SEED_TIME = 4
+} ghost_rand_seed_type;
 
 #define GHOST_RAND_SEED_ALL (GHOST_RAND_SEED_PU|GHOST_RAND_SEED_RANK|GHOST_RAND_SEED_TIME)
 
@@ -58,7 +58,7 @@ extern "C" {
      * This assumes that there at most as many OpenMP threads as there are PUs.
      * It is not possible to set the PU seed on CUDA devices.
      */
-    ghost_error ghost_rand_seed(ghost_rand_seed_t which, unsigned int seed);
+    ghost_error ghost_rand_seed(ghost_rand_seed_type which, unsigned int seed);
     /**
      * @brief Get the CUDA random seed.
      *

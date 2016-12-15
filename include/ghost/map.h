@@ -74,8 +74,7 @@ typedef enum {
     /**
     * @brief Does not make a distinction between local and remote entries if set; this might lead to higher communication time
     */
-    GHOST_PERM_NO_DISTINCTION=1,
-
+    GHOST_PERM_NO_DISTINCTION=1
 } ghost_map_flags;
 
 /**

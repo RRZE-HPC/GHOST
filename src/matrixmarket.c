@@ -116,23 +116,28 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *c
             offset[i] = 0;
         }
 
+        int toread = nz;
+        if (matdt & GHOST_DT_COMPLEX) {
+            toread *= 2;
+        }
         ghost_gidx readrow,readcol;
         char value[dtsize];
         fpos_t pos;
         fgetpos(f,&pos);
-
+    
+        int scanned = 0; 
         for (i = 0; i < nz; ++i){
             if (matdt & GHOST_DT_COMPLEX) {
                 if (matdt & GHOST_DT_DOUBLE) {
-                    fscanf(f, "%"PRGIDX" %"PRGIDX" %lg %lg\n", &readrow,&readcol,(double *)value,(double *)(value+dtsize/2));
+                    scanned += fscanf(f, "%"PRGIDX" %"PRGIDX" %lg %lg\n", &readrow,&readcol,(double *)value,(double *)(value+dtsize/2));
                 } else {
-                    fscanf(f, "%"PRGIDX" %"PRGIDX" %g %g\n", &readrow,&readcol,(float *)value,(float *)(value+dtsize/2));
+                    scanned += fscanf(f, "%"PRGIDX" %"PRGIDX" %g %g\n", &readrow,&readcol,(float *)value,(float *)(value+dtsize/2));
                 }
             } else {
                 if (matdt & GHOST_DT_DOUBLE) {
-                    fscanf(f, "%"PRGIDX" %"PRGIDX" %lg\n", &readrow,&readcol,(double *)value);
+                    scanned += fscanf(f, "%"PRGIDX" %"PRGIDX" %lg\n", &readrow,&readcol,(double *)value);
                 } else {
-                    fscanf(f, "%"PRGIDX" %"PRGIDX" %g\n", &readrow,&readcol,(float *)value);
+                    scanned += fscanf(f, "%"PRGIDX" %"PRGIDX" %g\n", &readrow,&readcol,(float *)value);
                 }
             }
             readcol--;
@@ -148,6 +153,11 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *c
             }
         }
 
+        if (scanned != toread) {
+            ERROR_LOG("Error while reading filei: read %d items but was expecting %d!",scanned,toread);
+            return 1;
+        }
+
         for(i = 1; i<=M; ++i){
             rowPtr[i] += rowPtr[i-1];
         }
@@ -155,21 +165,22 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *c
         if (row == GHOST_SPARSEMAT_ROWFUNC_MM_ROW_GETRPT) {
             col = rowPtr;
         } else {
-
+        
             fsetpos(f,&pos);
-
+                
+            scanned = 0;
             for (i = 0; i < nz; ++i){
                 if (matdt & GHOST_DT_COMPLEX) {
                     if (matdt & GHOST_DT_DOUBLE) {
-                        fscanf(f, "%"PRGIDX" %"PRGIDX" %lg %lg\n", &readrow,&readcol,(double *)value,(double *)(value+dtsize/2));
+                        scanned += fscanf(f, "%"PRGIDX" %"PRGIDX" %lg %lg\n", &readrow,&readcol,(double *)value,(double *)(value+dtsize/2));
                     } else {
-                        fscanf(f, "%"PRGIDX" %"PRGIDX" %g %g\n", &readrow,&readcol,(float *)value,(float *)(value+dtsize/2));
+                        scanned += fscanf(f, "%"PRGIDX" %"PRGIDX" %g %g\n", &readrow,&readcol,(float *)value,(float *)(value+dtsize/2));
                     }
                 } else {
                     if (matdt & GHOST_DT_DOUBLE) {
-                        fscanf(f, "%"PRGIDX" %"PRGIDX" %lg\n", &readrow,&readcol,(double *)value);
+                        scanned += fscanf(f, "%"PRGIDX" %"PRGIDX" %lg\n", &readrow,&readcol,(double *)value);
                     } else {
-                        fscanf(f, "%"PRGIDX" %"PRGIDX" %g\n", &readrow,&readcol,(float *)value);
+                        scanned += fscanf(f, "%"PRGIDX" %"PRGIDX" %g\n", &readrow,&readcol,(float *)value);
                     }
                 }
                 readrow--;
@@ -185,6 +196,10 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *c
                     offset[readcol]++;
                 }
 
+            }
+            if (scanned != toread) {
+                ERROR_LOG("Error while reading filei: read %d items but was expecting %d!",scanned,toread);
+                return 1;
             }
         }
 
@@ -320,23 +335,28 @@ int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx row, ghost_lidx *rowlen, gho
             offset[i] = 0;
         }
 
+        int toread = nz;
+        if (matdt & GHOST_DT_COMPLEX) {
+            toread *= 2;
+        }
         ghost_gidx readrow,readcol;
         char value[dtsize];
         fpos_t pos;
         fgetpos(f,&pos);
 
+        int scanned = 0; 
         for (i = 0; i < nz; ++i){
             if (matdt & GHOST_DT_COMPLEX) {
                 if (matdt & GHOST_DT_DOUBLE) {
-                    fscanf(f, "%"PRGIDX" %"PRGIDX" %lg %lg\n", &readcol,&readrow,(double *)value,(double *)(value+dtsize/2));
+                    scanned += fscanf(f, "%"PRGIDX" %"PRGIDX" %lg %lg\n", &readcol,&readrow,(double *)value,(double *)(value+dtsize/2));
                 } else {
-                    fscanf(f, "%"PRGIDX" %"PRGIDX" %g %g\n", &readcol,&readrow,(float *)value,(float *)(value+dtsize/2));
+                    scanned += fscanf(f, "%"PRGIDX" %"PRGIDX" %g %g\n", &readcol,&readrow,(float *)value,(float *)(value+dtsize/2));
                 }
             } else {
                 if (matdt & GHOST_DT_DOUBLE) {
-                    fscanf(f, "%"PRGIDX" %"PRGIDX" %lg\n", &readcol,&readrow,(double *)value);
+                    scanned += fscanf(f, "%"PRGIDX" %"PRGIDX" %lg\n", &readcol,&readrow,(double *)value);
                 } else {
-                    fscanf(f, "%"PRGIDX" %"PRGIDX" %g\n", &readcol,&readrow,(float *)value);
+                    scanned += fscanf(f, "%"PRGIDX" %"PRGIDX" %g\n", &readcol,&readrow,(float *)value);
                 }
             }
             readcol--;
@@ -351,6 +371,10 @@ int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx row, ghost_lidx *rowlen, gho
                }
             }
         }
+        if (scanned != toread) {
+            ERROR_LOG("Error while reading filei: read %d items but was expecting %d!",scanned,toread);
+            return 1;
+        }
 
         for(i = 1; i<=M; ++i){
             rowPtr[i] += rowPtr[i-1];
@@ -362,18 +386,19 @@ int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx row, ghost_lidx *rowlen, gho
 
             fsetpos(f,&pos);
 
+            scanned = 0;
             for (i = 0; i < nz; ++i){
                 if (matdt & GHOST_DT_COMPLEX) {
                     if (matdt & GHOST_DT_DOUBLE) {
-                        fscanf(f, "%"PRGIDX" %"PRGIDX" %lg %lg\n", &readcol,&readrow,(double *)value,(double *)(value+dtsize/2));
+                        scanned += fscanf(f, "%"PRGIDX" %"PRGIDX" %lg %lg\n", &readcol,&readrow,(double *)value,(double *)(value+dtsize/2));
                     } else {
-                        fscanf(f, "%"PRGIDX" %"PRGIDX" %g %g\n", &readcol,&readrow,(float *)value,(float *)(value+dtsize/2));
+                        scanned += fscanf(f, "%"PRGIDX" %"PRGIDX" %g %g\n", &readcol,&readrow,(float *)value,(float *)(value+dtsize/2));
                     }
                 } else {
                     if (matdt & GHOST_DT_DOUBLE) {
-                        fscanf(f, "%"PRGIDX" %"PRGIDX" %lg\n", &readcol,&readrow,(double *)value);
+                        scanned += fscanf(f, "%"PRGIDX" %"PRGIDX" %lg\n", &readcol,&readrow,(double *)value);
                     } else {
-                        fscanf(f, "%"PRGIDX" %"PRGIDX" %g\n", &readcol,&readrow,(float *)value);
+                        scanned += fscanf(f, "%"PRGIDX" %"PRGIDX" %g\n", &readcol,&readrow,(float *)value);
                     }
                 }
                 readrow--;
@@ -389,6 +414,10 @@ int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx row, ghost_lidx *rowlen, gho
                     offset[readcol]++;
                 }
 
+            }
+            if (scanned != toread) {
+                ERROR_LOG("Error while reading filei: read %d items but was expecting %d!",scanned,toread);
+                return 1;
             }
         }
 

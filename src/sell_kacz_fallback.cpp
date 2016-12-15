@@ -30,7 +30,7 @@ for (ghost_lidx j=0; j<mat->rowLen[row]; ++j) { \
         if(diag_idx == col_idx){ \
             mval_idx -= sigma[shift]; \
         } \
-        rownorm[shift] += norm(mval_idx); \
+        rownorm[shift] += ghost::norm(mval_idx); \
         for(int block=0; block<NBLOCKS; ++block) { \
             scal[shift*NBLOCKS+block] -= mval_idx * xval[col_idx*NBLOCKS*NSHIFTS+shift*NBLOCKS+block]; \
         } \
@@ -39,7 +39,7 @@ for (ghost_lidx j=0; j<mat->rowLen[row]; ++j) { \
 } \
 if(!is_diag) { \
     for(int shift=0; shift<NSHIFTS; ++shift) { \
-        rownorm[shift] += (norm(sigma[shift])); \
+        rownorm[shift] += (ghost::norm(sigma[shift])); \
         for(int block=0; block<NBLOCKS; ++block) { \
             scal[shift*NBLOCKS+block] -= (-sigma[shift])*xval[diag_idx*NBLOCKS*NSHIFTS + shift*NBLOCKS + block]; \
         } \
@@ -60,14 +60,14 @@ for (ghost_lidx j=0; j<mat->rowLen[row]; j++) { \
     ghost_lidx col_idx = mat->col[idx]; \
     for(int shift=0; shift<NSHIFTS; ++shift) { \
         for(int block=0; block<NBLOCKS; ++block) { \
-            xval[col_idx*NBLOCKS*NSHIFTS+ shift*NBLOCKS + block] += scal[shift*NBLOCKS+block]*conj(mval_idx);\
+            xval[col_idx*NBLOCKS*NSHIFTS+ shift*NBLOCKS + block] += scal[shift*NBLOCKS+block]*ghost::conj(mval_idx);\
         } \
     } \
     idx += CHUNKHEIGHT; \
 } \
 for(int shift=0; shift<NSHIFTS; ++shift) { \
     for(int block=0; block<NBLOCKS; ++block) { \
-        xval[diag_idx*NBLOCKS*NSHIFTS + shift*NBLOCKS + block] += scal[shift*NBLOCKS+block] * conj(-sigma[shift]); \
+        xval[diag_idx*NBLOCKS*NSHIFTS + shift*NBLOCKS + block] += scal[shift*NBLOCKS+block] * ghost::conj(-sigma[shift]); \
     } \
 } \
 \

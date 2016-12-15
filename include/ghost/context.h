@@ -41,7 +41,7 @@ typedef enum {
     /**
      * @brief Distribute work among the ranks by number of rows.
      */
-    GHOST_CONTEXT_DIST_ROWS = 8,
+    GHOST_CONTEXT_DIST_ROWS = 8
 
 } ghost_context_flags_t;
 

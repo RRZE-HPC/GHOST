@@ -135,11 +135,11 @@ static ghost_error ghost_sell_spmv_plain_rm(ghost_densemat *lhs,
 
                     if (traits.flags & GHOST_SPMV_DOT) {
                         partsums[((pad+3*lhs->traits.ncols)*tid)+3*cidx+0] += 
-                            conj(lhsrow[lcol])*lhsrow[rcol];
+                            ghost::conj(lhsrow[lcol])*lhsrow[rcol];
                         partsums[((pad+3*lhs->traits.ncols)*tid)+3*cidx+1] += 
-                            conj(rhsrow[rcol])*lhsrow[lcol];
+                            ghost::conj(rhsrow[rcol])*lhsrow[lcol];
                         partsums[((pad+3*lhs->traits.ncols)*tid)+3*cidx+2] += 
-                            conj(rhsrow[rcol])*rhsrow[rcol];
+                            ghost::conj(rhsrow[rcol])*rhsrow[rcol];
                     }
                     if (scatteredvecs) {
                         rcol = ghost_bitmap_next(rhs->colmask,rcol);
@@ -290,13 +290,13 @@ static ghost_error ghost_sell_spmv_plain_cm(ghost_densemat *lhs,
 
                         if (traits.flags & GHOST_SPMV_DOT) {
                             partsums[((pad+3*lhs->traits.ncols)*tid)+3*v+0] += 
-                                conj(lhsv[c*ch+i])*
+                                ghost::conj(lhsv[c*ch+i])*
                                 lhsv[c*ch+i];
                             partsums[((pad+3*lhs->traits.ncols)*tid)+3*v+1] += 
-                                conj(rhsv[c*ch+i])*
+                                ghost::conj(rhsv[c*ch+i])*
                                 lhsv[c*ch+i];
                             partsums[((pad+3*lhs->traits.ncols)*tid)+3*v+2] += 
-                                conj(rhsv[c*ch+i])*
+                                ghost::conj(rhsv[c*ch+i])*
                                 rhsv[c*ch+i];
                         }
                     }
@@ -547,8 +547,8 @@ extern "C" ghost_error ghost_sell_spmv_selector(ghost_densemat *lhs,
                     p.blocksz = try_blocksz[pos_blocksz];
 
                     INFO_LOG("Try chunkheight=%s, blocksz=%s, impl=%s, %s",
-                            p.chunkheight==-1?"arbitrary":to_string((long long)p.chunkheight).c_str(),
-                            p.blocksz==-1?"arbitrary":to_string((long long)p.blocksz).c_str(),
+                            p.chunkheight==-1?"arbitrary":ghost::to_string((long long)p.chunkheight).c_str(),
+                            p.blocksz==-1?"arbitrary":ghost::to_string((long long)p.blocksz).c_str(),
                             ghost_implementation_string(p.impl),p.alignment==GHOST_UNALIGNED?"unaligned":"aligned");
                     kernel = ghost_sellspmv_kernels[p];
                     if (kernel) {
