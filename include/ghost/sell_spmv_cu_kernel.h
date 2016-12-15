@@ -255,7 +255,12 @@ ghost_error ghost_sellspmv_cu_tmpl(ghost_densemat *lhs, ghost_sparsemat *mat, gh
     v_dt_device *cu_localdot = NULL;
     v_dt_device *cu_shift = NULL;
     v_dt_host *localdot = NULL;
-    v_dt_device *shift, scale, beta, sdelta,seta;
+    v_dt_device *shift = NULL;
+    v_dt_device scale, beta, sdelta,seta;
+    zero<v_dt_device>(scale);
+    zero<v_dt_device>(beta);
+    zero<v_dt_device>(sdelta);
+    zero<v_dt_device>(seta);
     ghost_densemat *z = NULL;
     dim3 block, grid;
     GHOST_SPMV_PARSE_TRAITS(opts,scale,beta,shift,localdot,z,sdelta,seta,v_dt_host,v_dt_device);
