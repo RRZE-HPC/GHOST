@@ -507,6 +507,14 @@ struct ghost_sparsemat
      */
     ghost_lidx *rowLen;
     /**
+     * @brief Longest length of each quadruple of rows.
+     */
+    ghost_lidx *rowLen4;
+    /**
+     * @brief Longest length of each tuple of rows.
+     */
+    ghost_lidx *rowLen2;
+    /**
      * @brief Needed if T>1.
      */
     ghost_lidx *rowLenPadded; 

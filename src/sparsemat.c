@@ -128,6 +128,8 @@ ghost_error ghost_sparsemat_create(ghost_sparsemat ** mat, ghost_context *contex
     (*mat)->chunkLen = NULL;
     (*mat)->chunkLenPadded = NULL;
     (*mat)->rowLen = NULL;
+    (*mat)->rowLen2 = NULL;
+    (*mat)->rowLen4 = NULL;
     (*mat)->rowLenPadded = NULL;
     (*mat)->chunkStart = NULL;
     
@@ -1498,6 +1500,33 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
         ghost_sparsemat_upload(mat);
     #endif
 
+
+    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->rowLen2,mat->nrowsPadded/2*sizeof(ghost_lidx)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->rowLen4,mat->nrowsPadded/4*sizeof(ghost_lidx)),err,ret);
+    ghost_lidx max4,max2,i;
+    for (i=0; i<mat->nrowsPadded; i++) {
+        if (!(i%2)) {
+            max2 = 0;
+        }
+        if (!(i%4)) {
+            max4 = 0;
+        }
+        if (SELL(mat)->rowLen[i] > max2) {
+            max2 = mat->rowLen[i];
+        }
+        if (SELL(mat)->rowLen[i] > max4) {
+            max4 = mat->rowLen[i];
+        }
+        if (!((i+1)%2)) {
+            mat->rowLen2[i/2] = max2;
+        }
+        if (!((i+1)%4)) {
+            mat->rowLen4[i/4] = max4;
+        }
+    }
+        
+        
+
     if (src->func == ghost_sparsemat_rowfunc_bincrs || src->func == ghost_sparsemat_rowfunc_mm) {
         if (src->func(GHOST_SPARSEMAT_ROWFUNC_FINALIZE,NULL,NULL,NULL,src->arg)) {
             ERROR_LOG("Error in matrix creation function");
@@ -1514,6 +1543,8 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
     free(mat->chunkLen); mat->chunkLen = NULL;
     free(mat->chunkLenPadded); mat->chunkLenPadded = NULL;
     free(mat->rowLen); mat->rowLen = NULL;
+    free(mat->rowLen2); mat->rowLen2 = NULL;
+    free(mat->rowLen4); mat->rowLen4 = NULL;
     free(mat->rowLenPadded); mat->rowLenPadded = NULL;
     free(mat->chunkStart); mat->chunkStart = NULL;
     mat->nEnts = 0;
