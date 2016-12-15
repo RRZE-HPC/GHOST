@@ -18,6 +18,8 @@ before_install:
     - sudo apt-get update
     - sudo apt-get install libhwloc-dev cuda-toolkit-8-0 libopenmpi-dev libgsl0-dev
 
-script: make -j
+script: make VERBOSE=1
 
 after_success:
+    openssl aes-256-cbc -K $encrypted_fdcc3ef47267_key -iv $encrypted_fdcc3ef47267_iv -in travis_deploy.enc -out travis_deploy -d
+
