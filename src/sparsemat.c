@@ -1501,20 +1501,20 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
     #endif
 
 
-    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->rowLen2,mat->nrowsPadded/2*sizeof(ghost_lidx)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->rowLen4,mat->nrowsPadded/4*sizeof(ghost_lidx)),err,ret);
-    ghost_lidx max4,max2,i;
-    for (i=0; i<mat->nrowsPadded; i++) {
+    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->rowLen2,SPM_NROWSPAD(mat)/2*sizeof(ghost_lidx)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->rowLen4,SPM_NROWSPAD(mat)/4*sizeof(ghost_lidx)),err,ret);
+    ghost_lidx max4,max2;
+    for (i=0; i<SPM_NROWSPAD(mat); i++) {
         if (!(i%2)) {
             max2 = 0;
         }
         if (!(i%4)) {
             max4 = 0;
         }
-        if (SELL(mat)->rowLen[i] > max2) {
+        if (mat->rowLen[i] > max2) {
             max2 = mat->rowLen[i];
         }
-        if (SELL(mat)->rowLen[i] > max4) {
+        if (mat->rowLen[i] > max4) {
             max4 = mat->rowLen[i];
         }
         if (!((i+1)%2)) {
