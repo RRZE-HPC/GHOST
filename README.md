@@ -1,4 +1,4 @@
-[![Build Status](https://drone.io/bitbucket.org/essex/ghost/status.png)](https://drone.io/bitbucket.org/essex/ghost/latest)
+[![Build Status](https://travis-ci.org/RRZE-HPC/GHOST.svg?branch=devel)](https://travis-ci.org/RRZE-HPC/GHOST)
 ---
 # Disclaimer #
 ---
