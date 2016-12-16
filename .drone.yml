@@ -1,0 +1,5 @@
+deploy:
+    git_push:
+        branch: devel
+        remote: git@github.com:RRZE-HPC/GHOST.git
+        force: false
