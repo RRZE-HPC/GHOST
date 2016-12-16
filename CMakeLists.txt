@@ -803,17 +803,17 @@ endif()
 ########################################################################
 #  Disable a few warnings for release builds.
 ########################################################################
-if ("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
-    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-variable -Wno-unused-parameter -Wno-unused-function -Wno-unused-but-set-variable")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-variable -Wno-unused-parameter -Wno-unused-function -Wno-unused-but-set-variable")
-    endif()
+#if ("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
+#    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+#        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-variable -Wno-unused-parameter -Wno-unused-function -Wno-unused-but-set-variable")
+#        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-variable -Wno-unused-parameter -Wno-unused-function -Wno-unused-but-set-variable")
+        #    endif()
     # TODO Are there any other flags?
-    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-function")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-function")
-    endif()
-endif()
+    #    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
+    #    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-function")
+    #    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-function")
+    # endif()
+    #endif()
 ########################################################################
 
 configure_file (

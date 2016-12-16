@@ -1,5 +1,5 @@
-#ifndef KACZ_HYPRID_SPLITTING_H
-#define KACZ_HYBRID_SPLITTING_H
+#ifndef GHOST_KACZ_HYBRID_SPLIT_H
+#define GHOST_KACZ_HYBRID_SPLIT_H
 
 #include "sparsemat.h"
 #include "util.h"
