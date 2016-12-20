@@ -189,7 +189,7 @@ ghost_error ghost_sellspmvUNROLLEDDOESNOTWORK__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(gh
 #endif
 }
 
-ghost_error ghost_sellspmvUNROLLEDINCHUNK__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat* invec, ghost_spmv_opts traits)
+ghost_error ghost_sellspmv__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat* invec, ghost_spmv_opts traits)
 {
 #if defined(GHOST_BUILD_AVX) && CHUNKHEIGHT>=4
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
@@ -521,7 +521,7 @@ ghost_error ghost_sellspmvROWLEN4__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat
 #endif
 }
 
-ghost_error ghost_sellspmv__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat* invec, ghost_spmv_opts traits)
+ghost_error ghost_sellspmvRL4UNROLL__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat* invec, ghost_spmv_opts traits)
 {
 #if defined(GHOST_BUILD_AVX) && CHUNKHEIGHT>=4
     INFO_LOG("In experimental kernel using rowLen4 and no explicit unrolling");
