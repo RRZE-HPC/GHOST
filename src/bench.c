@@ -230,7 +230,7 @@ static void ghost_update_kernel(double * restrict a, const double s)
     __m128d sv = _mm_set1_pd(s);
 #pragma omp parallel for
     for (i=0; i<N; i+=2) {
-        _mm512_store_pd(&a[i],_mm512_mul_pd(_mm512_load_pd(&a[i]),sv));
+        _mm_store_pd(&a[i],_mm_mul_pd(_mm_load_pd(&a[i]),sv));
     }
 #else
 #pragma omp parallel for
