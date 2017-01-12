@@ -372,8 +372,10 @@ ghost_error ghost_sellspmv__a_mic_z_z_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
     delta_im = _mm512_set1_pd(cimag(sdelta));
     eta_re = _mm512_set1_pd(creal(seta));
     eta_im = _mm512_set1_pd(cimag(seta));
-    shift_re = _mm512_set1_pd(creal(sshift[0]));
-    shift_im = _mm512_set1_pd(cimag(sshift[0]));
+    if ((traits.flags & GHOST_SPMV_SHIFT)) {
+        shift_re = _mm512_set1_pd(creal(sshift[0]));
+        shift_im = _mm512_set1_pd(cimag(sshift[0]));
+    }
     
     if (traits.flags & GHOST_SPMV_DOT) {
 
@@ -472,9 +474,9 @@ ghost_error ghost_sellspmv__a_mic_z_z_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
             }
             if (traits.flags & GHOST_SPMV_DOT) {
                 for (col = 0; col<invec->traits.ncols; col++) {
-                    partsums[((padding+3*invec->traits.ncols)*tid)+3*col+0] += conj(lval[col])*lval[col];
-                    partsums[((padding+3*invec->traits.ncols)*tid)+3*col+1] += conj(lval[col])*rval[col];
-                    partsums[((padding+3*invec->traits.ncols)*tid)+3*col+2] += conj(rval[col])*rval[col];
+                    partsums[((padding+3*PAD(invec->traits.ncols,2))*tid)+3*col+0] += conj(lval[col])*lval[col];
+                    partsums[((padding+3*PAD(invec->traits.ncols,2))*tid)+3*col+1] += conj(rval[col])*lval[col];
+                    partsums[((padding+3*PAD(invec->traits.ncols,2))*tid)+3*col+2] += conj(rval[col])*rval[col];
                 }
             }
         }
