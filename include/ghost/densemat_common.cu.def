@@ -113,11 +113,10 @@ template<typename T>
 __global__ static void FUNCNAME(axpby_kernel)(T *v1, T *v2, T a, T b, ghost_lidx nrows, ghost_lidx ncols, ghost_lidx ld1, ghost_lidx ld2) 
 {
     int idx = blockIdx.x*blockDim.x+threadIdx.x;
-    for (;idx < nrows; idx+=gridDim.x*blockDim.x) {
-        ghost_lidx v;
-        for (v=0; v<ncols; v++) {
-            v1[IDX(idx,v,ld1)] = axpby<T>(v2[IDX(idx,v,ld2)],v1[IDX(idx,v,ld1)],a,b);
-        }
+    for (;idx < nrows*ncols; idx+=gridDim.x*blockDim.x) {
+        int row = idx/ncols;
+        int col = idx%ncols;
+        v1[IDX(row,col,ld1)] = axpby<T>(v2[IDX(row,col,ld2)],v1[IDX(row,col,ld1)],a,b);
     }
 }
 
@@ -609,7 +608,7 @@ extern "C" ghost_error FUNCNAME(dotprod)(ghost_densemat *vec, void *res, ghost_d
                         DM_NROWS(vec),vec->traits.ncols,veccompact->stride,vec2compact->stride);
                 int col;
                 for (col=0; col<vec->traits.ncols; col++) {
-                    ghost_deviceReduceSum<cuDoubleComplex><<<1,1024,32*sizeof(std::complex<double>)>>>(&partres[col*grid.x],&partres[col],grid.x);
+                    ghost_deviceReduceSumOld<cuDoubleComplex><<<1,1024,32*sizeof(std::complex<double>)>>>(&partres[col*grid.x],&partres[col],grid.x);
                 }
                 ghost_cu_download(res,partres,vec->traits.ncols*sizeof(std::complex<double>));
                 ghost_cu_free(partres);
@@ -622,7 +621,7 @@ extern "C" ghost_error FUNCNAME(dotprod)(ghost_densemat *vec, void *res, ghost_d
                         DM_NROWS(vec),vec->traits.ncols,veccompact->stride,vec2compact->stride);
                 int col;
                 for (col=0; col<vec->traits.ncols; col++) {
-                    ghost_deviceReduceSum<cuFloatComplex><<<1,1024,32*sizeof(std::complex<float>)>>>(&partres[col*grid.x],&partres[col],grid.x);
+                    ghost_deviceReduceSumOld<cuFloatComplex><<<1,1024,32*sizeof(std::complex<float>)>>>(&partres[col*grid.x],&partres[col],grid.x);
                 }
                 ghost_cu_download(res,partres,vec->traits.ncols*sizeof(std::complex<float>));
                 ghost_cu_free(partres);
@@ -637,7 +636,7 @@ extern "C" ghost_error FUNCNAME(dotprod)(ghost_densemat *vec, void *res, ghost_d
                         DM_NROWS(vec),vec->traits.ncols,veccompact->stride,vec2compact->stride);
                 int col;
                 for (col=0; col<vec->traits.ncols; col++) {
-                    ghost_deviceReduceSum<double><<<1,1024,32*sizeof(double)>>>(&partres[col*grid.x],&partres[col],grid.x);
+                    ghost_deviceReduceSumOld<double><<<1,1024,32*sizeof(double)>>>(&partres[col*grid.x],&partres[col],grid.x);
                 }
                 ghost_cu_download(res,partres,vec->traits.ncols*sizeof(double));
                 ghost_cu_free(partres);
@@ -650,7 +649,7 @@ extern "C" ghost_error FUNCNAME(dotprod)(ghost_densemat *vec, void *res, ghost_d
                         DM_NROWS(vec),vec->traits.ncols,veccompact->stride,vec2compact->stride);
                 int col;
                 for (col=0; col<vec->traits.ncols; col++) {
-                    ghost_deviceReduceSum<float><<<1,1024,32*sizeof(float)>>>(&partres[col*grid.x],&partres[col],grid.x);
+                    ghost_deviceReduceSumOld<float><<<1,1024,32*sizeof(float)>>>(&partres[col*grid.x],&partres[col],grid.x);
                 }
                 ghost_cu_download(res,partres,vec->traits.ncols*sizeof(float));
                 ghost_cu_free(partres);
@@ -778,12 +777,12 @@ extern "C" ghost_error FUNCNAME(axpby)(ghost_densemat *v1, ghost_densemat *v2, v
     {
         if (v1->traits.datatype & GHOST_DT_DOUBLE)
         {
-            FUNCNAME(axpby_kernel)<cuDoubleComplex><<< (int)ceil((double)DM_NROWS(v1)/THREADSPERBLOCK),THREADSPERBLOCK >>>
+            FUNCNAME(axpby_kernel)<cuDoubleComplex><<< CEILDIV(DM_NROWS(v1)*v1->traits.ncols,THREADSPERBLOCK),THREADSPERBLOCK >>>
                 ((cuDoubleComplex *)v1val, (cuDoubleComplex *)v2val,*((cuDoubleComplex *)a),*((cuDoubleComplex *)b),DM_NROWS(v1),v1->traits.ncols,v1->stride,v2->stride);
         } 
         else 
         {
-            FUNCNAME(axpby_kernel)<cuFloatComplex><<< (int)ceil((double)DM_NROWS(v1)/THREADSPERBLOCK),THREADSPERBLOCK >>>
+            FUNCNAME(axpby_kernel)<cuFloatComplex><<< CEILDIV(DM_NROWS(v1)*v1->traits.ncols,THREADSPERBLOCK),THREADSPERBLOCK >>>
                 ((cuFloatComplex *)v1val, (cuFloatComplex *)v2val,*((cuFloatComplex *)a),*((cuFloatComplex *)b),DM_NROWS(v1),v1->traits.ncols,v1->stride,v2->stride);
             
         }
@@ -792,12 +791,12 @@ extern "C" ghost_error FUNCNAME(axpby)(ghost_densemat *v1, ghost_densemat *v2, v
     {
         if (v1->traits.datatype & GHOST_DT_DOUBLE)
         {
-            FUNCNAME(axpby_kernel)<double><<< (int)ceil((double)DM_NROWS(v1)/THREADSPERBLOCK),THREADSPERBLOCK >>>
+            FUNCNAME(axpby_kernel)<double><<< CEILDIV(DM_NROWS(v1)*v1->traits.ncols,THREADSPERBLOCK),THREADSPERBLOCK >>>
                 ((double *)v1val, (double *)v2val,*((double *)a),*((double *)b),DM_NROWS(v1),v1->traits.ncols,v1->stride,v2->stride);
         } 
         else 
         {
-            FUNCNAME(axpby_kernel)<float><<< (int)ceil((double)DM_NROWS(v1)/THREADSPERBLOCK),THREADSPERBLOCK >>>
+            FUNCNAME(axpby_kernel)<float><<< CEILDIV(DM_NROWS(v1)*v1->traits.ncols,THREADSPERBLOCK),THREADSPERBLOCK >>>
                 ((float *)v1val, (float *)v2val,*((float *)a),*((float *)b),DM_NROWS(v1),v1->traits.ncols,v1->stride,v2->stride);
         }
     }
