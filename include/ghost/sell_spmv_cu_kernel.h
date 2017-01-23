@@ -372,11 +372,14 @@ ghost_error ghost_sellspmv_cu_tmpl(ghost_densemat *lhs, ghost_sparsemat *mat, gh
                 }
                 DEBUG_LOG(1,"grid %dx%d block %dx%d nrowsinblock %d",grid.x,grid.y,block.x,block.y,nrowsinblock);
                 SELL_kernel_CU_rm_tmpl<m_dt,v_dt_device,v_dt_base,nrowsinblock,C,ncols,do_axpby,do_scale,do_vshift,do_dot_yy,do_dot_xy,do_dot_xx,do_chain_axpby><<<grid,block,0>>>((v_dt_device *)lhsval,lhs->stride,(v_dt_device *)rhsval,rhs->stride,opts.flags,mat->context->row_map->dim,mat->cu_rowLen,mat->cu_col,(m_dt *)mat->cu_val,mat->cu_chunkStart,(v_dt_device *)cu_shift,(v_dt_device)scale,(v_dt_device)beta,(v_dt_device *)cu_localdot,(v_dt_device *)zval,zstride,(v_dt_device)sdelta,(v_dt_device)seta);
-            } else if (ncols > 2) { // 256 rows per block, 3...4 columns per block, 768...1024 threads per block
-                const int nrowsinblock = 256;
+            } else if (ncols > 2) { // 64 rows per block, 3...4 columns per block, 192...256 threads per block
+                const int nrowsinblock = 64;
                 grid.x = CEILDIV(SPM_NROWS(mat),nrowsinblock);
                 grid.y = 1;
                 block.x = nrowsinblock*rhs->traits.ncols;
+                if (opts.flags & GHOST_SPMV_DOT) {
+                    GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
+                }
                 int smem = (block.x/32)*sizeof(v_dt_device);
                 DEBUG_LOG(1,"grid %dx%d block %dx%d nrowsinblock %d smem %d",grid.x,grid.y,block.x,block.y,nrowsinblock,smem);
                 SELL_kernel_CU_rm_tmpl<m_dt,v_dt_device,v_dt_base,nrowsinblock,C,ncols,do_axpby,do_scale,do_vshift,do_dot_yy,do_dot_xy,do_dot_xx,do_chain_axpby><<<grid,block,smem>>>((v_dt_device *)lhsval,lhs->stride,(v_dt_device *)rhsval,rhs->stride,opts.flags,mat->context->row_map->dim,mat->cu_rowLen,mat->cu_col,(m_dt *)mat->cu_val,mat->cu_chunkStart,(v_dt_device *)cu_shift,(v_dt_device)scale,(v_dt_device)beta,(v_dt_device *)cu_localdot,(v_dt_device *)zval,zstride,(v_dt_device)sdelta,(v_dt_device)seta);
@@ -458,9 +461,9 @@ ghost_error ghost_sellspmv_cu_tmpl(ghost_densemat *lhs, ghost_sparsemat *mat, gh
             GHOST_INSTR_START("spmv_cuda_dot")
             PERFWARNING_LOG("Not doing the local dot product on-the-fly!");
         memset(localdot,0,rhs->traits.ncols*3*sizeof(v_dt_host));
-        lhs->localdot_vanilla(lhs,&localdot[0],lhs);
-        lhs->localdot_vanilla(lhs,&localdot[rhs->traits.ncols],rhs);
-        rhs->localdot_vanilla(rhs,&localdot[2*rhs->traits.ncols],rhs);
+        ghost_localdot(&localdot[0],lhs,lhs);
+        ghost_localdot(&localdot[rhs->traits.ncols],rhs,lhs);
+        ghost_localdot(&localdot[2*rhs->traits.ncols],rhs,rhs);
         GHOST_INSTR_STOP("spmv_cuda_dot")
 #endif
     }
