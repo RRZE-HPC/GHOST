@@ -524,7 +524,6 @@ ghost_error ghost_cu_rand_generator_get(ghost_cu_rand_generator *gen)
 ghost_error ghost_cu_finalize()
 {
 #ifdef GHOST_HAVE_CUDA
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TEARDOWN);
     if (ghost_cublas_handle) {
         CUBLAS_CALL_RETURN(cublasDestroy(ghost_cublas_handle));
     }
@@ -535,7 +534,6 @@ ghost_error ghost_cu_finalize()
         curandDestroyGenerator(cu_rand_generator);
     }
     cudaDeviceReset();
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TEARDOWN);
 #endif
 
     return GHOST_SUCCESS;
