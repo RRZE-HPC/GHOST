@@ -403,9 +403,9 @@ static ghost_error ghost_sellspmv_cu_tmpl_fallback(ghost_densemat *lhs, ghost_sp
                 GHOST_INSTR_START("spmv_cuda_dot")
                 PERFWARNING_LOG("Not doing the local dot product on-the-fly!");
             memset(localdot,0,rhs->traits.ncols*3*sizeof(v_dt_host));
-            lhs->localdot_vanilla(lhs,&localdot[0],lhs);
-            lhs->localdot_vanilla(lhs,&localdot[rhs->traits.ncols],rhs);
-            rhs->localdot_vanilla(rhs,&localdot[2*rhs->traits.ncols],rhs);
+            ghost_localdot(&localdot[0],lhs,lhs);
+            ghost_localdot(&localdot[rhs->traits.ncols],rhs,lhs);
+            ghost_localdot(&localdot[2*rhs->traits.ncols],rhs,rhs);
             GHOST_INSTR_STOP("spmv_cuda_dot")
 #endif
         }
