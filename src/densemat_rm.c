@@ -218,18 +218,36 @@ ghost_error ghost_densemat_rm_halocommInit(ghost_densemat *vec, ghost_context *c
     GHOST_CALL_GOTO(ghost_densemat_halocommInit_common(vec,ctx,comm),err,ret);
         
     GHOST_CALL_GOTO(ghost_malloc((void **)&comm->tmprecv,nprocs*sizeof(char *)),err,ret);
-
-    if ((vec->stride != vec->traits.ncols) || (vec->traits.location & GHOST_LOCATION_DEVICE)) {
+    
+    if (vec->traits.location & GHOST_LOCATION_DEVICE) {
+#ifdef GHOST_HAVE_GPUDIRECT
+        if (vec->stride != vec->traits.ncols) {
+            ERROR_LOG("GPUdirect communication does not yet work for views!");
+        }
+        for (from_PE=0; from_PE<nprocs; from_PE++) {
+            comm->tmprecv[from_PE] = DENSEMAT_CUVALPTR(vec,ctx->hput_pos[from_PE],0);
+        }
+        comm->tmprecv_mem = NULL;
+#else 
         GHOST_CALL_GOTO(ghost_malloc((void **)&comm->tmprecv_mem,vec->traits.ncols*vec->elSize*comm->acc_wishes),err,ret);
 
         for (from_PE=0; from_PE<nprocs; from_PE++){
             comm->tmprecv[from_PE] = &comm->tmprecv_mem[comm->wishptr[from_PE]*vec->traits.ncols*vec->elSize];
         }
+#endif
     } else {
-        for (from_PE=0; from_PE<nprocs; from_PE++) {
-            comm->tmprecv[from_PE] = DENSEMAT_VALPTR(vec,ctx->hput_pos[from_PE],0);
+        if (vec->stride != vec->traits.ncols) {
+            GHOST_CALL_GOTO(ghost_malloc((void **)&comm->tmprecv_mem,vec->traits.ncols*vec->elSize*comm->acc_wishes),err,ret);
+
+            for (from_PE=0; from_PE<nprocs; from_PE++){
+                comm->tmprecv[from_PE] = &comm->tmprecv_mem[comm->wishptr[from_PE]*vec->traits.ncols*vec->elSize];
+            }
+        } else {
+            for (from_PE=0; from_PE<nprocs; from_PE++) {
+                comm->tmprecv[from_PE] = DENSEMAT_VALPTR(vec,ctx->hput_pos[from_PE],0);
+            }
+            comm->tmprecv_mem = NULL;
         }
-        comm->tmprecv_mem = NULL;
     }
        
     GHOST_INSTR_START("assemble_buf"); 
@@ -264,7 +282,8 @@ ghost_error ghost_densemat_rm_halocommInit(ghost_densemat *vec, ghost_context *c
                 }
             }
     }
-    GHOST_INSTR_STOP("assemble_buf"); 
+    GHOST_INSTR_STOP("assemble_buf");
+#ifndef GHOST_HAVE_GPUDIRECT 
 #ifdef GHOST_HAVE_CUDA
     if (vec->traits.location & GHOST_LOCATION_DEVICE) {
         GHOST_INSTR_START("download_buf");
@@ -275,6 +294,7 @@ ghost_error ghost_densemat_rm_halocommInit(ghost_densemat *vec, ghost_context *c
         ghost_cu_download(comm->work,comm->cu_work,vec->traits.ncols*comm->acc_dues*vec->elSize);
         GHOST_INSTR_STOP("download_buf");
     }
+#endif
 #endif
     
 
@@ -316,6 +336,7 @@ ghost_error ghost_densemat_rm_halocommFinalize(ghost_densemat *vec, ghost_contex
         GHOST_INSTR_STOP("Assemble row-major view");
     }
 
+#ifndef GHOST_HAVE_GPUDIRECT
 #ifdef GHOST_HAVE_CUDA 
     GHOST_INSTR_START("upload")
     if (vec->traits.location & GHOST_LOCATION_DEVICE) {
@@ -327,12 +348,15 @@ ghost_error ghost_densemat_rm_halocommFinalize(ghost_densemat *vec, ghost_contex
     }
     GHOST_INSTR_STOP("upload");
 #endif
+#endif
 
 
     if (vec->traits.location & GHOST_LOCATION_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
         GHOST_CALL_GOTO(ghost_cu_free(comm->cu_work),err,ret);
+#ifndef GHOST_HAVE_GPUDIRECT
         cudaFreeHost(comm->work); comm->work = NULL;
+#endif
 #endif
     } else {
         free(comm->work); comm->work = NULL;

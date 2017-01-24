@@ -62,6 +62,42 @@ __device__ inline void fromReal<cuFloatComplex,float>(cuFloatComplex &val, float
     val = make_cuFloatComplex(real,0.f);
 }
 
+template<typename T, typename T_b>
+__device__ inline T_b Real(T val)
+{
+    return val;
+}
+
+template<>
+__device__ inline double Real<cuDoubleComplex,double>(cuDoubleComplex val)
+{
+    return cuCreal(val);
+}
+
+template<>
+__device__ inline float Real<cuFloatComplex,float>(cuFloatComplex val)
+{
+    return cuCrealf(val);
+}
+
+template<typename T, typename T_b>
+__device__ inline T_b Imag(T val)
+{
+    return val;
+}
+
+template<>
+__device__ inline double Imag<cuDoubleComplex,double>(cuDoubleComplex val)
+{
+    return cuCimag(val);
+}
+
+template<>
+__device__ inline float Imag<cuFloatComplex,float>(cuFloatComplex val)
+{
+    return cuCimagf(val);
+}
+
 // val += val2
 template<typename t>
 __device__ inline t accu(t val, t val2)

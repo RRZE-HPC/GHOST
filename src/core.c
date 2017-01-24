@@ -134,7 +134,6 @@ ghost_error ghost_init(int argc, char **argv)
 #else
     req = MPI_THREAD_SINGLE;
 #endif
-
     MPI_CALL_RETURN(MPI_Initialized(&MPIwasInitialized));
     if (!MPIwasInitialized) {
         MPI_CALL_RETURN(MPI_Init_thread(&argc, &argv, req, &prov));
@@ -601,7 +600,6 @@ ghost_error ghost_finalize()
 
 
     ghost_rand_destroy();
-    ghost_cu_finalize();
 
 #ifdef GHOST_INSTR_LIKWID
     likwid_markerClose();
@@ -634,6 +632,10 @@ ghost_error ghost_finalize()
         MPI_Finalize();
     }
 #endif
+    
+    // needs to be done _after_ MPI_Finalize() (for GPUdirect)
+    ghost_cu_finalize();
+
     return GHOST_SUCCESS;
 }
 

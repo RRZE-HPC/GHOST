@@ -26,6 +26,7 @@
 #cmakedefine GHOST_HAVE_LIBSCI
 #cmakedefine GHOST_HAVE_LAPACK
 #cmakedefine GHOST_HAVE_SPMP
+#cmakedefine GHOST_HAVE_GPUDIRECT
 
 /* hardware features */
 #cmakedefine GHOST_BUILD_MIC
@@ -55,6 +56,7 @@
 #define GHOST_AUTOGEN_MAX_CHUNKHEIGHT "${GHOST_AUTOGEN_MAX_CHUNKHEIGHT}"
 #define GHOST_AUTOGEN_KACZ "${GHOST_AUTOGEN_KACZ}"
 #define GHOST_AUTOGEN_SPMMV "${GHOST_AUTOGEN_SPMMV}"
+#define GHOST_AUTOGEN_SPMMV_CUDA "${GHOST_AUTOGEN_SPMMV_CUDA}"
 
 /* sparsemat statistics */
 #cmakedefine GHOST_SPARSEMAT_STATS

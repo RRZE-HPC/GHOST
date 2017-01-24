@@ -72,7 +72,16 @@ ghost_error ghost_autogen_kacz_nvecs(int **nvecs, int *n, int chunkheight, int n
 
 ghost_error ghost_autogen_spmmv_nvecs(int **nvecs, int *n, int chunkheight)
 {
-    string configurations = GHOST_AUTOGEN_SPMMV;
+    string configurations;
+    ghost_type mytype;
+    ghost_type_get(&mytype);
+
+    if (mytype == GHOST_TYPE_CUDA) {
+        configurations = GHOST_AUTOGEN_SPMMV_CUDA;
+    } else {
+        configurations = GHOST_AUTOGEN_SPMMV;
+    }
+
     if (configurations[configurations.length()-1] != ';') {
         configurations += ";";
     }
