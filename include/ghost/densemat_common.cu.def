@@ -1124,7 +1124,6 @@ extern "C" ghost_error FUNCNAME(fromRand)(ghost_densemat *vec)
 
     void *raw = NULL;
     ghost_densemat *onevec;
-    long pid = getpid();
     double time;
     double one[] = {1.,1.};
     float fone[] = {1.,0.};

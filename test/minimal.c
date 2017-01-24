@@ -19,9 +19,10 @@ int main(int argc, char **argv)
     double zero = 0.;
     char *Astr, *xstr, *ystr;
     
+    ghost_densemat_traits vtraits = GHOST_DENSEMAT_TRAITS_INITIALIZER;
+    
     ghost_sparsemat_traits mtraits = GHOST_SPARSEMAT_TRAITS_INITIALIZER;
     mtraits.datatype = (ghost_datatype)(GHOST_DT_REAL|GHOST_DT_DOUBLE);
-    ghost_densemat_traits vtraits = GHOST_DENSEMAT_TRAITS_INITIALIZER;
 
     ghost_init(argc,argv);
 
@@ -30,11 +31,7 @@ int main(int argc, char **argv)
     matsrc.func = diag;
     matsrc.maxrowlen = 1;
     matsrc.gnrows = N;
-    matsrc.gncols = N;
 
-    // create context
-    //ghost_context_create(&ctx,N,N,GHOST_CONTEXT_DEFAULT,&matsrc,GHOST_SPARSEMAT_SRC_FUNC,MPI_COMM_WORLD,1.);
-   
     // create sparse matrix A from row-wise function    
     ghost_sparsemat_create(&A, NULL, &mtraits, 1);
     ghost_sparsemat_init_rowfunc(A,&matsrc,MPI_COMM_WORLD,1.);

@@ -131,7 +131,7 @@ If you are using GHOST in your publication please use the following reference:
         journal = {International Journal of Parallel Programming},
         year    = {2016},
         pages   = {1--27},
-        issn    = {1573-7640],
+        issn    = {1573-7640},
         doi     = {10.1007/s10766-016-0464-z},
         url     = {http://dx.doi.org/10.1007/s10766-016-0464-z}
     }

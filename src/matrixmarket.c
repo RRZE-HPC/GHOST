@@ -116,9 +116,9 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *c
             offset[i] = 0;
         }
 
-        int toread = nz;
+        int toread = 3*nz;
         if (matdt & GHOST_DT_COMPLEX) {
-            toread *= 2;
+            toread += nz;
         }
         ghost_gidx readrow,readcol;
         char value[dtsize];
