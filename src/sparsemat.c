@@ -591,6 +591,8 @@ void ghost_sparsemat_destroy(ghost_sparsemat *mat)
     free(mat->chunkLen); mat->chunkLen = NULL;
     free(mat->chunkLenPadded); mat->chunkLenPadded = NULL;
     free(mat->rowLen); mat->rowLen = NULL;
+    free(mat->rowLen2); mat->rowLen2 = NULL;
+    free(mat->rowLen4); mat->rowLen4 = NULL;
     free(mat->rowLenPadded); mat->rowLenPadded = NULL;
    
     mat->context->nmats--;
