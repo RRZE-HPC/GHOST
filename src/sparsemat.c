@@ -1348,7 +1348,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
                 if(mat->context->flags & GHOST_PERM_NO_DISTINCTION) {
                     memset(&(*col)[(*chunkptr)[chunk]],0,C*clp[chunk]*sizeof(ghost_gidx));
                 } else {
-                    for (i=0; i<clp[chunk]*C; i++) {    
+                    for (i=0; i<C*clp[chunk]; i++) {    
                         (*col)[(*chunkptr)[chunk]] = mat->context->row_map->offs;
                     }
                 }
@@ -1356,6 +1356,15 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
             }
             #pragma omp for schedule(runtime)
             for (chunk = 0; chunk < nChunks; chunk++) {
+                if(mat->context->flags & GHOST_PERM_NO_DISTINCTION) {
+                    memset(tmpcol,0,C*mat->maxRowLen*sizeof(ghost_gidx));
+                } else {
+                    for (i=0; i<C*mat->maxRowLen; i++) {    
+                        tmpcol[i] = mat->context->row_map->offs;
+                    }
+                }
+                memset(tmpval,0,C*mat->maxRowLen*mat->elSize);
+
                 for (i=0, row = chunk*C; (i<C) && (chunk*C+i < SPM_NROWS(mat)); i++, row++) {
                     if (mat->traits.flags & GHOST_SPARSEMAT_PERM_ANY) {
                         if (mat->context->row_map->glb_perm && mat->context->row_map->loc_perm) {
@@ -1373,7 +1382,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
                         ERROR_LOG("Matrix construction function returned error");
                         ret = GHOST_ERR_UNKNOWN;
                     }
-                    for (colidx = 0; colidx<rl[row]; colidx++) {
+                    for (colidx = 0; colidx<clp[chunk]; colidx++) {
                         memcpy(*val+mat->elSize*((*chunkptr)[chunk]+colidx*C+i),&tmpval[mat->elSize*(i*mat->maxRowLen+colidx)],mat->elSize);
                         if (mat->traits.flags & GHOST_SPARSEMAT_PERM_ANY) {
                             if (mat->context->row_map->glb_perm) {
