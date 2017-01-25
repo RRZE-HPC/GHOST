@@ -105,6 +105,7 @@ The same applies for hwloc and the variables `HWLOC_INCLUDE_DIR` and `HWLOC_LIBR
 1. **An overview paper of GHOST**  
 *GHOST: Building blocks for high performance sparse linear algebra on heterogeneous systems*  
 Moritz Kreutzer, Jonas Thies, Melven Röhrig-Zöllner, Andreas Pieper, Faisal Shahzad, Martin Galgon, Achim Basermann, Holger Fehske, Georg Hager, and Gerhard Wellein  
+International Journal of Parallel Programming (2016)  
 http://link.springer.com/article/10.1007/s10766-016-0464-z / http://arxiv.org/abs/1507.08101
 
 2. **An overview poster of GHOST**  
