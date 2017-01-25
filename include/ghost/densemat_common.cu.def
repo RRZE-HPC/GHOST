@@ -604,7 +604,7 @@ extern "C" ghost_error FUNCNAME(dotprod)(ghost_densemat *vec, void *res, ghost_d
         if (vec->traits.datatype & GHOST_DT_COMPLEX) {
             if (vec->traits.datatype & GHOST_DT_DOUBLE) {
                 cuDoubleComplex * partres;
-                ghost_cu_malloc((void **)&partres,vec->traits.ncols*grid.x*sizeof(std::complex<double>));
+                GHOST_CALL_RETURN(ghost_cu_malloc((void **)&partres,vec->traits.ncols*grid.x*sizeof(std::complex<double>)));
                 FUNCNAME(dot_kernel)<cuDoubleComplex><<< grid,block,block.x/32*sizeof(std::complex<double>)*block.y >>>(
                         (cuDoubleComplex *)partres,
                         (cuDoubleComplex *)veccompact->cu_val, (cuDoubleComplex *)vec2compact->cu_val,
@@ -614,7 +614,7 @@ extern "C" ghost_error FUNCNAME(dotprod)(ghost_densemat *vec, void *res, ghost_d
                     //ghost_deviceReduceSumOld<cuDoubleComplex><<<1,1024,32*sizeof(std::complex<double>)>>>(&partres[col*grid.x],&partres[col],grid.x); 
                     ghost_deviceReduceSum<cuDoubleComplex><<<CEILDIV(grid.x,256),256>>>(&partres[col*grid.x],((cuDoubleComplex *)cu_localdot_result)+col,grid.x);
                 }
-                ghost_cu_download(res,cu_localdot_result,vec->traits.ncols*sizeof(std::complex<double>));
+                GHOST_CALL_RETURN(ghost_cu_download(res,cu_localdot_result,vec->traits.ncols*sizeof(std::complex<double>)));
                 ghost_cu_free(partres);
             } else {
                 cuFloatComplex * partres;
@@ -628,7 +628,7 @@ extern "C" ghost_error FUNCNAME(dotprod)(ghost_densemat *vec, void *res, ghost_d
                     //ghost_deviceReduceSumOld<cuFloatComplex><<<1,1024,32*sizeof(std::complex<float>)>>>(&partres[col*grid.x],&partres[col],grid.x);
                     ghost_deviceReduceSum<cuFloatComplex><<<CEILDIV(grid.x,256),256>>>(&partres[col*grid.x],((cuFloatComplex *)cu_localdot_result)+col,grid.x);
                 }
-                ghost_cu_download(res,cu_localdot_result,vec->traits.ncols*sizeof(std::complex<float>));
+                GHOST_CALL_RETURN(ghost_cu_download(res,cu_localdot_result,vec->traits.ncols*sizeof(std::complex<float>)));
                 ghost_cu_free(partres);
             }
         } else {
@@ -644,7 +644,7 @@ extern "C" ghost_error FUNCNAME(dotprod)(ghost_densemat *vec, void *res, ghost_d
                     //ghost_deviceReduceSumOld<double><<<1,1024,32*sizeof(double)>>>(&partres[col*grid.x],&partres[col],grid.x);
                     ghost_deviceReduceSum<double><<<CEILDIV(grid.x,256),256>>>(&partres[col*grid.x],((double *)cu_localdot_result)+col,grid.x);
                 }
-                ghost_cu_download(res,cu_localdot_result,vec->traits.ncols*sizeof(double));
+                GHOST_CALL_RETURN(ghost_cu_download(res,cu_localdot_result,vec->traits.ncols*sizeof(double)));
                 ghost_cu_free(partres);
             } else {
                 float * partres;
@@ -658,7 +658,7 @@ extern "C" ghost_error FUNCNAME(dotprod)(ghost_densemat *vec, void *res, ghost_d
                     //ghost_deviceReduceSumOld<float><<<1,1024,32*sizeof(float)>>>(&partres[col*grid.x],&partres[col],grid.x);
                     ghost_deviceReduceSum<float><<<CEILDIV(grid.x,256),256>>>(&partres[col*grid.x],((float *)cu_localdot_result)+col,grid.x);
                 }
-                ghost_cu_download(res,cu_localdot_result,vec->traits.ncols*sizeof(float));
+                GHOST_CALL_RETURN(ghost_cu_download(res,cu_localdot_result,vec->traits.ncols*sizeof(float)));
                 ghost_cu_free(partres);
             }
         }
