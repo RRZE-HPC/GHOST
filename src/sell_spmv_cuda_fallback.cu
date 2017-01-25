@@ -384,29 +384,49 @@ static ghost_error ghost_sellspmv_cu_tmpl_fallback(ghost_densemat *lhs, ghost_sp
     GHOST_INSTR_STOP("spmv_cuda")
         if (opts.flags & GHOST_SPMV_DOT) {
 #ifdef LOCALDOT_ONTHEFLY
-            GHOST_INSTR_START("spmv_cuda_dot_reduction")
-                ghost_lidx col;
+        GHOST_INSTR_START("spmv_cuda_dot_reduction")
+        v_dt_device *cu_localdot_result;
+        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot_result,sizeof(v_dt_device)*rhs->traits.ncols));
+        if (opts.flags & GHOST_SPMV_DOT_YY) {
+            GHOST_CALL_RETURN(ghost_cu_memset(cu_localdot_result,0,sizeof(v_dt_device)*rhs->traits.ncols));
+
+            ghost_lidx col;
             for (col=0; col<rhs->traits.ncols; col++) {
-                deviceReduce3<v_dt_device>(&cu_localdot[grid.x*col], &cu_localdot[col], rhs->traits.ncols*grid.x, grid.x);
+                //ghost_deviceReduceSumOld<v_dt_device><<<1,1024,32*sizeof(v_dt_device)>>>(&cu_localdot[grid.x*col+0*rhs->traits.ncols*grid.x],&cu_localdot_result[col],grid.x);
+                ghost_deviceReduceSum<v_dt_device><<<CEILDIV(grid.x,256),256>>>(&cu_localdot[grid.x*col+0*rhs->traits.ncols*grid.x],&cu_localdot_result[col],grid.x);
             }
-            if (opts.flags & GHOST_SPMV_DOT_YY) {
-                GHOST_CALL_RETURN(ghost_cu_download(localdot,cu_localdot,rhs->traits.ncols*sizeof(v_dt_host)));
+            GHOST_CALL_RETURN(ghost_cu_download(localdot,cu_localdot_result,rhs->traits.ncols*sizeof(v_dt_host)));
+        }
+        if (opts.flags & GHOST_SPMV_DOT_XY) {
+            GHOST_CALL_RETURN(ghost_cu_memset(cu_localdot_result,0,sizeof(v_dt_device)*rhs->traits.ncols));
+
+            ghost_lidx col;
+            for (col=0; col<rhs->traits.ncols; col++) {
+                //ghost_deviceReduceSumOld<v_dt_device><<<1,1024,32*sizeof(v_dt_device)>>>(&cu_localdot[grid.x*col+1*rhs->traits.ncols*grid.x],&cu_localdot_result[col],grid.x);
+                ghost_deviceReduceSum<v_dt_device><<<CEILDIV(grid.x,256),256>>>(&cu_localdot[grid.x*col+1*rhs->traits.ncols*grid.x],&cu_localdot_result[col],grid.x);
             }
-            if (opts.flags & GHOST_SPMV_DOT_XY) {
-                GHOST_CALL_RETURN(ghost_cu_download(&localdot[rhs->traits.ncols],&cu_localdot[rhs->traits.ncols*grid.x],rhs->traits.ncols*sizeof(v_dt_host)));
+            GHOST_CALL_RETURN(ghost_cu_download(&localdot[rhs->traits.ncols],cu_localdot_result,rhs->traits.ncols*sizeof(v_dt_host)));
+        }
+        if (opts.flags & GHOST_SPMV_DOT_XX) {
+            GHOST_CALL_RETURN(ghost_cu_memset(cu_localdot_result,0,sizeof(v_dt_device)*rhs->traits.ncols));
+
+            ghost_lidx col;
+            for (col=0; col<rhs->traits.ncols; col++) {
+                //ghost_deviceReduceSumOld<v_dt_device><<<1,1024,32*sizeof(v_dt_device)>>>(&cu_localdot[grid.x*col+2*rhs->traits.ncols*grid.x],&cu_localdot_result[col],grid.x);
+                ghost_deviceReduceSum<v_dt_device><<<CEILDIV(grid.x,256),256>>>(&cu_localdot[grid.x*col+2*rhs->traits.ncols*grid.x],&cu_localdot_result[col],grid.x);
             }
-            if (opts.flags & GHOST_SPMV_DOT_XX) {
-                GHOST_CALL_RETURN(ghost_cu_download(&localdot[2*rhs->traits.ncols],&cu_localdot[2*rhs->traits.ncols*grid.x],rhs->traits.ncols*sizeof(v_dt_host)));
-            }
-            GHOST_INSTR_STOP("spmv_cuda_dot_reduction")
+            GHOST_CALL_RETURN(ghost_cu_download(&localdot[2*rhs->traits.ncols],cu_localdot_result,rhs->traits.ncols*sizeof(v_dt_host)));
+        }
+        GHOST_CALL_RETURN(ghost_cu_free(cu_localdot_result));
+        GHOST_INSTR_STOP("spmv_cuda_dot_reduction")
 #else
-                GHOST_INSTR_START("spmv_cuda_dot")
-                PERFWARNING_LOG("Not doing the local dot product on-the-fly!");
-            memset(localdot,0,rhs->traits.ncols*3*sizeof(v_dt_host));
-            ghost_localdot(&localdot[0],lhs,lhs);
-            ghost_localdot(&localdot[rhs->traits.ncols],rhs,lhs);
-            ghost_localdot(&localdot[2*rhs->traits.ncols],rhs,rhs);
-            GHOST_INSTR_STOP("spmv_cuda_dot")
+        GHOST_INSTR_START("spmv_cuda_dot")
+        PERFWARNING_LOG("Not doing the local dot product on-the-fly!");
+        memset(localdot,0,rhs->traits.ncols*3*sizeof(v_dt_host));
+        ghost_localdot(&localdot[0],lhs,lhs);
+        ghost_localdot(&localdot[rhs->traits.ncols],rhs,lhs);
+        ghost_localdot(&localdot[2*rhs->traits.ncols],rhs,rhs);
+        GHOST_INSTR_STOP("spmv_cuda_dot")
 #endif
         }
     //if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
