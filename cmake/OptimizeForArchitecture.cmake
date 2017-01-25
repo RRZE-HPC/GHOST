@@ -119,7 +119,7 @@ macro(AutodetectHostArchitecture)
             set(TARGET_ARCHITECTURE "skylake-avx512")
          elseif(_cpu_model EQUAL 78 OR _cpu_model EQUAL 94) # 4E, 5E
             set(TARGET_ARCHITECTURE "skylake")
-         elseif(_cpu_model EQUAL 61 OR _cpu_model EQUAL 71 OR _cpu_model EQUAL 86)
+         elseif(_cpu_model EQUAL 61 OR _cpu_model EQUAL 71 OR _cpu_model EQUAL 86 OR _cpu_model EQUAL 79)
             set(TARGET_ARCHITECTURE "broadwell")
          elseif(_cpu_model EQUAL 60 OR _cpu_model EQUAL 69 OR _cpu_model EQUAL 70 OR _cpu_model EQUAL 63)
             set(TARGET_ARCHITECTURE "haswell")
