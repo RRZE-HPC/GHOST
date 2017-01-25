@@ -765,3 +765,114 @@ ghost_error ghost_context_set_map(ghost_context *ctx, ghost_maptype which, ghost
 
     return GHOST_SUCCESS;
 }
+    
+ghost_error ghost_context_comm_string(char **str, ghost_context *ctx, int root)
+{
+    int nrank, r, p, me,l;
+    bool printline = false;
+    ghost_lidx maxdues = 0, maxwishes = 0;
+    int dueslen = 0, duesprintlen = 4, wisheslen = 0, wishesprintlen = 6, ranklen, rankprintlen, linelen;
+    ghost_nrank(&nrank,ctx->mpicomm);
+    ghost_rank(&me,ctx->mpicomm);
+
+    ranklen = (int)floor(log10(abs(nrank))) + 1;
+    
+    for (r=0; r<nrank; r++) {
+        maxdues = MAX(maxdues,ctx->dues[r]);
+        maxwishes = MAX(maxwishes,ctx->wishes[r]);
+    }
+
+    MPI_Allreduce(MPI_IN_PLACE,&maxdues,1,ghost_mpi_dt_lidx,MPI_MAX,ctx->mpicomm);
+    MPI_Allreduce(MPI_IN_PLACE,&maxwishes,1,ghost_mpi_dt_lidx,MPI_MAX,ctx->mpicomm);
+    
+    if (maxdues != 0) {
+        dueslen = (int)floor(log10(abs(maxdues))) + 1;
+    }
+    
+    if (maxwishes != 0) {
+        wisheslen = (int)floor(log10(abs(maxwishes))) + 1;
+    }
+
+    rankprintlen = MAX(4,ranklen);
+    duesprintlen = MAX(4,dueslen + 3 + ranklen);
+    wishesprintlen = MAX(6,wisheslen + 3 + ranklen);
+    
+    linelen = rankprintlen + duesprintlen + wishesprintlen + 4;
+    
+    if (me == root) {
+        ghost_malloc((void **)str,1 + (linelen+1)*(3 + (nrank*(nrank+1))));
+        memset(*str,'\0',1 + (linelen+1)*(3 + (nrank*(nrank+1))));
+        
+        for (l=0; l<linelen; l++) {
+            sprintf((*str)+strlen(*str),"=");
+        }
+        sprintf((*str)+strlen(*str),"\n");
+        sprintf((*str)+strlen(*str),"%*s  %*s  %*s\n",rankprintlen,"RANK",duesprintlen,"DUES",wishesprintlen,"WISHES");
+        for (l=0; l<linelen; l++) {
+            sprintf((*str)+strlen(*str),"=");
+        }
+        sprintf((*str)+strlen(*str),"\n");
+    }
+
+    ghost_lidx dues[nrank];
+    ghost_lidx wishes[nrank];
+
+    for (r=0; r<nrank; r++) {
+        if (r == root && me == root) {
+            memcpy(wishes,ctx->wishes,nrank*sizeof(ghost_lidx));
+            memcpy(dues,ctx->dues,nrank*sizeof(ghost_lidx));
+        } else {
+            if (me == root) {
+                MPI_Recv(wishes,nrank,ghost_mpi_dt_lidx,r,r,ctx->mpicomm,MPI_STATUS_IGNORE);
+                MPI_Recv(dues,nrank,ghost_mpi_dt_lidx,r,nrank+r,ctx->mpicomm,MPI_STATUS_IGNORE);
+            }
+            if (me == r) {
+                MPI_Send(ctx->wishes,nrank,ghost_mpi_dt_lidx,root,me,ctx->mpicomm);
+                MPI_Send(ctx->dues,nrank,ghost_mpi_dt_lidx,root,me+nrank,ctx->mpicomm);
+            }
+        }
+        
+        if (me == root) {
+            for (p=0; p<nrank; p++) {
+                if (wishes[p] && dues[p]) {
+                    sprintf((*str)+strlen(*str),"%*d  =>%*d %*d  <=%*d %*d\n",rankprintlen,r,ranklen,p,dueslen,dues[p],ranklen,p,wisheslen,wishes[p]);
+                } else if (wishes[p]) {
+                    sprintf((*str)+strlen(*str),"%*d  %*s  <=%*d %*d\n",rankprintlen,r,duesprintlen," ",ranklen,p,wisheslen,wishes[p]);
+                } else if (dues[p]) {
+                    sprintf((*str)+strlen(*str),"%*d  <=%*d %*d  %*s\n",rankprintlen,r,ranklen,p,dueslen,dues[p],wishesprintlen," ");
+                }
+                if (wishes[p] || dues[p]) {
+                    printline = true;
+                }
+
+            }
+            if (printline && r != nrank-1) {
+                for (l=0; l<linelen; l++) {
+                    sprintf((*str)+strlen(*str),"-");
+                }
+                sprintf((*str)+strlen(*str),"\n");
+            }
+        }
+        printline = false;
+
+        //    if (wishes[w])
+//        if (me == root) {
+            //printf("%.*d %.*d %.*d\n",ranklen,r,dueslen,dues[r],wisheslen,wishes[r]);
+//            printf("%*d <-%*d %*d\n",rankprintlen,r,ranklen,r,wisheslen,wishes[r]);
+//        }
+
+    }
+
+    if (me == root) {
+        for (l=0; l<linelen; l++) {
+            sprintf((*str)+strlen(*str),"=");
+        }
+        sprintf((*str)+strlen(*str),"\n\0");
+    }
+
+    return GHOST_SUCCESS;
+
+
+
+
+}

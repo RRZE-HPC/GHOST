@@ -384,6 +384,8 @@ extern "C" {
      */
     ghost_error ghost_context_set_map(ghost_context *ctx, ghost_maptype which, ghost_map *map);
 
+    ghost_error ghost_context_comm_string(char **str, ghost_context *ctx, int root);
+
 #ifdef __cplusplus
 } //extern "C"
 #endif
