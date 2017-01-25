@@ -170,7 +170,7 @@ template<typename v_t>
 __inline__ __device__
 v_t ghost_blockReduceSum(v_t val) {
 
-    v_t * shmem = (v_t *)shared; // Shared mem for 32 partial sums
+    __shared__ v_t shmem[32];// Shared mem for 32 partial sums
 
     int lane = (threadIdx.x % warpSize) + (32*threadIdx.y);
     int wid = (threadIdx.x / warpSize) + (32*threadIdx.y);
