@@ -81,9 +81,9 @@ int main(int argc, char **argv) {
     mat_funcs_diag[(ghost_datatype)(GHOST_DT_REAL|GHOST_DT_DOUBLE)] = matsrc;
     matsrc.func = diag<float>;
     mat_funcs_diag[(ghost_datatype)(GHOST_DT_REAL|GHOST_DT_FLOAT)] = matsrc;
-    matsrc.func = diag<std::complex<double>>;
+    matsrc.func = diag<std::complex<double> >;
     mat_funcs_diag[(ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE)] = matsrc;
-    matsrc.func = diag<std::complex<float>>;
+    matsrc.func = diag<std::complex<float> >;
     mat_funcs_diag[(ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_FLOAT)] = matsrc;
     
     map<pair<ghost_datatype,ghost_datatype>,ref_func_t> ref_funcs_diag;
@@ -97,12 +97,12 @@ int main(int argc, char **argv) {
     //ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_s,dt_c)] = diag_ref<float,std::complex<float>>;
     //ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_z,dt_d)] = diag_ref<std::complex<double>,double>;
     //ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_z,dt_s)] = diag_ref<std::complex<double>,float>;
-    ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_z,dt_z)] = diag_ref<std::complex<double>,std::complex<double>>;
+    ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_z,dt_z)] = diag_ref<std::complex<double>,std::complex<double> >;
     //ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_z,dt_c)] = diag_ref<std::complex<double>,std::complex<float>>;
     //ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_c,dt_d)] = diag_ref<std::complex<float>,double>;
     //ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_c,dt_s)] = diag_ref<std::complex<float>,float>;
     //ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_c,dt_z)] = diag_ref<std::complex<float>,std::complex<double>>;
-    ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_c,dt_c)] = diag_ref<std::complex<float>,std::complex<float>>;
+    ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_c,dt_c)] = diag_ref<std::complex<float>,std::complex<float> >;
 
     GHOST_TEST_CALL(ghost_init(argc,argv));
     
