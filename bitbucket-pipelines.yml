@@ -1,8 +1,12 @@
-image: gcc:6.1
 pipelines:
   default:
     - step:
         script:
+          - echo "Mirroring repository to GitHub..."
+          - mkdir -p ~/.ssh
+          - (umask  077 ; echo $MY_SSH_KEY | base64 --decode > ~/.ssh/id_rsa)
+          - git push git@github.com:RRZE-HPC/GHOST.git
+          - echo "Building and testing GHOST..."
           - wget http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1404/x86_64/cuda-repo-ubuntu1404_8.0.44-1_amd64.deb
           - dpkg -i cuda-repo-ubuntu1404_8.0.44-1_amd64.deb
           - apt-get update
@@ -10,10 +14,5 @@ pipelines:
           - mkdir build
           - cd build
           - cmake ..
-          - cmake .
-          - make
+          - make -j
           - make test
-          - echo "Mirroring repository to GitHub..."
-          - mkdir -p ~/.ssh
-          - (umask  077 ; echo $MY_SSH_KEY | base64 --decode > ~/.ssh/id_rsa)
-          - git push git@github.com:RRZE-HPC/GHOST.git
