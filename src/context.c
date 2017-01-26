@@ -870,7 +870,7 @@ ghost_error ghost_context_comm_string(char **str, ghost_context *ctx, int root)
         for (l=0; l<linelen; l++) {
             sprintf((*str)+strlen(*str),"=");
         }
-        sprintf((*str)+strlen(*str),"\n\0");
+        sprintf((*str)+strlen(*str),"\n");
     }
 
     return GHOST_SUCCESS;
