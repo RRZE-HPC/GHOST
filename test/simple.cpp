@@ -126,7 +126,10 @@ int main(int argc, char **argv) {
 
             size_t vecdtsize;
             ghost_datatype_size(&vecdtsize,vtraits_it->datatype);
-            char yent[16], yent_ref[16], xent[16];
+            void *yent, *yent_ref, *xent;
+            yent = malloc(16);
+            yent_ref = malloc(16);
+            xent = malloc(16);
 
 #ifdef GHOST_HAVE_CUDA
             ghost_type ghost_type;
