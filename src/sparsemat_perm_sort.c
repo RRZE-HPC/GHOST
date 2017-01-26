@@ -51,12 +51,20 @@ ghost_error ghost_sparsemat_perm_sort(ghost_context *ctx, ghost_sparsemat *mat, 
         memset(ctx->row_map->loc_perm,0,sizeof(ghost_lidx)*nrows);
         memset(ctx->row_map->loc_perm_inv,0,sizeof(ghost_lidx)*nrows);
     }
-    
+   
+#ifdef HAVE_QSORT_R 
 #pragma omp parallel for
     for (c=0; c<nrows/scope; c++) {
         qsort_r(rowSort+c*scope, scope, sizeof(ghost_sorting_helper), ghost_cmp_entsperrow, NULL);
     }
     qsort_r(rowSort+(nrows/scope)*scope, nrows%scope, sizeof(ghost_sorting_helper), ghost_cmp_entsperrow, NULL);
+#else
+#pragma omp parallel for
+    for (c=0; c<nrows/scope; c++) {
+        qsort(rowSort+c*scope, scope, sizeof(ghost_sorting_helper), ghost_cmp_entsperrow);
+    }
+    qsort(rowSort+(nrows/scope)*scope, nrows%scope, sizeof(ghost_sorting_helper), ghost_cmp_entsperrow);
+#endif
 
 #pragma omp parallel for    
     for(i=0; i < nrows; ++i) {

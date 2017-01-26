@@ -13,6 +13,7 @@ endif()
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/")
 
+include(CheckFunctionExists)
 include(CheckCCompilerFlag)
 include(${PROJECT_SOURCE_DIR}/cmake/OptimizeForArchitecture.cmake)
 
@@ -686,6 +687,8 @@ if (GHOST_USE_SPMP)
     include_directories(SYSTEM ${PROJECT_BINARY_DIR}/SpMP/src)
     add_dependencies(ghost SpMP)
 endif()
+
+check_function_exists(qsort_r HAVE_QSORT_R)
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Cray")
     # msg 193 complains about commented out lines in config.h

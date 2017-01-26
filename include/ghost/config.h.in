@@ -69,6 +69,9 @@
 #cmakedefine GHOST_COMPATIBLE_CHECK
 #cmakedefine GHOST_COMPATIBLE_PERM
 
+/* Platform checks */
+#cmakedefine HAVE_QSORT_R
+
 #endif
 
 
