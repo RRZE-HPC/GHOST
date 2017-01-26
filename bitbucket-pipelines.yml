@@ -9,4 +9,5 @@ pipelines:
   default:
     - step:
         script:
-          - echo "Everything is awesome!"
+          - mkdir -p ~/.ssh
+          - (umask  077 ; echo $MY_SSH_KEY | base64 --decode > ~/.ssh/id_rsa)
