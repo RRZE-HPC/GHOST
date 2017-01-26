@@ -383,7 +383,15 @@ extern "C" {
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error ghost_context_set_map(ghost_context *ctx, ghost_maptype which, ghost_map *map);
-
+    /**
+     * @brief Create a string holding the context's communication information.
+     *
+     * @param str The string, must be free'd by the caller.
+     * @param ctx The context.
+     * @param root On which rank in the context's MPI communicator to gather the information and create the string.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
     ghost_error ghost_context_comm_string(char **str, ghost_context *ctx, int root);
 
 #ifdef __cplusplus
