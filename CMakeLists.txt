@@ -151,7 +151,7 @@ set (SOURCES
     src/timing.c
     src/types.c
     src/util.c
-   )
+    )
 
 set (HEADERS
     include/ghost/autogen.h
@@ -206,7 +206,7 @@ set (HEADERS
     include/ghost/sell_kacz_mc.h
     include/ghost/sell_kacz_fallback.h
     include/ghost/compatibility_check.h
-   )
+    )
 
 # only do this in the initial run: either if GHOST_USE_CUDA is undefined or it is enabled by the user but no libraries are found yet
 if (NOT DEFINED GHOST_USE_CUDA OR (GHOST_USE_CUDA AND ("${CUDA_LIBRARIES}" STREQUAL "")))
@@ -271,16 +271,16 @@ foreach(TEMPLATE_SRCFILE ${TEMPLATE_SRCFILES})
                 if ("${TEMPLATE_HEADER} " MATCHES "${FUNC_HEADER} ") # File matches AUTOGEN function
                     string(REGEX MATCH " .* " TEMPLATE_CONF ${TEMPLATE_HEADER}) # match string between spaces which contains the conf
                     string(STRIP ${TEMPLATE_CONF} TEMPLATE_CONF)
-                    
+
                     # check if fixed parameters match: replace any non-fixed parameters with ".+" and match this against the combination
                     # every non-fixed will now match _any_ number and fixed numbers have to match the specific number
                     string(REGEX REPLACE "[a-zA-Z\\*]+" ".+" TEMPLATE_CONF_FIXEDPARS ${TEMPLATE_CONF})
                     string(REGEX MATCH ${TEMPLATE_CONF_FIXEDPARS} FIXEDMATCH ${COMBINATION})
-                    
+
                     # check if wildcards match: replace any non-wildcards with "." and compare strings
                     string(REGEX REPLACE "[a-zA-Z0-9]+" "." TEMPLATE_CONF_PATTERN ${TEMPLATE_CONF})
                     string(REGEX REPLACE "[a-zA-Z0-9]+" "." COMBINATION_PATTERN ${COMBINATION})
-                    
+
 
                     if (NOT ${FIXEDMATCH} STREQUAL "" AND
                             ${TEMPLATE_CONF_PATTERN} STREQUAL ${COMBINATION_PATTERN})
@@ -307,7 +307,7 @@ foreach(TEMPLATE_SRCFILE ${TEMPLATE_SRCFILES})
             endforeach()
         endforeach()
     endif()
-                        
+
     foreach (GENERATED_FILE ${GENERATED_FILES})
         #message(STATUS "Unrolling ${GENERATED_FILE}")
         get_filename_component(TO_UNROLL_FILENAME ${GENERATED_FILE} NAME)
@@ -658,7 +658,7 @@ if (GHOST_HAVE_CUDA)
     file(GLOB CU_SOURCES "${PROJECT_SOURCE_DIR}/src/*.cu")
     cuda_compile(CU_OBJS ${CU_SOURCES})
     cuda_compile(CU_GENERATED_OBJS ${CU_GENERATED_SOURCES})
-    
+
     set (SOURCES 
         ${SOURCES}
         ${CU_GENERATED_OBJS}
@@ -699,15 +699,15 @@ elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "PGI")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -std=c++0x")
 else ()
 
-########################################################################
-# Try to find out, if compiler is Fujitsu
-########################################################################
+    ########################################################################
+    # Try to find out, if compiler is Fujitsu
+    ########################################################################
     include(CheckCSourceCompiles)
     unset(CHECK_FUJITSU_DEFINES_C CACHE)
     CHECK_C_SOURCE_COMPILES("
-        #if defined(__FUJITSU) || defined(__FCC_VERSION) || defined(__fcc_version)
-        int main(){ return 0; }
-        #endif
+    #if defined(__FUJITSU) || defined(__FCC_VERSION) || defined(__fcc_version)
+    int main(){ return 0; }
+    #endif
     " CHECK_FUJITSU_DEFINES_C)
 
     if(${CHECK_FUJITSU_DEFINES_C})
@@ -716,34 +716,34 @@ else ()
     else()
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -std=c99 -Wall -Wextra -Werror -pedantic")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -std=c++0x -Wall -Wextra -Werror -pedantic")
-    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
-        set(CMAKE_INCLUDE_SYSTEM_FLAG_C "-isystem ") # Not present in Cmake 2.8.11.2
-        set(CMAKE_INCLUDE_SYSTEM_FLAG_CXX "-isystem ") # Not present in Cmake 2.8.11.2
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wunused-variable -save-temps -fsource-asm -w3 -wd981")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wunused-variable -save-temps -fsource-asm -w3 -wd981 -wd383")
-        if ("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
-            set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-alias")
-            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-alias")
-        endif()
-    else()
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unknown-pragmas")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unknown-pragmas")
-        if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU") 
-            message(STATUS "NOTE: by default, we only set the -save-temps compiler flag with Intel compilers right now. You may want to use CC=\"ccache gcc\" etc to speed up the compiliation, see issue #269.")
+        if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
+            set(CMAKE_INCLUDE_SYSTEM_FLAG_C "-isystem ") # Not present in Cmake 2.8.11.2
+            set(CMAKE_INCLUDE_SYSTEM_FLAG_CXX "-isystem ") # Not present in Cmake 2.8.11.2
+            set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wunused-variable -save-temps -fsource-asm -w3 -wd981")
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wunused-variable -save-temps -fsource-asm -w3 -wd981 -wd383")
             if ("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
-                set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Ofast -fstrict-aliasing")
-                set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast -fstrict-aliasing")
+                set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-alias")
+                set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-alias")
             endif()
-            if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" AND NOT "${CMAKE_CXX_COMPILER_VERSION}" VERSION_LESS "4.8"))
-                set(SANITIZER "" CACHE STRING "What should be sanitized by Clang/GCC for a build? (address, thread, memory, undefined or leave empty)")
-                if (NOT "${SANITIZER}" STREQUAL "") 
-                    string(TOLOWER "${SANITIZER}" SANITIZER)
-                    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -fsanitize=${SANITIZER} -fno-omit-frame-pointer -pie")
-                    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -fsanitize=${SANITIZER} -fno-omit-frame-pointer -pie")
+        else()
+            set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unknown-pragmas")
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unknown-pragmas")
+            if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU") 
+                message(STATUS "NOTE: by default, we only set the -save-temps compiler flag with Intel compilers right now. You may want to use CC=\"ccache gcc\" etc to speed up the compiliation, see issue #269.")
+                if ("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
+                    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Ofast -fstrict-aliasing")
+                    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast -fstrict-aliasing")
+                endif()
+                if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" AND NOT "${CMAKE_CXX_COMPILER_VERSION}" VERSION_LESS "4.8"))
+                    set(SANITIZER "" CACHE STRING "What should be sanitized by Clang/GCC for a build? (address, thread, memory, undefined or leave empty)")
+                    if (NOT "${SANITIZER}" STREQUAL "") 
+                        string(TOLOWER "${SANITIZER}" SANITIZER)
+                        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -fsanitize=${SANITIZER} -fno-omit-frame-pointer -pie")
+                        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -fsanitize=${SANITIZER} -fno-omit-frame-pointer -pie")
+                    endif()
                 endif()
             endif()
         endif()
-    endif()
     endif()
     # -fstrict-aliasing is set in GCC with -O3
 endif ()
@@ -816,13 +816,13 @@ endif()
 #    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
 #        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-variable -Wno-unused-parameter -Wno-unused-function -Wno-unused-but-set-variable")
 #        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-variable -Wno-unused-parameter -Wno-unused-function -Wno-unused-but-set-variable")
-        #    endif()
-    # TODO Are there any other flags?
-    #    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
-    #    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-function")
-    #    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-function")
-    # endif()
-    #endif()
+#    endif()
+# TODO Are there any other flags?
+#    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
+#    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-function")
+#    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-function")
+# endif()
+#endif()
 ########################################################################
 
 configure_file (
@@ -856,7 +856,7 @@ configure_file(
     IMMEDIATE @ONLY)
 add_custom_target(uninstall "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_BINARY_DIR}/cmake/cmake_uninstall.cmake") 
 
-    
+
 file(GLOB TESTS "${PROJECT_SOURCE_DIR}/test/[^.]*")
 
 find_package(Doxygen)
@@ -899,14 +899,43 @@ add_test(NAME simple WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/test COMMAND simple
 add_test(NAME minimal WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/test COMMAND minimal)
 set_tests_properties(minimal PROPERTIES TIMEOUT 60)
 
-# run tests on GPU if CUDA
+# run tests on GPU if one is present
+# code adapted from http://stackoverflow.com/a/37995691
 if (GHOST_USE_CUDA)
-  add_test(NAME simple_GPU WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/test COMMAND simple)
-  set_tests_properties(simple_GPU PROPERTIES ENVIRONMENT GHOST_TYPE=cuda)
-  set_tests_properties(simple_GPU PROPERTIES TIMEOUT 60)
-  add_test(NAME minimal_GPU WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/test COMMAND minimal)
-  set_tests_properties(minimal_GPU PROPERTIES ENVIRONMENT GHOST_TYPE=cuda)
-  set_tests_properties(minimal_GPU PROPERTIES TIMEOUT 60)
+    set(DETECT_GPU_COUNT 0)
+    find_program(_nvidia_smi_path "nvidia-smi")
+    if (_nvidia_smi)
+        set(DETECT_GPU_COUNT_NVIDIA_SMI 0)
+        # execute nvidia-smi -L to get a short list of GPUs available
+        exec_program(${_nvidia_smi_path} ARGS -L
+            OUTPUT_VARIABLE _nvidia_smi_out
+            RETURN_VALUE    _nvidia_smi_ret)
+        # process the stdout of nvidia-smi
+        if (_nvidia_smi_ret EQUAL 0)
+            # convert string with newlines to list of strings
+            string(REGEX REPLACE "\n" ";" _nvidia_smi_out "${_nvidia_smi_out}")
+            foreach(_line ${_nvidia_smi_out})
+                if (_line MATCHES "^GPU [0-9]+:")
+                    math(EXPR DETECT_GPU_COUNT_NVIDIA_SMI "${DETECT_GPU_COUNT_NVIDIA_SMI}+1")
+                    # the UUID is not very useful for the user, remove it
+                    string(REGEX REPLACE " \\(UUID:.*\\)" "" _gpu_info "${_line}")
+                    if (NOT _gpu_info STREQUAL "")
+                        list(APPEND DETECT_GPU_INFO "${_gpu_info}")
+                    endif()
+                endif()
+            endforeach()
+
+            set(DETECT_GPU_COUNT ${DETECT_GPU_COUNT_NVIDIA_SMI})
+        endif()
+    endif()
+    if (${DETECT_GPU_COUNT} GREATER 0)
+        add_test(NAME simple_GPU WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/test COMMAND simple)
+        set_tests_properties(simple_GPU PROPERTIES ENVIRONMENT GHOST_TYPE=GPU)
+        set_tests_properties(simple_GPU PROPERTIES TIMEOUT 60)
+        add_test(NAME minimal_GPU WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/test COMMAND minimal)
+        set_tests_properties(minimal_GPU PROPERTIES ENVIRONMENT GHOST_TYPE=GPU)
+        set_tests_properties(minimal_GPU PROPERTIES TIMEOUT 60)
+    endif()
 endif()
 
 add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} --force-new-ctest-process --output-on-failure DEPENDS simple)
