@@ -18,9 +18,6 @@
 #include <unordered_map>
 #include <vector>
 
-using namespace std;
-
-
 template<typename m_t>
 static ghost_error ghost_carp_init_tmpl(ghost_sparsemat *mat, ghost_densemat *rhs, ghost_carp_opts *opts)
 {
@@ -219,8 +216,8 @@ static bool operator==(const ghost_kacz_parameters& a, const ghost_kacz_paramete
     a.alignment == b.alignment && a.method == b.method;
 }
 
-static unordered_map<ghost_kacz_parameters, ghost_kacz_kernel> 
-ghost_kacz_kernels = unordered_map<ghost_kacz_parameters,ghost_kacz_kernel>();
+static std::unordered_map<ghost_kacz_parameters, ghost_kacz_kernel> 
+ghost_kacz_kernels = std::unordered_map<ghost_kacz_parameters,ghost_kacz_kernel>();
 
 
 template<typename m_t, typename v_t, bool forward>
@@ -486,8 +483,8 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
                                         
                                         
                                         INFO_LOG("Try chunkheight=%s, blocksz=%s, impl=%s, %s, method %s, storage %s, vec DT %s",
-                                                 p.chunkheight==-1?"arbitrary":to_string((long long)p.chunkheight).c_str(),
-                                                 p.blocksz==-1?"arbitrary":to_string((long long)p.blocksz).c_str(),
+                                                 p.chunkheight==-1?"arbitrary":ghost::to_string((long long)p.chunkheight).c_str(),
+                                                 p.blocksz==-1?"arbitrary":ghost::to_string((long long)p.blocksz).c_str(),
                                                  ghost_implementation_string(p.impl),p.alignment==GHOST_UNALIGNED?"unaligned":"aligned",p.method==GHOST_KACZ_METHOD_BMC?"BMC":p.method==GHOST_KACZ_METHOD_MC?"MC":p.method==GHOST_KACZ_METHOD_BMCNORMAL?"BMC_NORMAL":"BMC_shift",ghost_densemat_storage_string(p.storage),ghost_datatype_string(p.vdt));
                                         kernel = ghost_kacz_kernels[p];
                                         if (kernel) {
