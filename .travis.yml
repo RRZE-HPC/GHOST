@@ -17,11 +17,11 @@ before_install:
     - wget http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1404/x86_64/cuda-repo-ubuntu1404_8.0.44-1_amd64.deb
     - sudo dpkg -i cuda-repo-ubuntu1404_8.0.44-1_amd64.deb
     - sudo apt-get update
-    - sudo apt-get install libhwloc-dev cuda-toolkit-8-0 libopenmpi-dev libgsl0-dev doxygen
+    - sudo apt-get install libhwloc-dev cuda-toolkit-8-0 libopenmpi-dev libgsl0-dev doxygen openmpi-bin
 
 script: 
     - make -j
-    - make test
+    - make check
 
 after_success:
     - openssl aes-256-cbc -K $encrypted_fdcc3ef47267_key -iv $encrypted_fdcc3ef47267_iv -in ../travis_deploy.enc -out travis_deploy -d
