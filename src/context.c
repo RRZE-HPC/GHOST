@@ -835,11 +835,14 @@ ghost_error ghost_context_comm_string(char **str, ghost_context *ctx, int root)
         if (me == root) {
             for (p=0; p<nrank; p++) {
                 if (wishes[p] && dues[p]) {
-                    sprintf((*str)+strlen(*str),"%*d  =>%*d %*d  <=%*d %*d\n",rankprintlen,r,ranklen,p,dueslen,dues[p],ranklen,p,wisheslen,wishes[p]);
+                    sprintf((*str)+strlen(*str),"%*d",rankprintlen,r);
+                    sprintf((*str)+strlen(*str),"  =>%*d %*d",ranklen,p,dueslen,dues[p]);
+                    sprintf((*str)+strlen(*str),"%*s<=%*d %*d\n",MAX(2,2+wishesprintlen-(wisheslen+3+ranklen))," ",ranklen,p,wisheslen,wishes[p]);
                 } else if (wishes[p]) {
-                    sprintf((*str)+strlen(*str),"%*d  %*s  <=%*d %*d\n",rankprintlen,r,duesprintlen," ",ranklen,p,wisheslen,wishes[p]);
+                    sprintf((*str)+strlen(*str),"%*d  %*s",rankprintlen,r,duesprintlen," ");
+                    sprintf((*str)+strlen(*str),"%*s<=%*d %*d\n",MAX(2,2+wishesprintlen-(wisheslen+3+ranklen))," ",ranklen,p,wisheslen,wishes[p]);
                 } else if (dues[p]) {
-                    sprintf((*str)+strlen(*str),"%*d  <=%*d %*d  %*s\n",rankprintlen,r,ranklen,p,dueslen,dues[p],wishesprintlen," ");
+                    sprintf((*str)+strlen(*str),"%*d  =>%*d %*d\n",rankprintlen,r,ranklen,p,dueslen,dues[p]);
                 }
                 if (wishes[p] || dues[p]) {
                     printline = true;
