@@ -15,6 +15,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/")
 
 include(CheckFunctionExists)
 include(CheckCCompilerFlag)
+include(ExternalProject)
 include(${PROJECT_SOURCE_DIR}/cmake/OptimizeForArchitecture.cmake)
 
 set(GHOST_USE_MPI 1 CACHE BOOL "Build with MPI")
@@ -366,7 +367,7 @@ set(LIBHWLOC LIBHWLOC-NOTFOUND)
 
 if (PKGCONFIG_FOUND AND NOT HWLOC_INCLUDE_DIR)
     message(STATUS "Try to find hwloc via pkg-config")
-    find_package(HWLOC REQUIRED)
+    find_package(HWLOC)
     find_library(LIBHWLOC hwloc)
 endif()
 
@@ -374,9 +375,24 @@ endif()
 if (NOT HWLOC_INCLUDE_DIR)
     find_path(HWLOC_INCLUDE_DIR hwloc.h)
 endif()
+        
+set(GITHUB_GIT_URL "github.com" CACHE STRING "The github GIT URL. This has to be changed in certain situations if located behind a firewall.")
 
+# hwloc not found - download and build it
 if (NOT HWLOC_INCLUDE_DIR)
-    message(FATAL_ERROR "HWLOC_INCLUDE_DIR not set!")
+    message(STATUS "Could not find hwloc.h neither via pkg-config nor in the defined HWLOC_INCLUDE_DIR! Trying to build hwloc...")
+    ExternalProject_Add(hwloc
+        PREFIX ${PROJECT_BINARY_DIR}/hwloc
+        URL https://www.open-mpi.org/software/hwloc/v1.11/downloads/hwloc-1.11.5.tar.gz
+        SOURCE_DIR ${PROJECT_BINARY_DIR}/hwloc/src/hwloc
+        CONFIGURE_COMMAND ./configure --prefix=${PROJECT_BINARY_DIR}/hwloc-inst
+        BUILD_COMMAND make 
+        BUILD_IN_SOURCE 1
+        INSTALL_COMMAND make install
+        )
+    set(BUILTIN_HWLOC 1)
+    set(HWLOC_INCLUDE_DIR "${PROJECT_BINARY_DIR}/hwloc-inst/include")
+    set(LIBHWLOC "${PROJECT_BINARY_DIR}/hwloc-inst/lib/libhwloc.so")
 endif()
 
 if (NOT LIBHWLOC)
@@ -385,6 +401,12 @@ if (NOT LIBHWLOC)
 endif()
 
 set(HWLOC_LIBRARIES ${LIBHWLOC})
+
+if (NOT EXISTS "${HWLOC_INCLUDE_DIR}/hwloc.h")
+endif()
+
+include_directories(BEFORE ${HWLOC_INCLUDE_DIR} ${PROJECT_BINARY_DIR}/ghost ${PROJECT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/include)
+
 
 find_package(OpenMP)
 
@@ -600,11 +622,6 @@ else () #generic BLAS
     message(STATUS "Generic BLAS. BLAS_LIBRARIES has to be set manually before linking.")
 endif()
 
-if (NOT EXISTS "${HWLOC_INCLUDE_DIR}/hwloc.h")
-    message(FATAL_ERROR "Could not find hwloc.h neither via pkg-config nor in the defined HWLOC_INCLUDEDIR!")
-endif()
-
-include_directories(BEFORE ${HWLOC_INCLUDE_DIR} ${PROJECT_BINARY_DIR}/ghost ${PROJECT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/include)
 
 if (GHOST_USE_GPUDIRECT)
     set(GHOST_HAVE_GPUDIRECT 1)
@@ -613,8 +630,6 @@ endif()
 if (GHOST_USE_SPMP)
     if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
         set(GHOST_HAVE_SPMP 1)
-        set(GITHUB_GIT_URL "github.com" CACHE STRING "The github GIT URL. This has to be changed in certain situations if located behind a firewall.")
-        include(ExternalProject)
         set(SPMP_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
         set_property(DIRECTORY PROPERTY EP_STEP_TARGETS build)
         if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
@@ -686,6 +701,12 @@ if (GHOST_USE_SPMP)
     target_link_libraries(ghost "${PROJECT_BINARY_DIR}/SpMP/src/SpMP/libspmp.a")
     include_directories(SYSTEM ${PROJECT_BINARY_DIR}/SpMP/src)
     add_dependencies(ghost SpMP)
+endif()
+
+if (BUILTIN_HWLOC)
+    target_link_libraries(ghost "${PROJECT_BINARY_DIR}/hwloc-inst/lib/libhwloc.so")
+    include_directories(SYSTEM ${PROJECT_BINARY_DIR}/hwloc-inst/include)
+    add_dependencies(ghost hwloc)
 endif()
 
 check_function_exists(qsort_r HAVE_QSORT_R)
