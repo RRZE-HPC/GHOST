@@ -49,7 +49,7 @@ static ghost_error ghost_carp_init_tmpl(ghost_sparsemat *mat, ghost_densemat *rh
                     scal[row] += mval[idx]*mval[idx];
                     idx+=chunkHeight;
                 }    
-                scal[row] = sqrt(scal[row]);
+                scal[row] = std::sqrt(scal[row]);
                 idx -= mat->chunkLen[chunk]*chunkHeight;               
                 for(ghost_lidx j=0; j<mat->chunkLen[chunk]; ++j) {
                     mval[idx] = ((m_t)mval[idx])/scal[row];
@@ -69,7 +69,7 @@ static ghost_error ghost_carp_init_tmpl(ghost_sparsemat *mat, ghost_densemat *rh
                 scal[row] += mval[idx]*mval[idx];
                 idx+=chunkHeight;
             }    
-            scal[row] = sqrt(scal[row]);
+            scal[row] = std::sqrt(scal[row]);
             idx -= mat->chunkLen[chunk]*chunkHeight;               
             for(ghost_lidx j=0; j<mat->chunkLen[chunk]; ++j) {
                 mval[idx] = ((m_t)mval[idx])/scal[row];
