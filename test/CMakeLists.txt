@@ -8,7 +8,9 @@ endif()
 
 add_executable(simple simple.cpp)
 add_executable(minimal minimal.c)
-set(TESTS simple minimal)
+add_executable(context context.c)
+
+set(TESTS simple minimal context)
 
 foreach(TEST ${TESTS})
     add_dependencies(${TEST} ghost)
