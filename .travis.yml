@@ -30,8 +30,9 @@ after_success:
               "  IdentityFile $(pwd)/travis_deploy" \
               "  LogLevel ERROR" >> ~/.ssh/config
     - git clone git@bitbucket.org:mkreutzer/mkreutzer.bitbucket.org.git
-    - make doc
     - cd mkreutzer.bitbucket.org
+    - git rm -rf *
+    - make -C ../ doc
     - git add -A
     - git commit -am "doc update"
     - git push
