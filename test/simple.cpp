@@ -147,7 +147,7 @@ int main(int argc, char **argv) {
             for (i=0; i<DM_NROWS(y); i++) {
                 GHOST_TEST_CALL(ghost_densemat_entry(yent,y,i,0));
                 GHOST_TEST_CALL(ghost_densemat_entry(xent,x,i,0));
-                ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(vtraits_it->datatype,mtraits_it->datatype)](yent_ref,i,xent);
+                ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(vtraits_it->datatype,mtraits_it->datatype)](yent_ref,A->context->row_map->offs+i,xent);
                 RETURN_IF_DIFFER((void *)yent,(void *)yent_ref,1,vtraits_it->datatype);
             }
 
