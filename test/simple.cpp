@@ -104,25 +104,25 @@ int main(int argc, char **argv) {
     //ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_c,dt_z)] = diag_ref<std::complex<float>,std::complex<double>>;
     ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(dt_c,dt_c)] = diag_ref<std::complex<float>,std::complex<float> >;
 
-    GHOST_TEST_CALL(ghost_init(argc,argv));
+    GHOST_CALL_RETURN(ghost_init(argc,argv));
     
    
     for (vector<ghost_sparsemat_traits>::iterator mtraits_it = mtraits_vec.begin(); mtraits_it != mtraits_vec.end(); ++mtraits_it) {
         
         // create sparsemat with traits and set according source function
-        GHOST_TEST_CALL(ghost_sparsemat_create(&A, NULL, &(*mtraits_it), 1));
-        GHOST_TEST_CALL(ghost_sparsemat_init_rowfunc(A,&mat_funcs_diag[mtraits_it->datatype],MPI_COMM_WORLD,1.));
+        GHOST_CALL_RETURN(ghost_sparsemat_create(&A, NULL, &(*mtraits_it), 1));
+        GHOST_CALL_RETURN(ghost_sparsemat_init_rowfunc(A,&mat_funcs_diag[mtraits_it->datatype],MPI_COMM_WORLD,1.));
 
         for (vector<ghost_densemat_traits>::iterator vtraits_it = vtraits_vec.begin(); vtraits_it != vtraits_vec.end(); ++vtraits_it) {
             if (!ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(vtraits_it->datatype,mtraits_it->datatype)]) continue;
 
-            GHOST_TEST_CALL(ghost_densemat_create(&x, A->context->col_map, *vtraits_it));
-            GHOST_TEST_CALL(ghost_densemat_create(&y, A->context->row_map, *vtraits_it));
-            GHOST_TEST_CALL(ghost_densemat_init_rand(x));
-            GHOST_TEST_CALL(ghost_densemat_init_val(y,&zero));
+            GHOST_CALL_RETURN(ghost_densemat_create(&x, A->context->col_map, *vtraits_it));
+            GHOST_CALL_RETURN(ghost_densemat_create(&y, A->context->row_map, *vtraits_it));
+            GHOST_CALL_RETURN(ghost_densemat_init_rand(x));
+            GHOST_CALL_RETURN(ghost_densemat_init_val(y,&zero));
           
             printf("Test SpMV with %s matrix (SELL-%d-%d) and %s vectors (%s)\n",ghost_datatype_string(A->traits.datatype),A->traits.C,A->traits.sortScope,ghost_datatype_string(x->traits.datatype),ghost_densemat_storage_string(x->traits.storage));
-            GHOST_TEST_CALL(ghost_spmv(y,A,x,GHOST_SPMV_OPTS_INITIALIZER));
+            GHOST_CALL_RETURN(ghost_spmv(y,A,x,GHOST_SPMV_OPTS_INITIALIZER));
 
             size_t vecdtsize;
             ghost_datatype_size(&vecdtsize,vtraits_it->datatype);
@@ -133,11 +133,11 @@ int main(int argc, char **argv) {
 
 #ifdef GHOST_HAVE_CUDA
             ghost_type ghost_type;
-            GHOST_TEST_CALL(ghost_type_get(&ghost_type));
+            GHOST_CALL_RETURN(ghost_type_get(&ghost_type));
             if (ghost_type == GHOST_TYPE_CUDA)
             {
-               GHOST_TEST_CALL(ghost_densemat_download(x));
-               GHOST_TEST_CALL(ghost_densemat_download(y));
+               GHOST_CALL_RETURN(ghost_densemat_download(x));
+               GHOST_CALL_RETURN(ghost_densemat_download(y));
             }
 #endif
 
@@ -145,8 +145,8 @@ int main(int argc, char **argv) {
             ghost_lidx i;
 
             for (i=0; i<DM_NROWS(y); i++) {
-                GHOST_TEST_CALL(ghost_densemat_entry(yent,y,i,0));
-                GHOST_TEST_CALL(ghost_densemat_entry(xent,x,i,0));
+                GHOST_CALL_RETURN(ghost_densemat_entry(yent,y,i,0));
+                GHOST_CALL_RETURN(ghost_densemat_entry(xent,x,i,0));
                 ref_funcs_diag[pair<ghost_datatype,ghost_datatype>(vtraits_it->datatype,mtraits_it->datatype)](yent_ref,A->context->row_map->offs+i,xent);
                 RETURN_IF_DIFFER((void *)yent,(void *)yent_ref,1,vtraits_it->datatype);
             }
@@ -162,7 +162,7 @@ int main(int argc, char **argv) {
 
         
     
-    GHOST_TEST_CALL(ghost_finalize());
+    GHOST_CALL_RETURN(ghost_finalize());
    
     return EXIT_SUCCESS;
 }

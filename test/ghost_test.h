@@ -48,8 +48,4 @@
             }\
         }\
 
-
-#define GHOST_TEST_CALL(call) {if (call != GHOST_SUCCESS) {return EXIT_FAILURE;}}
-
-
 #endif
