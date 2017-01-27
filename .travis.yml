@@ -17,7 +17,7 @@ before_install:
     - wget http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1404/x86_64/cuda-repo-ubuntu1404_8.0.44-1_amd64.deb
     - sudo dpkg -i cuda-repo-ubuntu1404_8.0.44-1_amd64.deb
     - sudo apt-get update
-    - sudo apt-get install libhwloc-dev cuda-toolkit-8-0 libopenmpi-dev libgsl0-dev doxygen openmpi-bin graphviz
+    - sudo apt-get install libhwloc-dev cuda-toolkit-8-0 libopenmpi-dev libgsl0-dev doxygen openmpi-bin graphviz texlive 
 
 script: 
     - make -j
