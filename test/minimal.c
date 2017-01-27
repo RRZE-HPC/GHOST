@@ -25,7 +25,7 @@ int main(int argc, char **argv)
     mtraits.datatype = (ghost_datatype)(GHOST_DT_REAL|GHOST_DT_DOUBLE);
     mtraits.flags = GHOST_SPARSEMAT_SAVE_ORIG_COLS; // needed for printing if more than one process
 
-    ghost_init(argc,argv);
+    GHOST_CALL_RETURN(ghost_init(argc,argv));
 
     // create matrix source
     ghost_sparsemat_src_rowfunc matsrc = GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER;
@@ -33,23 +33,23 @@ int main(int argc, char **argv)
     matsrc.maxrowlen = 1;
     matsrc.gnrows = N;
 
-    // create sparse matrix A from row-wise function    
-    ghost_sparsemat_create(&A, NULL, &mtraits, 1);
-    ghost_sparsemat_init_rowfunc(A,&matsrc,MPI_COMM_WORLD,1.);
+    // create sparse matrix A from row-wise source function    
+    GHOST_CALL_RETURN(ghost_sparsemat_create(&A, NULL, &mtraits, 1));
+    GHOST_CALL_RETURN(ghost_sparsemat_init_rowfunc(A,&matsrc,MPI_COMM_WORLD,1.));
 
     // create and initialize input vector x and output vector y
-    ghost_densemat_create(&x, A->context->col_map, vtraits);
-    ghost_densemat_create(&y, A->context->row_map, vtraits);
-    ghost_densemat_init_rand(x);      // x = random
-    ghost_densemat_init_val(y,&zero); // y = 0
+    GHOST_CALL_RETURN(ghost_densemat_create(&x, A->context->col_map, vtraits));
+    GHOST_CALL_RETURN(ghost_densemat_create(&y, A->context->row_map, vtraits));
+    GHOST_CALL_RETURN(ghost_densemat_init_rand(x));      // x = random
+    GHOST_CALL_RETURN(ghost_densemat_init_val(y,&zero)); // y = 0
 
     // compute y = A*x
-    ghost_spmv(y,A,x,GHOST_SPMV_OPTS_INITIALIZER);
+    GHOST_CALL_RETURN(ghost_spmv(y,A,x,GHOST_SPMV_OPTS_INITIALIZER));
    
     // print y, A and x 
-    ghost_sparsemat_string(&Astr,A,1);
-    ghost_densemat_string(&xstr,x);
-    ghost_densemat_string(&ystr,y);
+    GHOST_CALL_RETURN(ghost_sparsemat_string(&Astr,A,1));
+    GHOST_CALL_RETURN(ghost_densemat_string(&xstr,x));
+    GHOST_CALL_RETURN(ghost_densemat_string(&ystr,y));
     printf("%s\n=\n%s\n*\n%s\n",ystr,Astr,xstr);
    
     // clean up 
