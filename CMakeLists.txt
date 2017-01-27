@@ -891,10 +891,7 @@ if (DOXYGEN_FOUND)
     set(DOC_INSTALL_PREFIX "" CACHE PATH "Where to store the generated documentation")
     mark_as_advanced(DOC_INSTALL_PREFIX)
     file(GLOB DOCFILES "${PROJECT_SOURCE_DIR}/doxygen/[^.]*")
-    if (NOT ${DOC_INSTALL_PREFIX} STREQUAL "")
-        if (NOT EXISTS ${DOC_INSTALL_PREFIX})
-            file(MAKE_DIRECTORY ${DOC_INSTALL_PREFIX})
-        endif()
+    if (EXISTS ${DOC_INSTALL_PREFIX})
         add_custom_command(
             OUTPUT ${PROJECT_BINARY_DIR}/doc/html/index.html 
             DEPENDS ${SOURCES} ${HEADERS} ${DOCFILES} ${TESTS}
