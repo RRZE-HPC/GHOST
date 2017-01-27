@@ -174,6 +174,17 @@ extern "C" {
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error ghost_map_create_distribution(ghost_map *map, ghost_sparsemat_src_rowfunc *matsrc, double weight, ghost_map_dist_type distType,ghost_lidx *el_per_rank);
+    /**
+     * @brief Create a map.
+     *
+     * @param map The map.
+     * @param gdim The global dimensions of the map.
+     * @param comm The map's MPI communicator.
+     * @param type The type of the map.
+     * @param flags Optional flags.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
     ghost_error ghost_map_create(ghost_map **map, ghost_gidx gdim, ghost_mpi_comm comm, ghost_maptype type, ghost_map_flags flags);
     /**
      * @brief Create a light map with only a dimension and an MPI communicator.
@@ -187,6 +198,13 @@ extern "C" {
      * @return The map.
      */
     ghost_map *ghost_map_create_light(ghost_lidx dim, ghost_mpi_comm mpicomm);
+    /**
+     * @brief Destroy a map and free all its resources if no more references to it exist.
+     *
+     * @param map The map.
+     *
+     * This decreases the ghost_map::ref_count and, in case it is zero afterwards, free's the map's resources.
+     */
     void ghost_map_destroy(ghost_map *map);
     /**
      * @brief Get the rank of a given global row in a given map.
