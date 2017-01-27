@@ -74,9 +74,9 @@ To do a quick build with the system compilers, MPI and OpenMP enabled, and the d
 
 `cmake .. -DCMAKE_INSTALL_PREFIX=<where-to-install>`
 
-Once the Makefile is present you can type
+Once the Makefile is present you can type `make && make install`.
 
-`make && make install`
+You can test your build with `make check`.
 
 You can toggle shared/static libs with `-DBUILD_SHARED_LIBS=ON/OFF` (default: shared).
 
