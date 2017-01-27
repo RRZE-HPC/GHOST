@@ -23,6 +23,7 @@ int main(int argc, char **argv)
     
     ghost_sparsemat_traits mtraits = GHOST_SPARSEMAT_TRAITS_INITIALIZER;
     mtraits.datatype = (ghost_datatype)(GHOST_DT_REAL|GHOST_DT_DOUBLE);
+    mtraits.flags = GHOST_SPARSEMAT_SAVE_ORIG_COLS; // needed for printing if more than one process
 
     ghost_init(argc,argv);
 
