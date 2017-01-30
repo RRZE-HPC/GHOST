@@ -395,7 +395,7 @@ ghost_error ghost_densemat_halocommInit_common(ghost_densemat *vec, ghost_contex
 #ifndef GHOST_HAVE_GPUDIRECT
             // TODO check whether cudaHostAlloc is faster
             GHOST_INSTR_START("hostAlloc")
-            GHOST_CALL_RETURN(ghost_malloc((void **)&comm->work,(size_t)vec->traits.ncols*comm->acc_dues*vec->elSize));
+            GHOST_CALL_RETURN(ghost_cu_malloc_pinned((void **)&comm->work,(size_t)vec->traits.ncols*comm->acc_dues*vec->elSize));
             GHOST_INSTR_STOP("hostAlloc")
 #endif
             GHOST_INSTR_START("deviceAlloc")
