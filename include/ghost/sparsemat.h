@@ -723,10 +723,8 @@ extern "C" {
     /**
      * @brief Create a matrix permutation based on (PT-)SCOTCH
      *
-     * @param[inout] mat The sparse matrix.
-     * @param[in] matrixSource The matrix source. This will be casted depending 
-     * on \p srcType.
-     * @param[in] srcType Type of the matrix source.
+     * @param[out] ctx The context in which to store the permutations.
+     * @param[in] mat The unpermuted SELL-1-1 source sparse matrix.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
@@ -735,10 +733,8 @@ extern "C" {
      * @brief Create a matrix permutation based on row length sorting within a 
      * given scope.
      *
-     * @param[inout] mat The sparse matrix.
-     * @param[in] matrixSource The matrix source. This will be casted depending 
-     * on \p srcType.
-     * @param[in] srcType Type of the matrix source.
+     * @param[out] ctx The context in which to store the permutations.
+     * @param[in] mat The unpermuted SELL-1-1 source sparse matrix.
      * @param[in] scope The sorting scope.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
@@ -751,7 +747,7 @@ extern "C" {
      * @brief Create a matrix permutation based on 2-way coloring using ColPack.
      *
      * @param[out] ctx The context in which to store the permutations and color information.
-     * @param[in] ctx The unpermuted SELL-1-1 source sparse matrix.
+     * @param[in] mat The unpermuted SELL-1-1 source sparse matrix.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
