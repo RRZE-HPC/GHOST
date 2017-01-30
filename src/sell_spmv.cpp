@@ -643,7 +643,8 @@ extern "C" ghost_error ghost_cu_sell_spmv_selector(ghost_densemat *lhs,
     p.do_dot_xy = traits.flags&GHOST_SPMV_DOT_XY;
     p.do_dot_xx = traits.flags&GHOST_SPMV_DOT_XX;
     p.do_chain_axpby = traits.flags&GHOST_SPMV_CHAIN_AXPBY;
-    
+   
+    INFO_LOG("Try to find CUDA kernel with alignment=%d, chunkheight=%d, blocksz=%d, axpby=%d, scale=%d, vshift=%d, dot_yy=%d, dot_xy=%d, dot_xx=%d, chain_axpby=%d",p.alignment,p.chunkheight,p.blocksz,p.do_axpby,p.do_scale,p.do_vshift,p.do_dot_yy,p.do_dot_xy,p.do_dot_xx,p.do_chain_axpby);
     kernel = ghost_cusellspmv_kernels[p];
 
     if (kernel) {
