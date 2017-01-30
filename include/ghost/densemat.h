@@ -192,6 +192,13 @@ typedef struct
      * This is only relevant if all involved data is stored on both HOST and DEVICE.
      */
     ghost_location compute_at;
+    /**
+     * @brief If the densemat is the result of a computation, decide with which implementation to compute it.
+     *
+     * With this trait, one can force, e.g., a plain C code kernel although an AVX kernel is available.
+     * This is only relevant for CPU data.
+     */
+    ghost_implementation compute_with;
 }
 ghost_densemat_traits;
 

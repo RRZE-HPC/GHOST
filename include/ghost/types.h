@@ -320,6 +320,7 @@ typedef enum {
  * @brief Possible implementations of a CPU function.
  */
 typedef enum {
+    GHOST_IMPLEMENTATION_DEFAULT = -1,
     GHOST_IMPLEMENTATION_PLAIN = 0,
     GHOST_IMPLEMENTATION_SSE = 1,
     GHOST_IMPLEMENTATION_AVX = 2,

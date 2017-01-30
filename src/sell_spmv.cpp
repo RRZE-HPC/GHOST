@@ -466,35 +466,40 @@ extern "C" ghost_error ghost_sell_spmv_selector(ghost_densemat *lhs,
     ghost_implementation opt_impl;
     
     std::vector<ghost_implementation> try_impl;
-    if ((lhs->traits.flags & GHOST_DENSEMAT_SCATTERED) || 
-            (rhs->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
-        PERFWARNING_LOG("Use plain implementation for scattered views");
-        opt_impl = GHOST_IMPLEMENTATION_PLAIN;
-    } else {
-        if (rhs->stride > 1 && rhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
-            opt_impl = ghost_get_best_implementation_for_bytesize(rhs->traits.ncols*rhs->elSize);
-            if (opt_impl == GHOST_IMPLEMENTATION_PLAIN) {
-                // this branch is taken for odd numbers
-                // choose a version with remainder loops in this case!
-                opt_impl = ghost_get_best_implementation_for_bytesize(PAD(rhs->traits.ncols*rhs->elSize,ghost_machine_simd_width()));
-            }
+
+    if (lhs->traits.compute_with == GHOST_IMPLEMENTATION_DEFAULT) {
+        if ((lhs->traits.flags & GHOST_DENSEMAT_SCATTERED) || 
+                (rhs->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
+            PERFWARNING_LOG("Use plain implementation for scattered views");
+            opt_impl = GHOST_IMPLEMENTATION_PLAIN;
         } else {
-            opt_impl = ghost_get_best_implementation_for_bytesize(mat->traits.C*mat->elSize);
+            if (rhs->stride > 1 && rhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
+                opt_impl = ghost_get_best_implementation_for_bytesize(rhs->traits.ncols*rhs->elSize);
+                if (opt_impl == GHOST_IMPLEMENTATION_PLAIN) {
+                    // this branch is taken for odd numbers
+                    // choose a version with remainder loops in this case!
+                    opt_impl = ghost_get_best_implementation_for_bytesize(PAD(rhs->traits.ncols*rhs->elSize,ghost_machine_simd_width()));
+                }
+            } else {
+                opt_impl = ghost_get_best_implementation_for_bytesize(mat->traits.C*mat->elSize);
+            }
         }
-    }
-    // force PLAIN kernel
-    // opt_impl = GHOST_IMPLEMENTATION_PLAIN;
+        // force PLAIN kernel
+        // opt_impl = GHOST_IMPLEMENTATION_PLAIN;
 #if defined(GHOST_BUILD_MIC) && !defined(GHOST_BUILD_AVX512) 
-    // on KNC: only MIC and Plain possible
-    try_impl.push_back(opt_impl);
-    if (opt_impl == GHOST_IMPLEMENTATION_MIC) {
-        try_impl.push_back(GHOST_IMPLEMENTATION_PLAIN);
-    }
-#else
-    for (; opt_impl>=0; opt_impl = static_cast<ghost_implementation>(static_cast<int>(opt_impl)-1)) {
+        // on KNC: only MIC and Plain possible
         try_impl.push_back(opt_impl);
-    }
+        if (opt_impl == GHOST_IMPLEMENTATION_MIC) {
+            try_impl.push_back(GHOST_IMPLEMENTATION_PLAIN);
+        }
+#else
+        for (; opt_impl>=0; opt_impl = static_cast<ghost_implementation>(static_cast<int>(opt_impl)-1)) {
+            try_impl.push_back(opt_impl);
+        }
 #endif
+    } else {
+        try_impl.push_back(lhs->traits.compute_with);
+    }
     
     
     p.vdt = rhs->traits.datatype;
