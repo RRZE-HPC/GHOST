@@ -14,6 +14,7 @@ before_script:
     - cmake .. -DDOC_INSTALL_PREFIX=mkreutzer.bitbucket.org/ghost_doc
 
 before_install:
+    - export TZ=Europe/Berlin
     - wget http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1404/x86_64/cuda-repo-ubuntu1404_8.0.44-1_amd64.deb
     - sudo dpkg -i cuda-repo-ubuntu1404_8.0.44-1_amd64.deb
     - sudo apt-get update
