@@ -423,13 +423,10 @@ ghost_error FUNCNAME(entry(ghost_densemat * vec, void *val, ghost_lidx r, ghost_
 
 ghost_error FUNCNAME(reduce(ghost_densemat * vec_in, int root)) 
 {
-#ifdef GHOST_HAVE_MPI
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
 
     ghost_error ret = GHOST_SUCCESS;
     ghost_densemat *vec = NULL;
-    int myrank;
-    ghost_mpi_comm comm = vec_in->map->mpicomm;
 
     // if densemat not on host OR densemat is scattered: create compact densemat on host
 
@@ -439,13 +436,16 @@ ghost_error FUNCNAME(reduce(ghost_densemat * vec_in, int root))
         vectraits.flags &= (ghost_densemat_flags)~GHOST_DENSEMAT_SCATTERED;
         vectraits.location = GHOST_LOCATION_HOST;
 
-        ghost_densemat_create(&vec,vec_in->map,vectraits);
-        ghost_densemat_init_densemat(vec,vec_in,0,0);
+        GHOST_CALL_GOTO(ghost_densemat_create(&vec,vec_in->map,vectraits),err,ret);
+        GHOST_CALL_GOTO(ghost_densemat_init_densemat(vec,vec_in,0,0),err,ret);
     } else {
         vec = vec_in;
-        ghost_densemat_download(vec);
+        GHOST_CALL_GOTO(ghost_densemat_download(vec),err,ret);
     }
 
+#ifdef GHOST_HAVE_MPI
+    int myrank;
+    ghost_mpi_comm comm = vec_in->map->mpicomm;
     ghost_mpi_op sumOp;
 
     GHOST_CALL_GOTO(ghost_mpi_op_densemat_sum(&sumOp,vec->traits.datatype),err,ret);
@@ -466,10 +466,13 @@ ghost_error FUNCNAME(reduce(ghost_densemat * vec_in, int root))
             MPI_CALL_GOTO(MPI_Reduce(vec->val,NULL,1,vec->fullmpidt,sumOp,root,comm),err,ret);
         }
     }
+#else
+    UNUSED(root);
+#endif
         
     ghost_densemat_upload(vec);
     if (vec != vec_in) {
-        ghost_densemat_init_densemat(vec_in,vec,0,0);
+        GHOST_CALL_GOTO(ghost_densemat_init_densemat(vec_in,vec,0,0),err,ret);
     }
 
     goto out;
@@ -482,12 +485,6 @@ out:
     }
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_COMMUNICATION);
     return ret;
-#else
-    UNUSED(vec_in);
-    UNUSED(comm);
-    UNUSED(root);
-    return GHOST_SUCCESS;
-#endif
 }
 
 ghost_error FUNCNAME(download(ghost_densemat * vec)) 
