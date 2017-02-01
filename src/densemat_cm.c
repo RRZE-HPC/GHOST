@@ -92,9 +92,9 @@ ghost_error ghost_densemat_cm_distributeVector(ghost_densemat *vec, ghost_densem
 
 ghost_error ghost_densemat_cm_collectVectors(ghost_densemat *vec, ghost_densemat *totalVec, ghost_context *ctx) 
 {
-    ghost_lidx c;
 #ifdef GHOST_HAVE_MPI
     int me;
+    ghost_lidx c;
     int nprocs;
     ghost_mpi_datatype mpidt;
     GHOST_CALL_RETURN(ghost_rank(&me, ctx->mpicomm));
@@ -136,12 +136,8 @@ ghost_error ghost_densemat_cm_collectVectors(ghost_densemat *vec, ghost_densemat
     }
     MPI_CALL_RETURN(MPI_Waitall(msgcount,req,stat));
 #else
-    if (ctx != NULL) {
-        //        vec->permute(vec,ctx->invRowPerm);
-        for (c=0; c<vec->traits.ncols; c++) {
-            DM_NROWS(            memcpy(DENSEMAT_VALPTR(totalVec,0,c),DENSEMAT_VALPTR(vec,0,c),totalVec)*vec->elSize);
-        }
-    }
+    UNUSED(ctx);
+    ghost_densemat_init_densemat(totalVec,vec,0,0);
 #endif
 
     return GHOST_SUCCESS;
@@ -301,6 +297,7 @@ out:
 #else
     UNUSED(vec);
     UNUSED(comm);
+    UNUSED(ctx);
     return GHOST_ERR_NOT_IMPLEMENTED;
 #endif
 
@@ -381,6 +378,7 @@ out:
 #else
     UNUSED(vec);
     UNUSED(comm);
+    UNUSED(ctx);
     return GHOST_ERR_NOT_IMPLEMENTED;
 #endif
 
