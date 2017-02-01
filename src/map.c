@@ -121,14 +121,18 @@ ghost_error ghost_map_create_distribution(ghost_map *map, ghost_sparsemat_src_ro
 
             map->ldim[nranks-1] = map->gdim - map->goffs[nranks-1] ;
         }
+#ifdef GHOST_HAVE_MPI
         MPI_CALL_GOTO(MPI_Bcast(map->goffs,  nranks, ghost_mpi_dt_gidx, 0, map->mpicomm),err,ret);
         MPI_CALL_GOTO(MPI_Bcast(map->ldim, nranks, ghost_mpi_dt_lidx, 0, map->mpicomm),err,ret);
+#endif
 
     } else if (distType == GHOST_MAP_DIST_NROWS) {
         ghost_lidx *target_rows = NULL;
         if (!el_per_rank) {
-            double allweights;
-            MPI_CALL_GOTO(MPI_Allreduce(&weight,&allweights,1,MPI_DOUBLE,MPI_SUM,map->mpicomm),err,ret)
+            double allweights = 1.;
+#ifdef GHOST_HAVE_MPI
+            MPI_CALL_GOTO(MPI_Allreduce(&weight,&allweights,1,MPI_DOUBLE,MPI_SUM,map->mpicomm),err,ret);
+#endif
 
             ghost_lidx my_target_rows = (ghost_lidx)(map->gdim*((double)weight/(double)allweights));
             if (my_target_rows == 0) {
@@ -137,7 +141,9 @@ ghost_error ghost_map_create_distribution(ghost_map *map, ghost_sparsemat_src_ro
 
             GHOST_CALL_GOTO(ghost_malloc((void **)&target_rows,nranks*sizeof(ghost_lidx)),err,ret);
 
+#ifdef GHOST_HAVE_MPI
             MPI_CALL_GOTO(MPI_Allgather(&my_target_rows,1,ghost_mpi_dt_lidx,target_rows,1,ghost_mpi_dt_lidx,map->mpicomm),err,ret);
+#endif
         } else {
             target_rows = el_per_rank;
         }

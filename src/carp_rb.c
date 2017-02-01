@@ -27,8 +27,10 @@ ghost_error ghost_carp_rb(ghost_sparsemat *mat, ghost_densemat *x, ghost_densema
  	GHOST_CALL_RETURN(ghost_kacz_rb(x,mat,b,opts));
      } else {
        	GHOST_CALL_RETURN(ghost_kacz_mc(x,mat,b,opts)); 
-     } 
-     MPI_Barrier(mat->context->mpicomm);
+     }
+#ifdef GHOST_HAVE_MPI 
+     MPI_CALL_RETURN(MPI_Barrier(mat->context->mpicomm));
+#endif
     
      GHOST_CALL_RETURN(ghost_densemat_halo_avg(x,mat->context));
 

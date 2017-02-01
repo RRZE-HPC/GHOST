@@ -205,7 +205,7 @@ ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, gh
     ghost_error ret = GHOST_SUCCESS;
     ghost_gidx j;
     ghost_gidx i;
-    ghost_lidx max_loc_elements, thisentry;
+    ghost_lidx max_loc_elements;
     ghost_lidx *present_values = NULL;
     ghost_lidx acc_dues = 0;
     ghost_lidx acc_wishes;
@@ -289,7 +289,11 @@ ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, gh
     size_nint = (size_t)( (size_t)(nprocs)   * sizeof(ghost_lidx)  );
     size_nptr = (size_t)( nprocs             * sizeof(ghost_lidx*) );
 
+#ifdef GHOST_HAVE_MPI
     MPI_CALL_GOTO(MPI_Allreduce(&mat->nEnts,&max_loc_elements,1,ghost_mpi_dt_lidx,MPI_MAX,ctx->mpicomm),err,ret);
+#else
+    max_loc_elements = mat->nEnts;
+#endif
 
     /*
     max_loc_elements = 0;
@@ -415,6 +419,7 @@ ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, gh
      * item_from = <{3,3,1},{3,2,1},{1,0,4}> equal to wishlist_counts
      */
 
+#ifdef GHOST_HAVE_MPI
     MPI_Barrier(ctx->mpicomm);
 
     GHOST_INSTR_START("wishes_and_dues");
@@ -422,6 +427,7 @@ ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, gh
     MPI_CALL_GOTO(MPI_Win_create(ctx->dues,nprocs*sizeof(ghost_lidx),sizeof(ghost_lidx),MPI_INFO_NULL,ctx->mpicomm,&due_win),err,ret);
     MPI_CALL_GOTO(MPI_Win_create(&ctx->nduepartners,sizeof(int),sizeof(int),MPI_INFO_NULL,ctx->mpicomm,&nduepartners_win),err,ret);
 
+    ghost_lidx thisentry = 0;
     int one = 1;
     for (i=0; i<nprocs; i++) {
 
@@ -456,6 +462,8 @@ ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, gh
 
     MPI_Win_free(&due_win);
     MPI_Win_free(&nduepartners_win);
+#endif
+
     /* 
      * cwishlist = <{{#,#,#},{1,0,#},{0}},{{0,1,#},{#,#},{1}},{{0},NULL,{#,#,#,#}}> compressed wish list
      * ctx->wishes = <{0,2,1},{2,0,1},{1,0,0}>
@@ -768,6 +776,7 @@ ghost_error ghost_context_set_map(ghost_context *ctx, ghost_maptype which, ghost
     
 ghost_error ghost_context_comm_string(char **str, ghost_context *ctx, int root)
 {
+#ifdef GHOST_HAVE_MPI
     int nrank, r, p, me,l;
     bool printline = false;
     ghost_lidx maxdues = 0, maxwishes = 0;
@@ -872,6 +881,12 @@ ghost_error ghost_context_comm_string(char **str, ghost_context *ctx, int root)
         }
         sprintf((*str)+strlen(*str),"\n");
     }
+#else
+    UNUSED(ctx);
+    UNUSED(root);
+    ghost_malloc((void **)str,8);
+    strcpy(*str,"No MPI!");
+#endif
 
     return GHOST_SUCCESS;
 

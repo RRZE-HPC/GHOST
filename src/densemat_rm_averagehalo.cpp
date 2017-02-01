@@ -155,6 +155,7 @@ out:
 
 #else
     UNUSED(vec);
+    UNUSED(ctx);
     ERROR_LOG("MPI is required!");
     return GHOST_ERR_MPI;
 #endif

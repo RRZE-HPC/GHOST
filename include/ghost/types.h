@@ -20,6 +20,7 @@ typedef int ghost_mpi_comm;
 typedef int ghost_mpi_op;
 typedef int ghost_mpi_datatype;
 #define MPI_COMM_NULL 0
+#define MPI_COMM_SELF 1
 #define MPI_OP_NULL 0
 #define MPI_DATATYPE_NULL 0
 #define MPI_COMM_WORLD 0

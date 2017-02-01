@@ -786,7 +786,7 @@ ghost_error FUNCNAME(fromFile(ghost_densemat *vec, char *path, ghost_mpi_comm mp
         ghost_densemat_create(&readvec,vec->map,readvectraits);
         ghost_densemat_init_file(readvec,path,mpicomm);
         ghost_densemat_init_densemat(vec,readvec,0,0);
-        readvec->destroy(readvec);
+        ghost_densemat_destroy(readvec);
     }
 
     

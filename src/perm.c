@@ -13,9 +13,11 @@ static int perm_ent_cmp(const void *a, const void *b)
 
 ghost_error ghost_global_perm_inv(ghost_gidx *toPerm, ghost_gidx *fromPerm, ghost_context *context)
 {
+#ifdef GHOST_HAVE_MPI
     ghost_mpi_datatype ghost_mpi_dt_perm;
     MPI_CALL_RETURN(MPI_Type_contiguous(2,ghost_mpi_dt_gidx,&ghost_mpi_dt_perm));
     MPI_CALL_RETURN(MPI_Type_commit(&ghost_mpi_dt_perm));
+#endif
 
     ghost_lidx i;
     int proc, me, nprocs;
@@ -53,12 +55,14 @@ ghost_error ghost_global_perm_inv(ghost_gidx *toPerm, ghost_gidx *fromPerm, ghos
         }
         nel[me] = offs-displ[me];
 
+#ifdef GHOST_HAVE_MPI
         // proc needs to know how many elements to receive from each process
         if (proc == me) { 
             MPI_Reduce(MPI_IN_PLACE,nel,nprocs,MPI_INT,MPI_MAX,proc,context->mpicomm);
         } else {
             MPI_Reduce(nel,NULL,nprocs,MPI_INT,MPI_MAX,proc,context->mpicomm);
         }
+#endif
 
         // assemble receive displacements
         if (proc == me) {
@@ -75,8 +79,12 @@ ghost_error ghost_global_perm_inv(ghost_gidx *toPerm, ghost_gidx *fromPerm, ghos
             ghost_malloc((void **)&recvbuf,context->row_map->ldim[me]*sizeof(ghost_permutation_ent_t));
         }
 
+#ifdef GHOST_HAVE_MPI
         // gather local invPerm
         MPI_Gatherv(&permclone[displ[me]],nel[me],ghost_mpi_dt_perm,recvbuf,nel,recvdispl,ghost_mpi_dt_perm,proc,context->mpicomm);
+#else
+        memcpy(recvbuf,&permclone[displ[me]],nel[me]*sizeof(ghost_permutation_ent_t));
+#endif
         
         if (proc == me) {
             // sort the indices and put them into the invPerm array
@@ -93,7 +101,9 @@ ghost_error ghost_global_perm_inv(ghost_gidx *toPerm, ghost_gidx *fromPerm, ghos
 
     free(permclone);
         
+#ifdef GHOST_HAVE_MPI
     MPI_CALL_RETURN(MPI_Type_free(&ghost_mpi_dt_perm));
+#endif
 
     return GHOST_SUCCESS;
 }

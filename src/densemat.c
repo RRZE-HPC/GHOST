@@ -245,6 +245,7 @@ ghost_error ghost_densemat_uniformstorage(bool *uniform, ghost_densemat *vec, gh
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
 #ifndef GHOST_HAVE_MPI
     UNUSED(vec);
+    UNUSED(mpicomm);
     *uniform = true;
 #else
     int nprocs;
@@ -418,6 +419,7 @@ out:
 #else
     UNUSED(vec);
     UNUSED(comm);
+    UNUSED(ctx);
     return GHOST_ERR_NOT_IMPLEMENTED;
 #endif
 
@@ -497,6 +499,7 @@ out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_COMMUNICATION);
     return ret;
 #else
+    UNUSED(ctx);
     UNUSED(vec);
     UNUSED(comm);
     return GHOST_ERR_NOT_IMPLEMENTED;
