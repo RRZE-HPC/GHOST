@@ -598,70 +598,41 @@ extern "C" ghost_error FUNCNAME(dotprod)(ghost_densemat *vec, void *res, ghost_d
     dim3 grid(CEILDIV(DM_NROWS(vec),block.x),CEILDIV(vec->traits.ncols,block.y),1);
 
     if (vec->traits.storage == GHOST_DENSEMAT_ROWMAJOR && veccompact->stride > 1) {
-        void *cu_localdot_result;
+        int col;
+        char *cu_localdot_result, *partres;
+        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&partres,vec->traits.ncols*grid.x*vec->elSize));
         GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot_result,vec->elSize*vec->traits.ncols));
         GHOST_CALL_RETURN(ghost_cu_memset(cu_localdot_result,0,vec->elSize*vec->traits.ncols));
         if (vec->traits.datatype & GHOST_DT_COMPLEX) {
             if (vec->traits.datatype & GHOST_DT_DOUBLE) {
-                cuDoubleComplex * partres;
-                GHOST_CALL_RETURN(ghost_cu_malloc((void **)&partres,vec->traits.ncols*grid.x*sizeof(std::complex<double>)));
                 FUNCNAME(dot_kernel)<cuDoubleComplex><<< grid,block,block.x/32*sizeof(std::complex<double>)*block.y >>>(
                         (cuDoubleComplex *)partres,
                         (cuDoubleComplex *)veccompact->cu_val, (cuDoubleComplex *)vec2compact->cu_val,
                         DM_NROWS(vec),vec->traits.ncols,veccompact->stride,vec2compact->stride);
-                int col;
-                for (col=0; col<vec->traits.ncols; col++) {
-                    //ghost_deviceReduceSumOld<cuDoubleComplex><<<1,1024,32*sizeof(std::complex<double>)>>>(&partres[col*grid.x],&partres[col],grid.x); 
-                    ghost_deviceReduceSum<cuDoubleComplex><<<CEILDIV(grid.x,256),256>>>(&partres[col*grid.x],((cuDoubleComplex *)cu_localdot_result)+col,grid.x);
-                }
-                GHOST_CALL_RETURN(ghost_cu_download(res,cu_localdot_result,vec->traits.ncols*sizeof(std::complex<double>)));
-                ghost_cu_free(partres);
             } else {
-                cuFloatComplex * partres;
-                ghost_cu_malloc((void **)&partres,vec->traits.ncols*grid.x*sizeof(std::complex<float>));
                 FUNCNAME(dot_kernel)<cuFloatComplex><<< grid,block,block.x/32*sizeof(std::complex<float>)*block.y >>>(
                         (cuFloatComplex *)partres,
                         (cuFloatComplex *)veccompact->cu_val, (cuFloatComplex *)vec2compact->cu_val,
                         DM_NROWS(vec),vec->traits.ncols,veccompact->stride,vec2compact->stride);
-                int col;
-                for (col=0; col<vec->traits.ncols; col++) {
-                    //ghost_deviceReduceSumOld<cuFloatComplex><<<1,1024,32*sizeof(std::complex<float>)>>>(&partres[col*grid.x],&partres[col],grid.x);
-                    ghost_deviceReduceSum<cuFloatComplex><<<CEILDIV(grid.x,256),256>>>(&partres[col*grid.x],((cuFloatComplex *)cu_localdot_result)+col,grid.x);
-                }
-                GHOST_CALL_RETURN(ghost_cu_download(res,cu_localdot_result,vec->traits.ncols*sizeof(std::complex<float>)));
-                ghost_cu_free(partres);
             }
         } else {
             if (vec->traits.datatype & GHOST_DT_DOUBLE) {
-                double * partres;
-                ghost_cu_malloc((void **)&partres,vec->traits.ncols*grid.x*sizeof(double));
                 FUNCNAME(dot_kernel)<double><<< grid,block,block.x/32*sizeof(double)*block.y >>>(
                         (double *)partres,
                         (double *)veccompact->cu_val, (double *)vec2compact->cu_val,
                         DM_NROWS(vec),vec->traits.ncols,veccompact->stride,vec2compact->stride);
-                int col;
-                for (col=0; col<vec->traits.ncols; col++) {
-                    //ghost_deviceReduceSumOld<double><<<1,1024,32*sizeof(double)>>>(&partres[col*grid.x],&partres[col],grid.x);
-                    ghost_deviceReduceSum<double><<<CEILDIV(grid.x,256),256>>>(&partres[col*grid.x],((double *)cu_localdot_result)+col,grid.x);
-                }
-                GHOST_CALL_RETURN(ghost_cu_download(res,cu_localdot_result,vec->traits.ncols*sizeof(double)));
-                ghost_cu_free(partres);
             } else {
-                float * partres;
-                ghost_cu_malloc((void **)&partres,vec->traits.ncols*grid.x*sizeof(float));
                 FUNCNAME(dot_kernel)<float><<< grid,block,block.x/32*sizeof(float)*block.y >>>(
                         (float *)partres,
                         (float *)veccompact->cu_val, (float *)vec2compact->cu_val,
                         DM_NROWS(vec),vec->traits.ncols,veccompact->stride,vec2compact->stride);
-                int col;
-                for (col=0; col<vec->traits.ncols; col++) {
-                    //ghost_deviceReduceSumOld<float><<<1,1024,32*sizeof(float)>>>(&partres[col*grid.x],&partres[col],grid.x);
-                    ghost_deviceReduceSum<float><<<CEILDIV(grid.x,256),256>>>(&partres[col*grid.x],((float *)cu_localdot_result)+col,grid.x);
-                }
-                GHOST_CALL_RETURN(ghost_cu_download(res,cu_localdot_result,vec->traits.ncols*sizeof(float)));
-                ghost_cu_free(partres);
             }
         }
+        for (col=0; col<vec->traits.ncols; col++) {
+            ghost_cu_reduce(cu_localdot_result+col*vec->elSize,partres+col*grid.x*vec->elSize,vec->traits.datatype,grid.x);
+        }
+        GHOST_CALL_RETURN(ghost_cu_download(res,cu_localdot_result,vec->elSize*vec->traits.ncols));
+        ghost_cu_free(partres);
         ghost_cu_free(cu_localdot_result);
 
     } else {
