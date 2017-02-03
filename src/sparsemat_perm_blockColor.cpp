@@ -39,7 +39,7 @@ extern "C" ghost_error ghost_sparsemat_blockColor(ghost_context *ctx, ghost_spar
     ghost_gidx ncols_halo_padded = mat->context->col_map->dim;
 
     #ifdef GHOST_HAVE_COLPACK
-    ColPack::BipartiteGraphPartialColoringInterface *GC;
+    ColPack::BipartiteGraphPartialColoringInterface *GC=NULL;
     adolc = new uint32_t*[ctx->row_map->dim];
     #endif
     
