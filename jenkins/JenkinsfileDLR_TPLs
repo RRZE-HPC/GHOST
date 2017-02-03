@@ -73,7 +73,7 @@ step([$class: 'Mailer', notifyEveryUnstableBuild: false, recipients: 'Jonas.Thie
  
  Changes:
  ${CHANGES, showDependencies=true, format="[%a] %r %m\\n"}
- ''', subject: '$DEFAULT_SUBJECT', attachLog: true, compressLog: true, replyTo: '$DEFAULT_REPLY_TO', to: 'Jonas.Thies@DLR.de', attachLog: true, compressLog: true
+ ''', subject: '$DEFAULT_SUBJECT', attachLog: true, compressLog: true, replyTo: 'Jonas.Thies@DLR.de', to: 'Jonas.Thies@DLR.de'
  }
 }
 
