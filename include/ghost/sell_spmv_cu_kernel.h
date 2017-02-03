@@ -430,8 +430,7 @@ ghost_error ghost_sellspmv_cu_tmpl(ghost_densemat *lhs, ghost_sparsemat *mat, gh
 
             ghost_lidx col;
             for (col=0; col<rhs->traits.ncols; col++) {
-                //ghost_deviceReduceSumOld<v_dt_device><<<1,1024,32*sizeof(v_dt_device)>>>(&cu_localdot[grid.x*col+0*rhs->traits.ncols*grid.x],&cu_localdot_result[col],grid.x);
-                ghost_deviceReduceSum<v_dt_device><<<CEILDIV(grid.x,256),256>>>(&cu_localdot[grid.x*col+0*rhs->traits.ncols*grid.x],&cu_localdot_result[col],grid.x);
+                ghost_cu_reduce(&cu_localdot_result[col],&cu_localdot[grid.x*col+0*rhs->traits.ncols*grid.x],rhs->traits.datatype,grid.x);
             }
             GHOST_CALL_RETURN(ghost_cu_download(localdot,cu_localdot_result,rhs->traits.ncols*sizeof(v_dt_host)));
         }
@@ -440,8 +439,7 @@ ghost_error ghost_sellspmv_cu_tmpl(ghost_densemat *lhs, ghost_sparsemat *mat, gh
 
             ghost_lidx col;
             for (col=0; col<rhs->traits.ncols; col++) {
-                //ghost_deviceReduceSumOld<v_dt_device><<<1,1024,32*sizeof(v_dt_device)>>>(&cu_localdot[grid.x*col+1*rhs->traits.ncols*grid.x],&cu_localdot_result[col],grid.x);
-                ghost_deviceReduceSum<v_dt_device><<<CEILDIV(grid.x,256),256>>>(&cu_localdot[grid.x*col+1*rhs->traits.ncols*grid.x],&cu_localdot_result[col],grid.x);
+                ghost_cu_reduce(&cu_localdot_result[col],&cu_localdot[grid.x*col+1*rhs->traits.ncols*grid.x],rhs->traits.datatype,grid.x);
             }
             GHOST_CALL_RETURN(ghost_cu_download(&localdot[rhs->traits.ncols],cu_localdot_result,rhs->traits.ncols*sizeof(v_dt_host)));
         }
@@ -450,8 +448,7 @@ ghost_error ghost_sellspmv_cu_tmpl(ghost_densemat *lhs, ghost_sparsemat *mat, gh
 
             ghost_lidx col;
             for (col=0; col<rhs->traits.ncols; col++) {
-                //ghost_deviceReduceSumOld<v_dt_device><<<1,1024,32*sizeof(v_dt_device)>>>(&cu_localdot[grid.x*col+2*rhs->traits.ncols*grid.x],&cu_localdot_result[col],grid.x);
-                ghost_deviceReduceSum<v_dt_device><<<CEILDIV(grid.x,256),256>>>(&cu_localdot[grid.x*col+2*rhs->traits.ncols*grid.x],&cu_localdot_result[col],grid.x);
+                ghost_cu_reduce(&cu_localdot_result[col],&cu_localdot[grid.x*col+2*rhs->traits.ncols*grid.x],rhs->traits.datatype,grid.x);
             }
             GHOST_CALL_RETURN(ghost_cu_download(&localdot[2*rhs->traits.ncols],cu_localdot_result,rhs->traits.ncols*sizeof(v_dt_host)));
         }

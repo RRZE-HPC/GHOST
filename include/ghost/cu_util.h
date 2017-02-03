@@ -249,7 +249,9 @@ extern "C" {
 
     ghost_error ghost_cu_rand_generator_get(ghost_cu_rand_generator *gen);
     ghost_error ghost_cu_finalize();
-    ghost_error ghost_cu_memtranspose(int torows, int tocols, void *to, int ldto, const void *from, int ldfrom, ghost_datatype dt) ;
+    ghost_error ghost_cu_memtranspose(int torows, int tocols, void *to, int ldto, const void *from, int ldfrom, ghost_datatype dt);
+
+    ghost_error ghost_cu_reduce(void *out, void *data, ghost_datatype dt, ghost_lidx n); 
 
 #ifdef __cplusplus
 }
