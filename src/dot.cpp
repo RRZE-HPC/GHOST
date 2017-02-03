@@ -153,8 +153,7 @@ ghost_error ghost_dot(void *res, ghost_densemat *vec1, ghost_densemat *vec2)
     GHOST_CALL_RETURN(ghost_localdot(res,vec1,vec2));
 
 #ifdef GHOST_HAVE_MPI
-    ghost_mpi_comm mpicomm = MPI_COMM_WORLD;
-    // TODO use MPI comm of densemat
+    ghost_mpi_comm mpicomm = vec1->map->mpicomm;
     if (mpicomm != MPI_COMM_NULL) {
         GHOST_INSTR_START("reduce")
         ghost_mpi_op sumOp;
