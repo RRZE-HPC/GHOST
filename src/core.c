@@ -513,6 +513,11 @@ ghost_error ghost_init(int argc, char **argv)
     // exclude CUDA cores from CPU set
         hwloc_bitmap_andnot(mycpuset,mycpuset,cudaOccupiedCpuset);
     }
+
+    if (hwloc_bitmap_iszero(mycpuset)) {
+        WARNING_LOG("Something went wrong and I ended up with an empty CPU set! I will use all CPUs instead which will probably lead to resource conflicts!");
+        hwloc_bitmap_copy(mycpuset,availcpuset);
+    }
     
 
 
