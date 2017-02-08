@@ -11,10 +11,8 @@
 ghost_error ghost_cu_reduce(void *out, void *data, ghost_datatype dt, ghost_lidx n)
 {
 #ifdef GHOST_HAVE_CUDA
-    struct cudaDeviceProp devProp;
-    int cu_device;
-    GHOST_CALL_RETURN(ghost_cu_device(&cu_device));
-    CUDA_CALL_RETURN(cudaGetDeviceProperties(&devProp,cu_device));
+    ghost_cu_deviceprop devProp;
+    GHOST_CALL_RETURN(ghost_cu_deviceprop_get(&devProp));
     if (devProp.major < 6) {
         // call version which requires only a single block
         if (dt & GHOST_DT_COMPLEX) {
