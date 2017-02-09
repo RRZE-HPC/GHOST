@@ -29,7 +29,7 @@ x x x x
 ~~~
   
 ~~~
-ghost_densematraits_t::flags  = GHOST_DENSEMAT_DEFAULT  
+ghost_densemat_traits::flags  = GHOST_DENSEMAT_DEFAULT  
 ghost_densemat::rowmask = NULL  
 ghost_densemat::colmask = NULL  
 ~~~
@@ -43,7 +43,7 @@ x x x x
 ~~~
   
 ~~~
-ghost_densematraits_t::flags  = GHOST_DENSEMAT_VIEW  
+ghost_densemat_traits::flags  = GHOST_DENSEMAT_VIEW  
 ghost_densemat::rowmask = NULL 
 ghost_densemat::colmask = NULL  
 ~~~
@@ -57,7 +57,7 @@ x x x x
 ~~~
   
 ~~~
-ghost_densematraits_t::flags  = GHOST_DENSEMAT_VIEW  
+ghost_densemat_traits::flags  = GHOST_DENSEMAT_VIEW  
 ghost_densemat::rowmask = NULL 
 ghost_densemat::colmask = NULL  
 ~~~
@@ -71,7 +71,7 @@ x x x x
 ~~~
   
 ~~~
-ghost_densematraits_t::flags  = GHOST_DENSEMAT_VIEW|GHOST_DENSEMAT_SCATTERED_TR  
+ghost_densemat_traits::flags  = GHOST_DENSEMAT_VIEW|GHOST_DENSEMAT_SCATTERED_TR  
 ghost_densemat::rowmask = 1 0 1 1  
 ghost_densemat::colmask = NULL  
 ~~~
@@ -85,7 +85,7 @@ x x x .
 ~~~
   
 ~~~
-ghost_densematraits_t::flags  = GHOST_DENSEMAT_VIEW  
+ghost_densemat_traits::flags  = GHOST_DENSEMAT_VIEW  
 ghost_densemat::rowmask = NULL
 ghost_densemat::colmask = NULL  
 ~~~
@@ -99,7 +99,7 @@ x x x .
 ~~~
   
 ~~~
-ghost_densematraits_t::flags  = GHOST_DENSEMAT_VIEW  
+ghost_densemat_traits::flags  = GHOST_DENSEMAT_VIEW  
 ghost_densemat::rowmask = NULL  
 ghost_densemat::colmask = NULL  
 ~~~
@@ -113,7 +113,7 @@ x . x x
 ~~~
   
 ~~~
-ghost_densematraits_t::flags  = GHOST_DENSEMAT_VIEW|GHOST_DENSEMAT_SCATTERED_LD  
+ghost_densemat_traits::flags  = GHOST_DENSEMAT_VIEW|GHOST_DENSEMAT_SCATTERED_LD  
 ghost_densemat::rowmask = NULL  
 ghost_densemat::colmask = 1 0 1 1  
 ~~~
@@ -127,7 +127,7 @@ x . x x
 ~~~
   
 ~~~
-ghost_densematraits_t::flags  = GHOST_DENSEMAT_VIEW|GHOST_DENSEMAT_SCATTERED_LD|GHOST_DENSEMAT_SCATTERED_TR  
+ghost_densemat_traits::flags  = GHOST_DENSEMAT_VIEW|GHOST_DENSEMAT_SCATTERED_LD|GHOST_DENSEMAT_SCATTERED_TR  
 ghost_densemat::rowmask = 0 1 0 1  
 ghost_densemat::colmask = 1 0 1 1  
 ~~~

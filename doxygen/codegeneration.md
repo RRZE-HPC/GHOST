@@ -39,36 +39,25 @@ In GHOST, the generation of block vector kernels with fixed block sizes and the 
 
 Example: A file containing
 ~~~{.c}
-/*!GHOST_AUTOGEN CHUNKHEIGHT;BLOCKDIM1 */
-#GHOST_SUBST FOO ${BLOCKDIM1}
-#GHOST_SUBST BAR ${CHUNKHEIGHT}
+/*!GHOST_AUTOGEN_SPMMV CHUNKHEIGHT,NVECS */
+#GHOST_SUBST FOO ${CHUNKHEIGHT}
+#GHOST_SUBST BAR ${NVECS}
+
 int func_FOO_BAR(void) {
     return FOO+BAR;
 }
 #GHOST_FUNC_END
 ~~~
-would, together with `GHOST_GEN_DENSEMAT_DIM=1,2` and `GHOST_GEN_SELL_C=5,6`, result in the generation of the following four files:
+would, together with `GHOST_AUTOGEN_SPMMV=32,1;1,4`, result in the generation of the following two files:
 ~~~{.c}
-int func_1_5(void) {
-    return 1+5;
+int func_32_1(void) {
+    return 32+1;
 }
 ~~~
 
 ~~~{.c}
-int func_2_5(void) {
-    return 2+5;
-}
-~~~
-
-~~~{.c}
-int func_1_6(void) {
-    return 1+6;
-}
-~~~
-
-~~~{.c}
-int func_2_6(void) {
-    return 2+6;
+int func_1_4(void) {
+    return 1+4;
 }
 ~~~
 
