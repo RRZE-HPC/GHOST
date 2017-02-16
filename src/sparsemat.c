@@ -1656,6 +1656,9 @@ static ghost_error ghost_sparsemat_split(ghost_sparsemat *mat)
         
         mat->localPart->traits.T = mat->traits.T;
         mat->remotePart->traits.T = mat->traits.T;
+
+        mat->localPart->elSize = mat->elSize;
+        mat->remotePart->elSize = mat->elSize;
     
         mat->localPart->nchunks = CEILDIV(SPM_NROWS(mat->localPart),mat->localPart->traits.C);
         mat->remotePart->nchunks = CEILDIV(SPM_NROWS(mat->remotePart),mat->remotePart->traits.C);
