@@ -39,7 +39,10 @@ static void *communicate(void *vargs)
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
     commArgs *args = (commArgs *)vargs;
     ghost_error *ret = NULL;
-    GHOST_CALL_GOTO(ghost_malloc((void **)&ret,sizeof(ghost_error)),err,*ret);
+    ghost_malloc((void **)&ret,sizeof(ghost_error)); // don't use macro because it would read *ret
+    if (!(*ret)) {
+        goto err;
+    }
     *ret = GHOST_SUCCESS;
     GHOST_CALL_GOTO(ghost_densemat_halocomm_start(args->rhs,args->ctx,args->comm),err,*ret);
     GHOST_CALL_GOTO(ghost_densemat_halocomm_finalize(args->rhs,args->ctx,args->comm),err,*ret);
@@ -65,7 +68,10 @@ static void *computeLocal(void *vargs)
 //    INFO_LOG("comp local t %d running @ core %d",ghost_ompGetThreadNum(),ghost_getCore());
     //GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error *ret = NULL;
-    GHOST_CALL_GOTO(ghost_malloc((void **)&ret,sizeof(ghost_error)),err,*ret);
+    ghost_malloc((void **)&ret,sizeof(ghost_error)); // don't use macro because it would read *ret
+    if (!(*ret)) {
+        goto err;
+    }
     *ret = GHOST_SUCCESS;
 
     compArgs *args = (compArgs *)vargs;
