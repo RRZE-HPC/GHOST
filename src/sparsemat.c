@@ -1744,11 +1744,11 @@ static ghost_error ghost_sparsemat_split(ghost_sparsemat *mat)
     lnEnts_r = mat->context->lnEnts[me]-lnEnts_l;*/
         
         
-        GHOST_CALL_GOTO(ghost_malloc((void **)&localMat->val,lnEnts_l*mat->elSize),err,ret); 
-        GHOST_CALL_GOTO(ghost_malloc((void **)&localMat->col,lnEnts_l*sizeof(ghost_lidx)),err,ret); 
+        GHOST_CALL_GOTO(ghost_malloc_align((void **)&localMat->val,lnEnts_l*mat->elSize,GHOST_DATA_ALIGNMENT),err,ret); 
+        GHOST_CALL_GOTO(ghost_malloc_align((void **)&localMat->col,lnEnts_l*sizeof(ghost_lidx),GHOST_DATA_ALIGNMENT),err,ret); 
         
-        GHOST_CALL_GOTO(ghost_malloc((void **)&remoteMat->val,lnEnts_r*mat->elSize),err,ret); 
-        GHOST_CALL_GOTO(ghost_malloc((void **)&remoteMat->col,lnEnts_r*sizeof(ghost_lidx)),err,ret); 
+        GHOST_CALL_GOTO(ghost_malloc_align((void **)&remoteMat->val,lnEnts_r*mat->elSize,GHOST_DATA_ALIGNMENT),err,ret); 
+        GHOST_CALL_GOTO(ghost_malloc_align((void **)&remoteMat->col,lnEnts_r*sizeof(ghost_lidx),GHOST_DATA_ALIGNMENT),err,ret); 
        
         mat->localPart->nEnts = lnEnts_l;
         mat->localPart->traits.C = mat->traits.C;
