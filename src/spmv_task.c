@@ -40,7 +40,7 @@ static void *communicate(void *vargs)
     commArgs *args = (commArgs *)vargs;
     ghost_error *ret = NULL;
     ghost_malloc((void **)&ret,sizeof(ghost_error)); // don't use macro because it would read *ret
-    if (!(*ret)) {
+    if (!ret) {
         goto err;
     }
     *ret = GHOST_SUCCESS;
@@ -69,7 +69,7 @@ static void *computeLocal(void *vargs)
     //GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error *ret = NULL;
     ghost_malloc((void **)&ret,sizeof(ghost_error)); // don't use macro because it would read *ret
-    if (!(*ret)) {
+    if (!ret) {
         goto err;
     }
     *ret = GHOST_SUCCESS;
