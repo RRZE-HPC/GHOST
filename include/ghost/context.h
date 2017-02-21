@@ -308,6 +308,8 @@ extern "C" {
      * The work is to be distributed by rows and the matrix contains 8 million rows. 
      * A straight-forward distribution of work would assume a weight of 1.5 for A and 0.5 for B.
      * Thus, A would be assigned 6 million matrix rows and B 2 million.
+     * Automatic weight determination is done using a main memory benchmark. 
+     * If the bechmark results differ by less than 10% on each rank, the parallel run will be considered "homogeneous" and the weights will be fixed to 1.0
      * 
      */
     ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, ghost_gidx gncols, ghost_context_flags_t flags, ghost_mpi_comm comm, double weight); 

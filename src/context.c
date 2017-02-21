@@ -21,10 +21,32 @@ ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, gho
         ERROR_LOG("Negative weight");
         return GHOST_ERR_INVALID_ARG;
     }
+
+    int nranks, me;
+    ghost_error ret = GHOST_SUCCESS;
+
+    GHOST_CALL_GOTO(ghost_nrank(&nranks, comm),err,ret);
+    GHOST_CALL_GOTO(ghost_rank(&me, comm),err,ret);
+    
     if (fabs(weight) < DBL_MIN) {
         double max_bw=0.0;
-        ghost_bench_bw(GHOST_BENCH_UPDATE,&weight,&max_bw);
-        INFO_LOG("Automatically setting weight to %f according to UPDATE bandwidth!",weight);
+        double avgweight;
+        int withinavg = 0;
+        int totalwithinavg = 0;
+
+        GHOST_CALL_GOTO(ghost_bench_bw(GHOST_BENCH_UPDATE,&weight,&max_bw),err,ret);
+        MPI_CALL_GOTO(MPI_Allreduce(&weight,&avgweight,1,MPI_DOUBLE,MPI_SUM,comm),err,ret);
+        avgweight /= nranks;
+        if (fabs(weight-avgweight)/avgweight < 0.1) {
+            withinavg = 1;
+        }
+        MPI_CALL_GOTO(MPI_Allreduce(&withinavg,&totalwithinavg,1,MPI_INT,MPI_SUM,comm),err,ret);
+        if (totalwithinavg == nranks) {
+            INFO_LOG("The bandwidths of all processes differ by less than 10%%, the weights will be fixed to 1.0 to avoid artifacts.");
+            weight = 1.0;
+        } else {
+            INFO_LOG("The bandwidths of all processes differ by more than 10%%, automatically setting weight to %.2f according to UPDATE bandwidth!",weight);
+        }
     }
     if (!gnrows) {
         ERROR_LOG("The global number of rows (and columns for non-square matrices) must not be zero!");
@@ -34,8 +56,6 @@ ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, gho
         gncols = gnrows;
     }
     
-    int nranks, me;
-    ghost_error ret = GHOST_SUCCESS;
     
     ghost_lidx *target_rows = NULL;
     char *tmpval = NULL;
@@ -77,9 +97,6 @@ ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, gho
 
     GHOST_CALL_GOTO(ghost_map_create(&((*context)->row_map),gnrows,comm,GHOST_MAP_ROW,GHOST_MAP_DEFAULT),err,ret);
     GHOST_CALL_GOTO(ghost_map_create(&((*context)->col_map),gncols,comm,GHOST_MAP_COL,GHOST_MAP_DEFAULT),err,ret);
-
-    GHOST_CALL_GOTO(ghost_nrank(&nranks, (*context)->mpicomm),err,ret);
-    GHOST_CALL_GOTO(ghost_rank(&me, (*context)->mpicomm),err,ret);
 
     if (!((*context)->flags & GHOST_CONTEXT_DIST_NZ)) {
         (*context)->flags |= (ghost_context_flags_t)GHOST_CONTEXT_DIST_ROWS;
