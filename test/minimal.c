@@ -35,7 +35,7 @@ int main(int argc, char **argv)
 
     // create sparse matrix A from row-wise source function    
     GHOST_CALL_RETURN(ghost_sparsemat_create(&A, NULL, &mtraits, 1));
-    GHOST_CALL_RETURN(ghost_sparsemat_init_rowfunc(A,&matsrc,MPI_COMM_WORLD,1.));
+    GHOST_CALL_RETURN(ghost_sparsemat_init_rowfunc(A,&matsrc,MPI_COMM_WORLD,0.));
 
     // create and initialize input vector x and output vector y
     GHOST_CALL_RETURN(ghost_densemat_create(&x, A->context->col_map, vtraits));
