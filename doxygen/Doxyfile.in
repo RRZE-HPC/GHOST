@@ -1,7 +1,7 @@
 PROJECT_NAME = @CMAKE_PROJECT_NAME@
 PROJECT_NUMBER = @GHOST_VERSION@
 PROJECT_LOGO = @CMAKE_SOURCE_DIR@/contrib/ghost_logo_whitebg_border_small.png
-PROJECT_BRIEF = "General, Hybrid, and Optmized Sparse Toolkit"
+PROJECT_BRIEF = "General, Hybrid, and Optimized Sparse Toolkit"
 OUTPUT_DIRECTORY = doc/
 EXTRACT_ALL = yes
 EXTRACT_STATIC = yes
