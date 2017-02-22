@@ -38,8 +38,8 @@ int main(int argc, char **argv)
     GHOST_CALL_RETURN(ghost_sparsemat_init_rowfunc(A,&matsrc,MPI_COMM_WORLD,0.));
 
     // create and initialize input vector x and output vector y
-    GHOST_CALL_RETURN(ghost_densemat_create(&x, A->context->col_map, vtraits));
-    GHOST_CALL_RETURN(ghost_densemat_create(&y, A->context->row_map, vtraits));
+    GHOST_CALL_RETURN(ghost_densemat_create(&x, ghost_context_max_map(A->context), vtraits));
+    GHOST_CALL_RETURN(ghost_densemat_create(&y, ghost_context_max_map(A->context), vtraits));
     GHOST_CALL_RETURN(ghost_densemat_init_rand(x));      // x = random
     GHOST_CALL_RETURN(ghost_densemat_init_val(y,&zero)); // y = 0
 
