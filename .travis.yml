@@ -11,7 +11,7 @@ compiler:
 before_script:  
     - mkdir build
     - cd build
-    - cmake .. -DDOC_INSTALL_PREFIX=mkreutzer.bitbucket.org/ghost_doc
+    - cmake .. -DDOC_INSTALL_PREFIX=mkreutzer.bitbucket.org/ghost_doc -DGHOST_STREAM_ARRAY_SIZE=1e6
 
 before_install:
     - export TZ=Europe/Berlin
