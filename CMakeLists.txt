@@ -44,6 +44,7 @@ set(GHOST_AUTOGEN_KACZ "32,1,0;32,4,0;1,4,0;1,4,4" CACHE STRING "KACZ kernels to
 set(GHOST_VERBOSITY 1 CACHE STRING "Level of verbosity information. Valid values: 0 (be totally silent), 1 (print warnings, errors and further important information), 2, 3, 4 (increasing level of verbosity)")
 set(GHOST_INSTRUMENT "" CACHE STRING "Type of instrumentation (semicolon separated list). Valid values: TIMING, LIKWID, IACA")
 set(GHOST_INSTRUMENT_FUNCTYPES "(functype) & GHOST_FUNCTYPE_ANY" CACHE STRING "Logical selection of function types to instrument. Possible values are defined in func_util.h and functype should be put in parentheses.")
+set(GHOST_STREAM_ARRAY_SIZE "1e8" CACHE STRING "Array size used for STREAM micro-benchmarking. Adjust of memory is scarce.")
 option(GHOST_INSTRUMENT_BARRIER "Place a barrier after each instrumented function (may be necessary for correct timings)" 0)
 option(GHOST_COMPATIBLE_CHECK "Check for compatible data in kernels" 1)
 option(GHOST_COMPATIBLE_PERM "Allows GHOST to permute and assign maps for compatibility. Set to ON if you are not sure about the permutations." 0)  

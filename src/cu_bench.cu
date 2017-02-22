@@ -8,7 +8,7 @@
 
 #define NITER 20
 #define THREADSPERBLOCK 256
-#define N (ghost_lidx)1e8 
+#define N (ghost_lidx)GHOST_STREAM_ARRAY_SIZE 
 
 static void dummy(double *a) {
     if (a[(ghost_lidx)N>>1] < 0) {

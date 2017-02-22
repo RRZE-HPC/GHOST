@@ -17,7 +17,7 @@
 #endif
 #endif
 
-#define N PAD((ghost_lidx)1e8,16)
+#define N PAD((ghost_lidx)GHOST_STREAM_ARRAY_SIZE,16)
 #define NITER 40
 
 static void dummy(double *a) {
@@ -247,6 +247,8 @@ ghost_error ghost_bench_bw(ghost_bench_bw_test test, double *mean_bw, double *ma
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_BENCH);
     ghost_type mytype;
     ghost_type_get(&mytype);
+
+    printf("%d\n\n",N);
     
     if (mytype == GHOST_TYPE_CUDA) {
 #ifdef GHOST_HAVE_CUDA

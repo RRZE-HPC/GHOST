@@ -72,6 +72,9 @@
 /* Platform checks */
 #cmakedefine HAVE_QSORT_R
 
+/* Benchmarks */
+#define GHOST_STREAM_ARRAY_SIZE ${GHOST_STREAM_ARRAY_SIZE}
+
 #endif
 
 
