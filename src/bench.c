@@ -248,8 +248,6 @@ ghost_error ghost_bench_bw(ghost_bench_bw_test test, double *mean_bw, double *ma
     ghost_type mytype;
     ghost_type_get(&mytype);
 
-    printf("%d\n\n",N);
-    
     if (mytype == GHOST_TYPE_CUDA) {
 #ifdef GHOST_HAVE_CUDA
         ghost_error cuda_err = ghost_cu_bench_bw(test,mean_bw,max_bw);
