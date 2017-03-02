@@ -1030,13 +1030,14 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
     // Any combination of only local or global+local permutations:
     // Create dummymat with global permutations only and create local
     // permutations based on this dummymat
-    else if (mat->traits.flags & GHOST_SPARSEMAT_PERM_ANY) {
+    else if (mat->traits.flags & GHOST_SPARSEMAT_PERM_ANY || mat->traits.flags & GHOST_SOLVER_KACZ) {
         ghost_sparsemat *dummymat = NULL;
         ghost_sparsemat_traits mtraits = mat->traits;
         mtraits.flags = (ghost_sparsemat_flags)(mtraits.flags & ~(GHOST_SPARSEMAT_PERM_ANY_LOCAL));
+        mtraits.flags = (ghost_sparsemat_flags)(mtraits.flags & ~(GHOST_SOLVER_KACZ));
         mtraits.flags = (ghost_sparsemat_flags)(mtraits.flags | GHOST_SPARSEMAT_SAVE_ORIG_COLS);
         if (mat->traits.flags & GHOST_SOLVER_KACZ && nprocs > 1) {
-            mtraits.flags = (ghost_sparsemat_flags)(mtraits.flags | GHOST_SPARSEMAT_PERM_NO_DISTINCTION);
+            mtraits.flags = (ghost_sparsemat_flags)(mtraits.flags | GHOST_SPARSEMAT_PERM_NO_DISTINCTION); //I think this should go after init_rowfunc of dummymat
         }
         mtraits.C = 1;
         mtraits.sortScope = 1;
@@ -1057,13 +1058,14 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
             ghost_set_kacz_ratio(mat->context,dummymat);
             if(mat->context->kaczRatio < mat->context->kacz_setting.active_threads && !(mat->traits.flags & GHOST_SPARSEMAT_COLOR)) {
                 mat->traits.flags |= (ghost_sparsemat_flags)GHOST_SPARSEMAT_BLOCKCOLOR; 
-            }
+            } 
         }
         
         if (mat->traits.flags & GHOST_SPARSEMAT_BLOCKCOLOR) {
             ghost_sparsemat_blockColor(mat->context,dummymat);
         }
-        
+
+                            
         if (mat->traits.sortScope > 1) {
             ghost_sparsemat_perm_sort(mat->context,dummymat,mat->traits.sortScope);
         }
@@ -1169,7 +1171,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
                         funcerrs += src->func(mat->context->row_map->glb_perm_inv[row],&rowlen,tmpcol,tmpval,src->arg);
                     } else if (mat->context->row_map->loc_perm) {
                         funcerrs += src->func(mat->context->row_map->goffs[me]+mat->context->row_map->loc_perm_inv[row],&rowlen,tmpcol,tmpval,src->arg);
-                    }
+                    } 
                 } else {
                     funcerrs += src->func(mat->context->row_map->goffs[me]+row,&rowlen,tmpcol,tmpval,src->arg);
                 }
