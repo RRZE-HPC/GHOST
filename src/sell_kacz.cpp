@@ -11,6 +11,7 @@
 #include "ghost/sell_kacz_bmc_rm_gen.h"
 #include "ghost/sell_kacz_bmc_normal_gen.h"
 #include "ghost/sell_kacz_bmc_shift_gen.h"
+#include "ghost/sell_kacz_fallback.h"
 #include "ghost/compatibility_check.h"
 #include "ghost/autogen.h"
 #include "ghost/cpp11_fixes.h"
@@ -220,92 +221,6 @@ static std::unordered_map<ghost_kacz_parameters, ghost_kacz_kernel>
 ghost_kacz_kernels = std::unordered_map<ghost_kacz_parameters,ghost_kacz_kernel>();
 
 
-template<typename m_t, typename v_t, bool forward>
-static ghost_error kacz_fallback(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts)
-{ 
-    ghost_lidx rank;
-    ghost_rank(&rank,mat->context->mpicomm);
-    
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
-    
-    if (!mat->context->color_ptr || mat->context->ncolors == 0) {
-        WARNING_LOG("Matrix has not been colored!");
-    }
-    if (x->traits.ncols > 1) {
-        ERROR_LOG("Multi-vec not implemented!");
-        return GHOST_ERR_NOT_IMPLEMENTED;
-    }
-    
-    if(opts.normalize == GHOST_KACZ_NORMALIZE_YES && opts.initialized == false) {
-        WARNING_LOG("Kacz on normalized system is called, and the system has not been normalized at the start"); 
-    }
-    
-    ghost_lidx c;
-    ghost_lidx row;
-    ghost_lidx rowinchunk;
-    ghost_lidx j;
-    ghost_lidx color;
-    ghost_lidx fchunk, lchunk;
-    v_t *bval = (v_t *)(b->val);
-    v_t *xval = (v_t *)(x->val);
-    m_t *mval = (m_t *)mat->val;
-    v_t omega = *(v_t *)opts.omega;
-    
-    ghost_lidx firstcolor, lastcolor, stride;
-    
-    if (forward) {
-        firstcolor = 0;
-        lastcolor = mat->context->ncolors;
-        stride = 1;
-    } else {
-        firstcolor = mat->context->ncolors-1;
-        lastcolor = -1;
-        stride = -1;
-    }
-    
-    
-    for (color=firstcolor; color!=lastcolor; color+=stride) {
-        fchunk = mat->context->color_ptr[color]/mat->traits.C;
-        lchunk = mat->context->color_ptr[color+1]/mat->traits.C;
-        #pragma omp parallel
-        { 
-            m_t *rownorm;
-            ghost_malloc((void **)&rownorm,mat->traits.C*sizeof(m_t));
-            #pragma omp for private(j,row,rowinchunk)
-            for (c=fchunk; c<lchunk; c++) {
-                for (rowinchunk = 0; rowinchunk < mat->traits.C; rowinchunk++) {
-                    row = rowinchunk + c*mat->traits.C;
-                    rownorm[rowinchunk] = 0.;
-                    
-                    ghost_lidx idx = mat->chunkStart[c]+rowinchunk;
-                    v_t scal = -bval[row];
-                    
-                    for (j=0; j<mat->rowLen[row]; j++) {
-                        scal += (v_t)mval[idx] * xval[mat->col[idx]];
-                        rownorm[rowinchunk] += mval[idx]*mval[idx];
-                        idx += mat->traits.C;
-                    }
-                    
-                    idx -= mat->traits.C*mat->rowLen[row];
-                    scal /= (v_t)rownorm[rowinchunk];
-                    
-                    for (j=0; j<mat->rowLen[row]; j++) {
-                        xval[mat->col[idx]] = xval[mat->col[idx]] - omega * scal * (v_t)mval[idx];
-                        idx += mat->traits.C;
-                    }
-                }
-            }
-            free(rownorm);
-            rownorm = NULL;
-        }
-    }
-    
-    
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
-    return GHOST_SUCCESS;
-    
-}
-
 ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *rhs, ghost_kacz_opts opts)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
@@ -511,36 +426,8 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
                 ret = kernel(x,mat,b,opts);
             } else { // execute plain kernel as fallback
                 PERFWARNING_LOG("Execute fallback Kaczmarz kernel which is potentially slow!");
-                
-                if (b->traits.datatype & GHOST_DT_COMPLEX) {
-                    if (b->traits.datatype & GHOST_DT_DOUBLE) {
-                        if (opts.direction == GHOST_KACZ_DIRECTION_FORWARD) {
-                            ret = kacz_fallback<std::complex<double>, std::complex<double>, true>(x,mat,b,opts);
-                        } else {
-                            ret = kacz_fallback<std::complex<double>, std::complex<double>, false>(x,mat,b,opts);
-                        }
-                    } else {
-                        if (opts.direction == GHOST_KACZ_DIRECTION_FORWARD) {
-                            ret = kacz_fallback<std::complex<float>, std::complex<float>, true>(x,mat,b,opts);
-                        } else {
-                            ret = kacz_fallback<std::complex<float>, std::complex<float>, false>(x,mat,b,opts);
-                        }
-                    }
-                } else {
-                    if (b->traits.datatype & GHOST_DT_DOUBLE) {
-                        if (opts.direction == GHOST_KACZ_DIRECTION_FORWARD) {
-                            ret = kacz_fallback<double, double, true>(x,mat,b,opts);
-                        } else {
-                            ret = kacz_fallback<double, double, false>(x,mat,b,opts);
-                        }
-                    } else {
-                        if (opts.direction == GHOST_KACZ_DIRECTION_FORWARD) {
-                            ret = kacz_fallback<float, float, true>(x,mat,b,opts);
-                        } else {
-                            ret = kacz_fallback<float, float, false>(x,mat,b,opts);
-                        }
-                    }
-                }
+                ghost_kacz_fallback(x, mat, b, opts);
+ 
             }
             
             GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
