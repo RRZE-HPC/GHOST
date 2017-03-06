@@ -39,12 +39,14 @@ static inline T norm(const T& a)
 #if __cplusplus < 201103L
 static inline float norm(const float &a)
 {
-    return std::fabs(a);
+    /*return std::fabs(a);*/
+    return a*a;
 }
 
 static inline double norm(const double &a)
 {
-    return std::fabs(a);
+    /*return std::fabs(a);*/
+    return a*a;
 }
 #endif
 
