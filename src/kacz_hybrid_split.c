@@ -397,7 +397,7 @@ ghost_error split_analytical(ghost_sparsemat *mat)
     ghost_lidx *zone_ptr = mat->context->zone_ptr;
     
     int pure_gap = (int)( ((double)height/current_threads));
-    int pure_thickness = (int)( ( ((double)height/current_threads)-mat->context->bandwidth*diagonal_slope)) + 1;   
+    int pure_thickness = (int)( ( ((double)height/current_threads)-mat->context->bandwidth*diagonal_slope)) ;   
     
     int red_ctr = 0; ;
     int black_ctr = 0; ;
@@ -488,7 +488,14 @@ ghost_error split_analytical(ghost_sparsemat *mat)
     #ifdef GHOST_KACZ_ANALYZE 
     kacz_analyze_print(mat);
     #endif
-    
+  
+    if(mat->traits.C == 1) 
+    {
+        INFO_LOG("CHECKING BLOCK COLORING")
+        checker(mat);
+        INFO_LOG("CHECKING FINISHED")
+    }
+
     return ret;
 }
 
