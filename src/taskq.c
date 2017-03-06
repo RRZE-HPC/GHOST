@@ -85,6 +85,9 @@ static pthread_key_t mutex_key;
 
 ghost_error ghost_taskq_create()
 {
+    if (!ghost_tasking_enabled()) {
+        return GHOST_SUCCESS;
+    }
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING|GHOST_FUNCTYPE_SETUP);
     int t,s;
     int npu;
