@@ -88,10 +88,29 @@ typedef enum {
 ghost_kacz_direction;
 
 typedef enum{
-     GHOST_KACZ_NORMALIZE_YES,
-     GHOST_KACZ_NORMALIZE_NO
+     GHOST_KACZ_NORMALIZE_YES = 0,
+     GHOST_KACZ_NORMALIZE_NO = 1<<0,
+     GHOST_KACZ_NORMALIZE_SAVE = 1<<1
 }
 ghost_kacz_normalize;
+
+#ifdef __cplusplus
+static inline ghost_kacz_normalize operator|(const ghost_kacz_normalize &a, const ghost_kacz_normalize &b) {
+return static_cast<ghost_kacz_normalize>(static_cast<int>(a) | static_cast<int>(b));
+}
+static inline ghost_kacz_normalize operator&(const ghost_kacz_normalize &a, const ghost_kacz_normalize &b) {
+return static_cast<ghost_kacz_normalize>(static_cast<int>(a) & static_cast<int>(b));
+}
+static inline ghost_kacz_normalize operator|=(ghost_kacz_normalize &a, const ghost_kacz_normalize &b) {
+    a = static_cast<ghost_kacz_normalize>(static_cast<int>(a) | static_cast<int>(b));
+    return a;
+}
+static inline ghost_kacz_normalize operator&=(ghost_kacz_normalize &a, const ghost_kacz_normalize &b) {
+    a = static_cast<ghost_kacz_normalize>(static_cast<int>(a) & static_cast<int>(b));
+    return a;
+}
+#endif
+
 
 typedef enum{
      GHOST_KACZ_MODE_NORMAL,
@@ -1043,7 +1062,7 @@ extern "C" {
      *
      * @param[in] mat: The sparsematrix
      * @param[in] b: The rhs
-     * @param opts Options.
+     * @param opts: CARP Options.
      */ 
     ghost_error ghost_carp_init(ghost_sparsemat *mat, ghost_densemat *b, ghost_carp_opts *opts); 
      /**
@@ -1053,6 +1072,12 @@ extern "C" {
      * @param opts Options.
      */ 
     ghost_error ghost_carp_perf_init(ghost_sparsemat *mat, ghost_carp_opts *opts);
+     /**
+     * @brief Destroy(Finalize) CARP 
+     *
+     * @param opts: CARP options
+    */ 
+    void ghost_carp_destroy(ghost_carp_opts *opts); 
     /**
      * @brief Prints the row distribution details of KACZ. 
      *

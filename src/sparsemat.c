@@ -1008,7 +1008,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
     // Create dummymat without any permutation and create global permutation
     // based on this dummymat
     if ((mat->traits.flags & GHOST_SPARSEMAT_PERM_ANY_GLOBAL) && 
-            !(mat->traits.flags & GHOST_SPARSEMAT_PERM_ANY_LOCAL)) {
+            (!(mat->traits.flags & GHOST_SPARSEMAT_PERM_ANY_LOCAL) && !(mat->traits.flags & GHOST_SOLVER_KACZ))) {
         ghost_sparsemat *dummymat = NULL;
         ghost_sparsemat_traits mtraits = mat->traits;
         mtraits.flags = (ghost_sparsemat_flags)(mtraits.flags & ~(GHOST_SPARSEMAT_PERM_ANY_GLOBAL));
@@ -1024,8 +1024,8 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
         if (mat->traits.flags & GHOST_SPARSEMAT_ZOLTAN) {
             ghost_sparsemat_perm_zoltan(mat->context,dummymat);
         }
-        ghost_sparsemat_destroy(dummymat);
-
+ 
+       ghost_sparsemat_destroy(dummymat);
     } 
     // Any combination of only local or global+local permutations:
     // Create dummymat with global permutations only and create local
@@ -1036,8 +1036,8 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
         mtraits.flags = (ghost_sparsemat_flags)(mtraits.flags & ~(GHOST_SPARSEMAT_PERM_ANY_LOCAL));
         mtraits.flags = (ghost_sparsemat_flags)(mtraits.flags & ~(GHOST_SOLVER_KACZ));
         mtraits.flags = (ghost_sparsemat_flags)(mtraits.flags | GHOST_SPARSEMAT_SAVE_ORIG_COLS);
-        if (mat->traits.flags & GHOST_SOLVER_KACZ && nprocs > 1) {
-            mtraits.flags = (ghost_sparsemat_flags)(mtraits.flags | GHOST_SPARSEMAT_PERM_NO_DISTINCTION); //I think this should go after init_rowfunc of dummymat
+        if ((mat->traits.flags & GHOST_SOLVER_KACZ) && (nprocs > 1)) {
+            mtraits.flags = (ghost_sparsemat_flags)(mtraits.flags | GHOST_SPARSEMAT_PERM_NO_DISTINCTION); 
         }
         mtraits.C = 1;
         mtraits.sortScope = 1;
@@ -1057,6 +1057,9 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
         if(mat->traits.flags & GHOST_SOLVER_KACZ) {
             ghost_set_kacz_ratio(mat->context,dummymat);
             if(mat->context->kaczRatio < mat->context->kacz_setting.active_threads && !(mat->traits.flags & GHOST_SPARSEMAT_COLOR)) {
+                if(!(mat->traits.flags & GHOST_SPARSEMAT_PERM_ANY_LOCAL) && mat->context->kacz_setting.active_threads!=1){
+                    WARNING_LOG("GHOST: BMC is ON and this might lead to local row permutations; if you want to avoid it please decrease the number of threads to %d",MAX(1,(int)mat->context->kaczRatio));
+                }           
                 mat->traits.flags |= (ghost_sparsemat_flags)GHOST_SPARSEMAT_BLOCKCOLOR; 
             } 
         }
