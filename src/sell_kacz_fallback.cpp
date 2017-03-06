@@ -28,7 +28,7 @@ for(int shift=0; shift<NSHIFTS; ++shift) {\
 }\
 ghost_lidx diag_idx = 0; \
 if(mat->context->row_map->loc_perm && mat->context->col_map->loc_perm != mat->context->row_map->loc_perm) {\
-    diag_idx = mat->context->col_map->loc_perm[mat->context->row_map->loc_perm_inv[row]]; \
+    diag_idx = mat->context->col_map->loc_perm[mat->context->row_map->loc_perm_inv[row]]; /*Assumes diag entry if absent is not the border element*/\
 } \
 else { \
     diag_idx = row; \
@@ -89,9 +89,11 @@ for ( j=0; j<mat->rowLen[row]; j++) { \
     } \
     idx += CHUNKHEIGHT; \
 } \
-for(int shift=0; shift<NSHIFTS; ++shift) { \
-    for(int block=0; block<NBLOCKS; ++block) { \
-        xval[diag_idx*NBLOCKS*NSHIFTS + shift*NBLOCKS + block] += scal[shift*NBLOCKS+block] * ghost::conj(-sigma[shift]); \
+if(opts.shift) { \
+    for(int shift=0; shift<NSHIFTS; ++shift) { \
+        for(int block=0; block<NBLOCKS; ++block) { \
+            xval[diag_idx*NBLOCKS*NSHIFTS + shift*NBLOCKS + block] += scal[shift*NBLOCKS+block] * ghost::conj(-sigma[shift]); \
+        } \
     } \
 } \
 \
