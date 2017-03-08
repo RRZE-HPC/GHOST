@@ -921,12 +921,14 @@ enable_testing()
 add_test(NAME simple WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/test COMMAND ./simple)
 add_test(NAME minimal WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/test COMMAND ./minimal)
 add_test(NAME context WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/test COMMAND ./context)
+add_test(NAME diagfirst WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/test COMMAND ./diagfirst)
 
 find_program(MPIRUN NAMES mpirun mpiexec mpiexec.hydra)
 
 add_test(NAME simple_np2 WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/test COMMAND ${MPIRUN} -np 2 ./simple)
 add_test(NAME minimal_np2 WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/test COMMAND ${MPIRUN} -np 2 ./minimal)
 add_test(NAME context_np2 WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/test COMMAND ${MPIRUN} -np 2 ./context)
+add_test(NAME diagfirst_np2 WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/test COMMAND ${MPIRUN} -np 2 ./diagfirst)
 set_tests_properties(minimal PROPERTIES TIMEOUT 60)
 
 # run tests on GPU if one is present
