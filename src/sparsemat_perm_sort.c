@@ -46,7 +46,7 @@ ghost_error ghost_sparsemat_perm_sort(ghost_context *ctx, ghost_sparsemat *mat, 
 
 #ifdef GHOST_HAVE_CUDA
         ghost_type mytype;
-        GHOST_CALL_GOTO(ghost_type_get(&mytype));
+        GHOST_CALL_GOTO(ghost_type_get(&mytype),err,ret);
         if (mytype == GHOST_TYPE_CUDA) {
             GHOST_CALL_GOTO(ghost_cu_malloc((void **)&ctx->row_map->cu_loc_perm,sizeof(ghost_lidx)*nrows),err,ret);
         }
