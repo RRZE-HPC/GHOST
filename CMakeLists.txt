@@ -384,7 +384,7 @@ if (NOT HWLOC_INCLUDE_DIR)
     message(STATUS "Could not find hwloc.h neither via pkg-config nor in the defined HWLOC_INCLUDE_DIR! Trying to build hwloc...")
     ExternalProject_Add(hwloc
         PREFIX ${PROJECT_BINARY_DIR}/hwloc
-        URL https://www.open-mpi.org/software/hwloc/v1.11/downloads/hwloc-1.11.5.tar.gz
+        URL https://www.open-mpi.org/software/hwloc/v1.11/downloads/hwloc-1.11.6.tar.gz
         SOURCE_DIR ${PROJECT_BINARY_DIR}/hwloc/src/hwloc
         CONFIGURE_COMMAND ./configure --prefix=${PROJECT_BINARY_DIR}/hwloc-inst
         BUILD_COMMAND make 
