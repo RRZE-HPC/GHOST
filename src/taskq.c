@@ -494,8 +494,6 @@ static void * thread_main(void *arg)
 #if defined(GHOST_BUILD_MIC)&&defined(__INTEL_COMPILER)
         int blocktime = kmp_get_blocktime();
         kmp_set_blocktime(1000); 
-#elif defined(GHOST_BUILD_MIC)
-#warning "we recommend using the Intel(R) compilers on MIC..."
 #endif
         DEBUG_LOG(1,"Starting exeuction of task %p",(void *)myTask);
         pthread_setspecific(key,myTask);
