@@ -639,6 +639,14 @@ static ghost_error FUNCNAME(fromVec_tmpl(ghost_densemat *vec, ghost_densemat *ve
     ghost_error ret = GHOST_SUCCESS;
 
     //////////////// check compatibility /////////////
+    ghost_compatible_vec_init check = GHOST_COMPATIBLE_VEC_INIT_INITIALIZER;
+    check.OUT_A = vec;
+    check.IN_A = vec2;
+
+    ret = ghost_check_vec_init_compatibility(&check);
+    ///////////////////////////////////////////////////
+ 
+/*  //////////////// check compatibility /////////////
     if (vec->map->dim == vec2->map->dim) { // only check if we want to initialize a block vector from another
         ghost_compatible_vec_vec check = GHOST_COMPATIBLE_VEC_VEC_INITIALIZER;
         check.OUT = vec;
@@ -646,8 +654,8 @@ static ghost_error FUNCNAME(fromVec_tmpl(ghost_densemat *vec, ghost_densemat *ve
       
         ret = ghost_check_vec_vec_compatibility(&check);
     }
-    ///////////////////////////////////////////////////
- 
+   ///////////////////////////////////////////////////
+*/ 
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     int needInit = 0;
     FUNCNAME(malloc(vec,&needInit));
@@ -741,6 +749,17 @@ static ghost_error FUNCNAME(fromReal_tmpl(ghost_densemat *vec, ghost_densemat *r
 
     GHOST_DENSEMAT_CHECK_SIMILARITY(re,im);
 
+    ghost_error ret = GHOST_SUCCESS;
+    //////////////// check compatibility /////////////
+    ghost_compatible_vec_init check = GHOST_COMPATIBLE_VEC_INIT_INITIALIZER;
+    check.IN_A = re;
+    check.IN_B = im;
+    check.OUT_A = vec;
+  
+    ret = ghost_check_vec_init_compatibility(&check);
+    ///////////////////////////////////////////////////
+ 
+ 
     int needInit = 0;
     FUNCNAME(malloc(vec,&needInit));
 
@@ -757,7 +776,7 @@ static ghost_error FUNCNAME(fromReal_tmpl(ghost_densemat *vec, ghost_densemat *r
     ghost_densemat_upload(vec);
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
-    return GHOST_SUCCESS;
+    return ret;
 
 }
 
@@ -767,7 +786,18 @@ static ghost_error FUNCNAME(fromComplex_tmpl(ghost_densemat *re, ghost_densemat 
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
 
     GHOST_DENSEMAT_CHECK_SIMILARITY(re,im);
+    
+    ghost_error ret = GHOST_SUCCESS;
 
+    //////////////// check compatibility /////////////
+    ghost_compatible_vec_init check = GHOST_COMPATIBLE_VEC_INIT_INITIALIZER;
+    check.IN_A = c;
+    check.OUT_A = re;
+    check.OUT_B = im;
+  
+    ret = ghost_check_vec_init_compatibility(&check);
+    ///////////////////////////////////////////////////
+ 
     int needInit = 0;
     FUNCNAME(malloc(re,&needInit));
 
@@ -793,7 +823,7 @@ static ghost_error FUNCNAME(fromComplex_tmpl(ghost_densemat *re, ghost_densemat 
 
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
-    return GHOST_SUCCESS;
+    return ret;
 
 }
 
