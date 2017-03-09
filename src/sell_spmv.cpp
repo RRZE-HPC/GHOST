@@ -577,7 +577,7 @@ end_of_loop:
         ret = kernel(lhs,mat,rhs,traits);
     } else { // execute plain kernel as fallback
         PERFWARNING_LOG("Execute fallback SELL SpMV kernel which is potentially slow!");
-        if (lhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
+        if (p.storage == GHOST_DENSEMAT_COLMAJOR) {
             SELECT_TMPL_2DATATYPES_base_derived(mat->traits.datatype,
                     rhs->traits.datatype,std::complex,ret,
                     ghost_sell_spmv_plain_cm_selector,lhs,mat,rhs,traits);
