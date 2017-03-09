@@ -269,10 +269,18 @@ static ghost_error ghost_sell_spmv_plain_cm(ghost_densemat *lhs,
                 for (i=0; i<ch; i++) {
                     if (c*ch+i < SPM_NROWS(mat)) {
                         if ((traits.flags & GHOST_SPMV_SHIFT) && shift) {
-                            tmp[i] = tmp[i]-shift[0]*rhsv[c*ch+i];
+                            if (mat->context->col_map->loc_perm != mat->context->row_map->loc_perm) {
+                                tmp[i] = tmp[i]-shift[0]*rhsv[mat->context->col_map->loc_perm[mat->context->row_map->loc_perm_inv[c*ch+i]]];
+                            } else {
+                                tmp[i] = tmp[i]-shift[0]*rhsv[c*ch+i];
+                            }
                         }
                         if ((traits.flags & GHOST_SPMV_VSHIFT) && shift) {
-                            tmp[i] = tmp[i]-shift[v]*rhsv[c*ch+i];
+                            if (mat->context->col_map->loc_perm != mat->context->row_map->loc_perm) {
+                                tmp[i] = tmp[i]-shift[v]*rhsv[mat->context->col_map->loc_perm[mat->context->row_map->loc_perm_inv[c*ch+i]]];
+                            } else {
+                                tmp[i] = tmp[i]-shift[v]*rhsv[c*ch+i];
+                            }
                         }
                         if (traits.flags & GHOST_SPMV_SCALE) {
                             tmp[i] = tmp[i]*scale;
