@@ -8,7 +8,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct 
+typedef struct
 {
   ghost_sparsemat *mat;
 
@@ -25,14 +25,14 @@ typedef struct
 ghost_compatible_mat_vec;
 
 
-typedef struct 
+typedef struct
 {
   ghost_densemat *A;
   ghost_densemat *B;
   ghost_densemat *C;
   ghost_densemat *D;
   ghost_densemat *OUT;
-  
+
   char transA;
   char transB;
   char transC;
@@ -40,11 +40,26 @@ typedef struct
 }
 ghost_compatible_vec_vec;
 
+typedef struct
+{
+  ghost_densemat *IN_A;
+  ghost_densemat *IN_B;
+  ghost_densemat *OUT_A;
+  ghost_densemat *OUT_B;
+}
+ghost_compatible_vec_init;
+
+
 //Checks the compatibility for routines involving sparsematrix and densematrix
 ghost_error ghost_check_mat_vec_compatibility(ghost_compatible_mat_vec *data, ghost_context *ctx);
 
 //Checks the compatibility for routines involving only densematrix
 ghost_error ghost_check_vec_vec_compatibility(ghost_compatible_vec_vec *data);
+
+//Checks the compatibility for routines involving initialization (or
+//overwriting) of densematrix
+ghost_error ghost_check_vec_init_compatibility(ghost_compatible_vec_init *data);
+
 
 
 #ifdef __cplusplus
@@ -53,6 +68,6 @@ ghost_error ghost_check_vec_vec_compatibility(ghost_compatible_vec_vec *data);
 
 extern const ghost_compatible_mat_vec GHOST_COMPATIBLE_MAT_VEC_INITIALIZER;
 extern const ghost_compatible_vec_vec GHOST_COMPATIBLE_VEC_VEC_INITIALIZER;
-
+extern const ghost_compatible_vec_init GHOST_COMPATIBLE_VEC_INIT_INITIALIZER;
 
 #endif
