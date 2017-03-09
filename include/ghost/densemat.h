@@ -26,7 +26,12 @@
     if (!(vec1->traits.location & vec2->traits.location)) {\
         ERROR_LOG("Locations do not match!");\
         return GHOST_ERR_INVALID_ARG;\
+    }\
+    if (!(vec1->traits.datatype == vec2->traits.datatype)) {\
+        ERROR_LOG("Types do not match!");\
+        return GHOST_ERR_INVALID_ARG;\
     }
+
 
 
 /**
@@ -37,7 +42,7 @@
  * @param[out] val The value at the specified location.
  * @param[inout] arg Additional arguments.
  *
- * @return  
+ * @return
  */
 typedef int (*ghost_densemat_srcfunc)(ghost_gidx row, ghost_lidx col, void * val, void * arg);
 
@@ -51,20 +56,20 @@ typedef enum {
      */
     GHOST_DENSEMAT_VIEW = 1<<0,
     /**
-     * @brief The densemat is scattered in leading dimension, i.e., the rows/columns are not 
-     * consecutive in memory. This is only possible for views. 
+     * @brief The densemat is scattered in leading dimension, i.e., the rows/columns are not
+     * consecutive in memory. This is only possible for views.
      */
     GHOST_DENSEMAT_SCATTERED_LD = 1<<1,
     /**
-     * @brief The densemat is scattered in trailing dimension, i.e., the rows/columns are not 
-     * consecutive in memory. This is only possible for views. 
+     * @brief The densemat is scattered in trailing dimension, i.e., the rows/columns are not
+     * consecutive in memory. This is only possible for views.
      */
     GHOST_DENSEMAT_SCATTERED_TR = 1<<2,
     /**
-    * @brief The densemat has been permuted in #GHOST_PERMUTATION_ORIG2PERM 
-    * direction via its ghost_densemat::permute() function. 
+    * @brief The densemat has been permuted in #GHOST_PERMUTATION_ORIG2PERM
+    * direction via its ghost_densemat::permute() function.
     *
-    * This flag gets deleted once the densemat has been permuted back 
+    * This flag gets deleted once the densemat has been permuted back
     * (#GHOST_PERMUTATION_PERM2ORIG).
     */
     GHOST_DENSEMAT_PERMUTED = 1<<3,
@@ -77,7 +82,7 @@ typedef enum {
      * @brief Set this flag if the number of columns should be padded according to the SIMD width.
      */
     GHOST_DENSEMAT_PAD_COLS = 1<<5
-}  
+}
 ghost_densemat_flags;
 
 
@@ -86,7 +91,7 @@ ghost_densemat_flags;
 /**
  * @brief Densemat storage orders
  */
-typedef enum 
+typedef enum
 {
     /**
      * @brief Row-major storage (as in C).
@@ -124,7 +129,7 @@ typedef struct
     char **tmprecv;
     /**
      * @brief This is NULL if receiving is done directly into the densemat halo.
-     * In other cases (i.e., col-major with ncols>1 and row-major with missing 
+     * In other cases (i.e., col-major with ncols>1 and row-major with missing
      * columns), this will hold space for receiving elements.
      */
     char *tmprecv_mem;
@@ -133,11 +138,11 @@ typedef struct
      */
     char *work;
     /**
-     * @brief Offset into the work array for each PE which receives data from me. 
+     * @brief Offset into the work array for each PE which receives data from me.
      */
     ghost_lidx *dueptr;
     /**
-     * @brief Offset into the tmprecv array for each PE from which I receive data. 
+     * @brief Offset into the tmprecv array for each PE from which I receive data.
      */
     ghost_lidx *wishptr;
     /**
@@ -166,7 +171,7 @@ typedef struct
      */
     ghost_lidx ncols;
     /**
-     * @brief The padded number of columns (may differ from ncols for row-major 
+     * @brief The padded number of columns (may differ from ncols for row-major
      * densemats).
      */
     ghost_lidx ncolspadded;
@@ -208,10 +213,10 @@ typedef struct ghost_densemat ghost_densemat;
 /**
  * @ingroup types
  *
- * @brief A dense vector/matrix.  
- * 
- * The according functions are accessed via function pointers. 
- * The first argument of each member function always has to be a pointer to the 
+ * @brief A dense vector/matrix.
+ *
+ * The according functions are accessed via function pointers.
+ * The first argument of each member function always has to be a pointer to the
  * densemat itself.
  */
 struct ghost_densemat
@@ -225,9 +230,9 @@ struct ghost_densemat
      */
     char* val;
     /**
-     * @brief The source densemat (must not be a view). 
+     * @brief The source densemat (must not be a view).
      */
-    ghost_densemat *src; 
+    ghost_densemat *src;
     /**
      * @brief Size (in bytes) of one matrix element.
      */
@@ -235,21 +240,21 @@ struct ghost_densemat
     /**
      * @brief The trailing dimensions of the densemat.
      *
-     * Contains nrows if the densemat has row-major storage and 
+     * Contains nrows if the densemat has row-major storage and
      * ncols if it has col-major storage.
      */
     ghost_lidx nblock;
     /**
      * @brief The leading dimensions of the densemat.
      *
-     * Contains ncols if the densemat has row-major storage and 
+     * Contains ncols if the densemat has row-major storage and
      * nrows if it has col-major storage.
      */
     ghost_lidx blocklen;
     /**
      * @brief The leading dimensions of the densemat in memory.
      *
-     * Equal to ncolspadded if the densemat has row-major storage and 
+     * Equal to ncolspadded if the densemat has row-major storage and
      * nrowshalopadded if it has col-major storage.
      */
     ghost_lidx stride;
@@ -274,7 +279,7 @@ struct ghost_densemat
      */
     char * cu_val;
     /**
-     * @brief The densemat's map. 
+     * @brief The densemat's map.
      */
     ghost_map *map;
 };
@@ -303,7 +308,7 @@ extern "C" {
      * @ingroup types
      * @ingroup densecreate
      *
-     * @brief Create a dense matrix/vector. 
+     * @brief Create a dense matrix/vector.
      *
      * @param vec Where to store the matrix.
      * @param map The map of the matrix. This may be extracted from an existing context or created separately.
@@ -315,7 +320,7 @@ extern "C" {
      * an initialization function (see @ref denseinit) has to be called with the densemat.
      */
     ghost_error ghost_densemat_create(ghost_densemat **vec, ghost_map *map, ghost_densemat_traits traits);
-    
+
     /**
      * @brief Create an array of chars ('0' or '1') of the densemat mask.
      *
@@ -325,7 +330,7 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error ghost_densemat_mask2charfield(ghost_bitmap mask, 
+    ghost_error ghost_densemat_mask2charfield(ghost_bitmap mask,
             ghost_lidx len, char *charfield);
 
     /**
@@ -334,7 +339,7 @@ extern "C" {
      * @param coffs The numbers.
      * @param nc Length of the array.
      *
-     * @return True if each number is greater than the previous one, 
+     * @return True if each number is greater than the previous one,
      * false otherwise.
      */
     bool array_strictly_ascending (ghost_lidx *coffs, ghost_lidx nc);
@@ -348,7 +353,7 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error ghost_densemat_uniformstorage(bool *uniform, 
+    ghost_error ghost_densemat_uniformstorage(bool *uniform,
             ghost_densemat *vec,ghost_mpi_comm mpicomm);
 
     /**
@@ -357,13 +362,13 @@ extern "C" {
      * @brief Get a string about the storage order.
      */
     char * ghost_densemat_storage_string(ghost_densemat_storage storage);
-    
+
     /**
      * @ingroup stringification
      *
      * @brief Get a string containing information about the densemat.
      */
-    ghost_error ghost_densemat_info_string(char **str, 
+    ghost_error ghost_densemat_info_string(char **str,
             ghost_densemat *densemat);
 
     /**
@@ -422,8 +427,8 @@ extern "C" {
      *
      * @return The index.
      */
-    int ghost_idx_of_densemat_storage(ghost_densemat_storage s); 
-    
+    int ghost_idx_of_densemat_storage(ghost_densemat_storage s);
+
     /**
      * @ingroup denseinit
      * @brief Initializes a densemat from random values.
@@ -431,7 +436,7 @@ extern "C" {
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error ghost_densemat_init_rand(ghost_densemat *x);
-    
+
     /**
      * @ingroup denseinit
      * @brief Initializes a densemat from a scalar value.
@@ -453,7 +458,7 @@ extern "C" {
      * @ingroup denseinit
      * @brief Initializes a densemat from a given callback function.
      * @param x The densemat.
-     * @param func The callback function pointer. 
+     * @param func The callback function pointer.
      * @param arg The argument which should be forwarded to the callback.
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
@@ -504,7 +509,7 @@ extern "C" {
     /**
      * @ingroup denseinit
      * @ingroup denseview
-     * @brief View plain data which is stored with a given stride 
+     * @brief View plain data which is stored with a given stride
      * @param x The densemat.
      * @param data Memory location of the data.
      * @param stride Stride of the data.
@@ -595,11 +600,11 @@ extern "C" {
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error ghost_densemat_permute(ghost_densemat *x, ghost_permutation_direction dir);
-    
+
     /**
      * @ingroup gputransfer
-     * 
-     * @brief Downloads a densemat from a compute device, excluding halo elements. 
+     *
+     * @brief Downloads a densemat from a compute device, excluding halo elements.
      *
      * The densemat must be present on both host and device.
      * Does nothing if the densemat is not present on the device.
@@ -609,17 +614,17 @@ extern "C" {
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error ghost_densemat_download(ghost_densemat *vec);
-    
+
     /**
      * @ingroup gputransfer
-     * 
-     * @brief Uploads a densemat to a compute device, excluding halo elements. 
+     *
+     * @brief Uploads a densemat to a compute device, excluding halo elements.
      * The densemat must be present on both host and device.
      *
      * @param vec The densemat.
      */
     ghost_error ghost_densemat_upload(ghost_densemat *vec);
-    
+
     /**
      * @brief Reduces the densemats using addition in its map's communicator.
      *
@@ -662,7 +667,7 @@ extern "C" {
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error  ghost_densemat_halocomm_finalize (ghost_densemat *vec, ghost_context *ctx, ghost_densemat_halo_comm *comm);
-    
+
     /**
      * @brief Average each entry over all it's halo siblings.
      *
@@ -671,11 +676,11 @@ extern "C" {
      * Then, it computes the average over all and stores the value.
      * This is used, e.g., in ::ghost_carp().
      *
-     * @param vec The densemat. 
-     * @param ctx The context in which the densemat lives. 
+     * @param vec The densemat.
+     * @param ctx The context in which the densemat lives.
      */
     ghost_error ghost_densemat_halo_avg (ghost_densemat *vec, ghost_context *ctx);
-    
+
     /**
      * @brief Write a densemat to a file.
      *
@@ -687,7 +692,7 @@ extern "C" {
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error ghost_densemat_to_file(ghost_densemat *vec, char *filename, ghost_mpi_comm mpicomm);
-    
+
     /**
      * @brief Get a single entry of a ghost_densemat.
      *
@@ -699,7 +704,7 @@ extern "C" {
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error ghost_densemat_entry(void *entry, ghost_densemat *vec, ghost_lidx i, ghost_lidx j);
-    
+
     /**
      * @brief Sets the densemat to have the same values on all processes.
      *
@@ -710,7 +715,7 @@ extern "C" {
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error ghost_densemat_sync_vals(ghost_densemat *vec, ghost_mpi_comm comm, int root);
-    
+
     /**
      * @brief Compresses a densemat, i.e., make it non-scattered.
      * If the densemat is a view, it will no longer be one afterwards.
@@ -731,7 +736,7 @@ extern "C" {
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error ghost_densemat_collect(ghost_densemat *vec, ghost_densemat *globvec, ghost_context *ctx);
- 
+
     /**
      * @brief Distributes a global densemat into node-local vetors.
      *
