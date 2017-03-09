@@ -312,75 +312,79 @@ typedef enum {
     /**
      * @brief Matrix is stored on host.
      */
-    GHOST_SPARSEMAT_HOST          = 1,
+    GHOST_SPARSEMAT_HOST          = 1<<0,
     /**
      * @brief Matrix is store on device.
      */
-    GHOST_SPARSEMAT_DEVICE        = 2,
+    GHOST_SPARSEMAT_DEVICE        = 1<<1,
     /**
      * @brief If the matrix rows have been re-ordered, do _NOT_ permute the 
      * column indices accordingly.
      */
-    GHOST_SPARSEMAT_NOT_PERMUTE_COLS = 4,
+    GHOST_SPARSEMAT_NOT_PERMUTE_COLS = 1<<2,
     /**
      * @brief The matrix rows should be re-ordered in a certain way (defined 
      * in the traits). 
      */
-    GHOST_SPARSEMAT_PERMUTE       = 8,
+    GHOST_SPARSEMAT_PERMUTE       = 1<<3,
     /**
      * @brief Do _not_ sort the matrix cols wrt. memory location.
      */
-    GHOST_SPARSEMAT_NOT_SORT_COLS    = 16,
+    GHOST_SPARSEMAT_NOT_SORT_COLS    = 1<<4,
     /**
      * @brief Do _NOT_ store the local and remote part of the matrix.
      */
-    GHOST_SPARSEMAT_NOT_STORE_SPLIT = 32,
+    GHOST_SPARSEMAT_NOT_STORE_SPLIT = 1<<5,
     /**
      * @brief Do _NOT_ store the full matrix (local and remote combined).
      */
-    GHOST_SPARSEMAT_NOT_STORE_FULL = 64,
+    GHOST_SPARSEMAT_NOT_STORE_FULL = 1<<6,
     /**
      * @brief Reduce the matrix bandwidth with PT-Scotch
      */
-    GHOST_SPARSEMAT_SCOTCHIFY = 128,
+    GHOST_SPARSEMAT_SCOTCHIFY = 1<<7,
     /**
      * @brief Save the un-compressed original columns of a distributed matrix.
      */
-    GHOST_SPARSEMAT_SAVE_ORIG_COLS = 256,
+    GHOST_SPARSEMAT_SAVE_ORIG_COLS = 1<<8,
     /**
      * @brief Create a matrix permutation reflecting a distance-2-coloring.
      */
-    GHOST_SPARSEMAT_COLOR = 512,
+    GHOST_SPARSEMAT_COLOR = 1<<9,
     /**
      * @brief If the matrix comes from a matrix market file, transpose it on read-in.
      * If this is implemented for other rowfuncs, the _MM may get removed in the future.
      */
-    GHOST_SPARSEMAT_TRANSPOSE_MM = 1024,
+    GHOST_SPARSEMAT_TRANSPOSE_MM = 1<<10,
     /**
      * @brief Re-order the matrix globally using Zoltan hypergraph partitioning.
      */
-    GHOST_SPARSEMAT_ZOLTAN = 2048,
+    GHOST_SPARSEMAT_ZOLTAN = 1<<11,
     /**
      * @brief Re-order the local part of the matrix using parallel RCM re-ordering.
      */
-    GHOST_SPARSEMAT_RCM = 4096,
+    GHOST_SPARSEMAT_RCM = 1<<12,
     /**
     * @brief Re-order the local part of the matrix using a block coloring.
     */
-    GHOST_SPARSEMAT_BLOCKCOLOR = 8192,
+    GHOST_SPARSEMAT_BLOCKCOLOR = 1<<13,
     /**
     * @brief SETS the sparsematrix permutation as needed by the KACZ solver
     * depending on the bandwidth of the matrix
     */
-    GHOST_SOLVER_KACZ = 16384,
+    GHOST_SOLVER_KACZ = 1<<14,
     /**
     * @brief Sort matrix rows according to their length (SELL-C-Sigma sorting)
     */
-    GHOST_SPARSEMAT_SORT_ROWS = 32768,
+    GHOST_SPARSEMAT_SORT_ROWS = 1<<15,
     /**
     * @brief Does not make a distinction between local and remote entries if set; this might lead to higher communication time
     */
-    GHOST_SPARSEMAT_PERM_NO_DISTINCTION=65536
+    GHOST_SPARSEMAT_PERM_NO_DISTINCTION=1<<16,
+    /**
+    * @brief Store the diagonal entry first in each row. Store an explicit zero if the diagonal is zero.
+    */
+    GHOST_SPARSEMAT_DIAG_FIRST=1<<17
 
 } ghost_sparsemat_flags;
 
@@ -775,21 +779,6 @@ extern "C" {
     ghost_error ghost_sparsemat_blockColor(ghost_context *ctx, ghost_sparsemat *mat);
  
     ghost_error ghost_sparsemat_perm_zoltan(ghost_context *ctx, ghost_sparsemat *mat);
-    /**
-     * @brief Sort the entries in a given row physically to have increasing 
-     * column indices.
-     *
-     * @param[inout] col The column indices of the row.
-     * @param[inout] val The values of the row.
-     * @param[in] valSize The size of one entry.
-     * @param[in] rowlen The length of the row.
-     * @param[in] stride The stride between successive elements in the row (1 
-     * for CRS, C for SELL-C).
-     *
-     * @return ::GHOST_SUCCESS on success or an error indicator.
-     */
-    ghost_error ghost_sparsemat_sortrow(ghost_gidx *col, char *val, 
-            size_t valSize, ghost_lidx rowlen, ghost_lidx stride);
     /**
      * @brief Common function for matrix creation from a file.
      *

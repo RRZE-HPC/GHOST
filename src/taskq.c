@@ -491,7 +491,7 @@ static void * thread_main(void *arg)
         myTask->state = GHOST_TASK_RUNNING;    
         pthread_mutex_unlock(myTask->stateMutex);
 
-#ifdef GHOST_BUILD_MIC
+#if defined(GHOST_BUILD_MIC)&&defined(__INTEL_COMPILER)
         int blocktime = kmp_get_blocktime();
         kmp_set_blocktime(1000); 
 #endif
@@ -501,7 +501,7 @@ static void * thread_main(void *arg)
         pthread_setspecific(key,NULL);
         DEBUG_LOG(1,"Task %p finished",(void *)myTask);
 
-#ifdef GHOST_BUILD_MIC
+#if defined(GHOST_BUILD_MIC)&&defined(__INTEL_COMPILER)
         kmp_set_blocktime(blocktime); 
 #endif
         

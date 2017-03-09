@@ -9,8 +9,9 @@ endif()
 add_executable(simple simple.cpp)
 add_executable(minimal minimal.c)
 add_executable(context context.c)
+add_executable(diagfirst diagfirst.c)
 
-set(TESTS simple minimal context)
+set(TESTS simple minimal context diagfirst)
 
 foreach(TEST ${TESTS})
     add_dependencies(${TEST} ghost)
