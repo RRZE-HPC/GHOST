@@ -59,7 +59,12 @@ ghost_error ghost_sellspmv__a_plain_z_z_rm_CHUNKHEIGHT_x(ghost_densemat *res, gh
         { // loop over rows
             offs = mat->chunkStart[r/CHUNKHEIGHT]+r%CHUNKHEIGHT;
             complex double *lrow = ((complex double *)(res->val))+res->stride*r;
-            complex double *rrow = rhsval+invec->stride*r;
+            complex double *rrow;
+            if (mat->context->col_map->loc_perm == mat->context->row_map->loc_perm) {
+                rrow = rhsval+invec->stride*r;
+            } else {
+                rrow = rhsval+invec->stride*mat->context->col_map->loc_perm[mat->context->row_map->loc_perm_inv[r]];
+            }
             complex double *zrow = NULL;
             complex double matval;
             ghost_lidx matcol;
@@ -215,7 +220,12 @@ ghost_error ghost_sellspmv__a_plain_d_d_rm_CHUNKHEIGHT_x(ghost_densemat *res, gh
         { // loop over rows
             offs = mat->chunkStart[r/CHUNKHEIGHT]+r%CHUNKHEIGHT;
             double *lrow = ((double *)(res->val))+res->stride*r;
-            double *rrow = rhsval+invec->stride*r;
+            double *rrow;
+            if (mat->context->col_map->loc_perm == mat->context->row_map->loc_perm) {
+                rrow = rhsval+invec->stride*r;
+            } else {
+                rrow = rhsval+invec->stride*mat->context->col_map->loc_perm[mat->context->row_map->loc_perm_inv[r]];
+            }
             double *zrow = NULL;
             double matval;
             ghost_lidx matcol;

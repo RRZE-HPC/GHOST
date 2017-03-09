@@ -464,7 +464,12 @@ ghost_error ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_x(ghost_densemat *res, ghos
         for (c=0; c<SPM_NROWS(mat); c++) 
         { // loop over chunks
             double *lval = ((double *)(res->val))+res->stride*c;
-            double *rval = ((double *)(invec->val))+invec->stride*c;
+            double *rval;
+            if (mat->context->col_map->loc_perm == mat->context->row_map->loc_perm) {
+                rval = ((double *)(invec->val))+invec->stride*c;
+            } else {
+                rval = ((double *)(invec->val))+invec->stride*mat->context->col_map->loc_perm[mat->context->row_map->loc_perm_inv[c]];
+            }
             double *zval = NULL;
             if (z) {
                zval = ((double *)(z->val))+z->stride*c;
@@ -741,7 +746,12 @@ ghost_error ghost_sellspmv__a_avx_z_z_rm_CHUNKHEIGHT_x(ghost_densemat *res, ghos
         for (c=0; c<SPM_NROWS(mat); c++) 
         { // loop over chunks
             complex double *lval = ((complex double *)(res->val))+res->stride*c;
-            complex double *rval = ((complex double *)(invec->val))+invec->stride*c;
+            complex double *rval;
+            if (mat->context->col_map->loc_perm == mat->context->row_map->loc_perm) {
+                rval = ((complex double *)(invec->val))+invec->stride*c;
+            } else {
+                rval = ((complex double *)(invec->val))+invec->stride*mat->context->col_map->loc_perm[mat->context->row_map->loc_perm_inv[c]];
+            }
             complex double *zval = NULL;
             if (z) {
                zval = ((complex double *)(z->val))+z->stride*c;

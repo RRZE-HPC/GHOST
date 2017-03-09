@@ -105,7 +105,12 @@ static ghost_error ghost_sell_spmv_plain_rm(ghost_densemat *lhs,
 
             for (i=0; (i<ch) && (c*ch+i < SPM_NROWS(mat)); i++) {
                 lhsrow = ((v_t *)lhs->val)+lhs->stride*(c*ch+i);
-                rhsrow = ((v_t *)rhs->val)+rhs->stride*(c*ch+i);
+                if (mat->context->col_map->loc_perm == mat->context->row_map->loc_perm) {
+                    rhsrow = ((v_t *)rhs->val)+rhs->stride*(c*ch+i);
+                } else {
+                    rhsrow = ((v_t *)rhs->val)+rhs->stride*(mat->context->col_map->loc_perm[mat->context->row_map->loc_perm_inv[c*ch+i]]);
+                }
+
                 if (z) {
                     zrow = ((v_t *)z->val)+z->stride*(c*ch+i);
                 }
@@ -238,6 +243,7 @@ static ghost_error ghost_sell_spmv_plain_cm(ghost_densemat *lhs,
         v_t *lhsv = NULL;
         v_t *rhsv = NULL;
         v_t *zv = NULL;
+        ghost_lidx rhsrow;
         int tid = ghost_omp_threadnum();
 
 
@@ -268,19 +274,17 @@ static ghost_error ghost_sell_spmv_plain_cm(ghost_densemat *lhs,
                 }
                 for (i=0; i<ch; i++) {
                     if (c*ch+i < SPM_NROWS(mat)) {
+                        if (mat->context->col_map->loc_perm == mat->context->row_map->loc_perm) {
+                            rhsrow = c*ch+i;
+                        } else {
+                            rhsrow = mat->context->col_map->loc_perm[mat->context->row_map->loc_perm_inv[c*ch+i]];
+                        }
+
                         if ((traits.flags & GHOST_SPMV_SHIFT) && shift) {
-                            if (mat->context->col_map->loc_perm != mat->context->row_map->loc_perm) {
-                                tmp[i] = tmp[i]-shift[0]*rhsv[mat->context->col_map->loc_perm[mat->context->row_map->loc_perm_inv[c*ch+i]]];
-                            } else {
-                                tmp[i] = tmp[i]-shift[0]*rhsv[c*ch+i];
-                            }
+                            tmp[i] = tmp[i]-shift[0]*rhsv[rhsrow];
                         }
                         if ((traits.flags & GHOST_SPMV_VSHIFT) && shift) {
-                            if (mat->context->col_map->loc_perm != mat->context->row_map->loc_perm) {
-                                tmp[i] = tmp[i]-shift[v]*rhsv[mat->context->col_map->loc_perm[mat->context->row_map->loc_perm_inv[c*ch+i]]];
-                            } else {
-                                tmp[i] = tmp[i]-shift[v]*rhsv[c*ch+i];
-                            }
+                            tmp[i] = tmp[i]-shift[v]*rhsv[rhsrow];
                         }
                         if (traits.flags & GHOST_SPMV_SCALE) {
                             tmp[i] = tmp[i]*scale;
@@ -301,11 +305,11 @@ static ghost_error ghost_sell_spmv_plain_cm(ghost_densemat *lhs,
                                 ghost::conj(lhsv[c*ch+i])*
                                 lhsv[c*ch+i];
                             partsums[((pad+3*lhs->traits.ncols)*tid)+3*v+1] += 
-                                ghost::conj(rhsv[c*ch+i])*
+                                ghost::conj(rhsv[rhsrow])*
                                 lhsv[c*ch+i];
                             partsums[((pad+3*lhs->traits.ncols)*tid)+3*v+2] += 
-                                ghost::conj(rhsv[c*ch+i])*
-                                rhsv[c*ch+i];
+                                ghost::conj(rhsv[rhsrow])*
+                                rhsv[rhsrow];
                         }
                     }
 
@@ -473,12 +477,24 @@ extern "C" ghost_error ghost_sell_spmv_selector(ghost_densemat *lhs,
     ghost_alignment opt_align;
     ghost_implementation opt_impl;
     
+    p.storage = rhs->traits.storage;
+    if (p.storage == GHOST_DENSEMAT_ROWMAJOR && rhs->stride == 1 && lhs->stride == 1) {
+        INFO_LOG("Chose col-major kernel for row-major densemat with 1 column");
+        p.storage = GHOST_DENSEMAT_COLMAJOR;
+    }
+    
     std::vector<ghost_implementation> try_impl;
 
     if (lhs->traits.compute_with == GHOST_IMPLEMENTATION_DEFAULT) {
         if ((lhs->traits.flags & GHOST_DENSEMAT_SCATTERED) || 
                 (rhs->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
             PERFWARNING_LOG("Use plain implementation for scattered views");
+            opt_impl = GHOST_IMPLEMENTATION_PLAIN;
+        } else if ((mat->context->col_map->loc_perm != mat->context->row_map->loc_perm) && 
+                (p.storage == GHOST_DENSEMAT_COLMAJOR) &&
+                (traits.flags & (GHOST_SPMV_DOT_XY|GHOST_SPMV_SHIFT|GHOST_SPMV_VSHIFT))) { 
+            // unsymmetric permutation and col-major requires gather of rhs in this case which is not implemented for intrinsics kernels
+            PERFWARNING_LOG("Use plain implementation for unsymmetric permuted matrix, col-major vectors and SHIFT or DOT");
             opt_impl = GHOST_IMPLEMENTATION_PLAIN;
         } else {
             if (rhs->stride > 1 && rhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
@@ -512,11 +528,6 @@ extern "C" ghost_error ghost_sell_spmv_selector(ghost_densemat *lhs,
     
     p.vdt = rhs->traits.datatype;
     p.mdt = mat->traits.datatype;
-    p.storage = rhs->traits.storage;
-    if (p.storage == GHOST_DENSEMAT_ROWMAJOR && rhs->stride == 1 && lhs->stride == 1) {
-        INFO_LOG("Chose col-major kernel for row-major densemat with 1 column");
-        p.storage = GHOST_DENSEMAT_COLMAJOR;
-    }
 
     
     int try_chunkheight[2] = {mat->traits.C,-1}; 
