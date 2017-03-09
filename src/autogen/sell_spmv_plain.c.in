@@ -78,7 +78,13 @@ ghost_error ghost_sellspmv__u_plain_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res
             for (r=0; (r<CHUNKHEIGHT) && (c*CHUNKHEIGHT+r < SPM_NROWS(mat)); r++) {
                 row = c*CHUNKHEIGHT+r;
                 double *lrow = ((double *)(res->val))+res->stride*row;
-                double *rrow = rhsval+invec->stride*row;
+                double *rrow;
+                if (mat->context->col_map->loc_perm == mat->context->row_map->loc_perm) {
+                    rrow = rhsval+invec->stride*row;
+                } else {
+                    rrow = rhsval+invec->stride*mat->context->col_map->loc_perm[mat->context->row_map->loc_perm_inv[row]];
+                }
+
                 double *zrow = NULL;
                 if (z) {
                     zrow = zval+z->stride*row;
@@ -222,7 +228,7 @@ ghost_error ghost_sellspmv__a_plain_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res
 
 #pragma omp parallel shared (partsums) private(v)
     {
-        ghost_lidx j,c,r,row;
+        ghost_lidx j,c,r,lrow,rrow;
         ghost_lidx offs;
         double tmp[CHUNKHEIGHT];
         double *rhsval = (double *)invec->val;
@@ -265,35 +271,40 @@ ghost_error ghost_sellspmv__a_plain_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res
 #else
                     r = 0;
 #endif
-                    row = c*CHUNKHEIGHT+r;
+                    lrow = c*CHUNKHEIGHT+r;
+                    if (mat->context->col_map->loc_perm == mat->context->row_map->loc_perm) {
+                        rrow = lrow;
+                    } else {
+                        rrow = mat->context->col_map->loc_perm[mat->context->row_map->loc_perm_inv[lrow]];
+                    }
 
                     if ((traits.flags & GHOST_SPMV_SHIFT) && shift) {
-                        tmp[r] = tmp[r]-shift[0]*rcol[row];
+                        tmp[r] = tmp[r]-shift[0]*rcol[rrow];
                     }
                     if ((traits.flags & GHOST_SPMV_VSHIFT) && shift) {
-                        tmp[r] = tmp[r]-shift[v]*rcol[row];
+                        tmp[r] = tmp[r]-shift[v]*rcol[rrow];
                     }
                     if (traits.flags & GHOST_SPMV_SCALE) {
                         tmp[r] = tmp[r]*scale;
                     }
                     if (traits.flags & GHOST_SPMV_AXPY) {
-                        lcol[row] += tmp[r];
+                        lcol[lrow] += tmp[r];
                     } else if (traits.flags & GHOST_SPMV_AXPBY) {
-                        lcol[row] = beta*lcol[row] + tmp[r];
+                        lcol[lrow] = beta*lcol[lrow] + tmp[r];
                     } else {
-                        lcol[row] = tmp[r];
+                        lcol[lrow] = tmp[r];
                     }
                     if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
-                        zcol[row] = delta*zcol[row] + eta*lcol[row];
+                        zcol[lrow] = delta*zcol[lrow] + eta*lcol[lrow];
                     }
 
                     if (traits.flags & GHOST_SPMV_DOT) {
                         partsums[((pad+3*res->traits.ncols)*tid)+3*v+0] += 
-                            lcol[row]*lcol[row];
+                            lcol[lrow]*lcol[lrow];
                         partsums[((pad+3*res->traits.ncols)*tid)+3*v+1] += 
-                            rcol[row]*lcol[row];
+                            rcol[rrow]*lcol[lrow];
                         partsums[((pad+3*res->traits.ncols)*tid)+3*v+2] += 
-                            rcol[row]*rcol[row];
+                            rcol[rrow]*rcol[rrow];
                     }
 #if CHUNKHEIGHT > 1
                 }
@@ -359,7 +370,7 @@ ghost_error ghost_sellspmv__a_plain_z_z_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res
 
 #pragma omp parallel shared (partsums) private(v)
     {
-        ghost_lidx j,c,r,row;
+        ghost_lidx j,c,r,lrow,rrow;
         ghost_lidx offs;
         complex double tmp[CHUNKHEIGHT];
         complex double *rhsval = (complex double *)invec->val;
@@ -396,8 +407,12 @@ ghost_error ghost_sellspmv__a_plain_z_z_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res
 #pragma simd
 #endif
                     for (r=0; r<CHUNKHEIGHT; r++) {
-                        row = c*CHUNKHEIGHT+r;
-                        tmp[r] = tmp[r]-shift[0]*rcol[row];
+                        if (mat->context->col_map->loc_perm == mat->context->row_map->loc_perm) {
+                            rrow = c*CHUNKHEIGHT+r;
+                        } else {
+                            rrow = mat->context->col_map->loc_perm[mat->context->row_map->loc_perm_inv[c*CHUNKHEIGHT+r]];
+                        }
+                        tmp[r] = tmp[r]-shift[0]*rcol[rrow];
                     }
                 }
                 if ((traits.flags & GHOST_SPMV_VSHIFT) && shift) {
@@ -405,8 +420,12 @@ ghost_error ghost_sellspmv__a_plain_z_z_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res
 #pragma simd
 #endif
                     for (r=0; r<CHUNKHEIGHT; r++) {
-                        row = c*CHUNKHEIGHT+r;
-                        tmp[r] = tmp[r]-shift[v]*rcol[row];
+                        if (mat->context->col_map->loc_perm == mat->context->row_map->loc_perm) {
+                            rrow = c*CHUNKHEIGHT+r;
+                        } else {
+                            rrow = mat->context->col_map->loc_perm[mat->context->row_map->loc_perm_inv[c*CHUNKHEIGHT+r]];
+                        }
+                        tmp[r] = tmp[r]-shift[v]*rcol[rrow];
                     }
                 }
                 if (traits.flags & GHOST_SPMV_SCALE) {
@@ -414,7 +433,6 @@ ghost_error ghost_sellspmv__a_plain_z_z_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res
 #pragma simd
 #endif
                     for (r=0; r<CHUNKHEIGHT; r++) {
-                        row = c*CHUNKHEIGHT+r;
                         tmp[r] = tmp[r]*scale;
                     }
                 }
@@ -423,24 +441,24 @@ ghost_error ghost_sellspmv__a_plain_z_z_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res
 #pragma simd
 #endif
                     for (r=0; r<CHUNKHEIGHT; r++) {
-                        row = c*CHUNKHEIGHT+r;
-                        lcol[row] += tmp[r];
+                        lrow = c*CHUNKHEIGHT+r;
+                        lcol[lrow] += tmp[r];
                     }
                 } else if (traits.flags & GHOST_SPMV_AXPBY) {
 #if CHUNKHEIGHT > 1
 #pragma simd
 #endif
                     for (r=0; r<CHUNKHEIGHT; r++) {
-                        row = c*CHUNKHEIGHT+r;
-                        lcol[row] = beta*lcol[row] + tmp[r];
+                        lrow = c*CHUNKHEIGHT+r;
+                        lcol[lrow] = beta*lcol[lrow] + tmp[r];
                     }
                 } else {
 #if CHUNKHEIGHT > 1
 #pragma simd
 #endif
                     for (r=0; r<CHUNKHEIGHT; r++) {
-                        row = c*CHUNKHEIGHT+r;
-                        lcol[row] = tmp[r];
+                        lrow = c*CHUNKHEIGHT+r;
+                        lcol[lrow] = tmp[r];
                     }
                 }
                 if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
@@ -448,8 +466,8 @@ ghost_error ghost_sellspmv__a_plain_z_z_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res
 #pragma simd
 #endif
                     for (r=0; r<CHUNKHEIGHT; r++) {
-                        row = c*CHUNKHEIGHT+r;
-                        zcol[row] = delta*zcol[row] + eta*lcol[row];
+                        lrow = c*CHUNKHEIGHT+r;
+                        zcol[lrow] = delta*zcol[lrow] + eta*lcol[lrow];
                     }
                 }
 
@@ -458,13 +476,18 @@ ghost_error ghost_sellspmv__a_plain_z_z_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res
 #pragma simd
 #endif
                     for (r=0; r<CHUNKHEIGHT; r++) {
-                        row = c*CHUNKHEIGHT+r;
+                        lrow = c*CHUNKHEIGHT+r;
+                        if (mat->context->col_map->loc_perm == mat->context->row_map->loc_perm) {
+                            rrow = c*CHUNKHEIGHT+r;
+                        } else {
+                            rrow = mat->context->col_map->loc_perm[mat->context->row_map->loc_perm_inv[c*CHUNKHEIGHT+r]];
+                        }
                         partsums[((pad+3*res->traits.ncols)*tid)+3*v+0] += 
-                            conj(lcol[row])*lcol[row];
+                            conj(lcol[lrow])*lcol[lrow];
                         partsums[((pad+3*res->traits.ncols)*tid)+3*v+1] += 
-                            conj(rcol[row])*lcol[row];
+                            conj(rcol[rrow])*lcol[lrow];
                         partsums[((pad+3*res->traits.ncols)*tid)+3*v+2] += 
-                            conj(rcol[row])*rcol[row];
+                            conj(rcol[rrow])*rcol[rrow];
                     }
                 }
             }
@@ -563,7 +586,12 @@ ghost_error ghost_sellspmv__a_plain_z_z_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res
             }
 
             complex double *lrow = ((complex double *)(res->val))+res->stride*r;
-            complex double *rrow = rhsval+invec->stride*r;
+            complex double *rrow;
+            if (mat->context->col_map->loc_perm == mat->context->row_map->loc_perm) {
+                rrow = rhsval+invec->stride*r;
+            } else {
+                rrow = rhsval+invec->stride*mat->context->col_map->loc_perm[mat->context->row_map->loc_perm_inv[r]];
+            }
             complex double *zrow = NULL;
             if (z) {
                 zrow = zval+z->stride*r;

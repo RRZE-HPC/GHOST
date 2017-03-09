@@ -81,7 +81,12 @@ ghost_error ghost_sellspmv__a_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
         for (c=0; c<SPM_NROWS(mat); c++) 
         { // loop over chunks
             double *lval = (double *)res->val+c*res->stride;
-            double *rval = (double *)invec->val+c*invec->stride;
+            double *rval;
+            if (mat->context->col_map->loc_perm == mat->context->row_map->loc_perm) {
+                rval = ((double *)(invec->val))+invec->stride*c;
+            } else {
+                rval = ((double *)(invec->val))+invec->stride*mat->context->col_map->loc_perm[mat->context->row_map->loc_perm_inv[c]];
+            }
             offs = mat->chunkStart[c/CHUNKHEIGHT]+c%CHUNKHEIGHT;
 
             #GHOST_UNROLL#tmp@ = _mm_setzero_pd();#(NVECS+1)/2
@@ -240,7 +245,12 @@ ghost_error ghost_sellspmv__u_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
         for (c=0; c<SPM_NROWS(mat); c++) 
         { // loop over chunks
             double *lval = (double *)res->val+c*res->stride;
-            double *rval = (double *)invec->val+c*invec->stride;
+            double *rval;
+            if (mat->context->col_map->loc_perm == mat->context->row_map->loc_perm) {
+                rval = ((double *)(invec->val))+invec->stride*c;
+            } else {
+                rval = ((double *)(invec->val))+invec->stride*mat->context->col_map->loc_perm[mat->context->row_map->loc_perm_inv[c]];
+            }
             offs = mat->chunkStart[c/CHUNKHEIGHT]+c%CHUNKHEIGHT;
 
             #GHOST_UNROLL#tmp@ = _mm_setzero_pd();#(NVECS+1)/2
