@@ -232,7 +232,7 @@ namespace std
         result_type operator()(argument_type const& a) const
         {
             return ghost_hash(ghost_hash(a.mdt,a.blocksz,a.storage),
-                    ghost_hash(a.vdt,a.impl,a.chunkheight),ghost_hash(a.alignment,a.method,0));
+                    ghost_hash(a.vdt,a.impl,a.chunkheight),ghost_hash(a.alignment,a.method,a.nshifts));
         }
     };
 }
@@ -241,7 +241,7 @@ static bool operator==(const ghost_kacz_parameters& a, const ghost_kacz_paramete
 {
     return a.mdt == b.mdt && a.blocksz == b.blocksz && a.storage == b.storage && 
         a.vdt == b.vdt && a.impl == b.impl && a.chunkheight == b.chunkheight &&
-        a.alignment == b.alignment && a.method == b.method;
+        a.alignment == b.alignment && a.method == b.method && a.nshifts == b.nshifts;
 }
 
 static std::unordered_map<ghost_kacz_parameters, ghost_kacz_kernel> 
@@ -289,6 +289,7 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
 
     if(opts.shift) {     
         if(!(mat->traits.flags & GHOST_SPARSEMAT_COLOR)) {
+            p.nshifts = opts.num_shifts;
             if(!(mat->traits.flags & GHOST_SPARSEMAT_BLOCKCOLOR) && (mat->context->kaczRatio >= 2*mat->context->kacz_setting.active_threads)) {
                 INFO_LOG("BMC KACZ_shift without transition called");
                 p.method = GHOST_KACZ_METHOD_BMCshift;//Now BMC_RB can run with BMC 
@@ -429,9 +430,10 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
                                 p.vdt = try_vdt[pos_vdt];
 
 
-                                INFO_LOG("Try chunkheight=%s, blocksz=%s, impl=%s, %s, method %s, storage %s, vec DT %s",
+                                INFO_LOG("Try chunkheight=%s, blocksz=%s, shifts=%s, impl=%s, %s, method %s, storage %s, vec DT %s",
                                         p.chunkheight==-1?"arbitrary":ghost::to_string((long long)p.chunkheight).c_str(),
                                         p.blocksz==-1?"arbitrary":ghost::to_string((long long)p.blocksz).c_str(),
+                                        ghost::to_string((long long)p.nshifts).c_str(),
                                         ghost_implementation_string(p.impl),p.alignment==GHOST_UNALIGNED?"unaligned":"aligned",p.method==GHOST_KACZ_METHOD_BMC?"BMC":p.method==GHOST_KACZ_METHOD_MC?"MC":p.method==GHOST_KACZ_METHOD_BMCNORMAL?"BMC_NORMAL":"BMC_shift",ghost_densemat_storage_string(p.storage),ghost_datatype_string(p.vdt));
                                 kernel = ghost_kacz_kernels[p];
                                 if (kernel) {
