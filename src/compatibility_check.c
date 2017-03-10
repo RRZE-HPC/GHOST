@@ -47,7 +47,7 @@ static bool checkLeft(ghost_densemat *left, ghost_context *ctx)
 {
     (void)ctx;
     bool flag = true;
-    if((left->map->dim != ctx->row_map->dim) || ((!(left->traits.flags & GHOST_DENSEMAT_PERMUTED) && (left->map)) || (left->map->loc_perm != ctx->row_map->loc_perm)))
+    if((left->map->dim != ctx->row_map->dim) || ((!(left->traits.flags & GHOST_DENSEMAT_PERMUTED) && (left->map->loc_perm)) || (left->map->loc_perm != ctx->row_map->loc_perm)))
     {
 #ifndef GHOST_COMPATIBLE_PERM
         WARNING_LOG("Left vector dimensions/permutations mismatch: %"PRLIDX" <-> %"PRLIDX" (dim), %p <-> %p (permutation)",left->map->dim, ctx->row_map->dim,(void *)left->map->loc_perm, (void *)ctx->row_map->loc_perm);
@@ -71,7 +71,7 @@ static bool checkRight(ghost_densemat *right, ghost_context *ctx)
 {
     (void)ctx;
     bool flag = true;
-    if((right->map->dimhalo != ctx->col_map->dimhalo) || ((!(right->traits.flags & GHOST_DENSEMAT_PERMUTED) && (right->map)) || (right->map->loc_perm != ctx->col_map->loc_perm)))
+    if((right->map->dimhalo != ctx->col_map->dimhalo) || ((!(right->traits.flags & GHOST_DENSEMAT_PERMUTED) && (right->map->loc_perm)) || (right->map->loc_perm != ctx->col_map->loc_perm)))
     {
 #ifndef GHOST_COMPATIBLE_PERM
         WARNING_LOG("Right vector dimensions/permutations mismatch: %"PRLIDX" <-> %"PRLIDX" (dim), %p <-> %p (permutation)",right->map->dim, ctx->col_map->dim, (void *)right->map->loc_perm, (void *)ctx->col_map->loc_perm);
