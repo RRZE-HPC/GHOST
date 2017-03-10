@@ -453,7 +453,7 @@ for (ghost_lidx row=start; row>end; --row){ \
 }
 
 
-#else
+#elif CHUNKHEIGHT==1
 
 #define FORWARD_SHIFT_LOOP(start,end,MT,VT) \
 _Pragma("omp parallel for") \
