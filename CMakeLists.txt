@@ -981,4 +981,4 @@ else ()
     set_tests_properties(diagfirst_np2 PROPERTIES ENVIRONMENT GHOST_TYPE=CPU)
 endif()
 
-add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} --force-new-ctest-process --output-on-failure DEPENDS simple minimal context)
+add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} --force-new-ctest-process --output-on-failure DEPENDS simple minimal context diagfirst)
