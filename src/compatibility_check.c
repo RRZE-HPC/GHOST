@@ -211,7 +211,7 @@ ghost_error ghost_check_vec_init_compatibility(ghost_compatible_vec_init *data)
     return GHOST_SUCCESS;
 #else
     ghost_error ret = GHOST_SUCCESS;
-# ifndef GHOST_COMPATIBLE_PERM
+#ifndef GHOST_COMPATIBLE_PERM
     ghost_densemat* vec[4] = {data->IN_A, data->IN_B, data->OUT_A, data->OUT_B};
     for(int i=0; i<4; ++i)
     {
@@ -224,15 +224,15 @@ ghost_error ghost_check_vec_init_compatibility(ghost_compatible_vec_init *data)
                     permuted_vec2 = vec[j]->traits.flags & (ghost_densemat_flags)GHOST_DENSEMAT_PERMUTED;
 
                     if ((vec[i]->map->dim != vec[j]->map->dim) || (permuted_vec1 != permuted_vec2) || (vec[i]->map->loc_perm != vec[j]->map->loc_perm)) {
-                        WARNING_LOG("Densemat mismatch: %"PRLIDX" <-> %"PRLIDX" (dim), %d <-> %d (permuted), %p <-> %p (permutation)",vec1->map->dim,vec2->map->dim,permuted_vec1,permuted_vec2,(void *)vec1->map->loc_perm,(void *)vec2->map->loc_perm);
-                        ret = GHOST_ERR_COMPATIBILITY
+                        WARNING_LOG("Densemat mismatch: %"PRLIDX" <-> %"PRLIDX" (dim), %d <-> %d (permuted), %p <-> %p (permutation)",vec[i]->map->dim,vec[j]->map->dim,permuted_vec1,permuted_vec2,(void *)vec[i]->map->loc_perm,(void *)vec[i]->map->loc_perm);
+                        ret = GHOST_ERR_COMPATIBILITY;
                     }
                 }
             }
         }
 
     }
-# else
+#else
     ghost_map *out_map;
     bool out_permuted;
     if((data->IN_A != NULL) && (data->IN_B != NULL)) {
@@ -266,7 +266,7 @@ ghost_error ghost_check_vec_init_compatibility(ghost_compatible_vec_init *data)
 
         }
     }
-# endif
+#endif
     return ret;
 #endif
 }
