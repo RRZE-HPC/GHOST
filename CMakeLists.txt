@@ -637,7 +637,7 @@ if (GHOST_USE_SPMP)
         if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
             ExternalProject_Add(SpMP
                 PREFIX ${PROJECT_BINARY_DIR}/SpMP
-                GIT_REPOSITORY http://${GITHUB_GIT_URL}/mkre/SpMP.git
+                URL https://github.com/IntelLabs/SpMP/archive/master.zip
                 CONFIGURE_COMMAND ""
                 BUILD_COMMAND make 
                 BUILD_IN_SOURCE 1
@@ -646,7 +646,7 @@ if (GHOST_USE_SPMP)
         else() # GNU or Clang: Set CUSTOM_CXX variable in SpMP make
             ExternalProject_Add(SpMP
                 PREFIX ${PROJECT_BINARY_DIR}/SpMP
-                GIT_REPOSITORY http://${GITHUB_GIT_URL}/mkre/SpMP.git
+                URL https://github.com/IntelLabs/SpMP/archive/master.zip
                 CONFIGURE_COMMAND ""
                 BUILD_COMMAND make CUSTOM_CXX=${CMAKE_CXX_COMPILER} 
                 BUILD_IN_SOURCE 1
