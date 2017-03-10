@@ -77,7 +77,9 @@ ghost_error ghost_sparsemat_perm_sort(ghost_context *ctx, ghost_sparsemat *mat, 
     }
 
 #ifdef GHOST_HAVE_CUDA
-    ghost_cu_upload(ctx->row_map->cu_loc_perm,ctx->row_map->loc_perm,SPM_NROWS(mat)*sizeof(ghost_lidx));
+    if (mytype == GHOST_TYPE_CUDA) {
+        GHOST_CALL_GOTO(ghost_cu_upload(ctx->row_map->cu_loc_perm,ctx->row_map->loc_perm,SPM_NROWS(mat)*sizeof(ghost_lidx)),err,ret);
+    }
 #endif
     
     goto out;
