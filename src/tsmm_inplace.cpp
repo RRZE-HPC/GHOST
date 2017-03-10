@@ -215,8 +215,8 @@ ghost_error ghost_tsmm_inplace(ghost_densemat *x, ghost_densemat *w, void *alpha
         opt_align = GHOST_UNALIGNED;
     }
     
-    ghost_lidx try_ncolsout[2] = {w->traits.ncols,-1};
-DM_NROWS(    ghost_lidx try_ncolsin[2] = {w),-1};
+    ghost_lidx try_ncolsout[2] = {x->traits.ncols,-1};
+    ghost_lidx try_ncolsin[2] = {w->traits.ncols,-1};
     ghost_datatype try_dt[2] = {x->traits.datatype,GHOST_DT_ANY};
 
 #ifdef GHOST_HAVE_CUDA
