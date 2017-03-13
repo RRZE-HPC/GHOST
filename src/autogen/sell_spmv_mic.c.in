@@ -479,9 +479,9 @@ ghost_error ghost_sellspmv__a_mic_z_z_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
             }
             if (traits.flags & GHOST_SPMV_DOT) {
                 for (col = 0; col<invec->traits.ncols; col++) {
-                    partsums[((padding+3*PAD(invec->traits.ncols,2))*tid)+3*col+0] += conj(lval[col])*lval[col];
-                    partsums[((padding+3*PAD(invec->traits.ncols,2))*tid)+3*col+1] += conj(rval[col])*lval[col];
-                    partsums[((padding+3*PAD(invec->traits.ncols,2))*tid)+3*col+2] += conj(rval[col])*rval[col];
+                    partsums[((padding+3*PAD(invec->traits.ncols,4))*tid)+3*col+0] += conj(lval[col])*lval[col];
+                    partsums[((padding+3*PAD(invec->traits.ncols,4))*tid)+3*col+1] += conj(rval[col])*lval[col];
+                    partsums[((padding+3*PAD(invec->traits.ncols,4))*tid)+3*col+2] += conj(rval[col])*rval[col];
                 }
             }
         }
@@ -497,9 +497,9 @@ ghost_error ghost_sellspmv__a_mic_z_z_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
             local_dot_product[col  +   invec->traits.ncols] = 0.;
             local_dot_product[col  + 2*invec->traits.ncols] = 0.;
             for (i=0; i<nthreads; i++) {
-                local_dot_product[col                         ] += partsums[(padding+3*PAD(invec->traits.ncols,2))*i + 3*col + 0];
-                local_dot_product[col  +   invec->traits.ncols] += partsums[(padding+3*PAD(invec->traits.ncols,2))*i + 3*col + 1];
-                local_dot_product[col  + 2*invec->traits.ncols] += partsums[(padding+3*PAD(invec->traits.ncols,2))*i + 3*col + 2];
+                local_dot_product[col                         ] += partsums[(padding+3*PAD(invec->traits.ncols,4))*i + 3*col + 0];
+                local_dot_product[col  +   invec->traits.ncols] += partsums[(padding+3*PAD(invec->traits.ncols,4))*i + 3*col + 1];
+                local_dot_product[col  + 2*invec->traits.ncols] += partsums[(padding+3*PAD(invec->traits.ncols,4))*i + 3*col + 2];
             }
         }
         free(partsums);
@@ -685,9 +685,9 @@ ghost_error ghost_sellspmv__a_mic_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
             }
             if (traits.flags & GHOST_SPMV_DOT) {
                 for (col = 0; col<invec->traits.ncols; col++) {
-                    partsums[((padding+3*invec->traits.ncols)*tid)+3*col+0] += lval[col]*lval[col];
-                    partsums[((padding+3*invec->traits.ncols)*tid)+3*col+1] += lval[col]*rval[col];
-                    partsums[((padding+3*invec->traits.ncols)*tid)+3*col+2] += rval[col]*rval[col];
+                    partsums[((padding+3*PAD(invec->traits.ncols,8))*tid)+3*col+0] += lval[col]*lval[col];
+                    partsums[((padding+3*PAD(invec->traits.ncols,8))*tid)+3*col+1] += lval[col]*rval[col];
+                    partsums[((padding+3*PAD(invec->traits.ncols,8))*tid)+3*col+2] += rval[col]*rval[col];
                 }
             }
         }
@@ -703,9 +703,9 @@ ghost_error ghost_sellspmv__a_mic_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
             local_dot_product[col  +   invec->traits.ncols] = 0.;
             local_dot_product[col  + 2*invec->traits.ncols] = 0.;
             for (i=0; i<nthreads; i++) {
-                local_dot_product[col                         ] += partsums[(padding+3*PAD(invec->traits.ncols,2))*i + 3*col + 0];
-                local_dot_product[col  +   invec->traits.ncols] += partsums[(padding+3*PAD(invec->traits.ncols,2))*i + 3*col + 1];
-                local_dot_product[col  + 2*invec->traits.ncols] += partsums[(padding+3*PAD(invec->traits.ncols,2))*i + 3*col + 2];
+                local_dot_product[col                         ] += partsums[(padding+3*PAD(invec->traits.ncols,8))*i + 3*col + 0];
+                local_dot_product[col  +   invec->traits.ncols] += partsums[(padding+3*PAD(invec->traits.ncols,8))*i + 3*col + 1];
+                local_dot_product[col  + 2*invec->traits.ncols] += partsums[(padding+3*PAD(invec->traits.ncols,8))*i + 3*col + 2];
             }
         }
         free(partsums);
