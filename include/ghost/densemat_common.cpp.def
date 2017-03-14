@@ -639,11 +639,11 @@ static ghost_error FUNCNAME(fromVec_tmpl(ghost_densemat *vec, ghost_densemat *ve
     ghost_error ret = GHOST_SUCCESS;
 
     //////////////// check compatibility /////////////
-    //ghost_compatible_vec_init check = GHOST_COMPATIBLE_VEC_INIT_INITIALIZER;
-    //check.OUT_A = vec;
-    //check.IN_A = vec2;
+    ghost_compatible_vec_init check = GHOST_COMPATIBLE_VEC_INIT_INITIALIZER;
+    check.OUT_A = vec;
+    check.IN_A = vec2;
 
-    //ret = ghost_check_vec_init_compatibility(&check);
+    ret = ghost_check_vec_init_compatibility(&check);
     ///////////////////////////////////////////////////
  
 /*  //////////////// check compatibility /////////////
