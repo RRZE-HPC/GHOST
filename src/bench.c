@@ -259,7 +259,7 @@ ghost_error ghost_bench_bw(ghost_bench_bw_test test, double *mean_bw, double *ma
     ghost_task *cur = NULL;
     ghost_task_cur(&cur);
     if (!cur) {
-        WARNING_LOG("STREAM benchmark called outside a GHOST task. The reported bandwidth will probably not be meaningful!");
+        PERFWARNING_LOG("STREAM benchmark called outside a GHOST task. The reported bandwidth will probably not be meaningful!");
     }
 
     ghost_error ret = GHOST_SUCCESS;
