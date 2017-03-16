@@ -427,7 +427,7 @@ ghost_error ghost_tsmttsm__u_plain_z_x_x_1_rm(ghost_densemat *x, ghost_densemat 
     return ret;
 }
 
-ghost_error ghost_tsmttsm__a_plain_c_x_x_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
+ghost_error ghost_tsmttsm__u_plain_c_x_x_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
@@ -472,6 +472,7 @@ ghost_error ghost_tsmttsm__a_plain_c_x_x_1_rm(ghost_densemat *x, ghost_densemat 
 #pragma omp for schedule(runtime)
             for (i=0; i<n; i++) {
 #pragma simd
+#pragma vector unaligned
                 for (k=0; k<K; k++) {
                   for (j=0; j<m; j++) {
                         x_priv[j*K+k] += dalpha*conjf(vval[i*ldv+j])*wval[i*ldw+k];
@@ -483,6 +484,7 @@ ghost_error ghost_tsmttsm__a_plain_c_x_x_1_rm(ghost_densemat *x, ghost_densemat 
 #pragma omp for schedule(runtime)
             for (i=0; i<n; i++) {
 #pragma simd
+#pragma vector unaligned
                 for (k=0; k<K; k++) {
                   for (j=0; j<m; j++) {
                         x_priv[j*K+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
@@ -493,6 +495,7 @@ ghost_error ghost_tsmttsm__a_plain_c_x_x_1_rm(ghost_densemat *x, ghost_densemat 
         }
 #pragma omp critical
 #pragma simd
+#pragma vector unaligned
         for (k=0; k<K; k++) {
             for (j=0; j<m; j++) {
                 xval[k*ldx+j] += x_priv[j*K+k];
