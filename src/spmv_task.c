@@ -184,6 +184,8 @@ err:
 out:
     free(compTask->ret); compTask->ret = NULL;
     free(commTask->ret); commTask->ret = NULL;
+    ghost_task_destroy(compTask);
+    ghost_task_destroy(commTask);
 
     return ret;
 #endif
