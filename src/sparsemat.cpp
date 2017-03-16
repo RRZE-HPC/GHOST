@@ -156,8 +156,8 @@ static ghost_error ghost_sparsemat_string_tmpl(ghost_sparsemat *mat, char **str,
         return GHOST_ERR_INVALID_ARG;
     }
 
-    if(mat->context->flags & GHOST_PERM_NO_DISTINCTION) {
-	    INFO_LOG("Original matrix without permutation is printed, since GHOST_PERM_NO_DISTINCTION is on");
+    if(mat->context->col_map->flags & GHOST_PERM_NO_DISTINCTION) {
+	    INFO_LOG("Since NO DISTINCTION is on an extra padding of nhalo is applied");
     }
 
     ghost_lidx chunk,i,j,row=0;
@@ -170,11 +170,16 @@ static ghost_error ghost_sparsemat_string_tmpl(ghost_sparsemat *mat, char **str,
 
     for (chunk = 0; chunk < SPM_NCHUNKS(mat); chunk++) {
         for (i=0; i<mat->traits.C && row<SPM_NROWS(mat); i++, row++) {
-            ghost_lidx rowOffs = mat->chunkStart[chunk]+i;
-            std::vector<std::string> rowStrings(SPM_GNCOLS(mat));
+            ghost_gidx gncols = SPM_GNCOLS(mat);
+            if(mat->context->col_map->flags & (ghost_map_flags)GHOST_PERM_NO_DISTINCTION) {
+                gncols += mat->context->col_map->nhalo;
+            }
 
-            for (j=0; j<SPM_GNCOLS(mat); j++) {
-                rowStrings[j] = ".         ";
+            ghost_lidx rowOffs = mat->chunkStart[chunk]+i;
+            std::vector<std::string> rowStrings(gncols);
+
+            for (j=0; j<gncols; j++) {
+                rowStrings[j] = ".          ";
             }
             
             for (j=0; j<mat->rowLen[row]; j++) {
@@ -183,16 +188,15 @@ static ghost_error ghost_sparsemat_string_tmpl(ghost_sparsemat *mat, char **str,
                      << std::right
                      << std::scientific;
                 strs << val[rowOffs+j*mat->traits.C] << "  ";
-                if (mat->traits.flags & GHOST_SPARSEMAT_SAVE_ORIG_COLS) {
+                if(mat->traits.flags & GHOST_SPARSEMAT_SAVE_ORIG_COLS) {
                     rowStrings[mat->col_orig[rowOffs+j*mat->traits.C]] = strs.str();
                 } else {
-                    rowStrings[mat->col[rowOffs+j*mat->traits.C]] = strs.str();
+                   rowStrings[mat->col[rowOffs+j*mat->traits.C]] = strs.str();
                 }
             }
            
             if (nranks > 1) { 
                 buffer << " | ";
-                
                 for (j=0; j<mat->context->col_map->offs; j++) {
                     buffer << rowStrings[j];
                 }
@@ -205,13 +209,13 @@ static ghost_error ghost_sparsemat_string_tmpl(ghost_sparsemat *mat, char **str,
                 
                 buffer << " | ";
                 
-                for (; j<mat->context->col_map->gdim; j++) {
+                for (; j<gncols; j++) {
                     buffer << rowStrings[j];
                 }
                 
                 buffer << " | ";
             } else {
-                for (j=0; j<mat->context->col_map->gdim; j++) {
+                for (j=0; j<gncols; j++) {
                     buffer << rowStrings[j];
                 }
             }

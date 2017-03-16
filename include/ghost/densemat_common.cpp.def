@@ -421,31 +421,23 @@ static ghost_error FUNCNAME(permute_tmpl(ghost_densemat *vec, ghost_permutation_
             ghost_densemat_clone(&vecclone,vec,vec->traits.ncols,0);
             ghost_densemat_download(vecclone);
 
-            if(ghost_omp_in_parallel()) {
-#pragma omp for
-                for(int i=0; i<DM_NROWS(vec); ++i) {
+            if(0) { // ( vec->map->flags & GHOST_PERM_NO_DISTINCTION ) {
+                WARNING_LOG("This will probably not work for views or non-standard densemats.");
+
+#pragma omp parallel for
+                for(int i=0; i<vec->map->dimhalo-vec->map->nhalo; ++i) {
                     for(int col =0; col<vec->traits.ncols; ++col) {
                         if(vec->map->loc_perm[i] < DM_NROWS(vec)) {
                             ((v_t*)vec->val)[i*vec->traits.ncols+col] = ((v_t*)vecclone->val)[(vec->map->loc_perm[i])*vec->traits.ncols+col];
                         } else {
                             ((v_t*)vec->val)[i*vec->traits.ncols+col] = ((v_t*)vecclone->val)[(vec->map->loc_perm[vec->map->loc_perm[i]])*vec->traits.ncols+col];//this element value is zero and it goes to the place where halo would have been permuted to;
                         }
-                    } 
-                }
-            } else {
-#pragma omp parallel for
-                for(int i=0; i<DM_NROWS(vec); ++i) {
-                    for(int col =0; col<vec->traits.ncols; ++col) {
-                        if(vec->map->loc_perm[i] < DM_NROWS(vec)) {
-                            ((v_t*)vec->val)[i*vec->traits.ncols+col] = ((v_t*)vecclone->val)[(vec->map->loc_perm[i])*vec->traits.ncols+col];
-                        } else {
-                            ((v_t*)vec->val)[i*vec->traits.ncols+col] = ((v_t*)vecclone->val)[(vec->map->loc_perm[vec->map->loc_perm[i]])*vec->traits.ncols+col];//this element value is zero and it goes to the place where halo would have been permuted to;
-                        } 
                     }
                 }
+            } else {
+                DENSEMAT_ITER(vec,*valptr = *(v_t *)DENSEMAT_VALPTR(vecclone,vec->map->loc_perm[row],col));
             }
 
-            //DENSEMAT_ITER(vec,*valptr = *(v_t *)DENSEMAT_VALPTR(vecclone,vec->map->loc_perm[row],col));
             ghost_densemat_destroy(vecclone);
             GHOST_CALL_RETURN(ghost_densemat_upload(vec));
         }
@@ -491,71 +483,38 @@ static ghost_error FUNCNAME(permute_tmpl(ghost_densemat *vec, ghost_permutation_
             ghost_densemat_download(vecclone);       
 
 
-            if (vec->map->flags & GHOST_PERM_NO_DISTINCTION) {
+            if(0) {// (vec->map->flags & GHOST_PERM_NO_DISTINCTION) {
                 WARNING_LOG("This will probably not work for views or non-standard densemats.");
                 //FIXME Fix this
                 //Accessing invPerm would be a problem if GHOST_PERM_NO_DISTINCTION is ON
-                if(ghost_omp_in_parallel()) {
-#pragma omp for
-                    for(int i=0; i<DM_NROWS(vec); ++i) {
-                        for(int col =0; col<vec->traits.ncols; ++col) {
-                            if(vec->map->loc_perm[i] < DM_NROWS(vec)) {
-                                ((v_t*)vec->val)[(vec->map->loc_perm[i])*vec->traits.ncols+col] = ((v_t*)vecclone->val)[i*vecclone->traits.ncols+col];
-                            } else {
-                                ((v_t*)vec->val)[(vec->map->loc_perm[vec->map->loc_perm[i]])*vec->traits.ncols+col] = ((v_t*)vecclone->val)[i*vecclone->traits.ncols+col];
-                            }
-                        }
-                    }
-                } else {
+
 #pragma omp parallel for
-                    for(int i=0; i<DM_NROWS(vec); ++i) {
-                        for(int col =0; col<vec->traits.ncols; ++col) {
-                            if(vec->map->loc_perm[i] < DM_NROWS(vec)) { 
-                                ((v_t*)vec->val)[(vec->map->loc_perm[i])*vec->traits.ncols+col] = ((v_t*)vecclone->val)[i*vecclone->traits.ncols+col];
-                            } else {
-                                ((v_t*)vec->val)[(vec->map->loc_perm[vec->map->loc_perm[i]])*vec->traits.ncols+col] = ((v_t*)vecclone->val)[i*vecclone->traits.ncols+col];
-                            }
+                for(int i=0; i<vec->map->dimhalo-vec->map->nhalo; ++i) {
+                    for(int col =0; col<vec->traits.ncols; ++col) {
+                        if(vec->map->loc_perm[i] < DM_NROWS(vec)) { 
+                            ((v_t*)vec->val)[(vec->map->loc_perm[i])*vec->traits.ncols+col] = ((v_t*)vecclone->val)[i*vecclone->traits.ncols+col];
+                        } else {
+                            ((v_t*)vec->val)[(vec->map->loc_perm[vec->map->loc_perm[i]])*vec->traits.ncols+col] = ((v_t*)vecclone->val)[i*vecclone->traits.ncols+col];
                         }
                     }
                 }
             } else {
-                DENSEMAT_ITER(vec, *valptr = *(v_t *)DENSEMAT_VALPTR(vecclone,vec->map->loc_perm_inv[row],col)); //this would yield seg fault
+                DENSEMAT_ITER(vec, *valptr = *(v_t *)DENSEMAT_VALPTR(vecclone,vec->map->loc_perm_inv[row],col));
             }
-            //DENSEMAT_ITER(vec, *valptr = *(v_t *)DENSEMAT_VALPTR(vecclone,vec->map->loc_perm_inv[row],col)); //this would yield seg fault
-            /*
-               if (ctx->flags & GHOST_PERM_NO_DISTINCTION) {
-            //Accessing invPerm would be a problem if GHOST_PERM_NO_DISTINCTION is ON
-            if(ghost_omp_in_parallel()) {
-            for(int i=0; i<DM_NROWS(vec); ++i) {
-            for(int col =0; col<vec->traits.ncols; ++col) {
-            ((v_t*)vec->val)[(vec->map->loc_perm[i])*vec->traits.ncols+col] = ((v_t*)vecclone->val)[i*vecclone->traits.ncols+col];
-            }
-            }
-            } else {
-#pragma omp parallel for
-for(int i=0; i<DM_NROWS(vec); ++i) {
-for(int col =0; col<vec->traits.ncols; ++col) {
-((v_t*)vec->val)[(vec->map->loc_perm[i])*vec->traits.ncols+col] = ((v_t*)vecclone->val)[i*vecclone->traits.ncols+col];
-}
-}
-}
-} else {
-DENSEMAT_ITER(vec, *valptr = *(v_t *)DENSEMAT_VALPTR(vecclone,vec->map->loc_perm_inv[row],col)); //this would yield seg fault
-}
-*/
-ghost_densemat_destroy(vecclone);
-GHOST_CALL_RETURN(ghost_densemat_upload(vec));
-}
 
-if (dir == GHOST_PERMUTATION_ORIG2PERM) {
-    vec->traits.flags |= (ghost_densemat_flags)GHOST_DENSEMAT_PERMUTED;
-}
-else {
-    vec->traits.flags &= (ghost_densemat_flags)(~GHOST_DENSEMAT_PERMUTED);
-}
-}
+            ghost_densemat_destroy(vecclone);
+            GHOST_CALL_RETURN(ghost_densemat_upload(vec));
+        }
 
-return GHOST_SUCCESS;
+        if (dir == GHOST_PERMUTATION_ORIG2PERM) {
+            vec->traits.flags |= (ghost_densemat_flags)GHOST_DENSEMAT_PERMUTED;
+        }
+        else {
+            vec->traits.flags &= (ghost_densemat_flags)(~GHOST_DENSEMAT_PERMUTED);
+        }
+    }
+
+    return GHOST_SUCCESS;
 }
 
     template <typename v_t> 

@@ -287,6 +287,7 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
         b = rhs;
     }
 
+    p.nshifts = 0;
     if(opts.shift) {     
         if(!(mat->traits.flags & GHOST_SPARSEMAT_COLOR)) {
             p.nshifts = opts.num_shifts;

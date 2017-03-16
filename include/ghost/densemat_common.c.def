@@ -28,7 +28,7 @@
 ghost_error FUNCNAME(malloc(ghost_densemat *vec, int* needsInit))
 {
     ghost_lidx allocrows;
-    allocrows = vec->map->dimpad;
+    allocrows = vec->map->dimalloc;
     if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         if (vec->rowmask == NULL) {
             vec->rowmask = ghost_bitmap_alloc();
@@ -817,7 +817,7 @@ ghost_error FUNCNAME(fromFunc(ghost_densemat *vec, int (*fp)(ghost_gidx, ghost_l
             vec->traits.flags = (ghost_densemat_flags)(vec->traits.flags|GHOST_DENSEMAT_PERMUTED);
             if (vec->map->loc_perm && !vec->map->glb_perm) {
                 if( needInit ) {
-                  DENSEMAT_ITER_INIT(vec,fp(offset+vec->map->loc_perm_inv[row],col,valptr,arg));
+                    DENSEMAT_ITER_INIT(vec,fp(offset+vec->map->loc_perm_inv[row],col,valptr,arg));
                 } else {
                   DENSEMAT_ITER(vec,fp(offset+vec->map->loc_perm_inv[row],col,valptr,arg));
                 }

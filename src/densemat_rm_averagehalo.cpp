@@ -120,14 +120,13 @@ static ghost_error ghost_densemat_rm_averagehalo_tmpl(ghost_densemat *vec, ghost
             for (d=0 ;d < ctx->dues[i]; d++) {
                 ctr = start + d;
                 for(j=0 ; j<vec->traits.ncols; ++j) {
-                    // printf("idx = %d\tsum=%f\n",(ctx->mappedDuelist[ctr])*vec->traits.ncols+j,sum[(ctx->mappedDuelist[ctr])*vec->traits.ncols+j]);
-                    sum[(ctx->mappedDuelist[ctr])*vec->traits.ncols+j] += curwork[d*vec->traits.ncols+j];   
+                    sum[(ctx->mappedDuelist[ctr])*vec->traits.ncols+j] += curwork[d*vec->traits.ncols+j];
                 }
-            } 
+            }
             curwork += ctx->dues[i]*vec->traits.ncols;
         }
 
-#pragma omp parallel for schedule(runtime) private(j,ctr) 
+#pragma omp parallel for schedule(runtime) private(j,ctr)
         for(i=0 ; i<ctx->nChunkAvg; ++i) {
             //  #pragma omp parallel for schedule(runtime) private(j,k,ctr)
             for(j=ctx->avg_ptr[2*i]; j<ctx->avg_ptr[2*i+1]; ++j) {

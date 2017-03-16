@@ -27,11 +27,11 @@ typedef enum
      * @brief A column map.
      */
     GHOST_MAP_COL
-} 
+}
 ghost_maptype;
 
 /**
- * @brief Possible sources of a sparse matrix. 
+ * @brief Possible sources of a sparse matrix.
  */
 typedef enum {
     /**
@@ -65,7 +65,7 @@ typedef enum {
      */
     GHOST_MAP_DIST_NROWS
 } ghost_map_dist_type;
-    
+
 /**
  * @brief Possible flags to maps.
  */
@@ -80,7 +80,7 @@ typedef enum {
 /**
  * @brief A GHOST map.
  */
-typedef struct 
+typedef struct
 {
     /**
      * @brief The global dimension.
@@ -111,11 +111,16 @@ typedef struct
      */
     ghost_lidx dimpad;
     /**
+     * @brief The actual size of the allocated vectors. If row_map->dimpad !=
+     * col_map->dimpad. This field would contain maximum of the two.
+     */
+    ghost_lidx dimalloc;
+    /**
      * @brief The number of halo elements.
      */
     ghost_lidx nhalo;
     /**
-     * @brief The local permutation 
+     * @brief The local permutation
      */
     ghost_lidx *loc_perm;
     /**
@@ -131,7 +136,7 @@ typedef struct
      */
     ghost_gidx *glb_perm_inv;
     /**
-     * @brief The local permutation in CUDA memory. 
+     * @brief The local permutation in CUDA memory.
      */
     ghost_lidx *cu_loc_perm;
     /**
@@ -147,14 +152,14 @@ typedef struct
      */
     ghost_map_flags flags;
     /**
-     if the reference counter is 0, ghost_map_destroy deletes the 
+     if the reference counter is 0, ghost_map_destroy deletes the
      data structure. Otherwise, it just decreases the reference count.
-     Whenever the map is passed to a densemat or other ghost object,  
-     its reference count is incremented. Such objects should call 
+     Whenever the map is passed to a densemat or other ghost object,
+     its reference count is incremented. Such objects should call
      ghost_map_destroy when deleted themselves.
     */
     int ref_count;
-} 
+}
 ghost_map;
 
 #ifdef __cplusplus

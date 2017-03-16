@@ -247,6 +247,7 @@ ghost_error ghost_check_vec_init_compatibility(ghost_compatible_vec_init *data)
         out_permuted = data->IN_B->traits.flags & (ghost_densemat_flags)GHOST_DENSEMAT_PERMUTED;
     } else {
         ERROR_LOG("GHOST_COMPATIBILE_PERM: You need an input vector to initialize");
+        return GHOST_ERR_COMPATIBILITY;
     }
     if(data->OUT_A != NULL) {
         ghost_densemat_set_map(data->OUT_A,out_map);

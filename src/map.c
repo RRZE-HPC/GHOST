@@ -10,7 +10,7 @@ ghost_error ghost_map_create(ghost_map **map, ghost_gidx gdim, ghost_mpi_comm co
 
     GHOST_CALL_GOTO(ghost_malloc((void **)map,sizeof(ghost_map)),err,ret);
     GHOST_CALL_GOTO(ghost_nrank(&nranks, comm),err,ret);
-    
+
     GHOST_CALL_GOTO(ghost_malloc((void **)&((*map)->goffs),sizeof(ghost_gidx)*nranks),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&((*map)->ldim),sizeof(ghost_lidx)*nranks),err,ret);
 
@@ -24,6 +24,7 @@ ghost_error ghost_map_create(ghost_map **map, ghost_gidx gdim, ghost_mpi_comm co
     (*map)->dim = 0;
     (*map)->dimhalo = 0;
     (*map)->dimpad = 0;
+    (*map)->dimalloc = 0;
     (*map)->offs = 0;
     (*map)->nhalo = 0;
     (*map)->mpicomm = comm;
@@ -33,7 +34,7 @@ ghost_error ghost_map_create(ghost_map **map, ghost_gidx gdim, ghost_mpi_comm co
     goto out;
 err:
 
-out: 
+out:
 
     return ret;
 }
@@ -43,19 +44,19 @@ static int diag(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *col, void *val, 
     *rowlen = 1;
     col[0] = row;
     ((double *)val)[0] = (double)(row+1);
-    
+
     return 0;
 }
-    
+
 ghost_error ghost_map_create_distribution(ghost_map *map, ghost_sparsemat_src_rowfunc *matsrc, double weight, ghost_map_dist_type distType, ghost_lidx *el_per_rank)
 {
     int me,nranks,i;
     ghost_error ret = GHOST_SUCCESS;
     ghost_gidx row;
-    
+
     GHOST_CALL_GOTO(ghost_nrank(&nranks, map->mpicomm),err,ret);
     GHOST_CALL_GOTO(ghost_rank(&me,map->mpicomm),err,ret);
-   
+
     if (matsrc == NULL && el_per_rank == NULL) {
         if (distType == GHOST_MAP_DIST_NNZ) {
             ERROR_LOG("Distribution by nnz can only be done if a matrix source is given");
@@ -147,7 +148,7 @@ ghost_error ghost_map_create_distribution(ghost_map *map, ghost_sparsemat_src_ro
         } else {
             target_rows = el_per_rank;
         }
-                   
+
         map->goffs[0] = 0;
 
         for (i=1; i<nranks; i++){
@@ -175,7 +176,6 @@ ghost_error ghost_map_create_distribution(ghost_map *map, ghost_sparsemat_src_ro
     map->dim = map->ldim[me];
     map->dimpad = map->dim; // may be increased by some padding at a later point
     map->offs = map->goffs[me];
-
     goto out;
 err:
 

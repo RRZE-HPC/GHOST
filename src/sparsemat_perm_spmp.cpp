@@ -64,9 +64,9 @@ extern "C" ghost_error ghost_sparsemat_perm_spmp(ghost_context *ctx, ghost_spars
     //SpMP::CSR *csrTT = NULL; //delete after transpose checking
 #endif
 
-    ghost_lidx ncols_halo_padded = mat->context->row_map->dim;
-    if (mat->traits.flags & GHOST_PERM_NO_DISTINCTION) {
-        ncols_halo_padded = mat->context->col_map->dim;
+    ghost_gidx ncols_halo_padded = mat->context->col_map->dim;
+    if (ctx->col_map->flags == (ghost_map_flags)GHOST_PERM_NO_DISTINCTION) {
+        ncols_halo_padded = mat->context->col_map->dimhalo;
     }
 
 #ifdef GHOST_HAVE_CUDA
@@ -77,12 +77,12 @@ extern "C" ghost_error ghost_sparsemat_perm_spmp(ghost_context *ctx, ghost_spars
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&rptlocal,(ctx->row_map->dim+1)*sizeof(int)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&collocal,nnz * sizeof(ghost_lidx)),err,ret);
-    
+
     rptlocal[0] = 0;
-    
+
+    //This would work only for CRS
     for (i=0; i<ctx->row_map->dim; i++) {
         rptlocal[i+1] = rptlocal[i];
-        
         ghost_lidx orig_row = i;
         if (ctx->row_map->loc_perm) {
             orig_row = ctx->row_map->loc_perm_inv[i];
@@ -91,7 +91,7 @@ extern "C" ghost_error ghost_sparsemat_perm_spmp(ghost_context *ctx, ghost_spars
         ghost_lidx orig_row_len = mat->chunkStart[orig_row+1]-mat->chunkStart[orig_row];
 
         for(j=0; j<orig_row_len; ++j) {
-            if ((ctx->flags & GHOST_PERM_NO_DISTINCTION) || (col[j] < mat->context->row_map->dim)) {
+            if ((ctx->col_map->flags & GHOST_PERM_NO_DISTINCTION) || (col[j] < mat->context->row_map->dim)) {
                 collocal[nnzlocal] = col[j];
                 nnzlocal++;
                 rptlocal[i+1]++;
@@ -216,7 +216,7 @@ extern "C" ghost_error ghost_sparsemat_perm_spmp(ghost_context *ctx, ghost_spars
                   */
         GHOST_CALL_GOTO(ghost_malloc((void **)&intcolperm,sizeof(int)*ncols_halo_padded),err,ret);
         GHOST_CALL_GOTO(ghost_malloc((void **)&intcolinvperm,sizeof(int)*ncols_halo_padded),err,ret);
-        
+
         bfsBipartite(*csr, *csrT, intperm, intinvperm, intcolperm, intcolinvperm);
 
         useperm = intperm;
