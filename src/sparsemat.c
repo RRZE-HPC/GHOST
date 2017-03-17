@@ -46,6 +46,7 @@ static ghost_error ghost_sparsemat_init_loc(ghost_sparsemat *mat);
 static ghost_error ghost_sparsemat_transfer_del(ghost_sparsemat *mat_out, ghost_sparsemat *mat_in);
 static ghost_error ghost_noDist_tweak_perm(ghost_map *col_map);
 static ghost_error ghost_preProcess_matFlags(ghost_sparsemat *mat);
+static ghost_error ghost_sparsemat_compress(ghost_sparsemat *mat);
 
 #ifdef GHOST_HAVE_CUDA
 static ghost_error ghost_sparsemat_upload(ghost_sparsemat *mat);
@@ -1672,7 +1673,9 @@ static ghost_error ghost_sparsemat_init_plain_glb(ghost_sparsemat *mat, ghost_sp
     if (ret != GHOST_SUCCESS) {
         goto err;
     }
+    GHOST_CALL_GOTO(ghost_sparsemat_compress(mat),err,ret);
     GHOST_CALL_GOTO(ghost_sparsemat_split(mat),err,ret);
+
 
 #ifdef GHOST_HAVE_CUDA
     if (!(mat->traits.flags & GHOST_SPARSEMAT_HOST))
@@ -1764,7 +1767,9 @@ static ghost_error ghost_sparsemat_init_loc(ghost_sparsemat *mat)
     GHOST_CALL_GOTO(ghost_malloc((void **)&rlp, (SPM_NROWSPAD(mat))*sizeof(ghost_lidx)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc_align((void **)&chunkptr,(nChunks+1)*sizeof(ghost_lidx),GHOST_DATA_ALIGNMENT),err,ret);
     GHOST_CALL_GOTO(ghost_malloc_align((void **)&val,mat->elSize*(size_t)mat->nEnts,GHOST_DATA_ALIGNMENT),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc_align((void **)&col_orig,sizeof(ghost_gidx)*(size_t)mat->nEnts,GHOST_DATA_ALIGNMENT),err,ret);
+    if(mat->col_orig) {
+        GHOST_CALL_GOTO(ghost_malloc_align((void **)&col_orig,sizeof(ghost_gidx)*(size_t)mat->nEnts,GHOST_DATA_ALIGNMENT),err,ret);
+    }
     GHOST_CALL_GOTO(ghost_malloc_align((void **)&col,sizeof(ghost_lidx)*(size_t)mat->nEnts,GHOST_DATA_ALIGNMENT),err,ret);
 
 #pragma omp parallel for schedule(runtime)
@@ -1823,10 +1828,14 @@ static ghost_error ghost_sparsemat_init_loc(ghost_sparsemat *mat)
 
                 if(mat->col[mat->chunkStart[perm_chunk]+colidx*C+perm_i] < mat->context->col_map->dim) {  // Local entry
                     col[to_idx] = mat->context->col_map->loc_perm[mat->col[from_idx]];
-                    col_orig[to_idx] = mat->context->col_map->loc_perm[mat->col_orig[from_idx]-mat->context->row_map->offs]+mat->context->row_map->offs;
+                    if(mat->col_orig) {
+                        col_orig[to_idx] = mat->context->col_map->loc_perm[mat->col_orig[from_idx]-mat->context->row_map->offs]+mat->context->row_map->offs;
+                    }
                 } else {  //Remote Entry
                     col[to_idx] = mat->col[from_idx];
-                    col_orig[to_idx] = mat->col_orig[from_idx];
+                    if(mat->col_orig) {
+                        col_orig[to_idx] = mat->col_orig[from_idx];
+                    }
                 }
            }
         }
@@ -1842,32 +1851,34 @@ static ghost_error ghost_sparsemat_init_loc(ghost_sparsemat *mat)
     }
     GHOST_INSTR_STOP("cols_and_vals");
 
-    GHOST_INSTR_START("sort_and_register");
-    if (!(mat->traits.flags & GHOST_SPARSEMAT_NOT_SORT_COLS) || mat->traits.flags & GHOST_SPARSEMAT_DIAG_FIRST) {
-        for(ghost_lidx chunk = 0; chunk < nChunks; chunk++ ) {
-            for (ghost_lidx i=0; (i<C) && (chunk*C+i < SPM_NROWS(mat)); i++) {
-                ghost_lidx row = chunk*C+i;
-                ghost_sparsemat_sortrow(&((col_orig)[chunkptr[chunk]+i]), &((col)[chunkptr[chunk]+i]), &((val)[(chunkptr[chunk]+i)*mat->elSize]),mat->elSize,rl[row],C,row,mat->traits.flags & GHOST_SPARSEMAT_DIAG_FIRST);
+    if(col_orig) {
+        GHOST_INSTR_START("sort_and_register");
+        if (!(mat->traits.flags & GHOST_SPARSEMAT_NOT_SORT_COLS) || mat->traits.flags & GHOST_SPARSEMAT_DIAG_FIRST) {
+            for(ghost_lidx chunk = 0; chunk < nChunks; chunk++ ) {
+                for (ghost_lidx i=0; (i<C) && (chunk*C+i < SPM_NROWS(mat)); i++) {
+                    ghost_lidx row = chunk*C+i;
+                    ghost_sparsemat_sortrow(&((col_orig)[chunkptr[chunk]+i]), &((col)[chunkptr[chunk]+i]), &((val)[(chunkptr[chunk]+i)*mat->elSize]),mat->elSize,rl[row],C,row,mat->traits.flags & GHOST_SPARSEMAT_DIAG_FIRST);
 #ifdef GHOST_SPARSEMAT_STATS
-                ghost_sparsemat_registerrow(mat,mat->context->row_map->offs+row,&(col_orig)[(*chunkptr)[chunk]+i],rl[row],C);
+                    ghost_sparsemat_registerrow(mat,mat->context->row_map->offs+row,&(col_orig)[(*chunkptr)[chunk]+i],rl[row],C);
 #endif
+                }
             }
-        }
-    } else {
+        } else {
 #ifdef GHOST_SPARSEMAT_STATS
-        for( chunk = 0; chunk < nChunks; chunk++ ) {
-            for (i=0; (i<C) && (chunk*C+i < SPM_NROWS(mat)); i++) {
-                row = chunk*C+i;
-                ghost_sparsemat_registerrow(mat,mat->context->row_map->goffs[me]+row,&(*col)[(*chunkptr)[chunk]+i],rl[row],C);
+            for( chunk = 0; chunk < nChunks; chunk++ ) {
+                for (i=0; (i<C) && (chunk*C+i < SPM_NROWS(mat)); i++) {
+                    row = chunk*C+i;
+                    ghost_sparsemat_registerrow(mat,mat->context->row_map->goffs[me]+row,&(*col)[(*chunkptr)[chunk]+i],rl[row],C);
+                }
             }
-        }
 #endif
-    }
+        }
 
 #ifdef GHOST_SPARSEMAT_STATS
-    ghost_sparsemat_registerrow_finalize(mat);
+        ghost_sparsemat_registerrow_finalize(mat);
 #endif
-    GHOST_INSTR_STOP("sort_and_register");
+        GHOST_INSTR_STOP("sort_and_register");
+    }
 
     ghost_lidx max4 = 0 , max2 = 0;
     for (int i=0; i<SPM_NROWSPAD(mat); i++) {
@@ -1893,7 +1904,10 @@ static ghost_error ghost_sparsemat_init_loc(ghost_sparsemat *mat)
 
     //swap pointers to permuted ones
     free(mat->col); mat->col = col;
-    free(mat->col_orig); mat->col_orig = col_orig;
+    if(mat->col_orig) {
+        free(mat->col_orig);
+        mat->col_orig = col_orig;
+    }
     free(mat->val); mat->val = val;
     free(mat->rowLen); mat->rowLen = rl;
     free(mat->rowLenPadded); mat->rowLenPadded = rlp;
@@ -1904,6 +1918,13 @@ static ghost_error ghost_sparsemat_init_loc(ghost_sparsemat *mat)
     free(mat->rowLen4); mat->rowLen4 = rl4;
     //TODO permute local part
 
+    if(mat->localPart!=NULL) {
+        //ghost_sparsemat_init_loc(mat->localPart); //for some reason it doesn't
+                                                    //produce correct results
+         ghost_sparsemat_destroy(mat->localPart);
+         ghost_sparsemat_destroy(mat->remotePart);
+         ghost_sparsemat_split(mat);
+    }
     goto out;
 
 err:
@@ -2007,11 +2028,8 @@ static ghost_error ghost_sparsemat_transfer_del(ghost_sparsemat *mat_out, ghost_
     return GHOST_SUCCESS;
 }
 
-
-
-static ghost_error ghost_sparsemat_split(ghost_sparsemat *mat)
+static ghost_error ghost_sparsemat_compress(ghost_sparsemat *mat)
 {
-
     if (!mat) {
         ERROR_LOG("Matrix is NULL");
         return GHOST_ERR_INVALID_ARG;
@@ -2020,18 +2038,11 @@ static ghost_error ghost_sparsemat_split(ghost_sparsemat *mat)
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
 
 
-    DEBUG_LOG(1,"Splitting the SELL matrix into a local and remote part");
     ghost_gidx i,j;
+
     int me,nproc;
     GHOST_CALL_RETURN(ghost_rank(&me, mat->context->mpicomm));
     GHOST_CALL_RETURN(ghost_nrank(&nproc, mat->context->mpicomm));
-
-    ghost_lidx lnEnts_l, lnEnts_r;
-    ghost_lidx current_l, current_r;
-
-
-    ghost_lidx chunk;
-    ghost_lidx idx, row;
 
     GHOST_INSTR_START("init_compressed_cols");
     #ifdef GHOST_IDX_UNIFORM
@@ -2062,7 +2073,7 @@ static ghost_error ghost_sparsemat_split(ghost_sparsemat *mat)
             if (nhalo > mat->context->col_map->nhalo) {
                 ERROR_LOG("The maps are not compatible!");
                 ret = GHOST_ERR_INVALID_ARG;
-                goto err;
+                return ret;
             }
         } else {
             mat->context->col_map->nhalo = nhalo;
@@ -2089,6 +2100,34 @@ static ghost_error ghost_sparsemat_split(ghost_sparsemat *mat)
         mat->col_orig = NULL;
     }
 #endif
+
+    DEBUG_LOG(1,"Splitting the SELL matrix into a local and remote part");
+    ghost_sparsemat_split(mat);
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
+
+    goto out;
+
+err:
+
+out:
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
+    return ret;
+}
+
+static ghost_error ghost_sparsemat_split(ghost_sparsemat *mat)
+{
+    ghost_error ret = GHOST_SUCCESS;
+
+    ghost_lidx lnEnts_l, lnEnts_r;
+    ghost_lidx current_l, current_r;
+    ghost_gidx i,j;
+    int me;
+    GHOST_CALL_RETURN(ghost_rank(&me, mat->context->mpicomm));
+
+    ghost_lidx chunk;
+    ghost_lidx idx, row;
+
     if (!(mat->traits.flags & GHOST_SPARSEMAT_NOT_STORE_SPLIT)) { // split computation
         GHOST_INSTR_START("split");
 
@@ -2278,12 +2317,11 @@ static ghost_error ghost_sparsemat_split(ghost_sparsemat *mat)
     }
 
     goto out;
-    err:
+err:
     ghost_sparsemat_destroy(mat->localPart); mat->localPart = NULL;
     ghost_sparsemat_destroy(mat->remotePart); mat->remotePart = NULL;
 
-    out:
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
+out:
     return ret;
 }
 
