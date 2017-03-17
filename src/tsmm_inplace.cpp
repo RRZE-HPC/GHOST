@@ -145,9 +145,45 @@ ghost_error ghost_tsmm_inplace(ghost_densemat *x, ghost_densemat *w, void *alpha
         try_impl.push_back(GHOST_IMPLEMENTATION_CUDA);
     } else {
 #endif
-        if (x->traits.compute_with == GHOST_IMPLEMENTATION_DEFAULT) {
+        if (x->traits.compute_with != GHOST_IMPLEMENTATION_DEFAULT) {
+#ifdef GHOST_BUILD_MIC
+            if (x->traits.compute_with == GHOST_IMPLEMENTATION_MIC || x->traits.compute_with == GHOST_IMPLEMENTATION_PLAIN) {
+                try_impl.push_back(x->traits.compute_with);
+            }
+#elif defined(GHOST_BUILD_AVX512)
+            if (x->traits.compute_with <= GHOST_IMPLEMENTATION_AVX512) {
+                try_impl.push_back(x->traits.compute_with);
+            }
+#elif defined(GHOST_BUILD_AVX2)
+            if (x->traits.compute_with <= GHOST_IMPLEMENTATION_AVX2) {
+                try_impl.push_back(x->traits.compute_with);
+            }
+#elif defined(GHOST_BUILD_AVX)
+            if (x->traits.compute_with <= GHOST_IMPLEMENTATION_AVX) {
+                try_impl.push_back(x->traits.compute_with);
+            }
+#elif defined(GHOST_BUILD_SSE)
+            if (x->traits.compute_with <= GHOST_IMPLEMENTATION_SSE) {
+                try_impl.push_back(x->traits.compute_with);
+            }
+#else
+            if (x->traits.compute_with <= GHOST_IMPLEMENTATION_PLAIN) {
+                try_impl.push_back(x->traits.compute_with);
+            }
+#endif
+            if (!try_impl.size()) {
+                WARNING_LOG("The implementation set via the compute_with field (%s) is not valid! Using a valid implementation.",ghost_implementation_string(x->traits.compute_with));
+            }
+        }
+        if (!try_impl.size()) {
 #ifdef GHOST_BUILD_MIC
             try_impl.push_back(GHOST_IMPLEMENTATION_MIC);
+            try_impl.push_back(GHOST_IMPLEMENTATION_PLAIN);
+#elif defined(GHOST_BUILD_AVX512)
+            try_impl.push_back(GHOST_IMPLEMENTATION_AVX512);
+            try_impl.push_back(GHOST_IMPLEMENTATION_AVX2);
+            try_impl.push_back(GHOST_IMPLEMENTATION_AVX);
+            try_impl.push_back(GHOST_IMPLEMENTATION_SSE);
             try_impl.push_back(GHOST_IMPLEMENTATION_PLAIN);
 #elif defined(GHOST_BUILD_AVX2)
             try_impl.push_back(GHOST_IMPLEMENTATION_AVX2);
@@ -164,8 +200,6 @@ ghost_error ghost_tsmm_inplace(ghost_densemat *x, ghost_densemat *w, void *alpha
 #else
             try_impl.push_back(GHOST_IMPLEMENTATION_PLAIN);
 #endif
-        } else {
-            try_impl.push_back(x->traits.compute_with);
         }
 #ifdef GHOST_HAVE_CUDA
     }
@@ -181,8 +215,8 @@ ghost_error ghost_tsmm_inplace(ghost_densemat *x, ghost_densemat *w, void *alpha
         opt_align = GHOST_UNALIGNED;
     }
     
-    ghost_lidx try_ncolsout[2] = {w->traits.ncols,-1};
-DM_NROWS(    ghost_lidx try_ncolsin[2] = {w),-1};
+    ghost_lidx try_ncolsout[2] = {x->traits.ncols,-1};
+    ghost_lidx try_ncolsin[2] = {w->traits.ncols,-1};
     ghost_datatype try_dt[2] = {x->traits.datatype,GHOST_DT_ANY};
 
 #ifdef GHOST_HAVE_CUDA

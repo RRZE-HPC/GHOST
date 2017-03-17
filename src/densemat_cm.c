@@ -226,15 +226,51 @@ ghost_error ghost_densemat_cm_halocommInit(ghost_densemat *vec, ghost_context *c
     GHOST_CALL_GOTO(ghost_rank(&me, ctx->mpicomm),err,ret);
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, ctx->mpicomm),err,ret);
     GHOST_CALL_GOTO(ghost_densemat_halocommInit_common(vec,ctx,comm),err,ret);
-
+    
     GHOST_CALL_GOTO(ghost_malloc((void **)&comm->tmprecv,nprocs*sizeof(char *)),err,ret);
 
-    GHOST_CALL_GOTO(ghost_malloc((void **)&comm->tmprecv_mem,vec->traits.ncols*vec->elSize*comm->acc_wishes),err,ret);
+    if (vec->traits.ncols == 1) {
+        if (vec->traits.location & GHOST_LOCATION_DEVICE) {
+#ifdef GHOST_HAVE_GPUDIRECT
+            for (from_PE=0; from_PE<nprocs; from_PE++) {
+                comm->tmprecv[from_PE] = DENSEMAT_CUVALPTR(vec,ctx->hput_pos[from_PE],0);
+            }
+#else 
+            GHOST_CALL_GOTO(ghost_malloc((void **)&comm->tmprecv_mem,vec->traits.ncols*vec->elSize*comm->acc_wishes),err,ret);
 
-    for (from_PE=0; from_PE<nprocs; from_PE++){
-        comm->tmprecv[from_PE] = &comm->tmprecv_mem[comm->wishptr[from_PE]*vec->traits.ncols*vec->elSize];
+            for (from_PE=0; from_PE<nprocs; from_PE++){
+                comm->tmprecv[from_PE] = &comm->tmprecv_mem[comm->wishptr[from_PE]*vec->traits.ncols*vec->elSize];
+            }
+            GHOST_INSTR_START("hostAlloc")
+            GHOST_CALL_GOTO(ghost_cu_malloc_pinned((void **)&comm->work,(size_t)vec->traits.ncols*comm->acc_dues*vec->elSize),err,ret);
+            GHOST_INSTR_STOP("hostAlloc")
+#endif
+            GHOST_INSTR_START("deviceAlloc")
+            GHOST_CALL_GOTO(ghost_cu_malloc(&comm->cu_work,vec->traits.ncols*comm->acc_dues*vec->elSize),err,ret);
+            GHOST_INSTR_STOP("deviceAlloc")
+        } else {
+            for (from_PE=0; from_PE<nprocs; from_PE++) {
+                comm->tmprecv[from_PE] = DENSEMAT_VALPTR(vec,ctx->hput_pos[from_PE],0);
+            }
+            GHOST_CALL_GOTO(ghost_malloc((void **)&comm->work,(size_t)vec->traits.ncols*comm->acc_dues*vec->elSize),err,ret);
+        }
+    } else {
+        GHOST_CALL_GOTO(ghost_malloc((void **)&comm->tmprecv_mem,vec->traits.ncols*vec->elSize*comm->acc_wishes),err,ret);
+
+        for (from_PE=0; from_PE<nprocs; from_PE++){
+            comm->tmprecv[from_PE] = &comm->tmprecv_mem[comm->wishptr[from_PE]*vec->traits.ncols*vec->elSize];
+        }
+        if (vec->traits.location & GHOST_LOCATION_DEVICE) {
+            GHOST_INSTR_START("hostAlloc")
+            GHOST_CALL_GOTO(ghost_cu_malloc_pinned((void **)&comm->work,(size_t)vec->traits.ncols*comm->acc_dues*vec->elSize),err,ret);
+            GHOST_INSTR_STOP("hostAlloc")
+            GHOST_INSTR_START("deviceAlloc")
+            GHOST_CALL_GOTO(ghost_cu_malloc(&comm->cu_work,vec->traits.ncols*comm->acc_dues*vec->elSize),err,ret);
+            GHOST_INSTR_STOP("deviceAlloc")
+        } else {
+            GHOST_CALL_GOTO(ghost_malloc((void **)&comm->work,(size_t)vec->traits.ncols*comm->acc_dues*vec->elSize),err,ret);
+        }
     }
-
 
     if (ctx->col_map->loc_perm) {
 #ifdef GHOST_HAVE_CUDA
@@ -283,7 +319,13 @@ ghost_error ghost_densemat_cm_halocommInit(ghost_densemat *vec, ghost_context *c
         ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_IN,GHOST_DATATRANSFER_RANK_GPU,vec->traits.ncols*comm->acc_dues*vec->elSize);
 
 #endif
-        ghost_cu_download(comm->work,comm->cu_work,vec->traits.ncols*comm->acc_dues*vec->elSize);
+#ifdef GHOST_HAVE_GPUDIRECT
+        if (vec->traits.ncols > 1)
+#endif 
+        {
+            ghost_cu_download(comm->work,comm->cu_work,vec->traits.ncols*comm->acc_dues*vec->elSize);
+        }
+
         GHOST_INSTR_STOP("downloadcomm->work");
     }
 #endif
@@ -318,7 +360,7 @@ ghost_error ghost_densemat_cm_halocommFinalize(ghost_densemat *vec, ghost_contex
 
     ghost_densemat_halocommFinalize_common(comm);
 
-    if (vec->traits.location & GHOST_LOCATION_HOST) {
+    if (vec->traits.location == GHOST_LOCATION_HOST) {
         GHOST_INSTR_START("Assemble row-major view");
         for (partner=0; partner<ctx->nwishpartners; partner++){
             from_PE = ctx->wishpartners[partner];
@@ -334,7 +376,7 @@ ghost_error ghost_densemat_cm_halocommFinalize(ghost_densemat *vec, ghost_contex
             for (i=0; i<vec->traits.ncols; i++){
                 memcpy(DENSEMAT_VALPTR(vec,ctx->hput_pos[from_PE],i),&comm->tmprecv[from_PE][(i*ctx->wishes[from_PE])*vec->elSize],vec->elSize*ctx->wishes[from_PE]);
                 //           }
-        }
+            }
         }
 
         GHOST_INSTR_STOP("Assemble row-major view");
@@ -342,22 +384,25 @@ ghost_error ghost_densemat_cm_halocommFinalize(ghost_densemat *vec, ghost_contex
 
 #ifdef GHOST_HAVE_CUDA 
     GHOST_INSTR_START("upload")
-        if (vec->traits.location & GHOST_LOCATION_DEVICE) {
+    if (vec->traits.location & GHOST_LOCATION_DEVICE) {
 #ifdef GHOST_TRACK_DATATRANSFERS
-            ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_OUT,GHOST_DATATRANSFER_RANK_GPU,ctx->col_map->nhalo*vec->traits.ncols*vec->elSize);
+        ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_OUT,GHOST_DATATRANSFER_RANK_GPU,ctx->col_map->nhalo*vec->traits.ncols*vec->elSize);
 #endif
+#ifdef GHOST_HAVE_GPUDIRECT
+        if (vec->traits.ncols > 1) 
+#endif
+        {
             for (from_PE=0; from_PE<nprocs; from_PE++){
                 ghost_cu_upload2d(DENSEMAT_CUVALPTR(vec,ctx->hput_pos[from_PE],0),vec->stride*vec->elSize,comm->tmprecv[from_PE],ctx->wishes[from_PE]*vec->elSize,ctx->wishes[from_PE]*vec->elSize,vec->traits.ncols);
             }
         }
+    }
     GHOST_INSTR_STOP("upload");
 #endif
 
     if (vec->traits.location & GHOST_LOCATION_DEVICE) {
-#ifdef GHOST_HAVE_CUDA
-        GHOST_CALL_GOTO(ghost_cu_free(comm->cu_work),err,ret);
-        cudaFreeHost(comm->work); comm->work = NULL;
-#endif
+        GHOST_CALL_GOTO(ghost_cu_free(comm->cu_work),err,ret); comm->cu_work = NULL;
+        GHOST_CALL_GOTO(ghost_cu_free_host(comm->work),err,ret); comm->work = NULL;
     } else {
         free(comm->work); comm->work = NULL;
     }

@@ -485,31 +485,37 @@ extern "C" ghost_error ghost_sell_spmv_selector(ghost_densemat *lhs,
     
     std::vector<ghost_implementation> try_impl;
 
-    if (lhs->traits.compute_with == GHOST_IMPLEMENTATION_DEFAULT) {
-        if ((lhs->traits.flags & GHOST_DENSEMAT_SCATTERED) || 
-                (rhs->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
-            PERFWARNING_LOG("Use plain implementation for scattered views");
-            opt_impl = GHOST_IMPLEMENTATION_PLAIN;
-        } else if ((mat->context->col_map->loc_perm != mat->context->row_map->loc_perm) && 
-                (p.storage == GHOST_DENSEMAT_COLMAJOR) &&
-                (traits.flags & (GHOST_SPMV_DOT_XY|GHOST_SPMV_SHIFT|GHOST_SPMV_VSHIFT))) { 
-            // unsymmetric permutation and col-major requires gather of rhs in this case which is not implemented for intrinsics kernels
-            PERFWARNING_LOG("Use plain implementation for unsymmetric permuted matrix, col-major vectors and SHIFT or DOT");
-            opt_impl = GHOST_IMPLEMENTATION_PLAIN;
-        } else {
-            if (rhs->stride > 1 && rhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
-                opt_impl = ghost_get_best_implementation_for_bytesize(rhs->traits.ncols*rhs->elSize);
-                if (opt_impl == GHOST_IMPLEMENTATION_PLAIN) {
-                    // this branch is taken for odd numbers
-                    // choose a version with remainder loops in this case!
-                    opt_impl = ghost_get_best_implementation_for_bytesize(PAD(rhs->traits.ncols*rhs->elSize,ghost_machine_simd_width()));
-                }
-            } else {
-                opt_impl = ghost_get_best_implementation_for_bytesize(mat->traits.C*mat->elSize);
+    if ((lhs->traits.flags & GHOST_DENSEMAT_SCATTERED) || 
+            (rhs->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
+        PERFWARNING_LOG("Use plain implementation for scattered views");
+        opt_impl = GHOST_IMPLEMENTATION_PLAIN;
+    } else if ((mat->context->col_map->loc_perm != mat->context->row_map->loc_perm) && 
+            (p.storage == GHOST_DENSEMAT_COLMAJOR) &&
+            (traits.flags & (GHOST_SPMV_DOT_XY|GHOST_SPMV_SHIFT|GHOST_SPMV_VSHIFT))) { 
+        // unsymmetric permutation and col-major requires gather of rhs in this case which is not implemented for intrinsics kernels
+        PERFWARNING_LOG("Use plain implementation for unsymmetric permuted matrix, col-major vectors and SHIFT or DOT");
+        opt_impl = GHOST_IMPLEMENTATION_PLAIN;
+    } else {
+        if (rhs->stride > 1 && rhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
+            opt_impl = ghost_get_best_implementation_for_bytesize(rhs->traits.ncols*rhs->elSize);
+            if (opt_impl == GHOST_IMPLEMENTATION_PLAIN) {
+                // this branch is taken for odd numbers
+                // choose a version with remainder loops in this case!
+                opt_impl = ghost_get_best_implementation_for_bytesize(PAD(rhs->traits.ncols*rhs->elSize,ghost_machine_simd_width()));
             }
+        } else {
+            opt_impl = ghost_get_best_implementation_for_bytesize(mat->traits.C*mat->elSize);
         }
-        // force PLAIN kernel
-        // opt_impl = GHOST_IMPLEMENTATION_PLAIN;
+    }
+    if (lhs->traits.compute_with != GHOST_IMPLEMENTATION_DEFAULT) {
+        if (lhs->traits.compute_with < opt_impl) {
+            try_impl.push_back(lhs->traits.compute_with);
+        } else {
+            WARNING_LOG("The implementation set via the compute_with field (%s) is not valid! Using a valid implementation.",ghost_implementation_string(lhs->traits.compute_with));
+        }
+    }
+
+    if (!try_impl.size()) {
 #if defined(GHOST_BUILD_MIC) && !defined(GHOST_BUILD_AVX512) 
         // on KNC: only MIC and Plain possible
         try_impl.push_back(opt_impl);
@@ -521,8 +527,6 @@ extern "C" ghost_error ghost_sell_spmv_selector(ghost_densemat *lhs,
             try_impl.push_back(opt_impl);
         }
 #endif
-    } else {
-        try_impl.push_back(lhs->traits.compute_with);
     }
     
     

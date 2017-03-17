@@ -41,11 +41,13 @@ ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, gho
             withinavg = 1;
         }
         MPI_CALL_GOTO(MPI_Allreduce(&withinavg,&totalwithinavg,1,MPI_INT,MPI_SUM,comm),err,ret);
-        if (totalwithinavg == nranks) {
-            INFO_LOG("The bandwidths of all processes differ by less than 10%%, the weights will be fixed to 1.0 to avoid artifacts.");
-            weight = 1.0;
-        } else {
-            INFO_LOG("The bandwidths of all processes differ by more than 10%%, automatically setting weight to %.2f according to UPDATE bandwidth!",weight);
+        if (nranks > 1) {
+            if (totalwithinavg == nranks) {
+                INFO_LOG("The bandwidths of all processes differ by less than 10%%, the weights will be fixed to 1.0 to avoid artifacts.");
+                weight = 1.0;
+            } else {
+                INFO_LOG("The bandwidths of all processes differ by more than 10%%, automatically setting weight to %.2f according to UPDATE bandwidth!",weight);
+            }
         }
     }
     if (!gnrows) {

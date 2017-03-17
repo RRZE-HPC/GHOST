@@ -222,10 +222,18 @@ ghost_error ghost_check_vec_init_compatibility(ghost_compatible_vec_init *data)
                     bool permuted_vec1=false, permuted_vec2=false;
                     permuted_vec1 = vec[i]->traits.flags & (ghost_densemat_flags)GHOST_DENSEMAT_PERMUTED;
                     permuted_vec2 = vec[j]->traits.flags & (ghost_densemat_flags)GHOST_DENSEMAT_PERMUTED;
+                   
 
-                    if ((vec[i]->map->dim != vec[j]->map->dim) || (permuted_vec1 != permuted_vec2) || (vec[i]->map->loc_perm != vec[j]->map->loc_perm)) {
-                        WARNING_LOG("Densemat mismatch: %"PRLIDX" <-> %"PRLIDX" (dim), %d <-> %d (permuted), %p <-> %p (permutation)",vec[i]->map->dim,vec[j]->map->dim,permuted_vec1,permuted_vec2,(void *)vec[i]->map->loc_perm,(void *)vec[i]->map->loc_perm);
-                        ret = GHOST_ERR_COMPATIBILITY;
+                    if (vec[i]->map->dim == vec[j]->map->dim) {
+                        if ((permuted_vec1 != permuted_vec2) || (vec[i]->map->loc_perm != vec[j]->map->loc_perm)) {
+                            WARNING_LOG("Densemat mismatch: %"PRLIDX" <-> %"PRLIDX" (dim), %d <-> %d (permuted), %p <-> %p (permutation)",vec[i]->map->dim,vec[j]->map->dim,permuted_vec1,permuted_vec2,(void *)vec[i]->map->loc_perm,(void *)vec[i]->map->loc_perm);
+                            ret = GHOST_SUCCESS;
+                        }
+                    } else {
+                        if (permuted_vec1 || permuted_vec2 || vec[i]->map->loc_perm || vec[j]->map->loc_perm) {
+                            WARNING_LOG("Densemat mismatch: %"PRLIDX" <-> %"PRLIDX" (dim), %d <-> %d (permuted), %p <-> %p (permutation)",vec[i]->map->dim,vec[j]->map->dim,permuted_vec1,permuted_vec2,(void *)vec[i]->map->loc_perm,(void *)vec[i]->map->loc_perm);
+                            ret = GHOST_SUCCESS;
+                        }
                     }
                 }
             }
@@ -233,6 +241,10 @@ ghost_error ghost_check_vec_init_compatibility(ghost_compatible_vec_init *data)
 
     }
 #else
+    if (data->IN_A && data->OUT_A && (data->IN_A->map->dim != data->OUT_A->map->dim)) {
+        return ret;
+    }
+
     ghost_map *out_map;
     bool out_permuted;
     if((data->IN_A != NULL) && (data->IN_B != NULL)) {

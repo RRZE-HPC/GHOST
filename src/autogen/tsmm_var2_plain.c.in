@@ -41,7 +41,7 @@ ghost_error ghost_tsmm__u_plain_d_x_x_1_1_rm(ghost_densemat *x, ghost_densemat *
             for (s=0; s<w->traits.ncols; s++) {
                 xval[i*ldx+s] = dbeta*xval[i*ldx+s];
 #pragma simd
-#pragma vector aligned
+#pragma vector unaligned
 #pragma vector always
 #pragma ivdep
                 for (j=0; j<m; j++) {
@@ -55,7 +55,7 @@ ghost_error ghost_tsmm__u_plain_d_x_x_1_1_rm(ghost_densemat *x, ghost_densemat *
 #pragma omp parallel for private(j,s) schedule(runtime)
         for (i=0; i<n; i++) {
 #pragma simd
-#pragma vector aligned
+#pragma vector unaligned
 #pragma vector always
 #pragma ivdep
             for (s=0; s<w->traits.ncols; s++) {
@@ -63,7 +63,7 @@ ghost_error ghost_tsmm__u_plain_d_x_x_1_1_rm(ghost_densemat *x, ghost_densemat *
             }
             for (j=0; j<m; j++) {
 #pragma simd
-#pragma vector aligned
+#pragma vector unaligned
 #pragma vector always
 #pragma ivdep
                 for (s=0; s<w->traits.ncols; s++) {
@@ -239,7 +239,7 @@ ghost_error ghost_tsmm__u_plain_z_x_x_1_1_rm(ghost_densemat *x, ghost_densemat *
             for (s=0; s<w->traits.ncols; s++) {
                 xval[i*ldx+s] = dbeta*xval[i*ldx+s];
 #pragma simd
-#pragma vector aligned
+#pragma vector unaligned
 #pragma vector always
 #pragma ivdep
                 for (j=0; j<m; j++) {
@@ -253,7 +253,7 @@ ghost_error ghost_tsmm__u_plain_z_x_x_1_1_rm(ghost_densemat *x, ghost_densemat *
 #pragma omp parallel for private(j,s) schedule(runtime)
         for (i=0; i<n; i++) {
 #pragma simd
-#pragma vector aligned
+#pragma vector unaligned
 #pragma vector always
 #pragma ivdep
             for (s=0; s<w->traits.ncols; s++) {
@@ -261,7 +261,7 @@ ghost_error ghost_tsmm__u_plain_z_x_x_1_1_rm(ghost_densemat *x, ghost_densemat *
             }
             for (j=0; j<m; j++) {
 #pragma simd
-#pragma vector aligned
+#pragma vector unaligned
 #pragma vector always
 #pragma ivdep
                 for (s=0; s<w->traits.ncols; s++) {

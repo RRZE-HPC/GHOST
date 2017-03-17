@@ -76,7 +76,6 @@ void ghost_timing_set_perfFunc(const char *prefix, const char *tag, ghost_comput
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
   
     if (!tag) {
-        WARNING_LOG("Empty tag! This should not have happened... Prefix is %s",prefix);
         goto out;
     }
 

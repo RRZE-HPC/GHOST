@@ -391,24 +391,6 @@ ghost_error ghost_densemat_halocommInit_common(ghost_densemat *vec, ghost_contex
     }
     comm->acc_dues = comm->dueptr[nprocs];
 
-    if (vec->traits.location & GHOST_LOCATION_DEVICE) {
-#ifdef GHOST_HAVE_CUDA
-        if (vec->traits.location & GHOST_LOCATION_DEVICE) {
-#ifndef GHOST_HAVE_GPUDIRECT
-            // TODO check whether cudaHostAlloc is faster
-            GHOST_INSTR_START("hostAlloc")
-            GHOST_CALL_RETURN(ghost_cu_malloc_pinned((void **)&comm->work,(size_t)vec->traits.ncols*comm->acc_dues*vec->elSize));
-            GHOST_INSTR_STOP("hostAlloc")
-#endif
-            GHOST_INSTR_START("deviceAlloc")
-            GHOST_CALL_GOTO(ghost_cu_malloc(&comm->cu_work,vec->traits.ncols*comm->acc_dues*vec->elSize),err,ret);
-            GHOST_INSTR_STOP("deviceAlloc")
-        }
-#endif
-    } else {
-        GHOST_CALL_RETURN(ghost_malloc((void **)&comm->work,(size_t)vec->traits.ncols*comm->acc_dues*vec->elSize));
-    }
-
     goto out;
 err:
     ERROR_LOG("Error in function!");
@@ -473,13 +455,17 @@ ghost_error ghost_densemat_halocomm_start(ghost_densemat *vec, ghost_context *ct
             size_t msgSizeEls = ctx->dues[to_PE]/nmsgs*vec->traits.ncols;
 
             char *workbuf = comm->work;
-#ifdef GHOST_HAVE_GPUDIRECT
-#ifdef GHOST_HAVE_CUDA
-            if (vec->traits.location & GHOST_LOCATION_DEVICE) {
+            if (!workbuf) {
+#ifndef GHOST_HAVE_GPUDIRECT
+                if (!(vec->traits.location & GHOST_LOCATION_DEVICE)) {
+                    ERROR_LOG("workbuf must only be NULL in case of GPUdirect!");
+                }
+#endif
+                if (!comm->cu_work) {
+                    ERROR_LOG("cu_work must not be NULL!");
+                }
                 workbuf = comm->cu_work;
             }
-#endif
-#endif
 
             for (msg = 0; msg < nmsgs-1; msg++) {
                 MPI_CALL_GOTO(MPI_Isend(workbuf + comm->dueptr[to_PE]*vec->elSize*vec->traits.ncols+msg*msgSizeRows*rowsize, msgSizeEls, vec->mpidt, to_PE, me, ctx->mpicomm, &comm->request[comm->msgcount]),err,ret);

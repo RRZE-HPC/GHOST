@@ -215,34 +215,46 @@ ghost_error ghost_densemat_rm_halocommInit(ghost_densemat *vec, ghost_context *c
         
     GHOST_CALL_GOTO(ghost_malloc((void **)&comm->tmprecv,nprocs*sizeof(char *)),err,ret);
     
-    if (vec->traits.location & GHOST_LOCATION_DEVICE) {
+    if (vec->stride == vec->traits.ncols) {
+        if (vec->traits.location & GHOST_LOCATION_DEVICE) {
 #ifdef GHOST_HAVE_GPUDIRECT
-        if (vec->stride != vec->traits.ncols) {
-            ERROR_LOG("GPUdirect communication does not yet work for views!");
-        }
-        for (from_PE=0; from_PE<nprocs; from_PE++) {
-            comm->tmprecv[from_PE] = DENSEMAT_CUVALPTR(vec,ctx->hput_pos[from_PE],0);
-        }
-        comm->tmprecv_mem = NULL;
+            for (from_PE=0; from_PE<nprocs; from_PE++) {
+                comm->tmprecv[from_PE] = DENSEMAT_CUVALPTR(vec,ctx->hput_pos[from_PE],0);
+            }
 #else 
-        GHOST_CALL_GOTO(ghost_malloc((void **)&comm->tmprecv_mem,vec->traits.ncols*vec->elSize*comm->acc_wishes),err,ret);
-
-        for (from_PE=0; from_PE<nprocs; from_PE++){
-            comm->tmprecv[from_PE] = &comm->tmprecv_mem[comm->wishptr[from_PE]*vec->traits.ncols*vec->elSize];
-        }
-#endif
-    } else {
-        if (vec->stride != vec->traits.ncols) {
+            GHOST_INSTR_START("hostAlloc")
+            GHOST_CALL_GOTO(ghost_cu_malloc_pinned((void **)&comm->work,(size_t)vec->traits.ncols*comm->acc_dues*vec->elSize),err,ret);
+            GHOST_INSTR_STOP("hostAlloc")
             GHOST_CALL_GOTO(ghost_malloc((void **)&comm->tmprecv_mem,vec->traits.ncols*vec->elSize*comm->acc_wishes),err,ret);
 
             for (from_PE=0; from_PE<nprocs; from_PE++){
                 comm->tmprecv[from_PE] = &comm->tmprecv_mem[comm->wishptr[from_PE]*vec->traits.ncols*vec->elSize];
             }
+#endif
+            GHOST_INSTR_START("deviceAlloc")
+            GHOST_CALL_GOTO(ghost_cu_malloc(&comm->cu_work,vec->traits.ncols*comm->acc_dues*vec->elSize),err,ret);
+            GHOST_INSTR_STOP("deviceAlloc")
         } else {
             for (from_PE=0; from_PE<nprocs; from_PE++) {
                 comm->tmprecv[from_PE] = DENSEMAT_VALPTR(vec,ctx->hput_pos[from_PE],0);
             }
-            comm->tmprecv_mem = NULL;
+            GHOST_CALL_GOTO(ghost_malloc((void **)&comm->work,(size_t)vec->traits.ncols*comm->acc_dues*vec->elSize),err,ret);
+        }
+    } else {
+        GHOST_CALL_GOTO(ghost_malloc((void **)&comm->tmprecv_mem,vec->traits.ncols*vec->elSize*comm->acc_wishes),err,ret);
+
+        for (from_PE=0; from_PE<nprocs; from_PE++){
+            comm->tmprecv[from_PE] = &comm->tmprecv_mem[comm->wishptr[from_PE]*vec->traits.ncols*vec->elSize];
+        }
+        if (vec->traits.location & GHOST_LOCATION_DEVICE) {
+            GHOST_INSTR_START("hostAlloc")
+            GHOST_CALL_GOTO(ghost_cu_malloc_pinned((void **)&comm->work,(size_t)vec->traits.ncols*comm->acc_dues*vec->elSize),err,ret);
+            GHOST_INSTR_STOP("hostAlloc")
+            GHOST_INSTR_START("deviceAlloc")
+            GHOST_CALL_GOTO(ghost_cu_malloc(&comm->cu_work,vec->traits.ncols*comm->acc_dues*vec->elSize),err,ret);
+            GHOST_INSTR_STOP("deviceAlloc")
+        } else {
+            GHOST_CALL_GOTO(ghost_malloc((void **)&comm->work,(size_t)vec->traits.ncols*comm->acc_dues*vec->elSize),err,ret);
         }
     }
        
@@ -279,7 +291,6 @@ ghost_error ghost_densemat_rm_halocommInit(ghost_densemat *vec, ghost_context *c
             }
     }
     GHOST_INSTR_STOP("assemble_buf");
-#ifndef GHOST_HAVE_GPUDIRECT 
 #ifdef GHOST_HAVE_CUDA
     if (vec->traits.location & GHOST_LOCATION_DEVICE) {
         GHOST_INSTR_START("download_buf");
@@ -287,10 +298,14 @@ ghost_error ghost_densemat_rm_halocommInit(ghost_densemat *vec, ghost_context *c
         ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_IN,GHOST_DATATRANSFER_RANK_GPU,vec->traits.ncols*comm->acc_dues*vec->elSize);
 
 #endif
-        ghost_cu_download(comm->work,comm->cu_work,vec->traits.ncols*comm->acc_dues*vec->elSize);
+#ifdef GHOST_HAVE_GPUDIRECT
+        if (vec->traits.ncols != vec->stride)
+#endif 
+        {
+            GHOST_CALL_GOTO(ghost_cu_download(comm->work,comm->cu_work,vec->traits.ncols*comm->acc_dues*vec->elSize),err,ret);
+        }
         GHOST_INSTR_STOP("download_buf");
     }
-#endif
 #endif
     
 
@@ -333,28 +348,26 @@ ghost_error ghost_densemat_rm_halocommFinalize(ghost_densemat *vec, ghost_contex
         GHOST_INSTR_STOP("Assemble row-major view");
     }
 
-#ifndef GHOST_HAVE_GPUDIRECT
 #ifdef GHOST_HAVE_CUDA 
     GHOST_INSTR_START("upload")
     if (vec->traits.location & GHOST_LOCATION_DEVICE) {
 #ifdef GHOST_TRACK_DATATRANSFERS
         ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_OUT,GHOST_DATATRANSFER_RANK_GPU,ctx->col_map->nhalo*vec->traits.ncols*vec->elSize);
 #endif
-        ghost_cu_upload2d(DENSEMAT_CUVALPTR(vec,vec->map->dimhalo-vec->map->nhalo,0),vec->stride*vec->elSize,comm->tmprecv_mem,vec->traits.ncols*vec->elSize,vec->traits.ncols*vec->elSize,comm->acc_wishes);
-        INFO_LOG("upload halo");
+#ifdef GHOST_HAVE_GPUDIRECT
+        if (vec->traits.ncols != vec->stride)
+#endif 
+        {
+            GHOST_CALL_GOTO(ghost_cu_upload2d(DENSEMAT_CUVALPTR(vec,vec->map->dimhalo-vec->map->nhalo,0),vec->stride*vec->elSize,comm->tmprecv_mem,vec->traits.ncols*vec->elSize,vec->traits.ncols*vec->elSize,comm->acc_wishes),err,ret);
+        }
     }
     GHOST_INSTR_STOP("upload");
-#endif
 #endif
 
 
     if (vec->traits.location & GHOST_LOCATION_DEVICE) {
-#ifdef GHOST_HAVE_CUDA
-        GHOST_CALL_GOTO(ghost_cu_free(comm->cu_work),err,ret);
-#ifndef GHOST_HAVE_GPUDIRECT
-        cudaFreeHost(comm->work); comm->work = NULL;
-#endif
-#endif
+        GHOST_CALL_GOTO(ghost_cu_free(comm->cu_work),err,ret); comm->cu_work = NULL;
+        GHOST_CALL_GOTO(ghost_cu_free_host(comm->work),err,ret); comm->work = NULL;
     } else {
         free(comm->work); comm->work = NULL;
     }
@@ -378,9 +391,4 @@ out:
     UNUSED(ctx);
     return GHOST_ERR_NOT_IMPLEMENTED;
 #endif
-
-
-
-
-
 }
