@@ -176,6 +176,7 @@ ghost_error ghost_map_create_distribution(ghost_map *map, ghost_sparsemat_src_ro
     map->dim = map->ldim[me];
     map->dimpad = map->dim; // may be increased by some padding at a later point
     map->offs = map->goffs[me];
+    map->dimalloc = map->dimpad;
     goto out;
 err:
 
@@ -224,6 +225,7 @@ ghost_map *ghost_map_create_light(ghost_lidx dim, ghost_mpi_comm mpicomm)
     map->dim = dim;
     map->gdim = dim;
     map->dimpad = dim;
+    map->dimalloc = map->dimpad;
     map->offs = 0;
     map->mpicomm = mpicomm;
     map->ldim = NULL;
