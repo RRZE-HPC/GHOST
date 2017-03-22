@@ -58,6 +58,24 @@
 
 #ifdef GHOST_HAVE_MPI
 
+#ifdef GHOST_LOG_TIMESTAMP
+
+#define LOG(type,color,...) {\
+    double logmacrotime;\
+    ghost_timing_elapsed(&logmacrotime);\
+    int logmacrome;\
+    int logmacroerr = MPI_Comm_rank(MPI_COMM_WORLD,&logmacrome);\
+    if (logmacroerr != MPI_SUCCESS) {\
+        logmacrome = -1;\
+    }\
+    if (logmacrome == GHOST_LOG_RANK || -1 == GHOST_LOG_RANK) {\
+        fprintf(stderr, color "[GHOST] PE%d %.3f " #type " at %s() <%s:%d>: " FIRST(__VA_ARGS__) ANSI_COLOR_RESET "\n", logmacrome, logmacrotime, __func__, FILE_BASENAME, __LINE__ REST(__VA_ARGS__)); \
+        fflush(stderr);\
+    }\
+}\
+
+#else 
+
 #define LOG(type,color,...) {\
     int logmacrome;\
     int logmacroerr = MPI_Comm_rank(MPI_COMM_WORLD,&logmacrome);\
@@ -70,11 +88,25 @@
     }\
 }\
 
+#endif
+
+#else
+
+#ifdef GHOST_LOG_TIMESTAMP
+
+#define LOG(type,color,...) {\
+    double locmacrotime;\
+    ghost_timing_elapsed(&logmacrotime);\
+    fprintf(stderr, color "[GHOST] %.3f " #type " at %s() <%s:%d>: " FIRST(__VA_ARGS__) ANSI_COLOR_RESET "\n", logmacrotime, __func__, FILE_BASENAME, __LINE__ REST(__VA_ARGS__));\
+}\
+
 #else
 
 #define LOG(type,color,...) {\
     fprintf(stderr, color "[GHOST] " #type " at %s() <%s:%d>: " FIRST(__VA_ARGS__) ANSI_COLOR_RESET "\n", __func__, FILE_BASENAME, __LINE__ REST(__VA_ARGS__));\
 }\
+
+#endif
 
 #endif
 

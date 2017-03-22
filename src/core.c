@@ -166,6 +166,8 @@ ghost_error ghost_init(int argc, char **argv)
 #endif // ifdef GHOST_HAVE_MPI
     
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_SETUP);
+
+    GHOST_CALL_RETURN(ghost_timing_start());
     
     hwloc_topology_t topology;
     ghost_topology_create();

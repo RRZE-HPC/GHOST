@@ -156,6 +156,9 @@ extern "C" {
      */
     void ghost_timing_destroy();
 
+    ghost_error ghost_timing_start();
+    ghost_error ghost_timing_elapsed(double *time);
+
 #ifdef __cplusplus
 }
 #endif
