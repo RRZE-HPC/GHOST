@@ -53,7 +53,8 @@ const ghost_spmv_opts GHOST_SPMV_OPTS_INITIALIZER = {
     .delta = NULL,
     .eta = NULL,
     .dot = NULL,
-    .z = NULL
+    .z = NULL,
+    .blocksz = GHOST_LIDX_MAX
 };
 
 ghost_error ghost_sparsemat_create(ghost_sparsemat ** mat, ghost_context *context, ghost_sparsemat_traits *traits, int nTraits)

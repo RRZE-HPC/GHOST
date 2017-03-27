@@ -77,6 +77,7 @@ typedef struct{
     void *eta;
     void *dot;
     ghost_densemat *z;
+    ghost_lidx blocksz;
 } 
 ghost_spmv_opts;
 

@@ -89,6 +89,7 @@ endif()
 set (SOURCES
     src/autogen.cpp
     src/datatransfers.cpp 
+    src/densemat.cpp
     src/densemat_cm_averagehalo.cpp
     src/densemat_cm.cpp 
     src/densemat_rm_averagehalo.cpp
@@ -146,6 +147,7 @@ set (SOURCES
     src/sparsemat_perm_zoltan.c
     src/spmv.c
     src/spmv_overlap.c 
+    src/spmv_pipelined.c
     src/spmv_task.c
     src/spmv_vector.c 
     src/task.c
