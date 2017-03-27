@@ -594,7 +594,7 @@ int ghost_idx_of_densemat_storage(ghost_densemat_storage s)
 
 ghost_error ghost_densemat_init_rand(ghost_densemat *x)
 {
-    ghost_error ret;
+    ghost_error ret = GHOST_SUCCESS;
 
     typedef ghost_error (*ghost_densemat_init_rand_kernel)(ghost_densemat*);
     ghost_densemat_init_rand_kernel kernels[2][2] = {{NULL,NULL},{NULL,NULL}};
@@ -612,7 +612,7 @@ ghost_error ghost_densemat_init_rand(ghost_densemat *x)
 
 ghost_error ghost_densemat_init_val(ghost_densemat *x, void *val)
 {
-    ghost_error ret;
+    ghost_error ret = GHOST_SUCCESS;
 
     typedef ghost_error (*ghost_densemat_init_scalar_kernel)(ghost_densemat*, void*);
     ghost_densemat_init_scalar_kernel kernels[2][2] = {{NULL,NULL},{NULL,NULL}};
