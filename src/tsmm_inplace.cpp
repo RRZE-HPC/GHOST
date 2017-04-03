@@ -17,6 +17,7 @@
 #include "ghost/timing.h"
 #include "ghost/machine.h"
 #include "ghost/cpp11_fixes.h"
+#include "ghost/autogen.h"
 
 #include <unordered_map>
 #include <vector>
@@ -257,6 +258,13 @@ ghost_error ghost_tsmm_inplace(ghost_densemat *x, ghost_densemat *w, void *alpha
     }
 
 end_of_loop:
+    
+    if (pos_ncolsin || pos_ncolsout) {
+        ghost_autogen_set_missing();
+    }
+    std::ostringstream oss;
+    oss << try_ncolsin[0] << "," << try_ncolsout[0];
+    ghost_autogen_string_add("TSMM-INPLACE",oss.str().c_str());
 
     if (kernel) {
         if (optimal) {

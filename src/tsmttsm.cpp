@@ -23,6 +23,7 @@
 #include "ghost/constants.h"
 #include "ghost/locality.h"
 #include "ghost/cpp11_fixes.h"
+#include "ghost/autogen.h"
 
 #include <unordered_map>
 #include <vector>
@@ -316,6 +317,13 @@ ghost_error ghost_tsmttsm(ghost_densemat *x_in, ghost_densemat *v, ghost_densema
     }
 
 end_of_loop:
+    
+    if (pos_wcols || pos_vcols) {
+        ghost_autogen_set_missing();
+    }
+    std::ostringstream oss;
+    oss << try_vcols[0] << "," << try_wcols[0];
+    ghost_autogen_string_add("TSMTTSM",oss.str().c_str());
 
     if (kernel) {
         if (optimal) {

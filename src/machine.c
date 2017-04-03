@@ -5,7 +5,7 @@
 #include "ghost/omp.h"
 #include "ghost/core.h"
 
-
+#include <cpuid.h>
 #include <strings.h>
 #ifdef GHOST_HAVE_OPENMP
 #include <omp.h>
@@ -287,38 +287,128 @@ bool ghost_machine_bigendian()
     return (endiantest[0] == 0);
 }
 
+static void cpuid(int info[4], int InfoType){
+    __cpuid_count(InfoType, 0, info[0], info[1], info[2], info[3]);
+}
+
 int ghost_machine_alignment()
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
-#ifdef GHOST_BUILD_MIC
-    int alignment = 64;
-#elif defined(GHOST_BUILD_AVX2)
-    int alignment = 32;
-#elif defined(GHOST_BUILD_AVX)
-    int alignment = 32;
-#elif defined(GHOST_BUILD_SSE)
-    int alignment = 16;
-#else
-    int alignment = 8;
-#endif
+    // code taken from http://stackoverflow.com/questions/6121792/how-to-check-if-a-cpu-supports-the-sse3-instruction-set/7495023#7495023
+    
+    int alignment;
+
+
+    //  Misc.
+    bool __attribute__((unused)) HW_MMX;
+    bool __attribute__((unused)) HW_x64;
+    bool __attribute__((unused)) HW_ABM;      // Advanced Bit Manipulation
+    bool __attribute__((unused)) HW_RDRAND;
+    bool __attribute__((unused)) HW_BMI1;
+    bool __attribute__((unused)) HW_BMI2;
+    bool __attribute__((unused)) HW_ADX;
+    bool __attribute__((unused)) HW_PREFETCHWT1;
+
+    //  SIMD: 128-bit
+    bool __attribute__((unused)) HW_SSE;
+    bool __attribute__((unused)) HW_SSE2;
+    bool __attribute__((unused)) HW_SSE3;
+    bool __attribute__((unused)) HW_SSSE3;
+    bool __attribute__((unused)) HW_SSE41;
+    bool __attribute__((unused)) HW_SSE42;
+    bool __attribute__((unused)) HW_SSE4a;
+    bool __attribute__((unused)) HW_AES;
+    bool __attribute__((unused)) HW_SHA;
+
+    //  SIMD: 256-bit
+    bool __attribute__((unused)) HW_AVX;
+    bool __attribute__((unused)) HW_XOP;
+    bool __attribute__((unused)) HW_FMA3;
+    bool __attribute__((unused)) HW_FMA4;
+    bool __attribute__((unused)) HW_AVX2;
+
+    //  SIMD: 512-bit
+    bool __attribute__((unused)) HW_AVX512F;    //  AVX512 Foundation
+    bool __attribute__((unused)) HW_AVX512CD;   //  AVX512 Conflict Detection
+    bool __attribute__((unused)) HW_AVX512PF;   //  AVX512 Prefetch
+    bool __attribute__((unused)) HW_AVX512ER;   //  AVX512 Exponential + Reciprocal
+    bool __attribute__((unused)) HW_AVX512VL;   //  AVX512 Vector Length Extensions
+    bool __attribute__((unused)) HW_AVX512BW;   //  AVX512 Byte + Word
+    bool __attribute__((unused)) HW_AVX512DQ;   //  AVX512 Doubleword + Quadword
+    bool __attribute__((unused)) HW_AVX512IFMA; //  AVX512 Integer 52-bit Fused Multiply-Add
+    bool __attribute__((unused)) HW_AVX512VBMI; //  AVX512 Vector Byte Manipulation Instructions
+
+    int info[4];
+    cpuid(info, 0);
+    int nIds = info[0];
+
+    cpuid(info, 0x80000000);
+    unsigned nExIds = info[0];
+
+    //  Detect Features
+    if (nIds >= 0x00000001){
+        cpuid(info,0x00000001);
+        HW_MMX    = (info[3] & ((int)1 << 23)) != 0;
+        HW_SSE    = (info[3] & ((int)1 << 25)) != 0;
+        HW_SSE2   = (info[3] & ((int)1 << 26)) != 0;
+        HW_SSE3   = (info[2] & ((int)1 <<  0)) != 0;
+
+        HW_SSSE3  = (info[2] & ((int)1 <<  9)) != 0;
+        HW_SSE41  = (info[2] & ((int)1 << 19)) != 0;
+        HW_SSE42  = (info[2] & ((int)1 << 20)) != 0;
+        HW_AES    = (info[2] & ((int)1 << 25)) != 0;
+
+        HW_AVX    = (info[2] & ((int)1 << 28)) != 0;
+        HW_FMA3   = (info[2] & ((int)1 << 12)) != 0;
+
+        HW_RDRAND = (info[2] & ((int)1 << 30)) != 0;
+    }
+    if (nIds >= 0x00000007){
+        cpuid(info,0x00000007);
+        HW_AVX2   = (info[1] & ((int)1 <<  5)) != 0;
+
+        HW_BMI1        = (info[1] & ((int)1 <<  3)) != 0;
+        HW_BMI2        = (info[1] & ((int)1 <<  8)) != 0;
+        HW_ADX         = (info[1] & ((int)1 << 19)) != 0;
+        HW_SHA         = (info[1] & ((int)1 << 29)) != 0;
+        HW_PREFETCHWT1 = (info[2] & ((int)1 <<  0)) != 0;
+
+        HW_AVX512F     = (info[1] & ((int)1 << 16)) != 0;
+        HW_AVX512CD    = (info[1] & ((int)1 << 28)) != 0;
+        HW_AVX512PF    = (info[1] & ((int)1 << 26)) != 0;
+        HW_AVX512ER    = (info[1] & ((int)1 << 27)) != 0;
+        HW_AVX512VL    = (info[1] & ((int)1 << 31)) != 0;
+        HW_AVX512BW    = (info[1] & ((int)1 << 30)) != 0;
+        HW_AVX512DQ    = (info[1] & ((int)1 << 17)) != 0;
+        HW_AVX512IFMA  = (info[1] & ((int)1 << 21)) != 0;
+        HW_AVX512VBMI  = (info[2] & ((int)1 <<  1)) != 0;
+    }
+    if (nExIds >= 0x80000001){
+        cpuid(info,0x80000001);
+        HW_x64   = (info[3] & ((int)1 << 29)) != 0;
+        HW_ABM   = (info[2] & ((int)1 <<  5)) != 0;
+        HW_SSE4a = (info[2] & ((int)1 <<  6)) != 0;
+        HW_FMA4  = (info[2] & ((int)1 << 16)) != 0;
+        HW_XOP   = (info[2] & ((int)1 << 11)) != 0;
+    }
+    if (HW_AVX512F) {
+        alignment = 64;
+    } else if (HW_AVX) {
+        alignment = 32;
+    } else if (HW_SSE) {
+        alignment = 16;
+    } else {
+        alignment = 1;
+    }
+
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
-   return alignment; 
+    return alignment; 
 }
 
 int ghost_machine_simd_width()
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
-#ifdef GHOST_BUILD_MIC
-    int width = 64;
-#elif defined(GHOST_BUILD_AVX2)
-    int width = 32;
-#elif defined(GHOST_BUILD_AVX)
-    int width = 32;
-#elif defined(GHOST_BUILD_SSE)
-    int width = 16;
-#else
-    int width = 4;
-#endif
+    int width = ghost_machine_alignment();
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return width; 
 }
@@ -433,6 +523,7 @@ ghost_error ghost_machine_string(char **str)
     ghost_line_string(str,"LLC size","MiB","%.2f",outerCacheSize*1.0/(1024.*1024.));
     ghost_line_string(str,"FLC size","KiB","%.2f",innerCacheSize*1.0/(1024.));
     ghost_line_string(str,"Cache line size","B","%zu",cacheline_size);
+    ghost_line_string(str,"SIMD width","B","%zu",ghost_machine_simd_width());
 #ifdef GHOST_HAVE_CUDA
     ghost_line_string(str,"CUDA version",NULL,"%d",cuVersion);
     ghost_line_string(str,"CUDA devices",NULL,NULL);
