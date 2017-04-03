@@ -300,43 +300,43 @@ int ghost_machine_alignment()
 
 
     //  Misc.
-    bool __attribute__((unused)) HW_MMX;
-    bool __attribute__((unused)) HW_x64;
-    bool __attribute__((unused)) HW_ABM;      // Advanced Bit Manipulation
-    bool __attribute__((unused)) HW_RDRAND;
-    bool __attribute__((unused)) HW_BMI1;
-    bool __attribute__((unused)) HW_BMI2;
-    bool __attribute__((unused)) HW_ADX;
-    bool __attribute__((unused)) HW_PREFETCHWT1;
+    bool __attribute__((unused)) HW_MMX = false;
+    bool __attribute__((unused)) HW_x64 = false;
+    bool __attribute__((unused)) HW_ABM = false;      // Advanced Bit Manipulation
+    bool __attribute__((unused)) HW_RDRAND = false;
+    bool __attribute__((unused)) HW_BMI1 = false;
+    bool __attribute__((unused)) HW_BMI2 = false;
+    bool __attribute__((unused)) HW_ADX = false;
+    bool __attribute__((unused)) HW_PREFETCHWT1 = false;
 
     //  SIMD: 128-bit
-    bool __attribute__((unused)) HW_SSE;
-    bool __attribute__((unused)) HW_SSE2;
-    bool __attribute__((unused)) HW_SSE3;
-    bool __attribute__((unused)) HW_SSSE3;
-    bool __attribute__((unused)) HW_SSE41;
-    bool __attribute__((unused)) HW_SSE42;
-    bool __attribute__((unused)) HW_SSE4a;
-    bool __attribute__((unused)) HW_AES;
-    bool __attribute__((unused)) HW_SHA;
+    bool __attribute__((unused)) HW_SSE = false;
+    bool __attribute__((unused)) HW_SSE2 = false;
+    bool __attribute__((unused)) HW_SSE3 = false;
+    bool __attribute__((unused)) HW_SSSE3 = false;
+    bool __attribute__((unused)) HW_SSE41 = false;
+    bool __attribute__((unused)) HW_SSE42 = false;
+    bool __attribute__((unused)) HW_SSE4a = false;
+    bool __attribute__((unused)) HW_AES = false;
+    bool __attribute__((unused)) HW_SHA = false;
 
     //  SIMD: 256-bit
-    bool __attribute__((unused)) HW_AVX;
-    bool __attribute__((unused)) HW_XOP;
-    bool __attribute__((unused)) HW_FMA3;
-    bool __attribute__((unused)) HW_FMA4;
-    bool __attribute__((unused)) HW_AVX2;
+    bool __attribute__((unused)) HW_AVX = false;
+    bool __attribute__((unused)) HW_XOP = false;
+    bool __attribute__((unused)) HW_FMA3 = false;
+    bool __attribute__((unused)) HW_FMA4 = false;
+    bool __attribute__((unused)) HW_AVX2 = false;
 
     //  SIMD: 512-bit
-    bool __attribute__((unused)) HW_AVX512F;    //  AVX512 Foundation
-    bool __attribute__((unused)) HW_AVX512CD;   //  AVX512 Conflict Detection
-    bool __attribute__((unused)) HW_AVX512PF;   //  AVX512 Prefetch
-    bool __attribute__((unused)) HW_AVX512ER;   //  AVX512 Exponential + Reciprocal
-    bool __attribute__((unused)) HW_AVX512VL;   //  AVX512 Vector Length Extensions
-    bool __attribute__((unused)) HW_AVX512BW;   //  AVX512 Byte + Word
-    bool __attribute__((unused)) HW_AVX512DQ;   //  AVX512 Doubleword + Quadword
-    bool __attribute__((unused)) HW_AVX512IFMA; //  AVX512 Integer 52-bit Fused Multiply-Add
-    bool __attribute__((unused)) HW_AVX512VBMI; //  AVX512 Vector Byte Manipulation Instructions
+    bool __attribute__((unused)) HW_AVX512F = false;    //  AVX512 Foundation
+    bool __attribute__((unused)) HW_AVX512CD = false;   //  AVX512 Conflict Detection
+    bool __attribute__((unused)) HW_AVX512PF = false;   //  AVX512 Prefetch
+    bool __attribute__((unused)) HW_AVX512ER = false;   //  AVX512 Exponential + Reciprocal
+    bool __attribute__((unused)) HW_AVX512VL = false;   //  AVX512 Vector Length Extensions
+    bool __attribute__((unused)) HW_AVX512BW = false;   //  AVX512 Byte + Word
+    bool __attribute__((unused)) HW_AVX512DQ = false;   //  AVX512 Doubleword + Quadword
+    bool __attribute__((unused)) HW_AVX512IFMA = false; //  AVX512 Integer 52-bit Fused Multiply-Add
+    bool __attribute__((unused)) HW_AVX512VBMI = false; //  AVX512 Vector Byte Manipulation Instructions
 
     int info[4];
     cpuid(info, 0);
