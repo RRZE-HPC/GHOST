@@ -1330,7 +1330,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
     }
 
     GHOST_INSTR_START("cols_and_vals");
-    //#pragma omp parallel private(i,colidx,row,tmpval,tmpcol)
+    #pragma omp parallel private(i,colidx,row,tmpval,tmpcol)
     {
         ghost_lidx rowlen;
         int funcret = 0;
@@ -1344,7 +1344,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
             #pragma omp single
             INFO_LOG("Fast matrix construction for CRS source and no permutation");
 
-            //#pragma omp for schedule(runtime)
+            #pragma omp for schedule(runtime)
             for( chunk = 0; chunk < nChunks; chunk++ ) {
                 //memset(tmpval,0,mat->elSize*src->maxrowlen*C);
 
@@ -1404,7 +1404,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
             }
         } else {
             ghost_gidx callrow;
-            //#pragma omp for schedule(runtime)
+            #pragma omp for schedule(runtime)
             for (chunk = 0; chunk < nChunks; chunk++) {
                 if(mat->context->flags & GHOST_PERM_NO_DISTINCTION) {
                     memset(&(*col)[(*chunkptr)[chunk]],0,C*clp[chunk]*sizeof(ghost_gidx));
@@ -1415,7 +1415,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
                 }
                 memset(&(*val)[(*chunkptr)[chunk]*mat->elSize],0,C*clp[chunk]*mat->elSize);
             }
-            //#pragma omp for schedule(runtime)
+            #pragma omp for schedule(runtime)
             for (chunk = 0; chunk < nChunks; chunk++) {
                 if(mat->context->flags & GHOST_PERM_NO_DISTINCTION) {
                     memset(tmpcol,0,C*mat->maxRowLen*sizeof(ghost_gidx));
