@@ -7,6 +7,9 @@
 
 using namespace std;
 
+static string autogen_str;
+static int missingConfs = 0;
+
 ghost_error ghost_autogen_kacz_nvecs(int **nvecs, int *n, int chunkheight, int nshifts)
 {
     string configurations = GHOST_AUTOGEN_KACZ;
@@ -154,3 +157,43 @@ int ghost_autogen_spmmv_next_nvecs(int desired_nvecs, int chunkheight)
     return found_nvecs;
 }
 
+ghost_error ghost_autogen_string_add(const char * func, const char * par)
+{
+    size_t funcpos = autogen_str.find(func);
+    if (funcpos == string::npos) {
+        autogen_str.append(" -DGHOST_AUTOGEN_");
+        autogen_str.append(func);
+        autogen_str.append("=\"");
+        autogen_str.append(par);
+        autogen_str.append("\"");
+    } else {
+        string funcstr = autogen_str.substr(funcpos+strlen(func)+1,autogen_str.find(" ",funcpos));
+        string findpar_inner = ";"+string(par)+";";
+        string findpar_last = ";"+string(par)+"\"";
+        string findpar_first = "\""+string(par)+";";
+        string findpar_only = "\""+string(par)+"\"";
+        if ((funcstr.find(findpar_inner) == string::npos) 
+                && (funcstr.find(findpar_last) == string::npos)
+                && (funcstr.find(findpar_first) == string::npos)
+                && (funcstr.find(findpar_only) == string::npos)) {
+            autogen_str.insert(funcpos+strlen(func)+2,string(par)+";");
+        }
+    }
+
+    return GHOST_SUCCESS;
+}
+
+const char *ghost_autogen_string()
+{
+    return autogen_str.c_str();
+}
+
+void ghost_autogen_set_missing()
+{
+    missingConfs = 1;
+}
+
+int ghost_autogen_missing()
+{
+    return missingConfs;
+}
