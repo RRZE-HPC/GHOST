@@ -29,14 +29,9 @@
 #endif
 
 const ghost_densemat_traits GHOST_DENSEMAT_TRAITS_INITIALIZER = {
-    //.nrows = 0,
-    //.nrowsorig = 0,
-    //.nrowshalo = 0,
-    //.nrowspadded = 0,
-    //.gnrows = 0,
-    //.goffs = 0,
     .ncols = 1,
     .ncolspadded = 0,
+    .ncolssub = 0,
     .flags = GHOST_DENSEMAT_DEFAULT,
     .storage = GHOST_DENSEMAT_STORAGE_DEFAULT,
     .location = GHOST_LOCATION_DEFAULT,
@@ -66,6 +61,7 @@ ghost_error ghost_densemat_create(ghost_densemat **vec, ghost_map *map, ghost_de
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_SETUP);
     ghost_error ret = GHOST_SUCCESS;
+    
     GHOST_CALL_GOTO(ghost_malloc((void **)vec,sizeof(ghost_densemat)),err,ret);
     (*vec)->traits = traits;
     (*vec)->map = NULL;
@@ -157,6 +153,7 @@ ghost_error ghost_densemat_create(ghost_densemat **vec, ghost_map *map, ghost_de
         }
     }
 
+
     DEBUG_LOG(1,"Initializing vector");
 
     if ((*vec)->traits.location == GHOST_LOCATION_DEFAULT) { // no placement specified
@@ -201,6 +198,33 @@ ghost_error ghost_densemat_create(ghost_densemat **vec, ghost_map *map, ghost_de
     (*vec)->mpidt = MPI_DATATYPE_NULL;
     (*vec)->fullmpidt = MPI_DATATYPE_NULL;
 #endif
+
+    if ((*vec)->traits.ncolssub == 0) {
+        (*vec)->traits.ncolssub = (*vec)->traits.ncols;
+    } else {
+        WARNING_LOG("Sub-densemats are highly experimental and by far not all funtionality is implemented. %d",(*vec)->traits.ncolssub);
+        if ((*vec)->traits.ncols % (*vec)->traits.ncolssub) {
+            WARNING_LOG("The column block must be a divisor of the number of columns! Forcing a single block!");
+            (*vec)->traits.ncolssub = (*vec)->traits.ncols;
+        }
+    }
+    (*vec)->nsub = (*vec)->traits.ncols/(*vec)->traits.ncolssub;
+    
+    GHOST_CALL_GOTO(ghost_malloc((void **)&((*vec)->subdm),sizeof(ghost_densemat *)*(*vec)->nsub),err,ret);
+    if ((*vec)->nsub == 1) {
+        (*vec)->subdm[0] = *vec;
+        (*vec)->coloff = 0;
+    } else {
+        ghost_lidx s;
+        ghost_densemat_traits subtraits = traits;
+        subtraits.ncols = (*vec)->traits.ncolssub;
+        subtraits.ncolssub = subtraits.ncols;
+        for (s=0; s<(*vec)->nsub; s++) {
+           ghost_densemat_create(&((*vec)->subdm[s]),map,subtraits);
+           ghost_densemat_create(&((*vec)->subdm[s]),map,subtraits);
+           (*vec)->subdm[s]->coloff = s*(*vec)->traits.ncolssub;
+        }
+    }
 
 //    char *str;
 //    ghost_densemat_info_string(&str,*vec);
@@ -570,7 +594,7 @@ int ghost_idx_of_densemat_storage(ghost_densemat_storage s)
 
 ghost_error ghost_densemat_init_rand(ghost_densemat *x)
 {
-    ghost_error ret;
+    ghost_error ret = GHOST_SUCCESS;
 
     typedef ghost_error (*ghost_densemat_init_rand_kernel)(ghost_densemat*);
     ghost_densemat_init_rand_kernel kernels[2][2] = {{NULL,NULL},{NULL,NULL}};
@@ -588,7 +612,7 @@ ghost_error ghost_densemat_init_rand(ghost_densemat *x)
 
 ghost_error ghost_densemat_init_val(ghost_densemat *x, void *val)
 {
-    ghost_error ret;
+    ghost_error ret = GHOST_SUCCESS;
 
     typedef ghost_error (*ghost_densemat_init_scalar_kernel)(ghost_densemat*, void*);
     ghost_densemat_init_scalar_kernel kernels[2][2] = {{NULL,NULL},{NULL,NULL}};
@@ -599,7 +623,9 @@ ghost_error ghost_densemat_init_val(ghost_densemat *x, void *val)
     kernels[GHOST_DEVICE_IDX][GHOST_CM_IDX] = &ghost_densemat_cu_cm_fromScalar;
 #endif
 
-    SELECT_BLAS1_KERNEL(kernels,x->traits.location,x->traits.compute_at,x->traits.storage,ret,x,val);
+    for (ghost_lidx s=0; s<x->nsub; s++) {
+        SELECT_BLAS1_KERNEL(kernels,x->traits.location,x->traits.compute_at,x->traits.storage,ret,x->subdm[s],val);
+    }
 
     return ret;
 }
@@ -625,16 +651,22 @@ ghost_error ghost_densemat_malloc(ghost_densemat *x, int *needInit)
         return RM_FUNCNAME(func)(__VA_ARGS__);\
     }
 
+#define CALL_DENSEMAT_FUNC_NORET(ret,vec,func,...) \
+    if (vec->traits.storage == GHOST_DENSEMAT_COLMAJOR) {\
+        ret = CM_FUNCNAME(func)(__VA_ARGS__);\
+    } else {\
+        ret = RM_FUNCNAME(func)(__VA_ARGS__);\
+    }
+
 ghost_error ghost_densemat_init_func(ghost_densemat *x, ghost_densemat_srcfunc func, void *arg)
 {
-    CALL_DENSEMAT_FUNC(x,fromFunc,x,func,arg);
+    ghost_error ret = GHOST_SUCCESS;
+    for (ghost_lidx s=0; s<x->nsub; s++) {
+        CALL_DENSEMAT_FUNC_NORET(ret,x->subdm[s],fromFunc,x->subdm[s],func,arg);
+    }
+    return ret;
 }
     
-ghost_error ghost_densemat_string(char **str, ghost_densemat *x)
-{
-    CALL_DENSEMAT_FUNC(x,string_selector,x,str);
-}
-
 ghost_error ghost_densemat_permute(ghost_densemat *x, ghost_permutation_direction dir)
 {
     CALL_DENSEMAT_FUNC(x,permute_selector,x,dir);

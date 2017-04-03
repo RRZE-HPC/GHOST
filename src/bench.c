@@ -271,9 +271,9 @@ ghost_error ghost_bench_bw(ghost_bench_bw_test test, double *mean_bw, double *ma
     double *b = NULL;
     double *c = NULL;
     double s = 2.2;
-    GHOST_CALL_GOTO(ghost_malloc_align((void **)&a,N*sizeof(double),ghost_machine_alignment()),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc_align((void **)&b,N*sizeof(double),ghost_machine_alignment()),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc_align((void **)&c,N*sizeof(double),ghost_machine_alignment()),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc_align((void **)&a,N*sizeof(double),1024*1024*2),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc_align((void **)&b,N*sizeof(double),1024*1024*2),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc_align((void **)&c,N*sizeof(double),1024*1024*2),err,ret);
 
 #pragma omp parallel for
     for (i=0; i<N; i++) {

@@ -15,7 +15,6 @@ set(TESTS simple minimal context diagfirst)
 
 foreach(TEST ${TESTS})
     add_dependencies(${TEST} ghost)
-    add_dependencies(${TEST} ghost)
 
     if (${BUILD_SHARED_LIBS})
         target_link_libraries(${TEST} ${CMAKE_BINARY_DIR}/libghost.so)
