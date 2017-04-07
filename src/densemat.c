@@ -439,69 +439,66 @@ ghost_error ghost_densemat_halocomm_start(ghost_densemat *vec, ghost_context *ct
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION)
     ghost_error ret = GHOST_SUCCESS;
     char *recv;
-    int from_PE, to_PE;
+    int from_PE, to_PE, from, to;
     int nprocs;
     int rowsize = vec->traits.ncols*vec->elSize;
     int me; 
     GHOST_CALL_GOTO(ghost_rank(&me, ctx->mpicomm),err,ret);
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, ctx->mpicomm),err,ret);
 
-    for (from_PE=0; from_PE<nprocs; from_PE++){
-        if (ctx->wishes[from_PE]>0) {
-            recv = comm->tmprecv[from_PE];
+    for (from=0; from<ctx->nwishpartners; from++){
+        from_PE = ctx->wishpartners[from];
+        recv = comm->tmprecv[from_PE];
 
 #ifdef GHOST_TRACK_DATATRANSFERS
-            ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_IN,from_PE,ctx->wishes[from_PE]*vec->elSize*vec->traits.ncols);
+        ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_IN,from_PE,ctx->wishes[from_PE]*vec->elSize*vec->traits.ncols);
 #endif
-            int msg;
-            int nmsgs = (size_t)rowsize*ctx->wishes[from_PE]/INT_MAX + 1;
-            size_t msgSizeRows = ctx->wishes[from_PE]/nmsgs;
-            size_t msgSizeEls = ctx->wishes[from_PE]/nmsgs*vec->traits.ncols;
+        int msg;
+        int nmsgs = (size_t)rowsize*ctx->wishes[from_PE]/INT_MAX + 1;
+        size_t msgSizeRows = ctx->wishes[from_PE]/nmsgs;
+        size_t msgSizeEls = ctx->wishes[from_PE]/nmsgs*vec->traits.ncols;
 
-            for (msg = 0; msg < nmsgs-1; msg++) {
-                MPI_CALL_GOTO(MPI_Irecv(recv + msg*msgSizeRows*rowsize, msgSizeEls, vec->mpidt, from_PE, from_PE, ctx->mpicomm,&comm->request[comm->msgcount]),err,ret);
-                comm->msgcount++;
-            }
-
-            // remainder
-            MPI_CALL_GOTO(MPI_Irecv(recv + msg*msgSizeRows*rowsize, ctx->wishes[from_PE]*vec->traits.ncols - msg*msgSizeEls, vec->mpidt, from_PE, from_PE, ctx->mpicomm,&comm->request[comm->msgcount]),err,ret);
+        for (msg = 0; msg < nmsgs-1; msg++) {
+            MPI_CALL_GOTO(MPI_Irecv(recv + msg*msgSizeRows*rowsize, msgSizeEls, vec->mpidt, from_PE, from_PE, ctx->mpicomm,&comm->request[comm->msgcount]),err,ret);
             comm->msgcount++;
         }
-    }
-    for (to_PE=0 ; to_PE<nprocs ; to_PE++){
-        if (ctx->dues[to_PE]>0){
-#ifdef GHOST_TRACK_DATATRANSFERS
-            ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_OUT,to_PE,ctx->dues[to_PE]*vec->elSize*vec->traits.ncols);
-#endif
-            int msg;
-            int nmsgs = (size_t)rowsize*ctx->dues[to_PE]/INT_MAX + 1;
-            size_t msgSizeRows = ctx->dues[to_PE]/nmsgs;
-            size_t msgSizeEls = ctx->dues[to_PE]/nmsgs*vec->traits.ncols;
 
-            char *workbuf = comm->work;
-            if (!workbuf) {
+        // remainder
+        MPI_CALL_GOTO(MPI_Irecv(recv + msg*msgSizeRows*rowsize, ctx->wishes[from_PE]*vec->traits.ncols - msg*msgSizeEls, vec->mpidt, from_PE, from_PE, ctx->mpicomm,&comm->request[comm->msgcount]),err,ret);
+        comm->msgcount++;
+    }
+    for (to=0 ; to<ctx->nduepartners; to++){
+        to_PE = ctx->duepartners[to];
+#ifdef GHOST_TRACK_DATATRANSFERS
+        ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_OUT,to_PE,ctx->dues[to_PE]*vec->elSize*vec->traits.ncols);
+#endif
+        int msg;
+        int nmsgs = (size_t)rowsize*ctx->dues[to_PE]/INT_MAX + 1;
+        size_t msgSizeRows = ctx->dues[to_PE]/nmsgs;
+        size_t msgSizeEls = ctx->dues[to_PE]/nmsgs*vec->traits.ncols;
+
+        char *workbuf = comm->work;
+        if (!workbuf) {
 #ifndef GHOST_HAVE_GPUDIRECT
-                if (!(vec->traits.location & GHOST_LOCATION_DEVICE)) {
-                    ERROR_LOG("workbuf must only be NULL in case of GPUdirect!");
-                }
+            if (!(vec->traits.location & GHOST_LOCATION_DEVICE)) {
+                ERROR_LOG("workbuf must only be NULL in case of GPUdirect!");
+            }
 #endif
-                if (!comm->cu_work) {
-                    ERROR_LOG("cu_work must not be NULL!");
-                }
-                workbuf = comm->cu_work;
+            if (!comm->cu_work) {
+                ERROR_LOG("cu_work must not be NULL!");
             }
+            workbuf = comm->cu_work;
+        }
 
-            for (msg = 0; msg < nmsgs-1; msg++) {
-                MPI_CALL_GOTO(MPI_Isend(workbuf + comm->dueptr[to_PE]*vec->elSize*vec->traits.ncols+msg*msgSizeRows*rowsize, msgSizeEls, vec->mpidt, to_PE, me, ctx->mpicomm, &comm->request[comm->msgcount]),err,ret);
-                comm->msgcount++;
-            }
-
-            // remainder
-            MPI_CALL_GOTO(MPI_Isend(workbuf + comm->dueptr[to_PE]*vec->elSize*vec->traits.ncols+msg*msgSizeRows*rowsize, ctx->dues[to_PE]*vec->traits.ncols - msg*msgSizeEls, vec->mpidt, to_PE, me, ctx->mpicomm, &comm->request[comm->msgcount]),err,ret);
+        for (msg = 0; msg < nmsgs-1; msg++) {
+            MPI_CALL_GOTO(MPI_Isend(workbuf + comm->dueptr[to_PE]*vec->elSize*vec->traits.ncols+msg*msgSizeRows*rowsize, msgSizeEls, vec->mpidt, to_PE, me, ctx->mpicomm, &comm->request[comm->msgcount]),err,ret);
             comm->msgcount++;
         }
-    }
 
+        // remainder
+        MPI_CALL_GOTO(MPI_Isend(workbuf + comm->dueptr[to_PE]*vec->elSize*vec->traits.ncols+msg*msgSizeRows*rowsize, ctx->dues[to_PE]*vec->traits.ncols - msg*msgSizeEls, vec->mpidt, to_PE, me, ctx->mpicomm, &comm->request[comm->msgcount]),err,ret);
+        comm->msgcount++;
+    }
 
     goto out;
 err:
