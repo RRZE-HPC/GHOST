@@ -9,6 +9,7 @@
 #include <ghost/util.h>
 #include <ghost/task.h>
 #include <ghost/core.h>
+#include <ghost/timing.h>
 
 typedef enum
 {
