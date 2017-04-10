@@ -382,38 +382,47 @@ ghost_error ghost_densemat_halocommInit_common(ghost_densemat *vec, ghost_contex
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, ctx->mpicomm),err,ret);
     GHOST_CALL_GOTO(ghost_rank(&me, ctx->mpicomm),err,ret);
     
-    comm->msgcount = 0;
-    GHOST_CALL_GOTO(ghost_malloc((void **)&comm->wishptr,(nprocs+1)*sizeof(ghost_lidx)),err,ret);
-
     int nMsgsOverall = 0;
+    comm->msgcount = 0;
+    
+    if (!comm->wishptr) {
+        GHOST_CALL_GOTO(ghost_malloc((void **)&comm->wishptr,(nprocs+1)*sizeof(ghost_lidx)),err,ret);
 
-    comm->wishptr[0] = 0;
-    for (i=0;i<nprocs;i++) {
-        comm->wishptr[i+1] = comm->wishptr[i]+ctx->wishes[i];
-        if (ctx->wishes[i]) {
-            nMsgsOverall += ((size_t)rowsize*ctx->wishes[i])/INT_MAX + 1;
+        comm->wishptr[0] = 0;
+        for (i=0;i<nprocs;i++) {
+            comm->wishptr[i+1] = comm->wishptr[i]+ctx->wishes[i];
+            if (ctx->wishes[i]) {
+                nMsgsOverall += ((size_t)rowsize*ctx->wishes[i])/INT_MAX + 1;
+            }
+            if (ctx->dues[i]) {
+                nMsgsOverall += ((size_t)rowsize*ctx->dues[i])/INT_MAX + 1;
+            }
         }
-        if (ctx->dues[i]) {
-            nMsgsOverall += ((size_t)rowsize*ctx->dues[i])/INT_MAX + 1;
-        }
+        comm->acc_wishes = comm->wishptr[nprocs];
     }
-    comm->acc_wishes = comm->wishptr[nprocs];
 
-    GHOST_CALL_GOTO(ghost_malloc((void **)&comm->request,sizeof(MPI_Request)*nMsgsOverall),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&comm->status,sizeof(MPI_Status)*nMsgsOverall),err,ret);
+
+    if (!comm->request) {
+        GHOST_CALL_GOTO(ghost_malloc((void **)&comm->request,sizeof(MPI_Request)*nMsgsOverall),err,ret);
+    }
+    if (!comm->status) {
+        GHOST_CALL_GOTO(ghost_malloc((void **)&comm->status,sizeof(MPI_Status)*nMsgsOverall),err,ret);
+    }
 
     for (i=0;i<nMsgsOverall;i++) {
         comm->request[i] = MPI_REQUEST_NULL;
     }
     
 
-    GHOST_CALL_RETURN(ghost_malloc((void **)&comm->dueptr,(nprocs+1)*sizeof(ghost_lidx)));
-
-    comm->dueptr[0] = 0;
-    for (i=0;i<nprocs;i++) {
-        comm->dueptr[i+1] = comm->dueptr[i]+ctx->dues[i];
+    if (!comm->dueptr) {
+        GHOST_CALL_RETURN(ghost_malloc((void **)&comm->dueptr,(nprocs+1)*sizeof(ghost_lidx)));
+        comm->dueptr[0] = 0;
+        for (i=0;i<nprocs;i++) {
+            comm->dueptr[i+1] = comm->dueptr[i]+ctx->dues[i];
+        }
+        comm->acc_dues = comm->dueptr[nprocs];
     }
-    comm->acc_dues = comm->dueptr[nprocs];
+
 
     goto out;
 err:
