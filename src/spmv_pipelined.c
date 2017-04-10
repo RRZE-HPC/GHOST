@@ -137,22 +137,26 @@ ghost_error ghost_spmv_pipelined(ghost_densemat* lhs, ghost_sparsemat* mat, ghos
     computeArgs.mat = mat;
     computeArgs.spmvtraits = traits;
 #endif
+    ghost_spmv_opts blocktraits = traits;
     
     GHOST_INSTR_STOP("prepare");
     GHOST_INSTR_START("comm_first");
 
     GHOST_CALL_GOTO(ghost_densemat_halocomm_init(rhs->subdm[0],mat->context,&comm),err,ret);
     GHOST_CALL_GOTO(ghost_densemat_halocomm_start(rhs->subdm[0],mat->context,&comm),err,ret);
-    GHOST_CALL_GOTO(ghost_densemat_halocomm_finalize(rhs->subdm[0],mat->context,&comm),err,ret);
+    MPI_CALL_GOTO(MPI_Waitall(comm.msgcount, comm.request, comm.status),err,ret);
     
     GHOST_INSTR_STOP("comm_first");
     
-    for (ghost_lidx s=0; s<rhs->nsub-1; s++) { 
+    for (ghost_lidx s=0; s<rhs->nsub-1; s++) {
         GHOST_INSTR_START("pipelined_comm+comp");
 #ifdef USE_GHOST_TASKS
         communiArgs.rhs = rhs->subdm[s+1];
         computeArgs.rhs = rhs->subdm[s];
         computeArgs.lhs = lhs->subdm[s];
+        if (traits.z) {
+            computeArgs.spmvtraits.z = traits.z->subdm[s];
+        }
         
         ghost_task_enqueue(commTask);
 
@@ -166,24 +170,24 @@ ghost_error ghost_spmv_pipelined(ghost_densemat* lhs, ghost_sparsemat* mat, ghos
             goto err;
         }
 #else
+        if (traits.z) {
+            blocktraits.z = traits.z->subdm[s];
+        }
         GHOST_CALL_GOTO(ghost_densemat_halocomm_init(rhs->subdm[s+1],mat->context,&comm),err,ret);
         GHOST_CALL_GOTO(ghost_densemat_halocomm_start(rhs->subdm[s+1],mat->context,&comm),err,ret);
-        GHOST_CALL_GOTO(ghost_spmv_nocomm(lhs->subdm[s],mat,rhs->subdm[s],traits),err,ret);
-        GHOST_CALL_GOTO(ghost_densemat_halocomm_finalize(rhs->subdm[s+1],mat->context,&comm),err,ret);
-#if 0
-#pragma omp parallel
-        {
-            int core;
-            ghost_cpu(&core);
-        printf("thread %d @ core %d\n",ghost_omp_threadnum(),core);
-        }
-#endif
+        GHOST_CALL_GOTO(ghost_spmv_nocomm(lhs->subdm[s],mat,rhs->subdm[s],blocktraits),err,ret);
+        //GHOST_CALL_GOTO(ghost_densemat_halocommFinalize_common(&comm),err,ret);
+        MPI_CALL_GOTO(MPI_Waitall(comm.msgcount, comm.request, comm.status),err,ret);
 #endif
         GHOST_INSTR_STOP("pipelined_comm+comp");
     }
+    GHOST_CALL_GOTO(ghost_densemat_halocomm_finalize(rhs->subdm[rhs->nsub-1],mat->context,&comm),err,ret);
     
     GHOST_INSTR_START("comp_final");
-    ghost_spmv_nocomm(lhs->subdm[lhs->nsub-1],mat,rhs->subdm[rhs->nsub-1],traits);
+    if (traits.z) {
+        blocktraits.z = traits.z->subdm[traits.z->nsub-1];
+    }
+    ghost_spmv_nocomm(lhs->subdm[lhs->nsub-1],mat,rhs->subdm[rhs->nsub-1],blocktraits);
     GHOST_INSTR_STOP("comp_final");
        
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
