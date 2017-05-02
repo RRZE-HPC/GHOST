@@ -383,8 +383,11 @@ typedef enum {
     /**
     * @brief Store the diagonal entry first in each row. Store an explicit zero if the diagonal is zero.
     */
-    GHOST_SPARSEMAT_DIAG_FIRST=1<<17
-
+    GHOST_SPARSEMAT_DIAG_FIRST=1<<17,
+    /**
+    * @brief Recursive Coloring
+    */
+    GHOST_SPARSEMAT_NAME=1<<18
 } ghost_sparsemat_flags;
 
 /**
@@ -777,6 +780,8 @@ extern "C" {
 
     ghost_error ghost_sparsemat_blockColor(ghost_context *ctx, ghost_sparsemat *mat);
 
+    ghost_error ghost_sparsemat_perm_name(ghost_context *ctx, ghost_sparsemat *mat);
+
     ghost_error ghost_sparsemat_perm_zoltan(ghost_context *ctx, ghost_sparsemat *mat);
     /**
      * @brief Common function for matrix creation from a file.
@@ -873,6 +878,12 @@ extern "C" {
             ghost_sparsemat *mat,
             ghost_densemat *rhs,
             ghost_spmv_opts traits);
+
+
+    /*SPMTV */
+    ghost_error ghost_spmtv_BMC(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x);
+
+    void ghost_spmtv_NAME(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x);
 
     /**
      * @brief Select and call the right SELL stringification function.
