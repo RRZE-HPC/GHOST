@@ -23,6 +23,7 @@ set(GHOST_USE_SCOTCH 0 CACHE BOOL "Use PT-Scotch for matrix re-ordering")
 set(GHOST_USE_COLPACK 0 CACHE BOOL "Use ColPack for matrix coloring")
 set(GHOST_USE_ZOLTAN 0 CACHE BOOL "Use Zoltan for matrix re-ordering")
 set(GHOST_USE_SPMP 0 CACHE BOOL "Use SpMP for matrix preprocessing")
+set(GHOST_USE_NAME 0 CACHE BOOL "Use NAME for recursive matrix coloring")
 set(GHOST_USE_GPUDIRECT 0 CACHE BOOL "Use GPUdirect for MPI+CUDA (ignored if CUDA is not enabled)")
 set(GHOST_MIC_CROSSCOMPILE 0 CACHE BOOL "Cross-compile for Intel MIC")
 set(GHOST_IDX64_LOCAL 0 CACHE BOOL "Enable 64-bit indices for local quantities")
@@ -153,6 +154,9 @@ set (SOURCES
     src/timing.c
     src/types.c
     src/util.c
+    src/sell_spmtv_bmc_rm.cpp
+    src/sparsemat_perm_name.cpp
+    src/sell_spmtv_NAME_rm.cpp
     )
 
 set (HEADERS
@@ -208,6 +212,7 @@ set (HEADERS
     include/ghost/sell_kacz_mc.h
     include/ghost/sell_kacz_fallback.h
     include/ghost/compatibility_check.h
+    include/ghost/sell_spmtv_bmc_rm.h
     )
 
 # only do this in the initial run: either if GHOST_USE_CUDA is undefined or it is enabled by the user but no libraries are found yet
@@ -548,6 +553,19 @@ if (GHOST_USE_COLPACK)
     endif()
 endif()
 
+if (GHOST_USE_NAME)
+    set(GHOST_HAVE_NAME 1)
+    set(NAME_INCLUDE_DIR "${NAME_INCLUDE_DIR}" CACHE PATH "Location of NAME headers")
+    include_directories(${NAME_INCLUDE_DIR})
+    get_filename_component(NAME_LIBDIR ${NAME_INCLUDE_DIR}/../lib/NAME REALPATH)
+
+    find_library(NAME_LIBRARIES NAMES NAME PATHS ${NAME_LIBDIR})
+    if (NOT NAME_LIBRARIES)
+        message(FATAL_ERROR "NAME_INCLUDE_DIR not set correctly!")
+    endif()
+endif()
+
+
 set(CBLAS_INCLUDE_DIR CBLAS_INCLUDE_DIR-NOTFOUND CACHE PATH "Location of *cblas.h")
 
 # firstly, try to find a Cblas header in the default locations
@@ -708,10 +726,15 @@ if (GHOST_USE_SPMP)
     add_dependencies(ghost SpMP)
 endif()
 
+
 if (BUILTIN_HWLOC)
     target_link_libraries(ghost "${PROJECT_BINARY_DIR}/hwloc-inst/lib/libhwloc.so")
     include_directories(SYSTEM ${PROJECT_BINARY_DIR}/hwloc-inst/include)
     add_dependencies(ghost hwloc)
+endif()
+
+if (GHOST_USE_NAME)
+    target_link_libraries(ghost "${NAME_LIBRARIES}")
 endif()
 
 check_function_exists(qsort_r HAVE_QSORT_R)

@@ -111,7 +111,7 @@ extern "C" ghost_error ghost_sparsemat_perm_spmp(ghost_context *ctx, ghost_spars
     GHOST_CALL_GOTO(ghost_malloc((void **)&intinvperm,sizeof(int)*ctx->row_map->dim),err,ret);
 
     if (csr->isSymmetric(false,false)) {
-       INFO_LOG("Doing RCM"); 
+        INFO_LOG("Doing RCM"); 
         csr->getRCMPermutation(intperm, intinvperm);
 
         useperm = intperm;
@@ -285,11 +285,13 @@ extern "C" ghost_error ghost_sparsemat_perm_spmp(ghost_context *ctx, ghost_spars
         ctx->row_map->loc_perm[i] = useperm[i];
         ctx->row_map->loc_perm_inv[i] = useinvperm[i];
     }
-    if (!ctx->col_map->loc_perm) { //symmetric permutation, col perm is still NULL
-        ctx->col_map->cu_loc_perm = ctx->row_map->cu_loc_perm;
-        ctx->col_map->loc_perm = ctx->row_map->loc_perm;
-        ctx->col_map->loc_perm_inv = ctx->row_map->loc_perm_inv;
-    }
+
+    /*this will be done outside*/
+    /*    if (!ctx->col_map->loc_perm) { //symmetric permutation, col perm is still NULL; 
+          ctx->col_map->cu_loc_perm = ctx->row_map->cu_loc_perm;
+          ctx->col_map->loc_perm = ctx->row_map->loc_perm;
+          ctx->col_map->loc_perm_inv = ctx->row_map->loc_perm_inv;
+          } */
 
 #ifdef GHOST_HAVE_CUDA
     if (type == GHOST_TYPE_CUDA) {

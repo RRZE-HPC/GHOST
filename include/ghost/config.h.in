@@ -27,6 +27,7 @@
 #cmakedefine GHOST_HAVE_LAPACK
 #cmakedefine GHOST_HAVE_SPMP
 #cmakedefine GHOST_HAVE_GPUDIRECT
+#cmakedefine GHOST_HAVE_NAME
 
 /* hardware features */
 #cmakedefine GHOST_BUILD_MIC

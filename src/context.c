@@ -95,6 +95,8 @@ ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, gho
     (*context)->mappedDuelist = NULL;
     (*context)->nrankspresent = NULL;
     (*context)->nmats = 1;
+    (*context)->coloringEngine = NULL;
+
 
 
     GHOST_CALL_GOTO(ghost_map_create(&((*context)->row_map),gnrows,comm,GHOST_MAP_ROW,GHOST_MAP_DEFAULT),err,ret);

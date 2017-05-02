@@ -1010,6 +1010,14 @@ static ghost_error ghost_preProcess_matFlags(ghost_sparsemat *mat)
 #endif
     }
 
+    if (mat->traits.flags & GHOST_SPARSEMAT_NAME) {
+#ifndef GHOST_HAVE_NAME
+        WARNING_LOG("NAME permutation cannot be carried out. Please enable GHOST_USE_NAME via CMAKE if needed");
+        mat->traits.flags = (ghost_sparsemat_flags) (mat->traits.flags & (~GHOST_SPARSEMAT_NAME));
+#endif
+    }
+
+
     return GHOST_SUCCESS;
 }
 
@@ -1050,7 +1058,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
     // _Only_ global permutation:
     // Create dummymat without any permutation and create global permutation
     // based on this dummymat
-    if (mat->traits.flags & GHOST_SPARSEMAT_PERM_ANY_GLOBAL) {
+    if (1 || mat->traits.flags & GHOST_SPARSEMAT_PERM_ANY_GLOBAL) {
         ghost_sparsemat *dummymat = NULL;
         ghost_sparsemat_traits mtraits = mat->traits;
 
@@ -1077,6 +1085,8 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
         ghost_sparsemat_destroy(dummymat);
     }
 
+
+
     ghost_sparsemat *dummymat_glb = NULL;
     ghost_sparsemat_traits mtraits = mat->traits;
     mtraits.flags = (ghost_sparsemat_flags)(mtraits.flags | GHOST_SPARSEMAT_SAVE_ORIG_COLS);
@@ -1086,15 +1096,25 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
     ghost_sparsemat_create(&dummymat_glb,mat->context,&mtraits,1);
     GHOST_CALL_GOTO(ghost_sparsemat_init_plain_glb(dummymat_glb,src),err,ret);
 
+
     bool flag_loc = false;
     //DO Local Permutations
     if (mat->traits.flags & GHOST_SPARSEMAT_PERM_ANY_LOCAL || mat->traits.flags & GHOST_SOLVER_KACZ) {
         flag_loc = true;
-        if (mat->traits.flags & GHOST_SPARSEMAT_RCM) {
+        if(mat->traits.flags & GHOST_SPARSEMAT_RCM) {
             ghost_sparsemat_perm_spmp(mat->context,dummymat_glb);
         }
-        if (mat->traits.flags & GHOST_SPARSEMAT_COLOR) {
+
+        if(mat->traits.flags & GHOST_SPARSEMAT_COLOR) {
             ghost_sparsemat_perm_color(mat->context,dummymat_glb);
+        }
+
+        //New block coloring
+        if(mat->traits.flags & GHOST_SPARSEMAT_NAME) {
+            ghost_sparsemat_perm_name(mat->context,dummymat_glb);
+            //Remove Solver KACZ if NAME is there
+            mat->traits.flags =(ghost_sparsemat_flags)  (mat->traits.flags & (~GHOST_SOLVER_KACZ));
+            dummymat_glb->traits.flags =(ghost_sparsemat_flags)  (dummymat_glb->traits.flags & (~GHOST_SOLVER_KACZ));
         }
         //blockcoloring needs to know bandwidth //TODO avoid 2 times calculating  bandwidth, if no RCM or no bandwidth disturbing permutations are done
         //take this branch only if the matrix cannot be bandwidth bound,
@@ -1137,6 +1157,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
             PERFWARNING_LOG("Unsorted columns inside a row may yield to bad performance! However, matrix construnction will be faster.");
         }
     }
+
     if(!flag_loc) {
         GHOST_CALL_GOTO(ghost_sparsemat_transfer_del(mat, dummymat_glb),err,ret);
         if (mat->traits.sortScope > 1) {
@@ -1145,6 +1166,10 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
         mat->traits.flags |= (ghost_sparsemat_flags)GHOST_SPARSEMAT_NOT_PERMUTE_COLS;
         mat->traits.flags |= (ghost_sparsemat_flags)GHOST_SPARSEMAT_NOT_SORT_COLS;
     }
+
+/*    if(mat->traits.flags & GHOST_SPARSEMAT_NAME) {
+        kacz_analyze_print(mat);
+    }*/
 
     if(mat->traits.flags & GHOST_SOLVER_KACZ) {
         //split transition zones
@@ -1160,6 +1185,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
             }
         }
     }
+
     if((nprocs>1) && (mat->traits.flags & GHOST_SOLVER_KACZ))
     {
         initHaloAvg(mat);
@@ -1168,6 +1194,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
     if(mat->context->col_map->flags & GHOST_PERM_NO_DISTINCTION) {
         ghost_noDist_tweak_perm(mat->context->col_map);
     }
+
 
     goto out;
 err:
@@ -1925,6 +1952,7 @@ static ghost_error ghost_sparsemat_init_loc(ghost_sparsemat *mat)
          ghost_sparsemat_destroy(mat->remotePart);
          ghost_sparsemat_split(mat);
     }
+
     goto out;
 
 err:

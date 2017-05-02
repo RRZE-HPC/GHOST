@@ -223,7 +223,6 @@ out:
     template <typename v_t> 
 static ghost_error FUNCNAME(vaxpy_tmpl(ghost_densemat *vec, ghost_densemat *vec2, void *scale))
 {
-    GHOST_DENSEMAT_CHECK_SIMILARITY(vec,vec2);
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
  
     ghost_error ret = GHOST_SUCCESS;
@@ -236,6 +235,7 @@ static ghost_error FUNCNAME(vaxpy_tmpl(ghost_densemat *vec, ghost_densemat *vec2
     ret = ghost_check_vec_vec_compatibility(&check);
     ///////////////////////////////////////////////////
  
+   GHOST_DENSEMAT_CHECK_SIMILARITY(vec,vec2);
     
     v_t *s = (v_t *)scale;
 
