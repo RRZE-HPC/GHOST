@@ -11,6 +11,7 @@
 #include <math.h>
 #include <complex.h>
 #include <float.h>
+#include "ghost/compatibility_check.h"
 
 static ghost_mpi_op GHOST_MPI_OP_SUM_C = MPI_OP_NULL;
 static ghost_mpi_op GHOST_MPI_OP_SUM_Z = MPI_OP_NULL;
@@ -56,19 +57,19 @@ static void ghost_mpi_add_densemat_d(void *in, void *inout, int *len, MPI_Dataty
     if (*len != 1) {
         ERROR_LOG("Only len==1 supported at the moment!");
         return;
-    } 
+    }
 
-    MPI_Type_get_envelope(*dtype, &nints, &naddresses, &ntypes, &combiner); 
+    MPI_Type_get_envelope(*dtype, &nints, &naddresses, &ntypes, &combiner);
     if (combiner != MPI_COMBINER_VECTOR) {
         ERROR_LOG("Do not understand composite datatype!");
         return;
-    } 
+    }
 
     int vecargs [nints];
     MPI_Aint vecaddrs[naddresses];
     MPI_Datatype vectypes[ntypes];
 
-    MPI_Type_get_contents(*dtype, nints, naddresses, ntypes, 
+    MPI_Type_get_contents(*dtype, nints, naddresses, ntypes,
             vecargs, vecaddrs, vectypes);
 
     if (vectypes[0] != MPI_DOUBLE) {
@@ -82,8 +83,8 @@ static void ghost_mpi_add_densemat_d(void *in, void *inout, int *len, MPI_Dataty
 
     for ( int i=0; i<count; i++ ) {
         for ( int j=0; j<blocklen; j++) {
-            inoutvec[i*stride+j] += invec[i*stride+j]; 
-        } 
+            inoutvec[i*stride+j] += invec[i*stride+j];
+        }
     }
 }
 
@@ -97,19 +98,19 @@ static void ghost_mpi_add_densemat_s(void *in, void *inout, int *len, MPI_Dataty
     if (*len != 1) {
         ERROR_LOG("Only len==1 supported at the moment!");
         return;
-    } 
+    }
 
-    MPI_Type_get_envelope(*dtype, &nints, &naddresses, &ntypes, &combiner); 
+    MPI_Type_get_envelope(*dtype, &nints, &naddresses, &ntypes, &combiner);
     if (combiner != MPI_COMBINER_VECTOR) {
         ERROR_LOG("Do not understand composite datatype!");
         return;
-    } 
+    }
 
     int vecargs [nints];
     MPI_Aint vecaddrs[naddresses];
     MPI_Datatype vectypes[ntypes];
 
-    MPI_Type_get_contents(*dtype, nints, naddresses, ntypes, 
+    MPI_Type_get_contents(*dtype, nints, naddresses, ntypes,
             vecargs, vecaddrs, vectypes);
 
     if (vectypes[0] != MPI_FLOAT) {
@@ -123,8 +124,8 @@ static void ghost_mpi_add_densemat_s(void *in, void *inout, int *len, MPI_Dataty
 
     for ( int i=0; i<count; i++ ) {
         for ( int j=0; j<blocklen; j++) {
-            inoutvec[i*stride+j] += invec[i*stride+j]; 
-        } 
+            inoutvec[i*stride+j] += invec[i*stride+j];
+        }
     }
 }
 
@@ -138,19 +139,19 @@ static void ghost_mpi_add_densemat_z(void *in, void *inout, int *len, MPI_Dataty
     if (*len != 1) {
         ERROR_LOG("Only len==1 supported at the moment!");
         return;
-    } 
+    }
 
-    MPI_Type_get_envelope(*dtype, &nints, &naddresses, &ntypes, &combiner); 
+    MPI_Type_get_envelope(*dtype, &nints, &naddresses, &ntypes, &combiner);
     if (combiner != MPI_COMBINER_VECTOR) {
         ERROR_LOG("Do not understand composite datatype!");
         return;
-    } 
+    }
 
     int vecargs [nints];
     MPI_Aint vecaddrs[naddresses];
     MPI_Datatype vectypes[ntypes];
 
-    MPI_Type_get_contents(*dtype, nints, naddresses, ntypes, 
+    MPI_Type_get_contents(*dtype, nints, naddresses, ntypes,
             vecargs, vecaddrs, vectypes);
 
     ghost_mpi_datatype dt_z;
@@ -164,8 +165,8 @@ static void ghost_mpi_add_densemat_z(void *in, void *inout, int *len, MPI_Dataty
 
     for ( int i=0; i<count; i++ ) {
         for ( int j=0; j<blocklen; j++) {
-            inoutvec[i*stride+j] += invec[i*stride+j]; 
-        } 
+            inoutvec[i*stride+j] += invec[i*stride+j];
+        }
     }
 }
 
@@ -179,19 +180,19 @@ static void ghost_mpi_add_densemat_c(void *in, void *inout, int *len, MPI_Dataty
     if (*len != 1) {
         ERROR_LOG("Only len==1 supported at the moment!");
         return;
-    } 
+    }
 
-    MPI_Type_get_envelope(*dtype, &nints, &naddresses, &ntypes, &combiner); 
+    MPI_Type_get_envelope(*dtype, &nints, &naddresses, &ntypes, &combiner);
     if (combiner != MPI_COMBINER_VECTOR) {
         ERROR_LOG("Do not understand composite datatype!");
         return;
-    } 
+    }
 
     int vecargs [nints];
     MPI_Aint vecaddrs[naddresses];
     MPI_Datatype vectypes[ntypes];
 
-    MPI_Type_get_contents(*dtype, nints, naddresses, ntypes, 
+    MPI_Type_get_contents(*dtype, nints, naddresses, ntypes,
             vecargs, vecaddrs, vectypes);
 
     ghost_mpi_datatype dt_c;
@@ -205,8 +206,8 @@ static void ghost_mpi_add_densemat_c(void *in, void *inout, int *len, MPI_Dataty
 
     for ( int i=0; i<count; i++ ) {
         for ( int j=0; j<blocklen; j++) {
-            inoutvec[i*stride+j] += invec[i*stride+j]; 
-        } 
+            inoutvec[i*stride+j] += invec[i*stride+j];
+        }
     }
 }
 #endif
@@ -347,12 +348,12 @@ ghost_error ghost_spmv_nflops(int *nFlops, ghost_datatype m_t, ghost_datatype v_
 int ghost_kacz_perf(double *perf, double time, void *varg)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_BENCH);
-   
-    UNUSED(time); 
+
+    UNUSED(time);
     ghost_kacz_perf_args arg = *(ghost_kacz_perf_args *)varg;
     UNUSED(arg);
     *perf = 0;
-    
+
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_BENCH);
     return 0;
 
@@ -493,7 +494,7 @@ int ghost_scale_perf(double *perf, double time, void *varg)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_BENCH);
     ghost_scale_perf_args arg = *(ghost_scale_perf_args *)varg;
-    
+
     ghost_lidx ncol = arg.ncols;
     ghost_lidx nrow = arg.globnrows;
 
@@ -506,7 +507,7 @@ int ghost_scale_perf(double *perf, double time, void *varg)
     return 0;
 }
 
-bool ghost_iszero(void *vnumber, ghost_datatype dt) 
+bool ghost_iszero(void *vnumber, ghost_datatype dt)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     bool ret = false;
@@ -533,11 +534,11 @@ bool ghost_iszero(void *vnumber, ghost_datatype dt)
     return ret;
 }
 
-bool ghost_isone(void *vnumber, ghost_datatype dt) 
+bool ghost_isone(void *vnumber, ghost_datatype dt)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     bool ret = false;
-    
+
     if (dt & GHOST_DT_COMPLEX) {
         if (dt & GHOST_DT_FLOAT) {
             complex float number = *(complex float *)vnumber;
@@ -555,20 +556,25 @@ bool ghost_isone(void *vnumber, ghost_datatype dt)
             ret = (number-1.) < DBL_MIN;
         }
     }
-    
+
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return ret;
 }
-   
+
 
 ghost_error ghost_axpy(ghost_densemat *y, ghost_densemat *x, void *a)
 {
+    ghost_error ret;
+
+    //////////////// check compatibility /////////////
+    ghost_compatible_vec_vec check = GHOST_COMPATIBLE_VEC_VEC_INITIALIZER;
+    check.OUT = y;
+    check.C = x;
+    ret = ghost_check_vec_vec_compatibility(&check);
+    ///////////////////////////////////////////////////
 
     GHOST_DENSEMAT_CHECK_SIMILARITY(y,x);
-
     ghost_location commonlocation = (ghost_location)(y->traits.location & x->traits.location);
-
-    ghost_error ret;
 
     typedef ghost_error (*ghost_axpy_kernel)(ghost_densemat*, ghost_densemat*, void*);
     ghost_axpy_kernel kernels[2][2] = {{NULL,NULL},{NULL,NULL}};
@@ -586,12 +592,18 @@ ghost_error ghost_axpy(ghost_densemat *y, ghost_densemat *x, void *a)
 
 ghost_error ghost_vaxpy(ghost_densemat *y, ghost_densemat *x, void *a)
 {
+    ghost_error ret;
+
+    //////////////// check compatibility /////////////
+    ghost_compatible_vec_vec check = GHOST_COMPATIBLE_VEC_VEC_INITIALIZER;
+    check.OUT = y;
+    check.C = x;
+    ret = ghost_check_vec_vec_compatibility(&check);
+    ///////////////////////////////////////////////////
 
     GHOST_DENSEMAT_CHECK_SIMILARITY(y,x);
 
     ghost_location commonlocation = (ghost_location)(y->traits.location & x->traits.location);
-
-    ghost_error ret;
 
     typedef ghost_error (*ghost_vaxpy_kernel)(ghost_densemat*, ghost_densemat*, void*);
     ghost_vaxpy_kernel kernels[2][2] = {{NULL,NULL},{NULL,NULL}};
@@ -609,12 +621,18 @@ ghost_error ghost_vaxpy(ghost_densemat *y, ghost_densemat *x, void *a)
 
 ghost_error ghost_axpby(ghost_densemat *y, ghost_densemat *x, void *a, void *b)
 {
+    ghost_error ret;
+
+    //////////////// check compatibility /////////////
+    ghost_compatible_vec_vec check = GHOST_COMPATIBLE_VEC_VEC_INITIALIZER;
+    check.OUT = y;
+    check.C = x;
+    ret = ghost_check_vec_vec_compatibility(&check);
+    ///////////////////////////////////////////////////
 
     GHOST_DENSEMAT_CHECK_SIMILARITY(y,x);
 
     ghost_location commonlocation = (ghost_location)(y->traits.location & x->traits.location);
-
-    ghost_error ret;
 
     typedef ghost_error (*ghost_axpby_kernel)(ghost_densemat*, ghost_densemat*, void*, void*);
     ghost_axpby_kernel kernels[2][2] = {{NULL,NULL},{NULL,NULL}};
@@ -632,14 +650,20 @@ ghost_error ghost_axpby(ghost_densemat *y, ghost_densemat *x, void *a, void *b)
 
 ghost_error ghost_vaxpby(ghost_densemat *y, ghost_densemat *x, void *a, void *b)
 {
+    ghost_error ret;
+
+    //////////////// check compatibility /////////////
+    ghost_compatible_vec_vec check = GHOST_COMPATIBLE_VEC_VEC_INITIALIZER;
+    check.OUT = y;
+    check.C = x;
+    ret = ghost_check_vec_vec_compatibility(&check);
+    ///////////////////////////////////////////////////
 
     GHOST_DENSEMAT_CHECK_SIMILARITY(y,x);
 
     ghost_location commonlocation = (ghost_location)(y->traits.location & x->traits.location);
 
-    ghost_error ret;
-
-    typedef ghost_error (*ghost_vaxpby_kernel)(ghost_densemat*, ghost_densemat*, void*, void*);
+     typedef ghost_error (*ghost_vaxpby_kernel)(ghost_densemat*, ghost_densemat*, void*, void*);
     ghost_vaxpby_kernel kernels[2][2] = {{NULL,NULL},{NULL,NULL}};
     kernels[GHOST_HOST_IDX][GHOST_RM_IDX] = &ghost_densemat_rm_vaxpby_selector;
     kernels[GHOST_HOST_IDX][GHOST_CM_IDX] = &ghost_densemat_cm_vaxpby_selector;
@@ -656,12 +680,20 @@ ghost_error ghost_vaxpby(ghost_densemat *y, ghost_densemat *x, void *a, void *b)
 ghost_error ghost_axpbypcz(ghost_densemat *y, ghost_densemat *x, void *a, void *b, ghost_densemat *z, void *c)
 {
 
+    ghost_error ret;
+
+    //////////////// check compatibility /////////////
+    ghost_compatible_vec_vec check = GHOST_COMPATIBLE_VEC_VEC_INITIALIZER;
+    check.OUT = y;
+    check.C = x;
+    check.D = z;
+    ret = ghost_check_vec_vec_compatibility(&check);
+    ///////////////////////////////////////////////////
+
     GHOST_DENSEMAT_CHECK_SIMILARITY(y,x);
     GHOST_DENSEMAT_CHECK_SIMILARITY(y,z);
 
     ghost_location commonlocation = (ghost_location)(y->traits.location & x->traits.location);
-
-    ghost_error ret;
 
     typedef ghost_error (*ghost_axpbypcz_kernel)(ghost_densemat*, ghost_densemat*, void*, void*, ghost_densemat*, void*);
     ghost_axpbypcz_kernel kernels[2][2] = {{NULL,NULL},{NULL,NULL}};
@@ -680,12 +712,20 @@ ghost_error ghost_axpbypcz(ghost_densemat *y, ghost_densemat *x, void *a, void *
 ghost_error ghost_vaxpbypcz(ghost_densemat *y, ghost_densemat *x, void *a, void *b, ghost_densemat *z, void *c)
 {
 
+    ghost_error ret;
+
+    //////////////// check compatibility /////////////
+    ghost_compatible_vec_vec check = GHOST_COMPATIBLE_VEC_VEC_INITIALIZER;
+    check.OUT = y;
+    check.C = x;
+    check.D = z;
+    ret = ghost_check_vec_vec_compatibility(&check);
+    ///////////////////////////////////////////////////
+
     GHOST_DENSEMAT_CHECK_SIMILARITY(y,x);
     GHOST_DENSEMAT_CHECK_SIMILARITY(y,z);
 
     ghost_location commonlocation = (ghost_location)(y->traits.location & x->traits.location);
-
-    ghost_error ret;
 
     typedef ghost_error (*ghost_vaxpbypcz_kernel)(ghost_densemat*, ghost_densemat*, void*, void*, ghost_densemat*, void*);
     ghost_vaxpbypcz_kernel kernels[2][2] = {{NULL,NULL},{NULL,NULL}};
