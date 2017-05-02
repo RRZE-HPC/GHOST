@@ -181,6 +181,7 @@ ghost_error kacz_analyze_print_single_proc(int id, ghost_sparsemat *mat)
     }
     return GHOST_SUCCESS;
 }
+
 ghost_error kacz_analyze_print(ghost_sparsemat *mat)
 {
     ghost_error ret = GHOST_SUCCESS;
@@ -189,7 +190,9 @@ ghost_error kacz_analyze_print(ghost_sparsemat *mat)
     if(nproc > 1) {
         for(int i=0; i<nproc; ++i) {
            ret = kacz_analyze_print_single_proc(i,mat);
-            MPI_Barrier(mat->context->mpicomm);
+#ifdef GHOST_HAVE_MPI
+           MPI_Barrier(mat->context->mpicomm);
+#endif
         }
     } else {
         ret = kacz_analyze_print_single_proc(0,mat);
