@@ -197,7 +197,12 @@ void ghost_context_destroy(ghost_context *context)
 
         free(context->color_ptr);
         free(context->zone_ptr);
-/*
+
+        if(context->coloringEngine)
+        {
+            destroy_name(context);
+        }
+        /*
         if( context->perm_local )
         {
           free(context->perm_local->perm); context->perm_local->perm = NULL;

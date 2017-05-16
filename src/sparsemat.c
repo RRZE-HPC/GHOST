@@ -1058,7 +1058,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
     // _Only_ global permutation:
     // Create dummymat without any permutation and create global permutation
     // based on this dummymat
-    if (1 || mat->traits.flags & GHOST_SPARSEMAT_PERM_ANY_GLOBAL) {
+    if (mat->traits.flags & GHOST_SPARSEMAT_PERM_ANY_GLOBAL) {
         ghost_sparsemat *dummymat = NULL;
         ghost_sparsemat_traits mtraits = mat->traits;
 
@@ -2129,8 +2129,8 @@ static ghost_error ghost_sparsemat_compress(ghost_sparsemat *mat)
     }
 #endif
 
-    DEBUG_LOG(1,"Splitting the SELL matrix into a local and remote part");
-    ghost_sparsemat_split(mat);
+    //DEBUG_LOG(1,"Splitting the SELL matrix into a local and remote part");
+    //ghost_sparsemat_split(mat);
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
 

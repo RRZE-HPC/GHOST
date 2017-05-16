@@ -11,6 +11,7 @@
 #include <complex>
 #include <complex.h>
 #include <NAME/interface.h>
+#include "ghost/timing.h"
 
 //#GHOST_SUBST NVECS ${BLOCKDIM1}
 //#GHOST_SUBST CHUNKHEIGHT ${CHUNKHEIGHT}
@@ -24,7 +25,7 @@
 for (ghost_lidx row=start; row<end; ++row){ \
     VT x_row = xval[row]; \
     ghost_lidx idx = mat->chunkStart[row]; \
-    _Pragma("simd vectorlength(4)") \
+    _Pragma("simd") \
     for (ghost_lidx j=0; j<mat->rowLen[row]; j++) { \
         bval[mat->col[idx+j]] = bval[mat->col[idx+j]] + (MT)mval[idx+j] * x_row;\
     } \
@@ -185,8 +186,10 @@ void SPMTV_Kernel(int start, int end, void *args)
 }
 
 //static ghost_error ghost_spmtv_BMC_u_plain_rm_CHUNKHEIGHT_NVECS_tmpl(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts)
-void ghost_spmtv_NAME(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x)
+void ghost_spmtv_NAME(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+
     NAMEInterface *ce = (NAMEInterface*) (mat->context->coloringEngine);
 
     SPMTV_ARG *spmtvArg = new SPMTV_ARG;
@@ -196,8 +199,19 @@ void ghost_spmtv_NAME(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x
 
     void* argPtr = (void*) (spmtvArg);
     int spmtvId = ce->registerFunction(&SPMTV_Kernel, argPtr);
-    ce->executeFunction(spmtvId);
+    double start_spmtv_inner, end_spmtv_inner;
+    for(int i=0; i<iterations; ++i)
+    {
+        ghost_barrier();
+        ghost_timing_wcmilli(&start_spmtv_inner);
+        ce->executeFunction(spmtvId);
+        ghost_barrier();
+        ghost_timing_wcmilli(&end_spmtv_inner);
+        printf("iter= %d SPMTV time = %f\n",i,end_spmtv_inner-start_spmtv_inner);
+    }
 
     delete spmtvArg;
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+
 }
 

@@ -782,6 +782,7 @@ extern "C" {
 
     ghost_error ghost_sparsemat_perm_name(ghost_context *ctx, ghost_sparsemat *mat);
 
+    ghost_error destroy_name(ghost_context *ctx);
     ghost_error ghost_sparsemat_perm_zoltan(ghost_context *ctx, ghost_sparsemat *mat);
     /**
      * @brief Common function for matrix creation from a file.
@@ -883,7 +884,10 @@ extern "C" {
     /*SPMTV */
     ghost_error ghost_spmtv_BMC(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x);
 
-    void ghost_spmtv_NAME(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x);
+    void ghost_spmtv_NAME(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);
+
+    void ghost_symm_spmv_NAME(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x);
+
 
     /**
      * @brief Select and call the right SELL stringification function.
