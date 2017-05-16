@@ -44,6 +44,9 @@ extern "C" {
 */
 
         mat->context->coloringEngine = (void *) (bmc);
+#else
+        UNUSED(ctx);
+        UNUSED(mat);
 #endif
         return GHOST_SUCCESS;
 
@@ -56,6 +59,8 @@ extern "C" {
 #ifdef GHOST_HAVE_NAME
         NAMEInterface *ce = (NAMEInterface*) ctx->coloringEngine;
         delete ce;
+#else
+        UNUSED(ctx);
 #endif
         return GHOST_SUCCESS;
     }

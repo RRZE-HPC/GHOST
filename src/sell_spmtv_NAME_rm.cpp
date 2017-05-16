@@ -10,8 +10,10 @@
 #include "ghost/locality.h"
 #include <complex>
 #include <complex.h>
-#include <NAME/interface.h>
 #include "ghost/timing.h"
+#ifdef GHOST_HAVE_NAME
+#include <NAME/interface.h>
+#endif
 
 //#GHOST_SUBST NVECS ${BLOCKDIM1}
 //#GHOST_SUBST CHUNKHEIGHT ${CHUNKHEIGHT}
