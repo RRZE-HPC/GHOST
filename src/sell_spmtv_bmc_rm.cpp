@@ -9,7 +9,7 @@
 #include "ghost/densemat.h"
 #include "ghost/locality.h"
 //#include "ghost/sell_spmtv_bmc_rm_gen.h"
-#include "ghost/sell_spmtv_bmc_rm.h"
+//#include "ghost/sell_spmtv_bmc_rm.h"
 #include <complex>
 #include <complex.h>
 

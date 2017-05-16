@@ -1,13 +1,15 @@
 #include "ghost/sparsemat.h"
-#include "NAME/interface.h"
 #include "ghost/omp.h"
 #include "ghost/locality.h"
-
+#ifdef GHOST_HAVE_NAME
+#include "NAME/interface.h"
+#endif
 //Just for checking
 
 extern "C" {
     ghost_error ghost_sparsemat_perm_name(ghost_context *ctx, ghost_sparsemat *mat)
     {
+#ifdef GHOST_HAVE_NAME
         int nthread;
 
 #ifdef GHOST_HAVE_OPENMP
@@ -42,7 +44,7 @@ extern "C" {
 */
 
         mat->context->coloringEngine = (void *) (bmc);
-
+#endif
         return GHOST_SUCCESS;
 
    }
@@ -51,8 +53,10 @@ extern "C" {
 extern "C" {
     ghost_error destroy_name(ghost_context *ctx)
     {
+#ifdef GHOST_HAVE_NAME
         NAMEInterface *ce = (NAMEInterface*) ctx->coloringEngine;
         delete ce;
+#endif
         return GHOST_SUCCESS;
     }
 }
