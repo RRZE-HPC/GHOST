@@ -233,7 +233,7 @@ int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx row, ghost_lidx *rowlen, gho
 
     if (row == GHOST_SPARSEMAT_ROWFUNC_MM_ROW_GETDIM) {
         ghost_sparsemat_rowfunc_file_initargs args = 
-            *(ghost_sparsemat_rowfunc_file_initargs *)val;
+            *(ghost_sparsemat_rowfunc_file_initargs *)arg;
         char *filename = args.filename;
 
         FILE *f;
@@ -264,10 +264,10 @@ int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx row, ghost_lidx *rowlen, gho
         col[1] = N;
         
         fclose(f);
-    } else if ((row == GHOST_SPARSEMAT_ROWFUNC_MM_ROW_GETRPT) || (row == GHOST_SPARSEMAT_ROWFUNC_MM_ROW_INIT)) {
+    } else if (row == GHOST_SPARSEMAT_ROWFUNC_INIT) {
 
         ghost_sparsemat_rowfunc_file_initargs args = 
-            *(ghost_sparsemat_rowfunc_file_initargs *)val;
+            *(ghost_sparsemat_rowfunc_file_initargs *)arg;
         char *filename = args.filename;
         ghost_datatype matdt = args.dt;
 
@@ -316,7 +316,7 @@ int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx row, ghost_lidx *rowlen, gho
 
         if (mm_is_symmetric(matcode)) {
             PERFWARNING_LOG("Will create a general matrix out of a symmetric matrix!");
-            *(int *)arg = 1;
+            args.mat->traits.symmetry = GHOST_SPARSEMAT_SYMM_SYMMETRIC;
             actualnz = nz*2;
             symm = 1;
         } else {
@@ -335,15 +335,15 @@ int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx row, ghost_lidx *rowlen, gho
             offset[i] = 0;
         }
 
-        int toread = nz;
+        int toread = 3*nz;
         if (matdt & GHOST_DT_COMPLEX) {
-            toread *= 2;
+            toread += nz;
         }
         ghost_gidx readrow,readcol;
         char value[dtsize];
         fpos_t pos;
         fgetpos(f,&pos);
-
+    
         int scanned = 0; 
         for (i = 0; i < nz; ++i){
             if (matdt & GHOST_DT_COMPLEX) {
@@ -371,6 +371,7 @@ int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx row, ghost_lidx *rowlen, gho
                }
             }
         }
+
         if (scanned != toread) {
             ERROR_LOG("Error while reading filei: read %d items but was expecting %d!",scanned,toread);
             return 1;
@@ -383,9 +384,9 @@ int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx row, ghost_lidx *rowlen, gho
         if (row == GHOST_SPARSEMAT_ROWFUNC_MM_ROW_GETRPT) {
             col = rowPtr;
         } else {
-
+        
             fsetpos(f,&pos);
-
+                
             scanned = 0;
             for (i = 0; i < nz; ++i){
                 if (matdt & GHOST_DT_COMPLEX) {
@@ -425,7 +426,7 @@ int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx row, ghost_lidx *rowlen, gho
         free(offset);
         fclose(f);
 
-    } else if (row == GHOST_SPARSEMAT_ROWFUNC_MM_ROW_FINALIZE) {
+    } else if (row == GHOST_SPARSEMAT_ROWFUNC_FINALIZE) {
         free(colInd);
         free(rowPtr);
         free(values);
