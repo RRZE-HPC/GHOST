@@ -3,8 +3,8 @@
 # Disclaimer #
 ---
 
-This is a pre-alpha release, so **please do not expect anything to work!** Just kidding... But some things may, and probably will, be broken. 
-Nevertheless, please report any bugs, issues and feature requests to the [issue tracker](https://bitbucket.org/essex/ghost/issues).
+This is a development release, so please be careful when using this piece of software.
+Please report any bugs, issues and feature requests to the [issue tracker](https://bitbucket.org/essex/ghost/issues).
 
 ---
 # What is GHOST? #
