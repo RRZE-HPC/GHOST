@@ -204,6 +204,10 @@ typedef struct
      * This is only relevant for CPU data.
      */
     ghost_implementation compute_with;
+    /**
+     * @brief The number of columns of each sub-densemat.
+     */
+    ghost_lidx ncolssub;
 }
 ghost_densemat_traits;
 
@@ -282,6 +286,18 @@ struct ghost_densemat
      * @brief The densemat's map.
      */
     ghost_map *map;
+    /**
+     * @brief List of sub-densemats, points to densemat itself if no sub-densemats. 
+     */
+    ghost_densemat **subdm;
+    /**
+     * @brief Number of sub-densemats.
+     */
+    ghost_lidx nsub;
+    /**
+     * @brief Column offset into the parent densemat (if it is a subdensemat).
+     */
+    ghost_lidx coloff;
 };
 
 #define DM_NROWS(dm) dm->map->dim

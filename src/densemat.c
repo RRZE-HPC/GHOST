@@ -29,14 +29,9 @@
 #endif
 
 const ghost_densemat_traits GHOST_DENSEMAT_TRAITS_INITIALIZER = {
-    //.nrows = 0,
-    //.nrowsorig = 0,
-    //.nrowshalo = 0,
-    //.nrowspadded = 0,
-    //.gnrows = 0,
-    //.goffs = 0,
     .ncols = 1,
     .ncolspadded = 0,
+    .ncolssub = 0,
     .flags = GHOST_DENSEMAT_DEFAULT,
     .storage = GHOST_DENSEMAT_STORAGE_DEFAULT,
     .location = GHOST_LOCATION_DEFAULT,
@@ -66,6 +61,7 @@ ghost_error ghost_densemat_create(ghost_densemat **vec, ghost_map *map, ghost_de
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_SETUP);
     ghost_error ret = GHOST_SUCCESS;
+    
     GHOST_CALL_GOTO(ghost_malloc((void **)vec,sizeof(ghost_densemat)),err,ret);
     (*vec)->traits = traits;
     (*vec)->map = NULL;
@@ -157,6 +153,7 @@ ghost_error ghost_densemat_create(ghost_densemat **vec, ghost_map *map, ghost_de
         }
     }
 
+
     DEBUG_LOG(1,"Initializing vector");
 
     if ((*vec)->traits.location == GHOST_LOCATION_DEFAULT) { // no placement specified
@@ -201,6 +198,33 @@ ghost_error ghost_densemat_create(ghost_densemat **vec, ghost_map *map, ghost_de
     (*vec)->mpidt = MPI_DATATYPE_NULL;
     (*vec)->fullmpidt = MPI_DATATYPE_NULL;
 #endif
+
+    if ((*vec)->traits.ncolssub == 0) {
+        (*vec)->traits.ncolssub = (*vec)->traits.ncols;
+    } else {
+        WARNING_LOG("Sub-densemats are highly experimental and by far not all funtionality is implemented. %d",(*vec)->traits.ncolssub);
+        if ((*vec)->traits.ncols % (*vec)->traits.ncolssub) {
+            WARNING_LOG("The column block must be a divisor of the number of columns! Forcing a single block!");
+            (*vec)->traits.ncolssub = (*vec)->traits.ncols;
+        }
+    }
+    (*vec)->nsub = (*vec)->traits.ncols/(*vec)->traits.ncolssub;
+    
+    GHOST_CALL_GOTO(ghost_malloc((void **)&((*vec)->subdm),sizeof(ghost_densemat *)*(*vec)->nsub),err,ret);
+    if ((*vec)->nsub == 1) {
+        (*vec)->subdm[0] = *vec;
+        (*vec)->coloff = 0;
+    } else {
+        ghost_lidx s;
+        ghost_densemat_traits subtraits = traits;
+        subtraits.ncols = (*vec)->traits.ncolssub;
+        subtraits.ncolssub = subtraits.ncols;
+        for (s=0; s<(*vec)->nsub; s++) {
+           ghost_densemat_create(&((*vec)->subdm[s]),map,subtraits);
+           ghost_densemat_create(&((*vec)->subdm[s]),map,subtraits);
+           (*vec)->subdm[s]->coloff = s*(*vec)->traits.ncolssub;
+        }
+    }
 
 //    char *str;
 //    ghost_densemat_info_string(&str,*vec);
@@ -358,38 +382,47 @@ ghost_error ghost_densemat_halocommInit_common(ghost_densemat *vec, ghost_contex
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, ctx->mpicomm),err,ret);
     GHOST_CALL_GOTO(ghost_rank(&me, ctx->mpicomm),err,ret);
     
-    comm->msgcount = 0;
-    GHOST_CALL_GOTO(ghost_malloc((void **)&comm->wishptr,(nprocs+1)*sizeof(ghost_lidx)),err,ret);
-
     int nMsgsOverall = 0;
+    comm->msgcount = 0;
+    
+    if (!comm->wishptr) {
+        GHOST_CALL_GOTO(ghost_malloc((void **)&comm->wishptr,(nprocs+1)*sizeof(ghost_lidx)),err,ret);
 
-    comm->wishptr[0] = 0;
-    for (i=0;i<nprocs;i++) {
-        comm->wishptr[i+1] = comm->wishptr[i]+ctx->wishes[i];
-        if (ctx->wishes[i]) {
-            nMsgsOverall += ((size_t)rowsize*ctx->wishes[i])/INT_MAX + 1;
+        comm->wishptr[0] = 0;
+        for (i=0;i<nprocs;i++) {
+            comm->wishptr[i+1] = comm->wishptr[i]+ctx->wishes[i];
+            if (ctx->wishes[i]) {
+                nMsgsOverall += ((size_t)rowsize*ctx->wishes[i])/INT_MAX + 1;
+            }
+            if (ctx->dues[i]) {
+                nMsgsOverall += ((size_t)rowsize*ctx->dues[i])/INT_MAX + 1;
+            }
         }
-        if (ctx->dues[i]) {
-            nMsgsOverall += ((size_t)rowsize*ctx->dues[i])/INT_MAX + 1;
-        }
+        comm->acc_wishes = comm->wishptr[nprocs];
     }
-    comm->acc_wishes = comm->wishptr[nprocs];
 
-    GHOST_CALL_GOTO(ghost_malloc((void **)&comm->request,sizeof(MPI_Request)*nMsgsOverall),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&comm->status,sizeof(MPI_Status)*nMsgsOverall),err,ret);
+
+    if (!comm->request) {
+        GHOST_CALL_GOTO(ghost_malloc((void **)&comm->request,sizeof(MPI_Request)*nMsgsOverall),err,ret);
+    }
+    if (!comm->status) {
+        GHOST_CALL_GOTO(ghost_malloc((void **)&comm->status,sizeof(MPI_Status)*nMsgsOverall),err,ret);
+    }
 
     for (i=0;i<nMsgsOverall;i++) {
         comm->request[i] = MPI_REQUEST_NULL;
     }
     
 
-    GHOST_CALL_RETURN(ghost_malloc((void **)&comm->dueptr,(nprocs+1)*sizeof(ghost_lidx)));
-
-    comm->dueptr[0] = 0;
-    for (i=0;i<nprocs;i++) {
-        comm->dueptr[i+1] = comm->dueptr[i]+ctx->dues[i];
+    if (!comm->dueptr) {
+        GHOST_CALL_RETURN(ghost_malloc((void **)&comm->dueptr,(nprocs+1)*sizeof(ghost_lidx)));
+        comm->dueptr[0] = 0;
+        for (i=0;i<nprocs;i++) {
+            comm->dueptr[i+1] = comm->dueptr[i]+ctx->dues[i];
+        }
+        comm->acc_dues = comm->dueptr[nprocs];
     }
-    comm->acc_dues = comm->dueptr[nprocs];
+
 
     goto out;
 err:
@@ -415,69 +448,66 @@ ghost_error ghost_densemat_halocomm_start(ghost_densemat *vec, ghost_context *ct
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION)
     ghost_error ret = GHOST_SUCCESS;
     char *recv;
-    int from_PE, to_PE;
+    int from_PE, to_PE, from, to;
     int nprocs;
     int rowsize = vec->traits.ncols*vec->elSize;
     int me; 
     GHOST_CALL_GOTO(ghost_rank(&me, ctx->mpicomm),err,ret);
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, ctx->mpicomm),err,ret);
 
-    for (from_PE=0; from_PE<nprocs; from_PE++){
-        if (ctx->wishes[from_PE]>0) {
-            recv = comm->tmprecv[from_PE];
+    for (from=0; from<ctx->nwishpartners; from++){
+        from_PE = ctx->wishpartners[from];
+        recv = comm->tmprecv[from_PE];
 
 #ifdef GHOST_TRACK_DATATRANSFERS
-            ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_IN,from_PE,ctx->wishes[from_PE]*vec->elSize*vec->traits.ncols);
+        ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_IN,from_PE,ctx->wishes[from_PE]*vec->elSize*vec->traits.ncols);
 #endif
-            int msg;
-            int nmsgs = (size_t)rowsize*ctx->wishes[from_PE]/INT_MAX + 1;
-            size_t msgSizeRows = ctx->wishes[from_PE]/nmsgs;
-            size_t msgSizeEls = ctx->wishes[from_PE]/nmsgs*vec->traits.ncols;
+        int msg;
+        int nmsgs = (size_t)rowsize*ctx->wishes[from_PE]/INT_MAX + 1;
+        size_t msgSizeRows = ctx->wishes[from_PE]/nmsgs;
+        size_t msgSizeEls = ctx->wishes[from_PE]/nmsgs*vec->traits.ncols;
 
-            for (msg = 0; msg < nmsgs-1; msg++) {
-                MPI_CALL_GOTO(MPI_Irecv(recv + msg*msgSizeRows*rowsize, msgSizeEls, vec->mpidt, from_PE, from_PE, ctx->mpicomm,&comm->request[comm->msgcount]),err,ret);
-                comm->msgcount++;
-            }
-
-            // remainder
-            MPI_CALL_GOTO(MPI_Irecv(recv + msg*msgSizeRows*rowsize, ctx->wishes[from_PE]*vec->traits.ncols - msg*msgSizeEls, vec->mpidt, from_PE, from_PE, ctx->mpicomm,&comm->request[comm->msgcount]),err,ret);
+        for (msg = 0; msg < nmsgs-1; msg++) {
+            MPI_CALL_GOTO(MPI_Irecv(recv + msg*msgSizeRows*rowsize, msgSizeEls, vec->mpidt, from_PE, from_PE, ctx->mpicomm,&comm->request[comm->msgcount]),err,ret);
             comm->msgcount++;
         }
-    }
-    for (to_PE=0 ; to_PE<nprocs ; to_PE++){
-        if (ctx->dues[to_PE]>0){
-#ifdef GHOST_TRACK_DATATRANSFERS
-            ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_OUT,to_PE,ctx->dues[to_PE]*vec->elSize*vec->traits.ncols);
-#endif
-            int msg;
-            int nmsgs = (size_t)rowsize*ctx->dues[to_PE]/INT_MAX + 1;
-            size_t msgSizeRows = ctx->dues[to_PE]/nmsgs;
-            size_t msgSizeEls = ctx->dues[to_PE]/nmsgs*vec->traits.ncols;
 
-            char *workbuf = comm->work;
-            if (!workbuf) {
+        // remainder
+        MPI_CALL_GOTO(MPI_Irecv(recv + msg*msgSizeRows*rowsize, ctx->wishes[from_PE]*vec->traits.ncols - msg*msgSizeEls, vec->mpidt, from_PE, from_PE, ctx->mpicomm,&comm->request[comm->msgcount]),err,ret);
+        comm->msgcount++;
+    }
+    for (to=0 ; to<ctx->nduepartners; to++){
+        to_PE = ctx->duepartners[to];
+#ifdef GHOST_TRACK_DATATRANSFERS
+        ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_OUT,to_PE,ctx->dues[to_PE]*vec->elSize*vec->traits.ncols);
+#endif
+        int msg;
+        int nmsgs = (size_t)rowsize*ctx->dues[to_PE]/INT_MAX + 1;
+        size_t msgSizeRows = ctx->dues[to_PE]/nmsgs;
+        size_t msgSizeEls = ctx->dues[to_PE]/nmsgs*vec->traits.ncols;
+
+        char *workbuf = comm->work;
+        if (!workbuf) {
 #ifndef GHOST_HAVE_GPUDIRECT
-                if (!(vec->traits.location & GHOST_LOCATION_DEVICE)) {
-                    ERROR_LOG("workbuf must only be NULL in case of GPUdirect!");
-                }
+            if (!(vec->traits.location & GHOST_LOCATION_DEVICE)) {
+                ERROR_LOG("workbuf must only be NULL in case of GPUdirect!");
+            }
 #endif
-                if (!comm->cu_work) {
-                    ERROR_LOG("cu_work must not be NULL!");
-                }
-                workbuf = comm->cu_work;
+            if (!comm->cu_work) {
+                ERROR_LOG("cu_work must not be NULL!");
             }
+            workbuf = comm->cu_work;
+        }
 
-            for (msg = 0; msg < nmsgs-1; msg++) {
-                MPI_CALL_GOTO(MPI_Isend(workbuf + comm->dueptr[to_PE]*vec->elSize*vec->traits.ncols+msg*msgSizeRows*rowsize, msgSizeEls, vec->mpidt, to_PE, me, ctx->mpicomm, &comm->request[comm->msgcount]),err,ret);
-                comm->msgcount++;
-            }
-
-            // remainder
-            MPI_CALL_GOTO(MPI_Isend(workbuf + comm->dueptr[to_PE]*vec->elSize*vec->traits.ncols+msg*msgSizeRows*rowsize, ctx->dues[to_PE]*vec->traits.ncols - msg*msgSizeEls, vec->mpidt, to_PE, me, ctx->mpicomm, &comm->request[comm->msgcount]),err,ret);
+        for (msg = 0; msg < nmsgs-1; msg++) {
+            MPI_CALL_GOTO(MPI_Isend(workbuf + comm->dueptr[to_PE]*vec->elSize*vec->traits.ncols+msg*msgSizeRows*rowsize, msgSizeEls, vec->mpidt, to_PE, me, ctx->mpicomm, &comm->request[comm->msgcount]),err,ret);
             comm->msgcount++;
         }
-    }
 
+        // remainder
+        MPI_CALL_GOTO(MPI_Isend(workbuf + comm->dueptr[to_PE]*vec->elSize*vec->traits.ncols+msg*msgSizeRows*rowsize, ctx->dues[to_PE]*vec->traits.ncols - msg*msgSizeEls, vec->mpidt, to_PE, me, ctx->mpicomm, &comm->request[comm->msgcount]),err,ret);
+        comm->msgcount++;
+    }
 
     goto out;
 err:
@@ -570,7 +600,7 @@ int ghost_idx_of_densemat_storage(ghost_densemat_storage s)
 
 ghost_error ghost_densemat_init_rand(ghost_densemat *x)
 {
-    ghost_error ret;
+    ghost_error ret = GHOST_SUCCESS;
 
     typedef ghost_error (*ghost_densemat_init_rand_kernel)(ghost_densemat*);
     ghost_densemat_init_rand_kernel kernels[2][2] = {{NULL,NULL},{NULL,NULL}};
@@ -588,7 +618,7 @@ ghost_error ghost_densemat_init_rand(ghost_densemat *x)
 
 ghost_error ghost_densemat_init_val(ghost_densemat *x, void *val)
 {
-    ghost_error ret;
+    ghost_error ret = GHOST_SUCCESS;
 
     typedef ghost_error (*ghost_densemat_init_scalar_kernel)(ghost_densemat*, void*);
     ghost_densemat_init_scalar_kernel kernels[2][2] = {{NULL,NULL},{NULL,NULL}};
@@ -599,7 +629,9 @@ ghost_error ghost_densemat_init_val(ghost_densemat *x, void *val)
     kernels[GHOST_DEVICE_IDX][GHOST_CM_IDX] = &ghost_densemat_cu_cm_fromScalar;
 #endif
 
-    SELECT_BLAS1_KERNEL(kernels,x->traits.location,x->traits.compute_at,x->traits.storage,ret,x,val);
+    for (ghost_lidx s=0; s<x->nsub; s++) {
+        SELECT_BLAS1_KERNEL(kernels,x->traits.location,x->traits.compute_at,x->traits.storage,ret,x->subdm[s],val);
+    }
 
     return ret;
 }
@@ -625,16 +657,22 @@ ghost_error ghost_densemat_malloc(ghost_densemat *x, int *needInit)
         return RM_FUNCNAME(func)(__VA_ARGS__);\
     }
 
+#define CALL_DENSEMAT_FUNC_NORET(ret,vec,func,...) \
+    if (vec->traits.storage == GHOST_DENSEMAT_COLMAJOR) {\
+        ret = CM_FUNCNAME(func)(__VA_ARGS__);\
+    } else {\
+        ret = RM_FUNCNAME(func)(__VA_ARGS__);\
+    }
+
 ghost_error ghost_densemat_init_func(ghost_densemat *x, ghost_densemat_srcfunc func, void *arg)
 {
-    CALL_DENSEMAT_FUNC(x,fromFunc,x,func,arg);
+    ghost_error ret = GHOST_SUCCESS;
+    for (ghost_lidx s=0; s<x->nsub; s++) {
+        CALL_DENSEMAT_FUNC_NORET(ret,x->subdm[s],fromFunc,x->subdm[s],func,arg);
+    }
+    return ret;
 }
     
-ghost_error ghost_densemat_string(char **str, ghost_densemat *x)
-{
-    CALL_DENSEMAT_FUNC(x,string_selector,x,str);
-}
-
 ghost_error ghost_densemat_permute(ghost_densemat *x, ghost_permutation_direction dir)
 {
     CALL_DENSEMAT_FUNC(x,permute_selector,x,dir);

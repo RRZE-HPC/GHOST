@@ -13,23 +13,24 @@
  * @brief Flags to be passed to sparse matrix-vector multiplication.
  */
 typedef enum {
-    GHOST_SPMV_DEFAULT = 0,
-    GHOST_SPMV_AXPY = 1,
-    GHOST_SPMV_MODE_NOCOMM = 2,
-    GHOST_SPMV_BARRIER = 4,
-    GHOST_SPMV_MODE_OVERLAP = 8,
-    GHOST_SPMV_MODE_TASK = 16,
-    GHOST_SPMV_SHIFT = 32,
-    GHOST_SPMV_SCALE = 64,
-    GHOST_SPMV_AXPBY = 128,
-    GHOST_SPMV_DOT_YY = 512,
-    GHOST_SPMV_DOT_XY = 1024,
-    GHOST_SPMV_DOT_XX = 2048,
-    GHOST_SPMV_NOT_REDUCE = 4096,
-    GHOST_SPMV_LOCAL = 8192,
-    GHOST_SPMV_REMOTE = 16384,
-    GHOST_SPMV_VSHIFT = 32768,
-    GHOST_SPMV_CHAIN_AXPBY = 65536
+    GHOST_SPMV_DEFAULT        = 0,
+    GHOST_SPMV_AXPY           = 1<<0,
+    GHOST_SPMV_MODE_NOCOMM    = 1<<1,
+    GHOST_SPMV_BARRIER        = 1<<2,
+    GHOST_SPMV_MODE_OVERLAP   = 1<<3,
+    GHOST_SPMV_MODE_TASK      = 1<<4,
+    GHOST_SPMV_SHIFT          = 1<<5,
+    GHOST_SPMV_SCALE          = 1<<6,
+    GHOST_SPMV_AXPBY          = 1<<7,
+    GHOST_SPMV_DOT_YY         = 1<<8,
+    GHOST_SPMV_DOT_XY         = 1<<9,
+    GHOST_SPMV_DOT_XX         = 1<<10,
+    GHOST_SPMV_NOT_REDUCE     = 1<<11,
+    GHOST_SPMV_LOCAL          = 1<<12,
+    GHOST_SPMV_REMOTE         = 1<<13,
+    GHOST_SPMV_VSHIFT         = 1<<14,
+    GHOST_SPMV_CHAIN_AXPBY    = 1<<15,
+    GHOST_SPMV_MODE_PIPELINED = 1<<16,
 } ghost_spmv_flags;
 
 
@@ -135,7 +136,7 @@ typedef enum {
 /**
  * @brief SpMV solver which do combined computation.
  */
-#define GHOST_SPMV_MODES_FULL     (GHOST_SPMV_MODE_NOMPI | GHOST_SPMV_MODE_VECTOR)
+#define GHOST_SPMV_MODES_FULL     (GHOST_SPMV_MODE_NOMPI | GHOST_SPMV_MODE_VECTOR | GHOST_SPMV_MODE_PIPELINED)
 /**
  * @brief SpMV solvers which do split computation.
  */
@@ -145,7 +146,7 @@ typedef enum {
  */
 #define GHOST_SPMV_MODES_ALL      (GHOST_SPMV_MODES_FULL | GHOST_SPMV_MODES_SPLIT)
 
-#define GHOST_SPMV_MODES_MPI (GHOST_SPMV_MODE_VECTOR | GHOST_SPMV_MODES_SPLIT)
+#define GHOST_SPMV_MODES_MPI (GHOST_SPMV_MODE_VECTOR | GHOST_SPMV_MODES_SPLIT | GHOST_SPMV_MODE_PIPELINED)
 
 #ifdef __cplusplus
 /**

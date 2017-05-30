@@ -202,7 +202,7 @@ ghost_error ghost_tsmm__a_plain_d_OUTCOLS_INCOLS_OUTERUNROLL_1_cm(ghost_densemat
 #pragma omp for private(j,s,t) schedule(runtime)
             for (i=0; i<=n-OUTERUNROLL; i+=OUTERUNROLL) {
 
-#pragma unroll_and_jam(MIN(16,OUTCOLS))
+#pragma unroll(MIN(16,OUTCOLS))
                 for (s=0; s<OUTCOLS; s++) {
 
 #pragma vector aligned
@@ -242,7 +242,7 @@ ghost_error ghost_tsmm__a_plain_d_OUTCOLS_INCOLS_OUTERUNROLL_1_cm(ghost_densemat
 #pragma omp for private(j,s,t) schedule(runtime)
             for (i=0; i<=n-OUTERUNROLL; i+=OUTERUNROLL) {
 
-#pragma unroll_and_jam(MIN(16,OUTCOLS))
+#pragma unroll(MIN(16,OUTCOLS))
                 for (s=0; s<OUTCOLS; s++) {
 
                     for (t=0; t<OUTERUNROLL; t++) {
@@ -323,7 +323,7 @@ ghost_error ghost_tsmm__u_plain_d_OUTCOLS_INCOLS_OUTERUNROLL_1_cm(ghost_densemat
 #pragma omp for private(j,s,t) schedule(runtime)
         for (i=0; i<=n-OUTERUNROLL; i+=OUTERUNROLL) {
 
-#pragma unroll_and_jam(MIN(16,OUTCOLS))
+#pragma unroll(MIN(16,OUTCOLS))
             for (s=0; s<OUTCOLS; s++) {
 
 #pragma vector unaligned
@@ -357,7 +357,7 @@ ghost_error ghost_tsmm__u_plain_d_OUTCOLS_INCOLS_OUTERUNROLL_1_cm(ghost_densemat
 #pragma omp for private(j,s,t) schedule(runtime)
         for (i=0; i<=n-OUTERUNROLL; i+=OUTERUNROLL) {
 
-#pragma unroll_and_jam(MIN(16,OUTCOLS))
+#pragma unroll(MIN(16,OUTCOLS))
             for (s=0; s<OUTCOLS; s++) {
 
 #pragma vector unaligned

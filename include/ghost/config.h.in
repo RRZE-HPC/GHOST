@@ -46,6 +46,7 @@
 
 /* logging */
 #cmakedefine GHOST_LOG_ONLYFIRST
+#cmakedefine GHOST_LOG_TIMESTAMP
 #define GHOST_LOG_RANK ${GHOST_LOG_RANK}
 #define GHOST_VERBOSITY ${GHOST_VERBOSITY}
 

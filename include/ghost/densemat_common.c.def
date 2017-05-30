@@ -90,6 +90,7 @@ ghost_error FUNCNAME(view(ghost_densemat *src, ghost_densemat **new, ghost_lidx 
     ghost_densemat_traits newTraits = src->traits;
     newTraits.ncols = nc;
     newTraits.ncolspadded = nc;
+    newTraits.ncolssub = 0;
     newTraits.flags |= (ghost_densemat_flags)GHOST_DENSEMAT_VIEW;
     
     if (nr!=src->map->dim) {
@@ -172,6 +173,7 @@ ghost_error FUNCNAME(viewCols(ghost_densemat *src, ghost_densemat **new, ghost_l
     ghost_densemat_traits newTraits = src->traits;
     newTraits.ncols = nc;
     newTraits.ncolspadded = nc;
+    newTraits.ncolssub = 0;
     newTraits.flags |= (ghost_densemat_flags)GHOST_DENSEMAT_VIEW;
     
     ghost_densemat_create(new,src->map,newTraits);
@@ -219,6 +221,7 @@ ghost_error FUNCNAME(viewScatteredCols(ghost_densemat *src, ghost_densemat **new
     ghost_densemat_traits newTraits = src->traits;
     newTraits.ncols = nc;
     newTraits.ncolspadded = nc;
+    newTraits.ncolssub = 0;
     newTraits.flags |= (ghost_densemat_flags)GHOST_DENSEMAT_VIEW;
     newTraits.flags |= (ghost_densemat_flags)GHOST_DENSEMAT_SCATTERED_COLS;
 
@@ -262,6 +265,7 @@ ghost_error FUNCNAME(viewScatteredVec(ghost_densemat *src, ghost_densemat **new,
     ghost_densemat_traits newTraits = src->traits;
     newTraits.ncols = nc;
     newTraits.ncolspadded = nc;
+    newTraits.ncolssub = 0;
     newTraits.flags |= (ghost_densemat_flags)GHOST_DENSEMAT_VIEW;
     newTraits.flags |= (ghost_densemat_flags)GHOST_DENSEMAT_SCATTERED;
 
@@ -809,29 +813,29 @@ ghost_error FUNCNAME(fromFunc(ghost_densemat *vec, int (*fp)(ghost_gidx, ghost_l
     if (vec->traits.location & GHOST_LOCATION_HOST) { // vector is stored on host
         if ((!vec->map->loc_perm && !vec->map->glb_perm)) {
             if( needInit ) {
-              DENSEMAT_ITER_INIT(vec,fp(offset+row,col,valptr,arg));
+              DENSEMAT_ITER_INIT(vec,fp(offset+row,vec->coloff+col,valptr,arg));
             } else {
-              DENSEMAT_ITER(vec,fp(offset+row,col,valptr,arg));
+              DENSEMAT_ITER(vec,fp(offset+row,vec->coloff+col,valptr,arg));
             }
         } else {
             vec->traits.flags = (ghost_densemat_flags)(vec->traits.flags|GHOST_DENSEMAT_PERMUTED);
             if (vec->map->loc_perm && !vec->map->glb_perm) {
                 if( needInit ) {
-                    DENSEMAT_ITER_INIT(vec,fp(offset+vec->map->loc_perm_inv[row],col,valptr,arg));
+                    DENSEMAT_ITER_INIT(vec,fp(offset+vec->map->loc_perm_inv[row],vec->coloff+col,valptr,arg));
                 } else {
-                  DENSEMAT_ITER(vec,fp(offset+vec->map->loc_perm_inv[row],col,valptr,arg));
+                    DENSEMAT_ITER(vec,fp(offset+vec->map->loc_perm_inv[row],vec->coloff+col,valptr,arg));
                 }
             } else if (!vec->map->loc_perm && vec->map->glb_perm) {
                 if( needInit ) {
-                  DENSEMAT_ITER_INIT(vec,fp(vec->map->glb_perm_inv[row],col,valptr,arg));
+                  DENSEMAT_ITER_INIT(vec,fp(vec->map->glb_perm_inv[row],vec->coloff+col,valptr,arg));
                 } else {
-                  DENSEMAT_ITER(vec,fp(vec->map->glb_perm_inv[row],col,valptr,arg));
+                  DENSEMAT_ITER(vec,fp(vec->map->glb_perm_inv[row],vec->coloff+col,valptr,arg));
                 }
             } else if (vec->map->loc_perm && vec->map->glb_perm) {
                 if( needInit ) {
-                  DENSEMAT_ITER_INIT(vec,fp(vec->map->glb_perm_inv[vec->map->loc_perm_inv[row]],col,valptr,arg));
+                  DENSEMAT_ITER_INIT(vec,fp(vec->map->glb_perm_inv[vec->map->loc_perm_inv[row]],vec->coloff+col,valptr,arg));
                 } else {
-                  DENSEMAT_ITER(vec,fp(vec->map->glb_perm_inv[vec->map->loc_perm_inv[row]],col,valptr,arg));
+                  DENSEMAT_ITER(vec,fp(vec->map->glb_perm_inv[vec->map->loc_perm_inv[row]],vec->coloff+col,valptr,arg));
                 }
             }
         }

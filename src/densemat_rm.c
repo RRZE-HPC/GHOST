@@ -212,49 +212,51 @@ ghost_error ghost_densemat_rm_halocommInit(ghost_densemat *vec, ghost_context *c
     int nprocs;
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, ctx->mpicomm),err,ret);
     GHOST_CALL_GOTO(ghost_densemat_halocommInit_common(vec,ctx,comm),err,ret);
+     
+    if (!comm->tmprecv) {
+        GHOST_CALL_GOTO(ghost_malloc((void **)&comm->tmprecv,nprocs*sizeof(char *)),err,ret);
         
-    GHOST_CALL_GOTO(ghost_malloc((void **)&comm->tmprecv,nprocs*sizeof(char *)),err,ret);
-    
-    if (vec->stride == vec->traits.ncols) {
-        if (vec->traits.location & GHOST_LOCATION_DEVICE) {
+        if (vec->stride == vec->traits.ncols) {
+            if (vec->traits.location & GHOST_LOCATION_DEVICE) {
 #ifdef GHOST_HAVE_GPUDIRECT
-            for (from_PE=0; from_PE<nprocs; from_PE++) {
-                comm->tmprecv[from_PE] = DENSEMAT_CUVALPTR(vec,ctx->hput_pos[from_PE],0);
-            }
+                for (from_PE=0; from_PE<nprocs; from_PE++) {
+                    comm->tmprecv[from_PE] = DENSEMAT_CUVALPTR(vec,ctx->hput_pos[from_PE],0);
+                }
 #else 
-            GHOST_INSTR_START("hostAlloc")
-            GHOST_CALL_GOTO(ghost_cu_malloc_pinned((void **)&comm->work,(size_t)vec->traits.ncols*comm->acc_dues*vec->elSize),err,ret);
-            GHOST_INSTR_STOP("hostAlloc")
+                GHOST_INSTR_START("hostAlloc")
+                GHOST_CALL_GOTO(ghost_cu_malloc_pinned((void **)&comm->work,(size_t)vec->traits.ncols*comm->acc_dues*vec->elSize),err,ret);
+                GHOST_INSTR_STOP("hostAlloc")
+                GHOST_CALL_GOTO(ghost_malloc((void **)&comm->tmprecv_mem,vec->traits.ncols*vec->elSize*comm->acc_wishes),err,ret);
+
+                for (from_PE=0; from_PE<nprocs; from_PE++){
+                    comm->tmprecv[from_PE] = &comm->tmprecv_mem[comm->wishptr[from_PE]*vec->traits.ncols*vec->elSize];
+                }
+#endif
+                GHOST_INSTR_START("deviceAlloc")
+                GHOST_CALL_GOTO(ghost_cu_malloc(&comm->cu_work,vec->traits.ncols*comm->acc_dues*vec->elSize),err,ret);
+                GHOST_INSTR_STOP("deviceAlloc")
+            } else {
+                for (from_PE=0; from_PE<nprocs; from_PE++) {
+                    comm->tmprecv[from_PE] = DENSEMAT_VALPTR(vec,ctx->hput_pos[from_PE],0);
+                }
+                GHOST_CALL_GOTO(ghost_malloc((void **)&comm->work,(size_t)vec->traits.ncols*comm->acc_dues*vec->elSize),err,ret);
+            }
+        } else {
             GHOST_CALL_GOTO(ghost_malloc((void **)&comm->tmprecv_mem,vec->traits.ncols*vec->elSize*comm->acc_wishes),err,ret);
 
             for (from_PE=0; from_PE<nprocs; from_PE++){
                 comm->tmprecv[from_PE] = &comm->tmprecv_mem[comm->wishptr[from_PE]*vec->traits.ncols*vec->elSize];
             }
-#endif
-            GHOST_INSTR_START("deviceAlloc")
-            GHOST_CALL_GOTO(ghost_cu_malloc(&comm->cu_work,vec->traits.ncols*comm->acc_dues*vec->elSize),err,ret);
-            GHOST_INSTR_STOP("deviceAlloc")
-        } else {
-            for (from_PE=0; from_PE<nprocs; from_PE++) {
-                comm->tmprecv[from_PE] = DENSEMAT_VALPTR(vec,ctx->hput_pos[from_PE],0);
+            if (vec->traits.location & GHOST_LOCATION_DEVICE) {
+                GHOST_INSTR_START("hostAlloc")
+                GHOST_CALL_GOTO(ghost_cu_malloc_pinned((void **)&comm->work,(size_t)vec->traits.ncols*comm->acc_dues*vec->elSize),err,ret);
+                GHOST_INSTR_STOP("hostAlloc")
+                GHOST_INSTR_START("deviceAlloc")
+                GHOST_CALL_GOTO(ghost_cu_malloc(&comm->cu_work,vec->traits.ncols*comm->acc_dues*vec->elSize),err,ret);
+                GHOST_INSTR_STOP("deviceAlloc")
+            } else {
+                GHOST_CALL_GOTO(ghost_malloc((void **)&comm->work,(size_t)vec->traits.ncols*comm->acc_dues*vec->elSize),err,ret);
             }
-            GHOST_CALL_GOTO(ghost_malloc((void **)&comm->work,(size_t)vec->traits.ncols*comm->acc_dues*vec->elSize),err,ret);
-        }
-    } else {
-        GHOST_CALL_GOTO(ghost_malloc((void **)&comm->tmprecv_mem,vec->traits.ncols*vec->elSize*comm->acc_wishes),err,ret);
-
-        for (from_PE=0; from_PE<nprocs; from_PE++){
-            comm->tmprecv[from_PE] = &comm->tmprecv_mem[comm->wishptr[from_PE]*vec->traits.ncols*vec->elSize];
-        }
-        if (vec->traits.location & GHOST_LOCATION_DEVICE) {
-            GHOST_INSTR_START("hostAlloc")
-            GHOST_CALL_GOTO(ghost_cu_malloc_pinned((void **)&comm->work,(size_t)vec->traits.ncols*comm->acc_dues*vec->elSize),err,ret);
-            GHOST_INSTR_STOP("hostAlloc")
-            GHOST_INSTR_START("deviceAlloc")
-            GHOST_CALL_GOTO(ghost_cu_malloc(&comm->cu_work,vec->traits.ncols*comm->acc_dues*vec->elSize),err,ret);
-            GHOST_INSTR_STOP("deviceAlloc")
-        } else {
-            GHOST_CALL_GOTO(ghost_malloc((void **)&comm->work,(size_t)vec->traits.ncols*comm->acc_dues*vec->elSize),err,ret);
         }
     }
        

@@ -9,6 +9,7 @@
 #include "ghost/timing.h"
 #include "ghost/sell_spmv_cu_fallback.h"
 #include "ghost/cpp11_fixes.h"
+#include "ghost/autogen.h"
 
 #include "ghost/sell_spmv_mic_gen.h"
 #include "ghost/sell_spmv_avx2_gen.h"
@@ -589,6 +590,13 @@ extern "C" ghost_error ghost_sell_spmv_selector(ghost_densemat *lhs,
     }
 
 end_of_loop:
+    
+    if (pos_blocksz || pos_chunkheight) {
+        ghost_autogen_set_missing();
+    }
+    std::ostringstream oss;
+    oss << try_chunkheight[0] << "," << try_blocksz[0];
+    ghost_autogen_string_add("SPMMV",oss.str().c_str());
 
 
     if (kernel) {

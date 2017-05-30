@@ -5,6 +5,22 @@
 #include "ghost/timing.h"
 #include "ghost/func_util.h"
 
+static double start_time;
+
+ghost_error ghost_timing_start()
+{
+    return ghost_timing_wc(&start_time);
+}
+
+ghost_error ghost_timing_elapsed(double *time)
+{
+    double now;
+    GHOST_CALL_RETURN(ghost_timing_wc(&now));
+
+    *time = now-start_time;
+
+    return GHOST_SUCCESS;
+}
 
 ghost_error ghost_timing_wc(double *time)
 {

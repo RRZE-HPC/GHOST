@@ -61,7 +61,8 @@ const ghost_spmv_opts GHOST_SPMV_OPTS_INITIALIZER = {
     .delta = NULL,
     .eta = NULL,
     .dot = NULL,
-    .z = NULL
+    .z = NULL,
+    .blocksz = GHOST_LIDX_MAX
 };
 
 ghost_error ghost_sparsemat_create(ghost_sparsemat ** mat, ghost_context *context, ghost_sparsemat_traits *traits, int nTraits)
@@ -1535,7 +1536,7 @@ static ghost_error ghost_sparsemat_init_plain_glb(ghost_sparsemat *mat, ghost_sp
     }
 
     GHOST_INSTR_START("cols_and_vals");
-    //#pragma omp parallel private(i,colidx,row,tmpval,tmpcol)
+    #pragma omp parallel private(i,colidx,row,tmpval,tmpcol)
     {
         ghost_lidx rowlen;
         int funcret = 0;
@@ -1549,7 +1550,7 @@ static ghost_error ghost_sparsemat_init_plain_glb(ghost_sparsemat *mat, ghost_sp
             #pragma omp single
             INFO_LOG("Fast matrix construction for CRS source and no permutation");
 
-            //#pragma omp for schedule(runtime)
+            #pragma omp for schedule(runtime)
             for( chunk = 0; chunk < nChunks; chunk++ ) {
                 //memset(tmpval,0,mat->elSize*src->maxrowlen*C);
 
@@ -1589,14 +1590,14 @@ static ghost_error ghost_sparsemat_init_plain_glb(ghost_sparsemat *mat, ghost_sp
             }
         } else {
             ghost_gidx callrow;
-            //#pragma omp for schedule(runtime)
+            #pragma omp for schedule(runtime)
             for (chunk = 0; chunk < nChunks; chunk++) {
                 for (i=0; i<C*clp[chunk]; i++) {
                     (*col)[(*chunkptr)[chunk]] = mat->context->row_map->offs;
                 }
                 memset(&(*val)[(*chunkptr)[chunk]*mat->elSize],0,C*clp[chunk]*mat->elSize);
             }
-            //#pragma omp for schedule(runtime)
+            #pragma omp for schedule(runtime)
             for (chunk = 0; chunk < nChunks; chunk++) {
                 for (i=0; i<C*mat->maxRowLen; i++) {
                     tmpcol[i] = mat->context->row_map->offs;

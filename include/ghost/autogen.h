@@ -15,6 +15,10 @@ extern "C" {
 ghost_error ghost_autogen_kacz_nvecs(int **nvecs, int *n, int chunkheight, int nshifts);
 ghost_error ghost_autogen_spmmv_nvecs(int **nvecs, int *n, int chunkheight);
 int ghost_autogen_spmmv_next_nvecs(int desired_nvecs, int chunkheight);
+ghost_error ghost_autogen_string_add(const char * func, const char * par);
+const char *ghost_autogen_string();
+void ghost_autogen_set_missing();
+int ghost_autogen_missing();
 
 #ifdef __cplusplus
 }
