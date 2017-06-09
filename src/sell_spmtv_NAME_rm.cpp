@@ -263,6 +263,11 @@ void ghost_spmtv_NAME(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x
     delete spmtvArg;
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
 #else
+    UNUSED(b);
+    UNUSED(mat);
+    UNUSED(x);
+    UNUSED(iterations);
+ 
     ERROR_LOG("Enable RACE library");
 #endif
 }

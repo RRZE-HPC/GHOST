@@ -128,7 +128,11 @@ void ghost_symm_spmv_NAME(ghost_densemat *b, ghost_sparsemat *mat, ghost_densema
     delete symm_spmvArg;
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
 #else
-    ERROR_PRINT("Enable RACE library")
+    UNUSED(b);
+    UNUSED(mat);
+    UNUSED(x);
+    UNUSED(iterations);
+    ERROR_LOG("Enable RACE library");
 #endif
 }
 
