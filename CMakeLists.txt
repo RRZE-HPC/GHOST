@@ -160,7 +160,8 @@ set (SOURCES
     src/sell_spmtv_bmc_rm.cpp
     src/sparsemat_perm_name.cpp
     src/sell_spmtv_NAME_rm.cpp
-    #src/sell_symm_spmv_NAME_rm.cpp
+    src/sell_spmv_NAME_rm.cpp
+    src/sell_symm_spmv_NAME_rm.cpp
     )
 
 set (HEADERS
@@ -216,8 +217,7 @@ set (HEADERS
     include/ghost/sell_kacz_mc.h
     include/ghost/sell_kacz_fallback.h
     include/ghost/compatibility_check.h
-    include/ghost/sell_spmtv_bmc_rm.h
-    )
+   )
 
 # only do this in the initial run: either if GHOST_USE_CUDA is undefined or it is enabled by the user but no libraries are found yet
 if (NOT DEFINED GHOST_USE_CUDA OR (GHOST_USE_CUDA AND ("${CUDA_LIBRARIES}" STREQUAL "")))

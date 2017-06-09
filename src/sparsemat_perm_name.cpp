@@ -1,6 +1,7 @@
 #include "ghost/sparsemat.h"
 #include "ghost/omp.h"
 #include "ghost/locality.h"
+#include "ghost/util.h"
 #ifdef GHOST_HAVE_NAME
 #include "NAME/interface.h"
 #endif
