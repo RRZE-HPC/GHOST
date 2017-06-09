@@ -45,17 +45,6 @@
 
 #if (NVECS==1 && CHUNKHEIGHT==1)
 
-//#define LOOP(start,end,MT,VT) \
-/*_Pragma("omp parallel for schedule(static)")*/ \
-for (ghost_lidx row=start; row<end; ++row){ \
-    bval[row] = 0; \
-    ghost_lidx idx = mat->chunkStart[row]; \
-    for (ghost_lidx j=0; j<mat->rowLen[row]; j++) { \
-        bval[row] = bval[row] + (MT)mval[idx+j] * xval[mat->col[idx+j]];\
-    } \
-} \
-
-
 //this is necessary since #pragma omp for doesn't understand !=
 #define LOOP(start,end,MT,VT) \
 for (ghost_lidx row=start; row<end; ++row){ \
