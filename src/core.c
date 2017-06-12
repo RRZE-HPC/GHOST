@@ -152,9 +152,6 @@ ghost_error ghost_init(int argc, char **argv)
     ZOLTAN_CALL_RETURN(Zoltan_Initialize(argc, argv, &ver));
 #endif
 
-    ghost_instr_create();
-    ghost_instr_prefix_set("");
-    ghost_instr_suffix_set("");
     ghost_nodecomm_setup(MPI_COMM_WORLD);
     ghost_mpi_datatypes_create();
     ghost_mpi_operations_create();
@@ -165,6 +162,10 @@ ghost_error ghost_init(int argc, char **argv)
     UNUSED(argv);
 
 #endif // ifdef GHOST_HAVE_MPI
+    
+    ghost_instr_create();
+    ghost_instr_prefix_set("");
+    ghost_instr_suffix_set("");
     
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_SETUP);
 

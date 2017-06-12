@@ -51,6 +51,8 @@ ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, gho
                 INFO_LOG("The bandwidths of all processes differ by more than 10%%, automatically setting weight to %.2f according to UPDATE bandwidth!",weight);
             }
         }
+#else
+        weight = 1.0;
 #endif
     }
     if (!gnrows) {
