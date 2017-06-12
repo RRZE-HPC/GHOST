@@ -29,6 +29,7 @@ ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, gho
     GHOST_CALL_GOTO(ghost_rank(&me, comm),err,ret);
     
     if (fabs(weight) < DBL_MIN) {
+#ifdef GHOST_USE_MPI
         double max_bw=0.0;
         double avgweight;
         int withinavg = 0;
@@ -41,6 +42,7 @@ ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, gho
             withinavg = 1;
         }
         MPI_CALL_GOTO(MPI_Allreduce(&withinavg,&totalwithinavg,1,MPI_INT,MPI_SUM,comm),err,ret);
+        totalwithinavg
         if (nranks > 1) {
             if (totalwithinavg == nranks) {
                 INFO_LOG("The bandwidths of all processes differ by less than 10%%, the weights will be fixed to 1.0 to avoid artifacts.");
@@ -49,6 +51,7 @@ ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, gho
                 INFO_LOG("The bandwidths of all processes differ by more than 10%%, automatically setting weight to %.2f according to UPDATE bandwidth!",weight);
             }
         }
+#endif
     }
     if (!gnrows) {
         ERROR_LOG("The global number of rows (and columns for non-square matrices) must not be zero!");
