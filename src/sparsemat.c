@@ -1289,7 +1289,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
     GHOST_INSTR_STOP("chunkptr_init");
 
 
-    #ifdef GHOST_HAVE_MPI
+#ifdef GHOST_HAVE_MPI
     ghost_gidx fent = 0;
     for (i=0; i<nprocs; i++) {
         if (i>0 && me==i) {
@@ -1304,7 +1304,9 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
     //MPI_CALL_GOTO(MPI_Allgather(&mat->nEnts,1,ghost_mpi_dt_lidx,mat->context->lnEnts,1,ghost_mpi_dt_lidx,mat->context->mpicomm),err,ret);
     //MPI_CALL_GOTO(MPI_Allgather(&fent,1,ghost_mpi_dt_gidx,mat->context->lfEnt,1,ghost_mpi_dt_gidx,mat->context->mpicomm),err,ret);
     MPI_CALL_GOTO(MPI_Allreduce(&gnnz,&(mat->context->gnnz),1,ghost_mpi_dt_gidx,MPI_SUM,mat->context->mpicomm),err,ret);
-    #endif
+#else
+    mat->context->gnnz = gnnz;
+#endif
 
     /*
     if (src->maxrowlen != mat->maxRowLen) {
