@@ -1066,6 +1066,9 @@ extern "C" {
     ghost_error checker(ghost_sparsemat *mat);
     ghost_error split_transition(ghost_sparsemat *mat);
 
+    void ghost_kacz_NAME(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);
+
+
     /**
      * @brief Initialize CARP
      *

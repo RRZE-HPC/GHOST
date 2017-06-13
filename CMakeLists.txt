@@ -163,6 +163,7 @@ set (SOURCES
     src/sell_spmtv_MC_rm.cpp
     src/sell_spmv_NAME_rm.cpp
     src/sell_symm_spmv_NAME_rm.cpp
+    src/sell_kacz_NAME_rm.cpp
    )
 
 set (HEADERS
