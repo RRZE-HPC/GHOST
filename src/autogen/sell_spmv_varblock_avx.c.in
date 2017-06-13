@@ -374,7 +374,6 @@ ghost_error ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_x(ghost_densemat *res, ghos
     ghost_lidx ncolspadded = PAD(invec->traits.ncols,4);
     ghost_lidx donecols = 0;
 
-    const bool resultisview = res->traits.flags & GHOST_DENSEMAT_VIEW;
     unsigned clsize;
     ghost_machine_cacheline_size(&clsize);
     int padding = (int)clsize/sizeof(double);
@@ -495,7 +494,7 @@ ghost_error ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_x(ghost_densemat *res, ghos
                 if (traits.flags & GHOST_SPMV_SCALE) {
                     tmp[donecols/4] = _mm256_mul_pd(scale,tmp[donecols/4]);
                 }
-                if (!resultisview || (resultisview && donecols<ncolspadded-4)) {
+                if (donecols<ncolspadded-4) {
                     if (traits.flags & GHOST_SPMV_AXPY) {
                         _mm256_store_pd((double *)(lval+donecols),_mm256_add_pd(tmp[donecols/4],_mm256_load_pd((double *)(lval+donecols))));
                     } else if (traits.flags & GHOST_SPMV_AXPBY) {
@@ -508,8 +507,7 @@ ghost_error ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_x(ghost_densemat *res, ghos
                     if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
                         _mm256_store_pd((double *)(zval+donecols),_mm256_add_pd(_mm256_mul_pd(_mm256_load_pd((double *)(zval+donecols)),delta),_mm256_mul_pd(_mm256_load_pd((double *)(lval+donecols)),eta)));
                     }
-                }
-                else {
+                } else {
                     if (traits.flags & GHOST_SPMV_AXPY) {
                         _mm256_maskstore_pd((double *)(lval+donecols),mask,_mm256_add_pd(tmp[donecols/4],_mm256_load_pd((double *)(lval+donecols))));
                     } else if (traits.flags & GHOST_SPMV_AXPBY) {
