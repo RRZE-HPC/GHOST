@@ -88,32 +88,32 @@ extern "C" ghost_error ghost_sparsemat_perm_color(ghost_context *ctx, ghost_spar
     
     
     if (!ctx->row_map->loc_perm) {
-        GHOST_CALL_GOTO(ghost_malloc((void **)ctx->row_map->loc_perm,sizeof(ghost_map)),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&(ctx->row_map->loc_perm),sizeof(ghost_map)),err,ret);
         //ctx->row_map->loc_perm->method = GHOST_PERMUTATION_UNSYMMETRIC; //you can also make it symmetric
-        GHOST_CALL_GOTO(ghost_malloc((void **)ctx->row_map->loc_perm,sizeof(ghost_gidx)*ctx->row_map->dim),err,ret);
-        GHOST_CALL_GOTO(ghost_malloc((void **)ctx->row_map->loc_perm_inv,sizeof(ghost_gidx)*ctx->row_map->dim),err,ret);   
-        GHOST_CALL_GOTO(ghost_malloc((void **)ctx->col_map->loc_perm,sizeof(ghost_gidx)*ncols_halo_padded),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&(ctx->row_map->loc_perm),sizeof(ghost_gidx)*ctx->row_map->dim),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&(ctx->row_map->loc_perm_inv),sizeof(ghost_gidx)*ctx->row_map->dim),err,ret);   
+   /*     GHOST_CALL_GOTO(ghost_malloc((void **)ctx->col_map->loc_perm,sizeof(ghost_gidx)*ncols_halo_padded),err,ret);
         GHOST_CALL_GOTO(ghost_malloc((void **)ctx->col_map->loc_perm_inv,sizeof(ghost_gidx)*ncols_halo_padded),err,ret);
         
         for(int i=0; i<ncols_halo_padded; ++i) {
             ctx->col_map->loc_perm[i] = i;
             ctx->col_map->loc_perm_inv[i] = i;
         }
-        
+  */      
         #ifdef GHOST_HAVE_CUDA
-        GHOST_CALL_GOTO(ghost_cu_malloc((void **)ctx->row_map->loc_perm->cu_perm,sizeof(ghost_gidx)*ctx->row_map->dim),err,ret);
+        GHOST_CALL_GOTO(ghost_cu_malloc((void **)&(ctx->row_map->loc_perm->cu_perm),sizeof(ghost_gidx)*ctx->row_map->dim),err,ret);
         #endif
         
     } else if(ctx->row_map->loc_perm == ctx->col_map->loc_perm) { // symmetrix permutation
         oldperm = true; //ctx->row_map->loc_perm;
 //        ctx->row_map->loc_perm->method = GHOST_PERMUTATION_UNSYMMETRIC;//change to unsymmetric
-        GHOST_CALL_GOTO(ghost_malloc((void **)ctx->col_map->loc_perm,sizeof(ghost_gidx)*ncols_halo_padded),err,ret);
+    /*    GHOST_CALL_GOTO(ghost_malloc((void **)ctx->col_map->loc_perm,sizeof(ghost_gidx)*ncols_halo_padded),err,ret);
         GHOST_CALL_GOTO(ghost_malloc((void **)ctx->col_map->loc_perm_inv,sizeof(ghost_gidx)*ncols_halo_padded),err,ret);
         
         for(int i=0; i<ncols_halo_padded; ++i) {
             ctx->col_map->loc_perm[i] = ctx->row_map->loc_perm[i];
             ctx->col_map->loc_perm_inv[i] = ctx->row_map->loc_perm_inv[i];
-        }        
+        }        */
     } else {
         oldperm = true; //ctx->row_map->loc_perm;
     }

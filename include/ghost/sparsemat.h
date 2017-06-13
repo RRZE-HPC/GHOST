@@ -888,6 +888,9 @@ extern "C" {
 
     void ghost_spmtv_NAME(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);
 
+    void ghost_spmtv_MC(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);
+
+
     void ghost_spmv_NAME(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x);
 
     void ghost_symm_spmv_NAME(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);

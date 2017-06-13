@@ -160,9 +160,10 @@ set (SOURCES
     src/sell_spmtv_bmc_rm.cpp
     src/sparsemat_perm_name.cpp
     src/sell_spmtv_NAME_rm.cpp
+    src/sell_spmtv_MC_rm.cpp
     src/sell_spmv_NAME_rm.cpp
     src/sell_symm_spmv_NAME_rm.cpp
-    )
+   )
 
 set (HEADERS
     include/ghost/autogen.h
