@@ -231,29 +231,112 @@ static ghost_error ghost_sellspmv_cu_tmpl_fallback(ghost_densemat *lhs, ghost_sp
 
 
     GHOST_INSTR_START("spmv_cuda")
-        if (rhs->traits.storage == GHOST_DENSEMAT_COLMAJOR || (rhs->stride == 1)) {
-            block.x = PAD(CEILDIV(SELL_CUDA_THREADSPERBLOCK,MIN(MAX_COLS_PER_BLOCK_COLMAJOR,rhs->traits.ncols)),32);
-            block.y = MIN(MAX_COLS_PER_BLOCK_COLMAJOR,rhs->traits.ncols);
-            while(block.x*block.y > SELL_CUDA_THREADSPERBLOCK && block.x > 32) {
-                block.x -= 32;
-            }
+    if ((rhs->traits.storage == GHOST_DENSEMAT_COLMAJOR && lhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) || (rhs->stride == 1 && lhs->stride == 1)) {
+        block.x = PAD(CEILDIV(SELL_CUDA_THREADSPERBLOCK,MIN(MAX_COLS_PER_BLOCK_COLMAJOR,rhs->traits.ncols)),32);
+        block.y = MIN(MAX_COLS_PER_BLOCK_COLMAJOR,rhs->traits.ncols);
+        while(block.x*block.y > SELL_CUDA_THREADSPERBLOCK && block.x > 32) {
+            block.x -= 32;
+        }
 
-            grid.x = CEILDIV(SPM_NROWSPAD(mat),block.x);
-            grid.y = CEILDIV(rhs->traits.ncols,MAX_COLS_PER_BLOCK_COLMAJOR);
+        grid.x = CEILDIV(SPM_NROWSPAD(mat),block.x);
+        grid.y = CEILDIV(rhs->traits.ncols,MAX_COLS_PER_BLOCK_COLMAJOR);
+        if (opts.flags & GHOST_SPMV_DOT) {
+            GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
+        }
+        size_t smem = 0;
+        if (opts.flags & GHOST_SPMV_DOT) {
+            smem = sizeof(v_dt_device)*32*block.y;
+        }
+        if (prop.sharedMemPerBlock < smem) {
+            WARNING_LOG("Not enough shared memory available! CUDA kernel will not execute!");
+        }
+        DEBUG_LOG(1,"grid %dx%d block %dx%d shmem %zu",grid.x,grid.y,block.x,block.y,smem);
+        SELL_kernel_cm_fallback_tmpl<m_dt,v_dt_device,v_dt_base><<<grid,block,smem>>>(
+                (v_dt_device *)lhsval,(int)(lhs->stride),(v_dt_device *)rhsval,
+                (int)rhs->stride,opts.flags,SPM_NROWS(mat),mat->cu_rowLen,
+                mat->cu_col,(m_dt *)mat->cu_val,
+                mat->cu_chunkStart,(v_dt_device *)cu_shift,(v_dt_device)scale,
+                (v_dt_device)beta,(v_dt_device *)cu_localdot,mat->traits.C,
+                rhs->traits.ncols,(v_dt_device *)zval,zstride,sdelta,seta,opts.flags&(GHOST_SPMV_AXPBY|GHOST_SPMV_AXPY),
+                opts.flags&GHOST_SPMV_SCALE,
+                opts.flags&(GHOST_SPMV_VSHIFT|GHOST_SPMV_SHIFT),
+                opts.flags&GHOST_SPMV_DOT,
+                opts.flags&GHOST_SPMV_CHAIN_AXPBY);
+    } else {
+        if (rhs->traits.ncols > 8) { // 16 rows per block, 9...16 columns per block, 144...256 threads per block
+            const int nrowsinblock = 16;
+            grid.x = CEILDIV(SPM_NROWS(mat),nrowsinblock);
+            grid.y = CEILDIV(rhs->traits.ncols,nrowsinblock);
+            block.x = nrowsinblock*CEILDIV(rhs->traits.ncols,grid.y);
             if (opts.flags & GHOST_SPMV_DOT) {
                 GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
             }
-            size_t smem = 0;
-            if (opts.flags & GHOST_SPMV_DOT) {
-                smem = sizeof(v_dt_device)*32*block.y;
-            }
-            if (prop.sharedMemPerBlock < smem) {
-                WARNING_LOG("Not enough shared memory available! CUDA kernel will not execute!");
-            }
-            DEBUG_LOG(1,"grid %dx%d block %dx%d shmem %zu",grid.x,grid.y,block.x,block.y,smem);
-            SELL_kernel_cm_fallback_tmpl<m_dt,v_dt_device,v_dt_base><<<grid,block,smem>>>(
+            DEBUG_LOG(1,"grid %dx%d block %dx%d nrowsinblock %d",grid.x,grid.y,block.x,block.y,nrowsinblock);
+            SELL_kernel_rm_fallback_tmpl<m_dt,v_dt_device,v_dt_base><<<grid,block,0>>>(
                     (v_dt_device *)lhsval,(int)(lhs->stride),(v_dt_device *)rhsval,
-                    (int)rhs->stride,opts.flags,SPM_NROWS(mat),mat->cu_rowLen,
+                    (int)rhs->stride,opts.flags,SPM_NROWS(mat),nrowsinblock,mat->cu_rowLen,
+                    mat->cu_col,(m_dt *)mat->cu_val,
+                    mat->cu_chunkStart,(v_dt_device *)cu_shift,(v_dt_device)scale,
+                    (v_dt_device)beta,(v_dt_device *)cu_localdot,mat->traits.C,
+                    rhs->traits.ncols,(v_dt_device *)zval,zstride,sdelta,seta,opts.flags&(GHOST_SPMV_AXPBY|GHOST_SPMV_AXPY),
+                    opts.flags&GHOST_SPMV_SCALE,
+                    opts.flags&(GHOST_SPMV_VSHIFT|GHOST_SPMV_SHIFT),
+                    opts.flags&GHOST_SPMV_DOT,
+                    opts.flags&GHOST_SPMV_CHAIN_AXPBY);
+        } else if (rhs->traits.ncols > 4) { // 32 rows per block, 5...8 columns per block, 160...256 threads per block
+            const int nrowsinblock = 32;
+            grid.x = CEILDIV(SPM_NROWS(mat),nrowsinblock);
+            grid.y = 1;
+            block.x = nrowsinblock*rhs->traits.ncols;
+            if (opts.flags & GHOST_SPMV_DOT) {
+                GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
+            }
+            DEBUG_LOG(1,"grid %dx%d block %dx%d nrowsinblock %d",grid.x,grid.y,block.x,block.y,nrowsinblock);
+            SELL_kernel_rm_fallback_tmpl<m_dt,v_dt_device,v_dt_base><<<grid,block,0>>>(
+                    (v_dt_device *)lhsval,(int)(lhs->stride),(v_dt_device *)rhsval,
+                    (int)rhs->stride,opts.flags,SPM_NROWS(mat),nrowsinblock,mat->cu_rowLen,
+                    mat->cu_col,(m_dt *)mat->cu_val,
+                    mat->cu_chunkStart,(v_dt_device *)cu_shift,(v_dt_device)scale,
+                    (v_dt_device)beta,(v_dt_device *)cu_localdot,mat->traits.C,
+                    rhs->traits.ncols,(v_dt_device *)zval,zstride,sdelta,seta,opts.flags&(GHOST_SPMV_AXPBY|GHOST_SPMV_AXPY),
+                    opts.flags&GHOST_SPMV_SCALE,
+                    opts.flags&(GHOST_SPMV_VSHIFT|GHOST_SPMV_SHIFT),
+                    opts.flags&GHOST_SPMV_DOT,
+                    opts.flags&GHOST_SPMV_CHAIN_AXPBY);
+        } else if (rhs->traits.ncols > 2) { // 64 rows per block, 3...4 columns per block, 192...256 threads per block
+            const int nrowsinblock = 64;
+            grid.x = CEILDIV(SPM_NROWS(mat),nrowsinblock);
+            grid.y = 1;
+            block.x = nrowsinblock*rhs->traits.ncols;
+            if (opts.flags & GHOST_SPMV_DOT) {
+                GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
+            }
+            int smem = (block.x/32)*sizeof(v_dt_device);
+            DEBUG_LOG(1,"grid %dx%d block %dx%d nrowsinblock %d smem %d",grid.x,grid.y,block.x,block.y,nrowsinblock,smem);
+            SELL_kernel_rm_fallback_tmpl<m_dt,v_dt_device,v_dt_base><<<grid,block,smem>>>(
+                    (v_dt_device *)lhsval,(int)(lhs->stride),(v_dt_device *)rhsval,
+                    (int)rhs->stride,opts.flags,SPM_NROWS(mat),nrowsinblock,mat->cu_rowLen,
+                    mat->cu_col,(m_dt *)mat->cu_val,
+                    mat->cu_chunkStart,(v_dt_device *)cu_shift,(v_dt_device)scale,
+                    (v_dt_device)beta,(v_dt_device *)cu_localdot,mat->traits.C,
+                    rhs->traits.ncols,(v_dt_device *)zval,zstride,sdelta,seta,opts.flags&(GHOST_SPMV_AXPBY|GHOST_SPMV_AXPY),
+                    opts.flags&GHOST_SPMV_SCALE,
+                    opts.flags&(GHOST_SPMV_VSHIFT|GHOST_SPMV_SHIFT),
+                    opts.flags&GHOST_SPMV_DOT,
+                    opts.flags&GHOST_SPMV_CHAIN_AXPBY);
+        } else if (rhs->traits.ncols > 1) { // 64 rows per block, 3...4 columns per block, 192...256 threads per block
+            const int nrowsinblock = 128;
+            grid.x = CEILDIV(SPM_NROWS(mat),nrowsinblock);
+            grid.y = 1;
+            block.x = nrowsinblock*rhs->traits.ncols;
+            if (opts.flags & GHOST_SPMV_DOT) {
+                GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
+            }
+            int smem = (block.x/32)*sizeof(v_dt_device);
+            DEBUG_LOG(1,"grid %dx%d block %dx%d nrowsinblock %d smem %d",grid.x,grid.y,block.x,block.y,nrowsinblock,smem);
+            SELL_kernel_rm_fallback_tmpl<m_dt,v_dt_device,v_dt_base><<<grid,block,smem>>>(
+                    (v_dt_device *)lhsval,(int)(lhs->stride),(v_dt_device *)rhsval,
+                    (int)rhs->stride,opts.flags,SPM_NROWS(mat),nrowsinblock,mat->cu_rowLen,
                     mat->cu_col,(m_dt *)mat->cu_val,
                     mat->cu_chunkStart,(v_dt_device *)cu_shift,(v_dt_device)scale,
                     (v_dt_device)beta,(v_dt_device *)cu_localdot,mat->traits.C,
@@ -263,111 +346,28 @@ static ghost_error ghost_sellspmv_cu_tmpl_fallback(ghost_densemat *lhs, ghost_sp
                     opts.flags&GHOST_SPMV_DOT,
                     opts.flags&GHOST_SPMV_CHAIN_AXPBY);
         } else {
-            if (rhs->traits.ncols > 8) { // 16 rows per block, 9...16 columns per block, 144...256 threads per block
-                const int nrowsinblock = 16;
-                grid.x = CEILDIV(SPM_NROWS(mat),nrowsinblock);
-                grid.y = CEILDIV(rhs->traits.ncols,nrowsinblock);
-                block.x = nrowsinblock*CEILDIV(rhs->traits.ncols,grid.y);
-                if (opts.flags & GHOST_SPMV_DOT) {
-                    GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
-                }
-                DEBUG_LOG(1,"grid %dx%d block %dx%d nrowsinblock %d",grid.x,grid.y,block.x,block.y,nrowsinblock);
-                SELL_kernel_rm_fallback_tmpl<m_dt,v_dt_device,v_dt_base><<<grid,block,0>>>(
-                        (v_dt_device *)lhsval,(int)(lhs->stride),(v_dt_device *)rhsval,
-                        (int)rhs->stride,opts.flags,SPM_NROWS(mat),nrowsinblock,mat->cu_rowLen,
-                        mat->cu_col,(m_dt *)mat->cu_val,
-                        mat->cu_chunkStart,(v_dt_device *)cu_shift,(v_dt_device)scale,
-                        (v_dt_device)beta,(v_dt_device *)cu_localdot,mat->traits.C,
-                        rhs->traits.ncols,(v_dt_device *)zval,zstride,sdelta,seta,opts.flags&(GHOST_SPMV_AXPBY|GHOST_SPMV_AXPY),
-                        opts.flags&GHOST_SPMV_SCALE,
-                        opts.flags&(GHOST_SPMV_VSHIFT|GHOST_SPMV_SHIFT),
-                        opts.flags&GHOST_SPMV_DOT,
-                        opts.flags&GHOST_SPMV_CHAIN_AXPBY);
-            } else if (rhs->traits.ncols > 4) { // 32 rows per block, 5...8 columns per block, 160...256 threads per block
-                const int nrowsinblock = 32;
-                grid.x = CEILDIV(SPM_NROWS(mat),nrowsinblock);
-                grid.y = 1;
-                block.x = nrowsinblock*rhs->traits.ncols;
-                if (opts.flags & GHOST_SPMV_DOT) {
-                    GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
-                }
-                DEBUG_LOG(1,"grid %dx%d block %dx%d nrowsinblock %d",grid.x,grid.y,block.x,block.y,nrowsinblock);
-                SELL_kernel_rm_fallback_tmpl<m_dt,v_dt_device,v_dt_base><<<grid,block,0>>>(
-                        (v_dt_device *)lhsval,(int)(lhs->stride),(v_dt_device *)rhsval,
-                        (int)rhs->stride,opts.flags,SPM_NROWS(mat),nrowsinblock,mat->cu_rowLen,
-                        mat->cu_col,(m_dt *)mat->cu_val,
-                        mat->cu_chunkStart,(v_dt_device *)cu_shift,(v_dt_device)scale,
-                        (v_dt_device)beta,(v_dt_device *)cu_localdot,mat->traits.C,
-                        rhs->traits.ncols,(v_dt_device *)zval,zstride,sdelta,seta,opts.flags&(GHOST_SPMV_AXPBY|GHOST_SPMV_AXPY),
-                        opts.flags&GHOST_SPMV_SCALE,
-                        opts.flags&(GHOST_SPMV_VSHIFT|GHOST_SPMV_SHIFT),
-                        opts.flags&GHOST_SPMV_DOT,
-                        opts.flags&GHOST_SPMV_CHAIN_AXPBY);
-            } else if (rhs->traits.ncols > 2) { // 64 rows per block, 3...4 columns per block, 192...256 threads per block
-                const int nrowsinblock = 64;
-                grid.x = CEILDIV(SPM_NROWS(mat),nrowsinblock);
-                grid.y = 1;
-                block.x = nrowsinblock*rhs->traits.ncols;
-                if (opts.flags & GHOST_SPMV_DOT) {
-                    GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
-                }
-                int smem = (block.x/32)*sizeof(v_dt_device);
-                DEBUG_LOG(1,"grid %dx%d block %dx%d nrowsinblock %d smem %d",grid.x,grid.y,block.x,block.y,nrowsinblock,smem);
-                SELL_kernel_rm_fallback_tmpl<m_dt,v_dt_device,v_dt_base><<<grid,block,smem>>>(
-                        (v_dt_device *)lhsval,(int)(lhs->stride),(v_dt_device *)rhsval,
-                        (int)rhs->stride,opts.flags,SPM_NROWS(mat),nrowsinblock,mat->cu_rowLen,
-                        mat->cu_col,(m_dt *)mat->cu_val,
-                        mat->cu_chunkStart,(v_dt_device *)cu_shift,(v_dt_device)scale,
-                        (v_dt_device)beta,(v_dt_device *)cu_localdot,mat->traits.C,
-                        rhs->traits.ncols,(v_dt_device *)zval,zstride,sdelta,seta,opts.flags&(GHOST_SPMV_AXPBY|GHOST_SPMV_AXPY),
-                        opts.flags&GHOST_SPMV_SCALE,
-                        opts.flags&(GHOST_SPMV_VSHIFT|GHOST_SPMV_SHIFT),
-                        opts.flags&GHOST_SPMV_DOT,
-                        opts.flags&GHOST_SPMV_CHAIN_AXPBY);
-            } else if (rhs->traits.ncols > 1) { // 64 rows per block, 3...4 columns per block, 192...256 threads per block
-                const int nrowsinblock = 128;
-                grid.x = CEILDIV(SPM_NROWS(mat),nrowsinblock);
-                grid.y = 1;
-                block.x = nrowsinblock*rhs->traits.ncols;
-                if (opts.flags & GHOST_SPMV_DOT) {
-                    GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
-                }
-                int smem = (block.x/32)*sizeof(v_dt_device);
-                DEBUG_LOG(1,"grid %dx%d block %dx%d nrowsinblock %d smem %d",grid.x,grid.y,block.x,block.y,nrowsinblock,smem);
-                SELL_kernel_rm_fallback_tmpl<m_dt,v_dt_device,v_dt_base><<<grid,block,smem>>>(
-                        (v_dt_device *)lhsval,(int)(lhs->stride),(v_dt_device *)rhsval,
-                        (int)rhs->stride,opts.flags,SPM_NROWS(mat),nrowsinblock,mat->cu_rowLen,
-                        mat->cu_col,(m_dt *)mat->cu_val,
-                        mat->cu_chunkStart,(v_dt_device *)cu_shift,(v_dt_device)scale,
-                        (v_dt_device)beta,(v_dt_device *)cu_localdot,mat->traits.C,
-                        rhs->traits.ncols,(v_dt_device *)zval,zstride,sdelta,seta,opts.flags&(GHOST_SPMV_AXPBY|GHOST_SPMV_AXPY),
-                        opts.flags&GHOST_SPMV_SCALE,
-                        opts.flags&(GHOST_SPMV_VSHIFT|GHOST_SPMV_SHIFT),
-                        opts.flags&GHOST_SPMV_DOT,
-                        opts.flags&GHOST_SPMV_CHAIN_AXPBY);
-            } else {
-                const int nrowsinblock = 256;
-                grid.x = CEILDIV(SPM_NROWS(mat),nrowsinblock);
-                grid.y = 1;
-                block.x = nrowsinblock*rhs->traits.ncols;
-                if (opts.flags & GHOST_SPMV_DOT) {
-                    GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
-                }
-                int smem = (block.x/32)*sizeof(v_dt_device);
-                DEBUG_LOG(1,"grid %dx%d block %dx%d nrowsinblock %d smem %d",grid.x,grid.y,block.x,block.y,nrowsinblock,smem);
-                SELL_kernel_rm_fallback_tmpl<m_dt,v_dt_device,v_dt_base><<<grid,block,smem>>>(
-                        (v_dt_device *)lhsval,(int)(lhs->stride),(v_dt_device *)rhsval,
-                        (int)rhs->stride,opts.flags,SPM_NROWS(mat),nrowsinblock,mat->cu_rowLen,
-                        mat->cu_col,(m_dt *)mat->cu_val,
-                        mat->cu_chunkStart,(v_dt_device *)cu_shift,(v_dt_device)scale,
-                        (v_dt_device)beta,(v_dt_device *)cu_localdot,mat->traits.C,
-                        rhs->traits.ncols,(v_dt_device *)zval,zstride,sdelta,seta,opts.flags&(GHOST_SPMV_AXPBY|GHOST_SPMV_AXPY),
-                        opts.flags&GHOST_SPMV_SCALE,
-                        opts.flags&(GHOST_SPMV_VSHIFT|GHOST_SPMV_SHIFT),
-                        opts.flags&GHOST_SPMV_DOT,
-                        opts.flags&GHOST_SPMV_CHAIN_AXPBY);
+            const int nrowsinblock = 256;
+            grid.x = CEILDIV(SPM_NROWS(mat),nrowsinblock);
+            grid.y = 1;
+            block.x = nrowsinblock*rhs->traits.ncols;
+            if (opts.flags & GHOST_SPMV_DOT) {
+                GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
             }
+            int smem = (block.x/32)*sizeof(v_dt_device);
+            DEBUG_LOG(1,"grid %dx%d block %dx%d nrowsinblock %d smem %d",grid.x,grid.y,block.x,block.y,nrowsinblock,smem);
+            SELL_kernel_rm_fallback_tmpl<m_dt,v_dt_device,v_dt_base><<<grid,block,smem>>>(
+                    (v_dt_device *)lhsval,(int)(lhs->stride),(v_dt_device *)rhsval,
+                    (int)rhs->stride,opts.flags,SPM_NROWS(mat),nrowsinblock,mat->cu_rowLen,
+                    mat->cu_col,(m_dt *)mat->cu_val,
+                    mat->cu_chunkStart,(v_dt_device *)cu_shift,(v_dt_device)scale,
+                    (v_dt_device)beta,(v_dt_device *)cu_localdot,mat->traits.C,
+                    rhs->traits.ncols,(v_dt_device *)zval,zstride,sdelta,seta,opts.flags&(GHOST_SPMV_AXPBY|GHOST_SPMV_AXPY),
+                    opts.flags&GHOST_SPMV_SCALE,
+                    opts.flags&(GHOST_SPMV_VSHIFT|GHOST_SPMV_SHIFT),
+                    opts.flags&GHOST_SPMV_DOT,
+                    opts.flags&GHOST_SPMV_CHAIN_AXPBY);
         }
+    }
     CUDA_CALL_RETURN(cudaGetLastError());
 
     if (lhscompact != lhs) {
