@@ -74,7 +74,7 @@ int main(int argc, char **argv)
     printf("%s\n",Astr);
 
     double *diag;
-    GHOST_CALL_RETURN(ghost_malloc((void **)&diag,A->context->row_map->dim*sizeof(double)));
+    GHOST_CALL_RETURN(ghost_malloc((void **)&diag,A->context->row_map->gdim*sizeof(double)));
     if (nrank == 0) {
         memcpy(diag, (double []) {2.0, 4.0, 1.0, 0.0}, 4*sizeof(double));
     } else if (nrank == 1) {
