@@ -4,7 +4,9 @@
 #include <immintrin.h>
 #include "avxMacros.h"
 
-//Alignd load
+#if defined(GHOST_BUILD_MIC)
+
+
 #define MIC_LOAD(src)\
     _mm512_load_pd(src)
 
@@ -24,22 +26,6 @@
 //a*b+c
 #define MIC_FMA(a,b,c)\
    _mm512_fmadd_pd(a, b,c)
-
-/*
-inline bool testEquality(double *a, double* b, int len)
-{
-    bool pass = true;
-    for(int i=0; i<len; ++i)
-    {
-        if(a[i] != b[i])
-        {
-            pass = false;
-            break;
-        }
-    }
-    return pass;
-}
-*/
 
 
 inline bool testMICInstructions()
@@ -79,5 +65,37 @@ inline bool testMICInstructions()
 
     return testPass;
 }
+
+
+#else
+
+
+#define MIC_LOAD(src)\
+
+#define MIC_STORE(dest, val)\
+
+#define MIC_GATHER(src, index)\
+
+#define MIC_SCATTER(dest, index, val)\
+
+#define MIC_FMA(a,b,c)\
+
+#endif
+
+/*
+inline bool testEquality(double *a, double* b, int len)
+{
+    bool pass = true;
+    for(int i=0; i<len; ++i)
+    {
+        if(a[i] != b[i])
+        {
+            pass = false;
+            break;
+        }
+    }
+    return pass;
+}
+*/
 
 #endif

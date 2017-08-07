@@ -1412,6 +1412,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
         mat->traits.flags |= (ghost_sparsemat_flags)GHOST_SPARSEMAT_NOT_SORT_COLS;
     }
 
+
     //convert to SELL-C-sigma
 /*    if(origC != 1)
     {
@@ -1420,6 +1421,14 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
         //recompute local permutation
         GHOST_CALL_GOTO(ghost_sparsemat_init_loc(mat),err,ret);
        // GHOST_CALL_GOTO(ghost_sparsemat_transfer_del(mat, finalMtx),err,ret);
+
+    if (src->func == ghost_sparsemat_rowfunc_bincrs || src->func == ghost_sparsemat_rowfunc_mm || src->func == ghost_sparsemat_rowfunc_mm_transpose) {
+        if (src->func(GHOST_SPARSEMAT_ROWFUNC_INIT,NULL,NULL,NULL,src->arg)) {
+            ERROR_LOG("Error in matrix creation function");
+            ret = GHOST_ERR_UNKNOWN;
+            goto err;
+        }
+
     }
 */
     /*    if(mat->traits.flags & GHOST_SPARSEMAT_NAME) {
@@ -1780,7 +1789,7 @@ static ghost_error ghost_sparsemat_init_plain_glb(ghost_sparsemat *mat, ghost_sp
     GHOST_INSTR_STOP("chunkptr_init");
 
 
-    /*
+   /*
     if (src->maxrowlen != mat->maxRowLen) {
         DEBUG_LOG(1,"The maximum row length was not correct. Setting it from %"PRLIDX" to %"PRGIDX,src->maxrowlen,mat->maxRowLen);
         src->maxrowlen = mat->maxRowLen;

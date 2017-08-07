@@ -26,6 +26,7 @@
 
 #define SPMTV_V5
 
+#if defined(GHOST_BULID_AVX2)
 
 #if (NVECS==1 && CHUNKHEIGHT==1)
 
@@ -342,3 +343,18 @@ ghost_error ghost_spmtv_RACE__x_avx2_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *b,
 
     return ret;
 }
+
+#else
+
+ghost_error ghost_spmtv_RACE__x_avx2_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iter)
+{
+    ERROR_LOG("Wrong kernel; this is AVX2");
+    UNUSED(b);
+    UNUSED(mat);
+    UNUSED(x);
+    UNUSED(iter);
+ 
+    return GHOST_ERR_UNKNOWN;
+}
+
+#endif

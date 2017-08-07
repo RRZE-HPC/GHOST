@@ -4,6 +4,7 @@
 #include <immintrin.h>
 #include "avxMacros.h"
 
+#if defined(GHOST_BUILD_AVX2)
 //Alignd load
 #define AVX2_LOAD(src)\
     _mm256_load_pd(src)
@@ -87,23 +88,6 @@
 #define AVX2_FMA(a,b,c)\
    _mm256_fmadd_pd(a, b,c)
 
-/*
-inline bool testEquality(double *a, double* b, int len)
-{
-    bool pass = true;
-    for(int i=0; i<len; ++i)
-    {
-        if(a[i] != b[i])
-        {
-            pass = false;
-            break;
-        }
-    }
-    return pass;
-}
-*/
-
-
 inline bool testAVX2Instructions()
 {
     double *a = (double*) malloc(4*sizeof(double));
@@ -149,5 +133,53 @@ inline bool testAVX2Instructions()
 
     return testPass;
 }
+
+
+#else
+
+#define AVX2_LOAD(src)\
+
+#define AVX2_STORE(dest, val)\
+
+#define AVX2_GATHER(src, mask)\
+
+#define AVX2_GATHER_with_addr(src, mask_reg)\
+
+#define spl_AVX2_GATHER_with_addr(mask1, mask2, mask3, mask4)\
+
+
+#define AVX2_SCATTER(dest, mask, val)\
+
+#define AVX2_SCATTER_with_addr(dest, mask_reg, val)\
+
+#define spl_AVX2_SCATTER_with_addr(mask1, mask2, mask3, mask4, val)\
+
+#define SPLIT_M128i(m128i_reg, val1, val2, val3, val4)\
+
+#define SPLIT_M256i(m256i_reg, val1, val2, val3, val4)\
+
+#define spl_SPLIT_M128i(val, m128i_reg, val1, val2, val3, val4)\
+
+//a*b+c
+#define AVX2_FMA(a,b,c)\
+
+
+#endif
+/*
+inline bool testEquality(double *a, double* b, int len)
+{
+    bool pass = true;
+    for(int i=0; i<len; ++i)
+    {
+        if(a[i] != b[i])
+        {
+            pass = false;
+            break;
+        }
+    }
+    return pass;
+}
+*/
+
 
 #endif

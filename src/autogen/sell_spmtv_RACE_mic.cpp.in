@@ -23,6 +23,7 @@
 #GHOST_SUBST NVECS ${NVECS}
 #GHOST_SUBST CHUNKHEIGHT ${CHUNKHEIGHT}
 
+#if defined(GHOST_BUILD_MIC)
 
 #if (NVECS==1 && CHUNKHEIGHT==1)
 
@@ -253,3 +254,17 @@ ghost_error ghost_spmtv_RACE__x_mic_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *b, 
 
     return ret;
 }
+
+#else
+
+ghost_error ghost_spmtv_RACE__x_mic_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iter)
+{
+    ERROR_LOG("Wrong kernel, this is MIC kernel");
+    UNUSED(b);
+    UNUSED(mat);
+    UNUSED(x);
+    UNUSED(iter);
+    return GHOST_ERR_UNKNOWN;
+}
+
+#endif
