@@ -24,30 +24,30 @@
 
 #if 0
 #define INNER_LOOP_AVX512\
-	__m256i vindex = _mm256_stream_load_si256( &((__m256i*)mat->col)[idx]); \
-	__m512d bvec = _mm512_i32gather_pd(vindex, (void*) bval, 1);\
-	__m512d mvec = _mm512_load_pd( &( mval[idx]));\
-	__m512d xvec = _mm512_set1_pd(x_row);\
-	bvec = _mm512_fmadd_pd(mvec, xvec, bvec);\
-	_mm512_i32scatter_pd((void*) bval,  vindex, bvec, 1);\
-	idx+=8;\
-	
+    __m256i vindex = _mm256_stream_load_si256( &((__m256i*)mat->col)[idx]); \
+__m512d bvec = _mm512_i32gather_pd(vindex, (void*) bval, 1);\
+__m512d mvec = _mm512_load_pd( &( mval[idx]));\
+__m512d xvec = _mm512_set1_pd(x_row);\
+bvec = _mm512_fmadd_pd(mvec, xvec, bvec);\
+_mm512_i32scatter_pd((void*) bval,  vindex, bvec, 1);\
+idx+=8;\
 
 
-	
+
+
 #define INNER_LOOP_REM\
-        bval[mat->col[idx]] = bval[mat->col[idx]] + (MT)mval[idx] * x_row;\
-	idx+=1;\
+    bval[mat->col[idx]] = bval[mat->col[idx]] + (MT)mval[idx] * x_row;\
+idx+=1;\
 
 #endif
-	
+
 
 
 #if (NVECS==1 && CHUNKHEIGHT==1)
 
 //this is necessary since #pragma omp for doesn't understand !=
 #define LOOP(start,end,MT,VT) \
-_Pragma("omp parallel for")\
+    _Pragma("omp parallel for")\
 for (ghost_lidx row=start; row<end; ++row){ \
     VT x_row = xval[row]; \
     ghost_lidx idx = mat->chunkStart[row]; \
@@ -62,7 +62,7 @@ for (ghost_lidx row=start; row<end; ++row){ \
 #elif CHUNKHEIGHT == 1
 
 #define LOOP(start,end,MT,VT) \
-/*    _Pragma("omp parallel for") */\
+    /*    _Pragma("omp parallel for") */\
 for (ghost_lidx row=start; row<end; ++row){ \
     ghost_lidx idx = mat->chunkStart[row]; \
     for (ghost_lidx j=0; j<mat->rowLen[row]; j++) { \
@@ -203,30 +203,30 @@ void ghost_spmtv_MC(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, 
     MT *xval = (MT *)(x->val);
     MT *mval = (MT *)(mat->val);
 
-   if( (mat->context->color_ptr==NULL) || (mat->context->ncolors==0) )
+    if( (mat->context->color_ptr==NULL) || (mat->context->ncolors==0) )
     {
-	ERROR_LOG("Matrix not colored")
+        ERROR_LOG("Matrix not colored")
     }
     else
     {
-	    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+        GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
 
-	    for(int iter=0; iter<iterations; ++iter)
-	    {
-		    for(int color=0; color<mat->context->ncolors; ++color)
-		    {
-			    LOOP(mat->context->color_ptr[color], mat->context->color_ptr[color+1], MT, VT);
-		    }
-	    }
-	   
-	    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
-     }
+        for(int iter=0; iter<iterations; ++iter)
+        {
+            for(int color=0; color<mat->context->ncolors; ++color)
+            {
+                LOOP(mat->context->color_ptr[color], mat->context->color_ptr[color+1], MT, VT);
+            }
+        }
+
+        GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+    }
 #else
     UNUSED(b);
     UNUSED(mat);
     UNUSED(x);
     UNUSED(iterations);
- 
+
     ERROR_LOG("Enable RACE library");
 #endif
 }
