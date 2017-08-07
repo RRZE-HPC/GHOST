@@ -244,6 +244,46 @@ typedef struct
 }
 ghost_cusellspmv_parameters;
 
+/**
+ * @brief The parameters to identify a SELL SpMTV kernel.
+ *
+ * On kernel execution, GHOST will try to find an auto-generated kernel which
+ * matches all of these parameters.
+ */
+typedef struct
+{
+    /**
+     * @brief The data access alignment.
+     */
+    ghost_alignment alignment;
+    /**
+     * @brief The implementation.
+     */
+    ghost_implementation impl;
+    /**
+     * @brief The matrix data type.
+     */
+    ghost_datatype mdt;
+    /**
+     * @brief The densemat data type.
+     */
+    ghost_datatype vdt;
+    /**
+     * @brief The densemat width.
+     */
+    int blocksz;
+    /**
+     * @brief The SELL matrix chunk height.
+     */
+    int chunkheight;
+    /**
+     * @brief The densemat storage order.
+     */
+    ghost_densemat_storage storage;
+
+}
+ghost_spmtv_RACE_parameters;
+
 
 /**
  * @brief The parameters to identify a SELL Kaczmarz kernel.
@@ -298,6 +338,7 @@ extern const ghost_carp_opts GHOST_CARP_OPTS_INITIALIZER;
 
 
 typedef ghost_error (*ghost_spmv_kernel)(ghost_densemat*, ghost_sparsemat *, ghost_densemat*, ghost_spmv_opts);
+typedef ghost_error (*ghost_spmtv_RACE_kernel)(ghost_densemat*, ghost_sparsemat *, ghost_densemat*, int);
 typedef ghost_error (*ghost_kacz_kernel)(ghost_densemat*, ghost_sparsemat *, ghost_densemat*, ghost_kacz_opts);
 typedef ghost_error (*ghost_kacz_shift_kernel)(ghost_densemat*, ghost_densemat*, ghost_sparsemat *, ghost_densemat*, double, double, ghost_kacz_opts);
 
@@ -467,6 +508,81 @@ struct ghost_sparsemat_traits {
  */
 extern const ghost_sparsemat_traits GHOST_SPARSEMAT_TRAITS_INITIALIZER;
 
+typedef struct
+{
+ /**
+     * @brief The compressed column indices (16-bit).
+     * Experimantal: use it with block
+     */
+    ghost_lidx_u_short *compressedCol;
+    /**
+     * @brief The base identifier.
+     */
+    ghost_bit* block;
+    /**
+     * @brief The bit size in which block array is encoded.
+     */
+    ghost_lidx blockBitSize;
+    /**
+     * @brief Number of block that fits into the base type.
+     */
+    ghost_lidx numBlockPerEl;
+    /**
+     * @brief inverse value to avoid division.
+     */
+    double invNumBlockPerEl;
+
+    ghost_lidx_u_short mask;
+
+    ghost_lidx *blockPtr;
+
+}ghost_sparsemat_compression;
+
+
+/*
+inline unsigned int colBaseBit(mat,i)
+{
+    return (unsigned int)((i&1)?(mat->block[i>>1].b):(mat->block[i>>1].a));
+}*/
+
+//if array made of 8 bit elements
+/*#define setBitwise(arr,i, bitSize, val)\
+    arr[i>>3]=arr[i>>3]|(val<<(bitSize*(i&7)))
+*/
+
+//for 64 bit elements; less wastage
+#define  setBitwise(mat_compress, i, val)\
+   ghost_lidx idx_set = (ghost_lidx) (i*mat_compress->invNumBlockPerEl);\
+   mat_compress->block[idx_set] |= (ghost_bit)( val<<(mat_compress->blockBitSize*(i - (idx_set*mat_compress->numBlockPerEl))) );\
+
+#define accessBitwise(mat_compress,  i, idx)\
+    ((int)( ( mat_compress->block[idx]>>(mat_compress->blockBitSize*(i - (idx*mat_compress->numBlockPerEl)) ) ) & mat_compress->mask ))\
+
+//((int)( ( mat_compress->block[idx]>>(mat_compress->blockBitSize*(i - (idx*mat_compress->numBlockPerEl)) ) ) & ((1<<mat_compress->blockBitSize)-1) ))
+
+//((ghost_lidx)(( mat_compress->block[idx] & (mat_compress->shiftTable[i-prod])>>prod)))
+
+
+
+//loss-less compression and decompression
+#define encodeCol(mat, i, encoded_val)\
+   ghost_lidx idx_encode = (ghost_lidx) ((i)*mat->compress->invNumBlockPerEl);\
+   encoded_val = (ghost_lidx_u_short) (mat->col[i]-(accessBitwise(mat->compress,i, idx_encode)*65536));
+
+//for decoding non-zero by non-zero
+#define decodeCol(mat, i, decoded_val)\
+    ghost_lidx idx_decode = (ghost_lidx) ((i)*mat->compress->invNumBlockPerEl);\
+    decoded_val = (ghost_lidx)( (accessBitwise(mat->compress,i, idx_decode)<<16) + mat->compress->compressedCol[i] );
+
+//for decoding Row by Row
+#define decodeColByRow(mat, row, col)\
+    for(int i=0; i<mat->rowLen[row]; ++i)\
+    {\
+        ghost_lidx idx_decode = (ghost_lidx) ((i)*mat->compress->invNumBlockPerEl);\
+        col[i] = (ghost_lidx)(accessBitwise(mat->compress,i, idx_decode)<<16 + mat->compress->compressedCol[i] );\
+    }\
+
+
 /**
  * @ingroup types
  *
@@ -495,7 +611,7 @@ struct ghost_sparsemat
      * of the matrix (if distributed).
      */
     ghost_sparsemat *remotePart;
-    /**
+    /*
      * @brief The context of the matrix (if distributed).
      */
     ghost_context *context;
@@ -511,6 +627,10 @@ struct ghost_sparsemat
      * @brief The column indices.
      */
     ghost_lidx *col;
+    /**
+     * @brief Matrix compression helper;
+     * */
+    ghost_sparsemat_compression *compress;
     /**
      * @brief Pointer to start of each chunk.
      */
@@ -785,6 +905,11 @@ extern "C" {
     ghost_error ghost_sparsemat_perm_name(ghost_context *ctx, ghost_sparsemat *mat);
 
     ghost_error destroy_name(ghost_context *ctx);
+
+    void ghost_sell_c_sigmize(ghost_sparsemat *mat);
+
+    ghost_error  simdify(ghost_sparsemat *mat);
+
     ghost_error ghost_sparsemat_perm_zoltan(ghost_context *ctx, ghost_sparsemat *mat);
     /**
      * @brief Common function for matrix creation from a file.
@@ -884,16 +1009,24 @@ extern "C" {
 
 
     /*SPMTV */
-    ghost_error ghost_spmtv_BMC(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x);
+    ghost_error ghost_spmtv_RACE(ghost_densemat *lhs, ghost_sparsemat *mat, ghost_densemat *rhs, int iterations);
 
-    void ghost_spmtv_NAME(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);
+    void ghost_spmtv_RACE_fallback(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);
+
+
+    ghost_error ghost_spmtv_BMC(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x);
 
     void ghost_spmtv_MC(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);
 
 
+    /*SPMV*/
     void ghost_spmv_NAME(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x);
 
+    /*SYMM-SPMV*/
     void ghost_symm_spmv_NAME(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);
+
+    /*Gauss-Seidel*/
+    void ghost_gs_NAME(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);
 
 
     /**
@@ -931,6 +1064,8 @@ extern "C" {
      * Requires the matrix to have a valid and compatible datatype.
      */
     ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_src_rowfunc *src, ghost_mpi_comm mpicomm, double weight);
+
+     ghost_error ghost_setMPI(ghost_sparsemat *mat);
    /**
      * @ingroup sparseinit
      * @brief Initializes a sparsemat from a binary CRS file.
@@ -1116,24 +1251,29 @@ extern "C" {
 
     ghost_error ghost_sparsemat_perm_global_cols(ghost_gidx *cols, ghost_lidx ncols, ghost_context *context);
 
- static inline int ghost_sparsemat_rowfunc_crs(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *col, void *val, void *crsdata)
-{
-    ghost_gidx *crscol = ((ghost_sparsemat_rowfunc_crs_arg *)crsdata)->col;
-    ghost_lidx *crsrpt = ((ghost_sparsemat_rowfunc_crs_arg *)crsdata)->rpt;
-    char *crsval = (char *)((ghost_sparsemat_rowfunc_crs_arg *)crsdata)->val;
-    size_t dtsize = ((ghost_sparsemat_rowfunc_crs_arg *)crsdata)->dtsize;
-    ghost_gidx offs = ((ghost_sparsemat_rowfunc_crs_arg *)crsdata)->offs;
+    //To calculate Bandwidth
+    ghost_error calculate_bw(ghost_sparsemat *mat, void *matrixSource, ghost_sparsemat_src srcType);
+    ghost_error set_kacz_ratio(ghost_sparsemat *mat, void *matrixSource, ghost_sparsemat_src srcType);
 
-    *rowlen = crsrpt[row-offs+1]-crsrpt[row-offs];
-    memcpy(col,&crscol[crsrpt[row-offs]],*rowlen * sizeof(ghost_gidx));
-    memcpy(val,&crsval[dtsize*crsrpt[row-offs]],*rowlen * dtsize);
+    //compresses column indices to 16-bit integers
+    ghost_error ghost_compress_col_16bit(ghost_sparsemat* mat);
+    ghost_error check_col_compression(ghost_sparsemat* mat);
 
-    return 0;
-}
 
-//To calculate Bandwidth
-ghost_error calculate_bw(ghost_sparsemat *mat, void *matrixSource, ghost_sparsemat_src srcType);
-ghost_error set_kacz_ratio(ghost_sparsemat *mat, void *matrixSource, ghost_sparsemat_src srcType);
+    static inline int ghost_sparsemat_rowfunc_crs(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *col, void *val, void *crsdata)
+    {
+        ghost_gidx *crscol = ((ghost_sparsemat_rowfunc_crs_arg *)crsdata)->col;
+        ghost_lidx *crsrpt = ((ghost_sparsemat_rowfunc_crs_arg *)crsdata)->rpt;
+        char *crsval = (char *)((ghost_sparsemat_rowfunc_crs_arg *)crsdata)->val;
+        size_t dtsize = ((ghost_sparsemat_rowfunc_crs_arg *)crsdata)->dtsize;
+        ghost_gidx offs = ((ghost_sparsemat_rowfunc_crs_arg *)crsdata)->offs;
+
+        *rowlen = crsrpt[row-offs+1]-crsrpt[row-offs];
+        memcpy(col,&crscol[crsrpt[row-offs]],*rowlen * sizeof(ghost_gidx));
+        memcpy(val,&crsval[dtsize*crsrpt[row-offs]],*rowlen * dtsize);
+
+        return 0;
+    }
 
 #ifdef __cplusplus
 }

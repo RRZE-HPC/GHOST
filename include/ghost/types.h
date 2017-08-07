@@ -1,6 +1,6 @@
 /**
  * @file types.h
- * @brief Header file for type definitions. 
+ * @brief Header file for type definitions.
  * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
  */
 #ifndef GHOST_TYPES_H
@@ -224,7 +224,7 @@ typedef int ghost_mpi_datatype;
             }\
         }\
     }\
-   
+
 #define SELECT_TMPL_1DATATYPE(dt,complexclass,ret,func,...)\
     if (dt & GHOST_DT_COMPLEX) {\
         if (dt & GHOST_DT_DOUBLE) {\
@@ -314,7 +314,8 @@ inline ghost_location& operator|=(ghost_location &a, const ghost_location &b) {
  */
 typedef enum {
     GHOST_UNALIGNED = 0,
-    GHOST_ALIGNED = 1
+    GHOST_ALIGNED_ANY = 1,
+    GHOST_ALIGNED = 2,
 } ghost_alignment;
 
 /**
@@ -357,7 +358,7 @@ typedef enum {
 /**
  * @brief Size of the largest data type (complex double).
  */
-#define GHOST_DT_MAX_SIZE 16 
+#define GHOST_DT_MAX_SIZE 16
 
 /**
  * @brief Macro to "register" a double data type in an application
@@ -416,7 +417,7 @@ ghost_datatype name = (ghost_datatype)(GHOST_DT_DOUBLE|GHOST_DT_COMPLEX);
 /**
  * @brief Type for global indices.
  */
-typedef int64_t ghost_gidx; 
+typedef int64_t ghost_gidx;
 #ifdef MPI_INT64_T
 /**
  * @brief MPI data type for matrix row/column indices
@@ -440,7 +441,7 @@ typedef int64_t ghost_gidx;
 /**
  * @brief Type for global indices.
  */
-typedef int32_t ghost_gidx; 
+typedef int32_t ghost_gidx;
 #ifdef MPI_INT32_T
 /**
  * @brief MPI data type for matrix row/column indices
@@ -466,7 +467,7 @@ typedef int32_t ghost_gidx;
 /**
  * @brief Type for local indices.
  */
-typedef int64_t ghost_lidx; 
+typedef int64_t ghost_lidx;
 #ifdef MPI_INT64_T
 /**
  * @brief MPI data type for matrix row/column indices
@@ -554,18 +555,22 @@ struct ghost_mpi_z
     double y;
 };
 
+
+typedef uint16_t ghost_lidx_u_short;
+typedef uint64_t ghost_bit;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
     /**
-     * @brief Check whether a given data type is valid. 
+     * @brief Check whether a given data type is valid.
      *
      * @param datatype The data type.
      *
      * @return 1 if the data type is valid and 0 if it isn't.
      *
-     * An data type is valid if exactly one of GHOST_DT_FLOAT and GHOST_DT_DOUBLE and 
+     * An data type is valid if exactly one of GHOST_DT_FLOAT and GHOST_DT_DOUBLE and
      * exactly one of GHOST_DT_REAL and GHOST_DT_COMPLEX is set.
      */
     bool ghost_datatype_valid(ghost_datatype datatype);
@@ -576,7 +581,7 @@ extern "C" {
      *
      * @param datatype The data type.
      *
-     * @return A string representation of the data type. 
+     * @return A string representation of the data type.
      */
     const char * ghost_datatype_string(ghost_datatype datatype);
     const char * ghost_location_string(ghost_location location);
@@ -588,7 +593,7 @@ extern "C" {
     ghost_error ghost_mpi_datatypes_create();
     ghost_error ghost_mpi_datatypes_destroy();
 
-    int ghost_idx_of_location(ghost_location l); 
+    int ghost_idx_of_location(ghost_location l);
 
 #ifdef __cplusplus
 }

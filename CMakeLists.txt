@@ -37,6 +37,7 @@ set(GHOST_SPARSEMAT_GLOBALSTATS 0 CACHE BOOL "Gather some global statistics on s
 set(GHOST_SPARSEMAT_STATS 0 CACHE BOOL "Gather statistics about sparse matrices (slows down matrix construction)")
 set(GHOST_KACZ_ANALYZE 0 CACHE BOOL "Gather data about load balancing for KACZ method (might slow down initial splitting)")  
 set(GHOST_AUTOGEN_SPMMV "32,1;1,4;32,*;1,*" CACHE STRING "SpM(M)V kernels to be auto-generated. Semicolon-separated list of 2-tuples: (CHUNKHEIGHT, NVECS)")
+set(GHOST_AUTOGEN_SPMTV "32,1;1,1" CACHE STRING "SpM(T)V kernels to be auto-generated. Semicolon-separated list of 2-tuples: (CHUNKHEIGHT, NVECS)")
 set(GHOST_AUTOGEN_SPMMV_CUDA "32,1,0,0,0,0,0,0,0;1,4,0,0,0,0,0,0,0;32,*,0,0,0,0,0,0,0;1,*,0,0,0,0,0,0,0" CACHE STRING "SpM(M)V kernels to be auto-generated. Semicolon-separated list of 9-tuples: (CHUNKHEIGHT, NVECS,AXP(B)Y,SCALE,(V)SHIFT,DOT_YY,DOT_XY,DOT_XX,CHAIN_AXPBY)")
 set(GHOST_AUTOGEN_TSMM "4,4" CACHE STRING "TSMM kernels to be auto-generated. Semicolon-separated list of 3-tuples: (K, N, UNROLL)")
 set(GHOST_AUTOGEN_TSMM-INPLACE "4,4" CACHE STRING "TSMM-inplace kernels to be auto-generated. Semicolon-separated list of 2-tuples: (K, N) where K>=N")
@@ -159,12 +160,16 @@ set (SOURCES
     src/util.c
     src/sell_spmtv_bmc_rm.cpp
     src/sparsemat_perm_name.cpp
-    src/sell_spmtv_NAME_rm.cpp
+    src/sell_spmtv.cpp
+    src/sell_spmtv_RACE_fallback.cpp
     src/sell_spmtv_MC_rm.cpp
     src/sell_spmv_NAME_rm.cpp
     src/sell_symm_spmv_NAME_rm.cpp
     src/sell_kacz_NAME_rm.cpp
-   )
+    src/init.cpp
+    src/sell_gs_NAME_rm.cpp
+    src/sell_c_sigmize.cpp
+  )
 
 set (HEADERS
     include/ghost/autogen.h
@@ -219,6 +224,7 @@ set (HEADERS
     include/ghost/sell_kacz_mc.h
     include/ghost/sell_kacz_fallback.h
     include/ghost/compatibility_check.h
+    include/ghost/init.h
    )
 
 # only do this in the initial run: either if GHOST_USE_CUDA is undefined or it is enabled by the user but no libraries are found yet
@@ -269,12 +275,14 @@ endif()
 foreach(TEMPLATE_SRCFILE ${TEMPLATE_SRCFILES})
     set(GENERATED_FILES "")
     set(UNROLLED_FILES "")
+
     get_filename_component(TEMPLATE_SRCFILE_BASE ${TEMPLATE_SRCFILE} NAME_WE)
     get_filename_component(TEMPLATE_SRCFILE_FULLEXT ${TEMPLATE_SRCFILE} EXT)
     string(REPLACE ".in" "" TEMPLATE_SRCFILE_EXT ${TEMPLATE_SRCFILE_FULLEXT})
 
     file(STRINGS ${TEMPLATE_SRCFILE} TEMPLATE_HEADER LIMIT_COUNT 1)
     string(STRIP ${TEMPLATE_HEADER} TEMPLATE_HEADER)
+
     if (NOT "${TEMPLATE_HEADER}" STRGREATER "/*!GHOST_AUTOGEN_")
         #        message(FATAL_ERROR "AUTOGEN header missing or wrong in file ${TEMPLATE_SRCFILE}. Is ${TEMPLATE_HEADER}, should be /*!GHOST_AUTOGEN_*")
     else ()
@@ -293,7 +301,6 @@ foreach(TEMPLATE_SRCFILE ${TEMPLATE_SRCFILES})
                     # check if wildcards match: replace any non-wildcards with "." and compare strings
                     string(REGEX REPLACE "[a-zA-Z0-9]+" "." TEMPLATE_CONF_PATTERN ${TEMPLATE_CONF})
                     string(REGEX REPLACE "[a-zA-Z0-9]+" "." COMBINATION_PATTERN ${COMBINATION})
-
 
                     if (NOT ${FIXEDMATCH} STREQUAL "" AND
                             ${TEMPLATE_CONF_PATTERN} STREQUAL ${COMBINATION_PATTERN})
@@ -321,6 +328,7 @@ foreach(TEMPLATE_SRCFILE ${TEMPLATE_SRCFILES})
         endforeach()
     endif()
 
+
     foreach (GENERATED_FILE ${GENERATED_FILES})
         #message(STATUS "Unrolling ${GENERATED_FILE}")
         get_filename_component(TO_UNROLL_FILENAME ${GENERATED_FILE} NAME)
@@ -328,11 +336,12 @@ foreach(TEMPLATE_SRCFILE ${TEMPLATE_SRCFILES})
         set(UNROLLED_FILE ${UNROLLED_SRC_DIR}/${TO_UNROLL_FILENAME})
         add_custom_command(
             OUTPUT ${UNROLLED_FILE}
-            DEPENDS ${GENERATED_FILE} ${PP_SCRIPT} 
+            DEPENDS ${GENERATED_FILE} ${PP_SCRIPT}
             COMMAND mkdir -p ${UNROLLED_SRC_DIR} && perl ${PP_SCRIPT} ${GENERATED_FILE} > ${UNROLLED_FILE}
             )
         list(APPEND UNROLLED_FILES ${UNROLLED_FILE})
     endforeach()
+
 
     set(GENERATED_HEADER ${GENERATED_INC_DIR}/${TEMPLATE_SRCFILE_BASE}_gen.h)
     set(GENERATED_KERNELMAP ${GENERATED_INC_DIR}/${TEMPLATE_SRCFILE_BASE}.def)
@@ -346,7 +355,7 @@ foreach(TEMPLATE_SRCFILE ${TEMPLATE_SRCFILES})
     list(APPEND HEADERS ${GENERATED_HEADER})
     add_custom_command(
         OUTPUT ${GENERATED_KERNELMAP}
-        DEPENDS ${GENERATED_HEADER} ${PP_KERNELMAP_SCRIPT} 
+        DEPENDS ${GENERATED_HEADER} ${PP_KERNELMAP_SCRIPT}
         COMMAND mkdir -p ${GENERATED_INC_DIR} && perl ${PP_KERNELMAP_SCRIPT} ${GENERATED_HEADER} > ${GENERATED_KERNELMAP}
         )
     if (${TEMPLATE_SRCFILE_EXT} STREQUAL ".cu")
@@ -724,6 +733,7 @@ if (GHOST_HAVE_CUDA)
 endif()
 
 add_library(ghost ${SOURCES})
+
 add_dependencies(ghost autogen)
 
 if (GHOST_USE_SPMP)
@@ -770,7 +780,7 @@ else ()
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DGHOST_FUJITSU")
     else()
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -std=c99 -Wall -Wextra -Werror -pedantic")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -std=c++0x -Wall -Wextra -Werror -pedantic")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -std=c++0x -Wall -Wextra -pedantic") # removed -Werror
         if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
             set(CMAKE_INCLUDE_SYSTEM_FLAG_C "-isystem ") # Not present in Cmake 2.8.11.2
             set(CMAKE_INCLUDE_SYSTEM_FLAG_CXX "-isystem ") # Not present in Cmake 2.8.11.2

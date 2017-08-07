@@ -43,7 +43,7 @@ char * ghost_error_string(ghost_error e)
             ret = "Error in BlockColoring";
             break;
         case GHOST_ERR_NOT_COLORED:
-	    ret = "Matrix not Colored";
+            ret = "Matrix not Colored";
             break;
         case GHOST_ERR_RED_BLACK:
             ret = "Error in Red-Black splitting of the matrix";
@@ -60,7 +60,10 @@ char * ghost_error_string(ghost_error e)
         case GHOST_ERR_UNKNOWN:
             ret = "Unknown error";
             break;
-        default:
+        case GHOST_ERR_COL_COMPRESSION:
+            ret = "Error column compression error";
+            break;
+       default:
             ret = "Invalid";
             break;
     }

@@ -90,7 +90,7 @@ typedef enum {
      */
     GHOST_ERR_NOT_COLORED,
     /**
-    * @brief An error in Red-Black splitting occured. 
+    * @brief An error in Red-Black splitting occured.
     */
     GHOST_ERR_RED_BLACK,
     /**
@@ -104,7 +104,11 @@ typedef enum {
      /**
       brief Incompatibly permuted sparsemat and/or densemat.
      */
-    GHOST_ERR_COMPATIBILITY 
+    GHOST_ERR_COMPATIBILITY ,
+  /**
+      brief ERROR in 32 to 16 bit compression
+     */
+    GHOST_ERR_COL_COMPRESSION ,
 } ghost_error;
 
 #include "errorhandler.h"
@@ -491,7 +495,7 @@ typedef enum {
         /**
          * @ingroup stringification
          *
-         * @brief Get a string of the GHOST error. 
+         * @brief Get a string of the GHOST error.
          *
          * @param e The error.
          *

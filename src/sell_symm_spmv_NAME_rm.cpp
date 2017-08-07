@@ -24,55 +24,71 @@
 
 #if 0
 #define INNER_LOOP_AVX512\
-	__m256i vindex = _mm256_stream_load_si256( &((__m256i*)mat->col)[idx]); \
-	__m512d bvec = _mm512_i32gather_pd(vindex, (void*) bval, 1);\
-	__m512d mvec = _mm512_load_pd( &( mval[idx]));\
-	__m512d xvec = _mm512_set1_pd(x_row);\
-	bvec = _mm512_fmadd_pd(mvec, xvec, bvec);\
-	_mm512_i32scatter_pd((void*) bval,  vindex, bvec, 1);\
-	idx+=8;\
-	
+    __m256i vindex = _mm256_stream_load_si256( &((__m256i*)mat->col)[idx]); \
+__m512d bvec = _mm512_i32gather_pd(vindex, (void*) bval, 1);\
+__m512d mvec = _mm512_load_pd( &( mval[idx]));\
+__m512d xvec = _mm512_set1_pd(x_row);\
+bvec = _mm512_fmadd_pd(mvec, xvec, bvec);\
+_mm512_i32scatter_pd((void*) bval,  vindex, bvec, 1);\
+idx+=8;\
 
 
-	
+
+
 #define INNER_LOOP_REM\
-        bval[mat->col[idx]] = bval[mat->col[idx]] + (MT)mval[idx] * x_row;\
-	idx+=1;\
+    bval[mat->col[idx]] = bval[mat->col[idx]] + (MT)mval[idx] * x_row;\
+idx+=1;\
 
 #endif
-	
+
 
 
 #if (NVECS==1 && CHUNKHEIGHT==1)
 //this is necessary since #pragma omp for doesn't understand !=
+/*
 #define LOOP(start,end,MT,VT) \
-for (ghost_lidx row=start; row<end; ++row){ \
-    VT x_row = xval[row]; \
-    ghost_lidx idx = mat->chunkStart[row]; \
-    bval[row] += mval[idx]*x_row;\
-    for(ghost_lidx j=1; j<mat->rowLen[row]; j++) { \
-	bval[row] = bval[row] + (MT)mval[idx+j] * xval[mat->col[idx+j]];\
+    for (ghost_lidx row=start; row<end; ++row){ \
+        VT x_row = xval[row]; \
+        ghost_lidx idx = mat->chunkStart[row]; \
+        bval[row] += mval[idx]*x_row;\
+        for(ghost_lidx j=1; j<mat->rowLen[row]; j++) { \
+            bval[row] = bval[row] + (MT)mval[idx+j] * xval[mat->col[idx+j]];\
+        }\
+        _Pragma("nounroll")\
+        _Pragma("simd")\
+        for(ghost_lidx j=1; j<mat->rowLen[row]; j++) { \
+            bval[mat->col[idx+j]] = bval[mat->col[idx+j]] + (MT)mval[idx+j] * x_row;\
+        }\
     }\
-    _Pragma("nounroll")\
-    _Pragma("simd")\
-    for(ghost_lidx j=1; j<mat->rowLen[row]; j++) { \
-	bval[mat->col[idx+j]] = bval[mat->col[idx+j]] + (MT)mval[idx+j] * x_row;\
-    }\
-}\
+*/
+
+#define LOOP(start,end,MT,VT) \
+        for (ghost_lidx row=start; row<end; ++row){ \
+            VT x_row = xval[row]; \
+            ghost_lidx idx = mat->chunkStart[row]; \
+            bval[row] += mval[idx]*x_row;\
+            double temp = 0;\
+            _Pragma("simd reduction(+:temp) vectorlength(4)")\
+            for(ghost_lidx j=1; j<mat->rowLen[row]; j++) { \
+                temp = temp + (MT)mval[idx+j] * xval[mat->col[idx+j]];\
+                bval[mat->col[idx+j]] = bval[mat->col[idx+j]] + (MT)mval[idx+j] * x_row;\
+            }\
+            bval[row]+=temp;\
+        }\
 
 
 #else 
 
 #define LOOP(start,end,MT,VT) \
-	ERROR_LOG("Not defined");
+        ERROR_LOG("Not defined");
 
 #endif
 
-struct SYMM_SPMV_ARG {
-    ghost_densemat *b;
-    ghost_sparsemat *mat;
-    ghost_densemat *x;
-};
+    struct SYMM_SPMV_ARG {
+        ghost_densemat *b;
+        ghost_sparsemat *mat;
+        ghost_densemat *x;
+    };
 
 inline void SYMM_SPMV_Kernel(int start, int end, void *args)
 {
@@ -104,27 +120,27 @@ void ghost_symm_spmv_NAME(ghost_densemat *b, ghost_sparsemat *mat, ghost_densema
     void* argPtr = (void*) (symm_spmvArg);
     int symm_spmvId = ce->registerFunction(&SYMM_SPMV_Kernel, argPtr);
     std::vector<double> time; 
-//    std::vector<double> barrierTime;
+    //    std::vector<double> barrierTime;
     double start_spmv_inner, end_spmv_inner;
     for(int i=0; i<iterations; ++i)
     {
-	    ghost_barrier();
-	    ghost_timing_wcmilli(&start_spmv_inner);
+        ghost_barrier();
+        ghost_timing_wcmilli(&start_spmv_inner);
 
-	    ce->executeFunction(symm_spmvId);
+        ce->executeFunction(symm_spmvId);
 
-	    ghost_barrier();
-	    ghost_timing_wcmilli(&end_spmv_inner);
+        ghost_barrier();
+        ghost_timing_wcmilli(&end_spmv_inner);
 
-	    time.push_back(end_spmv_inner-start_spmv_inner);
-//	    barrierTime.push_back(ce->barrierTime()*1e3);
+        time.push_back(end_spmv_inner-start_spmv_inner);
+        //	    barrierTime.push_back(ce->barrierTime()*1e3);
     }
 
-/*    for(int i=0; i<iterations; ++i)
-    {
-	printf("%d \t%f \t%f \t%f\n", i, time[i], barrierTime[i], time[i]-(barrierTime[i]));
-    }
-*/
+    /*    for(int i=0; i<iterations; ++i)
+          {
+          printf("%d \t%f \t%f \t%f\n", i, time[i], barrierTime[i], time[i]-(barrierTime[i]));
+          }
+          */
     delete symm_spmvArg;
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
 #else

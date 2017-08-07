@@ -1,0 +1,255 @@
+/*!GHOST_AUTOGEN_SPMTV CHUNKHEIGHT,NVECS */
+#include "ghost/config.h"
+#include "ghost/types.h"
+#include "ghost/util.h"
+#include "ghost/instr.h"
+#include "ghost/omp.h"
+#include "ghost/machine.h"
+#include "ghost/math.h"
+#include "ghost/sparsemat.h"
+#include "ghost/densemat.h"
+#include "ghost/locality.h"
+#include <complex>
+#include <complex.h>
+#include "ghost/timing.h"
+#include "ghost/sparsemat.h"
+#ifdef GHOST_HAVE_NAME
+#include <NAME/interface.h>
+#endif
+#include <vector>
+#include "ghost/micMacros.h"
+#include "ghost/sell_spmtv_RACE_mic_gen.h"
+
+#GHOST_SUBST NVECS ${NVECS}
+#GHOST_SUBST CHUNKHEIGHT ${CHUNKHEIGHT}
+
+
+#if (NVECS==1 && CHUNKHEIGHT==1)
+
+//this is necessary since #pragma omp for doesn't understand !=
+#define LOOP(start,end,MT,VT) \
+   ERROR_PRINT("You ended up in a wrong kernel call, this is MIC version not applicable for CHUNKHEIGHT = %d", CHUNKHEIGHT);
+
+#else
+
+#if NVECS==1
+
+    #define INNER_LOOP_REM(chunk_arg, rowinchunk_arg)\
+        row = (chunk_arg)*CHUNKHEIGHT+rowinchunk_arg;\
+        idx = mat->chunkStart[chunk_arg]+rowinchunk_arg;\
+        VT x_row = xval[row];\
+        for(ghost_lidx j=0; j<mat->chunkLen[chunk_arg]; ++j) { \
+            bval[mat->col[idx]] = bval[mat->col[idx]] + (MT)mval[idx]*x_row;\
+            idx += CHUNKHEIGHT;\
+        }\
+
+
+//wrong - SPMV like, just for comparison
+/*   #define INNER_LOOP_BODY_AVX256(chunk_arg)\
+        row = (chunk_arg)*CHUNKHEIGHT;\
+        idx = mat->chunkStart[chunk_arg];\
+        #GHOST_UNROLL#x_row256[@] = AVX_256_LOAD(&(bval[row+4*@]));\#CHUNKHEIGHT/4\
+        for(ghost_lidx j=0; j<mat->chunkLen[chunk_arg]; ++j) { \
+           for(ghost_lidx simdinchunk=0; simdinchunk<CHUNKHEIGHT/4; ++simdinchunk) { \
+                val256 = AVX_256_LOAD(&(mval[idx+4*simdinchunk]));\
+                b_temp256 = AVX_256_GATHER(xval, &(mat->col[idx+4*simdinchunk]));\
+                AVX_256_STORE(&bval[row+4*simdinchunk], AVX_256_FMA(val256,b_temp256, x_row256[simdinchunk]));\
+            }\
+            idx += CHUNKHEIGHT;\
+        }\
+        row += CHUNKHEIGHT;\
+*/
+
+   //version 4: avoid loading column entry everytime
+   #define INNER_LOOP_BODY_MIC(chunk_arg)\
+        row = (chunk_arg)*CHUNKHEIGHT;\
+        idx = mat->chunkStart[chunk_arg];\
+        #GHOST_UNROLL#x_row512@ = MIC_LOAD(&(xval[row+8*@]));\#CHUNKHEIGHT/8\
+        __m256i index;\
+        _Pragma("simd")\
+        for(ghost_lidx j=0; j<mat->chunkLen[chunk_arg]; ++j) { \
+            int* curr_col = &(mat->col[idx]);\
+            #GHOST_UNROLL#val512 = MIC_LOAD(&(mval[idx+8*@])); index=_mm256_load_si256((__m256i*)(curr_col+8*@)); ;b_temp512 = MIC_GATHER(bval, index);b_temp512 = MIC_FMA(val512,x_row512@,b_temp512); MIC_SCATTER(bval, index , b_temp512);\#CHUNKHEIGHT/8\
+            idx += CHUNKHEIGHT;\
+        }\
+
+
+/*  optimisation left to compiler
+    #define INNER_LOOP_BODY_AVX256(chunk_arg)\
+        row = (chunk_arg)*CHUNKHEIGHT;\
+        idx = mat->chunkStart[chunk_arg];\
+        for(ghost_lidx j=0; j<mat->chunkLen[chunk_arg]; ++j) { \
+            _Pragma("unroll(4)")\
+            _Pragma("simd")\
+            for(ghost_lidx rowinchunk=0; rowinchunk<CHUNKHEIGHT; ++rowinchunk) { \
+               bval[mat->col[idx+rowinchunk]] = bval[mat->col[idx+rowinchunk]] + (MT)mval[idx+rowinchunk]*xval[row+rowinchunk]; \
+            }\
+            idx += CHUNKHEIGHT;\
+        }\
+        row += CHUNKHEIGHT;
+*/
+
+#else
+    //TODO
+    #define INNER_LOOP(chunk_arg, rowinchunk_arg)\
+        row = (chunk_arg)*CHUNKHEIGHT+rowinchunk_arg;\
+        idx = mat->chunkStart[chunk_arg]+rowinchunk_arg;\
+        VT x_row = xval[row];\
+        for(ghost_lidx j=0; j<mat->chunkLen[chunk_arg]; ++j) { \
+            bval[mat->col[idx]] = bval[mat->col[idx]] + (MT)mval[idx]*x_row;\
+            idx += CHUNKHEIGHT;\
+        }\
+
+#endif
+
+#if ((defined(SPMTV_V1) || defined(SPMTV_V2)) || defined(SPMTV_V3))
+#define LOOP(start,end,MT,VT)\
+    ghost_lidx start_chunk = start/CHUNKHEIGHT;\
+    ghost_lidx start_rem = start%CHUNKHEIGHT;\
+    ghost_lidx end_chunk = end/CHUNKHEIGHT;\
+    ghost_lidx end_rem = end%CHUNKHEIGHT;\
+    ghost_lidx row = 0, idx = 0;\
+    __m256d val256, b_temp256;\
+    __m256d x_row256[CHUNKHEIGHT/4];\
+  /*do first reminder */\
+    for(ghost_lidx rowinchunk=start_rem; rowinchunk<MIN(CHUNKHEIGHT,(end_chunk-start_chunk)*CHUNKHEIGHT+end_rem); ++rowinchunk) { \
+        INNER_LOOP_REM(start_chunk, rowinchunk); \
+    }\
+    /*main body */\
+    for(ghost_lidx chunk=(start_chunk+1); chunk<end_chunk; ++chunk) {\
+        INNER_LOOP_BODY_MIC(chunk); \
+    }\
+    /*do last reminder*/\
+    if(start_chunk<end_chunk) { \
+        for(ghost_lidx rowinchunk=0; rowinchunk<end_rem; ++rowinchunk) { \
+            INNER_LOOP_REM(end_chunk, rowinchunk); \
+        }\
+    }\
+
+#else
+#define LOOP(start,end,MT,VT)\
+    ghost_lidx start_chunk = start/CHUNKHEIGHT;\
+    ghost_lidx start_rem = start%CHUNKHEIGHT;\
+    ghost_lidx end_chunk = end/CHUNKHEIGHT;\
+    ghost_lidx end_rem = end%CHUNKHEIGHT;\
+    ghost_lidx row = 0, idx = 0;\
+    __m512d val512, b_temp512;\
+   #GHOST_UNROLL#__m512d x_row512@;\ #CHUNKHEIGHT/8\
+  /*do first reminder */\
+    for(ghost_lidx rowinchunk=start_rem; rowinchunk<MIN(CHUNKHEIGHT,(end_chunk-start_chunk)*CHUNKHEIGHT+end_rem); ++rowinchunk) { \
+        INNER_LOOP_REM(start_chunk, rowinchunk); \
+    }\
+    /*main body */\
+    for(ghost_lidx chunk=(start_chunk+1); chunk<end_chunk; ++chunk) {\
+        INNER_LOOP_BODY_MIC(chunk); \
+    }\
+    /*do last reminder*/\
+    if(start_chunk<end_chunk) { \
+        for(ghost_lidx rowinchunk=0; rowinchunk<end_rem; ++rowinchunk) { \
+            INNER_LOOP_REM(end_chunk, rowinchunk); \
+        }\
+    }\
+
+#endif 
+
+#endif
+
+
+struct spmtv_RACE_arg__x_mic_rm_CHUNKHEIGHT_NVECS{
+    ghost_densemat *b;
+    ghost_sparsemat *mat;
+    ghost_densemat *x;
+};
+
+inline void  spmtv_RACE_kernel__x_mic_rm_CHUNKHEIGHT_NVECS(int start, int end, void *args)
+{
+#if ((CHUNKHEIGHT%4)!=0)
+    ERROR_PRINT("You ended up in a wrong kernel call, this is AVX-256 version not applicable for CHUNKHEIGHT = %d", CHUNKHEIGHT);
+    UNUSED(start);
+    UNUSED(end);
+    UNUSED(args);
+#else
+    spmtv_RACE_arg__x_mic_rm_CHUNKHEIGHT_NVECS* spmtvArg = (spmtv_RACE_arg__x_mic_rm_CHUNKHEIGHT_NVECS *) args;
+    typedef double MT;
+    typedef double VT;
+
+    MT *bval = (MT *)(spmtvArg->b->val);
+    MT *xval = (MT *)(spmtvArg->x->val);
+    MT *mval = (MT *)(spmtvArg->mat->val);
+
+    ghost_sparsemat *mat = spmtvArg->mat;
+
+    LOOP(start, end, MT, VT);
+#endif
+}
+
+static ghost_error ghost_spmtv_RACE__x_mic_rm_CHUNKHEIGHT_NVECS_tmpl(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations)
+{
+    if(!testMICInstructions())
+    {
+        ERROR_LOG("AVX-512 instructions error");
+    }
+
+#ifdef GHOST_HAVE_NAME
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+
+    NAMEInterface *ce = (NAMEInterface*) (mat->context->coloringEngine);
+
+    spmtv_RACE_arg__x_mic_rm_CHUNKHEIGHT_NVECS *spmtvArg = new spmtv_RACE_arg__x_mic_rm_CHUNKHEIGHT_NVECS;
+    spmtvArg->mat = mat;
+    spmtvArg->b = b;
+    spmtvArg->x = x;
+
+    void* argPtr = (void*) (spmtvArg);
+    int spmtvId = ce->registerFunction(&spmtv_RACE_kernel__x_mic_rm_CHUNKHEIGHT_NVECS, argPtr);
+    std::vector<double> time; 
+    //  std::vector<double> barrierTime;
+    double start_spmtv_inner, end_spmtv_inner;
+
+    //ce->resetTime();
+    for(int i=0; i<iterations; ++i)
+    {
+        ghost_barrier();
+        ghost_timing_wcmilli(&start_spmtv_inner);
+
+        ce->executeFunction(spmtvId);
+
+        ghost_barrier();
+        ghost_timing_wcmilli(&end_spmtv_inner);
+
+        time.push_back(end_spmtv_inner-start_spmtv_inner);
+        //barrierTime.push_back(ce->barrierTime()*1e3);
+    }
+
+    //ce->printZoneTree();
+
+    /*for(int i=0; i<iterations; ++i)
+      {
+        printf("%d \t%f \t%f \t%f\n", i, time[i], barrierTime[i], time[i]-(barrierTime[i]));
+      }
+    */
+    delete spmtvArg;
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+
+    return GHOST_SUCCESS;
+#else
+    UNUSED(b);
+    UNUSED(mat);
+    UNUSED(x);
+    UNUSED(iterations);
+
+    ERROR_LOG("Enable RACE library");
+    return GHOST_ERR_UNKNOWN;
+#endif
+}
+
+ghost_error ghost_spmtv_RACE__x_mic_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iter)
+{
+    ghost_error ret = GHOST_SUCCESS;
+    ret = ghost_spmtv_RACE__x_mic_rm_CHUNKHEIGHT_NVECS_tmpl(b,mat,x, iter);
+   // SELECT_TMPL_1DATATYPE(mat->traits.datatype,std::complex,ret,ghost_spmtv_RACE__u_plain_rm_CHUNKHEIGHT_NVECS_tmpl,x,mat,b,opts);
+    // TODO mixed datatypes
+    // SELECT_TMPL_2DATATYPES(mat->traits.datatype,x->traits.datatype,ghost_complex,ret,ghost_kacz_BMC_u_plain_cm_CHUNKHEIGHT_NVECS_tmpl,x,mat,b,opts);
+
+    return ret;
+}

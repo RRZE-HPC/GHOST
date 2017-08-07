@@ -86,7 +86,7 @@ inline void KACZ_Kernel(int start, int end, void *args)
 {
     KACZ_ARG* kaczArg = (KACZ_ARG *) args;
     typedef double MT;
-    typedef double VT;
+    //typedef double VT;
 
     MT *bval = (MT *)(kaczArg->b->val);
     MT *xval = (MT *)(kaczArg->x->val);
