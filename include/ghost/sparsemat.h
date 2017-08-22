@@ -284,6 +284,40 @@ typedef struct
 }
 ghost_spmtv_RACE_parameters;
 
+typedef struct
+{
+    /**
+     * @brief The data access alignment.
+     */
+    ghost_alignment alignment;
+    /**
+     * @brief The implementation.
+     */
+    ghost_implementation impl;
+    /**
+     * @brief The matrix data type.
+     */
+    ghost_datatype mdt;
+    /**
+     * @brief The densemat data type.
+     */
+    ghost_datatype vdt;
+    /**
+     * @brief The densemat width.
+     */
+    int blocksz;
+    /**
+     * @brief The SELL matrix chunk height.
+     */
+    int chunkheight;
+    /**
+     * @brief The densemat storage order.
+     */
+    ghost_densemat_storage storage;
+
+}
+ghost_gs_RACE_parameters;
+
 
 /**
  * @brief The parameters to identify a SELL Kaczmarz kernel.
@@ -341,6 +375,7 @@ typedef ghost_error (*ghost_spmv_kernel)(ghost_densemat*, ghost_sparsemat *, gho
 typedef ghost_error (*ghost_spmtv_RACE_kernel)(ghost_densemat*, ghost_sparsemat *, ghost_densemat*, int);
 typedef ghost_error (*ghost_kacz_kernel)(ghost_densemat*, ghost_sparsemat *, ghost_densemat*, ghost_kacz_opts);
 typedef ghost_error (*ghost_kacz_shift_kernel)(ghost_densemat*, ghost_densemat*, ghost_sparsemat *, ghost_densemat*, double, double, ghost_kacz_opts);
+typedef ghost_error (*ghost_gs_RACE_kernel)(ghost_densemat*, ghost_sparsemat *, ghost_densemat*, int);
 
 
 /**
@@ -906,9 +941,8 @@ extern "C" {
 
     ghost_error destroy_name(ghost_context *ctx);
 
-    void ghost_sell_c_sigmize(ghost_sparsemat *mat);
-
     ghost_error  simdify(ghost_sparsemat *mat);
+    void ghost_ce_sleep(ghost_context* ctx);
 
     ghost_error ghost_sparsemat_perm_zoltan(ghost_context *ctx, ghost_sparsemat *mat);
     /**
@@ -1026,7 +1060,9 @@ extern "C" {
     void ghost_symm_spmv_NAME(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);
 
     /*Gauss-Seidel*/
-    void ghost_gs_NAME(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);
+    ghost_error ghost_gs_RACE(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);
+
+    void ghost_gs_RACE_fallback(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);
 
 
     /**

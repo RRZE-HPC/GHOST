@@ -180,6 +180,13 @@ static ghost_error ghost_spmtv_RACE__x_plain_rm_CHUNKHEIGHT_NVECS_tmpl(ghost_den
         //barrierTime.push_back(ce->barrierTime()*1e3);
     }
 
+    for(int i=0; i<iterations; ++i)
+    {
+        //printf("%d \t%f \t%f \t%f\n", i, time[i], barrierTime[i], time[i]-(barrierTime[i]));
+        printf("%d \t%f\n", i, time[i]);
+    }
+
+
     delete spmtvArg;
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     return GHOST_SUCCESS;
@@ -194,6 +201,7 @@ static ghost_error ghost_spmtv_RACE__x_plain_rm_CHUNKHEIGHT_NVECS_tmpl(ghost_den
     return GHOST_ERR_UNKNOWN;
 #endif
 }
+
 
 ghost_error ghost_spmtv_RACE__x_plain_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iter)
 {

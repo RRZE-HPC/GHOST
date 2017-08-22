@@ -1462,10 +1462,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
 
     if(mat->traits.C > 1)
     {
-        //makes dummy column index point to each thread's first row
-        //to avoid write conflicts
-        ghost_sell_c_sigmize(mat);
-        ret = simdify(mat);
+       ret = simdify(mat);
     }
 
     //also store 16-bit compressed column indices

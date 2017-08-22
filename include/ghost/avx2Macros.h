@@ -17,8 +17,11 @@
     _mm256_i32gather_pd(src, _mm_load_si128((__m128i*) mask), 8)\
 
 
-#define AVX2_GATHER_with_addr(src, mask_reg)\
-    _mm256_i32gather_pd(src,  mask_reg, 8)\
+#define AVX2_GATHER_with_128index(src, mask_reg)\
+    _mm256_setr_pd(src[ _mm_cvtsi128_si32(mask_reg)], src[_mm_extract_epi32(mask_reg,1)], src[_mm_extract_epi32(mask_reg,2)], src[_mm_extract_epi32(mask_reg,3)])\
+
+
+//_mm256_i32gather_pd(src,  mask_reg, 8)\
 
 #define spl_AVX2_GATHER_with_addr(mask1, mask2, mask3, mask4)\
     _mm256_setr_pd((*mask1), (*mask2), (*mask3), (*mask4))\
@@ -35,8 +38,17 @@
    _mm_storeh_pd(&(dest[*((mask)+3)]), hp128);\
 }\
 
-#define AVX2_SCATTER_with_addr(dest, mask_reg, val)\
+#define AVX2_SCATTER_with_128index(dest, mask_reg, val)\
 {\
+    __m128d lp128 = _mm256_extractf128_pd(val, 0);\
+    _mm_store_sd(&(dest[ _mm_cvtsi128_si32(mask_reg)]), lp128);\
+    _mm_storeh_pd(&(dest[_mm_extract_epi32(mask_reg,1)]), lp128);\
+    __m128d hp128 = _mm256_extractf128_pd(val, 1);\
+    _mm_store_sd(&(dest[_mm_extract_epi32(mask_reg,2)]), hp128);\
+    _mm_storeh_pd(&(dest[_mm_extract_epi32(mask_reg,3)]), hp128);\
+}
+
+/*{\
     int mask1 = _mm_cvtsi128_si32(mask_reg);\
     int mask2 = _mm_extract_epi32(mask_reg,1);\
     int mask3 = _mm_extract_epi32(mask_reg,2);\
@@ -47,7 +59,7 @@
     __m128d hp128 = _mm256_extractf128_pd(val, 1);\
     _mm_store_sd(&(dest[mask3]), hp128);\
     _mm_storeh_pd(&(dest[mask4]), hp128);\
-}
+}*/
 
 #define spl_AVX2_SCATTER_with_addr(mask1, mask2, mask3, mask4, val)\
 {\
@@ -61,8 +73,8 @@
 
 
 #define SPLIT_M128i(m128i_reg, val1, val2, val3, val4)\
-    val1 = 8*_mm_cvtsi128_si32(m128i_reg);\
-    val2 = 8*_mm_extract_epi32(m128i_reg,1);\
+    val1 = _mm_cvtsi128_si32(m128i_reg);\
+    val2 = _mm_extract_epi32(m128i_reg,1);\
     val3 = _mm_extract_epi32(m128i_reg,2);\
     val4 = _mm_extract_epi32(m128i_reg,3);\
 
@@ -86,7 +98,15 @@
 
 //a*b+c
 #define AVX2_FMA(a,b,c)\
-   _mm256_fmadd_pd(a, b,c)
+    _mm256_fmadd_pd(a, b,c)
+
+#define AVX2_ADD(a,b)\
+    _mm256_add_pd(a, b)
+
+#define AVX2_MUL(a,b)\
+    _mm256_mul_pd(a, b)
+
+
 
 inline bool testAVX2Instructions()
 {
@@ -118,8 +138,8 @@ inline bool testAVX2Instructions()
     }
 
     __m128i mask128 = _mm_load_si128( (__m128i*) mask);
-    a_vec = AVX2_GATHER_with_addr(a, mask128);
-    AVX2_SCATTER_with_addr(b, mask128, a_vec);
+    a_vec = AVX2_GATHER_with_128index(a, mask128);
+    AVX2_SCATTER_with_128index(b, mask128, a_vec);
     if(!(testEquality(a,b,4)))
     {
         ERROR_LOG("AVX2 GATHER_with_addr/SCATTER_with_addr broken");

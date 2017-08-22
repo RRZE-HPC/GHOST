@@ -167,9 +167,10 @@ set (SOURCES
     src/sell_symm_spmv_NAME_rm.cpp
     src/sell_kacz_NAME_rm.cpp
     src/init.cpp
-    #src/sell_gs_NAME_rm.cpp
-    src/sell_c_sigmize.cpp
+    src/sell_gs_RACE_fallback.cpp
+    src/sell_gs.cpp
   )
+
 
 set (HEADERS
     include/ghost/autogen.h

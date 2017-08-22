@@ -93,7 +93,7 @@
 
 
 #elif defined(SPMTV_V3)
-    //version 2: avoid 2 times loading
+    //version 3: avoid 2 times loading
    #define INNER_LOOP_BODY_AVX256(chunk_arg)\
         row = (chunk_arg)*CHUNKHEIGHT;\
         idx = mat->chunkStart[chunk_arg];\
@@ -106,7 +106,7 @@
         }\
 
 #elif defined(SPMTV_V4)
-    //version 3: store x_row in register
+    //version 4: store x_row in register
    #define INNER_LOOP_BODY_AVX256(chunk_arg)\
         row = (chunk_arg)*CHUNKHEIGHT;\
         idx = mat->chunkStart[chunk_arg];\
@@ -119,7 +119,7 @@
         }\
 
 #else
-    //version 4: avoid loading column entry everytime
+    //version 5: avoid loading base column ptr entry everytime
    #define INNER_LOOP_BODY_AVX256(chunk_arg)\
         row = (chunk_arg)*CHUNKHEIGHT;\
         idx = mat->chunkStart[chunk_arg];\
@@ -128,7 +128,7 @@
         _Pragma("simd")\
         for(ghost_lidx j=0; j<mat->chunkLen[chunk_arg]; ++j) { \
             int* curr_col = &(mat->col[idx]);\
-            #GHOST_UNROLL#val256 = AVX_256_LOAD(&(mval[idx+4*@]));col1=*(curr_col+(4*@));col2=*(curr_col+(4*@)+1);col3=*(curr_col+(4*@)+2);col4=*(curr_col+(4*@)+3);b_temp256 = AVX_256_GATHER_with_addr(bval, col1, col2, col3, col4);b_temp256 = AVX_256_FMA(val256,x_row256@,b_temp256); AVX_256_SCATTER_with_addr(bval, col1, col2, col3, col4 , b_temp256);\#CHUNKHEIGHT/4\
+            #GHOST_UNROLL#val256 = AVX_256_LOAD(&(mval[idx+4*@])); col1=*(curr_col+(4*@));col2=*(curr_col+(4*@)+1);col3=*(curr_col+(4*@)+2);col4=*(curr_col+(4*@)+3); b_temp256 = AVX_256_GATHER_with_addr(bval, col1, col2, col3, col4);b_temp256 = AVX_256_FMA(val256,x_row256@,b_temp256); AVX_256_SCATTER_with_addr(bval, col1, col2, col3, col4 , b_temp256);\#CHUNKHEIGHT/4\
             idx += CHUNKHEIGHT;\
         }\
 
@@ -172,7 +172,7 @@
     __m256d x_row256[CHUNKHEIGHT/4];\
   /*do first reminder */\
     for(ghost_lidx rowinchunk=start_rem; rowinchunk<MIN(CHUNKHEIGHT,(end_chunk-start_chunk)*CHUNKHEIGHT+end_rem); ++rowinchunk) { \
-        INNER_LOOP_REM(start_chunk, rowinchunk); \
+       INNER_LOOP_REM(start_chunk, rowinchunk); \
     }\
     /*main body */\
     for(ghost_lidx chunk=(start_chunk+1); chunk<end_chunk; ++chunk) {\
@@ -196,7 +196,7 @@
    #GHOST_UNROLL#__m256d x_row256@;\ #CHUNKHEIGHT/4\
   /*do first reminder */\
     for(ghost_lidx rowinchunk=start_rem; rowinchunk<MIN(CHUNKHEIGHT,(end_chunk-start_chunk)*CHUNKHEIGHT+end_rem); ++rowinchunk) { \
-        INNER_LOOP_REM(start_chunk, rowinchunk); \
+       INNER_LOOP_REM(start_chunk, rowinchunk); \
     }\
     /*main body */\
     for(ghost_lidx chunk=(start_chunk+1); chunk<end_chunk; ++chunk) {\
@@ -205,11 +205,11 @@
     /*do last reminder*/\
     if(start_chunk<end_chunk) { \
         for(ghost_lidx rowinchunk=0; rowinchunk<end_rem; ++rowinchunk) { \
-            INNER_LOOP_REM(end_chunk, rowinchunk); \
+           INNER_LOOP_REM(end_chunk, rowinchunk); \
         }\
     }\
 
-#endif 
+#endif
 
 #endif
 
@@ -282,11 +282,12 @@ static ghost_error ghost_spmtv_RACE__x_avx_rm_CHUNKHEIGHT_NVECS_tmpl(ghost_dense
 
     //ce->printZoneTree();
 
-    /*for(int i=0; i<iterations; ++i)
-      {
-        printf("%d \t%f \t%f \t%f\n", i, time[i], barrierTime[i], time[i]-(barrierTime[i]));
-      }
-    */
+    for(int i=0; i<iterations; ++i)
+    {
+        //printf("%d \t%f \t%f \t%f\n", i, time[i], barrierTime[i], time[i]-(barrierTime[i]));
+        printf("%d \t%f\n", i, time[i]);
+    }
+
     delete spmtvArg;
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
 

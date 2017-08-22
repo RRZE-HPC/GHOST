@@ -24,6 +24,12 @@
      _mm_store_sd(&(dest[mask_lo]), val);\
     _mm_storeh_pd(&(dest[mask_hi]), val);\
 
+#define SPLIT_M128i(m128i_reg, idx1, idx2)\
+{\
+    idx1 = _mm_cvtsi128_si32 (m128i_reg);\
+    idx2 = _mm_extract_epi32 (m128i_reg, 1);\
+}
+
 
 //a*b+c
 #define SSE_FMA(a,b,c)\

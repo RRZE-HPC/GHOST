@@ -1,0 +1,216 @@
+/*!GHOST_AUTOGEN_SPMTV CHUNKHEIGHT,NVECS */
+#include "ghost/config.h"
+#include "ghost/types.h"
+#include "ghost/util.h"
+#include "ghost/instr.h"
+#include "ghost/omp.h"
+#include "ghost/machine.h"
+#include "ghost/math.h"
+#include "ghost/sparsemat.h"
+#include "ghost/densemat.h"
+#include "ghost/locality.h"
+#include <complex>
+#include <complex.h>
+#include "ghost/timing.h"
+#include "ghost/sparsemat.h"
+#ifdef GHOST_HAVE_NAME
+#include <NAME/interface.h>
+#endif
+#include <vector>
+#include "ghost/micMacros.h"
+#include "ghost/sell_gs_RACE_mic_gen.h"
+
+
+#GHOST_SUBST NVECS ${NVECS}
+#GHOST_SUBST CHUNKHEIGHT ${CHUNKHEIGHT}
+
+#if defined(GHOST_BUILD_MIC)
+
+#if (CHUNKHEIGHT==1)
+
+//this is necessary since #pragma omp for doesn't understand !=
+#define LOOP(start,end,MT,VT) \
+    for (ghost_lidx row=start; row<end; ++row){ \
+        xval[row] = bval[row]; \
+        ghost_lidx idx = mat->chunkStart[row]; \
+        _Pragma("simd") \
+        for (ghost_lidx j=1; j<mat->rowLen[row]; j++) { \
+            xval[row] -= (MT)mval[idx+j] * xval[mat->col[idx+j]];\
+        }\
+        xval[row] /= mval[idx];\
+    }\
+
+
+#else
+
+#define INNER_LOOP_REM(chunk_arg, rowinchunk_arg)\
+    row = (chunk_arg)*CHUNKHEIGHT+rowinchunk_arg;\
+    idx = mat->chunkStart[chunk_arg]+rowinchunk_arg;\
+    int startIdx = idx;\
+    xval[row] = bval[row];\
+    for(ghost_lidx j=0; j<mat->chunkLen[chunk_arg]; ++j) { \
+        xval[row] -= (MT)mval[idx]*xval[mat->col[idx]];\
+        idx += CHUNKHEIGHT;\
+    }\
+    xval[row] /= mval[startIdx];
+
+
+
+#define INNER_LOOP_BODY_MIC(chunk_arg)\
+    row = (chunk_arg)*CHUNKHEIGHT;\
+    idx = mat->chunkStart[chunk_arg];\
+    #GHOST_UNROLL#x_row512@ = MIC_LOAD(&(bval[row+8*@]));\#CHUNKHEIGHT/8\
+   _Pragma("simd")\
+    for(ghost_lidx j=0; j<mat->chunkLen[chunk_arg]; ++j) { \
+        int* curr_col = &(mat->col[idx]);\
+        #GHOST_UNROLL#val512 = MIC_LOAD(&(mval[idx+8*@]));index=_mm256_load_si256((__m256i*)(curr_col+8*@));x_col512 = MIC_GATHER(xval, index);x_row512@ = MIC_FMS(val512,x_col512,x_row512@); \#CHUNKHEIGHT/8\
+        idx += CHUNKHEIGHT;\
+    }\
+    #GHOST_UNROLL#diag512 = MIC_LOAD(&(mval[row+8*@]));x_row512@=MIC_DIV(x_row512@, diag512); MIC_STORE(&(xval[row+8*@]), x_row512@);\#CHUNKHEIGHT/8\
+
+
+
+    /*SPMV like*/
+/*#define INNER_LOOP_BODY_AVX256(chunk_arg)\
+    row = (chunk_arg)*CHUNKHEIGHT;\
+    idx = mat->chunkStart[chunk_arg];\
+    #GHOST_UNROLL#x_row256@ = AVX_256_LOAD(&(bval[row+4*@]));\#CHUNKHEIGHT/4\
+    _Pragma("simd")\
+    for(ghost_lidx j=0; j<mat->chunkLen[chunk_arg]; ++j) { \
+        #GHOST_UNROLL#val256 = AVX_256_LOAD(&(mval[idx+4*@]));x_col256 = AVX_256_GATHER_with_addr(xval, mat->col[idx+4*@], mat->col[idx+4*@+1], mat->col[idx+4*@+2], mat->col[idx+4*@+3]);x_row256@ = AVX_256_FMS(val256,x_col256,x_row256@); \#CHUNKHEIGHT/4\
+        idx += CHUNKHEIGHT;\
+    }\
+    #GHOST_UNROLL#AVX_256_STORE(&(bval[row+4*@]), x_row256@);\#CHUNKHEIGHT/4\
+*/
+
+
+#define LOOP(start,end,MT,VT) \
+    ghost_lidx start_chunk = start/CHUNKHEIGHT;\
+    ghost_lidx start_rem = start%CHUNKHEIGHT;\
+    ghost_lidx end_chunk = end/CHUNKHEIGHT;\
+    ghost_lidx end_rem = end%CHUNKHEIGHT;\
+    ghost_lidx row = 0, idx = 0;\
+    __m512d val512, x_col512, diag512;\
+    __m256i index;\
+   #GHOST_UNROLL#__m512d x_row512@;\#CHUNKHEIGHT/8\
+  /*do first reminder */\
+    for(ghost_lidx rowinchunk=start_rem; rowinchunk<MIN(CHUNKHEIGHT,(end_chunk-start_chunk)*CHUNKHEIGHT+end_rem); ++rowinchunk) { \
+        INNER_LOOP_REM(start_chunk, rowinchunk); \
+    }\
+    /*main body */\
+    for(ghost_lidx chunk=(start_chunk+1); chunk<end_chunk; ++chunk) {\
+        INNER_LOOP_BODY_MIC(chunk); \
+    }\
+    /*do last reminder*/\
+    if(start_chunk<end_chunk) { \
+        for(ghost_lidx rowinchunk=0; rowinchunk<end_rem; ++rowinchunk) { \
+            INNER_LOOP_REM(end_chunk, rowinchunk); \
+        }\
+    }\
+
+
+#endif
+
+struct gs_RACE_arg__x_mic_rm_CHUNKHEIGHT_NVECS {
+    ghost_densemat *b;
+    ghost_sparsemat *mat;
+    ghost_densemat *x;
+};
+
+inline void gs_RACE_kernel__x_mic_rm_CHUNKHEIGHT_NVECS(int start, int end, void *args)
+{
+    gs_RACE_arg__x_mic_rm_CHUNKHEIGHT_NVECS * gsArg = (gs_RACE_arg__x_mic_rm_CHUNKHEIGHT_NVECS  *) args;
+    typedef double MT;
+    //typedef double VT;
+
+    MT *bval = (MT *)(gsArg->b->val);
+    MT *xval = (MT *)(gsArg->x->val);
+    MT *mval = (MT *)(gsArg->mat->val);
+
+    ghost_sparsemat *mat = gsArg->mat;
+
+    LOOP(start, end, MT, VT);
+}
+
+//static ghost_error ghost_gs_BMC_u_plain_rm_CHUNKHEIGHT_NVECS_tmpl(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts)
+static ghost_error ghost_gs_RACE__x_mic_rm_CHUNKHEIGHT_NVECS_tmpl(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations)
+{
+#ifdef GHOST_HAVE_NAME
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+    if(!(mat->traits.flags & GHOST_SPARSEMAT_DIAG_FIRST))
+    {
+        ERROR_LOG("Enable 'GHOST_SPARSEMAT_DIAG_FIRST' flag to execute Gauss-Seidel sweep");
+    }
+    else
+    {
+        NAMEInterface *ce = (NAMEInterface*) (mat->context->coloringEngine);
+
+        gs_RACE_arg__x_mic_rm_CHUNKHEIGHT_NVECS *gsArg = new gs_RACE_arg__x_mic_rm_CHUNKHEIGHT_NVECS;
+        gsArg->mat = mat;
+        gsArg->b = b;
+        gsArg->x = x;
+
+        void* argPtr = (void*) (gsArg);
+        int gsId = ce->registerFunction(&gs_RACE_kernel__x_mic_rm_CHUNKHEIGHT_NVECS, argPtr);
+        std::vector<double> time; 
+        //  std::vector<double> barrierTime;
+        double start_gs_inner, end_gs_inner;
+        for(int i=0; i<iterations; ++i)
+        {
+            ghost_barrier();
+            ghost_timing_wcmilli(&start_gs_inner);
+
+            ce->executeFunction(gsId);
+
+            ghost_barrier();
+            ghost_timing_wcmilli(&end_gs_inner);
+
+            time.push_back(end_gs_inner-start_gs_inner);
+            //	    barrierTime.push_back(ce->barrierTime()*1e3);
+        }
+
+        /*    for(int i=0; i<iterations; ++i)
+              {
+              printf("%d \t%f \t%f \t%f\n", i, time[i], barrierTime[i], time[i]-(barrierTime[i]));
+              }
+              */
+        delete gsArg;
+    }
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+
+    return GHOST_SUCCESS;
+#else
+    UNUSED(b);
+    UNUSED(mat);
+    UNUSED(x);
+    UNUSED(iterations);
+
+    ERROR_LOG("Enable RACE library");
+
+    return GHOST_ERR_UNKNOWN;
+#endif
+}
+
+ghost_error ghost_gs_RACE__x_mic_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iter)
+{
+    ghost_error ret = GHOST_SUCCESS;
+    ret = ghost_gs_RACE__x_mic_rm_CHUNKHEIGHT_NVECS_tmpl(b,mat,x, iter);
+   // SELECT_TMPL_1DATATYPE(mat->traits.datatype,std::complex,ret,ghost_spmtv_RACE__u_plain_rm_CHUNKHEIGHT_NVECS_tmpl,x,mat,b,opts);
+    // TODO mixed datatypes
+    // SELECT_TMPL_2DATATYPES(mat->traits.datatype,x->traits.datatype,ghost_complex,ret,ghost_kacz_BMC_u_plain_cm_CHUNKHEIGHT_NVECS_tmpl,x,mat,b,opts);
+
+    return ret;
+}
+
+#else
+
+ghost_error ghost_gs_RACE__x_mic_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iter)
+{
+    UNUSED(b);
+    UNUSED(mat);
+    UNUSED(x);
+    UNUSED(iter);
+    return GHOST_ERR_UNKNOWN;
+}
+
+#endif

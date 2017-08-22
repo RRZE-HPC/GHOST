@@ -2,6 +2,7 @@
 #include "ghost/omp.h"
 #include "ghost/locality.h"
 #include "ghost/util.h"
+#include "ghost/machine.h"
 #ifdef GHOST_HAVE_NAME
 #include "NAME/interface.h"
 #include "NAME/simdify.h"
@@ -73,29 +74,33 @@ extern "C" {
 extern "C" {
     ghost_error simdify(ghost_sparsemat* mat)
     {
-        //to change
-        int simdWidth = 8;
-        //simdify if NAME is there
+        int simdWidth =  ghost_machine_simd_width()/8;
+        printf("simdWidth set to %d\n", simdWidth);
+#ifdef GHOST_HAVE_NAME
         if( mat->traits.flags & GHOST_SPARSEMAT_NAME )
         {
-            printf("C = %d\n",mat->traits.C);
-            if(!(mat->traits.C % simdWidth))
+            NAMEInterface *ce = (NAMEInterface*) mat->context->coloringEngine;
+
+            bool ret = ce->simdify(simdWidth, mat->traits.C, mat->context->row_map->dim, mat->col, mat->chunkStart, mat->rowLen, mat->chunkLenPadded, ((double*) mat->val));
+            if(!ret)
             {
-                printf("calling SIMDify\n");
-                bool ret = simdify(simdWidth, mat->traits.C, mat->context->row_map->dim, mat->col, mat->chunkStart, mat->rowLen, mat->chunkLenPadded, ((double*) mat->val));
-                printf("finished SIMDifying\n");
-                if(!ret)
-                {
-                    ERROR_LOG("ERROR while simdifying");
-                    return GHOST_ERR_INVALID_ARG;
-                }
-            }
-            else
-            {
-                ERROR_LOG("Please set chunkheight C to a multiple of simd width (%d) ", simdWidth);
+                ERROR_LOG("ERROR while simdifying");
                 return GHOST_ERR_INVALID_ARG;
             }
         }
+
         return GHOST_SUCCESS;
+#else
+    ERROR_LOG("Sidify cannot be performed: RACE not installed");
+    return GHOST_ERR_INVALID_ARG;
+#endif
+   }
+}
+
+extern "C" {
+    void ghost_ce_sleep(ghost_context* ctx)
+    {
+        NAMEInterface *ce = (NAMEInterface*) ctx->coloringEngine;
+        ce->sleep();
     }
 }

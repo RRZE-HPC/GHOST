@@ -23,6 +23,8 @@
 #GHOST_SUBST NVECS ${NVECS}
 #GHOST_SUBST CHUNKHEIGHT ${CHUNKHEIGHT}
 
+#define SPMTV_V1
+
 #if defined(GHOST_BUILD_MIC)
 
 #if (NVECS==1 && CHUNKHEIGHT==1)
@@ -61,18 +63,53 @@
         row += CHUNKHEIGHT;\
 */
 
-   //version 4: avoid loading column entry everytime
+
+#if defined(SPMTV_V1)
+   //version 1
    #define INNER_LOOP_BODY_MIC(chunk_arg)\
         row = (chunk_arg)*CHUNKHEIGHT;\
         idx = mat->chunkStart[chunk_arg];\
         #GHOST_UNROLL#x_row512@ = MIC_LOAD(&(xval[row+8*@]));\#CHUNKHEIGHT/8\
         __m256i index;\
+       _Pragma("simd")\
+        for(ghost_lidx j=0; j<mat->chunkLen[chunk_arg]; ++j) { \
+            int* curr_col = &(mat->col[idx]);\
+            #GHOST_UNROLL#val512 = MIC_LOAD(&(mval[idx+8*@])); index=_mm256_load_si256((__m256i*)(curr_col+8*@));b_temp512 = MIC_GATHER(bval, index);b_temp512 = MIC_FMA(val512,x_row512@,b_temp512); MIC_SCATTER(bval, index , b_temp512);\#CHUNKHEIGHT/8\
+            idx += CHUNKHEIGHT;\
+        }\
+
+
+#else
+
+   #define INNER_LOOP_BODY_MIC(chunk_arg)\
+        row = (chunk_arg)*CHUNKHEIGHT;\
+        idx = mat->chunkStart[chunk_arg];\
+        #GHOST_UNROLL#x_row512@ = MIC_LOAD(&(xval[row+8*@]));\#CHUNKHEIGHT/8\
+        __m256i index;\
+        int col1, col2, col3, col4, col5, col6, col7, col8;\
+       _Pragma("simd")\
+        for(ghost_lidx j=0; j<mat->chunkLen[chunk_arg]; ++j) { \
+            int* curr_col = &(mat->col[idx]);\
+            #GHOST_UNROLL#val512 = MIC_LOAD(&(mval[idx+8*@])); col1=mat->col[idx+4*@]; col2=mat->col[idx+4*@+1]; col3=mat->col[idx+4*@+2]; col4=mat->col[idx+4*@+3]; col5=mat->col[idx+4*@+4]; col6=mat->col[idx+4*@+5]; col7=mat->col[idx+4*@+6]; col8=mat->col[idx+4*@+7]; b_temp512 = MIC_GATHER_manual_with_var(bval, col1, col2, col3, col4, col5, col6, col7, col8);b_temp512 = MIC_FMA(val512,x_row512@,b_temp512); MIC_SCATTER_manual_with_var(bval, col1, col2, col3, col4, col5, col6, col7, col8 , b_temp512);\#CHUNKHEIGHT/8\
+            idx += CHUNKHEIGHT;\
+        }\
+
+#endif
+    //version 2
+    //manual gather and scatter
+/*    #define INNER_LOOP_BODY_MIC(chunk_arg)\
+        row = (chunk_arg)*CHUNKHEIGHT;\
+        idx = mat->chunkStart[chunk_arg];\
+        #GHOST_UNROLL#x_row512@ = MIC_LOAD(&(xval[row+8*@]));\#CHUNKHEIGHT/8\
+        __m256i index;\
+        int col1, col2, col3, col4, col5, col6, col7, col8;\
         _Pragma("simd")\
         for(ghost_lidx j=0; j<mat->chunkLen[chunk_arg]; ++j) { \
             int* curr_col = &(mat->col[idx]);\
-            #GHOST_UNROLL#val512 = MIC_LOAD(&(mval[idx+8*@])); index=_mm256_load_si256((__m256i*)(curr_col+8*@)); ;b_temp512 = MIC_GATHER(bval, index);b_temp512 = MIC_FMA(val512,x_row512@,b_temp512); MIC_SCATTER(bval, index , b_temp512);\#CHUNKHEIGHT/8\
+            #GHOST_UNROLL#val512 = MIC_LOAD(&(mval[idx+8*@])); index=_mm256_load_si256((__m256i*)(curr_col+8*@)); SPLIT_M256i(index, col1, col2, col3, col4, col5, col6, col7, col8); b_temp512 = MIC_GATHER_manual_with_var(bval, col1, col2, col3, col4, col5, col6, col7,col8);b_temp512 = MIC_FMA(val512,x_row512@,b_temp512); MIC_SCATTER_manual_with_var(bval, col1, col3, col3, col4, col5, col6, col7, col8, b_temp512);\#CHUNKHEIGHT/8\
             idx += CHUNKHEIGHT;\
         }\
+*/
 
 
 /*  optimisation left to compiler
@@ -103,31 +140,6 @@
 
 #endif
 
-#if ((defined(SPMTV_V1) || defined(SPMTV_V2)) || defined(SPMTV_V3))
-#define LOOP(start,end,MT,VT)\
-    ghost_lidx start_chunk = start/CHUNKHEIGHT;\
-    ghost_lidx start_rem = start%CHUNKHEIGHT;\
-    ghost_lidx end_chunk = end/CHUNKHEIGHT;\
-    ghost_lidx end_rem = end%CHUNKHEIGHT;\
-    ghost_lidx row = 0, idx = 0;\
-    __m256d val256, b_temp256;\
-    __m256d x_row256[CHUNKHEIGHT/4];\
-  /*do first reminder */\
-    for(ghost_lidx rowinchunk=start_rem; rowinchunk<MIN(CHUNKHEIGHT,(end_chunk-start_chunk)*CHUNKHEIGHT+end_rem); ++rowinchunk) { \
-        INNER_LOOP_REM(start_chunk, rowinchunk); \
-    }\
-    /*main body */\
-    for(ghost_lidx chunk=(start_chunk+1); chunk<end_chunk; ++chunk) {\
-        INNER_LOOP_BODY_MIC(chunk); \
-    }\
-    /*do last reminder*/\
-    if(start_chunk<end_chunk) { \
-        for(ghost_lidx rowinchunk=0; rowinchunk<end_rem; ++rowinchunk) { \
-            INNER_LOOP_REM(end_chunk, rowinchunk); \
-        }\
-    }\
-
-#else
 #define LOOP(start,end,MT,VT)\
     ghost_lidx start_chunk = start/CHUNKHEIGHT;\
     ghost_lidx start_rem = start%CHUNKHEIGHT;\
@@ -151,7 +163,7 @@
         }\
     }\
 
-#endif 
+
 
 #endif
 
@@ -208,6 +220,7 @@ static ghost_error ghost_spmtv_RACE__x_mic_rm_CHUNKHEIGHT_NVECS_tmpl(ghost_dense
     double start_spmtv_inner, end_spmtv_inner;
 
     //ce->resetTime();
+    ce->sleep();
     for(int i=0; i<iterations; ++i)
     {
         ghost_barrier();
@@ -221,14 +234,15 @@ static ghost_error ghost_spmtv_RACE__x_mic_rm_CHUNKHEIGHT_NVECS_tmpl(ghost_dense
         time.push_back(end_spmtv_inner-start_spmtv_inner);
         //barrierTime.push_back(ce->barrierTime()*1e3);
     }
+    ce->sleep();
 
     //ce->printZoneTree();
 
-    /*for(int i=0; i<iterations; ++i)
+    for(int i=0; i<iterations; ++i)
       {
-        printf("%d \t%f \t%f \t%f\n", i, time[i], barrierTime[i], time[i]-(barrierTime[i]));
+        printf("%d \t%f \n", i, time[i]);
       }
-    */
+
     delete spmtvArg;
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
 

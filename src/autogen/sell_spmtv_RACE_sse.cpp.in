@@ -23,6 +23,8 @@
 #GHOST_SUBST NVECS ${NVECS}
 #GHOST_SUBST CHUNKHEIGHT ${CHUNKHEIGHT}
 
+#define SPMTV_V2
+
 #if 0
 
 #define INNER_LOOP_AVX512\
@@ -116,6 +118,7 @@ idx+=1;\
         }\
 */
 
+#if defined(SPMTV_V1)
 
    #define INNER_LOOP_BODY_SSE(chunk_arg)\
         row = (chunk_arg)*CHUNKHEIGHT;\
@@ -127,6 +130,35 @@ idx+=1;\
             idx += CHUNKHEIGHT;\
         }\
 
+#elif defined(SPMTV_V2)
+
+   #define INNER_LOOP_BODY_SSE(chunk_arg)\
+        row = (chunk_arg)*CHUNKHEIGHT;\
+        idx = mat->chunkStart[chunk_arg];\
+        int col1, col2;\
+        #GHOST_UNROLL#x_row128@ = SSE_LOAD(&(xval[row+2*@]));\#CHUNKHEIGHT/2\
+        for(ghost_lidx j=0; j<mat->chunkLen[chunk_arg]; ++j) { \
+            int *curr_col = &(mat->col[idx]);\
+            #GHOST_UNROLL#col1=*(curr_col+2*@); col2=*(curr_col+2*@+1); val128 = SSE_LOAD(&(mval[idx+2*@]));b_temp128 = SSE_GATHER_with_addr(bval, col1, col2);b_temp128 = SSE_FMA(val128,x_row128@,b_temp128); SSE_SCATTER_with_addr(bval, col1, col2, b_temp128);\#CHUNKHEIGHT/2\
+            idx += CHUNKHEIGHT;\
+        }\
+
+#else
+
+   #define INNER_LOOP_BODY_SSE(chunk_arg)\
+        row = (chunk_arg)*CHUNKHEIGHT;\
+        idx = mat->chunkStart[chunk_arg];\
+        int col1, col2;\
+        __m128i col_index;\
+        #GHOST_UNROLL#x_row128@ = SSE_LOAD(&(xval[row+2*@]));\#CHUNKHEIGHT/2\
+        for(ghost_lidx j=0; j<mat->chunkLen[chunk_arg]; ++j) { \
+            int *curr_col = &(mat->col[idx]);\
+            #GHOST_UNROLL#col_index = _mm_load_si128((__m128i*)(curr_col+2*@)); SPLIT_M128i(col_index, col1, col2); val128 = SSE_LOAD(&(mval[idx+2*@]));b_temp128 = SSE_GATHER_with_addr(bval, col1, col2);b_temp128 = SSE_FMA(val128,x_row128@,b_temp128); SSE_SCATTER_with_addr(bval, col1, col2, b_temp128);\#CHUNKHEIGHT/2\
+            idx += CHUNKHEIGHT;\
+        }\
+
+
+#endif
 
 /*
     #define INNER_LOOP_BODY_AVX256(chunk_arg)\

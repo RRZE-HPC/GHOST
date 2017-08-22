@@ -24,9 +24,9 @@
 #GHOST_SUBST NVECS ${NVECS}
 #GHOST_SUBST CHUNKHEIGHT ${CHUNKHEIGHT}
 
-#define SPMTV_V5
+#define SPMTV_V9
 
-#if defined(GHOST_BULID_AVX2)
+#if defined(GHOST_BUILD_AVX2)
 
 #if (NVECS==1 && CHUNKHEIGHT==1)
 
@@ -66,57 +66,130 @@
 
 
 #ifdef SPMTV_V1
-    //version 1; plain intrinsics
-    //disadvantages
-    //inter-iteration dependency
-    //2 times column loaded: gather and scatter
-    //mulpd consists of load i.e. x_row256[@] is not in register
-   #define INNER_LOOP_BODY_AVX256(chunk_arg)\
+  #define INNER_LOOP_BODY_AVX2(chunk_arg)\
         row = (chunk_arg)*CHUNKHEIGHT;\
         idx = mat->chunkStart[chunk_arg];\
         #GHOST_UNROLL#x_row256[@] = AVX_256_LOAD(&(xval[row+4*@]));\#CHUNKHEIGHT/4\
         for(ghost_lidx j=0; j<mat->chunkLen[chunk_arg]; ++j) { \
-            #GHOST_UNROLL#val256 = AVX_256_LOAD(&(mval[idx+4*@]));b_temp256 = AVX_256_GATHER(bval, &(mat->col[idx+4*@]));b_temp256 = AVX_256_FMA(val256,x_row256[@],b_temp256); AVX_256_SCATTER(bval, &(mat->col[idx+4*@]) , b_temp256);\#CHUNKHEIGHT/4\
+            #GHOST_UNROLL#val256 = AVX2_LOAD(&(mval[idx+4*@]));b_temp256 = AVX2_GATHER(bval, &(mat->col[idx+4*@]));b_temp256 = AVX2_FMA(val256,x_row256[@],b_temp256); AVX2_SCATTER(bval, &(mat->col[idx+4*@]) , b_temp256);\#CHUNKHEIGHT/4\
             idx += CHUNKHEIGHT;\
         }\
 
 #elif defined(SPMTV_V2)
-    //version 2: avoid inter-dependence
-    #define INNER_LOOP_BODY_AVX256(chunk_arg)\
+//version2 avoid interdependence
+#define INNER_LOOP_BODY_AVX2(chunk_arg)\
         row = (chunk_arg)*CHUNKHEIGHT;\
         idx = mat->chunkStart[chunk_arg];\
         #GHOST_UNROLL#x_row256[@] = AVX_256_LOAD(&(xval[row+4*@]));\#CHUNKHEIGHT/4\
         _Pragma("simd")\
         for(ghost_lidx j=0; j<mat->chunkLen[chunk_arg]; ++j) { \
-            #GHOST_UNROLL#val256 = AVX_256_LOAD(&(mval[idx+4*@]));b_temp256 = AVX_256_GATHER(bval, &(mat->col[idx+4*@]));b_temp256 = AVX_256_FMA(val256,x_row256[@],b_temp256); AVX_256_SCATTER(bval, &(mat->col[idx+4*@]) , b_temp256);\#CHUNKHEIGHT/4\
+            #GHOST_UNROLL#val256 = AVX2_LOAD(&(mval[idx+4*@]));b_temp256 = AVX2_GATHER(bval, &(mat->col[idx+4*@]));b_temp256 = AVX2_FMA(val256,x_row256[@],b_temp256); AVX2_SCATTER(bval, &(mat->col[idx+4*@]) , b_temp256);\#CHUNKHEIGHT/4\
             idx += CHUNKHEIGHT;\
         }\
 
+
 #elif defined(SPMTV_V3)
-    //version 2: avoid 2 times loading
-   #define INNER_LOOP_BODY_AVX256(chunk_arg)\
+    //version 3: avoid 2 times loading; Manual gather
+   #define INNER_LOOP_BODY_AVX2(chunk_arg)\
         row = (chunk_arg)*CHUNKHEIGHT;\
         idx = mat->chunkStart[chunk_arg];\
         int col1, col2, col3, col4;\
-        #GHOST_UNROLL#x_row256[@] = AVX_256_LOAD(&(xval[row+4*@]));\#CHUNKHEIGHT/4\
+        #GHOST_UNROLL#x_row256[@] = AVX2_LOAD(&(xval[row+4*@]));\#CHUNKHEIGHT/4\
         _Pragma("simd")\
         for(ghost_lidx j=0; j<mat->chunkLen[chunk_arg]; ++j) { \
-            #GHOST_UNROLL#val256 = AVX_256_LOAD(&(mval[idx+4*@]));col1=mat->col[idx+4*@]; col2=mat->col[idx+4*@+1]; col3=mat->col[idx+4*@+2]; col4=mat->col[idx+4*@+3]; b_temp256 = AVX_256_GATHER_with_addr(bval, col1, col2, col3, col4);b_temp256 = AVX_256_FMA(val256,x_row256[@],b_temp256); AVX_256_SCATTER_with_addr(bval, col1, col2, col3, col4 , b_temp256);\#CHUNKHEIGHT/4\
+            #GHOST_UNROLL#val256 = AVX2_LOAD(&(mval[idx+4*@]));col1=mat->col[idx+4*@]; col2=mat->col[idx+4*@+1]; col3=mat->col[idx+4*@+2]; col4=mat->col[idx+4*@+3]; b_temp256 = AVX_256_GATHER_with_addr(bval, col1, col2, col3, col4);b_temp256 = AVX2_FMA(val256,x_row256[@],b_temp256); AVX_256_SCATTER_with_addr(bval, col1, col2, col3, col4 , b_temp256);\#CHUNKHEIGHT/4\
             idx += CHUNKHEIGHT;\
         }\
 
 #elif defined(SPMTV_V4)
-    //version 3: store x_row in register
-   #define INNER_LOOP_BODY_AVX256(chunk_arg)\
+    //version 4: avoid movq every time for finding column base index
+   #define INNER_LOOP_BODY_AVX2(chunk_arg)\
         row = (chunk_arg)*CHUNKHEIGHT;\
         idx = mat->chunkStart[chunk_arg];\
         int col1, col2, col3, col4;\
-        #GHOST_UNROLL#x_row256@ = AVX_256_LOAD(&(xval[row+4*@]));\#CHUNKHEIGHT/4\
+        #GHOST_UNROLL#x_row256[@] = AVX2_LOAD(&(xval[row+4*@]));\#CHUNKHEIGHT/4\
         _Pragma("simd")\
         for(ghost_lidx j=0; j<mat->chunkLen[chunk_arg]; ++j) { \
-            #GHOST_UNROLL#val256 = AVX_256_LOAD(&(mval[idx+4*@]));col1=mat->col[idx+4*@]; col2=mat->col[idx+4*@+1]; col3=mat->col[idx+4*@+2]; col4=mat->col[idx+4*@+3]; b_temp256 = AVX_256_GATHER_with_addr(bval, col1, col2, col3, col4);b_temp256 = AVX_256_FMA(val256,x_row256@,b_temp256); AVX_256_SCATTER_with_addr(bval, col1, col2, col3, col4 , b_temp256);\#CHUNKHEIGHT/4\
+            int* curr_col = &(mat->col[idx]);\
+            #GHOST_UNROLL#val256 = AVX2_LOAD(&(mval[idx+4*@]));col1=*(curr_col+4*@); col2=*(curr_col+4*@+1); col3=*(curr_col+4*@+2); col4=*(curr_col+4*@+3); b_temp256 = AVX_256_GATHER_with_addr(bval, col1, col2, col3, col4);b_temp256 = AVX2_FMA(val256,x_row256[@],b_temp256); AVX_256_SCATTER_with_addr(bval, col1, col2, col3, col4 , b_temp256);\#CHUNKHEIGHT/4\
             idx += CHUNKHEIGHT;\
         }\
+
+#elif defined(SPMTV_V5)
+    //version 5: avoid load x_row everytime
+   #define INNER_LOOP_BODY_AVX2(chunk_arg)\
+        row = (chunk_arg)*CHUNKHEIGHT;\
+        idx = mat->chunkStart[chunk_arg];\
+        int col1, col2, col3, col4;\
+        #GHOST_UNROLL#x_row256@ = AVX2_LOAD(&(xval[row+4*@]));\#CHUNKHEIGHT/4\
+        _Pragma("simd")\
+        for(ghost_lidx j=0; j<mat->chunkLen[chunk_arg]; ++j) { \
+            int* curr_col = &(mat->col[idx]);\
+            #GHOST_UNROLL#val256 = AVX2_LOAD(&(mval[idx+4*@]));col1=*(curr_col+4*@); col2=*(curr_col+4*@+1); col3=*(curr_col+4*@+2); col4=*(curr_col+4*@+3); b_temp256 = AVX_256_GATHER_with_addr(bval, col1, col2, col3, col4);b_temp256 = AVX2_FMA(val256,x_row256@,b_temp256); AVX_256_SCATTER_with_addr(bval, col1, col2, col3, col4 , b_temp256);\#CHUNKHEIGHT/4\
+            idx += CHUNKHEIGHT;\
+        }\
+
+#elif defined(SPMTV_V6)
+    //version 6: do AVX load of col index
+   #define INNER_LOOP_BODY_AVX2(chunk_arg)\
+        row = (chunk_arg)*CHUNKHEIGHT;\
+        idx = mat->chunkStart[chunk_arg];\
+        int col1, col2, col3, col4;\
+        __m128i col_index;\
+        #GHOST_UNROLL#x_row256@ = AVX2_LOAD(&(xval[row+4*@]));\#CHUNKHEIGHT/4\
+        _Pragma("simd")\
+        for(ghost_lidx j=0; j<MAX(8,mat->chunkLen[chunk_arg]); ++j) { \
+            int* curr_col = &(mat->col[idx]);\
+            #GHOST_UNROLL#val256 = AVX2_LOAD(&(mval[idx+4*@]));col_index=_mm_load_si128( (__m128i*) (curr_col+4*@) ); SPLIT_M128i(col_index, col1, col2, col3, col4); b_temp256 = AVX_256_GATHER_with_addr(bval, col1, col2, col3, col4);b_temp256 = AVX2_FMA(val256,x_row256@,b_temp256); AVX_256_SCATTER_with_addr(bval, col1, col2, col3, col4 , b_temp256);\#CHUNKHEIGHT/4\
+            idx += CHUNKHEIGHT;\
+        }\
+
+#elif defined(SPMTV_V7)
+    //version 7: V6 and V7 are for comparing the efficiency  of gather operation
+   #define INNER_LOOP_BODY_AVX2(chunk_arg)\
+        row = (chunk_arg)*CHUNKHEIGHT;\
+        idx = mat->chunkStart[chunk_arg];\
+        int col1, col2, col3, col4;\
+        __m128i col_index;\
+        #GHOST_UNROLL#x_row256@ = AVX2_LOAD(&(xval[row+4*@]));\#CHUNKHEIGHT/4\
+        _Pragma("simd")\
+        for(ghost_lidx j=0; j<MAX(8,mat->chunkLen[chunk_arg]); ++j) { \
+            int* curr_col = &(mat->col[idx]);\
+            #GHOST_UNROLL#val256 = AVX2_LOAD(&(mval[idx+4*@]));col_index=_mm_load_si128( (__m128i*) (curr_col+4*@) ); SPLIT_M128i(col_index, col1, col2, col3, col4); b_temp256 = AVX2_GATHER_with_128index(bval, col_index);b_temp256 = AVX2_FMA(val256,x_row256@,b_temp256); AVX_256_SCATTER_with_addr(bval, col1, col2, col3, col4 , b_temp256);\#CHUNKHEIGHT/4\
+            idx += CHUNKHEIGHT;\
+        }\
+
+
+#elif defined(SPMTV_V8)
+    //version 5: avoid extractf
+   #define INNER_LOOP_BODY_AVX2(chunk_arg)\
+        row = (chunk_arg)*CHUNKHEIGHT;\
+        idx = mat->chunkStart[chunk_arg];\
+        int col1, col2, col3, col4;\
+        __m256i hiBitMask_3 = _mm256_setr_epi64x(0,0,-1,0);\
+        __m256i hiBitMask_4 = _mm256_setr_epi64x(0,0,0,-1);\
+        #GHOST_UNROLL#x_row256@ = AVX2_LOAD(&(xval[row+4*@]));\#CHUNKHEIGHT/4\
+        _Pragma("simd")\
+        for(ghost_lidx j=0; j<mat->chunkLen[chunk_arg]; ++j) { \
+            int* curr_col = &(mat->col[idx]);\
+            #GHOST_UNROLL#val256 = AVX2_LOAD(&(mval[idx+4*@]));col1=*(curr_col+4*@); col2=*(curr_col+4*@+1); col3=*(curr_col+4*@+2); col4=*(curr_col+4*@+3); b_temp256 = AVX_256_GATHER_with_addr(bval, col1, col2, col3, col4);b_temp256 = AVX2_FMA(val256,x_row256@,b_temp256); AVX_256_SCATTER_with_addr_no_extract(bval, col1, col2, col3, col4 , b_temp256, hiBitMask_3, hiBitMask_4);\#CHUNKHEIGHT/4\
+            idx += CHUNKHEIGHT;\
+        }\
+
+
+#elif defined(SPMTV_V9)
+      #define INNER_LOOP_BODY_AVX2(chunk_arg)\
+        idx = mat->chunkStart[chunk_arg];\
+        int col1, col2, col3, col4;\
+        #GHOST_UNROLL#x_row256@ = AVX2_LOAD(&(xval[chunk_arg*CHUNKHEIGHT+4*@]));\#CHUNKHEIGHT/4\
+        _Pragma("simd")\
+        for(ghost_lidx j=0; j<mat->chunkLen[chunk_arg]; ++j) { \
+            int* curr_col = &(mat->col[idx]);\
+            #GHOST_UNROLL#val256 = AVX2_LOAD(&(mval[idx+4*@]));col1=*(curr_col+4*@); col2=*(curr_col+4*@+1); col3=*(curr_col+4*@+2); col4=*(curr_col+4*@+3); b_temp256 = AVX_256_GATHER_with_addr(bval, col1, col2, col3, col4);b_temp256 = AVX2_FMA(val256,x_row256@,b_temp256); AVX_256_SCATTER_with_addr(bval, col1, col2, col3, col4 , b_temp256);\#CHUNKHEIGHT/4\
+            idx += CHUNKHEIGHT;\
+        }\
+
+
 
 #else
    //version 4: avoid loading column entry everytime
@@ -133,7 +206,7 @@
         }\
 
     //version 5: avoid loading column entry everytime
-   #define INNER_LOOP_BODY_AVX2(chunk_arg)\
+  // #define INNER_LOOP_BODY_AVX2(chunk_arg)\
         row = (chunk_arg)*CHUNKHEIGHT;\
         idx = mat->chunkStart[chunk_arg];\
         int col1, col2, col3, col4;\
@@ -192,7 +265,7 @@
 
 #endif
 
-#if ((defined(SPMTV_V1) || defined(SPMTV_V2)) || defined(SPMTV_V3))
+#if ((defined(SPMTV_V1) || defined(SPMTV_V2)) || defined(SPMTV_V3) || defined(SPMTV_V4))
 #define LOOP(start,end,MT,VT)\
     ghost_lidx start_chunk = start/CHUNKHEIGHT;\
     ghost_lidx start_rem = start%CHUNKHEIGHT;\
@@ -275,7 +348,7 @@ inline void  spmtv_RACE_kernel__x_avx2_rm_CHUNKHEIGHT_NVECS(int start, int end, 
 
 static ghost_error ghost_spmtv_RACE__x_avx2_rm_CHUNKHEIGHT_NVECS_tmpl(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations)
 {
-    if(!testAVX2Instructions())
+    if(!testInstructions())
     {
         ERROR_LOG("AVX2 instructions error");
     }
