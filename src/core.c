@@ -127,6 +127,10 @@ ghost_error ghost_init(int argc, char **argv)
         initialized=1;
     }
 
+    ghost_instr_create();
+    ghost_instr_prefix_set("");
+    ghost_instr_suffix_set("");
+
 #ifdef GHOST_HAVE_MPI
     int req, prov;
 
@@ -163,9 +167,6 @@ ghost_error ghost_init(int argc, char **argv)
 
 #endif // ifdef GHOST_HAVE_MPI
     
-    ghost_instr_create();
-    ghost_instr_prefix_set("");
-    ghost_instr_suffix_set("");
     
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_SETUP);
 
