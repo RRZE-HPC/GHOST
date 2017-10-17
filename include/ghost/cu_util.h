@@ -50,15 +50,15 @@ typedef struct {
 extern "C" {
 #endif
 
-    /**
+/**
      * @brief Initalize CUDA on a given device.
      *
      * @param dev The device number.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error ghost_cu_init(int dev);
-    /**
+ghost_error ghost_cu_init(int dev);
+/**
      * @brief Allocate CUDA device memory.
      *
      * @param mem Where to store the memory.
@@ -66,8 +66,8 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error ghost_cu_malloc(void **mem, size_t bytesize);
-    /**
+ghost_error ghost_cu_malloc(void **mem, size_t bytesize);
+/**
      * @brief Allocate mapped host memory.
      *
      * @param mem Where to store the memory.
@@ -75,8 +75,8 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error ghost_cu_malloc_mapped(void **mem, const size_t size);
-    /**
+ghost_error ghost_cu_malloc_mapped(void **mem, const size_t size);
+/**
      * @brief Allocate pinned host memory.
      *
      * @param mem Where to store the memory.
@@ -84,8 +84,8 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error ghost_cu_malloc_pinned(void **mem, const size_t size);
-    /**
+ghost_error ghost_cu_malloc_pinned(void **mem, const size_t size);
+/**
      * @brief Download memory from a GPU to the host.
      *
      * @param hostmem The host side memory location.
@@ -94,8 +94,8 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error ghost_cu_download(void * hostmem, void * devmem, size_t bytesize);
-    /**
+ghost_error ghost_cu_download(void *hostmem, void *devmem, size_t bytesize);
+/**
      * @brief Download strided memory from a GPU to the host.
      * Copy height rows of width bytes each.
      *
@@ -108,8 +108,8 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error ghost_cu_download2d(void *dest, size_t dpitch, const void *src, size_t spitch, size_t width, size_t height);
-    /**
+ghost_error ghost_cu_download2d(void *dest, size_t dpitch, const void *src, size_t spitch, size_t width, size_t height);
+/**
      * @brief Upload memory from the the host to the GPU.
      *
      * @param devmem The device side memory location.
@@ -118,8 +118,8 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error ghost_cu_upload(void * devmem, void *hostmem, size_t bytesize);
-    /**
+ghost_error ghost_cu_upload(void *devmem, void *hostmem, size_t bytesize);
+/**
      * @brief Upload strided memory from the host to the GPU.
      * Copy height rows of width bytes each.
      *
@@ -132,8 +132,8 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error ghost_cu_upload2d(void *dest, size_t dpitch, const void *src, size_t spitch, size_t width, size_t height);
-    /**
+ghost_error ghost_cu_upload2d(void *dest, size_t dpitch, const void *src, size_t spitch, size_t width, size_t height);
+/**
      * @brief Memcpy GPU memory.
      *
      * @param dest The destination memory location.
@@ -142,8 +142,8 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error ghost_cu_memcpy(void *dest, void *src, size_t bytesize);
-    /**
+ghost_error ghost_cu_memcpy(void *dest, void *src, size_t bytesize);
+/**
      * @brief Memcpy strided GPU memory.
      * Copy height rows of width bytes each.
      *
@@ -156,8 +156,8 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error ghost_cu_memcpy2d(void *dest, size_t dpitch, const void *src, size_t spitch, size_t width, size_t height);
-    /**
+ghost_error ghost_cu_memcpy2d(void *dest, size_t dpitch, const void *src, size_t spitch, size_t width, size_t height);
+/**
      * @brief Memset GPU memory.
      *
      * @param s The memory location.
@@ -166,16 +166,16 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error ghost_cu_memset(void *s, int c, size_t n);
-    /**
+ghost_error ghost_cu_memset(void *s, int c, size_t n);
+/**
      * @brief Free GPU memory.
      *
      * @param mem The memory location.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error ghost_cu_free(void * mem);
-    /**
+ghost_error ghost_cu_free(void *mem);
+/**
      * @brief Free host memory which has been allocated with 
      * ghost_cu_malloc_pinned() or ghost_cu_malloc_mapped().
      *
@@ -183,78 +183,79 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error ghost_cu_free_host(void * mem);
-    /**
+ghost_error ghost_cu_free_host(void *mem);
+/**
      * @brief Wait for any outstanding CUDA kernel.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error ghost_cu_barrier();
-    /**
+ghost_error ghost_cu_barrier();
+/**
      * @brief Get the number of available GPUs.
      *
      * @param devcount Where to store the number.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error ghost_cu_ndevice(int *devcount);
-    /**
+ghost_error ghost_cu_ndevice(int *devcount);
+/**
      * @brief Get the CUDA version.
      *
      * @param ver Where to store the version.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error ghost_cu_version(int *ver);
-    /**
+ghost_error ghost_cu_version(int *ver);
+/**
      * @brief Get information about available GPUs.
      *
      * @param gpu_info Where to store the GPU info.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error ghost_cu_gpu_info_create(ghost_gpu_info **gpu_info);
-    /**
+ghost_error ghost_cu_gpu_info_create(ghost_gpu_info **gpu_info);
+/**
      * @brief Get the active GPU. 
      *
      * @param device Where to store the device number.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error ghost_cu_device(int *device);
-    /**
+ghost_error ghost_cu_device(int *device);
+/**
      * @brief Get the cuBLAS handle. 
      *
      * @param handle Where to store the handle.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error ghost_cu_cublas_handle(ghost_cublas_handle_t *handle);
-    /**
+ghost_error ghost_cu_cublas_handle(ghost_cublas_handle_t *handle);
+/**
      * @brief Get the CuSparse handle.
      *
      * @param handle Where to store the handle.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error ghost_cu_cusparse_handle(ghost_cusparse_handle_t *handle);
-    /**
+ghost_error ghost_cu_cusparse_handle(ghost_cusparse_handle_t *handle);
+/**
      * @brief Get the CUDA device properties.
      *
      * @param prop Where to store the properties.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error ghost_cu_deviceprop_get(ghost_cu_deviceprop *prop);
+ghost_error ghost_cu_deviceprop_get(ghost_cu_deviceprop *prop);
 
-    ghost_error ghost_cu_rand_generator_get(ghost_cu_rand_generator *gen);
-    ghost_error ghost_cu_finalize();
-    ghost_error ghost_cu_memtranspose(int torows, int tocols, void *to, int ldto, const void *from, int ldfrom, ghost_datatype dt);
+ghost_error ghost_cu_rand_generator_get(ghost_cu_rand_generator *gen);
+ghost_error ghost_cu_finalize();
+ghost_error ghost_cu_memtranspose(int torows, int tocols, void *to, int ldto, const void *from, int ldfrom, ghost_datatype dt);
 
-    ghost_error ghost_cu_reduce(void *out, void *data, ghost_datatype dt, ghost_lidx n); 
+ghost_error ghost_cu_reduce(void *out, void *data, ghost_datatype dt, ghost_lidx n);
+ghost_error ghost_cu_reduce_multiple(void *out, void *data, ghost_datatype dt, ghost_lidx n, ghost_lidx ncols);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif 
+#endif
