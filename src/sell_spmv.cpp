@@ -141,11 +141,11 @@ static ghost_error ghost_sell_spmv_plain_rm(ghost_densemat *lhs,
 
                     if (traits.flags & GHOST_SPMV_DOT) {
                         partsums[((pad+3*lhs->traits.ncols)*tid)+3*cidx+0] += 
-                            ghost::conj(lhsrow[lcol])*lhsrow[rcol];
+                            ghost::conj_or_nop(lhsrow[lcol])*lhsrow[rcol];
                         partsums[((pad+3*lhs->traits.ncols)*tid)+3*cidx+1] += 
-                            ghost::conj(rhsrow[rcol])*lhsrow[lcol];
+                            ghost::conj_or_nop(rhsrow[rcol])*lhsrow[lcol];
                         partsums[((pad+3*lhs->traits.ncols)*tid)+3*cidx+2] += 
-                            ghost::conj(rhsrow[rcol])*rhsrow[rcol];
+                            ghost::conj_or_nop(rhsrow[rcol])*rhsrow[rcol];
                     }
                     if (scatteredvecs) {
                         rcol = ghost_bitmap_next(rhs->colmask,rcol);
@@ -303,13 +303,13 @@ static ghost_error ghost_sell_spmv_plain_cm(ghost_densemat *lhs,
 
                         if (traits.flags & GHOST_SPMV_DOT) {
                             partsums[((pad+3*lhs->traits.ncols)*tid)+3*v+0] += 
-                                ghost::conj(lhsv[c*ch+i])*
+                                ghost::conj_or_nop(lhsv[c*ch+i])*
                                 lhsv[c*ch+i];
                             partsums[((pad+3*lhs->traits.ncols)*tid)+3*v+1] += 
-                                ghost::conj(rhsv[rhsrow])*
+                                ghost::conj_or_nop(rhsv[rhsrow])*
                                 lhsv[c*ch+i];
                             partsums[((pad+3*lhs->traits.ncols)*tid)+3*v+2] += 
-                                ghost::conj(rhsv[rhsrow])*
+                                ghost::conj_or_nop(rhsv[rhsrow])*
                                 rhsv[rhsrow];
                         }
                     }

@@ -12,26 +12,21 @@
 
 namespace ghost {
 
-template<typename T> 
-static inline T conj(const T& a)
+// Difference between ghost::conj_or_nop and std::conj
+//  std::conj(double) -> std::complex<double>
+//  ghost::conj_or_nop(double) -> double
+template<typename T>
+static inline T conj_or_nop(const T &a)
 {
     return std::conj(a);
 }
 
-#if __cplusplus < 201103L
-static inline float conj(const float &a)
-{
-    return a;
-}
+static inline float conj_or_nop(const float &a) { return a; }
 
-static inline double conj(const double &a)
-{
-    return a;
-}
-#endif
+static inline double conj_or_nop(const double &a) { return a; }
 
-template<typename T> 
-static inline T norm(const T& a)
+template<typename T>
+static inline T norm(const T &a)
 {
     return std::norm(a);
 }
@@ -40,13 +35,13 @@ static inline T norm(const T& a)
 static inline float norm(const float &a)
 {
     /*return std::fabs(a);*/
-    return a*a;
+    return a * a;
 }
 
 static inline double norm(const double &a)
 {
     /*return std::fabs(a);*/
-    return a*a;
+    return a * a;
 }
 #endif
 
@@ -65,7 +60,6 @@ static inline std::string to_string(T value)
     return std::to_string(value);
 }
 #endif
-
 }
 
 #endif

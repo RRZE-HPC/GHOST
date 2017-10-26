@@ -41,7 +41,7 @@ for (ghost_lidx row=start; row<end; ++row){ \
     \
     _Pragma("simd vectorlength(4)") \
     for (ghost_lidx j=0; j<mat->rowLen[row]; j++) { \
-        xval[mat->col[idx+j]] = xval[mat->col[idx+j]] - scal*ghost::conj(mval[idx+j]);\
+        xval[mat->col[idx+j]] = xval[mat->col[idx+j]] - scal*ghost::conj_or_nop(mval[idx+j]);\
     } \
 } \
 
@@ -66,7 +66,7 @@ for (ghost_lidx row=start; row>end; --row){ \
     \
     _Pragma("simd vectorlength(4)") \
     for (ghost_lidx j=0; j<mat->rowLen[row]; j++) { \
-        xval[mat->col[idx+j]] = xval[mat->col[idx+j]] - scal*ghost::conj(mval[idx+j]);\
+        xval[mat->col[idx+j]] = xval[mat->col[idx+j]] - scal*ghost::conj_or_nop(mval[idx+j]);\
     } \
 } \
 
@@ -91,7 +91,7 @@ for (ghost_lidx row=start; row!=end; row+=stride){ \
     \
     _Pragma("simd vectorlength(4)") \
     for (ghost_lidx j=0; j<mat->rowLen[row]; j++) { \
-        xval[mat->col[idx+j]] = xval[mat->col[idx+j]] - scal*ghost::conj(mval[idx+j]);\
+        xval[mat->col[idx+j]] = xval[mat->col[idx+j]] - scal*ghost::conj_or_nop(mval[idx+j]);\
     } \
 } 
 
@@ -126,7 +126,7 @@ for (ghost_lidx row=start; row<end; ++row){ \
     _Pragma("simd vectorlength(4)") \
     for (ghost_lidx j=0; j<mat->rowLen[row]; j++) { \
         for(int block=0; block<NVECS; ++block) { \
-            xval[NVECS*mat->col[idx]+block] = xval[NVECS*mat->col[idx]+block] - scal[block] * ghost::conj(mval[idx]);\
+            xval[NVECS*mat->col[idx]+block] = xval[NVECS*mat->col[idx]+block] - scal[block] * ghost::conj_or_nop(mval[idx]);\
         } \
         idx += 1; \
     } \
@@ -161,7 +161,7 @@ for (ghost_lidx row=start; row>end; --row){ \
     _Pragma("simd vectorlength(4)") \
     for (ghost_lidx j=0; j<mat->rowLen[row]; j++) { \
         for(int block=0; block<NVECS; ++block) { \
-            xval[NVECS*mat->col[idx]+block] = xval[NVECS*mat->col[idx]+block] - scal[block] * ghost::conj(mval[idx]);\
+            xval[NVECS*mat->col[idx]+block] = xval[NVECS*mat->col[idx]+block] - scal[block] * ghost::conj_or_nop(mval[idx]);\
         } \
         idx += 1; \
     } \
@@ -205,7 +205,7 @@ for(rowinchunk=start_rem; rowinchunk<MIN(CHUNKHEIGHT,(end_chunk-start_chunk)*CHU
     _Pragma("simd vectorlength(4)") \
     for (ghost_lidx j=0; j<mat->rowLen[row]; j++) { \
         for(int block=0; block<NVECS; ++block) { \
-            xval[NVECS*mat->col[idx]+block] = xval[NVECS*mat->col[idx]+block] - scal[block] * ghost::conj(mval[idx]);\
+            xval[NVECS*mat->col[idx]+block] = xval[NVECS*mat->col[idx]+block] - scal[block] * ghost::conj_or_nop(mval[idx]);\
         } \
         idx += CHUNKHEIGHT; \
     } \
@@ -239,7 +239,7 @@ for (chunk=start_chunk+1; chunk<end_chunk; ++chunk){ \
         _Pragma("simd vectorlength(4)") \
         for (ghost_lidx j=0; j<mat->rowLen[row]; j++) { \
             for(int block=0; block<NVECS; ++block) { \
-                xval[NVECS*mat->col[idx]+block] = xval[NVECS*mat->col[idx]+block] - scal[block] * ghost::conj(mval[idx]);\
+                xval[NVECS*mat->col[idx]+block] = xval[NVECS*mat->col[idx]+block] - scal[block] * ghost::conj_or_nop(mval[idx]);\
             } \
             idx += CHUNKHEIGHT; \
         } \
@@ -273,7 +273,7 @@ if(start_chunk<end_chunk) { \
         _Pragma("simd vectorlength(4)") \
         for (ghost_lidx j=0; j<mat->rowLen[row]; j++) { \
             for(int block=0; block<NVECS; ++block) { \
-                xval[NVECS*mat->col[idx]+block] = xval[NVECS*mat->col[idx]+block] - scal[block] * ghost::conj(mval[idx]);\
+                xval[NVECS*mat->col[idx]+block] = xval[NVECS*mat->col[idx]+block] - scal[block] * ghost::conj_or_nop(mval[idx]);\
             } \
             idx += CHUNKHEIGHT; \
         } \
@@ -314,7 +314,7 @@ for(rowinchunk=start_rem; rowinchunk>=MAX(0,(end_chunk-start_chunk)*CHUNKHEIGHT+
     _Pragma("simd vectorlength(4)") \
     for (ghost_lidx j=0; j<mat->rowLen[row]; j++) { \
         for(int block=0; block<NVECS; ++block) { \
-            xval[NVECS*mat->col[idx]+block] = xval[NVECS*mat->col[idx]+block] - scal[block] * ghost::conj(mval[idx]);\
+            xval[NVECS*mat->col[idx]+block] = xval[NVECS*mat->col[idx]+block] - scal[block] * ghost::conj_or_nop(mval[idx]);\
         } \
         idx += CHUNKHEIGHT; \
     } \
@@ -348,7 +348,7 @@ for (chunk=start_chunk-1; chunk>end_chunk; --chunk){ \
         _Pragma("simd vectorlength(4)") \
         for (ghost_lidx j=0; j<mat->rowLen[row]; j++) { \
             for(int block=0; block<NVECS; ++block) { \
-                xval[NVECS*mat->col[idx]+block] = xval[NVECS*mat->col[idx]+block] - scal[block] * ghost::conj(mval[idx]);\
+                xval[NVECS*mat->col[idx]+block] = xval[NVECS*mat->col[idx]+block] - scal[block] * ghost::conj_or_nop(mval[idx]);\
             } \
             idx += CHUNKHEIGHT; \
         } \
@@ -382,7 +382,7 @@ if(start_chunk>end_chunk) { \
         _Pragma("simd vectorlength(4)") \
         for (ghost_lidx j=0; j<mat->rowLen[row]; j++) { \
             for(int block=0; block<NVECS; ++block) { \
-                xval[NVECS*mat->col[idx]+block] = xval[NVECS*mat->col[idx]+block] - scal[block] * ghost::conj(mval[idx]);\
+                xval[NVECS*mat->col[idx]+block] = xval[NVECS*mat->col[idx]+block] - scal[block] * ghost::conj_or_nop(mval[idx]);\
             } \
             idx += CHUNKHEIGHT; \
         } \

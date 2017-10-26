@@ -84,7 +84,7 @@ for ( j=0; j<mat->rowLen[row]; j++) { \
     ghost_lidx col_idx = mat->col[idx]; \
     for(int shift=0; shift<NSHIFTS; ++shift) { \
         for(int block=0; block<NBLOCKS; ++block) { \
-            xval[col_idx*NBLOCKS*NSHIFTS + shift*NBLOCKS + block] += scal[shift*NBLOCKS+block]*ghost::conj(mval_idx);\
+            xval[col_idx*NBLOCKS*NSHIFTS + shift*NBLOCKS + block] += scal[shift*NBLOCKS+block]*ghost::conj_or_nop(mval_idx);\
         } \
     } \
     idx += CHUNKHEIGHT; \
@@ -92,7 +92,7 @@ for ( j=0; j<mat->rowLen[row]; j++) { \
 if(opts.shift) { \
     for(int shift=0; shift<NSHIFTS; ++shift) { \
         for(int block=0; block<NBLOCKS; ++block) { \
-            xval[diag_idx*NBLOCKS*NSHIFTS + shift*NBLOCKS + block] += scal[shift*NBLOCKS+block] * ghost::conj(-sigma[shift]); \
+            xval[diag_idx*NBLOCKS*NSHIFTS + shift*NBLOCKS + block] += scal[shift*NBLOCKS+block] * ghost::conj_or_nop(-sigma[shift]); \
         } \
     } \
 } \
