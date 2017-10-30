@@ -116,6 +116,7 @@ set (SOURCES
     src/carp_rb.c
     src/compatibility_check.c
     src/context.c
+    src/context.cpp
     src/core.c
     src/cu_util.c
     src/densemat.c
