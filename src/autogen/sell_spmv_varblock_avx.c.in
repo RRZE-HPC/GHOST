@@ -18,8 +18,9 @@
 #define complex_mul(a,b) _mm256_addsub_pd(_mm256_mul_pd(_mm256_shuffle_pd(b,b,0),a),_mm256_mul_pd(_mm256_shuffle_pd(b,b,0xF),_mm256_shuffle_pd(a,a,5)))
 #define complex_mul_conj1(b,a) _mm256_addsub_pd(_mm256_mul_pd(_mm256_shuffle_pd(b,b,0),a),_mm256_mul_pd(_mm256_mul_pd(_mm256_shuffle_pd(b,b,0xF),_mm256_set1_pd(-1.)),_mm256_shuffle_pd(a,a,5)))
 
-ghost_error ghost_sellspmv__a_avx_d_d_cm_CHUNKHEIGHT_x(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat* invec, ghost_spmv_opts traits)
-{
+
+
+ghost_error ghost_sellspmv__a_avx_d_d_cm_CHUNKHEIGHT_x(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat* invec, ghost_spmv_opts traits) {
 #if defined(GHOST_BUILD_AVX) && CHUNKHEIGHT>=4
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     ghost_lidx i;
@@ -552,10 +553,13 @@ ghost_error ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_x(ghost_densemat *res, ghos
             switch (invec->traits.ncols % 4) {
                 case 0:
                     _mm_storeh_pd(&((double *)partsums)[((padding+3*invec->traits.ncols)*tid)+12*(donecols/4)+9+0],b);
+                    //fallthrough
                 case 3: 
                     _mm_storel_pd(&((double *)partsums)[((padding+3*invec->traits.ncols)*tid)+12*(donecols/4)+6+0],b);
+                    //fallthrough
                 case 2:
-                    _mm_storeh_pd(&((double *)partsums)[((padding+3*invec->traits.ncols)*tid)+12*(donecols/4)+3+0],a); 
+                    _mm_storeh_pd(&((double *)partsums)[((padding+3*invec->traits.ncols)*tid)+12*(donecols/4)+3+0],a);
+                    //fallthrough
                 case 1: 
                     _mm_storel_pd(&((double *)partsums)[((padding+3*invec->traits.ncols)*tid)+12*(donecols/4)+0+0],a);
             } 
@@ -575,10 +579,13 @@ ghost_error ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_x(ghost_densemat *res, ghos
             switch (invec->traits.ncols % 4) {
                 case 0:
                     _mm_storeh_pd(&((double *)partsums)[((padding+3*invec->traits.ncols)*tid)+12*(donecols/4)+9+1],b);
+                    //fallthrough
                 case 3: 
                     _mm_storel_pd(&((double *)partsums)[((padding+3*invec->traits.ncols)*tid)+12*(donecols/4)+6+1],b);
+                    //fallthrough
                 case 2:
-                    _mm_storeh_pd(&((double *)partsums)[((padding+3*invec->traits.ncols)*tid)+12*(donecols/4)+3+1],a); 
+                    _mm_storeh_pd(&((double *)partsums)[((padding+3*invec->traits.ncols)*tid)+12*(donecols/4)+3+1],a);
+                    //fallthrough 
                 case 1: 
                     _mm_storel_pd(&((double *)partsums)[((padding+3*invec->traits.ncols)*tid)+12*(donecols/4)+0+1],a);
             } 
@@ -598,10 +605,13 @@ ghost_error ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_x(ghost_densemat *res, ghos
             switch (invec->traits.ncols % 4) {
                 case 0:
                     _mm_storeh_pd(&((double *)partsums)[((padding+3*invec->traits.ncols)*tid)+12*(donecols/4)+9+2],b);
+                    //fallthrough
                 case 3: 
                     _mm_storel_pd(&((double *)partsums)[((padding+3*invec->traits.ncols)*tid)+12*(donecols/4)+6+2],b);
+                    //fallthrough
                 case 2:
-                    _mm_storeh_pd(&((double *)partsums)[((padding+3*invec->traits.ncols)*tid)+12*(donecols/4)+3+2],a); 
+                    _mm_storeh_pd(&((double *)partsums)[((padding+3*invec->traits.ncols)*tid)+12*(donecols/4)+3+2],a);
+                    //fallthrough
                 case 1: 
                     _mm_storel_pd(&((double *)partsums)[((padding+3*invec->traits.ncols)*tid)+12*(donecols/4)+0+2],a);
             } 
