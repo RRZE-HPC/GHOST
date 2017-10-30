@@ -7,7 +7,7 @@ my $hasenter = 0;
 my $hasexit = 0;
 
 while (<>) {
-    if (/^(ghost_error|void|int|bool|char \*) ghost_(\w+)\s*\([^)]*\)\s*/) {
+    if (/^(ghost_error|void|int|bool|char \*) ghost_(\w+)\s*\([^)]*\)\s*\{*/) {
         $funchead = $_;
         $afterhead = 1;
         $hasenter = 0;
