@@ -13,6 +13,6 @@ pipelines:
           - apt-get install -y libhwloc-dev cuda-toolkit-8-0 libopenmpi-dev libgsl0-dev cmake openmpi-bin
           - mkdir build
           - cd build
-          - cmake .. -DGHOST_STREAM_ARRAY_SIZE=1e6
+          - cmake .. -DGHOST_STREAM_ARRAY_SIZE=1e6 -DCMAKE_CXX_FLAGS=-Werror -DCMAKE_C_FLAGS=-Werror
           - make -j
           - make check
