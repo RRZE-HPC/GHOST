@@ -759,7 +759,16 @@ else ()
             set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unknown-pragmas")
             set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unknown-pragmas")
             if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU") 
-                message(STATUS "NOTE: by default, we only set the -save-temps compiler flag with Intel compilers right now. You may want to use CC=\"ccache gcc\" etc to speed up the compiliation, see issue #269.")
+
+                if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU") 
+
+                    find_program(CCACHE_FOUND ccache)
+                    if(CCACHE_FOUND)
+                        set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
+                        set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
+                    endif(CCACHE_FOUND)
+                endif()
+              
                 if ("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
                     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Ofast -fstrict-aliasing")
                     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast -fstrict-aliasing")
