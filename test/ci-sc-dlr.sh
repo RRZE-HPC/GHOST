@@ -9,7 +9,7 @@ INSTALL_PREFIX=../../
 VECT_EXT="native" # none SSE AVX AVX2 CUDA
 
 # list of modules to load
-MODULES_BASIC="cmake ccache cppcheck lapack gsl"
+MODULES_BASIC="cmake cppcheck"
 
 ## parse command line arguments
 usage() { echo "Usage: $0 [-e <PrgEnv/module-string>] [-b <Release|Debug|...>] [-v <native|none|SSE|AVX|AVX2|CUDA>]" 1>&2; 
@@ -48,15 +48,15 @@ module() { eval `/usr/bin/modulecmd bash $*`; }
 
 # load modules
 module load "PrgEnv/$PRGENV"
-# set compiler names
-# use ccache to speed up build
 if [[ "$PRGENV" =~ gcc* ]]; then
-  if [ "${VECT_EXT}" = "CUDA" ]; then
-    export FC="gfortran" CC="gcc" CXX="g++"
-  else
-    export FC="ccache gfortran" CC="ccache gcc" CXX="ccache g++"
+  if [ "${VECT_EXT}" =~ "CUDA" ]; then
+    # use ccache to speed up build
+    module add ccache
   fi
+  export FC="gfortran" CC="gcc" CXX="g++"
+  module add lapack
 elif [[ "$PRGENV" =~ intel* ]]; then
+  module add mkl
   export FC=ifort CC=icc CXX=icpc
 else
   set -- $(mpicc -show)
@@ -124,7 +124,6 @@ error=0
 mkdir build_${PRGENV}_${BUILD_TYPE}_${VECT_EXT}       || exit 1
 cd build_${PRGENV}_${BUILD_TYPE}_${VECT_EXT}          || exit 1
 cmake -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX/install-${PRGENV}-${BUILD_TYPE}-${VECT_EXT} \
--DGHOST_GEN_DENSEMAT_DIM=${BLOCKSZ} -DGHOST_GEN_SELL_C=${SELL_CS} \
 -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DBUILD_SHARED_LIBS=ON ${VECT_FLAGS} ..              || error=1
 
 if [[ "${BUILD_TYPE}" =~ *Rel* ]]; then
