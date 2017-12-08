@@ -426,7 +426,7 @@ struct ghost_sparsemat_traits {
      */
     ghost_sparsemat_symmetry symmetry;
     /**
-     * @brief The chunk height.
+     * @brief The chunk height. Only Powers of Two are supported.
      */
     int C;
     /**

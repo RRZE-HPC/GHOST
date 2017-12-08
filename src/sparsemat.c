@@ -63,6 +63,12 @@ ghost_error ghost_sparsemat_create(ghost_sparsemat ** mat, ghost_context *contex
     UNUSED(nTraits);
     ghost_error ret = GHOST_SUCCESS;
 
+
+    if( traits->C < 1 || (traits->C & (-traits->C)) != traits->C) {
+      ERROR_LOG("Only powers of two are allowed for the chunk height C");
+      return GHOST_ERR_INVALID_ARG;
+    }
+
     GHOST_CALL_GOTO(ghost_malloc((void **)mat,sizeof(ghost_sparsemat)),err,ret);
 
     (*mat)->traits = traits[0];
