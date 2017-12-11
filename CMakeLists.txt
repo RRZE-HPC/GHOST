@@ -18,6 +18,8 @@ include(CheckCCompilerFlag)
 include(ExternalProject)
 include(${PROJECT_SOURCE_DIR}/cmake/OptimizeForArchitecture.cmake)
 
+option(GHOST_USE_CCACHE "Enable/disable using ccache to speed up repeated builds if you use the GNU compiler and ccache is found." ON)
+
 set(GHOST_USE_MPI 1 CACHE BOOL "Build with MPI")
 set(GHOST_USE_SCOTCH 0 CACHE BOOL "Use PT-Scotch for matrix re-ordering")
 set(GHOST_USE_COLPACK 0 CACHE BOOL "Use ColPack for matrix coloring")
@@ -764,7 +766,7 @@ else ()
 
                     if (NOT GHOST_HAVE_CUDA)
                       find_program(CCACHE_FOUND ccache)
-                      if(CCACHE_FOUND)
+                      if(CCACHE_FOUND AND GHOST_USE_CCACHE)
                           set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
                           set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
                       endif(CCACHE_FOUND)
