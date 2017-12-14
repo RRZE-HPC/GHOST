@@ -788,11 +788,11 @@ ghost_error ghost_sellspmv__a_avx_z_z_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
 
                 if (traits.flags & (GHOST_SPMV_SHIFT | GHOST_SPMV_VSHIFT)) {
                     if (traits.flags & GHOST_SPMV_SHIFT) {
-                        shift = _mm256_insertf128_pd(shift,_mm_load_pd((double *)&sshift[0]),0);
-                        shift = _mm256_insertf128_pd(shift,_mm_load_pd((double *)&sshift[0]),1);
+                        shift = _mm256_insertf128_pd(shift,_mm_loadu_pd((double *)&sshift[0]),0);
+                        shift = _mm256_insertf128_pd(shift,_mm_loadu_pd((double *)&sshift[0]),1);
                     } else {
-                        shift = _mm256_insertf128_pd(shift,_mm_load_pd((double *)&sshift[v]),0);
-                        shift = _mm256_insertf128_pd(shift,_mm_load_pd((double *)&sshift[v]),1);
+                        shift = _mm256_insertf128_pd(shift,_mm_loadu_pd((double *)&sshift[v]),0);
+                        shift = _mm256_insertf128_pd(shift,_mm_loadu_pd((double *)&sshift[v]),1);
                     }
                     #GHOST_UNROLL#tmp@ = _mm256_sub_pd(tmp@,complex_mul(shift,_mm256_load_pd((double *)&rval[c*CHUNKHEIGHT+(2*@)])));#CHUNKHEIGHT/2
                 }
