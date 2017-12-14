@@ -553,7 +553,7 @@ extern "C" ghost_error ghost_sell_spmv_selector(ghost_densemat *lhs,
             for (std::vector<ghost_implementation>::iterator impl = try_impl.begin(); impl != try_impl.end(); impl++) {
                 p.impl = *impl;
                 int al = ghost_implementation_alignment(p.impl);
-                if (IS_ALIGNED(lval,al) && IS_ALIGNED(rval,al) && ((lhs->traits.ncols == 1 && lhs->stride == 1) || (!((lhs->stride*lhs->elSize) % al) && !((rhs->stride*rhs->elSize) % al)))) {
+                if (IS_ALIGNED(lval,al) && IS_ALIGNED(rval,al) && (!((lhs->stride*lhs->elSize) % al) && !((rhs->stride*rhs->elSize) % al))) {
                     opt_align = GHOST_ALIGNED;
                 } else {
                     if (!IS_ALIGNED(lval,al)) {
