@@ -8,8 +8,11 @@ BUILD_TYPE=Release
 INSTALL_PREFIX=../../
 VECT_EXT="native" # none SSE AVX AVX2 CUDA
 
-# list of modules to load
-MODULES_BASIC="cmake cppcheck"
+# list of modules to load. Note that ccache is used by ghost automatically
+# if the compiler is gcc and CUDA is disabled. We *must* load the ccache module
+# to prevent ghost from using the system ccache, which is old and possibly broken 
+# on the DLR systems.
+MODULES_BASIC="cmake ccache cppcheck"
 
 ## parse command line arguments
 usage() { echo "Usage: $0 [-e <PrgEnv/module-string>] [-b <Release|Debug|...>] [-v <native|none|SSE|AVX|AVX2|CUDA>]" 1>&2; 
@@ -49,10 +52,6 @@ module() { eval `/usr/bin/modulecmd bash $*`; }
 # load modules
 module load "PrgEnv/$PRGENV"
 if [[ "$PRGENV" =~ gcc* ]]; then
-  if [ "${VECT_EXT}" =~ "CUDA" ]; then
-    # use ccache to speed up build
-    module add ccache
-  fi
   export FC="gfortran" CC="gcc" CXX="g++"
   module add lapack
 elif [[ "$PRGENV" =~ intel* ]]; then
@@ -75,13 +74,6 @@ if [ "${VECT_EXT}" = "CUDA" ]; then
 fi
 
 module list
-
-# use ccache to speed up build
-#if [[ "$PRGENV" = "gcc"* ]]; then
-#  export FC="ccache gfortran" CC="ccache gcc" CXX="ccache g++"
-#elif [[ "$PRGENV" = "intel"* ]]; then
-#  export FC=ifort CC=icc CXX=icpc
-#fi
 
 # "gcc -fsanitize=address" requires this
 ulimit -v unlimited
