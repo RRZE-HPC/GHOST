@@ -19,6 +19,7 @@ include(ExternalProject)
 include(${PROJECT_SOURCE_DIR}/cmake/OptimizeForArchitecture.cmake)
 
 option(GHOST_USE_CCACHE "Enable/disable using ccache to speed up repeated builds if you use the GNU compiler and ccache is found." ON)
+option(GHOST_BUILD_TEST "Build tests (simple, minimal, context, diagfirst" ON)
 
 set(GHOST_USE_MPI 1 CACHE BOOL "Build with MPI")
 set(GHOST_USE_SCOTCH 0 CACHE BOOL "Use PT-Scotch for matrix re-ordering")
@@ -399,15 +400,18 @@ if (NOT HWLOC_INCLUDE_DIR)
         )
     set(BUILTIN_HWLOC 1)
     set(HWLOC_INCLUDE_DIR "${PROJECT_BINARY_DIR}/hwloc-inst/include")
+    # Note that on some systems it is lib64 and we might also be static!
     set(LIBHWLOC "${PROJECT_BINARY_DIR}/hwloc-inst/lib/libhwloc.so")
 endif()
 
-if (NOT LIBHWLOC)
+# HWLOC_LIBRARIES might have been set by the user
+if(NOT HWLOC_LIBRARIES)
+  if(NOT LIBHWLOC)
     get_filename_component(HWLOC_LIBDIR ${HWLOC_INCLUDE_DIR}/../lib REALPATH)
     find_library(LIBHWLOC hwloc HINTS ${HWLOC_LIBDIR})
-endif()
-
-set(HWLOC_LIBRARIES ${LIBHWLOC})
+  endif()
+  set(HWLOC_LIBRARIES ${LIBHWLOC})
+endif()   
 
 if (NOT EXISTS "${HWLOC_INCLUDE_DIR}/hwloc.h")
 endif()
@@ -769,7 +773,7 @@ else ()
                       if(CCACHE_FOUND AND GHOST_USE_CCACHE)
                           set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
                           set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
-                      endif(CCACHE_FOUND)
+                      endif()
                     endif()
                 endif()
               
@@ -902,6 +906,8 @@ configure_file(
 add_custom_target(uninstall "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_BINARY_DIR}/cmake/cmake_uninstall.cmake") 
 
 
+
+
 file(GLOB TESTS "${PROJECT_SOURCE_DIR}/test/[^.]*")
 
 find_package(Doxygen)
@@ -938,12 +944,14 @@ if (DOXYGEN_FOUND)
     add_custom_target(doc DEPENDS ${PROJECT_BINARY_DIR}/doc/html/index.html)
 endif()
 
-add_subdirectory(${PROJECT_SOURCE_DIR}/test)
-enable_testing()
-add_test(NAME simple WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/test COMMAND ./simple)
-add_test(NAME minimal WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/test COMMAND ./minimal)
-add_test(NAME context WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/test COMMAND ./context)
-add_test(NAME diagfirst WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/test COMMAND ./diagfirst)
+if(GHOST_BUILD_TEST)
+  add_subdirectory(${PROJECT_SOURCE_DIR}/test)
+  enable_testing()
+  add_test(NAME simple WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/test COMMAND ./simple)
+  add_test(NAME minimal WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/test COMMAND ./minimal)
+  add_test(NAME context WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/test COMMAND ./context)
+  add_test(NAME diagfirst WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/test COMMAND ./diagfirst)
+endif()  
 
 find_program(MPIRUN NAMES mpirun mpiexec mpiexec.hydra)
 
@@ -979,26 +987,30 @@ if (GHOST_USE_CUDA)
         endif()
     endif()
 endif()
-if (${DETECT_GPU_COUNT} GREATER 0)
-    add_test(NAME simple_GPU WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/test COMMAND ./simple)
-    set_tests_properties(simple_GPU PROPERTIES ENVIRONMENT GHOST_TYPE=GPU)
-    add_test(NAME minimal_GPU WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/test COMMAND ./minimal)
-    set_tests_properties(minimal_GPU PROPERTIES ENVIRONMENT GHOST_TYPE=GPU)
-    
-    add_test(NAME simple_np2 WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/test COMMAND ${MPIRUN} -np 2 ./simple)
-    add_test(NAME minimal_np2 WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/test COMMAND ${MPIRUN} -np 2 ./minimal)
-    add_test(NAME context_np2 WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/test COMMAND ${MPIRUN} -np 2 ./context)
-    add_test(NAME diagfirst_np2 WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/test COMMAND ${MPIRUN} -np 2 ./diagfirst)
-else ()
-    add_test(NAME simple_np2 WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/test COMMAND ${MPIRUN} -np 2 ./simple)
-    add_test(NAME minimal_np2 WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/test COMMAND ${MPIRUN} -np 2 ./minimal)
-    add_test(NAME context_np2 WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/test COMMAND ${MPIRUN} -np 2 ./context)
-    add_test(NAME diagfirst_np2 WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/test COMMAND ${MPIRUN} -np 2 ./diagfirst)
-    
-    set_tests_properties(minimal_np2 PROPERTIES ENVIRONMENT GHOST_TYPE=CPU)
-    set_tests_properties(simple_np2 PROPERTIES ENVIRONMENT GHOST_TYPE=CPU)
-    set_tests_properties(context_np2 PROPERTIES ENVIRONMENT GHOST_TYPE=CPU)
-    set_tests_properties(diagfirst_np2 PROPERTIES ENVIRONMENT GHOST_TYPE=CPU)
-endif()
 
-add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} --force-new-ctest-process --output-on-failure DEPENDS simple minimal context diagfirst)
+if(GHOST_BUILD_TEST)
+  if (${DETECT_GPU_COUNT} GREATER 0)
+      add_test(NAME simple_GPU WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/test COMMAND ./simple)
+      set_tests_properties(simple_GPU PROPERTIES ENVIRONMENT GHOST_TYPE=GPU)
+      add_test(NAME minimal_GPU WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/test COMMAND ./minimal)
+      set_tests_properties(minimal_GPU PROPERTIES ENVIRONMENT GHOST_TYPE=GPU)
+    
+      add_test(NAME simple_np2 WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/test COMMAND ${MPIRUN} -np 2 ./simple)
+      add_test(NAME minimal_np2 WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/test COMMAND ${MPIRUN} -np 2 ./minimal)
+      add_test(NAME context_np2 WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/test COMMAND ${MPIRUN} -np 2 ./context)
+     add_test(NAME diagfirst_np2 WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/test COMMAND ${MPIRUN} -np 2 ./diagfirst)
+  else()
+      add_test(NAME simple_np2 WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/test COMMAND ${MPIRUN} -np 2 ./simple)
+      add_test(NAME minimal_np2 WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/test COMMAND ${MPIRUN} -np 2 ./minimal)
+      add_test(NAME context_np2 WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/test COMMAND ${MPIRUN} -np 2 ./context)
+      add_test(NAME diagfirst_np2 WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/test COMMAND ${MPIRUN} -np 2 ./diagfirst)
+    
+      set_tests_properties(minimal_np2 PROPERTIES ENVIRONMENT GHOST_TYPE=CPU)
+      set_tests_properties(simple_np2 PROPERTIES ENVIRONMENT GHOST_TYPE=CPU)
+      set_tests_properties(context_np2 PROPERTIES ENVIRONMENT GHOST_TYPE=CPU)
+      set_tests_properties(diagfirst_np2 PROPERTIES ENVIRONMENT GHOST_TYPE=CPU)
+  endif()
+  add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} --force-new-ctest-process --output-on-failure DEPENDS simple minimal context diagfirst)
+endif(GHOST_BUILD_TEST)   
+
+
