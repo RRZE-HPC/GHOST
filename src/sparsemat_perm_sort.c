@@ -22,7 +22,7 @@ ghost_error ghost_sparsemat_perm_sort(ghost_context *ctx, ghost_sparsemat *mat, 
     ghost_lidx *rpt = mat->chunkStart;
 
     if (mat->traits.sortScope > SPM_NROWS(mat)) {
-        WARNING_LOG("Restricting the sorting scope to the number of matrix rows");
+        GHOST_WARNING_LOG("Restricting the sorting scope to the number of matrix rows");
     }
     nrows = SPM_NROWS(mat);
     GHOST_CALL_GOTO(ghost_malloc((void **)&rowSort,nrows * sizeof(ghost_sorting_helper)),err,ret);
@@ -87,7 +87,7 @@ ghost_error ghost_sparsemat_perm_sort(ghost_context *ctx, ghost_sparsemat *mat, 
     goto out;
 
 err:
-    ERROR_LOG("Deleting permutations");
+    GHOST_ERROR_LOG("Deleting permutations");
     if (ctx->row_map->loc_perm) {
         free(ctx->row_map->loc_perm); ctx->row_map->loc_perm = NULL;
         free(ctx->row_map->loc_perm_inv); ctx->row_map->loc_perm_inv = NULL;

@@ -10,7 +10,7 @@ ghost_error ghost_spmv(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_lidx ncolsbackup = res->traits.ncols, remcols = res->traits.ncols, donecols = 0;
-    DEBUG_LOG(1,"Performing SpMV");
+    GHOST_DEBUG_LOG(1,"Performing SpMV");
     ghost_spmv_kernel solver = NULL;
     if (traits.flags & GHOST_SPMV_MODE_OVERLAP) {
         solver = &ghost_spmv_goodfaith;
@@ -29,7 +29,7 @@ ghost_error ghost_spmv(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat
     }
 
     if (!solver) {
-        ERROR_LOG("The SpMV solver as specified in options cannot be found.");
+        GHOST_ERROR_LOG("The SpMV solver as specified in options cannot be found.");
         return GHOST_ERR_INVALID_ARG;
     }
     
@@ -49,7 +49,7 @@ ghost_error ghost_spmv(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat
                (res->traits.ncols > 1 && res->traits.storage == GHOST_DENSEMAT_COLMAJOR) ||
                (invec->traits.ncols > 1 && invec->traits.storage == GHOST_DENSEMAT_COLMAJOR) ||
                (traits.z && traits.z->traits.ncols > 1 && traits.z->traits.storage == GHOST_DENSEMAT_COLMAJOR)) {
-           WARNING_LOG("Cannot apply desired SpMV blocking! Fallback to no blocking!");
+           GHOST_WARNING_LOG("Cannot apply desired SpMV blocking! Fallback to no blocking!");
            traits.blocksz = res->traits.ncols;
        }
     }

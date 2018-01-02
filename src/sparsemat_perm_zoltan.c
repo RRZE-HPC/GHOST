@@ -97,7 +97,7 @@ ghost_error ghost_sparsemat_perm_zoltan(ghost_context *ctx, ghost_sparsemat *mat
 #if !defined(GHOST_HAVE_ZOLTAN) || !defined(GHOST_HAVE_MPI)
     UNUSED(ctx);
     UNUSED(mat);
-    WARNING_LOG("Zoltan or MPI not available. Will not create matrix permutation!");
+    GHOST_WARNING_LOG("Zoltan or MPI not available. Will not create matrix permutation!");
     return GHOST_SUCCESS;
 #else
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_SETUP);
@@ -111,7 +111,7 @@ ghost_error ghost_sparsemat_perm_zoltan(ghost_context *ctx, ghost_sparsemat *mat
     int *importProcs, *importToPart, *exportProcs, *exportToPart;
     
     if (ctx->row_map->glb_perm) {
-        WARNING_LOG("Existing global permutations will be overwritten!");
+        GHOST_WARNING_LOG("Existing global permutations will be overwritten!");
     }
     
     GHOST_CALL_GOTO(ghost_rank(&me, ctx->mpicomm),err,ret);
@@ -132,10 +132,10 @@ ghost_error ghost_sparsemat_perm_zoltan(ghost_context *ctx, ghost_sparsemat *mat
    
     zz = Zoltan_Create(ctx->mpicomm);
 
-    INFO_LOG("before zoltan");
+    GHOST_INFO_LOG("before zoltan");
     /* General parameters */
 
-    IF_DEBUG(1) {
+    GHOST_IF_DEBUG(1) {
         ZOLTAN_CALL_GOTO(Zoltan_Set_Param(zz, "DEBUG_LEVEL", "1"),err,ret);
     } else {
         ZOLTAN_CALL_GOTO(Zoltan_Set_Param(zz, "DEBUG_LEVEL", "0"),err,ret);
@@ -168,7 +168,7 @@ ghost_error ghost_sparsemat_perm_zoltan(ghost_context *ctx, ghost_sparsemat *mat
         &exportProcs,    /* Process to which I send each of the vertices */
         &exportToPart),err,ret);  /* Partition to which each vertex will belong */
 
-    INFO_LOG("after zoltan");
+    GHOST_INFO_LOG("after zoltan");
     for (i=0; i<ctx->row_map->ldim[me]; i++) {
 //        ctx->row_map->glb_perm[i] = ctx->row_map->goffs[me]+i;
     }
@@ -194,8 +194,8 @@ ghost_error ghost_sparsemat_perm_zoltan(ghost_context *ctx, ghost_sparsemat *mat
     MPI_Type_create_struct(nitems, blocklengths, offsets, types, &mpi_partinfo_type);
     MPI_Type_commit(&mpi_partinfo_type);
 
-    PERFWARNING_LOG("The sorting of export lists is currently serial! This can cause problems in terms of performance and memory!");
-    INFO_LOG("before gather");
+    GHOST_PERFWARNING_LOG("The sorting of export lists is currently serial! This can cause problems in terms of performance and memory!");
+    GHOST_INFO_LOG("before gather");
     if (me != 0) {
         MPI_Send(partinfo,ctx->row_map->ldim[me],mpi_partinfo_type,0,me,ctx->mpicomm);
     }
@@ -205,10 +205,10 @@ ghost_error ghost_sparsemat_perm_zoltan(ghost_context *ctx, ghost_sparsemat *mat
         }
         memcpy(global_partinfo,partinfo,SPM_NROWS(mat)*sizeof(part_info));
     }
-    INFO_LOG("after gather");
+    GHOST_INFO_LOG("after gather");
     qsort(global_partinfo,ctx->row_map->gdim,sizeof(part_info),part_info_cmp);
     
-    INFO_LOG("after sort");
+    GHOST_INFO_LOG("after sort");
     if (me == 0) {
         for (i=1; i<nprocs; i++) {
             MPI_Send(&global_partinfo[ctx->row_map->goffs[i]],ctx->row_map->ldim[i],mpi_partinfo_type,i,i,ctx->mpicomm);
@@ -218,7 +218,7 @@ ghost_error ghost_sparsemat_perm_zoltan(ghost_context *ctx, ghost_sparsemat *mat
     if (me != 0) {
         MPI_Recv(partinfo,ctx->row_map->ldim[me],mpi_partinfo_type,0,me,ctx->mpicomm,MPI_STATUS_IGNORE);
     }
-    INFO_LOG("after scatter");
+    GHOST_INFO_LOG("after scatter");
 
     MPI_Type_free(&mpi_partinfo_type);
 

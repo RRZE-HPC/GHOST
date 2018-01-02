@@ -65,7 +65,7 @@ ghost_error ghost_sparsemat_create(ghost_sparsemat ** mat, ghost_context *contex
 
 
     if( traits->C < 1 || (traits->C & (-traits->C)) != traits->C) {
-      ERROR_LOG("Only powers of two are allowed for the chunk height C");
+      GHOST_ERROR_LOG("Only powers of two are allowed for the chunk height C");
       return GHOST_ERR_INVALID_ARG;
     }
 
@@ -117,7 +117,7 @@ ghost_error ghost_sparsemat_create(ghost_sparsemat ** mat, ghost_context *contex
 
     if (!((*mat)->traits.flags & (GHOST_SPARSEMAT_HOST | GHOST_SPARSEMAT_DEVICE)))
     { // no placement specified
-        DEBUG_LOG(2,"Setting matrix placement");
+        GHOST_DEBUG_LOG(2,"Setting matrix placement");
         ghost_type ghost_type;
         GHOST_CALL_GOTO(ghost_type_get(&ghost_type),err,ret);
         if (ghost_type == GHOST_TYPE_CUDA) {
@@ -143,7 +143,7 @@ ghost_error ghost_sparsemat_create(ghost_sparsemat ** mat, ghost_context *contex
 
     goto out;
     err:
-    ERROR_LOG("Error. Free'ing resources");
+    GHOST_ERROR_LOG("Error. Free'ing resources");
     free(*mat); *mat = NULL;
 
     out:
@@ -259,12 +259,12 @@ static ghost_error ghost_calculate_bw(ghost_context *ctx, ghost_sparsemat *mat)
     ctx->maxColRange    = max_col;
 
     ctx->bandwidth = ctx->lowerBandwidth + ctx->upperBandwidth;
-    INFO_LOG("RANK<%d>:  LOWER BANDWIDTH =%"PRGIDX", UPPER BANDWIDTH =%"PRGIDX", TOTAL BANDWIDTH =%"PRGIDX,me,ctx->lowerBandwidth,ctx->upperBandwidth,ctx->bandwidth);
+    GHOST_INFO_LOG("RANK<%d>:  LOWER BANDWIDTH =%"PRGIDX", UPPER BANDWIDTH =%"PRGIDX", TOTAL BANDWIDTH =%"PRGIDX,me,ctx->lowerBandwidth,ctx->upperBandwidth,ctx->bandwidth);
     GHOST_INSTR_STOP("calculate bandwidth");
     goto out;
 
     err:
-    ERROR_LOG("ERROR in Bandwidth Calculation");
+    GHOST_ERROR_LOG("ERROR in Bandwidth Calculation");
     return ret;
     out:
     return ret;
@@ -347,7 +347,7 @@ ghost_error ghost_sparsemat_perm_global_cols(ghost_gidx *col, ghost_lidx ncols, 
     }
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION|GHOST_FUNCTYPE_COMMUNICATION);
     #else
-    ERROR_LOG("This function should not have been called without MPI!");
+    GHOST_ERROR_LOG("This function should not have been called without MPI!");
     UNUSED(col);
     UNUSED(ncols);
     UNUSED(context);
@@ -359,7 +359,7 @@ ghost_error ghost_sparsemat_nrows(ghost_gidx *nrows, ghost_sparsemat *mat)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     if (!nrows) {
-        ERROR_LOG("NULL pointer");
+        GHOST_ERROR_LOG("NULL pointer");
         return GHOST_ERR_INVALID_ARG;
     }
 
@@ -373,7 +373,7 @@ ghost_error ghost_sparsemat_nnz(ghost_gidx *nnz, ghost_sparsemat *mat)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     if (!nnz) {
-        ERROR_LOG("NULL pointer");
+        GHOST_ERROR_LOG("NULL pointer");
         return GHOST_ERR_INVALID_ARG;
     }
     /*  ghost_gidx lnnz = SPM_NNZ(mat);
@@ -515,47 +515,47 @@ ghost_error ghost_sparsematofile_header(ghost_sparsemat *mat, char *path)
     FILE *filed;
 
     if ((filed = fopen64(path, "w")) == NULL){
-        ERROR_LOG("Could not open binary CRS file %s: %s",path,strerror(errno));
+        GHOST_ERROR_LOG("Could not open binary CRS file %s: %s",path,strerror(errno));
         return GHOST_ERR_IO;
     }
 
     if ((ret = fwrite(&endianess,sizeof(endianess),1,filed)) != 1) {
-        ERROR_LOG("fwrite failed: %zu",ret);
+        GHOST_ERROR_LOG("fwrite failed: %zu",ret);
         fclose(filed);
         return GHOST_ERR_IO;
     }
     if ((ret = fwrite(&version,sizeof(version),1,filed)) != 1) {
-        ERROR_LOG("fwrite failed: %zu",ret);
+        GHOST_ERROR_LOG("fwrite failed: %zu",ret);
         fclose(filed);
         return GHOST_ERR_IO;
     }
     if ((ret = fwrite(&base,sizeof(base),1,filed)) != 1) {
-        ERROR_LOG("fwrite failed: %zu",ret);
+        GHOST_ERROR_LOG("fwrite failed: %zu",ret);
         fclose(filed);
         return GHOST_ERR_IO;
     }
     if ((ret = fwrite(&symmetry,sizeof(symmetry),1,filed)) != 1) {
-        ERROR_LOG("fwrite failed: %zu",ret);
+        GHOST_ERROR_LOG("fwrite failed: %zu",ret);
         fclose(filed);
         return GHOST_ERR_IO;
     }
     if ((ret = fwrite(&datatype,sizeof(datatype),1,filed)) != 1) {
-        ERROR_LOG("fwrite failed: %zu",ret);
+        GHOST_ERROR_LOG("fwrite failed: %zu",ret);
         fclose(filed);
         return GHOST_ERR_IO;
     }
     if ((ret = fwrite(&nrows,sizeof(nrows),1,filed)) != 1) {
-        ERROR_LOG("fwrite failed: %zu",ret);
+        GHOST_ERROR_LOG("fwrite failed: %zu",ret);
         fclose(filed);
         return GHOST_ERR_IO;
     }
     if ((ret = fwrite(&ncols,sizeof(ncols),1,filed)) != 1) {
-        ERROR_LOG("fwrite failed: %zu",ret);
+        GHOST_ERROR_LOG("fwrite failed: %zu",ret);
         fclose(filed);
         return GHOST_ERR_IO;
     }
     if ((ret = fwrite(&nnz,sizeof(nnz),1,filed)) != 1) {
-        ERROR_LOG("fwrite failed: %zu",ret);
+        GHOST_ERROR_LOG("fwrite failed: %zu",ret);
         fclose(filed);
         return GHOST_ERR_IO;
     }
@@ -655,7 +655,7 @@ void ghost_sparsemat_destroy(ghost_sparsemat *mat)
 
 ghost_error ghost_sparsemat_init_bin(ghost_sparsemat *mat, char *path, ghost_mpi_comm mpicomm, double weight)
 {
-    PERFWARNING_LOG("The current implementation of binCRS read-in is "
+    GHOST_PERFWARNING_LOG("The current implementation of binCRS read-in is "
     "inefficient in terms of memory consumption!");
 
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION|GHOST_FUNCTYPE_IO);
@@ -673,7 +673,7 @@ ghost_error ghost_sparsemat_init_bin(ghost_sparsemat *mat, char *path, ghost_mpi
     args.filename = path;
 
     if (src.func(GHOST_SPARSEMAT_ROWFUNC_BINCRS_ROW_GETDIM,&bincrs_dt,dim,NULL,src.arg)) {
-        ERROR_LOG("Error in matrix creation function");
+        GHOST_ERROR_LOG("Error in matrix creation function");
         ret = GHOST_ERR_UNKNOWN;
         goto err;
     }
@@ -721,7 +721,7 @@ ghost_error ghost_sparsemat_init_mm(ghost_sparsemat *mat, char *path, ghost_mpi_
     args.mat = mat;
 
     if (src.func(GHOST_SPARSEMAT_ROWFUNC_MM_ROW_GETDIM,&bincrs_dt,dim,NULL,src.arg)) {
-        ERROR_LOG("Error in matrix creation function");
+        GHOST_ERROR_LOG("Error in matrix creation function");
         ret = GHOST_ERR_UNKNOWN;
         goto err;
     }
@@ -937,7 +937,7 @@ static ghost_error initHaloAvg(ghost_sparsemat *mat)
     goto out;
 
     err:
-    ERROR_LOG("ERROR in initHaloAvg");
+    GHOST_ERROR_LOG("ERROR in initHaloAvg");
     return  GHOST_ERR_MPI;
 
     out:
@@ -1000,7 +1000,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
     //know amount of remote entries before (used in sparsemat_blockcolor);
     if(nprocs>1 && mat->traits.flags & GHOST_SOLVER_KACZ) {
 
-        INFO_LOG("NO DISTINCTION is set");
+        GHOST_INFO_LOG("NO DISTINCTION is set");
         mat->context->flags |=   (ghost_context_flags_t) GHOST_PERM_NO_DISTINCTION;
     }
 
@@ -1100,7 +1100,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
             ghost_set_kacz_ratio(mat->context,dummymat);
             if(mat->context->kaczRatio < mat->context->kacz_setting.active_threads && !(mat->traits.flags & GHOST_SPARSEMAT_COLOR)) {
                 if(!(mat->traits.flags & GHOST_SPARSEMAT_PERM_ANY_LOCAL) && mat->context->kacz_setting.active_threads!=1){
-                    WARNING_LOG("GHOST: BMC is ON and this might lead to local row permutations; if you want to avoid it please decrease the number of threads to %d",MAX(1,(int)mat->context->kaczRatio));
+                    GHOST_WARNING_LOG("GHOST: BMC is ON and this might lead to local row permutations; if you want to avoid it please decrease the number of threads to %d",MAX(1,(int)mat->context->kaczRatio));
                 }
                 mat->traits.flags |= (ghost_sparsemat_flags)GHOST_SPARSEMAT_BLOCKCOLOR;
             }
@@ -1127,18 +1127,18 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
             mat->context->col_map->glb_perm_inv = mat->context->row_map->glb_perm_inv;
         }
         if (mat->traits.flags & GHOST_SPARSEMAT_NOT_SORT_COLS) {
-            PERFWARNING_LOG("Unsorted columns inside a row may yield to bad performance! However, matrix construnction will be faster.");
+            GHOST_PERFWARNING_LOG("Unsorted columns inside a row may yield to bad performance! However, matrix construnction will be faster.");
         }
     } else {
         if (mat->traits.sortScope > 1) {
-            WARNING_LOG("Ignoring sorting scope");
+            GHOST_WARNING_LOG("Ignoring sorting scope");
         }
         mat->traits.flags |= (ghost_sparsemat_flags)GHOST_SPARSEMAT_NOT_PERMUTE_COLS;
         mat->traits.flags |= (ghost_sparsemat_flags)GHOST_SPARSEMAT_NOT_SORT_COLS;
     }
     if (src->func == ghost_sparsemat_rowfunc_bincrs || src->func == ghost_sparsemat_rowfunc_mm || src->func == ghost_sparsemat_rowfunc_mm_transpose) {
         if (src->func(GHOST_SPARSEMAT_ROWFUNC_INIT,NULL,NULL,NULL,src->arg)) {
-            ERROR_LOG("Error in matrix creation function");
+            GHOST_ERROR_LOG("Error in matrix creation function");
             ret = GHOST_ERR_UNKNOWN;
             goto err;
         }
@@ -1172,7 +1172,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
 
         /*if (!(mat->traits.flags & GHOST_SPARSEMAT_PERM_ANY) && src->func == ghost_sparsemat_rowfunc_crs) {
          * #pragma omp single
-         *                INFO_LOG("Fast matrix construction for CRS source and no permutation")
+         *                GHOST_INFO_LOG("Fast matrix construction for CRS source and no permutation")
          * #pragma omp for schedule(runtime)
          *                for( chunk = 0; chunk < nChunks; chunk++ ) {
          *                    chunkptr[chunk] = 0; // NUMA init
@@ -1211,7 +1211,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
 
                 if (mat->context->row_map->glb_perm || mat->context->row_map->loc_perm) {
                     if (mat->context->row_map->glb_perm && mat->context->row_map->loc_perm) {
-                        INFO_LOG("Global _and_ local permutation");
+                        GHOST_INFO_LOG("Global _and_ local permutation");
                         callrow = mat->context->row_map->glb_perm_inv[mat->context->row_map->loc_perm_inv[row]];
                     } else if (mat->context->row_map->glb_perm) {
                         callrow = mat->context->row_map->glb_perm_inv[row];
@@ -1272,16 +1272,16 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
     mat->maxRowLen = maxRowLen;
 
     if (funcerrs) {
-        ERROR_LOG("Matrix construction function returned error");
+        GHOST_ERROR_LOG("Matrix construction function returned error");
         ret = GHOST_ERR_UNKNOWN;
         goto err;
     }
     if (gnents > (ghost_gidx)GHOST_LIDX_MAX) {
-        ERROR_LOG("The local number of entries is too large: %"PRGIDX,gnents);
+        GHOST_ERROR_LOG("The local number of entries is too large: %"PRGIDX,gnents);
         return GHOST_ERR_DATATYPE;
     }
     if (gnnz > (ghost_gidx)GHOST_LIDX_MAX) {
-        ERROR_LOG("The local number of entries is too large: %"PRGIDX,gnents);
+        GHOST_ERROR_LOG("The local number of entries is too large: %"PRGIDX,gnents);
         return GHOST_ERR_DATATYPE;
     }
 
@@ -1316,7 +1316,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
 
     /*
     if (src->maxrowlen != mat->maxRowLen) {
-        DEBUG_LOG(1,"The maximum row length was not correct. Setting it from %"PRLIDX" to %"PRGIDX,src->maxrowlen,mat->maxRowLen);
+        GHOST_DEBUG_LOG(1,"The maximum row length was not correct. Setting it from %"PRLIDX" to %"PRGIDX,src->maxrowlen,mat->maxRowLen);
         src->maxrowlen = mat->maxRowLen;
     }
     */
@@ -1334,7 +1334,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
 
 
     if (src->func == ghost_sparsemat_rowfunc_crs && mat->context->row_map->glb_perm) {
-        ERROR_LOG("Global permutation does not work with local CRS source");
+        GHOST_ERROR_LOG("Global permutation does not work with local CRS source");
     }
 
     GHOST_INSTR_START("cols_and_vals");
@@ -1350,7 +1350,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
             char *crsval = (char *)(((ghost_sparsemat_rowfunc_crs_arg *)src->arg)->val);
             ghost_lidx *crsrpt = ((ghost_sparsemat_rowfunc_crs_arg *)src->arg)->rpt;
             #pragma omp single
-            INFO_LOG("Fast matrix construction for CRS source and no permutation");
+            GHOST_INFO_LOG("Fast matrix construction for CRS source and no permutation");
 
             #pragma omp for schedule(runtime)
             for( chunk = 0; chunk < nChunks; chunk++ ) {
@@ -1437,7 +1437,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
                 for (i=0, row = chunk*C; (i<C) && (chunk*C+i < SPM_NROWS(mat)); i++, row++) {
                     if (mat->context->row_map->glb_perm || mat->context->row_map->loc_perm) {
                         if (mat->context->row_map->glb_perm && mat->context->row_map->loc_perm) {
-                            INFO_LOG("Global _and_ local permutation");
+                            GHOST_INFO_LOG("Global _and_ local permutation");
                             callrow = mat->context->row_map->glb_perm_inv[mat->context->row_map->loc_perm_inv[row]];
                         } else if (mat->context->row_map->glb_perm) {
                             callrow = mat->context->row_map->glb_perm_inv[row];
@@ -1449,13 +1449,13 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
                     }
                     funcret = src->func(callrow,&rowlen,&tmpcol[mat->maxRowLen*i],&tmpval[mat->maxRowLen*i*mat->elSize],src->arg);
                     if (funcret) {
-                        ERROR_LOG("Matrix construction function returned error");
+                        GHOST_ERROR_LOG("Matrix construction function returned error");
                         ret = GHOST_ERR_UNKNOWN;
                     }
                     if (rowlen != rl[row]) {
                         if (mat->traits.flags & GHOST_SPARSEMAT_DIAG_FIRST) {
                             if (rowlen != rl[row]-1) {
-                                ERROR_LOG("Row length mismatch in matrix construction for a DIAG_FIRST matrix!");
+                                GHOST_ERROR_LOG("Row length mismatch in matrix construction for a DIAG_FIRST matrix!");
                                 ret = GHOST_ERR_UNKNOWN;
                             } else {
                                 tmpcol[i*mat->maxRowLen+rowlen] = callrow;
@@ -1463,7 +1463,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
                             }
 
                         } else {
-                            ERROR_LOG("Row length mismatch in matrix construction!");
+                            GHOST_ERROR_LOG("Row length mismatch in matrix construction!");
                             ret = GHOST_ERR_UNKNOWN;
                         }
                     }
@@ -1485,7 +1485,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
                                         // do not permute remote and do not allow local to go to remote
                                         if(tmpcol[i*mat->maxRowLen+colidx] < mat->context->col_map->dimpad) {
                                             if( mat->context->col_map->loc_perm[tmpcol[i*mat->maxRowLen+colidx]]>=mat->context->col_map->dimpad ) {
-                                                ERROR_LOG("Ensure you have halo number of paddings, since GHOST_PERM_NO_DISTINCTION is switched on");
+                                                GHOST_ERROR_LOG("Ensure you have halo number of paddings, since GHOST_PERM_NO_DISTINCTION is switched on");
                                             }
                                             (*col)[(*chunkptr)[chunk]+colidx*C+i] = mat->context->col_map->loc_perm[tmpcol[i*mat->maxRowLen+colidx]];
                                         } else {
@@ -1623,7 +1623,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
 
     if (src->func == ghost_sparsemat_rowfunc_bincrs || src->func == ghost_sparsemat_rowfunc_mm) {
         if (src->func(GHOST_SPARSEMAT_ROWFUNC_FINALIZE,NULL,NULL,NULL,src->arg)) {
-            ERROR_LOG("Error in matrix creation function");
+            GHOST_ERROR_LOG("Error in matrix creation function");
             ret = GHOST_ERR_UNKNOWN;
             goto err;
         }
@@ -1655,14 +1655,14 @@ static ghost_error ghost_sparsemat_split(ghost_sparsemat *mat)
 {
 
     if (!mat) {
-        ERROR_LOG("Matrix is NULL");
+        GHOST_ERROR_LOG("Matrix is NULL");
         return GHOST_ERR_INVALID_ARG;
     }
     ghost_error ret = GHOST_SUCCESS;
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
 
 
-    DEBUG_LOG(1,"Splitting the SELL matrix into a local and remote part");
+    GHOST_DEBUG_LOG(1,"Splitting the SELL matrix into a local and remote part");
     ghost_gidx i,j;
     int me,nproc;
     GHOST_CALL_RETURN(ghost_rank(&me, mat->context->mpicomm));
@@ -1678,13 +1678,13 @@ static ghost_error ghost_sparsemat_split(ghost_sparsemat *mat)
     GHOST_INSTR_START("init_compressed_cols");
     #ifdef GHOST_IDX_UNIFORM
     if (!(mat->traits.flags & GHOST_SPARSEMAT_SAVE_ORIG_COLS)) {
-        DEBUG_LOG(1,"In-place column compression!");
+        GHOST_DEBUG_LOG(1,"In-place column compression!");
         mat->col = mat->col_orig;
     } else
         #endif
     {
         if (!mat->col) {
-            DEBUG_LOG(1,"Duplicate col array!");
+            GHOST_DEBUG_LOG(1,"Duplicate col array!");
             GHOST_CALL_GOTO(ghost_malloc_align((void **)&mat->col,sizeof(ghost_lidx)*mat->nEnts,GHOST_DATA_ALIGNMENT),err,ret);
             #pragma omp parallel for private(j) schedule(runtime)
             for (i=0; i<SPM_NCHUNKS(mat); i++) {
@@ -1702,7 +1702,7 @@ static ghost_error ghost_sparsemat_split(ghost_sparsemat *mat)
     if (nproc > 1) {
         if (mat->context->col_map->nhalo) {
             if (nhalo > mat->context->col_map->nhalo) {
-                ERROR_LOG("The maps are not compatible!");
+                GHOST_ERROR_LOG("The maps are not compatible!");
                 ret = GHOST_ERR_INVALID_ARG;
                 goto err;
             }
@@ -1723,7 +1723,7 @@ static ghost_error ghost_sparsemat_split(ghost_sparsemat *mat)
 
     #ifndef GHOST_IDX_UNIFORM
     if (!(mat->traits.flags & GHOST_SPARSEMAT_SAVE_ORIG_COLS)) {
-        DEBUG_LOG(1,"Free orig cols");
+        GHOST_DEBUG_LOG(1,"Free orig cols");
         free(mat->col_orig);
         mat->col_orig = NULL;
     }
@@ -1932,7 +1932,7 @@ ghost_error ghost_sparsemat_to_bin(ghost_sparsemat *mat, char *matrixPath)
     UNUSED(mat);
     UNUSED(matrixPath);
 
-    ERROR_LOG("SELL matrix to binary CRS file not implemented");
+    GHOST_ERROR_LOG("SELL matrix to binary CRS file not implemented");
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_IO);
     return GHOST_ERR_NOT_IMPLEMENTED;
@@ -1943,7 +1943,7 @@ static ghost_error ghost_sparsemat_upload(ghost_sparsemat* mat)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
     if (!(mat->traits.flags & GHOST_SPARSEMAT_HOST)) {
-        DEBUG_LOG(1,"Creating matrix on CUDA device");
+        GHOST_DEBUG_LOG(1,"Creating matrix on CUDA device");
         GHOST_CALL_RETURN(ghost_cu_malloc((void **)&mat->cu_rowLen,(SPM_NROWS(mat))*sizeof(ghost_lidx)));
         GHOST_CALL_RETURN(ghost_cu_malloc((void **)&mat->cu_rowLenPadded,(SPM_NROWS(mat))*sizeof(ghost_lidx)));
         GHOST_CALL_RETURN(ghost_cu_malloc((void **)&mat->cu_col,(mat->nEnts)*sizeof(ghost_lidx)));

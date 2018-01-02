@@ -50,7 +50,7 @@ static bool checkLeft(ghost_densemat *left, ghost_context *ctx)
     if((left->map->dim != ctx->row_map->dim) || ((!(left->traits.flags & GHOST_DENSEMAT_PERMUTED) && (left->map->loc_perm)) || (left->map->loc_perm != ctx->row_map->loc_perm)))
     {
 #ifndef GHOST_COMPATIBLE_PERM
-        WARNING_LOG("Left vector dimensions/permutations mismatch: %"PRLIDX" <-> %"PRLIDX" (dim), %p <-> %p (permutation)",left->map->dim, ctx->row_map->dim,(void *)left->map->loc_perm, (void *)ctx->row_map->loc_perm);
+        GHOST_WARNING_LOG("Left vector dimensions/permutations mismatch: %"PRLIDX" <-> %"PRLIDX" (dim), %p <-> %p (permutation)",left->map->dim, ctx->row_map->dim,(void *)left->map->loc_perm, (void *)ctx->row_map->loc_perm);
         flag = false;
 #else
         if(left->map->type == GHOST_MAP_COL)
@@ -74,7 +74,7 @@ static bool checkRight(ghost_densemat *right, ghost_context *ctx)
     if((right->map->dimhalo != ctx->col_map->dimhalo) || ((!(right->traits.flags & GHOST_DENSEMAT_PERMUTED) && (right->map->loc_perm)) || (right->map->loc_perm != ctx->col_map->loc_perm)))
     {
 #ifndef GHOST_COMPATIBLE_PERM
-        WARNING_LOG("Right vector dimensions/permutations mismatch: %"PRLIDX" <-> %"PRLIDX" (dim), %p <-> %p (permutation)",right->map->dim, ctx->col_map->dim, (void *)right->map->loc_perm, (void *)ctx->col_map->loc_perm);
+        GHOST_WARNING_LOG("Right vector dimensions/permutations mismatch: %"PRLIDX" <-> %"PRLIDX" (dim), %p <-> %p (permutation)",right->map->dim, ctx->col_map->dim, (void *)right->map->loc_perm, (void *)ctx->col_map->loc_perm);
         flag = false;
 #else
         if(right->map->type == GHOST_MAP_ROW)
@@ -110,7 +110,7 @@ static bool makeSimilar(ghost_densemat *vec1, ghost_densemat *vec2)
     if ((vec1->map->dim != vec2->map->dim) || (permuted_vec1 != permuted_vec2) || (vec1->map->loc_perm != vec2->map->loc_perm))
     {
 #ifndef GHOST_COMPATIBLE_PERM
-        WARNING_LOG("Densemat mismatch: %"PRLIDX" <-> %"PRLIDX" (dim), %d <-> %d (permuted), %p <-> %p (permutation)",vec1->map->dim,vec2->map->dim,permuted_vec1,permuted_vec2,(void *)vec1->map->loc_perm,(void *)vec2->map->loc_perm)
+        GHOST_WARNING_LOG("Densemat mismatch: %"PRLIDX" <-> %"PRLIDX" (dim), %d <-> %d (permuted), %p <-> %p (permutation)",vec1->map->dim,vec2->map->dim,permuted_vec1,permuted_vec2,(void *)vec1->map->loc_perm,(void *)vec2->map->loc_perm)
             flag = false;
 #else
         if(vec1_type != GHOST_MAP_NONE)
@@ -192,7 +192,7 @@ ghost_error ghost_check_mat_vec_compatibility(ghost_compatible_mat_vec *data, gh
         }
     } else {
         flag = false;
-        ERROR_LOG("Provide matrix for checking compatibility")
+        GHOST_ERROR_LOG("Provide matrix for checking compatibility")
     }
 
     if(flag == false)
@@ -226,12 +226,12 @@ ghost_error ghost_check_vec_init_compatibility(ghost_compatible_vec_init *data)
 
                     if (vec[i]->map->dim == vec[j]->map->dim) {
                         if ((permuted_vec1 != permuted_vec2) || (vec[i]->map->loc_perm != vec[j]->map->loc_perm)) {
-                            WARNING_LOG("Densemat mismatch: %"PRLIDX" <-> %"PRLIDX" (dim), %d <-> %d (permuted), %p <-> %p (permutation)",vec[i]->map->dim,vec[j]->map->dim,permuted_vec1,permuted_vec2,(void *)vec[i]->map->loc_perm,(void *)vec[i]->map->loc_perm);
+                            GHOST_WARNING_LOG("Densemat mismatch: %"PRLIDX" <-> %"PRLIDX" (dim), %d <-> %d (permuted), %p <-> %p (permutation)",vec[i]->map->dim,vec[j]->map->dim,permuted_vec1,permuted_vec2,(void *)vec[i]->map->loc_perm,(void *)vec[i]->map->loc_perm);
                             ret = GHOST_SUCCESS;
                         }
                     } else {
                         if (permuted_vec1 || permuted_vec2 || vec[i]->map->loc_perm || vec[j]->map->loc_perm) {
-                            WARNING_LOG("Densemat mismatch: %"PRLIDX" <-> %"PRLIDX" (dim), %d <-> %d (permuted), %p <-> %p (permutation)",vec[i]->map->dim,vec[j]->map->dim,permuted_vec1,permuted_vec2,(void *)vec[i]->map->loc_perm,(void *)vec[i]->map->loc_perm);
+                            GHOST_WARNING_LOG("Densemat mismatch: %"PRLIDX" <-> %"PRLIDX" (dim), %d <-> %d (permuted), %p <-> %p (permutation)",vec[i]->map->dim,vec[j]->map->dim,permuted_vec1,permuted_vec2,(void *)vec[i]->map->loc_perm,(void *)vec[i]->map->loc_perm);
                             ret = GHOST_SUCCESS;
                         }
                     }
@@ -258,7 +258,7 @@ ghost_error ghost_check_vec_init_compatibility(ghost_compatible_vec_init *data)
         out_map = data->IN_B->map;
         out_permuted = data->IN_B->traits.flags & (ghost_densemat_flags)GHOST_DENSEMAT_PERMUTED;
     } else {
-        ERROR_LOG("GHOST_COMPATIBILE_PERM: You need an input vector to initialize");
+        GHOST_ERROR_LOG("GHOST_COMPATIBILE_PERM: You need an input vector to initialize");
     }
     if(data->OUT_A != NULL) {
         ghost_densemat_set_map(data->OUT_A,out_map);
@@ -306,7 +306,7 @@ ghost_error ghost_check_vec_vec_compatibility(ghost_compatible_vec_vec *data)
 
         if(col_B != NULL)
         {
-            ERROR_LOG("COMPATIBILITY CHECK: Transposed densemat cannot be stored")
+            GHOST_ERROR_LOG("COMPATIBILITY CHECK: Transposed densemat cannot be stored")
                 flag = false;
         }
         else
@@ -327,7 +327,7 @@ ghost_error ghost_check_vec_vec_compatibility(ghost_compatible_vec_vec *data)
             {
 
 #ifndef GHOST_COMPATIBLE_PERM
-                WARNING_LOG("DENSEMAT inner dimension not compatible for multiplication")
+                GHOST_WARNING_LOG("DENSEMAT inner dimension not compatible for multiplication")
 #else
                     //B is made to be compatible with A if col_A != GHOST_MAP_NONE (TODO: It might or might not be optimal)
                     makeSimilar(data->A, data->B);
@@ -341,7 +341,7 @@ ghost_error ghost_check_vec_vec_compatibility(ghost_compatible_vec_vec *data)
               }
               if( (col_B !=  GHOST_MAP_NONE) && ((data->B)->traits.flags & (ghost_densemat_flags)GHOST_DENSEMAT_PERMUTED) ) {
               permuted_B = true;
-              ERROR_LOG("COMPATIBILITY CHECK : Shouldn't have been here")
+              GHOST_ERROR_LOG("COMPATIBILITY CHECK : Shouldn't have been here")
               }
               permuted_E = permuted_A | permuted_B;
               */
@@ -349,7 +349,7 @@ ghost_error ghost_check_vec_vec_compatibility(ghost_compatible_vec_vec *data)
             if(data->OUT != NULL)
             {
                 if(col_E != NULL) {
-                    ERROR_LOG("COMPATIBILITY CHECK: Transposed densemat cannot be stored")
+                    GHOST_ERROR_LOG("COMPATIBILITY CHECK: Transposed densemat cannot be stored")
                 }
                 if(row_E != (data->OUT)->map->loc_perm) {
                     flag = makeSimilar(data->A, data->OUT);

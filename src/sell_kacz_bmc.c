@@ -463,11 +463,11 @@ ghost_error ghost_kacz_bmc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densem
 #endif
 
    if (mat->context->nzones == 0 || mat->context->zone_ptr == NULL){
-        ERROR_LOG("Splitting of matrix by Block Multicoloring  has not be done!");
+        GHOST_ERROR_LOG("Splitting of matrix by Block Multicoloring  has not be done!");
     }
   
 /*   if (NVECS > 1) {
-        ERROR_LOG("Multi-vec not implemented!");
+        GHOST_ERROR_LOG("Multi-vec not implemented!");
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
 */   
@@ -775,11 +775,11 @@ ghost_error ghost_kacz_shift_bmc(ghost_densemat *x_real, ghost_densemat *x_imag,
     // const int NVECS = 1;
 
    if (mat->context->nzones == 0 || mat->context->zone_ptr == NULL){
-        ERROR_LOG("Splitting of matrix by Block Multicoloring  has not be done!");
+        GHOST_ERROR_LOG("Splitting of matrix by Block Multicoloring  has not be done!");
     }
   
    if (NVECS > 1) {
-        ERROR_LOG("Multi-vec not implemented!");
+        GHOST_ERROR_LOG("Multi-vec not implemented!");
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
    

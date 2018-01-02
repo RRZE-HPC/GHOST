@@ -41,7 +41,7 @@ typedef struct {
 static void *communicate(void *vargs)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
-    DEBUG_LOG(1,"Communication task started");
+    GHOST_DEBUG_LOG(1,"Communication task started");
     commArgs *args = (commArgs *)vargs;
     ghost_error *ret = NULL;
     ghost_malloc((void **)&ret,sizeof(ghost_error)); // don't use macro because it would read *ret
@@ -57,7 +57,7 @@ static void *communicate(void *vargs)
 err:
 
 out:
-    DEBUG_LOG(1,"Communication task finished");
+    GHOST_DEBUG_LOG(1,"Communication task finished");
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_COMMUNICATION);
     return ret;
 }
@@ -71,7 +71,7 @@ typedef struct {
 
 static void *compute(void *vargs)
 {
-    DEBUG_LOG(1,"Computation task started");
+    GHOST_DEBUG_LOG(1,"Computation task started");
     ghost_error *ret = NULL;
     ghost_malloc((void **)&ret,sizeof(ghost_error)); // don't use macro because it would read *ret
     if (!ret) {
@@ -85,7 +85,7 @@ static void *compute(void *vargs)
     goto out;
 err:
 out:
-    DEBUG_LOG(1,"Computation task finished");
+    GHOST_DEBUG_LOG(1,"Computation task finished");
     return ret;
 }
 #endif
@@ -99,11 +99,11 @@ ghost_error ghost_spmv_pipelined(ghost_densemat* lhs, ghost_sparsemat* mat, ghos
     UNUSED(mat);
     UNUSED(rhs);
     UNUSED(traits);
-    ERROR_LOG("Cannot execute this spMV solver without MPI");
+    GHOST_ERROR_LOG("Cannot execute this spMV solver without MPI");
     return GHOST_ERR_UNKNOWN;
 #else
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
-    WARNING_LOG("Experimental function!");
+    GHOST_WARNING_LOG("Experimental function!");
     GHOST_INSTR_START("prepare");
     ghost_error ret = GHOST_SUCCESS;
 
@@ -118,13 +118,13 @@ ghost_error ghost_spmv_pipelined(ghost_densemat* lhs, ghost_sparsemat* mat, ghos
     ghost_task *parent = NULL;
     GHOST_CALL_RETURN(ghost_task_cur(&parent));
     if (parent) {
-        DEBUG_LOG(1,"using the parent's cores for the task mode spmv solver");
+        GHOST_DEBUG_LOG(1,"using the parent's cores for the task mode spmv solver");
         ghost_task_create(&compTask, parent->nThreads - 1, 0, &compute, &computeArgs, taskflags, NULL, 0);
         ghost_task_create(&commTask, 1, 0, &communicate, &communiArgs, taskflags, NULL, 0);
 
 
     } else {
-        DEBUG_LOG(1,"No parent task in task mode spmv solver");
+        GHOST_DEBUG_LOG(1,"No parent task in task mode spmv solver");
 
         int nIdleCores;
         ghost_pumap_nidle(&nIdleCores,GHOST_NUMANODE_ANY);

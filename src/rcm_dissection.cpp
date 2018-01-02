@@ -58,7 +58,7 @@ if(n_threads>1)
         //initial check: whether there is sufficient room to play
 	if(max_local_height <= min_local_height){
 	  	flag_lb = false;
-		WARNING_LOG("RED BLACK SPLITTING : Load balancing not possible"); 
+		GHOST_WARNING_LOG("RED BLACK SPLITTING : Load balancing not possible"); 
                 
 	} else {
        
@@ -84,7 +84,7 @@ if(n_threads>1)
             //check whether this splitting is possible
             if(min_rows < min_local_height){
                 flag_lb = false;
-                WARNING_LOG("RED BLACK SPLITTING : Load balancing not possible");
+                GHOST_WARNING_LOG("RED BLACK SPLITTING : Load balancing not possible");
             }
             else{
 	      	zone_ptr[0] = 0;
@@ -198,13 +198,13 @@ extern "C" ghost_error ghost_rcm_dissect(ghost_sparsemat *mat){
         int n_zones = mat->context->nzones;
 
 	if(mat->traits.C == 1) {
-        	INFO_LOG("CHECKING BLOCK COLORING")
+        	GHOST_INFO_LOG("CHECKING BLOCK COLORING")
         	checker_rcm(mat);
-        	INFO_LOG("CHECKING FINISHED");     
+        	GHOST_INFO_LOG("CHECKING FINISHED");     
         }
 
          if(n_threads > n_zones/2){
-            WARNING_LOG("RED BLACK splitting: Can't use all the threads , Usable threads = %d",n_zones/2);
+            GHOST_WARNING_LOG("RED BLACK splitting: Can't use all the threads , Usable threads = %d",n_zones/2);
          }
 
 	mat->context->kacz_setting.active_threads = int( (double)(n_zones)/4);
@@ -288,7 +288,7 @@ extern "C" ghost_error ghost_rcm_dissect(ghost_sparsemat *mat){
     return transition_zone;
     }
     else
-        WARNING_LOG("RCM method for Kaczmarz cannot be done using multiple threads, Either matrix is too small or Bandwidth is large");
+        GHOST_WARNING_LOG("RCM method for Kaczmarz cannot be done using multiple threads, Either matrix is too small or Bandwidth is large");
 }
    
    

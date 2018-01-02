@@ -428,7 +428,7 @@ static ghost_error ghost_kacz_BMC_u_plain_cm_CHUNKHEIGHT_NVECS_tmpl(ghost_densem
     #endif
     
     if (mat->context->nzones == 0 || mat->context->zone_ptr == NULL){
-        ERROR_LOG("Splitting of matrix by Block Multicoloring has not be done!");
+        GHOST_ERROR_LOG("Splitting of matrix by Block Multicoloring has not be done!");
     }
     
     if(b!= NULL)
@@ -662,7 +662,7 @@ static ghost_error ghost_kacz_BMC_u_plain_cm_CHUNKHEIGHT_NVECS_tmpl(ghost_densem
     UNUSED(mat);
     UNUSED(b);
     UNUSED(opts);
-    ERROR_LOG("Multi-vec in COLUMN major format not implemented, change to ROW major!");
+    GHOST_ERROR_LOG("Multi-vec in COLUMN major format not implemented, change to ROW major!");
     return GHOST_ERR_NOT_IMPLEMENTED;
 #endif
 }

@@ -37,15 +37,15 @@ ghost_error ghost_cu_init(int dev)
     int nDevs = 0;
     CUDA_CALL_RETURN(cudaGetDeviceCount(&nDevs));
 
-    DEBUG_LOG(2,"There are %d CUDA devices attached to the node",nDevs);
+    GHOST_DEBUG_LOG(2,"There are %d CUDA devices attached to the node",nDevs);
 
     if (dev<nDevs) {
         cu_device = dev;
 
-        DEBUG_LOG(1,"Selecting CUDA device %d",cu_device);
+        GHOST_DEBUG_LOG(1,"Selecting CUDA device %d",cu_device);
         CUDA_CALL_RETURN(cudaSetDevice(cu_device));
     } else {
-        ERROR_LOG("CUDA device out of range!");
+        GHOST_ERROR_LOG("CUDA device out of range!");
         return GHOST_ERR_CUDA;
     }
     CUBLAS_CALL_RETURN(cublasCreate(&ghost_cublas_handle));
@@ -72,7 +72,7 @@ ghost_error ghost_cu_malloc(void **mem, size_t bytesize)
     CUDA_CALL_GOTO(cudaMalloc(mem,bytesize),err,ret);
     goto out;
 err:
-    ERROR_LOG("CUDA malloc with %zu bytes failed!",bytesize);
+    GHOST_ERROR_LOG("CUDA malloc with %zu bytes failed!",bytesize);
 out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
 #else
@@ -376,7 +376,7 @@ ghost_error ghost_cu_malloc_mapped(void **mem, const size_t size)
 
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     if (size/(1024.*1024.*1024.) > 1.) {
-        DEBUG_LOG(1,"Allocating big array of size %f GB",size/(1024.*1024.*1024.));
+        GHOST_DEBUG_LOG(1,"Allocating big array of size %f GB",size/(1024.*1024.*1024.));
     }
 
     CUDA_CALL_RETURN(cudaHostAlloc(mem,size,cudaHostAllocMapped));
@@ -395,7 +395,7 @@ ghost_error ghost_cu_malloc_pinned(void **mem, const size_t size)
 
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     if (size/(1024.*1024.*1024.) > 1.) {
-        DEBUG_LOG(1,"Allocating big array of size %f GB",size/(1024.*1024.*1024.));
+        GHOST_DEBUG_LOG(1,"Allocating big array of size %f GB",size/(1024.*1024.*1024.));
     }
 
     CUDA_CALL_RETURN(cudaHostAlloc(mem,size,cudaHostAllocDefault));
@@ -413,7 +413,7 @@ ghost_error ghost_cu_device(int *device)
 #ifdef GHOST_HAVE_CUDA
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     if (cu_device < 0) {
-        ERROR_LOG("CUDA not initialized!");
+        GHOST_ERROR_LOG("CUDA not initialized!");
         return GHOST_ERR_CUDA;
     }
     *device = cu_device;
@@ -430,7 +430,7 @@ ghost_error ghost_cu_cublas_handle(ghost_cublas_handle_t *handle)
 #ifdef GHOST_HAVE_CUDA
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     if (!ghost_cublas_handle) {
-        ERROR_LOG("CUBLAS not initialized!");
+        GHOST_ERROR_LOG("CUBLAS not initialized!");
         return GHOST_ERR_CUBLAS;
     }
     *handle = ghost_cublas_handle;
@@ -447,7 +447,7 @@ ghost_error ghost_cu_cusparse_handle(ghost_cusparse_handle_t *handle)
 #ifdef GHOST_HAVE_CUDA
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     if (!ghost_cusparse_handle) {
-        ERROR_LOG("CUSPARSE not initialized!");
+        GHOST_ERROR_LOG("CUSPARSE not initialized!");
         return GHOST_ERR_CUSPARSE;
     }
     *handle = ghost_cusparse_handle;

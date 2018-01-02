@@ -143,7 +143,7 @@ ghost_error ghost_sellspmv__a_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
     }
     if (traits.flags & GHOST_SPMV_DOT) {
         if (!local_dot_product) {
-            WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
+            GHOST_WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
             return GHOST_SUCCESS;
         }
         ghost_lidx col;
@@ -163,7 +163,7 @@ ghost_error ghost_sellspmv__a_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
         free(sshiftpadded);
     }
     if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
-        PERFWARNING_LOG("AXPBY will not be done on-the-fly!");
+        GHOST_PERFWARNING_LOG("AXPBY will not be done on-the-fly!");
         ghost_axpby(z,res,&seta,&sdelta);
     }
 
@@ -175,7 +175,7 @@ ghost_error ghost_sellspmv__a_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
     UNUSED(invec);
     UNUSED(traits);
     
-    ERROR_LOG("Not implemented!");
+    GHOST_ERROR_LOG("Not implemented!");
     return GHOST_ERR_NOT_IMPLEMENTED;
 #endif
 }
@@ -307,7 +307,7 @@ ghost_error ghost_sellspmv__u_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
     }
     if (traits.flags & GHOST_SPMV_DOT) {
         if (!local_dot_product) {
-            WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
+            GHOST_WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
             return GHOST_SUCCESS;
         }
         ghost_lidx col;
@@ -327,7 +327,7 @@ ghost_error ghost_sellspmv__u_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
         free(sshiftpadded);
     }
     if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
-        PERFWARNING_LOG("AXPBY will not be done on-the-fly!");
+        GHOST_PERFWARNING_LOG("AXPBY will not be done on-the-fly!");
         ghost_axpby(z,res,&seta,&sdelta);
     }
 
@@ -339,7 +339,7 @@ ghost_error ghost_sellspmv__u_sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
     UNUSED(invec);
     UNUSED(traits);
     
-    ERROR_LOG("Not implemented!");
+    GHOST_ERROR_LOG("Not implemented!");
     return GHOST_ERR_NOT_IMPLEMENTED;
 #endif
 }

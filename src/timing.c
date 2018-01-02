@@ -28,7 +28,7 @@ ghost_error ghost_timing_wc(double *time)
     int err;
     err = clock_gettime(CLOCK_MONOTONIC,&tp);
     if (err) {
-        ERROR_LOG("Error in clock_gettime(): %s",strerror(errno));
+        GHOST_ERROR_LOG("Error in clock_gettime(): %s",strerror(errno));
         return GHOST_ERR_UNKNOWN;
     }
 
@@ -42,7 +42,7 @@ ghost_error ghost_timing_wcmilli(double *time)
     int err;
     err = clock_gettime(CLOCK_MONOTONIC,&tp);
     if (err) {
-        ERROR_LOG("Error in clock_gettime(): %s",strerror(errno));
+        GHOST_ERROR_LOG("Error in clock_gettime(): %s",strerror(errno));
         return GHOST_ERR_UNKNOWN;
     }
 

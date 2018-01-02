@@ -16,11 +16,11 @@ ghost_error ghost_kacz_rb_v1(ghost_densemat *x, ghost_sparsemat *mat, ghost_dens
 
     //TODO check for RCM and give a Warning
     if (mat->context->nzones == 0 || mat->context->zone_ptr == NULL){
-        ERROR_LOG("Splitting of matrix to Red and Black ( odd and even) have not be done!");
+        GHOST_ERROR_LOG("Splitting of matrix to Red and Black ( odd and even) have not be done!");
     }
 
     if (NVECS > 1) {
-        ERROR_LOG("Multi-vec not implemented!");
+        GHOST_ERROR_LOG("Multi-vec not implemented!");
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
 
@@ -149,11 +149,11 @@ ghost_error ghost_kacz_rb_v2(ghost_densemat *x, ghost_sparsemat *mat, ghost_dens
 
     //TODO check for RCM and give a Warning
     if (mat->context->nzones == 0 || mat->context->zone_ptr == NULL){
-        ERROR_LOG("Splitting of matrix to Red and Black ( odd and even) have not be done!");
+        GHOST_ERROR_LOG("Splitting of matrix to Red and Black ( odd and even) have not be done!");
     }
 
     if (NVECS > 1) {
-        ERROR_LOG("Multi-vec not implemented!");
+        GHOST_ERROR_LOG("Multi-vec not implemented!");
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
 
@@ -284,11 +284,11 @@ ghost_error ghost_kacz_rb_v3(ghost_densemat *x, ghost_sparsemat *mat, ghost_dens
 
     //TODO check for RCM and give a Warning
     if (mat->context->nzones == 0 || mat->context->zone_ptr == NULL){
-        ERROR_LOG("Splitting of matrix to Red and Black ( odd and even) have not be done!");
+        GHOST_ERROR_LOG("Splitting of matrix to Red and Black ( odd and even) have not be done!");
     }
 
     if (NVECS > 1) {
-        ERROR_LOG("Multi-vec not implemented!");
+        GHOST_ERROR_LOG("Multi-vec not implemented!");
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
 
@@ -459,11 +459,11 @@ ghost_error ghost_kacz_rb_v4(ghost_densemat *x, ghost_sparsemat *mat, ghost_dens
 
     //TODO check for RCM and give a Warning
     if (mat->context->nzones == 0 || mat->context->zone_ptr == NULL){
-        ERROR_LOG("Splitting of matrix to Red and Black ( odd and even) have not be done!");
+        GHOST_ERROR_LOG("Splitting of matrix to Red and Black ( odd and even) have not be done!");
     }
 
     if (NVECS > 1) {
-        ERROR_LOG("Multi-vec not implemented!");
+        GHOST_ERROR_LOG("Multi-vec not implemented!");
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
 
@@ -612,11 +612,11 @@ ghost_error ghost_kacz_rb_v5(ghost_densemat *x, ghost_sparsemat *mat, ghost_dens
 
     //TODO check for RCM and give a Warning
     if (mat->context->nzones == 0 || mat->context->zone_ptr == NULL){
-        ERROR_LOG("Splitting of matrix to Red and Black ( odd and even) have not be done!");
+        GHOST_ERROR_LOG("Splitting of matrix to Red and Black ( odd and even) have not be done!");
     }
 
     if (NVECS > 1) {
-        ERROR_LOG("Multi-vec not implemented!");
+        GHOST_ERROR_LOG("Multi-vec not implemented!");
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
 

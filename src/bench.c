@@ -22,7 +22,7 @@
 
 static void dummy(double *a) {
     if (a[(ghost_lidx)N>>1] < 0) {
-        WARNING_LOG("dummy");
+        GHOST_WARNING_LOG("dummy");
     }
 }
 
@@ -80,7 +80,7 @@ static void ghost_load_kernel(const double * restrict a, double * s)
     }
     *s = ((double *)&sv)[0]+((double *)&sv)[1];
 #else
-    PERFWARNING_LOG("Cannot guarantee streaming stores for triad benchmark!");
+    GHOST_PERFWARNING_LOG("Cannot guarantee streaming stores for triad benchmark!");
     double res = 0.;
 #pragma omp parallel for reduction(+:res)
     for (i=0; i<N; i++) {
@@ -128,7 +128,7 @@ static void ghost_triad_kernel(double * restrict a, const double * restrict b, c
         _mm_stream_pd(&a[i],_mm_add_pd(bv,_mm_mul_pd(cv,sv)));
     }
 #else
-    PERFWARNING_LOG("Cannot guarantee streaming stores for triad benchmark!");
+    GHOST_PERFWARNING_LOG("Cannot guarantee streaming stores for triad benchmark!");
 #pragma omp parallel for
     for (i=0; i<N; i++) {
         a[i] = b[i] + s*c[i];
@@ -165,7 +165,7 @@ static void ghost_copy_kernel(double * restrict a, const double * restrict b)
         _mm_stream_pd(&a[i],bv);
     }
 #else
-    PERFWARNING_LOG("Cannot guarantee streaming stores for copy benchmark!");
+    GHOST_PERFWARNING_LOG("Cannot guarantee streaming stores for copy benchmark!");
 #pragma omp parallel for
     for (i=0; i<N; i++) {
         a[i] = b[i];
@@ -199,7 +199,7 @@ static void ghost_store_kernel(double * restrict a, const double s)
         _mm_stream_pd(&a[i],sv);
     }
 #else
-    PERFWARNING_LOG("Cannot guarantee streaming stores for copy benchmark!");
+    GHOST_PERFWARNING_LOG("Cannot guarantee streaming stores for copy benchmark!");
 #pragma omp parallel for
     for (i=0; i<N; i++) {
         a[i] = s;
@@ -259,7 +259,7 @@ ghost_error ghost_bench_bw(ghost_bench_bw_test test, double *mean_bw, double *ma
     ghost_task *cur = NULL;
     ghost_task_cur(&cur);
     if (!cur) {
-        PERFWARNING_LOG("STREAM benchmark called outside a GHOST task. The reported bandwidth will probably not be meaningful!");
+        GHOST_PERFWARNING_LOG("STREAM benchmark called outside a GHOST task. The reported bandwidth will probably not be meaningful!");
     }
 
     ghost_error ret = GHOST_SUCCESS;

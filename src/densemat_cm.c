@@ -31,7 +31,7 @@
 
 ghost_error ghost_densemat_cm_distributeVector(ghost_densemat *vec, ghost_densemat *nodeVec, ghost_context *ctx)
 {
-    DEBUG_LOG(1,"Distributing vector");
+    GHOST_DEBUG_LOG(1,"Distributing vector");
     int me;
     int nprocs;
     GHOST_CALL_RETURN(ghost_rank(&me, ctx->mpicomm));
@@ -40,13 +40,13 @@ ghost_error ghost_densemat_cm_distributeVector(ghost_densemat *vec, ghost_densem
     bool uniformstorage;
     GHOST_CALL_RETURN(ghost_densemat_uniformstorage(&uniformstorage,vec,ctx->mpicomm));
     if (!uniformstorage) {
-        ERROR_LOG("Cannot collect vectors of different storage order");
+        GHOST_ERROR_LOG("Cannot collect vectors of different storage order");
         return GHOST_ERR_INVALID_ARG;
     }
 
     ghost_lidx c;
 #ifdef GHOST_HAVE_MPI
-    DEBUG_LOG(2,"Scattering global vector to local vectors");
+    GHOST_DEBUG_LOG(2,"Scattering global vector to local vectors");
 
     ghost_mpi_datatype mpidt;
     GHOST_CALL_RETURN(ghost_mpi_datatype_get(&mpidt,vec->traits.datatype));
@@ -85,7 +85,7 @@ ghost_error ghost_densemat_cm_distributeVector(ghost_densemat *vec, ghost_densem
 
     ghost_densemat_upload(nodeVec);
 
-    DEBUG_LOG(1,"Vector distributed successfully");
+    GHOST_DEBUG_LOG(1,"Vector distributed successfully");
 
     return GHOST_SUCCESS;
 }
@@ -104,7 +104,7 @@ ghost_error ghost_densemat_cm_collectVectors(ghost_densemat *vec, ghost_densemat
     bool uniformstorage;
     GHOST_CALL_RETURN(ghost_densemat_uniformstorage(&uniformstorage,vec,ctx->mpicomm));
     if (!uniformstorage) {
-        ERROR_LOG("Cannot collect vectors of different storage order");
+        GHOST_ERROR_LOG("Cannot collect vectors of different storage order");
         return GHOST_ERR_INVALID_ARG;
     }
     //    if (ctx != NULL)

@@ -47,7 +47,7 @@ ghost_error ghost_rand_create()
 
     goto out;
 err:
-    ERROR_LOG("Free rand states");
+    GHOST_ERROR_LOG("Free rand states");
     free(ghost_rand_states);
 
 out:
@@ -59,7 +59,7 @@ out:
 ghost_error ghost_rand_get(unsigned int **s)
 {
     if (!s) {
-        ERROR_LOG("NULL pointer");
+        GHOST_ERROR_LOG("NULL pointer");
         return GHOST_ERR_INVALID_ARG;
     }
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
@@ -107,7 +107,7 @@ ghost_error ghost_rand_seed(ghost_rand_seed_type which, unsigned int seed)
     }
     
     if ((type == GHOST_TYPE_CUDA) && (which & GHOST_RAND_SEED_PU)) {
-        WARNING_LOG("This function does not really do what you would expect for CUDA random numbers, the random seed will differ between threads!");
+        GHOST_WARNING_LOG("This function does not really do what you would expect for CUDA random numbers, the random seed will differ between threads!");
     }
     cu_seed = ghost_hash(rank,time,0);
 
@@ -129,7 +129,7 @@ ghost_error ghost_rand_seed(ghost_rand_seed_type which, unsigned int seed)
 
     goto out;
 err:
-    ERROR_LOG("Free rand states");
+    GHOST_ERROR_LOG("Free rand states");
     free(ghost_rand_states);
 
 out:

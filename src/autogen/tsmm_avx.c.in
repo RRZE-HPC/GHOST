@@ -52,11 +52,11 @@ ghost_error ghost_tsmm__u_avx_z_OUTCOLS_INCOLS_OUTERUNROLL_1_rm(ghost_densemat *
 
     ghost_lidx n = DM_NROWS(v);
 
-    INFO_LOG("In AVX TSMM with two fixed block sizes [OUTCOLS][INCOLS] %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,x->traits.ncols,n,v->traits.ncols,v->traits.ncols,x->traits.ncols);
+    GHOST_INFO_LOG("In AVX TSMM with two fixed block sizes [OUTCOLS][INCOLS] %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,x->traits.ncols,n,v->traits.ncols,v->traits.ncols,x->traits.ncols);
     
     if (n%OUTERUNROLL) {
         n+=(OUTERUNROLL-n%OUTERUNROLL);
-        INFO_LOG("Padding large dimension to %d\n",n);
+        GHOST_INFO_LOG("Padding large dimension to %d\n",n);
     }
 
     const double complex * const restrict vval = (const double complex*) v->val;
@@ -144,7 +144,7 @@ ghost_error ghost_tsmm__u_avx_z_OUTCOLS_INCOLS_OUTERUNROLL_1_rm(ghost_densemat *
             }
         }
     } else { // common case: X = V*W
-        INFO_LOG("Fast case: alpha=1 and beta=0");
+        GHOST_INFO_LOG("Fast case: alpha=1 and beta=0");
 #pragma omp parallel private(k,m)
         {
             #GHOST_UNROLL#__m256d vrev@,vimv@,tmpre@,tmpim@,res0@,res1@;#OUTERUNROLL
@@ -203,7 +203,7 @@ ghost_error ghost_tsmm__u_avx_z_OUTCOLS_INCOLS_OUTERUNROLL_1_rm(ghost_densemat *
     UNUSED(w);
     UNUSED(alpha);
     UNUSED(beta);
-    ERROR_LOG("AVX not available!");
+    GHOST_ERROR_LOG("AVX not available!");
     return GHOST_ERR_UNKNOWN;
 #endif
 }
@@ -232,11 +232,11 @@ ghost_error ghost_tsmm__a_avx_z_OUTCOLS_INCOLS_OUTERUNROLL_1_rm(ghost_densemat *
 
     ghost_lidx n = DM_NROWS(v);
 
-    INFO_LOG("In AVX TSMM with two fixed block sizes [OUTCOLS][INCOLS] %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,x->traits.ncols,n,v->traits.ncols,v->traits.ncols,x->traits.ncols);
+    GHOST_INFO_LOG("In AVX TSMM with two fixed block sizes [OUTCOLS][INCOLS] %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,x->traits.ncols,n,v->traits.ncols,v->traits.ncols,x->traits.ncols);
     
     if (n%OUTERUNROLL) {
         n+=(OUTERUNROLL-n%OUTERUNROLL);
-        INFO_LOG("Padding large dimension to %d\n",n);
+        GHOST_INFO_LOG("Padding large dimension to %d\n",n);
     }
 
     const double complex * const restrict vval = (const double complex*) v->val;
@@ -326,7 +326,7 @@ ghost_error ghost_tsmm__a_avx_z_OUTCOLS_INCOLS_OUTERUNROLL_1_rm(ghost_densemat *
             }
         }
     } else { // common case: X = V*W
-        INFO_LOG("Fast case: alpha=1 and beta=0");
+        GHOST_INFO_LOG("Fast case: alpha=1 and beta=0");
 #pragma omp parallel private(k,m)
         {
             #GHOST_UNROLL#__m256d vrev@,vimv@,tmpre@,tmpim@,res0@,res1@;#OUTERUNROLL
@@ -389,7 +389,7 @@ ghost_error ghost_tsmm__a_avx_z_OUTCOLS_INCOLS_OUTERUNROLL_1_rm(ghost_densemat *
     UNUSED(w);
     UNUSED(alpha);
     UNUSED(beta);
-    ERROR_LOG("AVX not available!");
+    GHOST_ERROR_LOG("AVX not available!");
     return GHOST_ERR_UNKNOWN;
 #endif
 }
@@ -402,11 +402,11 @@ ghost_error ghost_tsmm__a_avx_d_OUTCOLS_INCOLS_OUTERUNROLL_4_rm(ghost_densemat *
 
     ghost_lidx n = DM_NROWS(v);
 
-    INFO_LOG("In AVX TSMM with two fixed block sizes [OUTCOLS][INCOLS] %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,x->traits.ncols,n,v->traits.ncols,v->traits.ncols,x->traits.ncols);
+    GHOST_INFO_LOG("In AVX TSMM with two fixed block sizes [OUTCOLS][INCOLS] %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,x->traits.ncols,n,v->traits.ncols,v->traits.ncols,x->traits.ncols);
     
     if (n%OUTERUNROLL) {
         n+=(OUTERUNROLL-n%OUTERUNROLL);
-        INFO_LOG("Padding large dimension to %d\n",n);
+        GHOST_INFO_LOG("Padding large dimension to %d\n",n);
     }
 
 
@@ -456,7 +456,7 @@ ghost_error ghost_tsmm__a_avx_d_OUTCOLS_INCOLS_OUTERUNROLL_4_rm(ghost_densemat *
             }
         }
     } else { // common case: X = V*W
-        INFO_LOG("Fast case: beta=0");
+        GHOST_INFO_LOG("Fast case: beta=0");
 #pragma omp parallel private(k,m)
         {
             #GHOST_UNROLL#__m256d tmp@;#4*OUTERUNROLL
@@ -484,7 +484,7 @@ ghost_error ghost_tsmm__a_avx_d_OUTCOLS_INCOLS_OUTERUNROLL_4_rm(ghost_densemat *
     UNUSED(w);
     UNUSED(alpha);
     UNUSED(beta);
-    ERROR_LOG("AVX not available!");
+    GHOST_ERROR_LOG("AVX not available!");
     return GHOST_ERR_UNKNOWN;
 #endif
 }
@@ -521,11 +521,11 @@ ghost_error ghost_tsmm__u_avx_d_OUTCOLS_INCOLS_OUTERUNROLL_1_rm(ghost_densemat *
 
     ghost_lidx n = DM_NROWS(v);
 
-    INFO_LOG("In AVX TSMM with two fixed block sizes [OUTCOLS][INCOLS] %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,x->traits.ncols,n,v->traits.ncols,v->traits.ncols,x->traits.ncols);
+    GHOST_INFO_LOG("In AVX TSMM with two fixed block sizes [OUTCOLS][INCOLS] %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,x->traits.ncols,n,v->traits.ncols,v->traits.ncols,x->traits.ncols);
     
     if (n%OUTERUNROLL) {
         n+=(OUTERUNROLL-n%OUTERUNROLL);
-        INFO_LOG("Padding large dimension to %d\n",n);
+        GHOST_INFO_LOG("Padding large dimension to %d\n",n);
     }
 
 
@@ -614,7 +614,7 @@ ghost_error ghost_tsmm__u_avx_d_OUTCOLS_INCOLS_OUTERUNROLL_1_rm(ghost_densemat *
     UNUSED(w);
     UNUSED(alpha);
     UNUSED(beta);
-    ERROR_LOG("AVX not available!");
+    GHOST_ERROR_LOG("AVX not available!");
     return GHOST_ERR_UNKNOWN;
 #endif
 }

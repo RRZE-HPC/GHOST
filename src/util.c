@@ -31,7 +31,7 @@ ghost_error ghost_header_string(char **str, const char *fmt, ...)
     size_t headerLen = (PRINTWIDTH+1)*HEADERHEIGHT+1;
     *str = realloc(*str,strlen(*str)+headerLen);
     if (!(*str)) {
-        ERROR_LOG("Error in realloc");
+        GHOST_ERROR_LOG("Error in realloc");
         return GHOST_ERR_UNKNOWN;
     }
     memset(*str+strlen(*str),'\0',1);
@@ -104,7 +104,7 @@ ghost_error ghost_footer_string(char **str)
     size_t footerLen = (PRINTWIDTH+1)*FOOTERHEIGHT+1;
     *str = realloc(*str,strlen(*str)+footerLen);
     if (!(*str)) {
-        ERROR_LOG("Error in realloc");
+        GHOST_ERROR_LOG("Error in realloc");
         return GHOST_ERR_UNKNOWN;
     }
     int i;
@@ -139,7 +139,7 @@ ghost_error ghost_line_string(char **str, const char *label, const char *unit, c
     // extend the string by PRINTWIDTH characters plus \n for each line plus \0
     *str = realloc(*str,len+nLines*(PRINTWIDTH+1)+1);
     if (!(*str)) {
-        ERROR_LOG("Error in realloc");
+        GHOST_ERROR_LOG("Error in realloc");
         return GHOST_ERR_UNKNOWN;
     }
 
@@ -173,18 +173,18 @@ ghost_error ghost_malloc(void **mem, const size_t size)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     if (!mem) {
-        ERROR_LOG("NULL pointer");
+        GHOST_ERROR_LOG("NULL pointer");
         return GHOST_ERR_INVALID_ARG;
     }
 
     if (size/(1024.*1024.*1024.) > 1.) {
-        DEBUG_LOG(1,"Allocating big array of size %f GB",size/(1024.*1024.*1024.));
+        GHOST_DEBUG_LOG(1,"Allocating big array of size %f GB",size/(1024.*1024.*1024.));
     }
 
     *mem = malloc(size);
 
     if(!(*mem)) {
-        ERROR_LOG("Malloc of %zu bytes failed: %s",size,strerror(errno));
+        GHOST_ERROR_LOG("Malloc of %zu bytes failed: %s",size,strerror(errno));
         return GHOST_ERR_UNKNOWN;
     }
 
@@ -209,11 +209,11 @@ ghost_error ghost_malloc_align(void **mem, const size_t size, const size_t align
 
     int ierr;
     if (size/(1024.*1024.*1024.) > 1.) {
-        DEBUG_LOG(1,"Allocating big array of size %f GB",size/(1024.*1024.*1024.));
+        GHOST_DEBUG_LOG(1,"Allocating big array of size %f GB",size/(1024.*1024.*1024.));
     }
 
     if ((ierr = posix_memalign(mem, align, size)) != 0) {
-        ERROR_LOG("Error while allocating %zu bytes using posix_memalign: %s",size,strerror(ierr));
+        GHOST_ERROR_LOG("Error while allocating %zu bytes using posix_memalign: %s",size,strerror(ierr));
         return GHOST_ERR_UNKNOWN;
     }
 

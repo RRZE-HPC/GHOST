@@ -293,7 +293,7 @@ static ghost_error FUNCNAME(vaxpbypcz_tmpl(ghost_densemat *vec, ghost_densemat *
     GHOST_DENSEMAT_CHECK_SIMILARITY(vec,vec2);
     GHOST_DENSEMAT_CHECK_SIMILARITY(vec,vec3);
     if (!DENSEMAT_COMPACT(vec) || !DENSEMAT_COMPACT(vec2) ||!DENSEMAT_COMPACT(vec3)) {
-        ERROR_LOG("(V)AXPBYCZ not yet implemented for scattered densemats");
+        GHOST_ERROR_LOG("(V)AXPBYCZ not yet implemented for scattered densemats");
     }
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
 
@@ -396,22 +396,22 @@ static ghost_error FUNCNAME(permute_tmpl(ghost_densemat *vec, ghost_permutation_
 {
 
     if(vec->map == NULL) {
-        ERROR_LOG("No active map in the densemat, therefore no permutation is carried out.");
+        GHOST_ERROR_LOG("No active map in the densemat, therefore no permutation is carried out.");
     } else {
         if (!vec->map->loc_perm && !vec->map->glb_perm) {
-            WARNING_LOG("No permutation vector present!");
+            GHOST_WARNING_LOG("No permutation vector present!");
             return GHOST_SUCCESS;
         }
         if (!(vec->traits.location & GHOST_LOCATION_HOST)) {
-            ERROR_LOG("Permutation not yet implemented for device-only densemats!");
+            GHOST_ERROR_LOG("Permutation not yet implemented for device-only densemats!");
             return GHOST_ERR_NOT_IMPLEMENTED;
         }
 
         if ((vec->traits.flags & (ghost_densemat_flags)GHOST_DENSEMAT_PERMUTED) && dir == GHOST_PERMUTATION_ORIG2PERM) {
-            WARNING_LOG("The densemat is already permuted and should not be permuted in this direction again!");
+            GHOST_WARNING_LOG("The densemat is already permuted and should not be permuted in this direction again!");
         }
         if (!(vec->traits.flags & (ghost_densemat_flags)GHOST_DENSEMAT_PERMUTED) && dir == GHOST_PERMUTATION_PERM2ORIG) {
-            WARNING_LOG("The densemat is not yet permuted and should not be permuted back!");
+            GHOST_WARNING_LOG("The densemat is not yet permuted and should not be permuted back!");
         }
 
         GHOST_CALL_RETURN(ghost_densemat_download(vec));
@@ -482,7 +482,7 @@ static ghost_error FUNCNAME(permute_tmpl(ghost_densemat *vec, ghost_permutation_
             ghost_densemat_destroy(vecclone);
             GHOST_CALL_RETURN(ghost_densemat_upload(vec));
 #else
-            ERROR_LOG("There should not be a global permutation in case MPI is disabled!");
+            GHOST_ERROR_LOG("There should not be a global permutation in case MPI is disabled!");
 #endif
         } 
         if (dir == GHOST_PERMUTATION_ORIG2PERM && vec->map->loc_perm) {
@@ -492,7 +492,7 @@ static ghost_error FUNCNAME(permute_tmpl(ghost_densemat *vec, ghost_permutation_
 
 
             if (vec->map->flags & GHOST_PERM_NO_DISTINCTION) {
-                WARNING_LOG("This will probably not work for views or non-standard densemats.");
+                GHOST_WARNING_LOG("This will probably not work for views or non-standard densemats.");
                 //FIXME Fix this
                 //Accessing invPerm would be a problem if GHOST_PERM_NO_DISTINCTION is ON
                 if(ghost_omp_in_parallel()) {
@@ -570,7 +570,7 @@ static ghost_error FUNCNAME(fromRand_tmpl(ghost_densemat *vec))
     int omp_sched_mod;
     omp_get_schedule(&omp_sched,&omp_sched_mod);
     if (ghost_rand_customseed() && (omp_sched != omp_sched_static)) {
-        WARNING_LOG("A custom random seed has been set but the OpenMP scheduling is not STATIC. This may lead to unexpected results!");
+        GHOST_WARNING_LOG("A custom random seed has been set but the OpenMP scheduling is not STATIC. This may lead to unexpected results!");
     }
 #endif
 
@@ -661,7 +661,7 @@ static ghost_error FUNCNAME(fromVec_tmpl(ghost_densemat *vec, ghost_densemat *ve
     FUNCNAME(malloc(vec,&needInit));
     if( needInit && (vec->traits.location & GHOST_LOCATION_HOST) ) {
         if( vec->traits.ncolspadded != vec->traits.ncols || DM_NROWSPAD(vec) != DM_NROWS(vec) || roffs != 0 ) {
-            PERFWARNING_LOG("Fast initializing of padded vector block from another vector not implemented, filling with zeros first");
+            GHOST_PERFWARNING_LOG("Fast initializing of padded vector block from another vector not implemented, filling with zeros first");
             DENSEMAT_ITER_INIT(vec,memset(valptr,0,sizeof(v_t)));
         }
     }
@@ -674,7 +674,7 @@ static ghost_error FUNCNAME(fromVec_tmpl(ghost_densemat *vec, ghost_densemat *ve
                 if (DENSEMAT_COMPACT(vec) && DENSEMAT_COMPACT(vec2)) {
                     ghost_cu_memcpy2d(vec->cu_val,vec->stride*vec->elSize,DENSEMAT_CUVALPTR(vec2,roffs,coffs),vec2->stride*vec->elSize,vec->blocklen*vec->elSize,vec->nblock);
                 } else {
-                    PERFWARNING_LOG("Potentially slow element-wise memcpy!");
+                    GHOST_PERFWARNING_LOG("Potentially slow element-wise memcpy!");
                     DENSEMAT_ITER2_OFFS(vec,vec2,roffs,coffs,
                             ghost_cu_memcpy(cuvalptr1,cuvalptr2,vec->elSize));
                 }
@@ -682,7 +682,7 @@ static ghost_error FUNCNAME(fromVec_tmpl(ghost_densemat *vec, ghost_densemat *ve
                 if (DENSEMAT_COMPACT(vec) && DENSEMAT_COMPACT(vec2)) {
                     ghost_cu_upload2d(vec->cu_val,vec->stride*vec->elSize,DENSEMAT_VALPTR(vec2,roffs,coffs),vec2->stride*vec2->elSize,vec2->blocklen*vec2->elSize,vec2->nblock);
                 } else {
-                    PERFWARNING_LOG("Potentially slow element-wise upload! (Fast copying not yet implemented)");
+                    GHOST_PERFWARNING_LOG("Potentially slow element-wise upload! (Fast copying not yet implemented)");
                     DENSEMAT_ITER2_OFFS(vec,vec2,roffs,coffs,
                             ghost_cu_upload(cuvalptr1,valptr2,vec->elSize));
                 }
@@ -692,7 +692,7 @@ static ghost_error FUNCNAME(fromVec_tmpl(ghost_densemat *vec, ghost_densemat *ve
                 if (DENSEMAT_COMPACT(vec) && DENSEMAT_COMPACT(vec2)) {
                     ghost_cu_download2d(vec->val,vec->stride*vec->elSize,DENSEMAT_CUVALPTR(vec2,roffs,coffs),vec2->stride*vec2->elSize,vec2->blocklen*vec2->elSize,vec2->nblock);
                 } else {
-                    PERFWARNING_LOG("Potentially slow element-wise download! (Fast copying not yet implemented)");
+                    GHOST_PERFWARNING_LOG("Potentially slow element-wise download! (Fast copying not yet implemented)");
                     DENSEMAT_ITER2_OFFS(vec,vec2,roffs,coffs,
                             ghost_cu_download(valptr1,cuvalptr2,vec->elSize));
                 }
@@ -703,16 +703,16 @@ static ghost_error FUNCNAME(fromVec_tmpl(ghost_densemat *vec, ghost_densemat *ve
         }
     } else {
 #if defined(COLMAJOR)
-        INFO_LOG("On-the-fly memtranpose RM -> CM");
+        GHOST_INFO_LOG("On-the-fly memtranpose RM -> CM");
 #else
-        INFO_LOG("On-the-fly memtranpose CM -> RM");
+        GHOST_INFO_LOG("On-the-fly memtranpose CM -> RM");
 #endif
         if (!(vec->traits.location & vec2->traits.location)) {
-            ERROR_LOG("Inter-device memtranspose not yet implemented!");
+            GHOST_ERROR_LOG("Inter-device memtranspose not yet implemented!");
             return GHOST_ERR_NOT_IMPLEMENTED;
         }
         if (vec2->traits.flags & GHOST_DENSEMAT_SCATTERED) {
-            ERROR_LOG("Not implemented!");
+            GHOST_ERROR_LOG("Not implemented!");
             return GHOST_ERR_NOT_IMPLEMENTED;
         }
 
@@ -764,7 +764,7 @@ static ghost_error FUNCNAME(fromReal_tmpl(ghost_densemat *vec, ghost_densemat *r
     FUNCNAME(malloc(vec,&needInit));
 
     if( needInit && (vec->traits.location & GHOST_LOCATION_HOST) ) {
-        PERFWARNING_LOG("Fast initialization of padding elements not supported for ITER2* macros, filling with zeros first");
+        GHOST_PERFWARNING_LOG("Fast initialization of padding elements not supported for ITER2* macros, filling with zeros first");
         DENSEMAT_ITER_INIT(vec,(*(std::complex<v_t> *)valptr) = 0.);
     }
 
@@ -802,7 +802,7 @@ static ghost_error FUNCNAME(fromComplex_tmpl(ghost_densemat *re, ghost_densemat 
     FUNCNAME(malloc(re,&needInit));
 
     if( needInit && (re->traits.location & GHOST_LOCATION_HOST) ) {
-        PERFWARNING_LOG("Fast initialization of padding elements not supported for ITER2* macros, filling with zeros first");
+        GHOST_PERFWARNING_LOG("Fast initialization of padding elements not supported for ITER2* macros, filling with zeros first");
         DENSEMAT_ITER_INIT(re,*(v_t *)valptr = 0.;);
     }
 
@@ -810,7 +810,7 @@ static ghost_error FUNCNAME(fromComplex_tmpl(ghost_densemat *re, ghost_densemat 
     FUNCNAME(malloc(re,&needInit));
 
     if( needInit && (im->traits.location & GHOST_LOCATION_HOST) ) {
-        PERFWARNING_LOG("Fast initialization of padding elements not supported for ITER2* macros, filling with zeros first");
+        GHOST_PERFWARNING_LOG("Fast initialization of padding elements not supported for ITER2* macros, filling with zeros first");
         DENSEMAT_ITER_INIT(im,*(v_t *)valptr = 0.;);
     }
 

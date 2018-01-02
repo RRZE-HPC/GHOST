@@ -32,7 +32,7 @@ extern "C" ghost_error ghost_sparsemat_perm_spmp(ghost_context *ctx, ghost_spars
 #if !defined(GHOST_HAVE_SPMP)
     UNUSED(ctx);
     UNUSED(mat);
-    WARNING_LOG("SpMP not available. Will not create matrix permutation!");
+    GHOST_WARNING_LOG("SpMP not available. Will not create matrix permutation!");
     return GHOST_SUCCESS;
 #else
 
@@ -111,7 +111,7 @@ extern "C" ghost_error ghost_sparsemat_perm_spmp(ghost_context *ctx, ghost_spars
     GHOST_CALL_GOTO(ghost_malloc((void **)&intinvperm,sizeof(int)*ctx->row_map->dim),err,ret);
 
     if (csr->isSymmetric(false,false)) {
-       INFO_LOG("Doing RCM"); 
+       GHOST_INFO_LOG("Doing RCM"); 
         csr->getRCMPermutation(intperm, intinvperm);
 
         useperm = intperm;
@@ -119,7 +119,7 @@ extern "C" ghost_error ghost_sparsemat_perm_spmp(ghost_context *ctx, ghost_spars
     } else {
 #ifdef NONSYM_RCM_MIRROR
 
-        WARNING_LOG("The local matrix is not symmetric! RCM will be done based on the mirrored upper triangular matrix!");
+        GHOST_WARNING_LOG("The local matrix is not symmetric! RCM will be done based on the mirrored upper triangular matrix!");
 
         GHOST_CALL_GOTO(ghost_malloc((void **)&symrpt,sizeof(int)*(ctx->row_map->dim+1)),err,ret);
         GHOST_CALL_GOTO(ghost_malloc((void **)&syments,sizeof(coo_ent)*(nnzlocal*2)),err,ret);
@@ -173,7 +173,7 @@ extern "C" ghost_error ghost_sparsemat_perm_spmp(ghost_context *ctx, ghost_spars
 
 #else
 
-        INFO_LOG("Doing BFS Bipartite instead of RCM as the matrix is not symmetric.");         
+        GHOST_INFO_LOG("Doing BFS Bipartite instead of RCM as the matrix is not symmetric.");         
 
 
         int me;
@@ -186,24 +186,24 @@ extern "C" ghost_error ghost_sparsemat_perm_spmp(ghost_context *ctx, ghost_spars
         csrT = csr->transpose();
         /*      csrTT = csrT->transpose();
 
-                INFO_LOG("Checking TRANSPOSE");
+                GHOST_INFO_LOG("Checking TRANSPOSE");
 
                 for(int i=0; i<ctx->row_map->dim; ++i) {
                 if(csr->rowptr[i] != csrTT->rowptr[i]) {
-                ERROR_LOG("FAILED at %d row , csr_rowptr =%d and csrTT_rowptr =%d",i,csr->rowptr[i], csrTT->rowptr[i]);
+                GHOST_ERROR_LOG("FAILED at %d row , csr_rowptr =%d and csrTT_rowptr =%d",i,csr->rowptr[i], csrTT->rowptr[i]);
                 }
                 for(int j=csr->rowptr[i]; j<csr->rowptr[i+1]; ++j) {
                 if(csr->colidx[j] != csrTT->colidx[j]) {
-                ERROR_LOG("FAILED at inner: column csr_colidx =%d and csrTT_colidx=%d",i,csr->colidx[j],csrTT->colidx[j]);
+                GHOST_ERROR_LOG("FAILED at inner: column csr_colidx =%d and csrTT_colidx=%d",i,csr->colidx[j],csrTT->colidx[j]);
                 }
                 if(csr->values[j] != csrTT->values[j]) {
-                ERROR_LOG("FAILED at inner: value csr_values =%f and csrTT_values=%f",i,csr->values[j],csrTT->values[j]);
+                GHOST_ERROR_LOG("FAILED at inner: value csr_values =%f and csrTT_values=%f",i,csr->values[j],csrTT->values[j]);
                 }
                 }
                 }
 
 
-                INFO_LOG("TRANSPOSE check finished");         
+                GHOST_INFO_LOG("TRANSPOSE check finished");         
                 */
         //int m = ctx->row_map->dim;
         //int n = ncols_halo_padded;
@@ -278,7 +278,7 @@ extern "C" ghost_error ghost_sparsemat_perm_spmp(ghost_context *ctx, ghost_spars
             */
     }
 
-    INFO_LOG("BW reduction %d->%d, Avg. width reduction %g->%g",csr->getBandwidth(),csrperm->getBandwidth(),csr->getAverageWidth(),csrperm->getAverageWidth());
+    GHOST_INFO_LOG("BW reduction %d->%d, Avg. width reduction %g->%g",csr->getBandwidth(),csrperm->getBandwidth(),csr->getAverageWidth(),csrperm->getAverageWidth());
 
 #pragma omp parallel for
     for (i=0; i<ctx->row_map->dim; i++) {
@@ -301,7 +301,7 @@ extern "C" ghost_error ghost_sparsemat_perm_spmp(ghost_context *ctx, ghost_spars
     goto out;
 
 err:
-    ERROR_LOG("Deleting permutations");
+    GHOST_ERROR_LOG("Deleting permutations");
     free(ctx->row_map->loc_perm); ctx->row_map->loc_perm = NULL;
     free(ctx->row_map->loc_perm_inv); ctx->row_map->loc_perm_inv = NULL;
     free(ctx->col_map->loc_perm); ctx->col_map->loc_perm = NULL;

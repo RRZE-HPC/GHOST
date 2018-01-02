@@ -18,7 +18,7 @@ ghost_error ghost_tsmttsm__a_plain_d_x_CFGM_1_rm(ghost_densemat *x, ghost_densem
 
     ghost_lidx n = DM_NROWS(v);
     
-    INFO_LOG("In TSMTTSM with fixed m CFGM and arbitrary k %d: %dx%d <- %dx%d * %dx%d",K,CFGM,K,CFGM,n,n,K);
+    GHOST_INFO_LOG("In TSMTTSM with fixed m CFGM and arbitrary k %d: %dx%d <- %dx%d * %dx%d",K,CFGM,K,CFGM,n,n,K);
     
     const double * const restrict vval = (const double *) v->val;
     const double * const restrict wval = (const double *) w->val;
@@ -85,7 +85,7 @@ ghost_error ghost_tsmttsm__a_plain_z_x_CFGM_1_rm(ghost_densemat *x, ghost_densem
 
     ghost_lidx n = DM_NROWS(v);
     
-    INFO_LOG("In TSMTTSM with fixed m CFGM and arbitrary k %d: %dx%d <- %dx%d * %dx%d",K,CFGM,K,CFGM,n,n,K);
+    GHOST_INFO_LOG("In TSMTTSM with fixed m CFGM and arbitrary k %d: %dx%d <- %dx%d * %dx%d",K,CFGM,K,CFGM,n,n,K);
     
     complex double * restrict vval = (complex double *) v->val, * restrict wval = (complex double *) w->val, * restrict xval = (complex double *) x->val;
     ghost_lidx ldv, ldw, ldx;

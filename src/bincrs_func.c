@@ -66,22 +66,22 @@ int ghost_sparsemat_rowfunc_bincrs(ghost_gidx row, ghost_lidx *rowlen, ghost_gid
         size_t ret;
 
         if ((f = fopen64(filename,"r")) == NULL) {
-            ERROR_LOG("fopen with %s failed!",filename);
+            GHOST_ERROR_LOG("fopen with %s failed!",filename);
             return 1;
         }
         
 
         if ((ghost_datatype)(header.datatype) != matdt) { 
-            ERROR_LOG("Value casting not implemented! Adjust your sparsemat datatype to match the file!");
+            GHOST_ERROR_LOG("Value casting not implemented! Adjust your sparsemat datatype to match the file!");
             return 1;
         }
         if (header.symmetry != GHOST_BINCRS_SYMM_GENERAL) {
-            ERROR_LOG("Only general matrices supported at the moment!");
+            GHOST_ERROR_LOG("Only general matrices supported at the moment!");
             return 1;
         }
 
         if (fseeko(f,GHOST_BINCRS_SIZE_HEADER,SEEK_SET)) {
-            ERROR_LOG("Seek failed");
+            GHOST_ERROR_LOG("Seek failed");
             return GHOST_ERR_IO;
         }
         
@@ -94,11 +94,11 @@ int ghost_sparsemat_rowfunc_bincrs(ghost_gidx row, ghost_lidx *rowlen, ghost_gid
         ghost_malloc((void **)&rowPtr,(nrows + 1) * sizeof(ghost_gidx));
         
         if (fseeko(f,firstrow*GHOST_BINCRS_SIZE_RPT_EL,SEEK_CUR)) {
-            ERROR_LOG("Seek failed");
+            GHOST_ERROR_LOG("Seek failed");
             return GHOST_ERR_IO;
         }
         if ((ret = fread(rowPtr, GHOST_BINCRS_SIZE_RPT_EL, nrows+1,f)) != (size_t)(nrows+1)){
-            ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
+            GHOST_ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
             return GHOST_ERR_IO;
         }
         
@@ -114,22 +114,22 @@ int ghost_sparsemat_rowfunc_bincrs(ghost_gidx row, ghost_lidx *rowlen, ghost_gid
         
         
         if (fseeko(f,GHOST_BINCRS_SIZE_HEADER+(header.nrows+1)*GHOST_BINCRS_SIZE_RPT_EL+rowPtr[0]*GHOST_BINCRS_SIZE_COL_EL,SEEK_SET)) {
-            ERROR_LOG("Seek failed");
+            GHOST_ERROR_LOG("Seek failed");
             return GHOST_ERR_IO;
         }
         
         if ((ret = fread(colInd, GHOST_BINCRS_SIZE_COL_EL, nnz,f)) != (size_t)(nnz)){
-            ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
+            GHOST_ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
             return GHOST_ERR_IO;
         }
         
         if (fseeko(f,GHOST_BINCRS_SIZE_HEADER+(header.nrows+1)*GHOST_BINCRS_SIZE_RPT_EL+header.nnz*GHOST_BINCRS_SIZE_COL_EL+rowPtr[0]*dtsize,SEEK_SET)) {
-            ERROR_LOG("Seek failed");
+            GHOST_ERROR_LOG("Seek failed");
             return GHOST_ERR_IO;
         }
         
         if ((ret = fread(values, dtsize, nnz,f)) != (size_t)(nnz)){
-            ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
+            GHOST_ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
             return GHOST_ERR_IO;
         }
 
@@ -161,10 +161,10 @@ ghost_error ghost_bincrs_header_read(ghost_bincrs_header_t *header, char *matrix
     int swapReq = 0;
     size_t ret;
 
-    DEBUG_LOG(1,"Reading header from %s",matrixPath);
+    GHOST_DEBUG_LOG(1,"Reading header from %s",matrixPath);
 
     if ((file = fopen(matrixPath, "rb"))==NULL){
-        ERROR_LOG("Could not open binary CRS file %s: %s",matrixPath,strerror(errno));
+        GHOST_ERROR_LOG("Could not open binary CRS file %s: %s",matrixPath,strerror(errno));
         return GHOST_ERR_IO;
     }
 
@@ -173,57 +173,57 @@ ghost_error ghost_bincrs_header_read(ghost_bincrs_header_t *header, char *matrix
     fseek(file,0L,SEEK_SET);
 
     if ((ret = fread(&header->endianess, 4, 1, file)) != (size_t)1) {
-        ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
+        GHOST_ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
         return GHOST_ERR_IO;
     }
     if (header->endianess == GHOST_BINCRS_LITTLE_ENDIAN && ghost_machine_bigendian()) {
-        DEBUG_LOG(1,"Need to convert from little to big endian.");
+        GHOST_DEBUG_LOG(1,"Need to convert from little to big endian.");
         swapReq = 1;
     } else if (header->endianess != GHOST_BINCRS_LITTLE_ENDIAN && !ghost_machine_bigendian()) {
-        DEBUG_LOG(1,"Need to convert from big to little endian.");
+        GHOST_DEBUG_LOG(1,"Need to convert from big to little endian.");
         swapReq = 1;
     } else {
-        DEBUG_LOG(1,"OK, file and library have same endianess.");
+        GHOST_DEBUG_LOG(1,"OK, file and library have same endianess.");
     }
 
     if ((ret = fread(&header->version, 4, 1, file)) != (size_t)1) {
-        ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
+        GHOST_ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
         return GHOST_ERR_IO;
     }
     if (swapReq) header->version = bswap_32(header->version);
 
     if ((ret = fread(&header->base, 4, 1, file)) != (size_t)1) {
-        ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
+        GHOST_ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
         return GHOST_ERR_IO;
     }
     if (swapReq) header->base = bswap_32(header->base);
 
     if ((ret = fread(&header->symmetry, 4, 1, file)) != (size_t)1) {
-        ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
+        GHOST_ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
         return GHOST_ERR_IO;
     }
     if (swapReq) header->symmetry = bswap_32(header->symmetry);
 
     if ((ret = fread(&header->datatype, 4, 1, file)) != (size_t)1) {
-        ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
+        GHOST_ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
         return GHOST_ERR_IO;
     }
     if (swapReq) header->datatype = bswap_32(header->datatype);
 
     if ((ret = fread(&header->nrows, 8, 1, file)) != (size_t)1) {
-        ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
+        GHOST_ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
         return GHOST_ERR_IO;
     }
     if (swapReq) header->nrows  = bswap_64(header->nrows);
 
     if ((ret = fread(&header->ncols, 8, 1, file)) != (size_t)1) {
-        ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
+        GHOST_ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
         return GHOST_ERR_IO;
     }
     if (swapReq)  header->ncols  = bswap_64(header->ncols);
 
     if ((ret = fread(&header->nnz, 8, 1, file)) != (size_t)1) {
-        ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
+        GHOST_ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
         return GHOST_ERR_IO;
     }
     if (swapReq)  header->nnz  = bswap_64(header->nnz);
@@ -237,7 +237,7 @@ ghost_error ghost_bincrs_header_read(ghost_bincrs_header_t *header, char *matrix
         (long)header->nnz * valSize;
 
     if (filesize != rightFilesize) {
-        ERROR_LOG("File has invalid size! (is: %ld, should be: %ld)",filesize, rightFilesize);
+        GHOST_ERROR_LOG("File has invalid size! (is: %ld, should be: %ld)",filesize, rightFilesize);
         return GHOST_ERR_IO;
     }
 

@@ -21,7 +21,7 @@ ghost_error ghost_tsmttsm__a_sse_d_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_dense
     ghost_error ret = GHOST_SUCCESS;
 
     ghost_lidx n = DM_NROWS(v);
-    INFO_LOG("In SSE TSMTTSM with two fixed block sizes [CFGK][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
+    GHOST_INFO_LOG("In SSE TSMTTSM with two fixed block sizes [CFGK][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
     
     const double * const restrict vval = (const double *) v->val;
     const double * const restrict wval = (const double *) w->val;
@@ -69,7 +69,7 @@ ghost_error ghost_tsmttsm__a_sse_d_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_dense
         double *x_priv;
         ghost_lidx ldxpriv = PAD(CFGM,2);
         if (ldxpriv != CFGM) {
-            INFO_LOG("Pad xpriv from %d to %d",CFGM,ldxpriv);
+            GHOST_INFO_LOG("Pad xpriv from %d to %d",CFGM,ldxpriv);
         }
         ghost_malloc_align((void **)&x_priv,ldxpriv*CFGK*sizeof(double),32);
         memset(x_priv,0,ldxpriv*CFGK*sizeof(double));
@@ -101,7 +101,7 @@ ghost_error ghost_tsmttsm__a_sse_d_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_dense
         double *x_priv;
         ghost_lidx ldxpriv = PAD(CFGM,2);
         if (ldxpriv != CFGM) {
-            INFO_LOG("Pad xpriv from %d to %d",CFGM,ldxpriv);
+            GHOST_INFO_LOG("Pad xpriv from %d to %d",CFGM,ldxpriv);
         }
         ghost_malloc_align((void **)&x_priv,ldxpriv*CFGK*sizeof(double),32);
         memset(x_priv,0,ldxpriv*CFGK*sizeof(double));
@@ -173,7 +173,7 @@ ghost_error ghost_tsmttsm__a_sse_d_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_dense
     UNUSED(w);
     UNUSED(alpha);
     UNUSED(beta);
-    ERROR_LOG("No SSE available!");
+    GHOST_ERROR_LOG("No SSE available!");
     return GHOST_ERR_UNKNOWN;
 #endif
 }

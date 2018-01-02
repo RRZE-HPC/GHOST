@@ -26,13 +26,13 @@ ghost_error ghost_spmv_vectormode(ghost_densemat* res, ghost_sparsemat* mat, gho
     UNUSED(mat);
     UNUSED(invec);
     UNUSED(traits);
-    ERROR_LOG("Cannot execute this spMV solver without MPI");
+    GHOST_ERROR_LOG("Cannot execute this spMV solver without MPI");
     return GHOST_ERR_UNKNOWN;
 #else
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error ret = GHOST_SUCCESS;
     if (mat->context == NULL) {
-        ERROR_LOG("The mat->context is NULL");
+        GHOST_ERROR_LOG("The mat->context is NULL");
         ret = GHOST_ERR_INVALID_ARG;
         goto err;
     }

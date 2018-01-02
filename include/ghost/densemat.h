@@ -12,23 +12,23 @@
 
 #define GHOST_DENSEMAT_CHECK_SIMILARITY(vec1,vec2)\
     if (DM_NROWS(vec1) != DM_NROWS(vec2)) {\
-        ERROR_LOG("Number of rows do not match!");\
+        GHOST_ERROR_LOG("Number of rows do not match!");\
         return GHOST_ERR_INVALID_ARG;\
     }\
     if (vec1->traits.ncols != vec2->traits.ncols) {\
-        ERROR_LOG("Number of cols do not match!");\
+        GHOST_ERROR_LOG("Number of cols do not match!");\
         return GHOST_ERR_INVALID_ARG;\
     }\
     if (vec1->traits.storage != vec2->traits.storage) {\
-        ERROR_LOG("Storage orders do not match!");\
+        GHOST_ERROR_LOG("Storage orders do not match!");\
         return GHOST_ERR_INVALID_ARG;\
     }\
     if (!(vec1->traits.location & vec2->traits.location)) {\
-        ERROR_LOG("Locations do not match!");\
+        GHOST_ERROR_LOG("Locations do not match!");\
         return GHOST_ERR_INVALID_ARG;\
     }\
     if (!(vec1->traits.datatype == vec2->traits.datatype)) {\
-        ERROR_LOG("Types do not match!");\
+        GHOST_ERROR_LOG("Types do not match!");\
         return GHOST_ERR_INVALID_ARG;\
     }
 

@@ -20,7 +20,7 @@ ghost_error ghost_tsmm__u_plain_d_x_x_1_1_rm(ghost_densemat *x, ghost_densemat *
     ghost_lidx n = DM_NROWS(v);
 
     
-    INFO_LOG("In TSMM with arbitrary block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
+    GHOST_INFO_LOG("In TSMM with arbitrary block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
     const double * const restrict vval = (const double *) v->val;
     const double * const restrict wval = (const double *) w->val;
@@ -87,7 +87,7 @@ ghost_error ghost_tsmm__u_plain_d_x_x_1_1_cm(ghost_densemat *x, ghost_densemat *
     ghost_lidx n = DM_NROWS(v);
 
     
-    INFO_LOG("In TSMM with arbitrary block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
+    GHOST_INFO_LOG("In TSMM with arbitrary block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
     const double * const restrict vval = (const double *) v->val;
     const double * const restrict wval = (const double *) w->val;
@@ -154,7 +154,7 @@ ghost_error ghost_tsmm__u_plain_z_x_x_1_1_cm(ghost_densemat *x, ghost_densemat *
     ghost_lidx n = DM_NROWS(v);
 
     
-    INFO_LOG("In TSMM with arbitrary block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
+    GHOST_INFO_LOG("In TSMM with arbitrary block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
     const double complex * const restrict vval = (const double complex*) v->val;
     const double complex * const restrict wval = (const double complex*) w->val;
@@ -218,7 +218,7 @@ ghost_error ghost_tsmm__u_plain_z_x_x_1_1_rm(ghost_densemat *x, ghost_densemat *
     ghost_lidx n = DM_NROWS(v);
 
     
-    INFO_LOG("In TSMM with arbitrary block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
+    GHOST_INFO_LOG("In TSMM with arbitrary block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
     const double complex * const restrict vval = (const double complex*) v->val;
     const double complex * const restrict wval = (const double complex*) w->val;

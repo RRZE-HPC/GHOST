@@ -143,7 +143,7 @@ template <typename m_t>
 static ghost_error ghost_sparsemat_string_tmpl(ghost_sparsemat *mat, char **str, int dense)
 {
     if (!dense) {
-        WARNING_LOG("Sparse printing currently not available.");
+        GHOST_WARNING_LOG("Sparse printing currently not available.");
         dense = 1;
     }
 
@@ -152,12 +152,12 @@ static ghost_error ghost_sparsemat_string_tmpl(ghost_sparsemat *mat, char **str,
     ghost_nrank(&nranks,mat->context->mpicomm);
 
     if (!(mat->traits.flags & GHOST_SPARSEMAT_SAVE_ORIG_COLS) && nranks > 1) {
-        ERROR_LOG("Cannot print compress sparse matrix without original column indices!");
+        GHOST_ERROR_LOG("Cannot print compress sparse matrix without original column indices!");
         return GHOST_ERR_INVALID_ARG;
     }
 
     if(mat->context->flags & GHOST_PERM_NO_DISTINCTION) {
-	    INFO_LOG("Original matrix without permutation is printed, since GHOST_PERM_NO_DISTINCTION is on");
+	    GHOST_INFO_LOG("Original matrix without permutation is printed, since GHOST_PERM_NO_DISTINCTION is on");
     }
 
     ghost_lidx chunk,i,j,row=0;

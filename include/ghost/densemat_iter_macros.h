@@ -73,7 +73,7 @@
     } else {\
         _Pragma("omp single")\
         {\
-            WARNING_LOG("Serialized operation for scattered densemat!");\
+            GHOST_WARNING_LOG("Serialized operation for scattered densemat!");\
             DENSEMAT_ITER_BEGIN_SCATTERED(vec,row,col,memrow,memcol);\
             call;\
             DENSEMAT_ITER_END();\
@@ -143,7 +143,7 @@
     } else {\
         _Pragma("omp single")\
         {\
-            WARNING_LOG("Serialized operation for scattered densemat!");\
+            GHOST_WARNING_LOG("Serialized operation for scattered densemat!");\
             DENSEMAT_ITER_BEGIN_SCATTERED(vec,row,col,memrow,memcol);\
             call;\
             DENSEMAT_ITER_END();\
@@ -246,7 +246,7 @@
         if (DENSEMAT_COMPACT(vec1)) {\
             _Pragma("omp single")\
             {\
-                WARNING_LOG("Serialized operation for scattered densemat! vec1 compact, vec2 scattered");\
+                GHOST_WARNING_LOG("Serialized operation for scattered densemat! vec1 compact, vec2 scattered");\
                 DENSEMAT_ITER2_BEGIN_SCATTERED2_OFFS(vec1,vec2,row,col,memrow1,memrow2,memcol1,memcol2,vec2roffs,vec2coffs);\
                 call;\
                 DENSEMAT_ITER_END();\
@@ -254,7 +254,7 @@
         } else if (DENSEMAT_COMPACT(vec2)) {\
             _Pragma("omp single")\
             {\
-                WARNING_LOG("Serialized operation for scattered densemat! vec1 scattered, vec2 compact");\
+                GHOST_WARNING_LOG("Serialized operation for scattered densemat! vec1 scattered, vec2 compact");\
                 DENSEMAT_ITER2_BEGIN_SCATTERED1_OFFS(vec1,vec2,row,col,memrow1,memrow2,memcol1,memcol2,vec2roffs,vec2coffs);\
                 call;\
                 DENSEMAT_ITER_END();\
@@ -262,7 +262,7 @@
         } else {\
             _Pragma("omp single")\
             {\
-                WARNING_LOG("Serialized operation for scattered densemat! both scattered");\
+                GHOST_WARNING_LOG("Serialized operation for scattered densemat! both scattered");\
                 DENSEMAT_ITER2_BEGIN_SCATTERED_OFFS(vec1,vec2,row,col,memrow1,memrow2,memcol1,memcol2,vec2roffs,vec2coffs);\
                 call;\
                 DENSEMAT_ITER_END();\

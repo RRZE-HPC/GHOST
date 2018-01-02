@@ -24,7 +24,7 @@ ghost_error ghost_tsmm__a_avx_d_x_x_1_1_rm(ghost_densemat *x, ghost_densemat *v,
     ghost_lidx m = v->traits.ncols;
     ghost_lidx n = DM_NROWS(v);
 
-    INFO_LOG("In AVX TSMM with arbitrary block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
+    GHOST_INFO_LOG("In AVX TSMM with arbitrary block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
     const double * const restrict vval = (const double *) v->val;
     const double * const restrict wval = (const double *) w->val;
@@ -108,7 +108,7 @@ out:
     UNUSED(w);
     UNUSED(alpha);
     UNUSED(beta);
-    ERROR_LOG("AVX not available!");
+    GHOST_ERROR_LOG("AVX not available!");
     return GHOST_ERR_UNKNOWN;
 #endif
 }
@@ -123,7 +123,7 @@ ghost_error ghost_tsmm__u_avx_d_x_x_1_1_rm(ghost_densemat *x, ghost_densemat *v,
     ghost_lidx m = v->traits.ncols;
     ghost_lidx n = DM_NROWS(v);
 
-    INFO_LOG("In AVX TSMM with arbitrary block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
+    GHOST_INFO_LOG("In AVX TSMM with arbitrary block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
     const double * const restrict vval = (const double *) v->val;
     const double * const restrict wval = (const double *) w->val;
@@ -207,7 +207,7 @@ out:
     UNUSED(w);
     UNUSED(alpha);
     UNUSED(beta);
-    ERROR_LOG("AVX not available!");
+    GHOST_ERROR_LOG("AVX not available!");
     return GHOST_ERR_UNKNOWN;
 #endif
 }

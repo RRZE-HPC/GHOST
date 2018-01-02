@@ -19,9 +19,9 @@ ghost_error ghost_tsmttsm__u_plain_z_CFGN_CFGM_2_rm(ghost_densemat *x, ghost_den
     ghost_lidx n = DM_NROWS(v);
     if (n%2) {
         n+=(2-n%2);
-        INFO_LOG("Padding large dimension to %d\n",n);
+        GHOST_INFO_LOG("Padding large dimension to %d\n",n);
     }
-    INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGN,CFGM,n,n,CFGN);
+    GHOST_INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGN,CFGM,n,n,CFGN);
     
     complex double * restrict vval = (complex double *) v->val, * restrict wval = (complex double *) w->val, * restrict xval = (complex double *) x->val;
     ghost_lidx ldv, ldw, ldx;
@@ -128,9 +128,9 @@ ghost_error ghost_tsmttsm__u_plain_d_CFGN_CFGM_OUTERUNROLL_rm(ghost_densemat *x,
     ghost_lidx n = DM_NROWS(v);
     if (n%OUTERUNROLL) {
         n+=(OUTERUNROLL-n%OUTERUNROLL);
-        INFO_LOG("Padding large dimension to %d\n",n);
+        GHOST_INFO_LOG("Padding large dimension to %d\n",n);
     }
-    INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGN,CFGM,n,n,CFGN);
+    GHOST_INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGN,CFGM,n,n,CFGN);
     
     const double * const restrict vval = (const double *) v->val;
     const double * const restrict wval = (const double *) w->val;
@@ -198,9 +198,9 @@ ghost_error ghost_tsmttsm__u_plain_d_CFGN_CFGM_OUTERUNROLL_cm(ghost_densemat *x,
     ghost_lidx n = DM_NROWS(v);
     if (n%OUTERUNROLL) {
         n+=(OUTERUNROLL-n%OUTERUNROLL);
-        INFO_LOG("Padding large dimension to %d",n);
+        GHOST_INFO_LOG("Padding large dimension to %d",n);
     }
-    INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGN,CFGM,n,n,CFGN);
+    GHOST_INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGN,CFGM,n,n,CFGN);
     
     double * restrict vval = (double *) v->val, * restrict wval = (double *) w->val, * restrict xval = (double *) x->val;
     ghost_lidx ldv, ldw, ldx;

@@ -155,7 +155,7 @@ typedef enum {
 #define GHOST_CALL(call,__err) {\
     __err = call;\
     if (__err != GHOST_SUCCESS) {\
-        LOG(GHOST_ERROR,ANSI_COLOR_RED,"%s",ghost_error_string((ghost_error)__err));\
+        GHOST_LOG(GHOST_ERROR,GHOST_ANSI_COLOR_RED,"%s",ghost_error_string((ghost_error)__err));\
     }\
 }\
 
@@ -180,7 +180,7 @@ typedef enum {
         char errstr[MPI_MAX_ERROR_STRING];\
         int strlen;\
         MPI_Error_string(mpicallmacroerr,errstr,&strlen);\
-        ERROR_LOG("MPI Error: %s",errstr);\
+        GHOST_ERROR_LOG("MPI Error: %s",errstr);\
         ghost_errorhandler h = ghost_errorhandler_get(GHOST_ERR_MPI);\
         if (h) {\
             h((void *)&mpicallmacroerr);\
@@ -209,7 +209,7 @@ typedef enum {
 #define HWLOC_CALL(call,__err) {\
     int __hwlocerr = call;\
     if (__hwlocerr) {\
-        ERROR_LOG("HWLOC Error: %d",__hwlocerr);\
+        GHOST_ERROR_LOG("HWLOC Error: %d",__hwlocerr);\
         ghost_errorhandler h = ghost_errorhandler_get(GHOST_ERR_HWLOC);\
         if (h) {\
             h((void *)&__hwlocerr);\
@@ -238,7 +238,7 @@ typedef enum {
 #define CUDA_CALL(call,__err) {\
     cudaError_t __cuerr = call;\
     if (__cuerr != cudaSuccess) {\
-        ERROR_LOG("CUDA Error: %s (%d)",cudaGetErrorString(__cuerr),(int)__cuerr);\
+        GHOST_ERROR_LOG("CUDA Error: %s (%d)",cudaGetErrorString(__cuerr),(int)__cuerr);\
         ghost_errorhandler h = ghost_errorhandler_get(GHOST_ERR_CUDA);\
         if (h) {\
             h((void *)&__cuerr);\
@@ -269,34 +269,34 @@ typedef enum {
     if (err != CUBLAS_STATUS_SUCCESS) {\
         switch (err) {\
             case CUBLAS_STATUS_NOT_INITIALIZED:\
-                ERROR_LOG("CUBLAS error: CUBLAS_STATUS_NOT_INITIALIZED");\
+                GHOST_ERROR_LOG("CUBLAS error: CUBLAS_STATUS_NOT_INITIALIZED");\
                 break;\
             case CUBLAS_STATUS_ALLOC_FAILED:\
-                ERROR_LOG("CUBLAS error: CUBLAS_STATUS_ALLOC_FAILED");\
+                GHOST_ERROR_LOG("CUBLAS error: CUBLAS_STATUS_ALLOC_FAILED");\
                 break;\
             case CUBLAS_STATUS_INVALID_VALUE:\
-                ERROR_LOG("CUBLAS error: CUBLAS_STATUS_INVALID_VALUE");\
+                GHOST_ERROR_LOG("CUBLAS error: CUBLAS_STATUS_INVALID_VALUE");\
                 break;\
             case CUBLAS_STATUS_ARCH_MISMATCH:\
-                ERROR_LOG("CUBLAS error: CUBLAS_STATUS_ARCH_MISMATCH");\
+                GHOST_ERROR_LOG("CUBLAS error: CUBLAS_STATUS_ARCH_MISMATCH");\
                 break;\
             case CUBLAS_STATUS_MAPPING_ERROR:\
-                ERROR_LOG("CUBLAS error: CUBLAS_STATUS_MAPPING_ERROR");\
+                GHOST_ERROR_LOG("CUBLAS error: CUBLAS_STATUS_MAPPING_ERROR");\
                 break;\
             case CUBLAS_STATUS_EXECUTION_FAILED:\
-                ERROR_LOG("CUBLAS error: CUBLAS_STATUS_EXECUTION_FAILED");\
+                GHOST_ERROR_LOG("CUBLAS error: CUBLAS_STATUS_EXECUTION_FAILED");\
                 break;\
             case CUBLAS_STATUS_INTERNAL_ERROR:\
-                ERROR_LOG("CUBLAS error: CUBLAS_STATUS_INTERNAL_ERROR");\
+                GHOST_ERROR_LOG("CUBLAS error: CUBLAS_STATUS_INTERNAL_ERROR");\
                 break;\
             case CUBLAS_STATUS_NOT_SUPPORTED:\
-                ERROR_LOG("CUBLAS error: CUBLAS_STATUS_NOT_SUPPORTED");\
+                GHOST_ERROR_LOG("CUBLAS error: CUBLAS_STATUS_NOT_SUPPORTED");\
                 break;\
             case CUBLAS_STATUS_LICENSE_ERROR:\
-                ERROR_LOG("CUBLAS error: CUBLAS_STATUS_LICENSE_ERROR");\
+                GHOST_ERROR_LOG("CUBLAS error: CUBLAS_STATUS_LICENSE_ERROR");\
                 break;\
             default:\
-                ERROR_LOG("CUBLAS error: Unknown CUBLAS error");\
+                GHOST_ERROR_LOG("CUBLAS error: Unknown CUBLAS error");\
                 break;\
         }\
         ghost_errorhandler h = ghost_errorhandler_get(GHOST_ERR_CUBLAS);\
@@ -327,7 +327,7 @@ typedef enum {
 #define CURAND_CALL(call,__err) {\
     curandStatus_t err = call;\
     if (err != CURAND_STATUS_SUCCESS) {\
-        ERROR_LOG("CURAND Error: %d",(int)err);\
+        GHOST_ERROR_LOG("CURAND Error: %d",(int)err);\
         ghost_errorhandler h = ghost_errorhandler_get(GHOST_ERR_CURAND);\
         if (h) {\
             h((void *)&err);\
@@ -356,7 +356,7 @@ typedef enum {
 #define CUSPARSE_CALL(call,__err) {\
     cusparseStatus_t err = call;\
     if (err != CUSPARSE_STATUS_SUCCESS) {\
-        ERROR_LOG("CUSPARSE Error: %d",(int)err);\
+        GHOST_ERROR_LOG("CUSPARSE Error: %d",(int)err);\
         ghost_errorhandler h = ghost_errorhandler_get(GHOST_ERR_CUSPARSE);\
         if (h) {\
             h((void *)&err);\
@@ -385,7 +385,7 @@ typedef enum {
 #define SCOTCH_CALL(call,__err) {\
     int err = call;\
     if (err) {\
-        ERROR_LOG("SCOTCH Error: %d",err);\
+        GHOST_ERROR_LOG("SCOTCH Error: %d",err);\
         ghost_errorhandler h = ghost_errorhandler_get(GHOST_ERR_SCOTCH);\
         if (h) {\
             h((void *)&err);\
@@ -414,7 +414,7 @@ typedef enum {
 #define COLPACK_CALL(call,__err) {\
     int err = call;\
     if (err != _TRUE) {\
-        ERROR_LOG("ColPack Error: %d",err);\
+        GHOST_ERROR_LOG("ColPack Error: %d",err);\
         ghost_errorhandler h = ghost_errorhandler_get(GHOST_ERR_COLPACK);\
         if (h) {\
             h((void *)&err);\
@@ -443,7 +443,7 @@ typedef enum {
 #define ZOLTAN_CALL(call,__err) {\
     int err = call;\
     if (err != ZOLTAN_OK) {\
-        ERROR_LOG("Zoltan Error: %d",err);\
+        GHOST_ERROR_LOG("Zoltan Error: %d",err);\
         ghost_errorhandler h = ghost_errorhandler_get(GHOST_ERR_ZOLTAN);\
         if (h) {\
             h((void *)&err);\
@@ -473,7 +473,7 @@ typedef enum {
     call;\
     int err = ghost_blas_err_pop();\
     if (err) {\
-        ERROR_LOG("BLAS Error: %d",err);\
+        GHOST_ERROR_LOG("BLAS Error: %d",err);\
         ghost_errorhandler h = ghost_errorhandler_get(GHOST_ERR_BLAS);\
         if (h) {\
             h((void *)&err);\

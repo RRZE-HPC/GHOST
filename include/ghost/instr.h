@@ -32,7 +32,7 @@ extern pthread_key_t ghost_instr_enable_key;
 #define GHOST_INSTR_START(tag) {\
     if (pthread_getspecific(ghost_instr_enable_key)) {\
         if (GHOST_VERBOSITY > 1) {\
-            DEBUG_LOG(1,"Enter instrumented region %s",tag);\
+            GHOST_DEBUG_LOG(1,"Enter instrumented region %s",tag);\
         }\
         char region[256] = "";\
         snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), tag, ghost_instr_suffix_get());\
@@ -45,7 +45,7 @@ extern pthread_key_t ghost_instr_enable_key;
 #define GHOST_INSTR_STOP(tag) {\
     if (pthread_getspecific(ghost_instr_enable_key)) {\
         if (GHOST_VERBOSITY > 1) {\
-            DEBUG_LOG(1,"Exit instrumented region %s",tag);\
+            GHOST_DEBUG_LOG(1,"Exit instrumented region %s",tag);\
         }\
         char region[256] = "";\
         snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), tag, ghost_instr_suffix_get());\
@@ -60,7 +60,7 @@ extern pthread_key_t ghost_instr_enable_key;
 #define GHOST_INSTR_START(tag) {\
     if (pthread_getspecific(ghost_instr_enable_key)) {\
         if (GHOST_VERBOSITY > 1) {\
-            DEBUG_LOG(1,"Enter instrumented region %s",tag);\
+            GHOST_DEBUG_LOG(1,"Enter instrumented region %s",tag);\
         }\
         char region[256] = "";\
         snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), tag, ghost_instr_suffix_get());\
@@ -71,7 +71,7 @@ extern pthread_key_t ghost_instr_enable_key;
 #define GHOST_INSTR_STOP(tag) {\
     if (pthread_getspecific(ghost_instr_enable_key)) {\
         if (GHOST_VERBOSITY > 1) {\
-            DEBUG_LOG(1,"Exit instrumented region %s",tag);\
+            GHOST_DEBUG_LOG(1,"Exit instrumented region %s",tag);\
         }\
         char region[256] = "";\
         snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), tag, ghost_instr_suffix_get());\
@@ -93,7 +93,7 @@ extern pthread_key_t ghost_instr_enable_key;
 #define GHOST_INSTR_START(tag) {\
     if (pthread_getspecific(ghost_instr_enable_key)) {\
         if (GHOST_VERBOSITY > 1) {\
-            DEBUG_LOG(1,"Enter instrumented region %s",tag);\
+            GHOST_DEBUG_LOG(1,"Enter instrumented region %s",tag);\
         }\
         char region[256] = "";\
         snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), tag, ghost_instr_suffix_get());\
@@ -110,7 +110,7 @@ extern pthread_key_t ghost_instr_enable_key;
 #define GHOST_INSTR_STOP(tag) {\
     if (pthread_getspecific(ghost_instr_enable_key)) {\
         if (GHOST_VERBOSITY > 1) {\
-            DEBUG_LOG(1,"Exit instrumented region %s",tag);\
+            GHOST_DEBUG_LOG(1,"Exit instrumented region %s",tag);\
         }\
         char region[256] = "";\
         snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), tag, ghost_instr_suffix_get());\
@@ -126,7 +126,7 @@ extern pthread_key_t ghost_instr_enable_key;
  */
 #define GHOST_INSTR_START(tag)\
     if (GHOST_VERBOSITY > 1) {\
-        DEBUG_LOG(1,"Enter instrumented region %s",tag);\
+        GHOST_DEBUG_LOG(1,"Enter instrumented region %s",tag);\
     }\
 
 /**
@@ -134,7 +134,7 @@ extern pthread_key_t ghost_instr_enable_key;
  */
 #define GHOST_INSTR_STOP(tag) \
     if (GHOST_VERBOSITY > 1) {\
-        DEBUG_LOG(1,"Exit instrumented region %s",tag);\
+        GHOST_DEBUG_LOG(1,"Exit instrumented region %s",tag);\
     }\
 
 #endif

@@ -31,9 +31,9 @@ ghost_error ghost_thpool_create(int nThreads, void *(func)(void *))
 
         pthread_key_create(&ghost_thread_key,NULL);
 
-        DEBUG_LOG(1,"All threads are initialized and waiting for tasks");
+        GHOST_DEBUG_LOG(1,"All threads are initialized and waiting for tasks");
     } else {
-        DEBUG_LOG(1,"Resizing the thread pool");
+        GHOST_DEBUG_LOG(1,"Resizing the thread pool");
        
         oldthreads = thpool->nThreads; 
         thpool->nThreads = nThreads;
@@ -76,14 +76,14 @@ ghost_error ghost_thpool_destroy()
 
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING|GHOST_FUNCTYPE_TEARDOWN); 
 
-    DEBUG_LOG(1,"Join all threads");
+    GHOST_DEBUG_LOG(1,"Join all threads");
     int t; 
     for (t=0; t<thpool->nThreads; t++)
     {   
 //        pthread_cancel(ghost_thpool->threads[t]);
 //        printf("cancelled %d %d\n",t,(int)ghost_thpool->threads[t]); 
         if (pthread_join(thpool->threads[t],NULL)){
-            ERROR_LOG("pthread_join failed: %s",strerror(errno));
+            GHOST_ERROR_LOG("pthread_join failed: %s",strerror(errno));
             return GHOST_ERR_UNKNOWN;
         }
     }
@@ -112,14 +112,14 @@ ghost_error ghost_thpool_get(ghost_thpool **thp)
 ghost_error ghost_thpool_key(pthread_key_t *key)
 {
     if (!key) {
-        ERROR_LOG("NULL pointer");
+        GHOST_ERROR_LOG("NULL pointer");
         return GHOST_ERR_INVALID_ARG;
     }
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING); 
 
     // only valid if thpool was created!
     if (!thpool) {
-      ERROR_LOG("ghost_thpool not initialized, yet!");
+      GHOST_ERROR_LOG("ghost_thpool not initialized, yet!");
       return GHOST_ERR_UNKNOWN;
     }
     *key = ghost_thread_key;

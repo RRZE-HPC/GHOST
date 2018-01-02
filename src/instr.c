@@ -17,7 +17,7 @@ ghost_error ghost_instr_create()
     err += pthread_key_create(&ghost_instr_enable_key,NULL);
     
     if (err) {
-        ERROR_LOG("An error occured!");
+        GHOST_ERROR_LOG("An error occured!");
         return GHOST_ERR_UNKNOWN;
     }
 
@@ -32,7 +32,7 @@ ghost_error ghost_instr_destroy()
     err += pthread_key_delete(ghost_instr_enable_key);
 
     if (err) {
-        ERROR_LOG("An error occured!");
+        GHOST_ERROR_LOG("An error occured!");
         return GHOST_ERR_UNKNOWN;
     }
 

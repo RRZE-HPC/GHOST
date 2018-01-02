@@ -96,15 +96,15 @@ ghost_error ghost_localdot(void *res, ghost_densemat *vec1, ghost_densemat *vec2
         p.alignment = GHOST_UNALIGNED;
     }
 
-    INFO_LOG("Initial try: storage=%s, blocksz=%d, alignment=%d, impl=%s",ghost_densemat_storage_string(vec1->traits.storage),p.blocksz,p.alignment,ghost_implementation_string(p.impl));
+    GHOST_INFO_LOG("Initial try: storage=%s, blocksz=%d, alignment=%d, impl=%s",ghost_densemat_storage_string(vec1->traits.storage),p.blocksz,p.alignment,ghost_implementation_string(p.impl));
     kernel = ghost_dot_kernels[p];
     if (!kernel && p.alignment == GHOST_ALIGNED) {
-        PERFWARNING_LOG("Try unaligned version");
+        GHOST_PERFWARNING_LOG("Try unaligned version");
         p.alignment = GHOST_UNALIGNED;
         kernel = ghost_dot_kernels[p];
     }
     if (!kernel) {
-        PERFWARNING_LOG("Try plain version");
+        GHOST_PERFWARNING_LOG("Try plain version");
         p.impl = GHOST_IMPLEMENTATION_PLAIN;
         kernel = ghost_dot_kernels[p];
     }
@@ -125,7 +125,7 @@ out:
             dot_perfargs.samevec = false;
         }
         ghost_timing_set_perfFunc(NULL,__ghost_functag,ghost_dot_perf,(void *)&dot_perfargs,sizeof(dot_perfargs),"GB/s");
-        PERFWARNING_LOG("Fallback to vanilla dot implementation");
+        GHOST_PERFWARNING_LOG("Fallback to vanilla dot implementation");
         
         ghost_location commonlocation = vec1->traits.location & vec2->traits.location;
         

@@ -156,29 +156,29 @@ ghost_error ghost_densemat_create(ghost_densemat **vec, ghost_map *map, ghost_de
     }
 
 
-    DEBUG_LOG(1, "Initializing vector");
+    GHOST_DEBUG_LOG(1, "Initializing vector");
 
     if ((*vec)->traits.location == GHOST_LOCATION_DEFAULT) { // no placement specified
         ghost_type ghost_type;
         GHOST_CALL_RETURN(ghost_type_get(&ghost_type));
         if (ghost_type == GHOST_TYPE_CUDA) {
-            DEBUG_LOG(1, "Auto-place on device");
+            GHOST_DEBUG_LOG(1, "Auto-place on device");
             (*vec)->traits.location = GHOST_LOCATION_DEVICE;
         } else {
-            DEBUG_LOG(1, "Auto-place on host");
+            GHOST_DEBUG_LOG(1, "Auto-place on host");
             (*vec)->traits.location = GHOST_LOCATION_HOST;
         }
 
     } else {
-        DEBUG_LOG(1, "Placement given: %s", ghost_location_string((*vec)->traits.location));
+        GHOST_DEBUG_LOG(1, "Placement given: %s", ghost_location_string((*vec)->traits.location));
     }
 
     if ((*vec)->traits.storage == GHOST_DENSEMAT_STORAGE_DEFAULT) {
         if ((*vec)->traits.ncols > 1) {
-            DEBUG_LOG(1, "Setting densemat storage to row-major!");
+            GHOST_DEBUG_LOG(1, "Setting densemat storage to row-major!");
             (*vec)->traits.storage = GHOST_DENSEMAT_ROWMAJOR;
         } else {
-            DEBUG_LOG(1, "Setting densemat storage to col-major!");
+            GHOST_DEBUG_LOG(1, "Setting densemat storage to col-major!");
             (*vec)->traits.storage = GHOST_DENSEMAT_COLMAJOR;
         }
     }
@@ -205,11 +205,11 @@ ghost_error ghost_densemat_create(ghost_densemat **vec, ghost_map *map, ghost_de
     if ((*vec)->traits.ncolssub == 0 || (*vec)->traits.ncolssub == 1) {
         (*vec)->traits.ncolssub = (*vec)->traits.ncols;
     } else {
-        WARNING_LOG("Sub-densemats are highly experimental and by far not all funtionality is "
+        GHOST_WARNING_LOG("Sub-densemats are highly experimental and by far not all funtionality is "
                     "implemented. %d",
             (*vec)->traits.ncolssub);
         if ((*vec)->traits.ncols % (*vec)->traits.ncolssub) {
-            WARNING_LOG("The column block must be a divisor of the number of columns! Forcing a "
+            GHOST_WARNING_LOG("The column block must be a divisor of the number of columns! Forcing a "
                         "single block!");
             (*vec)->traits.ncolssub = (*vec)->traits.ncols;
         }
@@ -387,7 +387,7 @@ ghost_error ghost_densemat_halocommInit_common(
     int rowsize = vec->traits.ncols * vec->elSize;
 
     if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
-        ERROR_LOG("Halo communication for scattered densemats not yet supported!");
+        GHOST_ERROR_LOG("Halo communication for scattered densemats not yet supported!");
         ret = GHOST_ERR_NOT_IMPLEMENTED;
         goto err;
     }
@@ -444,7 +444,7 @@ ghost_error ghost_densemat_halocommInit_common(
 
     goto out;
 err:
-    ERROR_LOG("Error in function!");
+    GHOST_ERROR_LOG("Error in function!");
     return GHOST_ERR_UNKNOWN;
 
 out:
@@ -514,11 +514,11 @@ ghost_error ghost_densemat_halocomm_start(
         if (!workbuf) {
 #ifndef GHOST_HAVE_GPUDIRECT
             if (!(vec->traits.location & GHOST_LOCATION_DEVICE)) {
-                ERROR_LOG("workbuf must only be NULL in case of GPUdirect!");
+                GHOST_ERROR_LOG("workbuf must only be NULL in case of GPUdirect!");
             }
 #endif
             if (!comm->cu_work) {
-                ERROR_LOG("cu_work must not be NULL!");
+                GHOST_ERROR_LOG("cu_work must not be NULL!");
             }
             workbuf = comm->cu_work;
         }

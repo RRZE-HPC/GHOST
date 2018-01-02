@@ -11,7 +11,7 @@ ghost_error ghost_pumap_npu(int *nPUs, int numanode)
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_TASKING);
 
     if (!nPUs) {
-        ERROR_LOG("NULL pointer");
+        GHOST_ERROR_LOG("NULL pointer");
         return GHOST_ERR_INVALID_ARG;
     }
 
@@ -63,7 +63,7 @@ ghost_error ghost_pumap_setidle(hwloc_bitmap_t cpuset)
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_TASKING);
     
     if (!hwloc_bitmap_isincluded(cpuset,pumap->cpuset)) {
-        ERROR_LOG("The given CPU set is not included in the PU map's CPU set");
+        GHOST_ERROR_LOG("The given CPU set is not included in the PU map's CPU set");
         return GHOST_ERR_INVALID_ARG;
     }
     
@@ -78,7 +78,7 @@ ghost_error ghost_pumap_setidle_idx(int idx)
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_TASKING);
     
     if (!hwloc_bitmap_isset(pumap->cpuset,idx)) {
-        ERROR_LOG("The given index %d is not included in the PU map's CPU set",idx);
+        GHOST_ERROR_LOG("The given index %d is not included in the PU map's CPU set",idx);
         return GHOST_ERR_INVALID_ARG;
     }
 
@@ -93,7 +93,7 @@ ghost_error ghost_pumap_setbusy(hwloc_bitmap_t cpuset)
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_TASKING);
     
     if (!hwloc_bitmap_isincluded(cpuset,pumap->cpuset)) {
-        ERROR_LOG("The given CPU set is not included in the PU map's CPU set");
+        GHOST_ERROR_LOG("The given CPU set is not included in the PU map's CPU set");
         return GHOST_ERR_INVALID_ARG;
     }
 
@@ -109,7 +109,7 @@ ghost_error ghost_pumap_get(ghost_pumap **map)
     
 
     if (!map) {
-        ERROR_LOG("NULL pointer");
+        GHOST_ERROR_LOG("NULL pointer");
         return GHOST_ERR_INVALID_ARG;
     }
 
@@ -124,7 +124,7 @@ ghost_error ghost_pumap_create(hwloc_cpuset_t cpuset)
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_TASKING|GHOST_FUNCTYPE_SETUP);
     
     if (!cpuset) {
-        ERROR_LOG("CPU set is NULL");
+        GHOST_ERROR_LOG("CPU set is NULL");
         return GHOST_ERR_INVALID_ARG;
     }
     ghost_error ret = GHOST_SUCCESS;
@@ -149,7 +149,7 @@ ghost_error ghost_pumap_create(hwloc_cpuset_t cpuset)
     pumap->busy = hwloc_bitmap_alloc();
 
     if (!pumap->cpuset || !pumap->busy) {
-        ERROR_LOG("Could not allocate CPU set");
+        GHOST_ERROR_LOG("Could not allocate CPU set");
         ret = GHOST_ERR_HWLOC;
         goto err;
     }
@@ -157,7 +157,7 @@ ghost_error ghost_pumap_create(hwloc_cpuset_t cpuset)
     // get number of NUMA nodes
     nodeset = hwloc_bitmap_alloc();
     if (!nodeset) {
-        ERROR_LOG("Could not allocate node set");
+        GHOST_ERROR_LOG("Could not allocate node set");
         ret = GHOST_ERR_HWLOC;
         goto err;
     }
@@ -194,10 +194,10 @@ ghost_error ghost_pumap_create(hwloc_cpuset_t cpuset)
             pumap->PUs[q][localthreads+t] = hwloc_get_obj_inside_cpuset_by_type(topology,remoteCPUset,HWLOC_OBJ_PU,t);
         }    
     }
-    IF_DEBUG(2) {
+    GHOST_IF_DEBUG(2) {
         for (q=0; q<pumap->nDomains; q++) {
             for (t=0; t<totalThreads; t++) {
-                DEBUG_LOG(2,"Domain[%d]: %d, t[%d]: %u (log. idx)",q,domains[q],t,pumap->PUs[q][t]->logical_index);
+                GHOST_DEBUG_LOG(2,"Domain[%d]: %d, t[%d]: %u (log. idx)",q,domains[q],t,pumap->PUs[q][t]->logical_index);
             }
         }
     }

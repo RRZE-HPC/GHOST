@@ -18,7 +18,7 @@ ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, gho
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_SETUP);
     if (weight < 0) {
-        ERROR_LOG("Negative weight");
+        GHOST_ERROR_LOG("Negative weight");
         return GHOST_ERR_INVALID_ARG;
     }
 
@@ -45,10 +45,10 @@ ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, gho
         totalwithinavg
         if (nranks > 1) {
             if (totalwithinavg == nranks) {
-                INFO_LOG("The bandwidths of all processes differ by less than 10%%, the weights will be fixed to 1.0 to avoid artifacts.");
+                GHOST_INFO_LOG("The bandwidths of all processes differ by less than 10%%, the weights will be fixed to 1.0 to avoid artifacts.");
                 weight = 1.0;
             } else {
-                INFO_LOG("The bandwidths of all processes differ by more than 10%%, automatically setting weight to %.2f according to UPDATE bandwidth!",weight);
+                GHOST_INFO_LOG("The bandwidths of all processes differ by more than 10%%, automatically setting weight to %.2f according to UPDATE bandwidth!",weight);
             }
         }
 #else
@@ -56,7 +56,7 @@ ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, gho
 #endif
     }
     if (!gnrows) {
-        ERROR_LOG("The global number of rows (and columns for non-square matrices) must not be zero!");
+        GHOST_ERROR_LOG("The global number of rows (and columns for non-square matrices) must not be zero!");
         return GHOST_ERR_INVALID_ARG;
     }
     if (!gncols) {
@@ -109,7 +109,7 @@ ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, gho
         (*context)->flags |= (ghost_context_flags_t)GHOST_CONTEXT_DIST_ROWS;
     }
 
-    DEBUG_LOG(1,"Context created successfully");
+    GHOST_DEBUG_LOG(1,"Context created successfully");
     goto out;
 err:
     free(*context); *context = NULL;
@@ -583,7 +583,7 @@ ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, gh
              */
 
             // myrevcol maps the actual colidx to the new colidx
-            DEBUG_LOG(2,"Allocating space for myrevcol");
+            GHOST_DEBUG_LOG(2,"Allocating space for myrevcol");
             GHOST_CALL_GOTO(ghost_malloc((void **)&myrevcol,ctx->row_map->ldim[i]*sizeof(ghost_lidx)),err,ret);
             for (j=0;j<ctx->wishes[i];j++){
                 myrevcol[globcol[tt]-ctx->row_map->goffs[i]] = tt;
@@ -789,7 +789,7 @@ ghost_error ghost_context_set_map(ghost_context *ctx, ghost_maptype which, ghost
     } else if (which == GHOST_MAP_COL) {
         ctx->col_map = map;
     } else {
-        ERROR_LOG("The map is to be either a column or row map!");
+        GHOST_ERROR_LOG("The map is to be either a column or row map!");
         return GHOST_ERR_INVALID_ARG;
     }
 

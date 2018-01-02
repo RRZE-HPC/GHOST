@@ -170,7 +170,7 @@ static ghost_error ghost_carp_perf_init_tmpl(ghost_sparsemat *mat, ghost_carp_op
             }
 
             if(i == -1) {
-                ERROR_LOG("Please compile block size 1")
+                GHOST_ERROR_LOG("Please compile block size 1")
                     break;
             }
             block_size.push_back(curr_block_size);
@@ -180,7 +180,7 @@ static ghost_error ghost_carp_perf_init_tmpl(ghost_sparsemat *mat, ghost_carp_op
         free(block_sizes);
 
         if(block_size.back() !=1) {
-            WARNING_LOG("Please compile block size = 1")
+            GHOST_WARNING_LOG("Please compile block size = 1")
         }
 
         int nIter = 1;//things like alpha=0 wouldn't be considered, but the LC 
@@ -253,7 +253,7 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
 
     if(!(opts.initialized)) {
-      WARNING_LOG("You have not initialized CARP");
+      GHOST_WARNING_LOG("You have not initialized CARP");
     }
 
     ghost_error ret = GHOST_SUCCESS;
@@ -271,7 +271,7 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
 
     //if rectangular matrix
     if(x->map->type != GHOST_MAP_COL && SPM_NROWS(mat) != mat->context->col_map->dim) {
-        ERROR_LOG("Output vector is not COLUMN(Right sided) vector, please set the map to the column map")
+        GHOST_ERROR_LOG("Output vector is not COLUMN(Right sided) vector, please set the map to the column map")
     }
 
     ghost_densemat *b;
@@ -291,43 +291,43 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
         if(!(mat->traits.flags & GHOST_SPARSEMAT_COLOR)) {
             p.nshifts = opts.num_shifts;
             if(!(mat->traits.flags & GHOST_SPARSEMAT_BLOCKCOLOR) && (mat->context->kaczRatio >= 2*mat->context->kacz_setting.active_threads)) {
-                INFO_LOG("BMC KACZ_shift without transition called");
+                GHOST_INFO_LOG("BMC KACZ_shift without transition called");
                 p.method = GHOST_KACZ_METHOD_BMCshift;//Now BMC_RB can run with BMC 
             }
             else {
-                INFO_LOG("BMC KACZ_shift with transition called");
+                GHOST_INFO_LOG("BMC KACZ_shift with transition called");
                 p.method = GHOST_KACZ_METHOD_BMCshift;
             }
         } else {
-            ERROR_LOG("Shift ignored MC with shift not implemented");
+            GHOST_ERROR_LOG("Shift ignored MC with shift not implemented");
             p.method = GHOST_KACZ_METHOD_MC;
         }
     } else if(opts.normalize==GHOST_KACZ_NORMALIZE_YES) {
         if(!(mat->traits.flags & GHOST_SPARSEMAT_COLOR)) {
             if(!(mat->traits.flags & GHOST_SPARSEMAT_BLOCKCOLOR) && (mat->context->kaczRatio >= 2*mat->context->kacz_setting.active_threads)) {
-                INFO_LOG("BMC KACZ without transition, for Normalized system called");
+                GHOST_INFO_LOG("BMC KACZ without transition, for Normalized system called");
                 p.method = GHOST_KACZ_METHOD_BMCNORMAL;//Now BMC_RB can run with BMC 
             }
             else {
-                INFO_LOG("BMC KACZ with transition, for Normalized system called");
+                GHOST_INFO_LOG("BMC KACZ with transition, for Normalized system called");
                 p.method = GHOST_KACZ_METHOD_BMCNORMAL;
             }
         } else {
-            INFO_LOG("Using unoptimal kernel KACZ with MC");
+            GHOST_INFO_LOG("Using unoptimal kernel KACZ with MC");
             p.method = GHOST_KACZ_METHOD_MC;
         }
     } else {
         if(!(mat->traits.flags & GHOST_SPARSEMAT_COLOR)) {
             if(!(mat->traits.flags & GHOST_SPARSEMAT_BLOCKCOLOR) && (mat->context->kaczRatio >= 2*mat->context->kacz_setting.active_threads)) {
-                INFO_LOG("BMC KACZ without transition called");
+                GHOST_INFO_LOG("BMC KACZ without transition called");
                 p.method = GHOST_KACZ_METHOD_BMC;//Now BMC_RB can run with BMC 
             }
             else {
-                INFO_LOG("BMC KACZ with transition called");
+                GHOST_INFO_LOG("BMC KACZ with transition called");
                 p.method = GHOST_KACZ_METHOD_BMC;
             }
         } else {
-            INFO_LOG("Using unoptimal kernel KACZ with MC");
+            GHOST_INFO_LOG("Using unoptimal kernel KACZ with MC");
             p.method = GHOST_KACZ_METHOD_MC;
         }
     }
@@ -359,7 +359,7 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
     if (x->traits.ncols == 1 && b->traits.ncols == 1 && 
             (x->traits.storage == GHOST_DENSEMAT_COLMAJOR || x->stride == 1) && 
             (b->traits.storage == GHOST_DENSEMAT_COLMAJOR || b->stride == 1)) {
-        INFO_LOG("Try both col- and row-major for 1-column densemat with stride 1");
+        GHOST_INFO_LOG("Try both col- and row-major for 1-column densemat with stride 1");
         n_storage = 2;
         first_storage = 0;
     } else {
@@ -372,7 +372,7 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
     }
     if ((b->traits.flags & GHOST_DENSEMAT_SCATTERED) || 
             (x->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
-        PERFWARNING_LOG("Use plain implementation for scattered views");
+        GHOST_PERFWARNING_LOG("Use plain implementation for scattered views");
         opt_impl = GHOST_IMPLEMENTATION_PLAIN;
     } else {
         if (x->stride > 1 && x->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
@@ -405,16 +405,16 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
                     opt_align = GHOST_ALIGNED;
                 } else {
                     if (!IS_ALIGNED(b->val,al)) {
-                        PERFWARNING_LOG("Using unaligned kernel because base address of result vector is not aligned");
+                        GHOST_PERFWARNING_LOG("Using unaligned kernel because base address of result vector is not aligned");
                     }
                     if (!IS_ALIGNED(x->val,al)) {
-                        PERFWARNING_LOG("Using unaligned kernel because base address of input vector is not aligned");
+                        GHOST_PERFWARNING_LOG("Using unaligned kernel because base address of input vector is not aligned");
                     }
                     if (b->stride*b->elSize % al) {
-                        PERFWARNING_LOG("Using unaligned kernel because stride of result vector does not yield aligned addresses");
+                        GHOST_PERFWARNING_LOG("Using unaligned kernel because stride of result vector does not yield aligned addresses");
                     }
                     if (x->stride*b->elSize % al) {
-                        PERFWARNING_LOG("Using unaligned kernel because stride of input vector does not yield aligned addresses");
+                        GHOST_PERFWARNING_LOG("Using unaligned kernel because stride of input vector does not yield aligned addresses");
                     }
                     opt_align = GHOST_UNALIGNED;
                 }
@@ -430,7 +430,7 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
                                 p.vdt = try_vdt[pos_vdt];
 
 
-                                INFO_LOG("Try chunkheight=%s, blocksz=%s, shifts=%s, impl=%s, %s, method %s, storage %s, vec DT %s",
+                                GHOST_INFO_LOG("Try chunkheight=%s, blocksz=%s, shifts=%s, impl=%s, %s, method %s, storage %s, vec DT %s",
                                         p.chunkheight==-1?"arbitrary":ghost::to_string((long long)p.chunkheight).c_str(),
                                         p.blocksz==-1?"arbitrary":ghost::to_string((long long)p.blocksz).c_str(),
                                         ghost::to_string((long long)p.nshifts).c_str(),
@@ -453,13 +453,13 @@ end_of_loop:
 
     if (kernel) {
         if (optimal) {
-            INFO_LOG("Found kernel with highest specialization grade: C=%d blocksz=%d align=%d impl=%s",p.chunkheight,p.blocksz,p.alignment,ghost_implementation_string(p.impl));
+            GHOST_INFO_LOG("Found kernel with highest specialization grade: C=%d blocksz=%d align=%d impl=%s",p.chunkheight,p.blocksz,p.alignment,ghost_implementation_string(p.impl));
         } else {
-            PERFWARNING_LOG("Using potentially non-optimal kernel: C=%d blocksz=%d align=%d impl=%s",p.chunkheight,p.blocksz,p.alignment,ghost_implementation_string(p.impl));
+            GHOST_PERFWARNING_LOG("Using potentially non-optimal kernel: C=%d blocksz=%d align=%d impl=%s",p.chunkheight,p.blocksz,p.alignment,ghost_implementation_string(p.impl));
         }
         ret = kernel(x,mat,b,opts);
     } else { // execute plain kernel as fallback
-        PERFWARNING_LOG("Execute fallback Kaczmarz kernel which is potentially slow!");
+        GHOST_PERFWARNING_LOG("Execute fallback Kaczmarz kernel which is potentially slow!");
         ghost_kacz_fallback(x, mat, b, opts);
 
     }

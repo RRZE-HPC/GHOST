@@ -283,13 +283,13 @@ ghost_error ghost_sellspmv_cu_tmpl(ghost_densemat *lhs, ghost_sparsemat *mat, gh
     ghost_lidx zstride;
     ghost_densemat *lhscompact, *rhscompact, *zcompact;
     if (lhs->traits.flags & GHOST_DENSEMAT_SCATTERED) {
-        PERFWARNING_LOG("Cloning (and compressing) lhs before operation");
+        GHOST_PERFWARNING_LOG("Cloning (and compressing) lhs before operation");
         GHOST_CALL_RETURN(ghost_densemat_clone(&lhscompact, lhs, lhs->traits.ncols, 0));
     } else {
         lhscompact = lhs;
     }
     if (rhs->traits.flags & GHOST_DENSEMAT_SCATTERED) {
-        PERFWARNING_LOG("Cloning (and compressing) rhs before operation");
+        GHOST_PERFWARNING_LOG("Cloning (and compressing) rhs before operation");
         GHOST_CALL_RETURN(ghost_densemat_clone(&rhscompact, rhs, rhs->traits.ncols, 0));
     } else {
         rhscompact = rhs;
@@ -311,7 +311,7 @@ ghost_error ghost_sellspmv_cu_tmpl(ghost_densemat *lhs, ghost_sparsemat *mat, gh
     dim3 block, grid;
     GHOST_SPMV_PARSE_TRAITS(opts, scale, beta, shift, localdot, z, sdelta, seta, v_dt_host, v_dt_device);
     if (z && (z->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
-        PERFWARNING_LOG("Cloning (and compressing) z before operation");
+        GHOST_PERFWARNING_LOG("Cloning (and compressing) z before operation");
         GHOST_CALL_RETURN(ghost_densemat_clone(&zcompact, z, z->traits.ncols, 0));
     } else {
         zcompact = z;
@@ -360,9 +360,9 @@ ghost_error ghost_sellspmv_cu_tmpl(ghost_densemat *lhs, ghost_sparsemat *mat, gh
             reqSmem = sizeof(v_dt_device) * 32 * block.y;
         }
         if (prop.sharedMemPerBlock < reqSmem) {
-            WARNING_LOG("Not enough shared memory available! CUDA kernel will not execute!");
+            GHOST_WARNING_LOG("Not enough shared memory available! CUDA kernel will not execute!");
         }
-        DEBUG_LOG(1, "grid %dx%d block %dx%d shmem %zu", grid.x, grid.y, block.x, block.y, reqSmem);
+        GHOST_DEBUG_LOG(1, "grid %dx%d block %dx%d shmem %zu", grid.x, grid.y, block.x, block.y, reqSmem);
         SELL_kernel_CU_cm_tmpl<m_dt, v_dt_device, v_dt_base, 0, C, ncols, do_axpby, do_scale, do_vshift, do_dot_yy, do_dot_xy, do_dot_xx, do_chain_axpby><<<grid, block, reqSmem>>>((v_dt_device *)lhsval, lhs->stride, (v_dt_device *)rhsval, rhs->stride, opts.flags, mat->context->row_map->dim, mat->cu_rowLen, mat->cu_col, (m_dt *)mat->cu_val, mat->cu_chunkStart, (v_dt_device *)cu_shift, (v_dt_device)scale, (v_dt_device)beta, (v_dt_device *)cu_localdot, (v_dt_device *)zval, zstride, (v_dt_device)sdelta, (v_dt_device)seta);
     } else {
         if (ncols > 8) {// 16 rows per block, 9...16 columns per block, 144...256 threads per block
@@ -373,7 +373,7 @@ ghost_error ghost_sellspmv_cu_tmpl(ghost_densemat *lhs, ghost_sparsemat *mat, gh
             if (opts.flags & GHOST_SPMV_DOT) {
                 GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot, sizeof(v_dt_device) * rhs->traits.ncols * 3 * grid.x));
             }
-            DEBUG_LOG(1, "grid %dx%d block %dx%d nrowsinblock %d", grid.x, grid.y, block.x, block.y, nrowsinblock);
+            GHOST_DEBUG_LOG(1, "grid %dx%d block %dx%d nrowsinblock %d", grid.x, grid.y, block.x, block.y, nrowsinblock);
             SELL_kernel_CU_rm_tmpl<m_dt, v_dt_device, v_dt_base, nrowsinblock, C, ncols, do_axpby, do_scale, do_vshift, do_dot_yy, do_dot_xy, do_dot_xx, do_chain_axpby><<<grid, block, 0>>>((v_dt_device *)lhsval, lhs->stride, (v_dt_device *)rhsval, rhs->stride, opts.flags, mat->context->row_map->dim, mat->cu_rowLen, mat->cu_col, (m_dt *)mat->cu_val, mat->cu_chunkStart, (v_dt_device *)cu_shift, (v_dt_device)scale, (v_dt_device)beta, (v_dt_device *)cu_localdot, (v_dt_device *)zval, zstride, (v_dt_device)sdelta, (v_dt_device)seta);
         } else if (ncols > 4) {// 32 rows per block, 5...8 columns per block, 160...256 threads per block
             const int nrowsinblock = 32;
@@ -383,7 +383,7 @@ ghost_error ghost_sellspmv_cu_tmpl(ghost_densemat *lhs, ghost_sparsemat *mat, gh
             if (opts.flags & GHOST_SPMV_DOT) {
                 GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot, sizeof(v_dt_device) * rhs->traits.ncols * 3 * grid.x));
             }
-            DEBUG_LOG(1, "grid %dx%d block %dx%d nrowsinblock %d", grid.x, grid.y, block.x, block.y, nrowsinblock);
+            GHOST_DEBUG_LOG(1, "grid %dx%d block %dx%d nrowsinblock %d", grid.x, grid.y, block.x, block.y, nrowsinblock);
             SELL_kernel_CU_rm_tmpl<m_dt, v_dt_device, v_dt_base, nrowsinblock, C, ncols, do_axpby, do_scale, do_vshift, do_dot_yy, do_dot_xy, do_dot_xx, do_chain_axpby><<<grid, block, 0>>>((v_dt_device *)lhsval, lhs->stride, (v_dt_device *)rhsval, rhs->stride, opts.flags, mat->context->row_map->dim, mat->cu_rowLen, mat->cu_col, (m_dt *)mat->cu_val, mat->cu_chunkStart, (v_dt_device *)cu_shift, (v_dt_device)scale, (v_dt_device)beta, (v_dt_device *)cu_localdot, (v_dt_device *)zval, zstride, (v_dt_device)sdelta, (v_dt_device)seta);
         } else if (ncols > 2) {// 64 rows per block, 3...4 columns per block, 192...256 threads per block
             const int nrowsinblock = 64;
@@ -394,7 +394,7 @@ ghost_error ghost_sellspmv_cu_tmpl(ghost_densemat *lhs, ghost_sparsemat *mat, gh
                 GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot, sizeof(v_dt_device) * rhs->traits.ncols * 3 * grid.x));
             }
             int smem = (block.x / 32) * sizeof(v_dt_device);
-            DEBUG_LOG(1, "grid %dx%d block %dx%d nrowsinblock %d smem %d", grid.x, grid.y, block.x, block.y, nrowsinblock, smem);
+            GHOST_DEBUG_LOG(1, "grid %dx%d block %dx%d nrowsinblock %d smem %d", grid.x, grid.y, block.x, block.y, nrowsinblock, smem);
             SELL_kernel_CU_rm_tmpl<m_dt, v_dt_device, v_dt_base, nrowsinblock, C, ncols, do_axpby, do_scale, do_vshift, do_dot_yy, do_dot_xy, do_dot_xx, do_chain_axpby><<<grid, block, smem>>>((v_dt_device *)lhsval, lhs->stride, (v_dt_device *)rhsval, rhs->stride, opts.flags, mat->context->row_map->dim, mat->cu_rowLen, mat->cu_col, (m_dt *)mat->cu_val, mat->cu_chunkStart, (v_dt_device *)cu_shift, (v_dt_device)scale, (v_dt_device)beta, (v_dt_device *)cu_localdot, (v_dt_device *)zval, zstride, (v_dt_device)sdelta, (v_dt_device)seta);
         } else if (ncols > 1) {// 64 rows per block, 3...4 columns per block, 192...256 threads per block
             const int nrowsinblock = 128;
@@ -405,7 +405,7 @@ ghost_error ghost_sellspmv_cu_tmpl(ghost_densemat *lhs, ghost_sparsemat *mat, gh
                 GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot, sizeof(v_dt_device) * rhs->traits.ncols * 3 * grid.x));
             }
             int smem = (block.x / 32) * sizeof(v_dt_device);
-            DEBUG_LOG(1, "grid %dx%d block %dx%d nrowsinblock %d smem %d", grid.x, grid.y, block.x, block.y, nrowsinblock, smem);
+            GHOST_DEBUG_LOG(1, "grid %dx%d block %dx%d nrowsinblock %d smem %d", grid.x, grid.y, block.x, block.y, nrowsinblock, smem);
             SELL_kernel_CU_rm_tmpl<m_dt, v_dt_device, v_dt_base, nrowsinblock, C, ncols, do_axpby, do_scale, do_vshift, do_dot_yy, do_dot_xy, do_dot_xx, do_chain_axpby><<<grid, block, smem>>>((v_dt_device *)lhsval, lhs->stride, (v_dt_device *)rhsval, rhs->stride, opts.flags, mat->context->row_map->dim, mat->cu_rowLen, mat->cu_col, (m_dt *)mat->cu_val, mat->cu_chunkStart, (v_dt_device *)cu_shift, (v_dt_device)scale, (v_dt_device)beta, (v_dt_device *)cu_localdot, (v_dt_device *)zval, zstride, (v_dt_device)sdelta, (v_dt_device)seta);
         } else {
             const int nrowsinblock = 256;
@@ -416,18 +416,18 @@ ghost_error ghost_sellspmv_cu_tmpl(ghost_densemat *lhs, ghost_sparsemat *mat, gh
                 GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot, sizeof(v_dt_device) * rhs->traits.ncols * 3 * grid.x));
             }
             int smem = (block.x / 32) * sizeof(v_dt_device);
-            DEBUG_LOG(1, "grid %dx%d block %dx%d nrowsinblock %d smem %d", grid.x, grid.y, block.x, block.y, nrowsinblock, smem);
+            GHOST_DEBUG_LOG(1, "grid %dx%d block %dx%d nrowsinblock %d smem %d", grid.x, grid.y, block.x, block.y, nrowsinblock, smem);
             SELL_kernel_CU_rm_tmpl<m_dt, v_dt_device, v_dt_base, nrowsinblock, C, ncols, do_axpby, do_scale, do_vshift, do_dot_yy, do_dot_xy, do_dot_xx, do_chain_axpby><<<grid, block, smem>>>((v_dt_device *)lhsval, lhs->stride, (v_dt_device *)rhsval, rhs->stride, opts.flags, mat->context->row_map->dim, mat->cu_rowLen, mat->cu_col, (m_dt *)mat->cu_val, mat->cu_chunkStart, (v_dt_device *)cu_shift, (v_dt_device)scale, (v_dt_device)beta, (v_dt_device *)cu_localdot, (v_dt_device *)zval, zstride, (v_dt_device)sdelta, (v_dt_device)seta);
         }
     }
     CUDA_CALL_RETURN(cudaGetLastError());
     if (lhscompact != lhs) {
-        DEBUG_LOG(1, "Transform lhs back");
+        GHOST_DEBUG_LOG(1, "Transform lhs back");
         GHOST_CALL_RETURN(ghost_densemat_init_densemat(lhs, lhscompact, 0, 0));
         ghost_densemat_destroy(lhscompact);
     }
     if (rhscompact != rhs) {
-        DEBUG_LOG(1, "Transform rhs back");
+        GHOST_DEBUG_LOG(1, "Transform rhs back");
         GHOST_CALL_RETURN(ghost_densemat_init_densemat(rhs, rhscompact, 0, 0));
         ghost_densemat_destroy(rhscompact);
     }
@@ -476,7 +476,7 @@ ghost_error ghost_sellspmv_cu_tmpl(ghost_densemat *lhs, ghost_sparsemat *mat, gh
         GHOST_INSTR_STOP("spmv_cuda_dot_reduction")
 #else
         GHOST_INSTR_START("spmv_cuda_dot")
-        PERFWARNING_LOG("Not doing the local dot product on-the-fly!");
+        GHOST_PERFWARNING_LOG("Not doing the local dot product on-the-fly!");
         memset(localdot, 0, rhs->traits.ncols * 3 * sizeof(v_dt_host));
         ghost_localdot(&localdot[0], lhs, lhs);
         ghost_localdot(&localdot[rhs->traits.ncols], rhs, lhs);
@@ -485,7 +485,7 @@ ghost_error ghost_sellspmv_cu_tmpl(ghost_densemat *lhs, ghost_sparsemat *mat, gh
 #endif
     }
     //if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
-    //    PERFWARNING_LOG("AXPBY will not be done on-the-fly!");
+    //    GHOST_PERFWARNING_LOG("AXPBY will not be done on-the-fly!");
     //    z->axpby(z,lhs,&seta,&sdelta);
     // }
     if (opts.flags & GHOST_SPMV_DOT) {

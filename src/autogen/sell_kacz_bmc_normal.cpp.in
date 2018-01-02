@@ -371,11 +371,11 @@ static ghost_error ghost_kacz_BMCNORMAL_u_plain_rm_CHUNKHEIGHT_NVECS_tmpl(ghost_
     #endif
     
     if (mat->context->nzones == 0 || mat->context->zone_ptr == NULL){
-        ERROR_LOG("Splitting of matrix by Block Multicoloring has not be done!");
+        GHOST_ERROR_LOG("Splitting of matrix by Block Multicoloring has not be done!");
     }
     
     /* if (NVECS > 1) {
-     * ERROR_LOG("Multi-vec not implemented!");
+     * GHOST_ERROR_LOG("Multi-vec not implemented!");
      * return GHOST_ERR_NOT_IMPLEMENTED;
 }
 */ 

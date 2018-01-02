@@ -72,7 +72,7 @@ typedef enum {
         if (traits.flags & GHOST_SPMV_SCALE) {                                                        \
             arg = (dt_in *)traits.alpha;                                                              \
             if (!arg) {                                                                               \
-                ERROR_LOG("Scale argument is NULL!");                                                 \
+                GHOST_ERROR_LOG("Scale argument is NULL!");                                                 \
                 return GHOST_ERR_INVALID_ARG;                                                         \
             }                                                                                         \
             _alpha = *(dt_out *)arg;                                                                  \
@@ -80,7 +80,7 @@ typedef enum {
         if (traits.flags & GHOST_SPMV_AXPBY) {                                                        \
             arg = (dt_in *)traits.beta;                                                               \
             if (!arg) {                                                                               \
-                ERROR_LOG("AXPBY argument is NULL!");                                                 \
+                GHOST_ERROR_LOG("AXPBY argument is NULL!");                                                 \
                 return GHOST_ERR_INVALID_ARG;                                                         \
             }                                                                                         \
             _beta = *(dt_out *)arg;                                                                   \
@@ -88,7 +88,7 @@ typedef enum {
         if (traits.flags & (GHOST_SPMV_SHIFT | GHOST_SPMV_VSHIFT)) {                                  \
             arg = (dt_in *)traits.gamma;                                                              \
             if (!arg) {                                                                               \
-                ERROR_LOG("Shift argument is NULL!");                                                 \
+                GHOST_ERROR_LOG("Shift argument is NULL!");                                                 \
                 return GHOST_ERR_INVALID_ARG;                                                         \
             }                                                                                         \
             _gamma = (dt_out *)arg;                                                                   \
@@ -96,7 +96,7 @@ typedef enum {
         if (traits.flags & GHOST_SPMV_DOT) {                                                          \
             arg = (dt_in *)traits.dot;                                                                \
             if (!arg) {                                                                               \
-                ERROR_LOG("Dot argument is NULL!");                                                   \
+                GHOST_ERROR_LOG("Dot argument is NULL!");                                                   \
                 return GHOST_ERR_INVALID_ARG;                                                         \
             }                                                                                         \
             _dot = arg;                                                                               \
@@ -105,19 +105,19 @@ typedef enum {
             ghost_densemat *zarg;                                                                     \
             zarg = (ghost_densemat *)traits.z;                                                        \
             if (!zarg) {                                                                              \
-                ERROR_LOG("z argument is NULL!");                                                     \
+                GHOST_ERROR_LOG("z argument is NULL!");                                                     \
                 return GHOST_ERR_INVALID_ARG;                                                         \
             }                                                                                         \
             _z = zarg;                                                                                \
             arg = (dt_in *)traits.delta;                                                              \
             if (!arg) {                                                                               \
-                ERROR_LOG("delta argument is NULL!");                                                 \
+                GHOST_ERROR_LOG("delta argument is NULL!");                                                 \
                 return GHOST_ERR_INVALID_ARG;                                                         \
             }                                                                                         \
             _delta = *(dt_out *)arg;                                                                  \
             arg = (dt_in *)traits.eta;                                                                \
             if (!arg) {                                                                               \
-                ERROR_LOG("eta argument is NULL!");                                                   \
+                GHOST_ERROR_LOG("eta argument is NULL!");                                                   \
                 return GHOST_ERR_INVALID_ARG;                                                         \
             }                                                                                         \
             _eta = *(dt_out *)arg;                                                                    \

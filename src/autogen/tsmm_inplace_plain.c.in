@@ -19,13 +19,13 @@ ghost_error ghost_tsmm_inplace__a_plain_d_NCOLSIN_NCOLSOUT(ghost_densemat *x, gh
     
     if (n%OUTERUNROLL) {
         n+=(OUTERUNROLL-n%OUTERUNROLL);
-        INFO_LOG("Padding large dimension to %d\n",n);
+        GHOST_INFO_LOG("Padding large dimension to %d\n",n);
     }
 
     double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
     
-    INFO_LOG("In in-place TSMM with fixed block sizes [NCOLSIN][NCOLSOUT] (%"PRLIDX"x%"PRLIDX") <- %f * (%"PRLIDX"x%"PRLIDX") * (%"PRLIDX"x%"PRLIDX")",n,NCOLSOUT,dalpha,n,NCOLSIN,DM_NROWS(w),NCOLSOUT);
+    GHOST_INFO_LOG("In in-place TSMM with fixed block sizes [NCOLSIN][NCOLSOUT] (%"PRLIDX"x%"PRLIDX") <- %f * (%"PRLIDX"x%"PRLIDX") * (%"PRLIDX"x%"PRLIDX")",n,NCOLSOUT,dalpha,n,NCOLSIN,DM_NROWS(w),NCOLSOUT);
 
     const double * const restrict wval = (const double *) w->val;
     double * const restrict xval = (double *) x->val;

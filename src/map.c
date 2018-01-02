@@ -58,7 +58,7 @@ ghost_error ghost_map_create_distribution(ghost_map *map, ghost_sparsemat_src_ro
    
     if (matsrc == NULL && el_per_rank == NULL) {
         if (distType == GHOST_MAP_DIST_NNZ) {
-            ERROR_LOG("Distribution by nnz can only be done if a matrix source is given");
+            GHOST_ERROR_LOG("Distribution by nnz can only be done if a matrix source is given");
             return GHOST_ERR_INVALID_ARG;
         } else {
             ghost_sparsemat_src_rowfunc diagsrc = GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER;
@@ -73,8 +73,8 @@ ghost_error ghost_map_create_distribution(ghost_map *map, ghost_sparsemat_src_ro
         ghost_gidx *rpt;
         ghost_gidx gnnz;
 
-        PERFWARNING_LOG("Dividing the matrix by number of non-zeros is not scalable as rank 0 reads in _all_ row lengths of the matrix!");
-        WARNING_LOG("Will not take into account possible matrix re-ordering when dividing the matrix by number of non-zeros!");
+        GHOST_PERFWARNING_LOG("Dividing the matrix by number of non-zeros is not scalable as rank 0 reads in _all_ row lengths of the matrix!");
+        GHOST_WARNING_LOG("Will not take into account possible matrix re-ordering when dividing the matrix by number of non-zeros!");
 
 
         if (me == 0) {
@@ -136,7 +136,7 @@ ghost_error ghost_map_create_distribution(ghost_map *map, ghost_sparsemat_src_ro
 
             ghost_lidx my_target_rows = (ghost_lidx)(map->gdim*((double)weight/(double)allweights));
             if (my_target_rows == 0) {
-                WARNING_LOG("This rank will have zero rows assigned!");
+                GHOST_WARNING_LOG("This rank will have zero rows assigned!");
             }
 
             GHOST_CALL_GOTO(ghost_malloc((void **)&target_rows,nranks*sizeof(ghost_lidx)),err,ret);
@@ -156,14 +156,14 @@ ghost_error ghost_map_create_distribution(ghost_map *map, ghost_sparsemat_src_ro
         for (i=0; i<nranks-1; i++){
             ghost_gidx lnrows = map->goffs[i+1] - map->goffs[i];
             if (lnrows > (ghost_gidx)GHOST_LIDX_MAX) {
-                ERROR_LOG("Re-compile with 64-bit local indices!");
+                GHOST_ERROR_LOG("Re-compile with 64-bit local indices!");
                 return GHOST_ERR_UNKNOWN;
             }
             map->ldim[i] = (ghost_lidx)lnrows;
         }
         ghost_gidx lnrows = map->gdim - map->goffs[nranks-1];
         if (lnrows > (ghost_gidx)GHOST_LIDX_MAX) {
-            ERROR_LOG("The local number of rows (%"PRGIDX") exceeds the maximum range. Re-compile with 64-bit local indices!",lnrows);
+            GHOST_ERROR_LOG("The local number of rows (%"PRGIDX") exceeds the maximum range. Re-compile with 64-bit local indices!",lnrows);
             return GHOST_ERR_DATATYPE;
         }
         map->ldim[nranks-1] = (ghost_lidx)lnrows;
@@ -189,7 +189,7 @@ void ghost_map_destroy(ghost_map *map)
     if (map) {
         map->ref_count--;
         if (map->ref_count < 0) {
-            ERROR_LOG("Negative ref_count! This should not have happened.");
+            GHOST_ERROR_LOG("Negative ref_count! This should not have happened.");
             return;
         }
         if (map->ref_count==0)

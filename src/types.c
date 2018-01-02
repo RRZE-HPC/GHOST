@@ -8,7 +8,7 @@ static ghost_mpi_datatype GHOST_MPI_DT_Z = MPI_DATATYPE_NULL;
 ghost_error ghost_mpi_datatype_get(ghost_mpi_datatype *dt, ghost_datatype datatype)
 {
     if (!dt) {
-        ERROR_LOG("NULL pointer");
+        GHOST_ERROR_LOG("NULL pointer");
         return GHOST_ERR_INVALID_ARG;
     }
 #ifdef GHOST_HAVE_MPI
@@ -67,7 +67,7 @@ ghost_error ghost_mpi_datatypes_destroy()
 ghost_error ghost_datatype_size(size_t *size, ghost_datatype datatype)
 {
     if (!ghost_datatype_valid(datatype)) {
-        ERROR_LOG("Invalid data type %d",(int)datatype);
+        GHOST_ERROR_LOG("Invalid data type %d",(int)datatype);
         return GHOST_ERR_INVALID_ARG;
     }
 
@@ -145,7 +145,7 @@ const char * ghost_datatype_string(ghost_datatype datatype)
 ghost_error ghost_datatype_idx_get(ghost_datatype_idx *idx, ghost_datatype datatype)
 {
     if (!ghost_datatype_valid(datatype)) {
-        ERROR_LOG("Invalid data type");
+        GHOST_ERROR_LOG("Invalid data type");
         return GHOST_ERR_INVALID_ARG;
     }
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
@@ -186,7 +186,7 @@ ghost_error ghost_idx2datatype(ghost_datatype *datatype, ghost_datatype_idx idx)
             *datatype = (ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE);
             break;
         default:
-            ERROR_LOG("Invalid datatype index!");
+            GHOST_ERROR_LOG("Invalid datatype index!");
             return GHOST_ERR_INVALID_ARG;
     }
     

@@ -23,12 +23,12 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *c
         MM_typecode matcode;
 
         if ((f = fopen(filename,"r")) == NULL) {
-            ERROR_LOG("fopen with %s failed!",filename);
+            GHOST_ERROR_LOG("fopen with %s failed!",filename);
             return 1;
         }
 
         if (mm_read_banner(f, &matcode) != 0){
-            ERROR_LOG("Could not process Matrix Market banner!");
+            GHOST_ERROR_LOG("Could not process Matrix Market banner!");
             return 1;
         }
         
@@ -38,7 +38,7 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *c
         }
 
         if((ret_code = mm_read_mtx_crd_size(f, &M, &N, &nz)) != 0){
-            ERROR_LOG("Could not read header!");
+            GHOST_ERROR_LOG("Could not read header!");
             return 1;
         }
         col[0] = M;
@@ -63,40 +63,40 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *c
         int symm = 0;
 
         if ((f = fopen(filename,"r")) == NULL) {
-            ERROR_LOG("fopen with %s failed!",filename);
+            GHOST_ERROR_LOG("fopen with %s failed!",filename);
             return 1;
         }
 
         if (mm_read_banner(f, &matcode) != 0)
         {
-            ERROR_LOG("Could not process Matrix Market banner!");
+            GHOST_ERROR_LOG("Could not process Matrix Market banner!");
             return 1;
         }
         if ((mm_is_complex(matcode) && !(matdt & GHOST_DT_COMPLEX)) ||
                 (!mm_is_complex(matcode) && (matdt & GHOST_DT_COMPLEX))) {
-            ERROR_LOG("On-the-fly casting between real and complex not implemented!");
+            GHOST_ERROR_LOG("On-the-fly casting between real and complex not implemented!");
             return 1;
         }
         if (!mm_is_general(matcode) && !mm_is_symmetric(matcode)) {
-            ERROR_LOG("Only general and symmetric matrices supported at the moment!");
+            GHOST_ERROR_LOG("Only general and symmetric matrices supported at the moment!");
             return 1;
         }
         if (mm_is_pattern(matcode)) {
-            ERROR_LOG("Pattern matrices not supported!");
+            GHOST_ERROR_LOG("Pattern matrices not supported!");
             return 1;
         }
 
         if((ret_code = mm_read_mtx_crd_size(f, &M, &N, &nz)) != 0){
-            ERROR_LOG("Could not read header!");
+            GHOST_ERROR_LOG("Could not read header!");
             return 1;
         }
         if (M < 0 || N < 0 || nz < 0) {
-            ERROR_LOG("Probably integer overflow");
+            GHOST_ERROR_LOG("Probably integer overflow");
             return 1;
         }
 
         if (mm_is_symmetric(matcode)) {
-            PERFWARNING_LOG("Will create a general matrix out of a symmetric matrix!");
+            GHOST_PERFWARNING_LOG("Will create a general matrix out of a symmetric matrix!");
             args.mat->traits.symmetry = GHOST_SPARSEMAT_SYMM_SYMMETRIC;
             actualnz = nz*2;
             symm = 1;
@@ -154,7 +154,7 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *c
         }
 
         if (scanned != toread) {
-            ERROR_LOG("Error while reading filei: read %d items but was expecting %d!",scanned,toread);
+            GHOST_ERROR_LOG("Error while reading filei: read %d items but was expecting %d!",scanned,toread);
             return 1;
         }
 
@@ -198,7 +198,7 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *c
 
             }
             if (scanned != toread) {
-                ERROR_LOG("Error while reading filei: read %d items but was expecting %d!",scanned,toread);
+                GHOST_ERROR_LOG("Error while reading filei: read %d items but was expecting %d!",scanned,toread);
                 return 1;
             }
         }
@@ -242,12 +242,12 @@ int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx row, ghost_lidx *rowlen, gho
         MM_typecode matcode;
 
         if ((f = fopen(filename,"r")) == NULL) {
-            ERROR_LOG("fopen with %s failed!",filename);
+            GHOST_ERROR_LOG("fopen with %s failed!",filename);
             return 1;
         }
 
         if (mm_read_banner(f, &matcode) != 0){
-            ERROR_LOG("Could not process Matrix Market banner!");
+            GHOST_ERROR_LOG("Could not process Matrix Market banner!");
             return 1;
         }
         
@@ -257,7 +257,7 @@ int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx row, ghost_lidx *rowlen, gho
         }
 
         if((ret_code = mm_read_mtx_crd_size(f, &N, &M, &nz)) != 0){
-            ERROR_LOG("Could not read header!");
+            GHOST_ERROR_LOG("Could not read header!");
             return 1;
         }
         col[0] = M;
@@ -282,40 +282,40 @@ int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx row, ghost_lidx *rowlen, gho
         int symm = 0;
 
         if ((f = fopen(filename,"r")) == NULL) {
-            ERROR_LOG("fopen with %s failed!",filename);
+            GHOST_ERROR_LOG("fopen with %s failed!",filename);
             return 1;
         }
 
         if (mm_read_banner(f, &matcode) != 0)
         {
-            ERROR_LOG("Could not process Matrix Market banner!");
+            GHOST_ERROR_LOG("Could not process Matrix Market banner!");
             return 1;
         }
         if ((mm_is_complex(matcode) && !(matdt & GHOST_DT_COMPLEX)) ||
                 (!mm_is_complex(matcode) && (matdt & GHOST_DT_COMPLEX))) {
-            ERROR_LOG("On-the-fly casting between real and complex not implemented!");
+            GHOST_ERROR_LOG("On-the-fly casting between real and complex not implemented!");
             return 1;
         }
         if (!mm_is_general(matcode) && !mm_is_symmetric(matcode)) {
-            ERROR_LOG("Only general and symmetric matrices supported at the moment!");
+            GHOST_ERROR_LOG("Only general and symmetric matrices supported at the moment!");
             return 1;
         }
         if (mm_is_pattern(matcode)) {
-            ERROR_LOG("Pattern matrices not supported!");
+            GHOST_ERROR_LOG("Pattern matrices not supported!");
             return 1;
         }
 
         if((ret_code = mm_read_mtx_crd_size(f, &N, &M, &nz)) != 0){
-            ERROR_LOG("Could not read header!");
+            GHOST_ERROR_LOG("Could not read header!");
             return 1;
         }
         if (M < 0 || N < 0 || nz < 0) {
-            ERROR_LOG("Probably integer overflow");
+            GHOST_ERROR_LOG("Probably integer overflow");
             return 1;
         }
 
         if (mm_is_symmetric(matcode)) {
-            PERFWARNING_LOG("Will create a general matrix out of a symmetric matrix!");
+            GHOST_PERFWARNING_LOG("Will create a general matrix out of a symmetric matrix!");
             args.mat->traits.symmetry = GHOST_SPARSEMAT_SYMM_SYMMETRIC;
             actualnz = nz*2;
             symm = 1;
@@ -373,7 +373,7 @@ int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx row, ghost_lidx *rowlen, gho
         }
 
         if (scanned != toread) {
-            ERROR_LOG("Error while reading filei: read %d items but was expecting %d!",scanned,toread);
+            GHOST_ERROR_LOG("Error while reading filei: read %d items but was expecting %d!",scanned,toread);
             return 1;
         }
 
@@ -417,7 +417,7 @@ int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx row, ghost_lidx *rowlen, gho
 
             }
             if (scanned != toread) {
-                ERROR_LOG("Error while reading filei: read %d items but was expecting %d!",scanned,toread);
+                GHOST_ERROR_LOG("Error while reading filei: read %d items but was expecting %d!",scanned,toread);
                 return 1;
             }
         }
@@ -452,17 +452,17 @@ ghost_error ghost_sparsemat_to_mm(char *path, ghost_sparsemat *mat)
     FILE *fp;
     
     if (mat->context->row_map->gdim > INT_MAX) {
-        ERROR_LOG("The number of matrix rows exceeds INT_MAX and I cannot write a MatrixMarket file!");
+        GHOST_ERROR_LOG("The number of matrix rows exceeds INT_MAX and I cannot write a MatrixMarket file!");
         return GHOST_ERR_INVALID_ARG;
     }
     
     if (mat->context->col_map->gdim > INT_MAX) {
-        ERROR_LOG("The number of matrix columns exceeds INT_MAX and I cannot write a MatrixMarket file!");
+        GHOST_ERROR_LOG("The number of matrix columns exceeds INT_MAX and I cannot write a MatrixMarket file!");
         return GHOST_ERR_INVALID_ARG;
     }
     
     if (mat->context->gnnz > INT_MAX) {
-        ERROR_LOG("The number of matrix entries exceeds INT_MAX and I cannot write a MatrixMarket file!");
+        GHOST_ERROR_LOG("The number of matrix entries exceeds INT_MAX and I cannot write a MatrixMarket file!");
         return GHOST_ERR_INVALID_ARG;
     }
     
@@ -470,13 +470,13 @@ ghost_error ghost_sparsemat_to_mm(char *path, ghost_sparsemat *mat)
     ghost_rank(&rank,mat->context->mpicomm);
     
     if (nrank > 1 && !(mat->traits.flags & GHOST_SPARSEMAT_SAVE_ORIG_COLS)) {
-        WARNING_LOG("The matrix is distributed and the non-compressed columns are not saved. The output will probably be useless!");
+        GHOST_WARNING_LOG("The matrix is distributed and the non-compressed columns are not saved. The output will probably be useless!");
     }
    
     if (rank == 0) { 
         fp = fopen(path,"w");
         if (!fp) {
-            ERROR_LOG("Unable to open file %s!",path);
+            GHOST_ERROR_LOG("Unable to open file %s!",path);
             return GHOST_ERR_INVALID_ARG;
         }
         mm_initialize_typecode(&matcode);
@@ -502,7 +502,7 @@ ghost_error ghost_sparsemat_to_mm(char *path, ghost_sparsemat *mat)
         if (i == rank) {
             fp = fopen(path,"a");
             if (!fp) {
-                ERROR_LOG("Unable to open file %s!",path);
+                GHOST_ERROR_LOG("Unable to open file %s!",path);
                 return GHOST_ERR_INVALID_ARG;
             }
 

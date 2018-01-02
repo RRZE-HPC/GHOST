@@ -54,13 +54,13 @@ static void ghost_mpi_add_densemat_d(void *in, void *inout, int *len, MPI_Dataty
     int combiner;
 
     if (*len != 1) {
-        ERROR_LOG("Only len==1 supported at the moment!");
+        GHOST_ERROR_LOG("Only len==1 supported at the moment!");
         return;
     } 
 
     MPI_Type_get_envelope(*dtype, &nints, &naddresses, &ntypes, &combiner); 
     if (combiner != MPI_COMBINER_VECTOR) {
-        ERROR_LOG("Do not understand composite datatype!");
+        GHOST_ERROR_LOG("Do not understand composite datatype!");
         return;
     } 
 
@@ -72,7 +72,7 @@ static void ghost_mpi_add_densemat_d(void *in, void *inout, int *len, MPI_Dataty
             vecargs, vecaddrs, vectypes);
 
     if (vectypes[0] != MPI_DOUBLE) {
-        ERROR_LOG("Not a densemat of doubles!");
+        GHOST_ERROR_LOG("Not a densemat of doubles!");
         return;
     }
 
@@ -95,13 +95,13 @@ static void ghost_mpi_add_densemat_s(void *in, void *inout, int *len, MPI_Dataty
     int combiner;
 
     if (*len != 1) {
-        ERROR_LOG("Only len==1 supported at the moment!");
+        GHOST_ERROR_LOG("Only len==1 supported at the moment!");
         return;
     } 
 
     MPI_Type_get_envelope(*dtype, &nints, &naddresses, &ntypes, &combiner); 
     if (combiner != MPI_COMBINER_VECTOR) {
-        ERROR_LOG("Do not understand composite datatype!");
+        GHOST_ERROR_LOG("Do not understand composite datatype!");
         return;
     } 
 
@@ -113,7 +113,7 @@ static void ghost_mpi_add_densemat_s(void *in, void *inout, int *len, MPI_Dataty
             vecargs, vecaddrs, vectypes);
 
     if (vectypes[0] != MPI_FLOAT) {
-        ERROR_LOG("Not a densemat of floats!");
+        GHOST_ERROR_LOG("Not a densemat of floats!");
         return;
     }
 
@@ -136,13 +136,13 @@ static void ghost_mpi_add_densemat_z(void *in, void *inout, int *len, MPI_Dataty
     int combiner;
 
     if (*len != 1) {
-        ERROR_LOG("Only len==1 supported at the moment!");
+        GHOST_ERROR_LOG("Only len==1 supported at the moment!");
         return;
     } 
 
     MPI_Type_get_envelope(*dtype, &nints, &naddresses, &ntypes, &combiner); 
     if (combiner != MPI_COMBINER_VECTOR) {
-        ERROR_LOG("Do not understand composite datatype!");
+        GHOST_ERROR_LOG("Do not understand composite datatype!");
         return;
     } 
 
@@ -177,13 +177,13 @@ static void ghost_mpi_add_densemat_c(void *in, void *inout, int *len, MPI_Dataty
     int combiner;
 
     if (*len != 1) {
-        ERROR_LOG("Only len==1 supported at the moment!");
+        GHOST_ERROR_LOG("Only len==1 supported at the moment!");
         return;
     } 
 
     MPI_Type_get_envelope(*dtype, &nints, &naddresses, &ntypes, &combiner); 
     if (combiner != MPI_COMBINER_VECTOR) {
-        ERROR_LOG("Do not understand composite datatype!");
+        GHOST_ERROR_LOG("Do not understand composite datatype!");
         return;
     } 
 
@@ -215,7 +215,7 @@ ghost_error ghost_mpi_op_sum(ghost_mpi_op * op, ghost_datatype datatype)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     if (!op) {
-        ERROR_LOG("NULL pointer");
+        GHOST_ERROR_LOG("NULL pointer");
         return GHOST_ERR_INVALID_ARG;
     }
 #ifdef GHOST_HAVE_MPI
@@ -246,7 +246,7 @@ ghost_error ghost_mpi_op_densemat_sum(ghost_mpi_op * op, ghost_datatype datatype
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     if (!op) {
-        ERROR_LOG("NULL pointer");
+        GHOST_ERROR_LOG("NULL pointer");
         return GHOST_ERR_INVALID_ARG;
     }
 #ifdef GHOST_HAVE_MPI
@@ -316,15 +316,15 @@ ghost_error ghost_spmv_nflops(int *nFlops, ghost_datatype m_t, ghost_datatype v_
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     if (!ghost_datatype_valid(m_t)) {
-        ERROR_LOG("Invalid matrix data type: %d",(int)m_t);
+        GHOST_ERROR_LOG("Invalid matrix data type: %d",(int)m_t);
         return GHOST_ERR_INVALID_ARG;
     }
     if (!ghost_datatype_valid(v_t)) {
-        ERROR_LOG("Invalid vector data type: %d",(int)v_t);
+        GHOST_ERROR_LOG("Invalid vector data type: %d",(int)v_t);
         return GHOST_ERR_INVALID_ARG;
     }
     if (!nFlops) {
-        ERROR_LOG("NULL pointer");
+        GHOST_ERROR_LOG("NULL pointer");
         return GHOST_ERR_INVALID_ARG;
     }
 

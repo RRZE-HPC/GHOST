@@ -32,7 +32,7 @@ ghost_error ghost_thread_pin(int coreNumber)
     hwloc_cpuset_t cpuset = hwloc_bitmap_alloc();
     hwloc_cpuset_t old_cpuset = hwloc_bitmap_alloc();
     if (!cpuset || !old_cpuset) {
-        ERROR_LOG("Could not allocate bitmap");
+        GHOST_ERROR_LOG("Could not allocate bitmap");
         return GHOST_ERR_HWLOC;
     }
 
@@ -46,7 +46,7 @@ ghost_error ghost_thread_pin(int coreNumber)
 
     if (!already_pinned) {
         if (hwloc_set_cpubind(topology, cpuset, HWLOC_CPUBIND_THREAD) == -1) {
-            ERROR_LOG("Pinning failed: %s", strerror(errno));
+            GHOST_ERROR_LOG("Pinning failed: %s", strerror(errno));
             hwloc_bitmap_free(cpuset);
             return GHOST_ERR_HWLOC;
         }
@@ -54,15 +54,15 @@ ghost_error ghost_thread_pin(int coreNumber)
     hwloc_bitmap_free(old_cpuset);
     hwloc_bitmap_free(cpuset);
 
-    IF_DEBUG(2)
+    GHOST_IF_DEBUG(2)
     {
         int core;
         GHOST_CALL_RETURN(ghost_cpu(&core));
         if (already_pinned) {
-            DEBUG_LOG(2, "Successfully checked pinning of OpenMP thread %d to core %d",
+            GHOST_DEBUG_LOG(2, "Successfully checked pinning of OpenMP thread %d to core %d",
                 ghost_omp_threadnum(), core);
         } else {
-            DEBUG_LOG(
+            GHOST_DEBUG_LOG(
                 2, "Successfully pinned OpenMP thread %d to core %d", ghost_omp_threadnum(), core);
         }
     }
@@ -74,18 +74,18 @@ ghost_error ghost_thread_pin(int coreNumber)
 ghost_error ghost_thread_unpin()
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL | GHOST_FUNCTYPE_TASKING);
-    IF_DEBUG(2)
+    GHOST_IF_DEBUG(2)
     {
         int core;
         GHOST_CALL_RETURN(ghost_cpu(&core));
-        DEBUG_LOG(2, "Unpinning OpenMP thread %d from core %d", ghost_omp_threadnum(), core);
+        GHOST_DEBUG_LOG(2, "Unpinning OpenMP thread %d from core %d", ghost_omp_threadnum(), core);
     }
     hwloc_topology_t topology;
     ghost_topology_get(&topology);
 
     hwloc_const_cpuset_t cpuset = hwloc_topology_get_allowed_cpuset(topology);
     if (!cpuset) {
-        ERROR_LOG("Can not get allowed CPU set of entire topology");
+        GHOST_ERROR_LOG("Can not get allowed CPU set of entire topology");
         return GHOST_ERR_HWLOC;
     }
 
@@ -105,7 +105,7 @@ ghost_error ghost_cpu(int *core)
     hwloc_get_cpubind(topology, cpuset, HWLOC_CPUBIND_THREAD);
 
     if (hwloc_bitmap_weight(cpuset) == 0) {
-        ERROR_LOG("No CPU is set");
+        GHOST_ERROR_LOG("No CPU is set");
         hwloc_bitmap_free(cpuset);
         return GHOST_ERR_HWLOC;
     }
@@ -222,7 +222,7 @@ ghost_error ghost_hwconfig_get(ghost_hwconfig *hwconfig)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     if (!hwconfig) {
-        ERROR_LOG("NULL pointer");
+        GHOST_ERROR_LOG("NULL pointer");
         return GHOST_ERR_INVALID_ARG;
     }
     *hwconfig = my_hwconfig;
@@ -332,7 +332,7 @@ static ghost_error ghost_hostname(char **hostnamePtr, size_t *hostnameLength)
                 free(hostname);
                 hostname = NULL;
 
-                ERROR_LOG("gethostname failed with error %d: %s", errno, strerror(errno));
+                GHOST_ERROR_LOG("gethostname failed with error %d: %s", errno, strerror(errno));
                 return GHOST_ERR_UNKNOWN;
             }
 
@@ -355,7 +355,7 @@ static ghost_error ghost_hostname(char **hostnamePtr, size_t *hostnameLength)
 ghost_error ghost_nodecomm_get(ghost_mpi_comm *comm)
 {
     if (!comm) {
-        ERROR_LOG("NULL pointer");
+        GHOST_ERROR_LOG("NULL pointer");
         return GHOST_ERR_INVALID_ARG;
     }
 #ifdef GHOST_HAVE_MPI
@@ -394,7 +394,7 @@ ghost_error ghost_nodecomm_setup(ghost_mpi_comm comm)
 
     MPI_Comm nodeComm = MPI_COMM_NULL;
 
-    DEBUG_LOG(2, " comm_split:  color:  %u  rank:  %d   hostnameLength: %zu", checkSum, mpiRank,
+    GHOST_DEBUG_LOG(2, " comm_split:  color:  %u  rank:  %d   hostnameLength: %zu", checkSum, mpiRank,
         hostnameLength);
 
     MPI_CALL_RETURN(MPI_Comm_split(comm, checkSumSigned, mpiRank, &nodeComm));
@@ -459,10 +459,10 @@ ghost_error ghost_nodecomm_setup(ghost_mpi_comm comm)
 
 
     if (nodeRank != localNodeRank) {
-        INFO_LOG("Collisions occured during node rank determinaton: "
+        GHOST_INFO_LOG("Collisions occured during node rank determinaton: "
                  "node rank:  %5d, local node rank:  %5d, host: %s",
             nodeRank, localNodeRank, send);
-        WARNING_LOG("The nodal rank is fixed now but the nodal communicator is not. This will lead "
+        GHOST_WARNING_LOG("The nodal rank is fixed now but the nodal communicator is not. This will lead "
                     "to problems...");
         nodeRank = localNodeRank;
     }

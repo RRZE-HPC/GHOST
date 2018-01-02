@@ -13,7 +13,7 @@
 extern "C" ghost_error ghost_sparsemat_blockColor(ghost_context *ctx, ghost_sparsemat *mat) 
 {
     
-    INFO_LOG("Create partition and permute (Block coloring)");
+    GHOST_INFO_LOG("Create partition and permute (Block coloring)");
     ghost_error ret = GHOST_SUCCESS;
     ghost_lidx *curcol = NULL; 
     bool old_perm = true;
@@ -212,7 +212,7 @@ free(tmpval);
         }
     }
     
-    INFO_LOG("NO. of Rows Multicolored = %d",ctr_nrows_MC);
+    GHOST_INFO_LOG("NO. of Rows Multicolored = %d",ctr_nrows_MC);
             
     
     /*       for(int i=0; i<nrows; ++i){
@@ -231,7 +231,7 @@ else if(k>0 && zone[i]<0 && (col_ptr[row_ptr[i]] >= rhs_split[k-1] && col_ptr[ro
     
     if (!ctx->row_map->loc_perm) {
         //this branch if no local permutations are carried out before
-        WARNING_LOG("The matrix has not been RCM permuted, BLOCK coloring works better for matrix with small bandwidths");
+        GHOST_WARNING_LOG("The matrix has not been RCM permuted, BLOCK coloring works better for matrix with small bandwidths");
         old_perm = false;
         GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->row_map->loc_perm,sizeof(ghost_gidx)*ctx->row_map->dim), err, ret);
         GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->row_map->loc_perm_inv,sizeof(ghost_gidx)*ctx->row_map->dim), err, ret);
@@ -252,7 +252,7 @@ else if(k>0 && zone[i]<0 && (col_ptr[row_ptr[i]] >= rhs_split[k-1] && col_ptr[ro
         //this branch if no unsymmetric permutations have been carried out before
         
         if(ctx->row_map->dim != ctx->col_map->dim) {
-            ERROR_LOG("Trying to do symmetric permutation on non-squared matrix");
+            GHOST_ERROR_LOG("Trying to do symmetric permutation on non-squared matrix");
         }
         
         //now make it unsymmetric
@@ -306,7 +306,7 @@ else if(k>0 && zone[i]<0 && (col_ptr[row_ptr[i]] >= rhs_split[k-1] && col_ptr[ro
     }
     
     #ifdef GHOST_HAVE_COLPACK         
-    INFO_LOG("Create permutation from coloring");
+    GHOST_INFO_LOG("Create permutation from coloring");
     free(curcol);
     //now build adolc for multicoloring
     //int nrows_to_mc = ctx->zone_ptr[ctx->nzones+1]-ctx->zone_ptr[ctx->nzones];
@@ -344,14 +344,14 @@ else if(k>0 && zone[i]<0 && (col_ptr[row_ptr[i]] >= rhs_split[k-1] && col_ptr[ro
     COLPACK_CALL_GOTO(GC->PartialDistanceTwoColoring("NATURAL","ROW_PARTIAL_DISTANCE_TWO"),err,ret);
     
     if(!GC->CheckPartialDistanceTwoRowColoring()) {
-        ERROR_LOG("Error in coloring!");
+        GHOST_ERROR_LOG("Error in coloring!");
         ret = GHOST_ERR_COLPACK;
         goto err;
     }
     
     ctx->ncolors = GC->GetVertexColorCount();
     GC->GetVertexPartialColors(colvec);
-    INFO_LOG("No. of Colors = %d",ctx->ncolors);
+    GHOST_INFO_LOG("No. of Colors = %d",ctx->ncolors);
     
     ghost_malloc((void **)&ctx->color_ptr,(ctx->ncolors+1)*sizeof(ghost_lidx)); 
     GHOST_CALL_GOTO(ghost_malloc((void **)&curcol,(ctx->ncolors)*sizeof(ghost_lidx)),err,ret);
@@ -384,7 +384,7 @@ else if(k>0 && zone[i]<0 && (col_ptr[row_ptr[i]] >= rhs_split[k-1] && col_ptr[ro
     }
     
     #else
-    WARNING_LOG("COLPACK is not available, only 1 thread would be used")
+    GHOST_WARNING_LOG("COLPACK is not available, only 1 thread would be used")
     ctx->ncolors = 1;
     ghost_malloc((void **)&ctx->color_ptr,(ctx->ncolors+1)*sizeof(ghost_lidx)); 
     
@@ -398,7 +398,7 @@ else if(k>0 && zone[i]<0 && (col_ptr[row_ptr[i]] >= rhs_split[k-1] && col_ptr[ro
     MC_percent = ((double)ctr_nrows_MC/ctx->row_map->ldim[me])*100.;
     //TODO : quantify this and give a break point
     if( MC_percent > 5  ) {
-        WARNING_LOG("%3.2f %% rows would be Multicolored, try reducing number of threads", MC_percent);
+        GHOST_WARNING_LOG("%3.2f %% rows would be Multicolored, try reducing number of threads", MC_percent);
     }
     
     

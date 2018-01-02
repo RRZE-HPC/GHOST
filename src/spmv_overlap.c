@@ -25,7 +25,7 @@ ghost_error ghost_spmv_goodfaith(ghost_densemat* res, ghost_sparsemat* mat, ghos
     UNUSED(mat);
     UNUSED(invec);
     UNUSED(traits);
-    ERROR_LOG("Cannot execute this spMV solver without MPI");
+    GHOST_ERROR_LOG("Cannot execute this spMV solver without MPI");
     return GHOST_ERR_UNKNOWN;
 #else
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);

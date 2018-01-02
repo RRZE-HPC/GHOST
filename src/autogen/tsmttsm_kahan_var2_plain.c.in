@@ -16,7 +16,7 @@ ghost_error ghost_tsmttsm_kahan__a_plain_d_x_x_1_rm(ghost_densemat *x, ghost_den
     ghost_lidx m = v->traits.ncols;
     double *finalc;
     
-    INFO_LOG("In TSMTTSM with arbitrary block sizes %dx%d <- %dx%d * %dx%d",m,K,m,n,n,K);
+    GHOST_INFO_LOG("In TSMTTSM with arbitrary block sizes %dx%d <- %dx%d * %dx%d",m,K,m,n,n,K);
     
     const double * const restrict vval = (const double *) v->val;
     const double * const restrict wval = (const double *) w->val;
@@ -149,7 +149,7 @@ ghost_error ghost_tsmttsm_kahan__a_plain_z_x_x_1_rm(ghost_densemat *x, ghost_den
     complex double *finalc;
 
     
-    INFO_LOG("In TSMTTSM with arbitrary block sizes %dx%d <- %dx%d * %dx%d",m,K,m,n,n,K);
+    GHOST_INFO_LOG("In TSMTTSM with arbitrary block sizes %dx%d <- %dx%d * %dx%d",m,K,m,n,n,K);
     
     const double complex * const restrict vval = (const double complex*) v->val;
     const double complex * const restrict wval = (const double complex*) w->val;

@@ -67,13 +67,13 @@ ghost_error FUNCNAME(malloc(ghost_densemat *vec, int* needsInit))
     }
 
     if ((vec->traits.location & GHOST_LOCATION_DEVICE) && !vec->cu_val) {
-        DEBUG_LOG(2,"Allocating device side of vector");
+        GHOST_DEBUG_LOG(2,"Allocating device side of vector");
 #ifdef GHOST_HAVE_CUDA
 #ifdef GHOST_HAVE_CUDA_PINNEDMEM
-        WARNING_LOG("CUDA pinned memory is disabled");
+        GHOST_WARNING_LOG("CUDA pinned memory is disabled");
 #endif
         GHOST_CALL_RETURN(ghost_cu_malloc((void **)&vec->cu_val,allocrows*vec->traits.ncolspadded*vec->elSize));
-        DEBUG_LOG(1,"Malloc %zu bytes on CUDA device: %p",allocrows*vec->traits.ncolspadded*vec->elSize,vec->cu_val);
+        GHOST_DEBUG_LOG(1,"Malloc %zu bytes on CUDA device: %p",allocrows*vec->traits.ncolspadded*vec->elSize,vec->cu_val);
         if( needsInit )
           *needsInit |= 2;
 #endif
@@ -85,7 +85,7 @@ ghost_error FUNCNAME(malloc(ghost_densemat *vec, int* needsInit))
 ghost_error FUNCNAME(view(ghost_densemat *src, ghost_densemat **new, ghost_lidx nr, ghost_lidx roffs, ghost_lidx nc, ghost_lidx coffs))
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
-    DEBUG_LOG(1,"Viewing a %"PRLIDX"x%"PRLIDX" densemat from a %"PRLIDX"x%"PRLIDX" densemat with offset %"PRLIDX"x%"PRLIDX,nr,nc,DM_NROWS(src),src->traits.ncols,roffs,coffs);
+    GHOST_DEBUG_LOG(1,"Viewing a %"PRLIDX"x%"PRLIDX" densemat from a %"PRLIDX"x%"PRLIDX" densemat with offset %"PRLIDX"x%"PRLIDX,nr,nc,DM_NROWS(src),src->traits.ncols,roffs,coffs);
 
     ghost_densemat_traits newTraits = src->traits;
     newTraits.ncols = nc;
@@ -138,7 +138,7 @@ ghost_error FUNCNAME(viewPlain(ghost_densemat *vec, void *data, ghost_lidx lda))
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
-        ERROR_LOG("A scattered densemat may not view plain data!");
+        GHOST_ERROR_LOG("A scattered densemat may not view plain data!");
         return GHOST_ERR_INVALID_ARG;
     }
 
@@ -147,7 +147,7 @@ ghost_error FUNCNAME(viewPlain(ghost_densemat *vec, void *data, ghost_lidx lda))
 
     if (vec->traits.location & GHOST_LOCATION_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
-        INFO_LOG("The plain memory has to be valid CUDA device memory!");
+        GHOST_INFO_LOG("The plain memory has to be valid CUDA device memory!");
         vec->cu_val = data;
 #endif
     } 
@@ -169,7 +169,7 @@ ghost_error FUNCNAME(viewPlain(ghost_densemat *vec, void *data, ghost_lidx lda))
 ghost_error FUNCNAME(viewCols(ghost_densemat *src, ghost_densemat **new, ghost_lidx nc, ghost_lidx coffs))
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
-    DEBUG_LOG(1,"Viewing a %"PRLIDX"x%"PRLIDX" contiguous dense matrix",DM_NROWS(src),nc);
+    GHOST_DEBUG_LOG(1,"Viewing a %"PRLIDX"x%"PRLIDX" contiguous dense matrix",DM_NROWS(src),nc);
     ghost_densemat_traits newTraits = src->traits;
     newTraits.ncols = nc;
     newTraits.ncolspadded = nc;
@@ -212,11 +212,11 @@ ghost_error FUNCNAME(viewScatteredCols(ghost_densemat *src, ghost_densemat **new
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
 
     if (!array_strictly_ascending(coffs,nc)) {
-        ERROR_LOG("Can only view sctrictly ascending scattered columns for row-major densemats!");
+        GHOST_ERROR_LOG("Can only view sctrictly ascending scattered columns for row-major densemats!");
         return GHOST_ERR_INVALID_ARG;
     }
 
-    DEBUG_LOG(1,"Viewing a %"PRLIDX"x%"PRLIDX" scattered dense matrix",DM_NROWS(src),nc);
+    GHOST_DEBUG_LOG(1,"Viewing a %"PRLIDX"x%"PRLIDX" scattered dense matrix",DM_NROWS(src),nc);
     ghost_lidx v;
     ghost_densemat_traits newTraits = src->traits;
     newTraits.ncols = nc;
@@ -260,7 +260,7 @@ ghost_error FUNCNAME(viewScatteredCols(ghost_densemat *src, ghost_densemat **new
 ghost_error FUNCNAME(viewScatteredVec(ghost_densemat *src, ghost_densemat **new, ghost_lidx nr, ghost_lidx *roffs, ghost_lidx nc, ghost_lidx *coffs))
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
-    DEBUG_LOG(1,"Viewing a %"PRLIDX"x%"PRLIDX" scattered dense matrix",DM_NROWS(src),nc);
+    GHOST_DEBUG_LOG(1,"Viewing a %"PRLIDX"x%"PRLIDX" scattered dense matrix",DM_NROWS(src),nc);
     ghost_lidx i;
     ghost_densemat_traits newTraits = src->traits;
     newTraits.ncols = nc;
@@ -501,13 +501,13 @@ ghost_error FUNCNAME(download(ghost_densemat * vec))
     }
     if (!(vec->traits.location & GHOST_LOCATION_HOST)) {
         if (vec->traits.flags & GHOST_DENSEMAT_NOT_RELOCATE) {
-            WARNING_LOG("Will not download the densemat!");
+            GHOST_WARNING_LOG("Will not download the densemat!");
             return GHOST_SUCCESS;
         } else if (vec->traits.flags & GHOST_DENSEMAT_VIEW) {
-            WARNING_LOG("Will not download a device-only view!");
+            GHOST_WARNING_LOG("Will not download a device-only view!");
             return GHOST_SUCCESS;
         } else {
-            INFO_LOG("Setting location to HOST+DEVICE and allocating densemat on host.");
+            GHOST_INFO_LOG("Setting location to HOST+DEVICE and allocating densemat on host.");
             vec->traits.location = (ghost_location)(GHOST_LOCATION_DEVICE|GHOST_LOCATION_HOST);
             int needsInit;
             GHOST_CALL_RETURN(FUNCNAME(malloc(vec,&needsInit)));
@@ -535,13 +535,13 @@ ghost_error FUNCNAME(upload(ghost_densemat * vec))
     }
     if (!(vec->traits.location & GHOST_LOCATION_DEVICE)) {
         if (vec->traits.flags & GHOST_DENSEMAT_NOT_RELOCATE) {
-            WARNING_LOG("Will not upload the densemat!");
+            GHOST_WARNING_LOG("Will not upload the densemat!");
             return GHOST_SUCCESS;
         } else if (vec->traits.flags & GHOST_DENSEMAT_VIEW) {
-            WARNING_LOG("Will not upload a host-only view!");
+            GHOST_WARNING_LOG("Will not upload a host-only view!");
             return GHOST_SUCCESS;
         } else {
-            INFO_LOG("Setting location to HOST+DEVICE and allocating densemat on device.");
+            GHOST_INFO_LOG("Setting location to HOST+DEVICE and allocating densemat on device.");
             vec->traits.location = (ghost_location)(GHOST_LOCATION_DEVICE|GHOST_LOCATION_HOST);
             int needsInit;
             GHOST_CALL_RETURN(FUNCNAME(malloc(vec,&needsInit)));
@@ -567,7 +567,7 @@ ghost_error FUNCNAME(syncValues(ghost_densemat *vec, ghost_mpi_comm comm, int ro
     ghost_densemat_download(vec);
 
     if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
-        PERFWARNING_LOG("Element-wise sync of scattered densemat!");
+        GHOST_PERFWARNING_LOG("Element-wise sync of scattered densemat!");
         DENSEMAT_ITER(vec,MPI_Bcast(valptr,1,vec->mpidt,root,comm));
     } else {
         MPI_CALL_RETURN(MPI_Bcast(vec->val,1,vec->fullmpidt,root,comm));
@@ -628,7 +628,7 @@ ghost_error FUNCNAME(toFile(ghost_densemat *vec, char *path, ghost_mpi_comm mpic
     if (DENSEMAT_COMPACT(vec)) {
         if (vec->traits.storage == GHOST_DENSEMAT_COLMAJOR && vec->traits.ncols > 1) {
             MPI_CALL_RETURN(MPI_File_close(&fileh));
-            PERFWARNING_LOG("Transpose densemat to row-major before writing file!");
+            GHOST_PERFWARNING_LOG("Transpose densemat to row-major before writing file!");
             ghost_densemat *writevec;
             ghost_densemat_traits writevectraits = vec->traits;
             writevectraits.storage = GHOST_DENSEMAT_ROWMAJOR;
@@ -637,22 +637,22 @@ ghost_error FUNCNAME(toFile(ghost_densemat *vec, char *path, ghost_mpi_comm mpic
             ghost_densemat_to_file(writevec,path,mpicomm);
             ghost_densemat_destroy(writevec);
         } else {
-            INFO_LOG("Fast write");
+            GHOST_INFO_LOG("Fast write");
             MPI_CALL_RETURN(MPI_File_write(fileh,vec->val,1,vec->fullmpidt,&status));
             MPI_CALL_RETURN(MPI_File_close(&fileh));
         }
     } else {
-        PERFWARNING_LOG("Very slow element-wise file writing for scattered densemat!");
+        GHOST_PERFWARNING_LOG("Very slow element-wise file writing for scattered densemat!");
         GHOST_SINGLETHREAD(DENSEMAT_ITER(vec,MPI_File_write(fileh,valptr,1,vec->mpidt,&status)));
         MPI_CALL_RETURN(MPI_File_close(&fileh));
     }
 #else
-    PERFWARNING_LOG("Densemat serialization without MPI is very slow");
+    GHOST_PERFWARNING_LOG("Densemat serialization without MPI is very slow");
     FILE *filed;
     size_t ret = 0;
 
     if ((filed = fopen64(path, "w")) == NULL) {
-        ERROR_LOG("Could not open vector file %s: %s",path,strerror(errno));
+        GHOST_ERROR_LOG("Could not open vector file %s: %s",path,strerror(errno));
         return GHOST_ERR_IO;
     }
 
@@ -664,14 +664,14 @@ ghost_error FUNCNAME(toFile(ghost_densemat *vec, char *path, ghost_mpi_comm mpic
     ret += fwrite(&ncols,sizeof(ncols),1,filed);
    
     if (ret != 6) {
-        ERROR_LOG("fwrite failed: wrote %zu instead of 6 header entries",ret);
+        GHOST_ERROR_LOG("fwrite failed: wrote %zu instead of 6 header entries",ret);
         fclose(filed);
         return GHOST_ERR_IO;
     }
     
     GHOST_SINGLETHREAD(DENSEMAT_ITER(vec,fwrite(valptr, vec->elSize, 1, filed)));
     if (fclose(filed)) {
-        ERROR_LOG("fclose failed: %s",strerror(errno));
+        GHOST_ERROR_LOG("fclose failed: %s",strerror(errno));
         return GHOST_ERR_IO;
     }
 #endif
@@ -713,7 +713,7 @@ ghost_error FUNCNAME(fromFile(ghost_densemat *vec, char *path, ghost_mpi_comm mp
     FILE *filed;
     size_t ret = 0;
     if ((filed = fopen64(path, "r")) == NULL){
-        ERROR_LOG("Could not open vector file %s: %s",path,strerror(errno));
+        GHOST_ERROR_LOG("Could not open vector file %s: %s",path,strerror(errno));
         return GHOST_ERR_IO;
     }
 
@@ -725,35 +725,35 @@ ghost_error FUNCNAME(fromFile(ghost_densemat *vec, char *path, ghost_mpi_comm mp
     ret += fread(&ncols, sizeof(ncols), 1,filed);
     
     if (ret != 6) {
-        ERROR_LOG("fread failed: read %zu instead of 6 header entries",ret);
+        GHOST_ERROR_LOG("fread failed: read %zu instead of 6 header entries",ret);
         ghost_densemat_destroy(vec);
         return GHOST_ERR_IO;
     }
 #endif
     if (endianess != GHOST_BINDENSEMAT_LITTLE_ENDIAN) {
-        ERROR_LOG("Cannot read big endian vectors");
+        GHOST_ERROR_LOG("Cannot read big endian vectors");
         ghost_densemat_destroy(vec);
         return GHOST_ERR_IO;
     }
 
     if (version != 1) {
-        ERROR_LOG("Cannot read vector files with format version != 1 (is %d)",version);
+        GHOST_ERROR_LOG("Cannot read vector files with format version != 1 (is %d)",version);
         ghost_densemat_destroy(vec);
         return GHOST_ERR_IO;
     }
 
     if (datatype != (int)vec->traits.datatype) {
-        ERROR_LOG("The data types don't match! Cast-while-read is not yet implemented for vectors.");
+        GHOST_ERROR_LOG("The data types don't match! Cast-while-read is not yet implemented for vectors.");
         return GHOST_ERR_IO;
     }
     
     if (mpicomm == MPI_COMM_SELF && (DM_NROWS(vec) != nrows)) {
-        ERROR_LOG("The number of rows does not match between the file and the densemat!");
+        GHOST_ERROR_LOG("The number of rows does not match between the file and the densemat!");
         return GHOST_ERR_IO;
     }
   
     if ((mpicomm != MPI_COMM_SELF) && (DM_GNROWS(vec) != nrows)) {
-        ERROR_LOG("The number of rows does not match between the file (%"PRId64") and the densemat (%"PRGIDX")!",nrows,DM_GNROWS(vec));
+        GHOST_ERROR_LOG("The number of rows does not match between the file (%"PRId64") and the densemat (%"PRGIDX")!",nrows,DM_GNROWS(vec));
         return GHOST_ERR_IO;
     }
 
@@ -763,12 +763,12 @@ ghost_error FUNCNAME(fromFile(ghost_densemat *vec, char *path, ghost_mpi_comm mp
     }
 
     if (DENSEMAT_COMPACT(vec) && (order == myorder)) {
-        INFO_LOG("Fast read-in");
+        GHOST_INFO_LOG("Fast read-in");
         MPI_CALL_RETURN(MPI_File_read(fileh,vec->val,1,vec->fullmpidt,&status));
         MPI_CALL_RETURN(MPI_File_close(&fileh));
     } else {
         MPI_CALL_RETURN(MPI_File_close(&fileh));
-        PERFWARNING_LOG("Slow densemat read-in for scattered densemat or unsuited storage order!");
+        GHOST_PERFWARNING_LOG("Slow densemat read-in for scattered densemat or unsuited storage order!");
         ghost_densemat *readvec;
         ghost_densemat_traits readvectraits = vec->traits;
         readvectraits.storage = (ghost_densemat_storage)order;
@@ -779,7 +779,7 @@ ghost_error FUNCNAME(fromFile(ghost_densemat *vec, char *path, ghost_mpi_comm mp
     }
 
 #else
-    PERFWARNING_LOG("Densemat read-in without MPI is very slow");
+    GHOST_PERFWARNING_LOG("Densemat read-in without MPI is very slow");
     
     if (myorder == GHOST_BINDENSEMAT_ORDER_ROW_FIRST) {
         GHOST_SINGLETHREAD(DENSEMAT_ITER(vec,fread(valptr, vec->elSize, 1, filed)));
@@ -845,7 +845,7 @@ ghost_error FUNCNAME(fromFunc(ghost_densemat *vec, int (*fp)(ghost_gidx, ghost_l
             ghost_densemat_upload(vec);
         }
     } else {
-        INFO_LOG("Need to create dummy HOST densemat!");
+        GHOST_INFO_LOG("Need to create dummy HOST densemat!");
         ghost_densemat *hostVec;
         ghost_densemat_traits htraits = vec->traits;
         htraits.location = GHOST_LOCATION_HOST;

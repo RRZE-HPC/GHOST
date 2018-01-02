@@ -16,7 +16,7 @@ ghost_error ghost_tsmttsm_kahan__a_plain_d_CFGK_CFGM_1_rm(ghost_densemat *x, gho
     ghost_error ret = GHOST_SUCCESS;
 
     ghost_lidx n = DM_NROWS(v);
-    INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
+    GHOST_INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
     
     const double * const restrict vval = (const double *) v->val;
     const double * const restrict wval = (const double *) w->val;
@@ -95,7 +95,7 @@ ghost_error ghost_tsmttsm_kahan__a_plain_z_CFGK_CFGM_1_rm(ghost_densemat *x, gho
     ghost_error ret = GHOST_SUCCESS;
 
     ghost_lidx n = DM_NROWS(v);
-    INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
+    GHOST_INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
     
     const double complex * const restrict vval = (const double complex*) v->val;
     const double complex * const restrict wval = (const double complex*) w->val;

@@ -172,7 +172,7 @@ ghost_error ghost_sellspmv__u_plain_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res
     }
     if (traits.flags & GHOST_SPMV_DOT) {
         if (!local_dot_product) {
-            ERROR_LOG("The location of the local dot products is NULL!");
+            GHOST_ERROR_LOG("The location of the local dot products is NULL!");
             return GHOST_ERR_INVALID_ARG;
         }
         for (v=0; v<res->traits.ncols; v++) {
@@ -353,7 +353,7 @@ ghost_error ghost_sellspmv__a_plain_z_z_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res
     }
     if (traits.flags & GHOST_SPMV_DOT) {
         if (!local_dot_product) {
-            ERROR_LOG("The location of the local dot products is NULL!");
+            GHOST_ERROR_LOG("The location of the local dot products is NULL!");
             return GHOST_ERR_INVALID_ARG;
         }
         for (v=0; v<res->traits.ncols; v++) {
@@ -534,7 +534,7 @@ ghost_error ghost_sellspmv__a_plain_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res
     }
     if (traits.flags & GHOST_SPMV_DOT) {
         if (!local_dot_product) {
-            ERROR_LOG("The location of the local dot products is NULL!");
+            GHOST_ERROR_LOG("The location of the local dot products is NULL!");
             return GHOST_ERR_INVALID_ARG;
         }
         for (v=0; v<res->traits.ncols; v++) {
@@ -717,7 +717,7 @@ ghost_error ghost_sellspmv__a_plain_z_z_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res
     }
     if (traits.flags & GHOST_SPMV_DOT) {
         if (!local_dot_product) {
-            ERROR_LOG("The location of the local dot products is NULL!");
+            GHOST_ERROR_LOG("The location of the local dot products is NULL!");
             return GHOST_ERR_INVALID_ARG;
         }
         for (v=0; v<NVECS; v++) {

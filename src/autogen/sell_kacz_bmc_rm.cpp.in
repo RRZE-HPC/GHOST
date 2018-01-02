@@ -430,7 +430,7 @@ static ghost_error ghost_kacz_BMC_u_plain_rm_CHUNKHEIGHT_NVECS_tmpl(ghost_densem
     #endif
     
     if (mat->context->nzones == 0 || mat->context->zone_ptr == NULL){
-        ERROR_LOG("Splitting of matrix by Block Multicoloring has not be done!");
+        GHOST_ERROR_LOG("Splitting of matrix by Block Multicoloring has not be done!");
     }
     
     

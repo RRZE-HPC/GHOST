@@ -977,11 +977,11 @@ ghost_error ghost_kacz_BMCshift_u_plain_rm_CHUNKHEIGHT_NVECS_NSHIFTS(ghost_dense
     num_blocks = b->traits.ncols;
     
     if(num_shifts*num_blocks != x->traits.ncols) {
-        WARNING_LOG("You have %d shifts requested and %d columns in input vector, but there are only %d columns in the output vector",num_shifts,num_blocks,x->traits.ncols)
+        GHOST_WARNING_LOG("You have %d shifts requested and %d columns in input vector, but there are only %d columns in the output vector",num_shifts,num_blocks,x->traits.ncols)
     }
     
     if(!(x->traits.datatype & (ghost_datatype)GHOST_DT_COMPLEX) ) {
-        WARNING_LOG("If you have specified complex shifts as option, ensure your output vector is also complex type!") 
+        GHOST_WARNING_LOG("If you have specified complex shifts as option, ensure your output vector is also complex type!") 
         //return GHOST_ERR_DATATYPE;
     }
     
@@ -993,7 +993,7 @@ ghost_error ghost_kacz_BMCshift_u_plain_rm_CHUNKHEIGHT_NVECS_NSHIFTS(ghost_dense
 //    #endif
     
     if(mat->context->nzones == 0 || mat->context->zone_ptr == NULL) {
-        ERROR_LOG("Splitting of matrix by Block Multicoloring has not be done!");
+        GHOST_ERROR_LOG("Splitting of matrix by Block Multicoloring has not be done!");
     }
     
     MT *bval = NULL;
@@ -1166,7 +1166,7 @@ ghost_error ghost_kacz_BMCshift_u_plain_rm_CHUNKHEIGHT_NVECS_NSHIFTS(ghost_dense
     UNUSED(mat);
     UNUSED(b);
     UNUSED(opts);
-    ERROR_LOG("This function should not have been called with 0 shifts!");
+    GHOST_ERROR_LOG("This function should not have been called with 0 shifts!");
     return GHOST_ERR_INVALID_ARG;
 #endif
 }
@@ -1187,7 +1187,7 @@ ghost_error ghost_kacz__BMCshift_u_plain_x_x_rm_CHUNKHEIGHT_NVECS_NSHIFTS(ghost_
     UNUSED(mat);
     UNUSED(b);
     UNUSED(opts);
-    ERROR_LOG("This function should not have been called with 0 shifts!");
+    GHOST_ERROR_LOG("This function should not have been called with 0 shifts!");
     return GHOST_ERR_INVALID_ARG;
 #endif
     

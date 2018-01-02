@@ -33,11 +33,11 @@ ghost_error ghost_tsmttsm1__a_avx_d_CFGN_CFGM_1_rm(ghost_densemat *x, ghost_dens
     ghost_error ret = GHOST_SUCCESS;
 
     ghost_lidx n = DM_NROWS(v);
-    INFO_LOG("In AVX TSMTTSM with two fixed block sizes [CFGN][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGN,CFGM,n,n,CFGN);
+    GHOST_INFO_LOG("In AVX TSMTTSM with two fixed block sizes [CFGN][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGN,CFGM,n,n,CFGN);
 
     if (n%2) {
         n+=1;
-        INFO_LOG("Padding large dimension to %d\n",n);
+        GHOST_INFO_LOG("Padding large dimension to %d\n",n);
     }
     
     const double * const restrict vval = (const double *) v->val;
@@ -98,7 +98,7 @@ ghost_error ghost_tsmttsm1__a_avx_d_CFGN_CFGM_1_rm(ghost_densemat *x, ghost_dens
                 }
             }
         } else {
-            INFO_LOG("fast case alpha=1");
+            GHOST_INFO_LOG("fast case alpha=1");
 
 #pragma omp for schedule(runtime)
             for (i=0; i<=n-2; i+=2) {
@@ -163,7 +163,7 @@ ghost_error ghost_tsmttsm1__a_avx_d_CFGN_CFGM_1_rm(ghost_densemat *x, ghost_dens
     UNUSED(w);
     UNUSED(alpha);
     UNUSED(beta);
-    ERROR_LOG("No AVX available!");
+    GHOST_ERROR_LOG("No AVX available!");
     return GHOST_ERR_UNKNOWN;
 #endif
 }
@@ -176,11 +176,11 @@ ghost_error ghost_tsmttsm__a_avx_d_CFGN_CFGM_OUTERUNROLL_rm(ghost_densemat *x, g
     ghost_error ret = GHOST_SUCCESS;
 
     ghost_lidx n = DM_NROWS(v);
-    INFO_LOG("In AVX TSMTTSM with two fixed block sizes [CFGN][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGN,CFGM,n,n,CFGN);
+    GHOST_INFO_LOG("In AVX TSMTTSM with two fixed block sizes [CFGN][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGN,CFGM,n,n,CFGN);
 
     if (n%OUTERUNROLL) {
         n+=(OUTERUNROLL-n%OUTERUNROLL);
-        INFO_LOG("Padding large dimension to %d\n",n);
+        GHOST_INFO_LOG("Padding large dimension to %d\n",n);
     }
     
     const double * const restrict vval = (const double *) v->val;
@@ -244,7 +244,7 @@ ghost_error ghost_tsmttsm__a_avx_d_CFGN_CFGM_OUTERUNROLL_rm(ghost_densemat *x, g
         } else {
             #GHOST_UNROLL#__m256d wvec@;#OUTERUNROLL*4
             #GHOST_UNROLL#__m256d vvec@;#OUTERUNROLL
-            INFO_LOG("fast case alpha=1 foo");
+            GHOST_INFO_LOG("fast case alpha=1 foo");
             #GHOST_UNROLL#__m256d wtmp@;#OUTERUNROLL
             __m256d wshuf;
 
@@ -314,7 +314,7 @@ ghost_error ghost_tsmttsm__a_avx_d_CFGN_CFGM_OUTERUNROLL_rm(ghost_densemat *x, g
     UNUSED(w);
     UNUSED(alpha);
     UNUSED(beta);
-    ERROR_LOG("No AVX available!");
+    GHOST_ERROR_LOG("No AVX available!");
     return GHOST_ERR_UNKNOWN;
 #endif
 }
@@ -327,11 +327,11 @@ ghost_error ghost_tsmttsm__u_avx_d_CFGN_CFGM_OUTERUNROLL_rm(ghost_densemat *x, g
     ghost_error ret = GHOST_SUCCESS;
 
     ghost_lidx n = DM_NROWS(v);
-    INFO_LOG("In AVX TSMTTSM with two fixed block sizes [CFGN][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGN,CFGM,n,n,CFGN);
+    GHOST_INFO_LOG("In AVX TSMTTSM with two fixed block sizes [CFGN][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGN,CFGM,n,n,CFGN);
 
     if (n%OUTERUNROLL) {
         n+=(OUTERUNROLL-n%OUTERUNROLL);
-        INFO_LOG("Padding large dimension to %d\n",n);
+        GHOST_INFO_LOG("Padding large dimension to %d\n",n);
     }
     
     const double * const restrict vval = (const double *) v->val;
@@ -395,7 +395,7 @@ ghost_error ghost_tsmttsm__u_avx_d_CFGN_CFGM_OUTERUNROLL_rm(ghost_densemat *x, g
         } else {
             #GHOST_UNROLL#__m256d wvec@;#OUTERUNROLL*4
             #GHOST_UNROLL#__m256d vvec@;#OUTERUNROLL
-            INFO_LOG("fast case alpha=1 foo");
+            GHOST_INFO_LOG("fast case alpha=1 foo");
             #GHOST_UNROLL#__m256d wtmp@;#OUTERUNROLL
             __m256d wshuf;
 
@@ -465,7 +465,7 @@ ghost_error ghost_tsmttsm__u_avx_d_CFGN_CFGM_OUTERUNROLL_rm(ghost_densemat *x, g
     UNUSED(w);
     UNUSED(alpha);
     UNUSED(beta);
-    ERROR_LOG("No AVX available!");
+    GHOST_ERROR_LOG("No AVX available!");
     return GHOST_ERR_UNKNOWN;
 #endif
 }
@@ -478,11 +478,11 @@ ghost_error ghost_tsmttsm__a_avx_s_CFGN_CFGM_OUTERUNROLL_rm(ghost_densemat *x, g
     ghost_error ret = GHOST_SUCCESS;
 
     ghost_lidx n = DM_NROWS(v);
-    INFO_LOG("In AVX TSMTTSM with two fixed block sizes [CFGN][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGN,CFGM,n,n,CFGN);
+    GHOST_INFO_LOG("In AVX TSMTTSM with two fixed block sizes [CFGN][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGN,CFGM,n,n,CFGN);
 
     if (n%OUTERUNROLL) {
         n+=(OUTERUNROLL-n%OUTERUNROLL);
-        INFO_LOG("Padding large dimension to %d\n",n);
+        GHOST_INFO_LOG("Padding large dimension to %d\n",n);
     }
     
     const float * const restrict vval = (const float *) v->val;
@@ -549,7 +549,7 @@ ghost_error ghost_tsmttsm__a_avx_s_CFGN_CFGM_OUTERUNROLL_rm(ghost_densemat *x, g
         } else {
             #GHOST_UNROLL#__m256 wvec@;#OUTERUNROLL
             #GHOST_UNROLL#__m256 vvec@;#OUTERUNROLL
-            INFO_LOG("fast case alpha=1 foo");
+            GHOST_INFO_LOG("fast case alpha=1 foo");
 #if 0
             #GHOST_UNROLL#__m256 wtmp@;#OUTERUNROLL
             __m256 wshuf;
@@ -598,7 +598,7 @@ ghost_error ghost_tsmttsm__a_avx_s_CFGN_CFGM_OUTERUNROLL_rm(ghost_densemat *x, g
 
                         }
 #if CFGM%8
-                        PERFWARNING_LOG("Remainder for m %d..%d",m,CFGM-1);
+                        GHOST_PERFWARNING_LOG("Remainder for m %d..%d",m,CFGM-1);
                         ghost_lidx m_rem;
 #pragma vector aligned
 #pragma vector always
@@ -632,7 +632,7 @@ ghost_error ghost_tsmttsm__a_avx_s_CFGN_CFGM_OUTERUNROLL_rm(ghost_densemat *x, g
     UNUSED(w);
     UNUSED(alpha);
     UNUSED(beta);
-    ERROR_LOG("No AVX available!");
+    GHOST_ERROR_LOG("No AVX available!");
     return GHOST_ERR_UNKNOWN;
 #endif
 }
@@ -645,11 +645,11 @@ ghost_error ghost_tsmttsm__u_avx_z_CFGN_CFGM_2_rm(ghost_densemat *x, ghost_dense
     ghost_error ret = GHOST_SUCCESS;
 
     ghost_lidx n = DM_NROWS(v);
-    INFO_LOG("In AVX TSMTTSM with two fixed block sizes [CFGN][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGN,CFGM,n,n,CFGN);
+    GHOST_INFO_LOG("In AVX TSMTTSM with two fixed block sizes [CFGN][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGN,CFGM,n,n,CFGN);
 
     if (n%2) {
         n+=(2-n%2);
-        INFO_LOG("Padding large dimension to %d",n);
+        GHOST_INFO_LOG("Padding large dimension to %d",n);
     }
     
     const double complex * const restrict vval = (const double complex*) v->val;
@@ -715,7 +715,7 @@ ghost_error ghost_tsmttsm__u_avx_z_CFGN_CFGM_2_rm(ghost_densemat *x, ghost_dense
                     }
                 }
             } else {
-                INFO_LOG("fast case alpha=1 asdf");
+                GHOST_INFO_LOG("fast case alpha=1 asdf");
 #pragma omp for schedule(runtime)
                 for (i=0; i<=n-2; i+=2) {
                     for (k=0; k<CFGN; k++) {
@@ -792,7 +792,7 @@ ghost_error ghost_tsmttsm__u_avx_z_CFGN_CFGM_2_rm(ghost_densemat *x, ghost_dense
                     }
                 }
             } else {
-                INFO_LOG("fast case alpha=1");
+                GHOST_INFO_LOG("fast case alpha=1");
 
 #pragma omp for schedule(runtime)
                 for (i=0; i<=n-2; i+=2) {
@@ -839,7 +839,7 @@ ghost_error ghost_tsmttsm__u_avx_z_CFGN_CFGM_2_rm(ghost_densemat *x, ghost_dense
     UNUSED(w);
     UNUSED(alpha);
     UNUSED(beta);
-    ERROR_LOG("No AVX available!");
+    GHOST_ERROR_LOG("No AVX available!");
     return GHOST_ERR_UNKNOWN;
 #endif
 }
@@ -852,11 +852,11 @@ ghost_error ghost_tsmttsm__a_avx_c_CFGN_CFGM_4_rm(ghost_densemat *x, ghost_dense
     ghost_error ret = GHOST_SUCCESS;
 
     ghost_lidx n = DM_NROWS(v);
-    INFO_LOG("In AVX TSMTTSM with two fixed block sizes [CFGN][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGN,CFGM,n,n,CFGN);
+    GHOST_INFO_LOG("In AVX TSMTTSM with two fixed block sizes [CFGN][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGN,CFGM,n,n,CFGN);
 
     if (n%4) {
         n+=(4-n%4);
-        INFO_LOG("Padding large dimension to %d\n",n);
+        GHOST_INFO_LOG("Padding large dimension to %d\n",n);
     }
     
     const float complex * const restrict vval = (const float complex *) v->val;
@@ -921,7 +921,7 @@ ghost_error ghost_tsmttsm__a_avx_c_CFGN_CFGM_4_rm(ghost_densemat *x, ghost_dense
                     }
                 }
             } else {
-                INFO_LOG("fast case alpha=1 asdf");
+                GHOST_INFO_LOG("fast case alpha=1 asdf");
 #pragma omp for schedule(runtime)
                 for (i=0; i<=n-4; i+=4) {
                     for (k=0; k<CFGN; k++) {
@@ -977,7 +977,7 @@ ghost_error ghost_tsmttsm__a_avx_c_CFGN_CFGM_4_rm(ghost_densemat *x, ghost_dense
                     }
                 }
             } else {
-                INFO_LOG("fast case alpha=1");
+                GHOST_INFO_LOG("fast case alpha=1");
 
 #pragma omp for schedule(runtime)
                 for (i=0; i<=n-2; i+=2) {
@@ -1024,7 +1024,7 @@ ghost_error ghost_tsmttsm__a_avx_c_CFGN_CFGM_4_rm(ghost_densemat *x, ghost_dense
     UNUSED(w);
     UNUSED(alpha);
     UNUSED(beta);
-    ERROR_LOG("No AVX available!");
+    GHOST_ERROR_LOG("No AVX available!");
     return GHOST_ERR_UNKNOWN;
 #endif
 }
@@ -1037,11 +1037,11 @@ ghost_error ghost_tsmttsm2__a_avx_z_CFGN_CFGM_1_rm(ghost_densemat *x, ghost_dens
     ghost_error ret = GHOST_SUCCESS;
 
     ghost_lidx n = DM_NROWS(v);
-    INFO_LOG("In AVX TSMTTSM with two fixed block sizes [CFGN][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGN,CFGM,n,n,CFGN);
+    GHOST_INFO_LOG("In AVX TSMTTSM with two fixed block sizes [CFGN][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGN,CFGM,n,n,CFGN);
 
     if (n%4) {
         n+=(4-n%4);
-        INFO_LOG("Padding large dimension to %d\n",n);
+        GHOST_INFO_LOG("Padding large dimension to %d\n",n);
     }
     
     const double complex * const restrict vval = (const double complex*) v->val;
@@ -1105,7 +1105,7 @@ ghost_error ghost_tsmttsm2__a_avx_z_CFGN_CFGM_1_rm(ghost_densemat *x, ghost_dens
                     }
                 }
             } else {
-                INFO_LOG("fast case alpha=1 asdf");
+                GHOST_INFO_LOG("fast case alpha=1 asdf");
 #pragma omp for schedule(runtime)
                 for (i=0; i<=n-4; i+=4) {
                     for (k=0; k<CFGN; k++) {
@@ -1205,7 +1205,7 @@ ghost_error ghost_tsmttsm2__a_avx_z_CFGN_CFGM_1_rm(ghost_densemat *x, ghost_dens
                     }
                 }
             } else {
-                INFO_LOG("fast case alpha=1");
+                GHOST_INFO_LOG("fast case alpha=1");
 
 #pragma omp for schedule(runtime)
                 for (i=0; i<=n-2; i+=2) {
@@ -1252,7 +1252,7 @@ ghost_error ghost_tsmttsm2__a_avx_z_CFGN_CFGM_1_rm(ghost_densemat *x, ghost_dens
     UNUSED(w);
     UNUSED(alpha);
     UNUSED(beta);
-    ERROR_LOG("No AVX available!");
+    GHOST_ERROR_LOG("No AVX available!");
     return GHOST_ERR_UNKNOWN;
 #endif
 }
@@ -1267,11 +1267,11 @@ ghost_error ghost_tsmttsm1__a_avx_z_CFGN_CFGM_1_rm(ghost_densemat *x, ghost_dens
     ghost_lidx i,m,k;
 
     ghost_lidx n = DM_NROWS(v);
-    INFO_LOG("In AVX TSMTTSM with two fixed block sizes [CFGN][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGN,CFGM,n,n,CFGN);
+    GHOST_INFO_LOG("In AVX TSMTTSM with two fixed block sizes [CFGN][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGN,CFGM,n,n,CFGN);
 
     if (n%2) {
         n+=1;
-        INFO_LOG("Padding large dimension to %d\n",n);
+        GHOST_INFO_LOG("Padding large dimension to %d\n",n);
     }
     
     const double complex * const restrict vval = (const double complex*) v->val;
@@ -1359,7 +1359,7 @@ ghost_error ghost_tsmttsm1__a_avx_z_CFGN_CFGM_1_rm(ghost_densemat *x, ghost_dens
             }
         } else {
 #endif
-            INFO_LOG("fast case alpha=1");
+            GHOST_INFO_LOG("fast case alpha=1");
 
 #pragma omp for schedule(runtime)
             for (i=0; i<n; i++) {
@@ -1409,7 +1409,7 @@ ghost_error ghost_tsmttsm1__a_avx_z_CFGN_CFGM_1_rm(ghost_densemat *x, ghost_dens
     UNUSED(w);
     UNUSED(alpha);
     UNUSED(beta);
-    ERROR_LOG("No AVX available!");
+    GHOST_ERROR_LOG("No AVX available!");
     return GHOST_ERR_UNKNOWN;
 #endif
 }
@@ -1431,11 +1431,11 @@ ghost_error ghost_tsmttsm2__a_avx_d_CFGN_CFGM_1_cm_rm(ghost_densemat *x, ghost_d
     }
 
     ghost_lidx n = DM_NROWS(v);
-    INFO_LOG("In AVX TSMTTSM with two fixed block sizes [CFGN][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGN,CFGM,n,n,CFGN);
+    GHOST_INFO_LOG("In AVX TSMTTSM with two fixed block sizes [CFGN][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGN,CFGM,n,n,CFGN);
 
     if (n%2) {
         n+=1;
-        INFO_LOG("Padding large dimension to %d\n",n);
+        GHOST_INFO_LOG("Padding large dimension to %d\n",n);
     }
     
     const double * const restrict vval = (const double *) v->val;
@@ -1507,7 +1507,7 @@ ghost_error ghost_tsmttsm2__a_avx_d_CFGN_CFGM_1_cm_rm(ghost_densemat *x, ghost_d
                 }
             }
         } else {
-            INFO_LOG("fast case alpha=1.");
+            GHOST_INFO_LOG("fast case alpha=1.");
 
 #pragma omp for schedule(runtime)
             for (i=0; i<=n-4; i+=4) {
@@ -1570,7 +1570,7 @@ ghost_error ghost_tsmttsm2__a_avx_d_CFGN_CFGM_1_cm_rm(ghost_densemat *x, ghost_d
     UNUSED(w);
     UNUSED(alpha);
     UNUSED(beta);
-    ERROR_LOG("No AVX available!");
+    GHOST_ERROR_LOG("No AVX available!");
     return GHOST_ERR_UNKNOWN;
 #endif
 }
@@ -1586,11 +1586,11 @@ ghost_error ghost_tsmttsm3__a_avx_d_CFGN_CFGM_1_cm_rm(ghost_densemat *x, ghost_d
     ghost_error ret = GHOST_SUCCESS;
 
     ghost_lidx n = DM_NROWS(v);
-    INFO_LOG("In AVX TSMTTSM with two fixed block sizes with transposed sub-blocks [CFGN][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGN,CFGM,n,n,CFGN);
+    GHOST_INFO_LOG("In AVX TSMTTSM with two fixed block sizes with transposed sub-blocks [CFGN][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGN,CFGM,n,n,CFGN);
 
     if (n%2) {
         n+=1;
-        INFO_LOG("Padding large dimension to %d\n",n);
+        GHOST_INFO_LOG("Padding large dimension to %d\n",n);
     }
     
     const double * const restrict vval = (const double *) v->val;
@@ -1752,7 +1752,7 @@ ghost_error ghost_tsmttsm3__a_avx_d_CFGN_CFGM_1_cm_rm(ghost_densemat *x, ghost_d
     UNUSED(w);
     UNUSED(alpha);
     UNUSED(beta);
-    ERROR_LOG("No AVX available!");
+    GHOST_ERROR_LOG("No AVX available!");
     return GHOST_ERR_UNKNOWN;
 #endif
 }
@@ -1768,11 +1768,11 @@ ghost_error ghost_tsmttsm2__a_avx_d_CFGN_CFGM_1_cm_rm(ghost_densemat *x, ghost_d
     ghost_error ret = GHOST_SUCCESS;
 
     ghost_lidx n = DM_NROWS(v);
-    INFO_LOG("In AVX TSMTTSM with two fixed block sizes [CFGN][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGN,CFGM,n,n,CFGN);
+    GHOST_INFO_LOG("In AVX TSMTTSM with two fixed block sizes [CFGN][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGN,CFGM,n,n,CFGN);
 
     if (n%2) {
         n+=1;
-        INFO_LOG("Padding large dimension to %d\n",n);
+        GHOST_INFO_LOG("Padding large dimension to %d\n",n);
     }
     
     
@@ -1881,7 +1881,7 @@ ghost_error ghost_tsmttsm2__a_avx_d_CFGN_CFGM_1_cm_rm(ghost_densemat *x, ghost_d
     UNUSED(w);
     UNUSED(alpha);
     UNUSED(beta);
-    ERROR_LOG("No AVX available!");
+    GHOST_ERROR_LOG("No AVX available!");
     return GHOST_ERR_UNKNOWN;
 #endif
 }

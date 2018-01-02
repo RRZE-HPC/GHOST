@@ -35,7 +35,7 @@
         }\
     } else {\
         if (!kernels[ghost_idx_of_location(commonlocation)][ghost_idx_of_densemat_storage(storage)]) {\
-            ERROR_LOG("No kernel found!");\
+            GHOST_ERROR_LOG("No kernel found!");\
             ret = GHOST_ERR_INVALID_ARG;\
         } else {\
             ret = kernels[ghost_idx_of_location(commonlocation)][ghost_idx_of_densemat_storage(storage)](__VA_ARGS__);\

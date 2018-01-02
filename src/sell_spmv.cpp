@@ -36,7 +36,7 @@ static ghost_error ghost_sell_spmv_plain_rm(ghost_densemat *lhs,
         ghost_spmv_opts traits)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
-    PERFWARNING_LOG("In plain row-major SEL SpMV with scatteredvecs=%d, blocksz=%d",scatteredvecs,rhs->traits.ncols);
+    GHOST_PERFWARNING_LOG("In plain row-major SEL SpMV with scatteredvecs=%d, blocksz=%d",scatteredvecs,rhs->traits.ncols);
     v_t *local_dot_product = NULL, *partsums = NULL;
     ghost_lidx i,j,c,rcol,lcol,zcol,cidx;
     ghost_lidx v;
@@ -167,7 +167,7 @@ static ghost_error ghost_sell_spmv_plain_rm(ghost_densemat *lhs,
     }
     if (traits.flags & GHOST_SPMV_DOT) {
         if (!local_dot_product) {
-            ERROR_LOG("The location of the local dot products is NULL!");
+            GHOST_ERROR_LOG("The location of the local dot products is NULL!");
             return GHOST_ERR_INVALID_ARG;
         }
         for (v=0; v<lhs->traits.ncols; v++) {
@@ -333,7 +333,7 @@ static ghost_error ghost_sell_spmv_plain_cm(ghost_densemat *lhs,
     }
     if (traits.flags & GHOST_SPMV_DOT) {
         if (!local_dot_product) {
-            ERROR_LOG("The location of the local dot products is NULL!");
+            GHOST_ERROR_LOG("The location of the local dot products is NULL!");
             return GHOST_ERR_INVALID_ARG;
         }
         for (v=0; v<lhs->traits.ncols; v++) {
@@ -439,22 +439,22 @@ extern "C" ghost_error ghost_sell_spmv_selector(ghost_densemat *lhs,
 
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     if (rhs->traits.storage != lhs->traits.storage) {
-        ERROR_LOG("Different storage layout for in- and output densemats!");
+        GHOST_ERROR_LOG("Different storage layout for in- and output densemats!");
         return GHOST_ERR_INVALID_ARG;
     }
     if (rhs->traits.ncols != lhs->traits.ncols) {
-        ERROR_LOG("The number of columns for the densemats does not match!");
+        GHOST_ERROR_LOG("The number of columns for the densemats does not match!");
         return GHOST_ERR_INVALID_ARG;
     }
     if (!(mat->context->flags & GHOST_PERM_NO_DISTINCTION) && DM_NROWS(lhs) != SPM_NROWS(mat)) {
-        ERROR_LOG("Different number of rows for the densemats and matrix!");
+        GHOST_ERROR_LOG("Different number of rows for the densemats and matrix!");
         return GHOST_ERR_INVALID_ARG;
     }
     if (((rhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) && 
                 (DM_NROWS(rhs->src) != DM_NROWS(rhs))) || 
             ((lhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) && 
             (DM_NROWS(lhs->src) != DM_NROWS(lhs)))) {
-        ERROR_LOG("Col-major densemats with masked out rows currently not "
+        GHOST_ERROR_LOG("Col-major densemats with masked out rows currently not "
                 "supported!");
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
@@ -480,7 +480,7 @@ extern "C" ghost_error ghost_sell_spmv_selector(ghost_densemat *lhs,
     
     p.storage = rhs->traits.storage;
     if (p.storage == GHOST_DENSEMAT_ROWMAJOR && rhs->stride == 1 && lhs->stride == 1) {
-        INFO_LOG("Chose col-major kernel for row-major densemat with 1 column");
+        GHOST_INFO_LOG("Chose col-major kernel for row-major densemat with 1 column");
         p.storage = GHOST_DENSEMAT_COLMAJOR;
     }
     
@@ -488,13 +488,13 @@ extern "C" ghost_error ghost_sell_spmv_selector(ghost_densemat *lhs,
 
     if ((lhs->traits.flags & GHOST_DENSEMAT_SCATTERED) || 
             (rhs->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
-        PERFWARNING_LOG("Use plain implementation for scattered views");
+        GHOST_PERFWARNING_LOG("Use plain implementation for scattered views");
         opt_impl = GHOST_IMPLEMENTATION_PLAIN;
     } else if ((mat->context->col_map->loc_perm != mat->context->row_map->loc_perm) && 
             (p.storage == GHOST_DENSEMAT_COLMAJOR) &&
             (traits.flags & (GHOST_SPMV_DOT_XY|GHOST_SPMV_SHIFT|GHOST_SPMV_VSHIFT))) { 
         // unsymmetric permutation and col-major requires gather of rhs in this case which is not implemented for intrinsics kernels
-        PERFWARNING_LOG("Use plain implementation for unsymmetric permuted matrix, col-major vectors and SHIFT or DOT");
+        GHOST_PERFWARNING_LOG("Use plain implementation for unsymmetric permuted matrix, col-major vectors and SHIFT or DOT");
         opt_impl = GHOST_IMPLEMENTATION_PLAIN;
     } else {
         if (rhs->stride > 1 && rhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
@@ -512,7 +512,7 @@ extern "C" ghost_error ghost_sell_spmv_selector(ghost_densemat *lhs,
         if (lhs->traits.compute_with < opt_impl) {
             try_impl.push_back(lhs->traits.compute_with);
         } else {
-            WARNING_LOG("The implementation set via the compute_with field (%s) is not valid! Using a valid implementation.",ghost_implementation_string(lhs->traits.compute_with));
+            GHOST_WARNING_LOG("The implementation set via the compute_with field (%s) is not valid! Using a valid implementation.",ghost_implementation_string(lhs->traits.compute_with));
         }
     }
 
@@ -557,16 +557,16 @@ extern "C" ghost_error ghost_sell_spmv_selector(ghost_densemat *lhs,
                     opt_align = GHOST_ALIGNED;
                 } else {
                     if (!IS_ALIGNED(lval,al)) {
-                        PERFWARNING_LOG("Using unaligned kernel because base address of result vector is not aligned");
+                        GHOST_PERFWARNING_LOG("Using unaligned kernel because base address of result vector is not aligned");
                     }
                     if (!IS_ALIGNED(rval,al)) {
-                        PERFWARNING_LOG("Using unaligned kernel because base address of input vector is not aligned");
+                        GHOST_PERFWARNING_LOG("Using unaligned kernel because base address of input vector is not aligned");
                     }
                     if (lhs->stride*lhs->elSize % al) {
-                        PERFWARNING_LOG("Using unaligned kernel because stride of result vector does not yield aligned addresses");
+                        GHOST_PERFWARNING_LOG("Using unaligned kernel because stride of result vector does not yield aligned addresses");
                     }
                     if (rhs->stride*lhs->elSize % al) {
-                        PERFWARNING_LOG("Using unaligned kernel because stride of input vector does not yield aligned addresses");
+                        GHOST_PERFWARNING_LOG("Using unaligned kernel because stride of input vector does not yield aligned addresses");
                     }
                     opt_align = GHOST_UNALIGNED;
                 }
@@ -575,7 +575,7 @@ extern "C" ghost_error ghost_sell_spmv_selector(ghost_densemat *lhs,
                     p.chunkheight = try_chunkheight[pos_chunkheight];
                     p.blocksz = try_blocksz[pos_blocksz];
 
-                    INFO_LOG("Try chunkheight=%s, blocksz=%s, impl=%s, %s",
+                    GHOST_INFO_LOG("Try chunkheight=%s, blocksz=%s, impl=%s, %s",
                             p.chunkheight==-1?"arbitrary":ghost::to_string((long long)p.chunkheight).c_str(),
                             p.blocksz==-1?"arbitrary":ghost::to_string((long long)p.blocksz).c_str(),
                             ghost_implementation_string(p.impl),p.alignment==GHOST_UNALIGNED?"unaligned":"aligned");
@@ -601,13 +601,13 @@ end_of_loop:
 
     if (kernel) {
         if (optimal) {
-            INFO_LOG("Found kernel with highest specialization grade: C=%d blocksz=%d align=%d impl=%s",p.chunkheight,p.blocksz,p.alignment,ghost_implementation_string(p.impl));
+            GHOST_INFO_LOG("Found kernel with highest specialization grade: C=%d blocksz=%d align=%d impl=%s",p.chunkheight,p.blocksz,p.alignment,ghost_implementation_string(p.impl));
         } else {
-            PERFWARNING_LOG("Using potentially non-optimal kernel: C=%d blocksz=%d align=%d impl=%s",p.chunkheight,p.blocksz,p.alignment,ghost_implementation_string(p.impl));
+            GHOST_PERFWARNING_LOG("Using potentially non-optimal kernel: C=%d blocksz=%d align=%d impl=%s",p.chunkheight,p.blocksz,p.alignment,ghost_implementation_string(p.impl));
         }
         ret = kernel(lhs,mat,rhs,traits);
     } else { // execute plain kernel as fallback
-        PERFWARNING_LOG("Execute fallback SELL SpMV kernel which is potentially slow!");
+        GHOST_PERFWARNING_LOG("Execute fallback SELL SpMV kernel which is potentially slow!");
         if (p.storage == GHOST_DENSEMAT_COLMAJOR) {
             SELECT_TMPL_2DATATYPES_base_derived(mat->traits.datatype,
                     rhs->traits.datatype,std::complex,ret,
@@ -636,22 +636,22 @@ extern "C" ghost_error ghost_cu_sell_spmv_selector(ghost_densemat *lhs,
 
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     if (rhs->traits.storage != lhs->traits.storage) {
-        ERROR_LOG("Different storage layout for in- and output densemats!");
+        GHOST_ERROR_LOG("Different storage layout for in- and output densemats!");
         return GHOST_ERR_INVALID_ARG;
     }
     if (rhs->traits.ncols != lhs->traits.ncols) {
-        ERROR_LOG("The number of columns for the densemats does not match!");
+        GHOST_ERROR_LOG("The number of columns for the densemats does not match!");
         return GHOST_ERR_INVALID_ARG;
     }
     if (!(mat->context->flags & GHOST_PERM_NO_DISTINCTION) && DM_NROWS(lhs) != SPM_NROWS(mat)) {
-        ERROR_LOG("Different number of rows for the densemats and matrix!");
+        GHOST_ERROR_LOG("Different number of rows for the densemats and matrix!");
         return GHOST_ERR_INVALID_ARG;
     }
     if (((rhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) && 
                 (DM_NROWS(rhs->src) != DM_NROWS(rhs))) || 
             ((lhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) && 
             (DM_NROWS(lhs->src) != DM_NROWS(lhs)))) {
-        ERROR_LOG("Col-major densemats with masked out rows currently not "
+        GHOST_ERROR_LOG("Col-major densemats with masked out rows currently not "
                 "supported!");
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
@@ -680,14 +680,14 @@ extern "C" ghost_error ghost_cu_sell_spmv_selector(ghost_densemat *lhs,
     p.do_dot_xx = traits.flags&GHOST_SPMV_DOT_XX;
     p.do_chain_axpby = traits.flags&GHOST_SPMV_CHAIN_AXPBY;
    
-    INFO_LOG("Try to find CUDA kernel with alignment=%d, chunkheight=%d, blocksz=%d, axpby=%d, scale=%d, vshift=%d, dot_yy=%d, dot_xy=%d, dot_xx=%d, chain_axpby=%d",p.alignment,p.chunkheight,p.blocksz,p.do_axpby,p.do_scale,p.do_vshift,p.do_dot_yy,p.do_dot_xy,p.do_dot_xx,p.do_chain_axpby);
+    GHOST_INFO_LOG("Try to find CUDA kernel with alignment=%d, chunkheight=%d, blocksz=%d, axpby=%d, scale=%d, vshift=%d, dot_yy=%d, dot_xy=%d, dot_xx=%d, chain_axpby=%d",p.alignment,p.chunkheight,p.blocksz,p.do_axpby,p.do_scale,p.do_vshift,p.do_dot_yy,p.do_dot_xy,p.do_dot_xx,p.do_chain_axpby);
     kernel = ghost_cusellspmv_kernels[p];
 
     if (kernel) {
-        INFO_LOG("Found kernel with highest specialization grade: C=%d blocksz=%d align=%d impl=%s",p.chunkheight,p.blocksz,p.alignment,ghost_implementation_string(p.impl));
+        GHOST_INFO_LOG("Found kernel with highest specialization grade: C=%d blocksz=%d align=%d impl=%s",p.chunkheight,p.blocksz,p.alignment,ghost_implementation_string(p.impl));
         ret = kernel(lhs,mat,rhs,traits);
     } else {
-        PERFWARNING_LOG("Execute fallback SELL SpMV kernel which is potentially slow!");
+        GHOST_PERFWARNING_LOG("Execute fallback SELL SpMV kernel which is potentially slow!");
         ret = ghost_sellspmv_cu_fallback_selector(lhs,mat,rhs,traits);
     }
 
@@ -695,7 +695,7 @@ extern "C" ghost_error ghost_cu_sell_spmv_selector(ghost_densemat *lhs,
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
     return ret;
 #else
-    ERROR_LOG("CUDA not enabled!");
+    GHOST_ERROR_LOG("CUDA not enabled!");
     UNUSED(mat);
     UNUSED(rhs);
     UNUSED(lhs);

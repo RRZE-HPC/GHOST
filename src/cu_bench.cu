@@ -12,7 +12,7 @@
 
 static void dummy(double *a) {
     if (a[(ghost_lidx)N>>1] < 0) {
-        WARNING_LOG("dummy");
+        GHOST_WARNING_LOG("dummy");
     }
 }
 

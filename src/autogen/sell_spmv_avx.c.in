@@ -151,7 +151,7 @@ ghost_error ghost_sellspmvUNROLLEDDOESNOTWORK__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(gh
     }
     if (traits.flags & GHOST_SPMV_DOT) {
         if (!local_dot_product) {
-            WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
+            GHOST_WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
             return GHOST_SUCCESS;
         }
         ghost_lidx v;
@@ -168,7 +168,7 @@ ghost_error ghost_sellspmvUNROLLEDDOESNOTWORK__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(gh
         free(partsums);
     }
     if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
-        PERFWARNING_LOG("AXPBY will not be done on-the-fly!");
+        GHOST_PERFWARNING_LOG("AXPBY will not be done on-the-fly!");
         ghost_axpby(z,res,&seta,&sdelta);
     }
 
@@ -181,9 +181,9 @@ ghost_error ghost_sellspmvUNROLLEDDOESNOTWORK__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(gh
     UNUSED(traits);
     
 #if CHUNKHEIGHT < 4
-    ERROR_LOG("Invalid chunk height!");
+    GHOST_ERROR_LOG("Invalid chunk height!");
 #else
-    ERROR_LOG("No AVX available");
+    GHOST_ERROR_LOG("No AVX available");
 #endif
     return GHOST_ERR_UNKNOWN;
 #endif
@@ -318,7 +318,7 @@ ghost_error ghost_sellspmv__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
     }
     if (traits.flags & GHOST_SPMV_DOT) {
         if (!local_dot_product) {
-            WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
+            GHOST_WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
             return GHOST_SUCCESS;
         }
         ghost_lidx v;
@@ -335,7 +335,7 @@ ghost_error ghost_sellspmv__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
         free(partsums);
     }
     if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
-        PERFWARNING_LOG("AXPBY will not be done on-the-fly!");
+        GHOST_PERFWARNING_LOG("AXPBY will not be done on-the-fly!");
         ghost_axpby(z,res,&seta,&sdelta);
     }
 
@@ -348,9 +348,9 @@ ghost_error ghost_sellspmv__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
     UNUSED(traits);
     
 #if CHUNKHEIGHT < 4
-    ERROR_LOG("Invalid chunk height!");
+    GHOST_ERROR_LOG("Invalid chunk height!");
 #else
-    ERROR_LOG("No AVX available");
+    GHOST_ERROR_LOG("No AVX available");
 #endif
     return GHOST_ERR_UNKNOWN;
 #endif
@@ -359,7 +359,7 @@ ghost_error ghost_sellspmv__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
 ghost_error ghost_sellspmvROWLEN4__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat* invec, ghost_spmv_opts traits)
 {
 #if defined(GHOST_BUILD_AVX) && CHUNKHEIGHT>=4
-    INFO_LOG("In experimental kernel using rowLen4");
+    GHOST_INFO_LOG("In experimental kernel using rowLen4");
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     ghost_lidx i;
     double *mval = (double *)mat->val;
@@ -483,7 +483,7 @@ ghost_error ghost_sellspmvROWLEN4__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat
     }
     if (traits.flags & GHOST_SPMV_DOT) {
         if (!local_dot_product) {
-            WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
+            GHOST_WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
             return GHOST_SUCCESS;
         }
         ghost_lidx v;
@@ -500,7 +500,7 @@ ghost_error ghost_sellspmvROWLEN4__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat
         free(partsums);
     }
     if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
-        PERFWARNING_LOG("AXPBY will not be done on-the-fly!");
+        GHOST_PERFWARNING_LOG("AXPBY will not be done on-the-fly!");
         ghost_axpby(z,res,&seta,&sdelta);
     }
 
@@ -513,9 +513,9 @@ ghost_error ghost_sellspmvROWLEN4__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat
     UNUSED(traits);
     
 #if CHUNKHEIGHT < 4
-    ERROR_LOG("Invalid chunk height!");
+    GHOST_ERROR_LOG("Invalid chunk height!");
 #else
-    ERROR_LOG("No AVX available");
+    GHOST_ERROR_LOG("No AVX available");
 #endif
     return GHOST_ERR_UNKNOWN;
 #endif
@@ -524,7 +524,7 @@ ghost_error ghost_sellspmvROWLEN4__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat
 ghost_error ghost_sellspmvRL4UNROLL__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat* invec, ghost_spmv_opts traits)
 {
 #if defined(GHOST_BUILD_AVX) && CHUNKHEIGHT>=4
-    INFO_LOG("In experimental kernel using rowLen4 and no explicit unrolling");
+    GHOST_INFO_LOG("In experimental kernel using rowLen4 and no explicit unrolling");
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     ghost_lidx i;
     double *mval = (double *)mat->val;
@@ -658,7 +658,7 @@ ghost_error ghost_sellspmvRL4UNROLL__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densem
     }
     if (traits.flags & GHOST_SPMV_DOT) {
         if (!local_dot_product) {
-            WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
+            GHOST_WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
             return GHOST_SUCCESS;
         }
         ghost_lidx v;
@@ -675,7 +675,7 @@ ghost_error ghost_sellspmvRL4UNROLL__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densem
         free(partsums);
     }
     if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
-        PERFWARNING_LOG("AXPBY will not be done on-the-fly!");
+        GHOST_PERFWARNING_LOG("AXPBY will not be done on-the-fly!");
         ghost_axpby(z,res,&seta,&sdelta);
     }
 
@@ -688,9 +688,9 @@ ghost_error ghost_sellspmvRL4UNROLL__a_avx_d_d_cm_CHUNKHEIGHT_NVECS(ghost_densem
     UNUSED(traits);
     
 #if CHUNKHEIGHT < 4
-    ERROR_LOG("Invalid chunk height!");
+    GHOST_ERROR_LOG("Invalid chunk height!");
 #else
-    ERROR_LOG("No AVX available");
+    GHOST_ERROR_LOG("No AVX available");
 #endif
     return GHOST_ERR_UNKNOWN;
 #endif
@@ -855,7 +855,7 @@ ghost_error ghost_sellspmv__a_avx_z_z_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
     }
     if (traits.flags & GHOST_SPMV_DOT) {
         if (!local_dot_product) {
-            WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
+            GHOST_WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
             return GHOST_SUCCESS;
         }
         ghost_lidx v;
@@ -881,9 +881,9 @@ ghost_error ghost_sellspmv__a_avx_z_z_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
     UNUSED(traits);
     
 #if CHUNKHEIGHT < 2
-    ERROR_LOG("Invalid chunk height!");
+    GHOST_ERROR_LOG("Invalid chunk height!");
 #else
-    ERROR_LOG("No AVX available");
+    GHOST_ERROR_LOG("No AVX available");
 #endif
     return GHOST_ERR_UNKNOWN;
 #endif
@@ -892,7 +892,7 @@ ghost_error ghost_sellspmv__a_avx_z_z_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
 ghost_error ghost_sellspmvROWLEN2__a_avx_z_z_cm_CHUNKHEIGHT_NVECS(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat* invec, ghost_spmv_opts traits)
 {
 #if defined(GHOST_BUILD_AVX) && CHUNKHEIGHT>=2
-    INFO_LOG("In experimental kernel using rowLen2");
+    GHOST_INFO_LOG("In experimental kernel using rowLen2");
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     ghost_lidx i;
     complex double *mval = (complex double *)mat->val;
@@ -1049,7 +1049,7 @@ ghost_error ghost_sellspmvROWLEN2__a_avx_z_z_cm_CHUNKHEIGHT_NVECS(ghost_densemat
     }
     if (traits.flags & GHOST_SPMV_DOT) {
         if (!local_dot_product) {
-            WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
+            GHOST_WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
             return GHOST_SUCCESS;
         }
         ghost_lidx v;
@@ -1075,9 +1075,9 @@ ghost_error ghost_sellspmvROWLEN2__a_avx_z_z_cm_CHUNKHEIGHT_NVECS(ghost_densemat
     UNUSED(traits);
     
 #if CHUNKHEIGHT < 2
-    ERROR_LOG("Invalid chunk height!");
+    GHOST_ERROR_LOG("Invalid chunk height!");
 #else
-    ERROR_LOG("No AVX available");
+    GHOST_ERROR_LOG("No AVX available");
 #endif
     return GHOST_ERR_UNKNOWN;
 #endif
@@ -1233,7 +1233,7 @@ ghost_error ghost_sellspmv__u_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
     }
     if (traits.flags & GHOST_SPMV_DOT) {
         if (!local_dot_product) {
-            WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
+            GHOST_WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
             return GHOST_SUCCESS;
         }
         ghost_lidx col;
@@ -1250,7 +1250,7 @@ ghost_error ghost_sellspmv__u_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
         free(partsums);
     }
     if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
-        PERFWARNING_LOG("AXPBY will not be done on-the-fly!");
+        GHOST_PERFWARNING_LOG("AXPBY will not be done on-the-fly!");
         ghost_axpby(z,res,&seta,&sdelta);
     }
     if (sshiftcopied) {
@@ -1265,7 +1265,7 @@ ghost_error ghost_sellspmv__u_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
     UNUSED(invec);
     UNUSED(traits);
     
-    ERROR_LOG("No AVX available");
+    GHOST_ERROR_LOG("No AVX available");
     return GHOST_ERR_UNKNOWN;
 #endif
 }
@@ -1437,7 +1437,7 @@ ghost_error ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
     }
     if (traits.flags & GHOST_SPMV_DOT) {
         if (!local_dot_product) {
-            WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
+            GHOST_WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
             return GHOST_SUCCESS;
         }
         ghost_lidx col;
@@ -1465,7 +1465,7 @@ ghost_error ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
     UNUSED(invec);
     UNUSED(traits);
     
-    ERROR_LOG("No AVX available");
+    GHOST_ERROR_LOG("No AVX available");
     return GHOST_ERR_UNKNOWN;
 #endif
 }
@@ -1666,7 +1666,7 @@ ghost_error ghost_sellspmv__a_avx_z_z_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
     }
     if (traits.flags & GHOST_SPMV_DOT) {
         if (!local_dot_product) {
-            WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
+            GHOST_WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
             return GHOST_SUCCESS;
         }
         ghost_lidx col;
@@ -1695,7 +1695,7 @@ ghost_error ghost_sellspmv__a_avx_z_z_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, 
     UNUSED(invec);
     UNUSED(traits);
     
-    ERROR_LOG("No AVX available");
+    GHOST_ERROR_LOG("No AVX available");
     return GHOST_ERR_UNKNOWN;
 #endif
 }
@@ -1707,7 +1707,7 @@ ghost_error ghost_sellspmvasdf__a_avx_d_d_rm_CHUNKHEIGHT_x(ghost_densemat *res, 
 {
 #ifdef GHOST_BUILD_AVX
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
-    PERFWARNING_LOG("In variable-ncols kernel with %"PRLIDX" cols",invec->traits.ncols);
+    GHOST_PERFWARNING_LOG("In variable-ncols kernel with %"PRLIDX" cols",invec->traits.ncols);
     ghost_lidx j,c,col;
     ghost_lidx offs;
     double *mval = (double *)mat->val;
@@ -1817,7 +1817,7 @@ ghost_error ghost_sellspmvasdf__a_avx_d_d_rm_CHUNKHEIGHT_x(ghost_densemat *res, 
                 } else { 
                     #GHOST_UNROLL#_mm256_store_pd(&tmpresult[@*ncolspadded+donecols],tmp@);#CHUNKHEIGHT
                     if (traits.flags & GHOST_SPMV_DOT) {
-                        WARNING_LOG("local dot currently not working here!");
+                        GHOST_WARNING_LOG("local dot currently not working here!");
                     }
                     // TODO if non-AXPY cxompute DOT from tmp instead of lval
                 }
@@ -1831,7 +1831,7 @@ ghost_error ghost_sellspmvasdf__a_avx_d_d_rm_CHUNKHEIGHT_x(ghost_densemat *res, 
     }
     if (traits.flags & GHOST_SPMV_DOT) {
         if (!local_dot_product) {
-            WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
+            GHOST_WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
             return GHOST_SUCCESS;
         }
         for (col=0; col<invec->traits.ncols; col++) {
@@ -1847,7 +1847,7 @@ ghost_error ghost_sellspmvasdf__a_avx_d_d_rm_CHUNKHEIGHT_x(ghost_densemat *res, 
         free(partsums);
     }
     if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
-        PERFWARNING_LOG("AXPBY will not be done on-the-fly!");
+        GHOST_PERFWARNING_LOG("AXPBY will not be done on-the-fly!");
         z->axpby(z,res,&seta,&sdelta);
     }
 
@@ -1858,7 +1858,7 @@ ghost_error ghost_sellspmvasdf__a_avx_d_d_rm_CHUNKHEIGHT_x(ghost_densemat *res, 
     UNUSED(invec);
     UNUSED(traits);
     
-    ERROR_LOG("No AVX available");
+    GHOST_ERROR_LOG("No AVX available");
     return GHOST_ERR_UNKNOWN;
 #endif
     return GHOST_SUCCESS;
@@ -1952,7 +1952,7 @@ ghost_error ghost_sellspmv_v2__avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res,
     }
     if (traits.flags & GHOST_SPMV_DOT) {
         if (!local_dot_product) {
-            WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
+            GHOST_WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
             return GHOST_SUCCESS;
         }
         ghost_lidx col;
@@ -1977,9 +1977,9 @@ ghost_error ghost_sellspmv_v2__avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res,
     UNUSED(traits);
     
 #if NVECS < 4
-    ERROR_LOG("Invalid nVecs");
+    GHOST_ERROR_LOG("Invalid nVecs");
 #else
-    ERROR_LOG("No AVX available");
+    GHOST_ERROR_LOG("No AVX available");
 #endif
     return GHOST_ERR_UNKNOWN;
 #endif

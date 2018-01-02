@@ -22,14 +22,14 @@ static ghost_error ghost_densemat_rm_averagehalo_tmpl(ghost_densemat *vec, ghost
 
 
     /*    if (vec->traits.ncols > 1) {
-          ERROR_LOG("Multi-vec case not yet implemented");
+          GHOST_ERROR_LOG("Multi-vec case not yet implemented");
           ret = GHOST_ERR_NOT_IMPLEMENTED;
           goto err;
           }
           */
 
     if (ctx == NULL) {
-        WARNING_LOG("Trying to average the halos of a densemat which has no context!");
+        GHOST_WARNING_LOG("Trying to average the halos of a densemat which has no context!");
         goto out;
     }
 
@@ -156,7 +156,7 @@ out:
 #else
     UNUSED(vec);
     UNUSED(ctx);
-    ERROR_LOG("MPI is required!");
+    GHOST_ERROR_LOG("MPI is required!");
     return GHOST_ERR_MPI;
 #endif
 }

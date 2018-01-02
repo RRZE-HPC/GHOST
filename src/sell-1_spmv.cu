@@ -159,7 +159,7 @@ static ghost_error ghost_cu_sell1spmv_augfunc_tmpl(ghost_densemat * lhs, ghost_d
     GHOST_SPMV_PARSE_TRAITS(traits,scale,beta,shift,localdot,z,sdelta,seta,dt,dt);
 
     if (traits.flags & (GHOST_SPMV_SHIFT|GHOST_SPMV_VSHIFT)) {
-        PERFWARNING_LOG("Shift will not be applied on-the-fly!");
+        GHOST_PERFWARNING_LOG("Shift will not be applied on-the-fly!");
         dt minusshift[rhs->traits.ncols];
         ghost_lidx col;
         if (traits.flags & GHOST_SPMV_SHIFT) {
@@ -175,7 +175,7 @@ static ghost_error ghost_cu_sell1spmv_augfunc_tmpl(ghost_densemat * lhs, ghost_d
     }
     
     if (traits.flags & GHOST_SPMV_DOT) {
-        PERFWARNING_LOG("Dot product computation will be not be done on-the-fly!");
+        GHOST_PERFWARNING_LOG("Dot product computation will be not be done on-the-fly!");
         memset(localdot,0,lhs->traits.ncols*3*sizeof(dt));
         if (traits.flags & GHOST_SPMV_DOT_YY) {
             ghost_localdot(&localdot[0],lhs,lhs);
@@ -189,7 +189,7 @@ static ghost_error ghost_cu_sell1spmv_augfunc_tmpl(ghost_densemat * lhs, ghost_d
             
     }
     if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
-        PERFWARNING_LOG("AXPBY will not be done on-the-fly!");
+        GHOST_PERFWARNING_LOG("AXPBY will not be done on-the-fly!");
         ghost_axpby(z,lhs,&seta,&sdelta);
     }
    
@@ -204,17 +204,17 @@ ghost_error ghost_cu_sell1_spmv_selector(ghost_densemat * lhs_in, ghost_sparsema
     ghost_densemat *lhs, *rhs;
     
     if (mat->traits.datatype != lhs_in->traits.datatype) {
-        ERROR_LOG("Mixed data types not implemented!");
+        GHOST_ERROR_LOG("Mixed data types not implemented!");
         ret = GHOST_ERR_NOT_IMPLEMENTED;
         goto err;
     }
     if ((lhs_in->traits.flags & GHOST_DENSEMAT_SCATTERED) || ((lhs_in->traits.storage == GHOST_DENSEMAT_ROWMAJOR) && (lhs_in->stride != 1))) {
-        PERFWARNING_LOG("Cloning lhs");
+        GHOST_PERFWARNING_LOG("Cloning lhs");
         if (lhs_in->traits.flags & GHOST_DENSEMAT_SCATTERED) {
-            PERFWARNING_LOG("Cloning and compressing lhs before operation because it is scattered");
+            GHOST_PERFWARNING_LOG("Cloning and compressing lhs before operation because it is scattered");
         }
         if ((lhs_in->traits.storage == GHOST_DENSEMAT_ROWMAJOR) && (lhs_in->stride != 1)) {
-            PERFWARNING_LOG("Cloning and transposing lhs before operation because it is row-major");
+            GHOST_PERFWARNING_LOG("Cloning and transposing lhs before operation because it is row-major");
         }
         ghost_densemat_traits lhstraits = lhs_in->traits;
         lhstraits.location = GHOST_LOCATION_DEVICE;
@@ -226,12 +226,12 @@ ghost_error ghost_cu_sell1_spmv_selector(ghost_densemat * lhs_in, ghost_sparsema
         lhs = lhs_in;
     }
     if ((rhs_in->traits.flags & GHOST_DENSEMAT_SCATTERED) || ((rhs_in->traits.ncols == 1) && (rhs_in->traits.storage == GHOST_DENSEMAT_ROWMAJOR) && (rhs_in->stride != 1))) {
-        PERFWARNING_LOG("Cloning rhs");
+        GHOST_PERFWARNING_LOG("Cloning rhs");
         if (rhs_in->traits.flags & GHOST_DENSEMAT_SCATTERED) {
-            PERFWARNING_LOG("Cloning and compressing rhs before operation because it is scattered");
+            GHOST_PERFWARNING_LOG("Cloning and compressing rhs before operation because it is scattered");
         }
         if ((rhs_in->traits.ncols == 1) && (rhs_in->traits.storage == GHOST_DENSEMAT_ROWMAJOR) && (rhs_in->stride != 1)) {
-            PERFWARNING_LOG("Cloning and transposing rhs before operation because it is row-major");
+            GHOST_PERFWARNING_LOG("Cloning and transposing rhs before operation because it is row-major");
         }
         ghost_densemat_traits rhstraits = rhs_in->traits;
         rhstraits.location = GHOST_LOCATION_DEVICE;
@@ -263,7 +263,7 @@ ghost_error ghost_cu_sell1_spmv_selector(ghost_densemat * lhs_in, ghost_sparsema
             }
         }
     } else if (rhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
-        INFO_LOG("Calling col-major cuSparse CRS SpMMV");
+        GHOST_INFO_LOG("Calling col-major cuSparse CRS SpMMV");
         if (mat->traits.datatype & GHOST_DT_DOUBLE) {
             if (mat->traits.datatype & GHOST_DT_REAL) {
                 GHOST_CALL_GOTO((ghost_cu_sell1spmmv_cm_tmpl<double,double>(mat,lhs,rhs,traits,(cusparse_sell1_spmmv_cm_kernel_t)cusparseDcsrmm)),err,ret);
@@ -278,7 +278,7 @@ ghost_error ghost_cu_sell1_spmv_selector(ghost_densemat * lhs_in, ghost_sparsema
             }
         }
     } else {
-        INFO_LOG("Calling row-major cuSparse CRS SpMMV");
+        GHOST_INFO_LOG("Calling row-major cuSparse CRS SpMMV");
         if (mat->traits.datatype & GHOST_DT_DOUBLE) {
             if (mat->traits.datatype & GHOST_DT_REAL) {
                 GHOST_CALL_GOTO((ghost_cu_sell1spmmv_rm_tmpl<double,double>(mat,lhs,rhs,traits,(cusparse_sell1_spmmv_rm_kernel_t)cusparseDcsrmm2)),err,ret);
@@ -318,7 +318,7 @@ ghost_error ghost_cu_sell1_spmv_selector(ghost_densemat * lhs_in, ghost_sparsema
     
     goto out;
 err:
-    ERROR_LOG("Error in SELL-1 SpMV!");
+    GHOST_ERROR_LOG("Error in SELL-1 SpMV!");
 out:
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);

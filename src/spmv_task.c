@@ -65,7 +65,7 @@ typedef struct {
 static void *computeLocal(void *vargs)
 {
 //#pragma omp parallel
-//    INFO_LOG("comp local t %d running @ core %d",ghost_ompGetThreadNum(),ghost_getCore());
+//    GHOST_INFO_LOG("comp local t %d running @ core %d",ghost_ompGetThreadNum(),ghost_getCore());
     //GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error *ret = NULL;
     ghost_malloc((void **)&ret,sizeof(ghost_error)); // don't use macro because it would read *ret
@@ -92,7 +92,7 @@ ghost_error ghost_spmv_taskmode(ghost_densemat* res, ghost_sparsemat* mat, ghost
     UNUSED(mat);
     UNUSED(invec);
     UNUSED(traits);
-    ERROR_LOG("Cannot execute this spMV solver without MPI");
+    GHOST_ERROR_LOG("Cannot execute this spMV solver without MPI");
     return GHOST_ERR_UNKNOWN;
 #else
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
@@ -123,13 +123,13 @@ ghost_error ghost_spmv_taskmode(ghost_densemat* res, ghost_sparsemat* mat, ghost
     ghost_task *parent = NULL;
     GHOST_CALL_RETURN(ghost_task_cur(&parent));
     if (parent) {
-        DEBUG_LOG(1,"using the parent's cores for the task mode spmv solver");
+        GHOST_DEBUG_LOG(1,"using the parent's cores for the task mode spmv solver");
         ghost_task_create(&compTask, parent->nThreads - remoteExists, 0, &computeLocal, &cplargs, taskflags, NULL, 0);
         ghost_task_create(&commTask, remoteExists, 0, &communicate, &cargs, taskflags, NULL, 0);
 
 
     } else {
-        DEBUG_LOG(1,"No parent task in task mode spmv solver");
+        GHOST_DEBUG_LOG(1,"No parent task in task mode spmv solver");
 
         int nIdleCores;
         ghost_pumap_nidle(&nIdleCores,GHOST_NUMANODE_ANY);

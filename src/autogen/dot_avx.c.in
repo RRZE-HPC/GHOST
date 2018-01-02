@@ -48,7 +48,7 @@ ghost_error ghost_dot__u_avx_d_rm_NVECS(void *res, ghost_densemat *vec1, ghost_d
     UNUSED(res);
     UNUSED(vec1);
     UNUSED(vec2);
-    ERROR_LOG("No AVX available");
+    GHOST_ERROR_LOG("No AVX available");
     return GHOST_ERR_UNKNOWN;
 #endif
 }
@@ -88,7 +88,7 @@ ghost_error ghost_dot__a_avx_d_rm_NVECS(void *res, ghost_densemat *vec1, ghost_d
     UNUSED(res);
     UNUSED(vec1);
     UNUSED(vec2);
-    ERROR_LOG("No AVX available");
+    GHOST_ERROR_LOG("No AVX available");
     return GHOST_ERR_UNKNOWN;
 #endif
 }

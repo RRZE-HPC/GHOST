@@ -83,7 +83,7 @@ ghost_error ghost_task_enqueue(ghost_task *t)
         pthread_mutex_unlock(t->mutex);
 
         if( t->parent != NULL ) {
-          DEBUG_LOG(1,"Task's parent overwritten!");
+          GHOST_DEBUG_LOG(1,"Task's parent overwritten!");
         }
         else {
           GHOST_CALL_RETURN(ghost_task_cur(&t->parent));
@@ -94,7 +94,7 @@ ghost_error ghost_task_enqueue(ghost_task *t)
         t->state = GHOST_TASK_ENQUEUED;
         pthread_mutex_unlock(t->stateMutex);
 
-        DEBUG_LOG(1,"Task added successfully");
+        GHOST_DEBUG_LOG(1,"Task added successfully");
     }
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING);
@@ -123,28 +123,28 @@ ghost_error ghost_task_wait(ghost_task * task)
     if (!ghost_tasking_enabled()) {
         return GHOST_SUCCESS;
     } else {
-        DEBUG_LOG(1,"Waiting for task %p whose state is %s",(void *)task,ghost_task_state_string(task->state));
+        GHOST_DEBUG_LOG(1,"Waiting for task %p whose state is %s",(void *)task,ghost_task_state_string(task->state));
 
 
         //    ghost_task *parent = (ghost_task *)pthread_getspecific(ghost_thread_key);
         //    if (parent != NULL) {
-        //    WARNING_LOG("Waiting on a task from within a task ===> free'ing the parent task's resources, idle PUs: %d",NIDLECORES);
+        //    GHOST_WARNING_LOG("Waiting on a task from within a task ===> free'ing the parent task's resources, idle PUs: %d",NIDLECORES);
         //    ghost_task_unpin(parent);
-        //    WARNING_LOG("Now idle PUs: %d",NIDLECORES);
+        //    GHOST_WARNING_LOG("Now idle PUs: %d",NIDLECORES);
         //    }
         ghost_task *cur;
         ghost_task_cur(&cur);
         if (cur == task) {
-            WARNING_LOG("Should wait on myself. Bad idea!");
+            GHOST_WARNING_LOG("Should wait on myself. Bad idea!");
         }
 
         pthread_mutex_lock(task->stateMutex);
         while (task->state != GHOST_TASK_FINISHED) {
-            DEBUG_LOG(1,"Waiting for signal @ cond %p from task %p",(void *)task->finishedCond,(void *)task);
+            GHOST_DEBUG_LOG(1,"Waiting for signal @ cond %p from task %p",(void *)task->finishedCond,(void *)task);
             pthread_cond_wait(task->finishedCond,task->stateMutex);
         }
         pthread_mutex_unlock(task->stateMutex);
-        DEBUG_LOG(1,"Finished waitung for task %p!",(void *)task);
+        GHOST_DEBUG_LOG(1,"Finished waitung for task %p!",(void *)task);
 
     }
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING);
@@ -183,7 +183,7 @@ void ghost_task_destroy(ghost_task *t)
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING|GHOST_FUNCTYPE_TEARDOWN);
     if (t) {
         if (t->state != GHOST_TASK_FINISHED) {
-            WARNING_LOG("The task is not finished but should be destroyed!");
+            GHOST_WARNING_LOG("The task is not finished but should be destroyed!");
         }
         sem_destroy(t->progressSem);
         pthread_cond_destroy(t->finishedCond);
@@ -211,7 +211,7 @@ ghost_error ghost_task_create(ghost_task **t, int nThreads, int LD, void *(*func
     
     if (nThreads == GHOST_TASK_FILL_LD) {
         if (LD < 0) {
-            WARNING_LOG("FILL_LD does only work when the LD is given! Not creating task!");
+            GHOST_WARNING_LOG("FILL_LD does only work when the LD is given! Not creating task!");
             return GHOST_ERR_INVALID_ARG;
         }
         ghost_pumap_npu(&(*t)->nThreads,LD);
@@ -249,7 +249,7 @@ ghost_error ghost_task_create(ghost_task **t, int nThreads, int LD, void *(*func
     (*t)->coremap = hwloc_bitmap_alloc();
     (*t)->childusedmap = hwloc_bitmap_alloc();
     if (!(*t)->coremap || !(*t)->childusedmap) {
-        ERROR_LOG("Could not allocate hwloc bitmaps");
+        GHOST_ERROR_LOG("Could not allocate hwloc bitmaps");
         ret = GHOST_ERR_HWLOC;
         goto err;
     }

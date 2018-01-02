@@ -27,7 +27,7 @@ ghost_error ghost_tsmm__a_sse_d_OUTCOLS_INCOLS_1_2_rm(ghost_densemat *x, ghost_d
     ghost_lidx m = v->traits.ncols;
     ghost_lidx n = DM_NROWS(v);
 
-    INFO_LOG("In SSE TSMM with two fixed block sizes [OUTCOLS][INCOLS] %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
+    GHOST_INFO_LOG("In SSE TSMM with two fixed block sizes [OUTCOLS][INCOLS] %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
     const double * const restrict vval = (const double *) v->val;
     const double * const restrict wval = (const double *) w->val;
@@ -69,7 +69,7 @@ ghost_error ghost_tsmm__a_sse_d_OUTCOLS_INCOLS_1_2_rm(ghost_densemat *x, ghost_d
             }
         }
     } else { // common case: X = V*W
-        INFO_LOG("Fast case: alpha=1 and beta=0");
+        GHOST_INFO_LOG("Fast case: alpha=1 and beta=0");
 #pragma omp parallel for private(j,s,tmp) schedule(runtime)
         for (i=0; i<n; i++) {
             for (s=0; s+2<=OUTCOLS; s+=2) {
@@ -92,7 +92,7 @@ ghost_error ghost_tsmm__a_sse_d_OUTCOLS_INCOLS_1_2_rm(ghost_densemat *x, ghost_d
     UNUSED(w);
     UNUSED(alpha);
     UNUSED(beta);
-    ERROR_LOG("SSE not available!");
+    GHOST_ERROR_LOG("SSE not available!");
     return GHOST_ERR_UNKNOWN;
 #endif
 }

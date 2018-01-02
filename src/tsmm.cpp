@@ -51,37 +51,37 @@ ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce, int 
 {
     if (x->traits.datatype != v->traits.datatype || x->traits.datatype != w->traits.datatype) {
         if (printerror) {
-            ERROR_LOG("Different data types!");
+            GHOST_ERROR_LOG("Different data types!");
         }
         return GHOST_ERR_INVALID_ARG;
     }
     if (x == v) {
         if (printerror) {
-           ERROR_LOG("x must not be equal to v!");
+           GHOST_ERROR_LOG("x must not be equal to v!");
         }
         return GHOST_ERR_INVALID_ARG;
     }
     if ((x->traits.flags & GHOST_DENSEMAT_SCATTERED) || (v->traits.flags & GHOST_DENSEMAT_SCATTERED) || (w->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
         if (printerror) {
-            ERROR_LOG("Scattered views not supported!");
+            GHOST_ERROR_LOG("Scattered views not supported!");
         }
         return GHOST_ERR_INVALID_ARG;
     }
     if (reduce != GHOST_GEMM_NO_REDUCE) { 
         if (printerror) {
-            ERROR_LOG("Only NO_REDUCE valid!");
+            GHOST_ERROR_LOG("Only NO_REDUCE valid!");
         }
         return GHOST_ERR_INVALID_ARG;
     }
     if (strncasecmp(transv,"N",1)) {
         if (printerror) {
-            ERROR_LOG("v must not be transposed!");
+            GHOST_ERROR_LOG("v must not be transposed!");
         }
         return GHOST_ERR_INVALID_ARG;
     }
     if (strncasecmp(transw,"N",1)) {
         if (printerror) {
-            ERROR_LOG("w must not be transposed!");
+            GHOST_ERROR_LOG("w must not be transposed!");
         }
         return GHOST_ERR_INVALID_ARG;
     }
@@ -99,9 +99,9 @@ ghost_error ghost_tsmm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w_i
     ghost_error ret;
 
     if ((ret = ghost_tsmm_valid(x,v,"N",w_in,"N",alpha,beta,GHOST_GEMM_NO_REDUCE,1)) != GHOST_SUCCESS) {
-        INFO_LOG("TSMM cannot be applied. Checking whether GEMM is fine!");
+        GHOST_INFO_LOG("TSMM cannot be applied. Checking whether GEMM is fine!");
         if ((ret = ghost_gemm_valid(x,v,"N",w_in,"N",alpha,beta,GHOST_GEMM_NO_REDUCE,GHOST_GEMM_DEFAULT,1)) != GHOST_SUCCESS) {
-            ERROR_LOG("GEMM cannot be applied!");
+            GHOST_ERROR_LOG("GEMM cannot be applied!");
             return ret;
         } else {
             return ghost_gemm(x,v,"N",w_in,"N",alpha,beta,GHOST_GEMM_NO_REDUCE,GHOST_GEMM_NOT_SPECIAL);
@@ -132,7 +132,7 @@ ghost_error ghost_tsmm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w_i
     if (w_in->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
         w = w_in;
     } else {
-        PERFWARNING_LOG("Need to transpose input densemat w!");
+        GHOST_PERFWARNING_LOG("Need to transpose input densemat w!");
         ghost_densemat_traits wtraits = w_in->traits;
         wtraits.flags &= (ghost_densemat_flags)~GHOST_DENSEMAT_VIEW;
         wtraits.storage = GHOST_DENSEMAT_COLMAJOR;
@@ -183,7 +183,7 @@ ghost_error ghost_tsmm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w_i
             }
 #endif
             if (!try_impl.size()) {
-                WARNING_LOG("The implementation set via the compute_with field (%s) is not valid! Using a valid implementation.",ghost_implementation_string(x->traits.compute_with));
+                GHOST_WARNING_LOG("The implementation set via the compute_with field (%s) is not valid! Using a valid implementation.",ghost_implementation_string(x->traits.compute_with));
             }
         }
         if (!try_impl.size()) {
@@ -275,7 +275,7 @@ ghost_error ghost_tsmm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w_i
                                     p.dt = try_dt[pos_dt];
                                     p.impl = *impl;
                                     p.multipleof = *mult;
-                                    INFO_LOG("Try xcols=%s, vcols=%s, impl=%s, %s, unroll=%d, dt=%s, multipleof=%d, storage=%s",
+                                    GHOST_INFO_LOG("Try xcols=%s, vcols=%s, impl=%s, %s, unroll=%d, dt=%s, multipleof=%d, storage=%s",
                                             p.xcols==-1?"arbitrary":ghost::to_string((long long)p.xcols).c_str(),p.vcols==-1?"arbitrary":ghost::to_string((long long)p.vcols).c_str(),
                                             ghost_implementation_string(p.impl),p.alignment==GHOST_UNALIGNED?"unaligned":"aligned",p.unroll,ghost_datatype_string(p.dt),p.multipleof,ghost_densemat_storage_string(*xstor));
                                     kernel = ghost_tsmm_kernels[p];
@@ -304,14 +304,14 @@ end_of_loop:
 
     if (kernel) {
         if (optimal) {
-            INFO_LOG("Found kernel with highest specialization grade: dt=%d xcols=%d vcols=%d xstor=%s align=%d unroll=%d impl=%s multipleof=%d",p.dt,p.xcols,p.vcols,ghost_densemat_storage_string(p.xstor),p.alignment,p.unroll,ghost_implementation_string(p.impl),p.multipleof);
+            GHOST_INFO_LOG("Found kernel with highest specialization grade: dt=%d xcols=%d vcols=%d xstor=%s align=%d unroll=%d impl=%s multipleof=%d",p.dt,p.xcols,p.vcols,ghost_densemat_storage_string(p.xstor),p.alignment,p.unroll,ghost_implementation_string(p.impl),p.multipleof);
         } else {
-            PERFWARNING_LOG("Using potentially non-optimal kernel: dt=%d xcols=%d vcols=%d xstor=%s align=%d unroll=%d impl=%s multipleof=%d",p.dt,p.xcols,p.vcols,ghost_densemat_storage_string(p.xstor),p.alignment,p.unroll,ghost_implementation_string(p.impl),p.multipleof);
+            GHOST_PERFWARNING_LOG("Using potentially non-optimal kernel: dt=%d xcols=%d vcols=%d xstor=%s align=%d unroll=%d impl=%s multipleof=%d",p.dt,p.xcols,p.vcols,ghost_densemat_storage_string(p.xstor),p.alignment,p.unroll,ghost_implementation_string(p.impl),p.multipleof);
         }
 
         ret = kernel(x,v,w,alpha,beta);
     } else {
-        PERFWARNING_LOG("Could not find TSMM kernel. Fallback to GEMM");
+        GHOST_PERFWARNING_LOG("Could not find TSMM kernel. Fallback to GEMM");
         ret = ghost_gemm(x,v,"N",w,"N",alpha,beta,GHOST_GEMM_NO_REDUCE,GHOST_GEMM_NOT_SPECIAL);
     }
 

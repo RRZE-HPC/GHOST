@@ -89,8 +89,8 @@ ghost_error checker(ghost_sparsemat *mat)
         //check pure zones
         if( (zones[4*i] != zones[4*i+1]) && ((zones[4*(i-1)] != zones[4*(i-1)+1])) && pure_min <= pure_max ) {
             ret = GHOST_ERR_BLOCKCOLOR;
-            ERROR_LOG("ERR 1");
-            ERROR_LOG("pure_min = %d, pure_max=%d, btw [%d-%d] and [%d-%d]",pure_min,pure_max, zones[4*(i-1)], zones[4*(i-1)+1],zones[4*i],zones[4*i+1]);
+            GHOST_ERROR_LOG("ERR 1");
+            GHOST_ERROR_LOG("pure_min = %d, pure_max=%d, btw [%d-%d] and [%d-%d]",pure_min,pure_max, zones[4*(i-1)], zones[4*(i-1)+1],zones[4*i],zones[4*i+1]);
             // break;
         }
         
@@ -162,7 +162,7 @@ ghost_error checker(ghost_sparsemat *mat)
         free(extrema_trans);
     
     if(ret == GHOST_ERR_BLOCKCOLOR)
-        ERROR_LOG("ERROR in BLOCK COLORING, Check hybrid splitting");
+        GHOST_ERROR_LOG("ERROR in BLOCK COLORING, Check hybrid splitting");
     
     
     return ret;            	
@@ -313,7 +313,7 @@ ghost_error split_transition(ghost_sparsemat *mat)
         if(lower <= upper) {
             //printf("check lower = %d and upper =%d\n",virtual_col(row_ptr[new_zone_ptr[4*i+2]]) , virtual_col(row_ptr[new_zone_ptr[4*i-1]]-1));
             mat->context->kacz_setting.kacz_method = GHOST_KACZ_METHOD_BMC_two_sweep;	
-            WARNING_LOG("ONLY half the available threads would be used for transitional sweep\n");
+            GHOST_WARNING_LOG("ONLY half the available threads would be used for transitional sweep\n");
             break;
         }
         
@@ -336,9 +336,9 @@ ghost_error split_transition(ghost_sparsemat *mat)
     //this causes problem for checking although the result is correct
     if(mat->traits.C == 1/* && mat->context->flags & GHOST_PERM_NO_DISTINCTION*/) 
     {
-        INFO_LOG("CHECKING BLOCK COLORING")
+        GHOST_INFO_LOG("CHECKING BLOCK COLORING")
         checker(mat);
-        INFO_LOG("CHECKING FINISHED")
+        GHOST_INFO_LOG("CHECKING FINISHED")
     }
     
     return ret;
@@ -378,7 +378,7 @@ ghost_error split_analytical(ghost_sparsemat *mat)
     int current_threads = nthread;
     
     if( current_threads > possible_threads) {
-        WARNING_LOG("Specified number of threads cannot be used for the specified KACZ kernel, setting from %d to %d",current_threads,possible_threads);
+        GHOST_WARNING_LOG("Specified number of threads cannot be used for the specified KACZ kernel, setting from %d to %d",current_threads,possible_threads);
         current_threads = possible_threads;
         // disable dynamic thread adjustments 
         ghost_omp_set_dynamic(0);
@@ -438,7 +438,7 @@ ghost_error split_analytical(ghost_sparsemat *mat)
     }
     
     if( (red_ctr == current_threads) && (black_ctr == current_threads) ) {
-        INFO_LOG("USING RED BLACK SWEEP WITHOUT TRANSITION");
+        GHOST_INFO_LOG("USING RED BLACK SWEEP WITHOUT TRANSITION");
     }
     
     //multicoloring is also dummy initialise pointers so we can use the same kacz kernel
@@ -473,7 +473,7 @@ ghost_error split_analytical(ghost_sparsemat *mat)
         if(lower <= upper) {
             //printf("check lower = %d and upper =%d\n",virtual_col(row_ptr[zone_ptr[4*i+2]]) , virtual_col(row_ptr[zone_ptr[4*i-1]]-1));
             mat->context->kacz_setting.kacz_method = GHOST_KACZ_METHOD_BMC_two_sweep;	
-            WARNING_LOG("ONLY half the available threads would be used for transitional sweep\n");
+            GHOST_WARNING_LOG("ONLY half the available threads would be used for transitional sweep\n");
             break;
         }
         
@@ -491,9 +491,9 @@ ghost_error split_analytical(ghost_sparsemat *mat)
   
     if(mat->traits.C == 1) 
     {
-        INFO_LOG("CHECKING BLOCK COLORING")
+        GHOST_INFO_LOG("CHECKING BLOCK COLORING")
         checker(mat);
-        INFO_LOG("CHECKING FINISHED")
+        GHOST_INFO_LOG("CHECKING FINISHED")
     }
 
     return ret;

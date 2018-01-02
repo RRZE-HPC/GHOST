@@ -7,7 +7,7 @@ static int ghost_blas_err = 0;
 #ifdef GHOST_HAVE_MKL
 void cblas_xerbla(const char *name, const int num)
 {
-    ERROR_LOG("Error in BLAS call %s in parameter %d",name,num);
+    GHOST_ERROR_LOG("Error in BLAS call %s in parameter %d",name,num);
     ghost_blas_err = 1;
 }
 #endif
@@ -15,7 +15,7 @@ void cblas_xerbla(const char *name, const int num)
 #ifdef GHOST_HAVE_GSL
 void cblas_xerbla (int p, const char *rout, const char *form, ...)
 {
-    ERROR_LOG("Error in BLAS call %s in parameter %d",rout,p);
+    GHOST_ERROR_LOG("Error in BLAS call %s in parameter %d",rout,p);
     ghost_blas_err = 1;
     UNUSED(form);
 }

@@ -87,7 +87,7 @@ ghost_error ghost_type_get(ghost_type *t)
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
  
     if (!t) {
-        ERROR_LOG("NULL pointer");
+        GHOST_ERROR_LOG("NULL pointer");
         return GHOST_ERR_INVALID_ARG;
     }
 
@@ -144,11 +144,11 @@ ghost_error ghost_init(int argc, char **argv)
         MPI_CALL_RETURN(MPI_Init_thread(&argc, &argv, req, &prov));
 
         if (req != prov) {
-            WARNING_LOG("Required MPI threading level (%d) is not "
+            GHOST_WARNING_LOG("Required MPI threading level (%d) is not "
                     "provided (%d)!",req,prov);
         }
     } else {
-        INFO_LOG("MPI was already initialized, not doing it!");
+        GHOST_INFO_LOG("MPI was already initialized, not doing it!");
     }
   
 #ifdef GHOST_HAVE_ZOLTAN
@@ -182,7 +182,7 @@ ghost_error ghost_init(int argc, char **argv)
     if (hwloc_bitmap_weight(cpuset) < hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_PU)) {
         char *cpusetstr;
         ghost_bitmap_list_asprintf(&cpusetstr,cpuset);
-        WARNING_LOG("GHOST is running in a restricted CPU set: %s. This is probably not what you want because GHOST cares for pinning itself. If you want to restrict the resources exposed to GHOST use the GHOST_CPUSET environment variable.",cpusetstr);
+        GHOST_WARNING_LOG("GHOST is running in a restricted CPU set: %s. This is probably not what you want because GHOST cares for pinning itself. If you want to restrict the resources exposed to GHOST use the GHOST_CPUSET environment variable.",cpusetstr);
         free(cpusetstr);
     }
     hwloc_bitmap_free(cpuset); cpuset = NULL;
@@ -205,10 +205,10 @@ ghost_error ghost_init(int argc, char **argv)
     } else {
         hwloc_bitmap_copy(availcpuset,hwloc_topology_get_allowed_cpuset(topology));
     }
-    IF_DEBUG(2) {
+    GHOST_IF_DEBUG(2) {
         char *cpusetStr;
         hwloc_bitmap_list_asprintf(&cpusetStr,availcpuset);
-        DEBUG_LOG(2,"Available CPU set: %s",cpusetStr);
+        GHOST_DEBUG_LOG(2,"Available CPU set: %s",cpusetStr);
         free(cpusetStr);
     }
 
@@ -225,7 +225,7 @@ ghost_error ghost_init(int argc, char **argv)
     ncores = hwloc_get_nbobjs_inside_cpuset_by_type(topology,availcpuset,HWLOC_OBJ_CORE);
     npus = hwloc_get_nbobjs_inside_cpuset_by_type(topology,availcpuset,HWLOC_OBJ_PU);
 
-    INFO_LOG("# sockets: %d, # NUMA nodes: %d, # cores: %d, # PUs: %d",nsockets,nnumanodes,ncores,npus);
+    GHOST_INFO_LOG("# sockets: %d, # NUMA nodes: %d, # cores: %d, # PUs: %d",nsockets,nnumanodes,ncores,npus);
 
 #ifdef GHOST_HAVE_CUDA
     GHOST_CALL_RETURN(ghost_cu_ndevice(&ncudadevs));
@@ -251,7 +251,7 @@ ghost_error ghost_init(int argc, char **argv)
 #endif
 
 #else
-    WARNING_LOG("Possibly wrong information about the number of Xeon Phis due to outdated HWLOC!");
+    GHOST_WARNING_LOG("Possibly wrong information about the number of Xeon Phis due to outdated HWLOC!");
     nxeonphis_total = 0;
 #endif
 
@@ -265,12 +265,12 @@ ghost_error ghost_init(int argc, char **argv)
 #endif
 
     if (nactivephis < nxeonphis_total) {
-        PERFWARNING_LOG("There %s %d Xeon Phi%s in the set of active nodes but only %d %s used!",
+        GHOST_PERFWARNING_LOG("There %s %d Xeon Phi%s in the set of active nodes but only %d %s used!",
                 nxeonphis_total>1?"are":"is",nxeonphis_total,nxeonphis_total>1?"s":"",nactivephis,nactivephis==1?"is":"are");
     }
 
     if (nnoderanks != nnumanodes+ncudadevs) {
-        PERFWARNING_LOG("The number of MPI processes (%d) on this node is not "
+        GHOST_PERFWARNING_LOG("The number of MPI processes (%d) on this node is not "
                 "optimal! Suggested number: %d (%d NUMA domain%s + %d CUDA device%s)",
                 nnoderanks,nnumanodes+ncudadevs,nnumanodes,nnumanodes==1?"":"s",ncudadevs,ncudadevs==1?"":"s");
     }
@@ -300,13 +300,13 @@ ghost_error ghost_init(int argc, char **argv)
             mytype = GHOST_TYPE_WORK;
         }
         if (ncudadevs && nnoderanks > 1) {
-            INFO_LOG("Setting GHOST type to %s due to heuristics.",ghost_type_string(mytype));
+            GHOST_INFO_LOG("Setting GHOST type to %s due to heuristics.",ghost_type_string(mytype));
         }
     } 
 
 #ifndef GHOST_HAVE_CUDA
     if (mytype == GHOST_TYPE_CUDA) {
-        WARNING_LOG("This rank is supposed to be a CUDA management rank but CUDA is not available. Re-setting GHOST type");
+        GHOST_WARNING_LOG("This rank is supposed to be a CUDA management rank but CUDA is not available. Re-setting GHOST type");
         mytype = GHOST_TYPE_WORK;
     }
 #endif
@@ -329,7 +329,7 @@ ghost_error ghost_init(int argc, char **argv)
 
 #ifdef GHOST_HAVE_CUDA
     if (ncudadevs < ncudaranks_on_node) {
-        WARNING_LOG("There are %d CUDA management ranks on this node but only %d CUDA devices.",ncudaranks_on_node,ncudadevs);
+        GHOST_WARNING_LOG("There are %d CUDA management ranks on this node but only %d CUDA devices.",ncudaranks_on_node,ncudadevs);
     }
 #endif
 
@@ -375,7 +375,7 @@ ghost_error ghost_init(int argc, char **argv)
             hwloc_bitmap_and(fullCuCpuset,fullCuCpuset,availcpuset);
             
             if (hwloc_bitmap_iszero(fullCuCpuset)) {
-                PERFWARNING_LOG("Placing CUDA process on far socket!");
+                GHOST_PERFWARNING_LOG("Placing CUDA process on far socket!");
                 hwloc_bitmap_copy(fullCuCpuset,availcpuset);
             }
 
@@ -406,23 +406,23 @@ ghost_error ghost_init(int argc, char **argv)
         bool ranks_cover_obj = true; 
         hwloc_obj_type_t distr_type;
         if (nsockets == ncpuranks_on_node) {
-            INFO_LOG("One process per socket");
+            GHOST_INFO_LOG("One process per socket");
             distr_type = HWLOC_OBJ_SOCKET;
         } else if (nnumanodes == ncpuranks_on_node) {
-            INFO_LOG("One process per NUMA node");
+            GHOST_INFO_LOG("One process per NUMA node");
             distr_type = HWLOC_OBJ_NODE;
         } else if (ncores == ncpuranks_on_node) {
-            INFO_LOG("One process per core");
+            GHOST_INFO_LOG("One process per core");
             distr_type = HWLOC_OBJ_CORE;
         } else if (npus == ncpuranks_on_node) {
-            INFO_LOG("One process per PU");
+            GHOST_INFO_LOG("One process per PU");
             distr_type = HWLOC_OBJ_PU;
         } else if (npus < ncpuranks_on_node) {
             distr_type = HWLOC_OBJ_PU;
-            PERFWARNING_LOG("Oversubscription! Some processes will share PUs!");
+            GHOST_PERFWARNING_LOG("Oversubscription! Some processes will share PUs!");
             ranks_cover_obj = false;
         } else {
-            PERFWARNING_LOG("Naively sharing %d PUs among %d ranks",npus,ncpuranks_on_node);
+            GHOST_PERFWARNING_LOG("Naively sharing %d PUs among %d ranks",npus,ncpuranks_on_node);
             ranks_cover_obj = false;
         }
 
@@ -446,7 +446,7 @@ ghost_error ghost_init(int argc, char **argv)
                     int obj_per_rank;
                     int nobj;
                     if (ncpuranks_on_node <= ncores) {
-                        PERFWARNING_LOG("Distributing cores among processes");
+                        GHOST_PERFWARNING_LOG("Distributing cores among processes");
                         dist_obj = HWLOC_OBJ_CORE;
                         obj_per_rank = ncores/ncpuranks_on_node;
                         nobj = ncores;
@@ -454,10 +454,10 @@ ghost_error ghost_init(int argc, char **argv)
                         dist_obj = HWLOC_OBJ_PU;
                         nobj = npus;
                         if (ncpuranks_on_node <= npus) {
-                            PERFWARNING_LOG("Distributing PUs among processes");
+                            GHOST_PERFWARNING_LOG("Distributing PUs among processes");
                             obj_per_rank = npus/ncpuranks_on_node;
                         } else {
-                            PERFWARNING_LOG("More processes than PUs!");
+                            GHOST_PERFWARNING_LOG("More processes than PUs!");
                             obj_per_rank = 1;
                         }
                     }
@@ -508,7 +508,7 @@ ghost_error ghost_init(int argc, char **argv)
         hwloc_bitmap_free(fullavailcpuset);
        
     } else {
-        INFO_LOG("One process per node");
+        GHOST_INFO_LOG("One process per node");
         if (mytype == GHOST_TYPE_WORK) {
             hwloc_bitmap_copy(mycpuset,availcpuset);
         }
@@ -520,7 +520,7 @@ ghost_error ghost_init(int argc, char **argv)
     }
 
     if (hwloc_bitmap_iszero(mycpuset)) {
-        WARNING_LOG("Something went wrong and I ended up with an empty CPU set! I will use all CPUs instead which will probably lead to resource conflicts!");
+        GHOST_WARNING_LOG("Something went wrong and I ended up with an empty CPU set! I will use all CPUs instead which will probably lead to resource conflicts!");
         hwloc_bitmap_copy(mycpuset,availcpuset);
     }
     
@@ -556,14 +556,14 @@ ghost_error ghost_init(int argc, char **argv)
         if (obj->parent->logical_index-firstcpu >= (unsigned)hwconfig.ncore) {
             hwloc_bitmap_clr(mycpuset,obj->os_index);
             if (hwloc_bitmap_iszero(mycpuset)) {
-                WARNING_LOG("Ignoring hwconfig setting as it would zero the CPU set!");
+                GHOST_WARNING_LOG("Ignoring hwconfig setting as it would zero the CPU set!");
                 hwloc_bitmap_set(mycpuset,obj->os_index);
             }
         }
         if ((int)(obj->sibling_rank) >= hwconfig.nsmt) {
             hwloc_bitmap_clr(mycpuset,obj->os_index);
             if (hwloc_bitmap_iszero(mycpuset)) {
-                WARNING_LOG("Ignoring hwconfig setting as it would zero the CPU set!");
+                GHOST_WARNING_LOG("Ignoring hwconfig setting as it would zero the CPU set!");
                 hwloc_bitmap_set(mycpuset,obj->os_index);
             }
         } 
@@ -609,7 +609,7 @@ ghost_error ghost_finalize()
     }
 
     if (ghost_autogen_missing()) {
-        PERFWARNING_LOG("Found missing autogenerated kernels! Please re-configure GHOST using:\ncmake . %s",ghost_autogen_string());
+        GHOST_PERFWARNING_LOG("Found missing autogenerated kernels! Please re-configure GHOST using:\ncmake . %s",ghost_autogen_string());
     }
 
     ghost_rand_destroy();
@@ -622,7 +622,7 @@ ghost_error ghost_finalize()
 #if GHOST_VERBOSITY
 //    char *str;
 //    ghost_timing_summarystring(&str);
-//    INFO_LOG("\n%s",str);
+//    GHOST_INFO_LOG("\n%s",str);
 //    free(str);
 #endif
 #endif

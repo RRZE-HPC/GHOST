@@ -9,7 +9,7 @@
 extern "C" ghost_error ghost_sparsemat_perm_color(ghost_context *ctx, ghost_sparsemat *mat)
 {
     #ifdef GHOST_HAVE_COLPACK
-    INFO_LOG("Create permutation from coloring");
+    GHOST_INFO_LOG("Create permutation from coloring");
     ghost_error ret = GHOST_SUCCESS;
     ghost_lidx *curcol = NULL;
     uint32_t** adolc = new uint32_t*[ctx->row_map->dim];
@@ -79,7 +79,7 @@ extern "C" ghost_error ghost_sparsemat_perm_color(ghost_context *ctx, ghost_spar
     COLPACK_CALL_GOTO(GC->DistanceTwoColoring(),err,ret);
     
     if (GC->CheckDistanceTwoColoring(2)) {
-        ERROR_LOG("Error in coloring!");
+        GHOST_ERROR_LOG("Error in coloring!");
         ret = GHOST_ERR_COLPACK;
         goto err;
     }
@@ -172,7 +172,7 @@ extern "C" ghost_error ghost_sparsemat_perm_color(ghost_context *ctx, ghost_spar
     #else
     UNUSED(mat);
     UNUSED(ctx);
-    ERROR_LOG("ColPack not available!");
+    GHOST_ERROR_LOG("ColPack not available!");
     return GHOST_ERR_NOT_IMPLEMENTED;
     #endif
 }

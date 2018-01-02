@@ -230,11 +230,11 @@ extern "C" ghost_error FUNCNAME(communicationassembly)(void * work, ghost_lidx *
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
   
     if (!ctx->cu_duelist) {
-       ERROR_LOG("cu_duelist must not be NULL!");
+       GHOST_ERROR_LOG("cu_duelist must not be NULL!");
        return GHOST_ERR_INVALID_ARG;
     }
     if (!dueptr) {
-       ERROR_LOG("dueptr must not be NULL!");
+       GHOST_ERROR_LOG("dueptr must not be NULL!");
        return GHOST_ERR_INVALID_ARG;
     }
 
@@ -247,7 +247,7 @@ extern "C" ghost_error FUNCNAME(communicationassembly)(void * work, ghost_lidx *
     for (proc=0 ; proc<nrank ; proc++){
         dim3 block((int)ceil((double)THREADSPERBLOCK/vec->traits.ncols),vec->traits.ncols);
         dim3 grid((int)ceil((double)ctx->dues[proc]/block.x));
-        DEBUG_LOG(1,"communication assembly with grid %d block %dx%d %d->%d",grid.x,block.x,block.y,me,proc);
+        GHOST_DEBUG_LOG(1,"communication assembly with grid %d block %dx%d %d->%d",grid.x,block.x,block.y,me,proc);
         if (vec->traits.datatype & GHOST_DT_COMPLEX)
         {
             if (vec->traits.datatype & GHOST_DT_DOUBLE)
@@ -282,7 +282,7 @@ extern "C" ghost_error FUNCNAME(communicationassembly)(void * work, ghost_lidx *
     cudaDeviceSynchronize();
 
     if (cudaPeekAtLastError() != cudaSuccess) {
-        ERROR_LOG("Error in kernel");
+        GHOST_ERROR_LOG("Error in kernel");
         return GHOST_ERR_CUDA;
     }
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
@@ -352,7 +352,7 @@ extern "C" ghost_error FUNCNAME(vaxpby)(ghost_densemat *v1, ghost_densemat *v2, 
 {
     if (v1->traits.datatype != v2->traits.datatype)
     {
-        ERROR_LOG("Cannot VAXPBY vectors with different data types");
+        GHOST_ERROR_LOG("Cannot VAXPBY vectors with different data types");
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
     
@@ -379,13 +379,13 @@ extern "C" ghost_error FUNCNAME(vaxpby)(ghost_densemat *v1, ghost_densemat *v2, 
     ghost_densemat *v1compact, *v2compact;
     
     if (v1->traits.flags & GHOST_DENSEMAT_SCATTERED) {
-        INFO_LOG("Cloning (and compressing) v1 before operation");
+        GHOST_INFO_LOG("Cloning (and compressing) v1 before operation");
         GHOST_CALL_GOTO(ghost_densemat_clone(&v1compact,v1,v1->traits.ncols,0),err,ret);
     } else {
         v1compact = v1;
     }
     if (v2->traits.flags & GHOST_DENSEMAT_SCATTERED) {
-        INFO_LOG("Cloning (and compressing) v2 before operation");
+        GHOST_INFO_LOG("Cloning (and compressing) v2 before operation");
         GHOST_CALL_GOTO(ghost_densemat_clone(&v2compact,v2,v2->traits.ncols,0),err,ret);
     } else {
         v2compact = v2;
@@ -447,7 +447,7 @@ extern "C" ghost_error FUNCNAME(vaxpbypcz)(ghost_densemat *v1, ghost_densemat *v
 {
     if (v1->traits.datatype != v2->traits.datatype || v1->traits.datatype != v3->traits.datatype)
     {
-        ERROR_LOG("Cannot VAXPBYPCZ vectors with different data types");
+        GHOST_ERROR_LOG("Cannot VAXPBYPCZ vectors with different data types");
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
     
@@ -477,19 +477,19 @@ extern "C" ghost_error FUNCNAME(vaxpbypcz)(ghost_densemat *v1, ghost_densemat *v
     ghost_densemat *v1compact, *v2compact, *v3compact;
     
     if (v1->traits.flags & GHOST_DENSEMAT_SCATTERED) {
-        INFO_LOG("Cloning (and compressing) v1 before operation");
+        GHOST_INFO_LOG("Cloning (and compressing) v1 before operation");
         GHOST_CALL_GOTO(ghost_densemat_clone(&v1compact,v1,v1->traits.ncols,0),err,ret);
     } else {
         v1compact = v1;
     }
     if (v2->traits.flags & GHOST_DENSEMAT_SCATTERED) {
-        INFO_LOG("Cloning (and compressing) v2 before operation");
+        GHOST_INFO_LOG("Cloning (and compressing) v2 before operation");
         GHOST_CALL_GOTO(ghost_densemat_clone(&v2compact,v2,v2->traits.ncols,0),err,ret);
     } else {
         v2compact = v2;
     }
     if (v3->traits.flags & GHOST_DENSEMAT_SCATTERED) {
-        INFO_LOG("Cloning (and compressing) v3 before operation");
+        GHOST_INFO_LOG("Cloning (and compressing) v3 before operation");
         GHOST_CALL_GOTO(ghost_densemat_clone(&v3compact,v3,v3->traits.ncols,0),err,ret);
     } else {
         v3compact = v3;
@@ -558,7 +558,7 @@ extern "C" ghost_error FUNCNAME(dotprod)(ghost_densemat *vec, void *res, ghost_d
    
     if (vec->traits.datatype != vec2->traits.datatype)
     {
-        ERROR_LOG("Cannot DOT vectors with different data types (%s and %s)",ghost_datatype_string(vec->traits.datatype),ghost_datatype_string(vec2->traits.datatype));
+        GHOST_ERROR_LOG("Cannot DOT vectors with different data types (%s and %s)",ghost_datatype_string(vec->traits.datatype),ghost_datatype_string(vec2->traits.datatype));
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
     size_t sizeofdt;
@@ -567,13 +567,13 @@ extern "C" ghost_error FUNCNAME(dotprod)(ghost_densemat *vec, void *res, ghost_d
     ghost_densemat *vec2compact;
 
     if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
-        INFO_LOG("Cloning (and compressing) vec1 before dotproduct");
+        GHOST_INFO_LOG("Cloning (and compressing) vec1 before dotproduct");
         ghost_densemat_clone(&veccompact,vec,vec->traits.ncols,0);
     } else {
         veccompact = vec;
     }
     if (vec2->traits.flags & GHOST_DENSEMAT_SCATTERED) {
-        INFO_LOG("Cloning (and compressing) vec2 before dotproduct");
+        GHOST_INFO_LOG("Cloning (and compressing) vec2 before dotproduct");
         ghost_densemat_clone(&vec2compact,vec2,vec2->traits.ncols,0);
     } else {
         vec2compact = vec2;
@@ -636,7 +636,7 @@ extern "C" ghost_error FUNCNAME(dotprod)(ghost_densemat *vec, void *res, ghost_d
         ghost_cu_free(cu_localdot_result);
 
     } else {
-        INFO_LOG("Calling CUBLAS DOT");
+        GHOST_INFO_LOG("Calling CUBLAS DOT");
         cublasHandle_t ghost_cublas_handle;
         GHOST_CALL_GOTO(ghost_cu_cublas_handle(&ghost_cublas_handle),err,ret); 
         ghost_lidx v;
@@ -729,7 +729,7 @@ extern "C" ghost_error FUNCNAME(axpby)(ghost_densemat *v1, ghost_densemat *v2, v
 {
     if (v1->traits.datatype != v2->traits.datatype)
     {
-        ERROR_LOG("Cannot AXPBY vectors with different data types");
+        GHOST_ERROR_LOG("Cannot AXPBY vectors with different data types");
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
@@ -738,13 +738,13 @@ extern "C" ghost_error FUNCNAME(axpby)(ghost_densemat *v1, ghost_densemat *v2, v
     ghost_densemat *v1compact, *v2compact;
     
     if (v1->traits.flags & GHOST_DENSEMAT_SCATTERED) {
-        INFO_LOG("Cloning (and compressing) v1 before operation");
+        GHOST_INFO_LOG("Cloning (and compressing) v1 before operation");
         GHOST_CALL_GOTO(ghost_densemat_clone(&v1compact,v1,v1->traits.ncols,0),err,ret);
     } else {
         v1compact = v1;
     }
     if (v2->traits.flags & GHOST_DENSEMAT_SCATTERED) {
-        INFO_LOG("Cloning (and compressing) v2 before operation");
+        GHOST_INFO_LOG("Cloning (and compressing) v2 before operation");
         GHOST_CALL_GOTO(ghost_densemat_clone(&v2compact,v2,v2->traits.ncols,0),err,ret);
     } else {
         v2compact = v2;
@@ -800,7 +800,7 @@ extern "C" ghost_error FUNCNAME(axpbypcz)(ghost_densemat *v1, ghost_densemat *v2
 {
     if (v1->traits.datatype != v2->traits.datatype || v1->traits.datatype != v3->traits.datatype)
     {
-        ERROR_LOG("Cannot VAXPBYPCZ vectors with different data types");
+        GHOST_ERROR_LOG("Cannot VAXPBYPCZ vectors with different data types");
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
     
@@ -815,19 +815,19 @@ extern "C" ghost_error FUNCNAME(axpbypcz)(ghost_densemat *v1, ghost_densemat *v2
     ghost_densemat *v1compact, *v2compact, *v3compact;
     
     if (v1->traits.flags & GHOST_DENSEMAT_SCATTERED) {
-        INFO_LOG("Cloning (and compressing) v1 before operation");
+        GHOST_INFO_LOG("Cloning (and compressing) v1 before operation");
         GHOST_CALL_GOTO(ghost_densemat_clone(&v1compact,v1,v1->traits.ncols,0),err,ret);
     } else {
         v1compact = v1;
     }
     if (v2->traits.flags & GHOST_DENSEMAT_SCATTERED) {
-        INFO_LOG("Cloning (and compressing) v2 before operation");
+        GHOST_INFO_LOG("Cloning (and compressing) v2 before operation");
         GHOST_CALL_GOTO(ghost_densemat_clone(&v2compact,v2,v2->traits.ncols,0),err,ret);
     } else {
         v2compact = v2;
     }
     if (v3->traits.flags & GHOST_DENSEMAT_SCATTERED) {
-        INFO_LOG("Cloning (and compressing) v3 before operation");
+        GHOST_INFO_LOG("Cloning (and compressing) v3 before operation");
         GHOST_CALL_GOTO(ghost_densemat_clone(&v3compact,v3,v3->traits.ncols,0),err,ret);
     } else {
         v3compact = v3;
@@ -896,7 +896,7 @@ extern "C" ghost_error FUNCNAME(scale)(ghost_densemat *vec, void *a)
     ghost_densemat *veccompact;
     
     if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
-        INFO_LOG("Cloning (and compressing) vec before operation");
+        GHOST_INFO_LOG("Cloning (and compressing) vec before operation");
         GHOST_CALL_GOTO(ghost_densemat_clone(&veccompact,vec,vec->traits.ncols,0),err,ret);
     } else {
         veccompact = vec;
@@ -934,7 +934,7 @@ extern "C" ghost_error FUNCNAME(scale)(ghost_densemat *vec, void *a)
         }
     }
     if (veccompact != vec) {
-        INFO_LOG("Transform back");
+        GHOST_INFO_LOG("Transform back");
         GHOST_CALL_GOTO(ghost_densemat_init_densemat(vec,veccompact,0,0),err,ret);
         ghost_densemat_destroy(veccompact);
     }
@@ -962,7 +962,7 @@ extern "C" ghost_error FUNCNAME(vscale)(ghost_densemat *vec, void *a)
     ghost_densemat *veccompact;
     
     if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
-        INFO_LOG("Cloning (and compressing) vec before operation");
+        GHOST_INFO_LOG("Cloning (and compressing) vec before operation");
         GHOST_CALL_GOTO(ghost_densemat_clone(&veccompact,vec,vec->traits.ncols,0),err,ret);
     } else {
         veccompact = vec;
@@ -1006,7 +1006,7 @@ extern "C" ghost_error FUNCNAME(vscale)(ghost_densemat *vec, void *a)
         }
     }
     if (veccompact != vec) {
-        INFO_LOG("Transform back");
+        GHOST_INFO_LOG("Transform back");
         GHOST_CALL_GOTO(ghost_densemat_init_densemat(vec,veccompact,0,0),err,ret);
         ghost_densemat_destroy(veccompact);
     }
@@ -1032,7 +1032,7 @@ extern "C" ghost_error FUNCNAME(fromScalar)(ghost_densemat *vec, void *a)
     ghost_densemat *veccompact;
     
     if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
-        INFO_LOG("Cloning (and compressing) vec before operation");
+        GHOST_INFO_LOG("Cloning (and compressing) vec before operation");
         GHOST_CALL_GOTO(ghost_densemat_clone(&veccompact,vec,vec->traits.ncols,0),err,ret);
     } else {
         veccompact = vec;
@@ -1070,7 +1070,7 @@ extern "C" ghost_error FUNCNAME(fromScalar)(ghost_densemat *vec, void *a)
         }
     }
     if (veccompact != vec) {
-        INFO_LOG("Transform back");
+        GHOST_INFO_LOG("Transform back");
         GHOST_CALL_GOTO(ghost_densemat_init_densemat(vec,veccompact,0,0),err,ret);
         ghost_densemat_destroy(veccompact);
     }
@@ -1112,7 +1112,7 @@ extern "C" ghost_error FUNCNAME(fromRand)(ghost_densemat *vec)
     ghost_densemat *compactvec;
     
     if ((vec->src->traits.ncols != vec->traits.ncols) || (vec->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
-        INFO_LOG("Cloning (and compressing) vec before operation");
+        GHOST_INFO_LOG("Cloning (and compressing) vec before operation");
         ghost_densemat_clone(&compactvec,vec,vec->traits.ncols,0);
     } else {
         compactvec = vec;
@@ -1169,7 +1169,7 @@ extern "C" ghost_error FUNCNAME(conj)(ghost_densemat *vec)
     ghost_densemat *veccompact;
     
     if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
-        INFO_LOG("Cloning (and compressing) vec before operation");
+        GHOST_INFO_LOG("Cloning (and compressing) vec before operation");
         GHOST_CALL_GOTO(ghost_densemat_clone(&veccompact,vec,vec->traits.ncols,0),err,ret);
     } else {
         veccompact = vec;
@@ -1189,7 +1189,7 @@ extern "C" ghost_error FUNCNAME(conj)(ghost_densemat *vec)
                 DM_NROWS(vec),vec->traits.ncols,veccompact->stride);
     }
     if (veccompact != vec) {
-        INFO_LOG("Transform back");
+        GHOST_INFO_LOG("Transform back");
         GHOST_CALL_GOTO(ghost_densemat_init_densemat(vec,veccompact,0,0),err,ret);
         ghost_densemat_destroy(veccompact);
     }

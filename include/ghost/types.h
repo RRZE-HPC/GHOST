@@ -50,7 +50,7 @@ typedef int ghost_mpi_datatype;
                 if (dt2 & GHOST_DT_DOUBLE) {\
                     ret = func<complexclass<double>,double>(__VA_ARGS__);\
                 } else {\
-                    WARNING_LOG("Incompatible data types!");\
+                    GHOST_WARNING_LOG("Incompatible data types!");\
                 }\
             }\
         } else {\
@@ -62,7 +62,7 @@ typedef int ghost_mpi_datatype;
                 }\
             } else {\
                 if (dt2 & GHOST_DT_DOUBLE) {\
-                    WARNING_LOG("Incompatible data types!");\
+                    GHOST_WARNING_LOG("Incompatible data types!");\
                 } else {\
                     ret = func<complexclass<float>,float>(__VA_ARGS__);\
                 }\
@@ -74,7 +74,7 @@ typedef int ghost_mpi_datatype;
                 if (dt2 & GHOST_DT_DOUBLE) {\
                     ret = func<double,complexclass<double> >(__VA_ARGS__);\
                 } else {\
-                    WARNING_LOG("Incompatible data types!");\
+                    GHOST_WARNING_LOG("Incompatible data types!");\
                 }\
             } else {\
                 if (dt2 & GHOST_DT_DOUBLE) {\
@@ -86,7 +86,7 @@ typedef int ghost_mpi_datatype;
         } else {\
             if (dt2 & GHOST_DT_COMPLEX) {\
                 if (dt2 & GHOST_DT_DOUBLE) {\
-                    WARNING_LOG("Incompatible data types!");\
+                    GHOST_WARNING_LOG("Incompatible data types!");\
                 } else {\
                     ret = func<float,complexclass<float> >(__VA_ARGS__);\
                 }\

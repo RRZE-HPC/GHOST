@@ -23,10 +23,10 @@ ghost_error ghost_tsmm__a_plain_d_OUTCOLS_INCOLS_OUTERUNROLL_1_rm(ghost_densemat
     
     if (n%OUTERUNROLL) {
         n+=(OUTERUNROLL-n%OUTERUNROLL);
-        INFO_LOG("Padding large dimension to %d\n",n);
+        GHOST_INFO_LOG("Padding large dimension to %d\n",n);
     }
 
-    INFO_LOG("In TSMM with two fixed block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
+    GHOST_INFO_LOG("In TSMM with two fixed block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
     const double * const restrict vval = (const double *) v->val;
     const double * const restrict wval = (const double *) w->val;
@@ -89,10 +89,10 @@ ghost_error ghost_tsmm__u_plain_d_OUTCOLS_INCOLS_OUTERUNROLL_1_rm(ghost_densemat
     
     if (n%OUTERUNROLL) {
         n+=(OUTERUNROLL-n%OUTERUNROLL);
-        INFO_LOG("Padding large dimension to %d\n",n);
+        GHOST_INFO_LOG("Padding large dimension to %d\n",n);
     }
 
-    INFO_LOG("In TSMM with two fixed block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
+    GHOST_INFO_LOG("In TSMM with two fixed block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
     const double * const restrict vval = (const double *) v->val;
     const double * const restrict wval = (const double *) w->val;
@@ -166,10 +166,10 @@ ghost_error ghost_tsmm__a_plain_d_OUTCOLS_INCOLS_OUTERUNROLL_1_cm(ghost_densemat
     
     if (n%OUTERUNROLL) {
         n+=(OUTERUNROLL-n%OUTERUNROLL);
-        INFO_LOG("Padding large dimension to %d\n",n);
+        GHOST_INFO_LOG("Padding large dimension to %d\n",n);
     }
 
-    INFO_LOG("In TSMM with two fixed block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
+    GHOST_INFO_LOG("In TSMM with two fixed block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
     const double * const restrict vval = (const double *) v->val;
     const double * const restrict wval = (const double *) w->val;
@@ -288,10 +288,10 @@ ghost_error ghost_tsmm__u_plain_d_OUTCOLS_INCOLS_OUTERUNROLL_1_cm(ghost_densemat
     
     if (n%OUTERUNROLL) {
         n+=(OUTERUNROLL-n%OUTERUNROLL);
-        INFO_LOG("Padding large dimension to %d\n",n);
+        GHOST_INFO_LOG("Padding large dimension to %d\n",n);
     }
 
-    INFO_LOG("In TSMM with two fixed block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
+    GHOST_INFO_LOG("In TSMM with two fixed block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
     const double * const restrict vval = (const double *) v->val;
     const double * const restrict wval = (const double *) w->val;
@@ -409,10 +409,10 @@ ghost_error ghost_tsmm__a_plain_z_OUTCOLS_INCOLS_OUTERUNROLL_1_rm(ghost_densemat
     
     if (n%OUTERUNROLL) {
         n+=(OUTERUNROLL-n%OUTERUNROLL);
-        INFO_LOG("Padding large dimension to %d\n",n);
+        GHOST_INFO_LOG("Padding large dimension to %d\n",n);
     }
 
-    INFO_LOG("In TSMM with two fixed block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
+    GHOST_INFO_LOG("In TSMM with two fixed block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
     const double complex * const restrict vval = (const double complex*) v->val;
     const double complex * const restrict wval = (const double complex*) w->val;
@@ -444,7 +444,7 @@ ghost_error ghost_tsmm__a_plain_z_OUTCOLS_INCOLS_OUTERUNROLL_1_rm(ghost_densemat
             }
         }
     } else {
-        INFO_LOG("fast case beta=0");
+        GHOST_INFO_LOG("fast case beta=0");
         double complex tmp[OUTERUNROLL*OUTCOLS];
 #pragma omp parallel for private(j,s,tmp) schedule(runtime)
         for (i=0; i<=n-OUTERUNROLL; i+=OUTERUNROLL) {

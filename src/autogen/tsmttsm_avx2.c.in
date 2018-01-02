@@ -28,11 +28,11 @@ ghost_error ghost_tsmttsm__a_avx2_d_CFGK_CFGM_2_rm(ghost_densemat *x, ghost_dens
     ghost_error ret = GHOST_SUCCESS;
 
     ghost_lidx n = DM_NROWS(v);
-    INFO_LOG("In AVX2 TSMTTSM with two fixed block sizes [CFGK][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
+    GHOST_INFO_LOG("In AVX2 TSMTTSM with two fixed block sizes [CFGK][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
 
     if (n%2) {
         n+=1;
-        INFO_LOG("Padding large dimension to %d\n",n);
+        GHOST_INFO_LOG("Padding large dimension to %d\n",n);
     }
     
     const double * const restrict vval = (const double *) v->val;
@@ -98,7 +98,7 @@ ghost_error ghost_tsmttsm__a_avx2_d_CFGK_CFGM_2_rm(ghost_densemat *x, ghost_dens
                 }
             }
         } else {
-            INFO_LOG("fast case alpha=1");
+            GHOST_INFO_LOG("fast case alpha=1");
 
 #pragma omp for schedule(runtime)
             for (i=0; i<=n-2; i+=2) {
@@ -163,7 +163,7 @@ ghost_error ghost_tsmttsm__a_avx2_d_CFGK_CFGM_2_rm(ghost_densemat *x, ghost_dens
     UNUSED(w);
     UNUSED(alpha);
     UNUSED(beta);
-    ERROR_LOG("No AVX2 available!");
+    GHOST_ERROR_LOG("No AVX2 available!");
     return GHOST_ERR_UNKNOWN;
 #endif
 }
@@ -176,11 +176,11 @@ ghost_error ghost_tsmttsm__a_avx2_z_CFGK_CFGM_2_rm(ghost_densemat *x, ghost_dens
     ghost_error ret = GHOST_SUCCESS;
 
     ghost_lidx n = DM_NROWS(v);
-    INFO_LOG("In AVX2 TSMTTSM with two fixed block sizes [CFGK][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
+    GHOST_INFO_LOG("In AVX2 TSMTTSM with two fixed block sizes [CFGK][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
 
     if (n%2) {
         n+=1;
-        INFO_LOG("Padding large dimension to %d\n",n);
+        GHOST_INFO_LOG("Padding large dimension to %d\n",n);
     }
     
     const double complex * const restrict vval = (const double complex*) v->val;
@@ -244,7 +244,7 @@ ghost_error ghost_tsmttsm__a_avx2_z_CFGK_CFGM_2_rm(ghost_densemat *x, ghost_dens
                     }
                 }
             } else {
-                INFO_LOG("fast case alpha=1");
+                GHOST_INFO_LOG("fast case alpha=1");
 
 #pragma omp for schedule(runtime)
                 for (i=0; i<=n-2; i+=2) {
@@ -296,7 +296,7 @@ ghost_error ghost_tsmttsm__a_avx2_z_CFGK_CFGM_2_rm(ghost_densemat *x, ghost_dens
                     }
                 }
             } else {
-                INFO_LOG("fast case alpha=1");
+                GHOST_INFO_LOG("fast case alpha=1");
 
 #pragma omp for schedule(runtime)
                 for (i=0; i<=n-2; i+=2) {
@@ -345,7 +345,7 @@ ghost_error ghost_tsmttsm__a_avx2_z_CFGK_CFGM_2_rm(ghost_densemat *x, ghost_dens
     UNUSED(w);
     UNUSED(alpha);
     UNUSED(beta);
-    ERROR_LOG("No AVX2 available!");
+    GHOST_ERROR_LOG("No AVX2 available!");
     return GHOST_ERR_UNKNOWN;
 #endif
 }

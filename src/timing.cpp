@@ -136,7 +136,7 @@ ghost_error ghost_timing_region_create(ghost_timing_region ** ri, const char *ta
     goto out;
 
 err:
-    ERROR_LOG("Freeing region info");
+    GHOST_ERROR_LOG("Freeing region info");
     if (*ri) {
         free((*ri)->times); (*ri)->times = NULL;
     }
@@ -264,20 +264,20 @@ ghost_error ghost_timing_summarystring(char **str)
                 double P_min = 0., P_max = 0., P_avg = 0., P_skip10 = 0.;
                 int err = pf(&P_min,region->maxTime,pfa);
                 if (err) {
-                    ERROR_LOG("Error in calling performance computation callback!");
+                    GHOST_ERROR_LOG("Error in calling performance computation callback!");
                 }
                 err = pf(&P_max,region->minTime,pfa);
                 if (err) {
-                    ERROR_LOG("Error in calling performance computation callback!");
+                    GHOST_ERROR_LOG("Error in calling performance computation callback!");
                 }
                 err = pf(&P_avg,region->avgTime,pfa);
                 if (err) {
-                    ERROR_LOG("Error in calling performance computation callback!");
+                    GHOST_ERROR_LOG("Error in calling performance computation callback!");
                 }
                 if (region->nCalls > 10) {
                     err = pf(&P_skip10,accumulate(iter->second.times.begin()+10,iter->second.times.end(),0.)/(region->nCalls-10),pfa);
                     if (err) {
-                        ERROR_LOG("Error in calling performance computation callback!");
+                        GHOST_ERROR_LOG("Error in calling performance computation callback!");
                     }
                 }
 

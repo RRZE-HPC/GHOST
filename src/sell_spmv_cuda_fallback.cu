@@ -170,13 +170,13 @@ static ghost_error ghost_sellspmv_cu_tmpl_fallback(ghost_densemat *lhs, ghost_sp
     ghost_lidx zstride;
     ghost_densemat *lhscompact, *rhscompact, *zcompact;
     if (lhs->traits.flags & GHOST_DENSEMAT_SCATTERED) {
-        PERFWARNING_LOG("Cloning (and compressing) lhs before operation");
+        GHOST_PERFWARNING_LOG("Cloning (and compressing) lhs before operation");
         GHOST_CALL_RETURN(ghost_densemat_clone(&lhscompact,lhs,lhs->traits.ncols,0));
     } else {
         lhscompact = lhs;
     }
     if (rhs->traits.flags & GHOST_DENSEMAT_SCATTERED) {
-        PERFWARNING_LOG("Cloning (and compressing) rhs before operation");
+        GHOST_PERFWARNING_LOG("Cloning (and compressing) rhs before operation");
         GHOST_CALL_RETURN(ghost_densemat_clone(&rhscompact,rhs,rhs->traits.ncols,0));
     } else {
         rhscompact = rhs;
@@ -198,7 +198,7 @@ static ghost_error ghost_sellspmv_cu_tmpl_fallback(ghost_densemat *lhs, ghost_sp
     dim3 block, grid;
     GHOST_SPMV_PARSE_TRAITS(opts,scale,beta,shift,localdot,z,sdelta,seta,v_dt_host,v_dt_device);
     if (z && (z->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
-        PERFWARNING_LOG("Cloning (and compressing) z before operation");
+        GHOST_PERFWARNING_LOG("Cloning (and compressing) z before operation");
         GHOST_CALL_RETURN(ghost_densemat_clone(&zcompact,z,z->traits.ncols,0));
     } else {
         zcompact = z;
@@ -248,9 +248,9 @@ static ghost_error ghost_sellspmv_cu_tmpl_fallback(ghost_densemat *lhs, ghost_sp
             smem = sizeof(v_dt_device)*32*block.y;
         }
         if (prop.sharedMemPerBlock < smem) {
-            WARNING_LOG("Not enough shared memory available! CUDA kernel will not execute!");
+            GHOST_WARNING_LOG("Not enough shared memory available! CUDA kernel will not execute!");
         }
-        DEBUG_LOG(1,"grid %dx%d block %dx%d shmem %zu",grid.x,grid.y,block.x,block.y,smem);
+        GHOST_DEBUG_LOG(1,"grid %dx%d block %dx%d shmem %zu",grid.x,grid.y,block.x,block.y,smem);
         SELL_kernel_cm_fallback_tmpl<m_dt,v_dt_device,v_dt_base><<<grid,block,smem>>>(
                 (v_dt_device *)lhsval,(int)(lhs->stride),(v_dt_device *)rhsval,
                 (int)rhs->stride,opts.flags,SPM_NROWS(mat),mat->cu_rowLen,
@@ -271,7 +271,7 @@ static ghost_error ghost_sellspmv_cu_tmpl_fallback(ghost_densemat *lhs, ghost_sp
             if (opts.flags & GHOST_SPMV_DOT) {
                 GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
             }
-            DEBUG_LOG(1,"grid %dx%d block %dx%d nrowsinblock %d",grid.x,grid.y,block.x,block.y,nrowsinblock);
+            GHOST_DEBUG_LOG(1,"grid %dx%d block %dx%d nrowsinblock %d",grid.x,grid.y,block.x,block.y,nrowsinblock);
             SELL_kernel_rm_fallback_tmpl<m_dt,v_dt_device,v_dt_base><<<grid,block,0>>>(
                     (v_dt_device *)lhsval,(int)(lhs->stride),(v_dt_device *)rhsval,
                     (int)rhs->stride,opts.flags,SPM_NROWS(mat),nrowsinblock,mat->cu_rowLen,
@@ -291,7 +291,7 @@ static ghost_error ghost_sellspmv_cu_tmpl_fallback(ghost_densemat *lhs, ghost_sp
             if (opts.flags & GHOST_SPMV_DOT) {
                 GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
             }
-            DEBUG_LOG(1,"grid %dx%d block %dx%d nrowsinblock %d",grid.x,grid.y,block.x,block.y,nrowsinblock);
+            GHOST_DEBUG_LOG(1,"grid %dx%d block %dx%d nrowsinblock %d",grid.x,grid.y,block.x,block.y,nrowsinblock);
             SELL_kernel_rm_fallback_tmpl<m_dt,v_dt_device,v_dt_base><<<grid,block,0>>>(
                     (v_dt_device *)lhsval,(int)(lhs->stride),(v_dt_device *)rhsval,
                     (int)rhs->stride,opts.flags,SPM_NROWS(mat),nrowsinblock,mat->cu_rowLen,
@@ -312,7 +312,7 @@ static ghost_error ghost_sellspmv_cu_tmpl_fallback(ghost_densemat *lhs, ghost_sp
                 GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
             }
             int smem = (block.x/32)*sizeof(v_dt_device);
-            DEBUG_LOG(1,"grid %dx%d block %dx%d nrowsinblock %d smem %d",grid.x,grid.y,block.x,block.y,nrowsinblock,smem);
+            GHOST_DEBUG_LOG(1,"grid %dx%d block %dx%d nrowsinblock %d smem %d",grid.x,grid.y,block.x,block.y,nrowsinblock,smem);
             SELL_kernel_rm_fallback_tmpl<m_dt,v_dt_device,v_dt_base><<<grid,block,smem>>>(
                     (v_dt_device *)lhsval,(int)(lhs->stride),(v_dt_device *)rhsval,
                     (int)rhs->stride,opts.flags,SPM_NROWS(mat),nrowsinblock,mat->cu_rowLen,
@@ -333,7 +333,7 @@ static ghost_error ghost_sellspmv_cu_tmpl_fallback(ghost_densemat *lhs, ghost_sp
                 GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
             }
             int smem = (block.x/32)*sizeof(v_dt_device);
-            DEBUG_LOG(1,"grid %dx%d block %dx%d nrowsinblock %d smem %d",grid.x,grid.y,block.x,block.y,nrowsinblock,smem);
+            GHOST_DEBUG_LOG(1,"grid %dx%d block %dx%d nrowsinblock %d smem %d",grid.x,grid.y,block.x,block.y,nrowsinblock,smem);
             SELL_kernel_rm_fallback_tmpl<m_dt,v_dt_device,v_dt_base><<<grid,block,smem>>>(
                     (v_dt_device *)lhsval,(int)(lhs->stride),(v_dt_device *)rhsval,
                     (int)rhs->stride,opts.flags,SPM_NROWS(mat),nrowsinblock,mat->cu_rowLen,
@@ -354,7 +354,7 @@ static ghost_error ghost_sellspmv_cu_tmpl_fallback(ghost_densemat *lhs, ghost_sp
                 GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
             }
             int smem = (block.x/32)*sizeof(v_dt_device);
-            DEBUG_LOG(1,"grid %dx%d block %dx%d nrowsinblock %d smem %d",grid.x,grid.y,block.x,block.y,nrowsinblock,smem);
+            GHOST_DEBUG_LOG(1,"grid %dx%d block %dx%d nrowsinblock %d smem %d",grid.x,grid.y,block.x,block.y,nrowsinblock,smem);
             SELL_kernel_rm_fallback_tmpl<m_dt,v_dt_device,v_dt_base><<<grid,block,smem>>>(
                     (v_dt_device *)lhsval,(int)(lhs->stride),(v_dt_device *)rhsval,
                     (int)rhs->stride,opts.flags,SPM_NROWS(mat),nrowsinblock,mat->cu_rowLen,
@@ -371,12 +371,12 @@ static ghost_error ghost_sellspmv_cu_tmpl_fallback(ghost_densemat *lhs, ghost_sp
     CUDA_CALL_RETURN(cudaGetLastError());
 
     if (lhscompact != lhs) {
-        DEBUG_LOG(1,"Transform lhs back");
+        GHOST_DEBUG_LOG(1,"Transform lhs back");
         GHOST_CALL_RETURN(ghost_densemat_init_densemat(lhs,lhscompact,0,0));
         ghost_densemat_destroy(lhscompact);
     }
     if (rhscompact != rhs) {
-        DEBUG_LOG(1,"Transform rhs back");
+        GHOST_DEBUG_LOG(1,"Transform rhs back");
         GHOST_CALL_RETURN(ghost_densemat_init_densemat(rhs,rhscompact,0,0));
         ghost_densemat_destroy(rhscompact);
     }
@@ -418,7 +418,7 @@ static ghost_error ghost_sellspmv_cu_tmpl_fallback(ghost_densemat *lhs, ghost_sp
         GHOST_INSTR_STOP("spmv_cuda_dot_reduction")
 #else
         GHOST_INSTR_START("spmv_cuda_dot")
-        PERFWARNING_LOG("Not doing the local dot product on-the-fly!");
+        GHOST_PERFWARNING_LOG("Not doing the local dot product on-the-fly!");
         memset(localdot,0,rhs->traits.ncols*3*sizeof(v_dt_host));
         ghost_localdot(&localdot[0],lhs,lhs);
         ghost_localdot(&localdot[rhs->traits.ncols],rhs,lhs);
@@ -427,7 +427,7 @@ static ghost_error ghost_sellspmv_cu_tmpl_fallback(ghost_densemat *lhs, ghost_sp
 #endif
         }
     //if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
-    //    PERFWARNING_LOG("AXPBY will not be done on-the-fly!");
+    //    GHOST_PERFWARNING_LOG("AXPBY will not be done on-the-fly!");
     //    z->axpby(z,lhs,&seta,&sdelta);
     // }
     if (opts.flags & GHOST_SPMV_DOT) {

@@ -24,17 +24,17 @@ ghost_error ghost_topology_create()
     }
 
     if (hwloc_topology_init(&ghost_topology)) {
-        ERROR_LOG("Could not init topology");
+        GHOST_ERROR_LOG("Could not init topology");
         return GHOST_ERR_HWLOC;
     }
 
     if (hwloc_topology_set_flags(ghost_topology,HWLOC_TOPOLOGY_FLAG_IO_DEVICES)) {
-        ERROR_LOG("Could not set topology flags");
+        GHOST_ERROR_LOG("Could not set topology flags");
         return GHOST_ERR_HWLOC;
     }
 
     if (hwloc_topology_load(ghost_topology)) {
-        ERROR_LOG("Could not load topology");
+        GHOST_ERROR_LOG("Could not load topology");
         return GHOST_ERR_HWLOC;
     }
 
@@ -55,12 +55,12 @@ ghost_error ghost_topology_get(hwloc_topology_t *topo)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     if (!topo) {
-        ERROR_LOG("NULL pointer");
+        GHOST_ERROR_LOG("NULL pointer");
         return GHOST_ERR_INVALID_ARG;
     }
 
     if (!ghost_topology) {
-        ERROR_LOG("Topology does not exist!");
+        GHOST_ERROR_LOG("Topology does not exist!");
         return GHOST_ERR_UNKNOWN;
     }
 
@@ -147,12 +147,12 @@ ghost_error ghost_machine_ncore(int *ncore, int numanode)
     GHOST_CALL_RETURN(ghost_machine_nsmt(&smt));
 
     if (smt == 0) {
-        ERROR_LOG("The SMT level is zero");
+        GHOST_ERROR_LOG("The SMT level is zero");
         return GHOST_ERR_UNKNOWN;
     }
 
     if (nPUs % smt) {
-        ERROR_LOG("The number of PUs (%d) is not a multiple of the SMT level (%d)",nPUs,smt);
+        GHOST_ERROR_LOG("The number of PUs (%d) is not a multiple of the SMT level (%d)",nPUs,smt);
         return GHOST_ERR_UNKNOWN;
     }
 
@@ -189,7 +189,7 @@ ghost_error ghost_machine_npu_in_cpuset(int *nPUs, hwloc_const_cpuset_t set)
     GHOST_CALL_RETURN(ghost_topology_get(&topology));
     int npus = hwloc_get_nbobjs_inside_cpuset_by_type(topology,set,HWLOC_OBJ_PU);
     if (npus < 0) {
-        ERROR_LOG("Could not obtain number of PUs");
+        GHOST_ERROR_LOG("Could not obtain number of PUs");
         return GHOST_ERR_HWLOC;
     } else if (npus == 0) {
         *nPUs = 1;
@@ -208,7 +208,7 @@ ghost_error ghost_machine_ncore_in_cpuset(int *nCores, hwloc_const_cpuset_t set)
     GHOST_CALL_RETURN(ghost_topology_get(&topology));
     int ncores = hwloc_get_nbobjs_inside_cpuset_by_type(topology,set,HWLOC_OBJ_CORE);
     if (ncores < 0) {
-        ERROR_LOG("Could not obtain number of cores");
+        GHOST_ERROR_LOG("Could not obtain number of cores");
         return GHOST_ERR_HWLOC;
     } else if (ncores == 0) {
         *nCores = 1;
@@ -227,7 +227,7 @@ ghost_error ghost_machine_nsmt(int *nLevels)
     GHOST_CALL_RETURN(ghost_topology_get(&topology));
 
     if (!topology) {
-        ERROR_LOG("The topology is NULL");
+        GHOST_ERROR_LOG("The topology is NULL");
         return GHOST_ERR_UNKNOWN;
     }
 
@@ -245,7 +245,7 @@ ghost_error ghost_machine_nnuma_in_cpuset(int *nNodes, hwloc_const_cpuset_t set)
     GHOST_CALL_RETURN(ghost_topology_get(&topology));
     int nnodes = hwloc_get_nbobjs_inside_cpuset_by_type(topology,set,HWLOC_OBJ_NODE);
     if (nnodes < 0) {
-        ERROR_LOG("Could not obtain number of NUMA nodes");
+        GHOST_ERROR_LOG("Could not obtain number of NUMA nodes");
         return GHOST_ERR_HWLOC;
     } else if (nnodes == 0) {
         *nNodes = 1;
@@ -264,7 +264,7 @@ ghost_error ghost_machine_nnuma(int *nNodes)
     GHOST_CALL_RETURN(ghost_topology_get(&topology));
     int nnodes = hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_NODE);
     if (nnodes < 0) {
-        ERROR_LOG("Could not obtain number of NUMA nodes");
+        GHOST_ERROR_LOG("Could not obtain number of NUMA nodes");
         return GHOST_ERR_HWLOC;
     } else if (nnodes == 0) {
         *nNodes = 1;
@@ -417,7 +417,7 @@ ghost_error ghost_machine_numanode(hwloc_obj_t *node, int idx)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     if (!node) {
-        ERROR_LOG("NULL pointer");
+        GHOST_ERROR_LOG("NULL pointer");
         GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
         return GHOST_ERR_INVALID_ARG;
     }
@@ -428,7 +428,7 @@ ghost_error ghost_machine_numanode(hwloc_obj_t *node, int idx)
     int nNodes = hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_NODE);
     
     if (idx < 0 || (idx >= nNodes && nNodes > 0)) {
-        ERROR_LOG("Index out of range");
+        GHOST_ERROR_LOG("Index out of range");
         GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
         return GHOST_ERR_INVALID_ARG;
     }

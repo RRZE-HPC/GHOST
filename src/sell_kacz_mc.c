@@ -48,7 +48,7 @@ ghost_error ghost_kacz_mc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densema
     } 
    if(threads[0] > 1)
    {
-     ERROR_LOG("KACZ: Matrix not colored and you are trying to use more than 1 thread");
+     GHOST_ERROR_LOG("KACZ: Matrix not colored and you are trying to use more than 1 thread");
      GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
      return GHOST_ERR_NOT_COLORED;
    } else {
@@ -62,7 +62,7 @@ ghost_error ghost_kacz_mc(ghost_densemat *x, ghost_sparsemat *mat, ghost_densema
  } 
 
     if (NVECS > 1) {
-        ERROR_LOG("Multi-vec not implemented!");
+        GHOST_ERROR_LOG("Multi-vec not implemented!");
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
 

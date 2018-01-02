@@ -49,7 +49,7 @@ ghost_error ghost_kacz__MC_u_plain_d_d_cm_CHUNKHEIGHT_NVECS_0(ghost_densemat *x,
         } 
         if(threads[0] > 1)
         {
-            ERROR_LOG("KACZ: Matrix not colored and you are trying to use more than 1 thread");
+            GHOST_ERROR_LOG("KACZ: Matrix not colored and you are trying to use more than 1 thread");
             GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
             return GHOST_ERR_NOT_COLORED;
         } else {
@@ -63,7 +63,7 @@ ghost_error ghost_kacz__MC_u_plain_d_d_cm_CHUNKHEIGHT_NVECS_0(ghost_densemat *x,
     } 
     
     if (x->traits.ncols > 1) {
-        ERROR_LOG("Multi-vec not implemented!");
+        GHOST_ERROR_LOG("Multi-vec not implemented!");
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
     

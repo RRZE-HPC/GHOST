@@ -42,7 +42,7 @@ ghost_error ghost_sparsemat_perm_scotch(ghost_context *ctx, ghost_sparsemat *mat
 #ifndef GHOST_HAVE_SCOTCH
     UNUSED(ctx);
     UNUSED(mat);
-    WARNING_LOG("Scotch not available. Will not create matrix permutation!");
+    GHOST_WARNING_LOG("Scotch not available. Will not create matrix permutation!");
     return GHOST_SUCCESS;
 #else
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_SETUP);
@@ -65,7 +65,7 @@ ghost_error ghost_sparsemat_perm_scotch(ghost_context *ctx, ghost_sparsemat *mat
 #endif
 
     if (mat->context->row_map->glb_perm) {
-        WARNING_LOG("Existing permutations will be overwritten!");
+        GHOST_WARNING_LOG("Existing permutations will be overwritten!");
     }
 
 
@@ -112,14 +112,14 @@ ghost_error ghost_sparsemat_perm_scotch(ghost_context *ctx, ghost_sparsemat *mat
     GHOST_INSTR_START("scotch_createperm")
     dgraph = SCOTCH_dgraphAlloc();
     if (!dgraph) {
-        ERROR_LOG("Could not alloc SCOTCH graph");
+        GHOST_ERROR_LOG("Could not alloc SCOTCH graph");
         ret = GHOST_ERR_SCOTCH;
         goto err;
     }
     SCOTCH_CALL_GOTO(SCOTCH_dgraphInit(dgraph,mat->context->mpicomm),err,ret);
     strat = SCOTCH_stratAlloc();
     if (!strat) {
-        ERROR_LOG("Could not alloc SCOTCH strat");
+        GHOST_ERROR_LOG("Could not alloc SCOTCH strat");
         ret = GHOST_ERR_SCOTCH;
         goto err;
     }
@@ -142,7 +142,7 @@ ghost_error ghost_sparsemat_perm_scotch(ghost_context *ctx, ghost_sparsemat *mat
 //        (ghost_gidx)nprocs,0,0.1),err,ret);
         if (me==0)
         {
-          INFO_LOG("SCOTCH strategy used:");
+          GHOST_INFO_LOG("SCOTCH strategy used:");
           if (GHOST_VERBOSITY)
           {
             SCOTCH_CALL_GOTO(SCOTCH_stratSave(strat,stderr),err,ret);
@@ -152,7 +152,7 @@ ghost_error ghost_sparsemat_perm_scotch(ghost_context *ctx, ghost_sparsemat *mat
     
     dorder = SCOTCH_dorderAlloc();
     if (!dorder) {
-        ERROR_LOG("Could not alloc SCOTCH order");
+        GHOST_ERROR_LOG("Could not alloc SCOTCH order");
         ret = GHOST_ERR_SCOTCH;
         goto err;
     }
@@ -170,14 +170,14 @@ ghost_error ghost_sparsemat_perm_scotch(ghost_context *ctx, ghost_sparsemat *mat
 
     graph = SCOTCH_graphAlloc();
     if (!graph) {
-        ERROR_LOG("Could not alloc SCOTCH graph");
+        GHOST_ERROR_LOG("Could not alloc SCOTCH graph");
         ret = GHOST_ERR_SCOTCH;
         goto err;
     }
     SCOTCH_CALL_GOTO(SCOTCH_graphInit(graph),err,ret);
     strat = SCOTCH_stratAlloc();
     if (!strat) {
-        ERROR_LOG("Could not alloc SCOTCH strat");
+        GHOST_ERROR_LOG("Could not alloc SCOTCH strat");
         ret = GHOST_ERR_SCOTCH;
         goto err;
     }
@@ -187,7 +187,7 @@ ghost_error ghost_sparsemat_perm_scotch(ghost_context *ctx, ghost_sparsemat *mat
     
     order = SCOTCH_orderAlloc();
     if (!order) {
-        ERROR_LOG("Could not alloc SCOTCH order");
+        GHOST_ERROR_LOG("Could not alloc SCOTCH order");
         ret = GHOST_ERR_SCOTCH;
         goto err;
     }
@@ -204,7 +204,7 @@ ghost_error ghost_sparsemat_perm_scotch(ghost_context *ctx, ghost_sparsemat *mat
    
     goto out;
 err:
-    ERROR_LOG("Deleting permutations");
+    GHOST_ERROR_LOG("Deleting permutations");
     free(mat->context->row_map->glb_perm); mat->context->row_map->glb_perm = NULL;
     free(mat->context->row_map->glb_perm_inv); mat->context->row_map->glb_perm_inv = NULL;
     free(mat->context->row_map->glb_perm); mat->context->row_map->glb_perm = NULL;

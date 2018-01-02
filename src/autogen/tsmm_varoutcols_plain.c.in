@@ -21,7 +21,7 @@ ghost_error ghost_tsmm__u_plain_d_x_INCOLS_1_1_rm(ghost_densemat *x, ghost_dense
     ghost_lidx n = DM_NROWS(v);
 
     
-    INFO_LOG("In TSMM with fixed M %"PRLIDX" and arbitrary K %"PRLIDX": %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,INCOLS,k,n,INCOLS,n,k,k,INCOLS);
+    GHOST_INFO_LOG("In TSMM with fixed M %"PRLIDX" and arbitrary K %"PRLIDX": %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,INCOLS,k,n,INCOLS,n,k,k,INCOLS);
 
     const double * const restrict vval = (const double *) v->val;
     const double * const restrict wval = (const double *) w->val;
@@ -59,7 +59,7 @@ ghost_error ghost_tsmm__u_plain_z_x_INCOLS_1_1_rm(ghost_densemat *x, ghost_dense
     ghost_lidx n = DM_NROWS(v);
 
     
-    INFO_LOG("In TSMM with fixed M %"PRLIDX" and arbitrary K %"PRLIDX": %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,INCOLS,k,n,INCOLS,n,k,k,INCOLS);
+    GHOST_INFO_LOG("In TSMM with fixed M %"PRLIDX" and arbitrary K %"PRLIDX": %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,INCOLS,k,n,INCOLS,n,k,k,INCOLS);
 
     const double complex * const restrict vval = (const double complex*) v->val;
     const double complex * const restrict wval = (const double complex*) w->val;

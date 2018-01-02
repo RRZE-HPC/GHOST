@@ -190,7 +190,7 @@ if(tid == nthreads-1) \
      ghost_lidx idx=0, row=0; 
      
      if (mat->context->nzones == 0 || mat->context->zone_ptr == NULL){
-         ERROR_LOG("Splitting of matrix by Block Multicoloring has not be done!");
+         GHOST_ERROR_LOG("Splitting of matrix by Block Multicoloring has not be done!");
      }
      
      VT* sigma = NULL;
