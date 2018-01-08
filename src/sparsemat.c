@@ -971,7 +971,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
         mat->traits.C = 32; // TODO
     }
     mat->nchunks = CEILDIV(SPM_NROWS(mat),mat->traits.C);
-    //ERROR_LOG("set no_distinction");
+    //GHOST_ERROR_LOG("set no_distinction");
     //mat->context->flags = mat->context->flags | GHOST_PERM_NO_DISTINCTION;
     if (mat->context->row_map->dimpad == mat->context->row_map->dim) {
         mat->context->row_map->dimpad = PAD(SPM_NROWS(mat),ghost_densemat_row_padding());
