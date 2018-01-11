@@ -17,16 +17,16 @@
 namespace {
 void *d_temp_storage = NULL;
 size_t temp_storage_size = 0;
-template<typename T, typename iT, int M, int N>
+template<typename oT, int M, int N>
 __global__ void deviceReduce(
-    iT *blockResults, T *result, T alpha, T beta, int blockCount, int lda, int ldb, int ldc)
+    oT *blockResults, oT *result, oT alpha, oT beta, int blockCount, int lda, int ldb, int ldc)
 {
     int tidx = blockDim.x * blockIdx.x + threadIdx.x;
     if (tidx >= M * N) return;
     int n = tidx / M;
     int m = tidx % M;
 
-    iT sum;
+    oT sum;
     zero(sum);
     for (int i = 0; i < blockCount; i++) {
         sum = accu(sum, blockResults[i * N * M + n * M + m]);
@@ -62,9 +62,9 @@ __device__ int roundPoT(int v)
     return r;
 }
 
-template<typename T, typename iT, int conjv, int M, int N, int BLOCKSIZE, bool TRANSPOSE, bool SELF>
+template<typename T, typename oT, int conjv, int M, int N, int BLOCKSIZE, bool TRANSPOSE, bool SELF>
 __global__ void __launch_bounds__(BLOCKSIZE) genv7_blockProductKernel(
-    const T *A, const T *B, iT *out, const int K, const int lda, const int ldb, const int ldc)
+    const T *A, const T *B, oT *out, const int K, const int lda, const int ldb, const int ldc)
 {
     const int rowsPerBlock = BLOCKSIZE / M;
     int m = threadIdx.x % M;
@@ -75,13 +75,13 @@ __global__ void __launch_bounds__(BLOCKSIZE) genv7_blockProductKernel(
     if (bOffset >= rowsPerBlock * ldb) bOffset = 0;
     if (aOffset >= rowsPerBlock * lda) aOffset = 0;
 
-    __shared__ iT blockStorage[rowsPerBlock * M * (sizeof(T) > sizeof(iT) ? 2 : 1)];
+    __shared__ oT blockStorage[rowsPerBlock * M * (sizeof(T) > sizeof(oT) ? 2 : 1)];
     T *rowCache = reinterpret_cast<T *>(blockStorage);
 
     zero(blockStorage[threadIdx.x]);
     __syncthreads();
 
-    iT threadSum[N];
+    oT threadSum[N];
     for (int n = 0; n < N; n++) {
         zero(threadSum[n]);
     }
@@ -110,8 +110,8 @@ __global__ void __launch_bounds__(BLOCKSIZE) genv7_blockProductKernel(
 
         int localAddress = threadIdx.x - m;
         for (int n = 0; n < N; n++) {
-            threadSum[n] = axpy(threadSum[n], condConj1<T, conjv, TRANSPOSE>(avNow),
-                condConj2<T, conjv, TRANSPOSE>(rowCache[localAddress + n]));
+            threadSum[n] = axpy(threadSum[n], condConj1<oT, conjv, TRANSPOSE>((oT)avNow),
+                condConj2<oT, conjv, TRANSPOSE>((oT)rowCache[localAddress + n]));
         }
         avNow = avNext;
         bvNow = bvNext;
@@ -121,8 +121,8 @@ __global__ void __launch_bounds__(BLOCKSIZE) genv7_blockProductKernel(
     for (idx = idx + localRow; idx < K; idx += gridDim.x * rowsPerBlock) {
         T av = A[idx * lda + m];
         for (int n = 0; n < N; n++) {
-            threadSum[n] = axpy(threadSum[n], condConj1<T, conjv, TRANSPOSE>(av),
-                condConj2<T, conjv, TRANSPOSE>(B[idx * ldb + n]));
+            threadSum[n] = axpy(threadSum[n], condConj1<oT, conjv, TRANSPOSE>((oT)av),
+                condConj2<oT, conjv, TRANSPOSE>((oT)B[idx * ldb + n]));
         }
     }
 
@@ -154,15 +154,15 @@ __global__ void __launch_bounds__(BLOCKSIZE) genv7_blockProductKernel(
 }
 
 
-template<typename T, int M, int N, int conjv>
-static ghost_error ghost_tsmttsm_cu_rm(T *const __restrict__ C, const T *const __restrict__ A,
-    const T *const __restrict__ B, const T alpha, const T beta, ghost_lidx K, ghost_lidx ldc,
+template<typename T, typename oT, int M, int N, int conjv>
+static ghost_error ghost_tsmttsm_cu_rm(oT *const __restrict__ C, const T *const __restrict__ A,
+    const T *const __restrict__ B, const oT alpha, const oT beta, ghost_lidx K, ghost_lidx ldc,
     ghost_lidx lda, ghost_lidx ldb)
 {
     ghost_error ret = GHOST_SUCCESS;
 
 
-    if (M > 64 || N > 64) {
+    if ((M > 64 || N > 64) && typeid(T) == typeid(oT)) {
         cublasHandle_t handle;
         ghost_cu_cublas_handle(&handle);
         cublasOperation_t op = (conjv == 1) ? CUBLAS_OP_C : CUBLAS_OP_T;
@@ -223,7 +223,7 @@ static ghost_error ghost_tsmttsm_cu_rm(T *const __restrict__ C, const T *const _
     //    if (temp_storage_size < required_temp_storage_size) {
     // CUDA_CALL(cudaFree(d_temp_storage), ret);
     temp_storage_size = required_temp_storage_size;
-    CUDA_CALL(cudaMalloc(&d_temp_storage, sizeof(T) * temp_storage_size), ret);
+    CUDA_CALL(cudaMalloc(&d_temp_storage, sizeof(oT) * temp_storage_size), ret);
     //}
 
     /*    size_t required_temp_storage_bytes = blockCount * sizeof(T) * N * ldc;
@@ -236,15 +236,15 @@ static ghost_error ghost_tsmttsm_cu_rm(T *const __restrict__ C, const T *const _
 
     if (N > M) {
         int const blockSize = (targetBlockSize / N) * N;
-        genv7_blockProductKernel<T, T, conjv, N, M, blockSize, true, false>
+        genv7_blockProductKernel<T, oT, conjv, N, M, blockSize, true, false>
             <<<blockCount, blockSize>>>(B, A, (T *)d_temp_storage, K, ldb, lda, ldc);
     } else {
         int const blockSize = (targetBlockSize / M) * M;
         if (M == N && A == B) {
-            genv7_blockProductKernel<T, T, conjv, M, N, blockSize, false, true>
+            genv7_blockProductKernel<T, oT, conjv, M, N, blockSize, false, true>
                 <<<blockCount, blockSize>>>(A, B, (T *)d_temp_storage, K, lda, ldb, ldc);
         } else {
-            genv7_blockProductKernel<T, T, conjv, M, N, blockSize, false, false>
+            genv7_blockProductKernel<T, oT, conjv, M, N, blockSize, false, false>
                 <<<blockCount, blockSize>>>(A, B, (T *)d_temp_storage, K, lda, ldb, ldc);
         }
     }
@@ -252,8 +252,8 @@ static ghost_error ghost_tsmttsm_cu_rm(T *const __restrict__ C, const T *const _
 
 
     CUDA_CALL(cudaGetLastError(), ret);
-    deviceReduce<T, T, M, N>
-        <<<(M * N) / 256 + 1, 256>>>((T *)d_temp_storage, C, alpha, beta, blockCount, lda, ldb, ldc);
+    deviceReduce<oT, M, N>
+        <<<(M * N) / 256 + 1, 256>>>((oT *)d_temp_storage, C, alpha, beta, blockCount, lda, ldb, ldc);
     CUDA_CALL(cudaGetLastError(), ret);
 
     CUDA_CALL(cudaFree(d_temp_storage), ret);
