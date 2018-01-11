@@ -237,15 +237,15 @@ static ghost_error ghost_tsmttsm_cu_rm(oT *const __restrict__ C, const T *const 
     if (N > M) {
         int const blockSize = (targetBlockSize / N) * N;
         genv7_blockProductKernel<T, oT, conjv, N, M, blockSize, true, false>
-            <<<blockCount, blockSize>>>(B, A, (T *)d_temp_storage, K, ldb, lda, ldc);
+            <<<blockCount, blockSize>>>(B, A, (oT *)d_temp_storage, K, ldb, lda, ldc);
     } else {
         int const blockSize = (targetBlockSize / M) * M;
         if (M == N && A == B) {
             genv7_blockProductKernel<T, oT, conjv, M, N, blockSize, false, true>
-                <<<blockCount, blockSize>>>(A, B, (T *)d_temp_storage, K, lda, ldb, ldc);
+                <<<blockCount, blockSize>>>(A, B, (oT *)d_temp_storage, K, lda, ldb, ldc);
         } else {
             genv7_blockProductKernel<T, oT, conjv, M, N, blockSize, false, false>
-                <<<blockCount, blockSize>>>(A, B, (T *)d_temp_storage, K, lda, ldb, ldc);
+                <<<blockCount, blockSize>>>(A, B, (oT *)d_temp_storage, K, lda, ldb, ldc);
         }
     }
     CUDA_CALL(cudaDeviceSynchronize(), ret);

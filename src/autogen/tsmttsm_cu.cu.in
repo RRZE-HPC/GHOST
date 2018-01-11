@@ -43,14 +43,18 @@ ghost_error ghost_tsmttsm__u_cuda_x_CFGK_CFGM_1_rm(
             }
         }
     } else {
-        if (x->traits.datatype & GHOST_DT_DOUBLE) {
+        if (x->traits.datatype & GHOST_DT_DOUBLE && w->traits.datatype & GHOST_DT_DOUBLE) {
             ret = ghost_tsmttsm_cu_rm<double, double, CFGM, CFGK, 0>((double *)x->cu_val,
                 (const double *)v->cu_val, (const double *)w->cu_val, *(double *)alpha,
                 *(double *)beta, DM_NROWS(v), x->stride, v->stride, w->stride);
-        } else {
+        } else if (x->traits.datatype & GHOST_DT_FLOAT && w->traits.datatype & GHOST_DT_FLOAT) {
             ret = ghost_tsmttsm_cu_rm<float, float, CFGM, CFGK, 0>((float *)x->cu_val,
                 (const float *)v->cu_val, (const float *)w->cu_val, *(float *)alpha, *(float *)beta,
                 DM_NROWS(v), x->stride, v->stride, w->stride);
+        } else if (x->traits.datatype & GHOST_DT_DOUBLE && w->traits.datatype & GHOST_DT_FLOAT) {
+            ret = ghost_tsmttsm_cu_rm<float, double, CFGM, CFGK, 0>((double *)x->cu_val,
+                (const float *)v->cu_val, (const float *)w->cu_val, *(double *)alpha,
+                *(double *)beta, DM_NROWS(v), x->stride, v->stride, w->stride);
         }
     }
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH | GHOST_FUNCTYPE_KERNEL);
