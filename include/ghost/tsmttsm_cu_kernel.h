@@ -220,11 +220,11 @@ static ghost_error ghost_tsmttsm_cu_rm(oT *const __restrict__ C, const T *const 
     // CUDA_CALL(cudaMalloc(&d_temp_storage, 100 * 100 * 1000 * sizeof(T)), ret);
 
     size_t required_temp_storage_size = M * N * blockCount;
-    //    if (temp_storage_size < required_temp_storage_size) {
-    // CUDA_CALL(cudaFree(d_temp_storage), ret);
-    temp_storage_size = required_temp_storage_size;
-    CUDA_CALL(cudaMalloc(&d_temp_storage, sizeof(oT) * temp_storage_size), ret);
-    //}
+    if (temp_storage_size < required_temp_storage_size) {
+        CUDA_CALL(cudaFree(d_temp_storage), ret);
+        temp_storage_size = required_temp_storage_size;
+        CUDA_CALL(cudaMalloc(&d_temp_storage, sizeof(oT) * temp_storage_size), ret);
+    }
 
     /*    size_t required_temp_storage_bytes = blockCount * sizeof(T) * N * ldc;
     if (temp_storage_bytes < required_temp_storage_bytes || temp_storage == NULL) {
@@ -248,7 +248,7 @@ static ghost_error ghost_tsmttsm_cu_rm(oT *const __restrict__ C, const T *const 
                 <<<blockCount, blockSize>>>(A, B, (oT *)d_temp_storage, K, lda, ldb, ldc);
         }
     }
-    CUDA_CALL(cudaDeviceSynchronize(), ret);
+    //    CUDA_CALL(cudaDeviceSynchronize(), ret);
 
 
     CUDA_CALL(cudaGetLastError(), ret);
@@ -256,7 +256,6 @@ static ghost_error ghost_tsmttsm_cu_rm(oT *const __restrict__ C, const T *const 
         <<<(M * N) / 256 + 1, 256>>>((oT *)d_temp_storage, C, alpha, beta, blockCount, lda, ldb, ldc);
     CUDA_CALL(cudaGetLastError(), ret);
 
-    CUDA_CALL(cudaFree(d_temp_storage), ret);
     return ret;
 }
 #endif
