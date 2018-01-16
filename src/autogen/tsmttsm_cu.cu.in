@@ -10,8 +10,7 @@
 #GHOST_SUBST CFGK ${N}
 #GHOST_SUBST CFGM ${M}
 
-ghost_error ghost_tsmttsm__u_cuda_x_CFGK_CFGM_1_rm(
-    ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
+ghost_error ghost_tsmttsm__u_cuda_x_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH | GHOST_FUNCTYPE_KERNEL);
     ghost_error ret = GHOST_SUCCESS;
