@@ -287,8 +287,9 @@ ghost_error ghost_tsmttsm(ghost_densemat *x_in, ghost_densemat *v, ghost_densema
     std::vector<ghost_datatype> try_dt = {v->traits.datatype, GHOST_DT_ANY};
 
     // mixed precision requires implementation that supports DT_ANY
-    if (v->traits.datatype != w->traits.datatype) {
+    if (v->traits.datatype != x->traits.datatype) {
         try_dt = {GHOST_DT_ANY};
+        GHOST_INFO_LOG("Mixed Precision Inputs (float x float -> double)");
     }
 
     if (x->traits.flags & GHOST_DENSEMAT_VIEW || v->traits.flags & GHOST_DENSEMAT_VIEW
