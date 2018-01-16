@@ -32,7 +32,7 @@ extern "C" {
     /**
      * @ingroup globops
      *
-     * @brief Multiple a transposed distributed dense tall skinny matrix with another distributed dense tall skinny matrix and Allreduce the result.
+     * @brief Multiply a transposed distributed dense tall skinny matrix with another distributed dense tall skinny matrix and Allreduce the result.
      *
      * @param[inout] x
      * @param[in] v

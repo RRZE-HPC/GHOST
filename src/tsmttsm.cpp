@@ -32,30 +32,32 @@ typedef ghost_tsmttsm_parameters ghost_tsmttsm_kahan_parameters;
 typedef ghost_tsmttsm_parameters ghost_tsmttsm_kahan_parameters;
 
 // Hash function for unordered_map
-namespace std
-{
-    template<> struct hash<ghost_tsmttsm_parameters>
+namespace std {
+template<>
+struct hash<ghost_tsmttsm_parameters> {
+    typedef ghost_tsmttsm_parameters argument_type;
+    typedef std::size_t result_type;
+    result_type operator()(argument_type const &a) const
     {
-        typedef ghost_tsmttsm_parameters argument_type;
-        typedef std::size_t result_type;
-        result_type operator()(argument_type const& a) const
-        {
-            return ghost_hash(a.dt,a.wcols,ghost_hash(a.vcols,a.impl,ghost_hash(a.wstor,a.unroll,a.alignment)));
-        }
-    };
+        return ghost_hash(
+            a.dt, a.wcols, ghost_hash(a.vcols, a.impl, ghost_hash(a.wstor, a.unroll, a.alignment)));
+    }
+};
 }
 
-static bool operator==(const ghost_tsmttsm_parameters& a, const ghost_tsmttsm_parameters& b)
+static bool operator==(const ghost_tsmttsm_parameters &a, const ghost_tsmttsm_parameters &b)
 {
-    return a.dt == b.dt && a.wcols == b.wcols && a.vcols == b.vcols && a.impl == b.impl && a.wstor == b.wstor && a.alignment == b.alignment && a.unroll == b.unroll;
+    return a.dt == b.dt && a.wcols == b.wcols && a.vcols == b.vcols && a.impl == b.impl
+        && a.wstor == b.wstor && a.alignment == b.alignment && a.unroll == b.unroll;
 }
 
 static std::unordered_map<ghost_tsmttsm_parameters, ghost_tsmttsm_kernel> ghost_tsmttsm_kernels;
 static std::unordered_map<ghost_tsmttsm_parameters, ghost_tsmttsm_kernel> ghost_tsmttsm_kahan_kernels;
 
 
-ghost_error ghost_tsmttsm_valid(ghost_densemat *x, ghost_densemat *v, const char * transv, 
-ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce, ghost_gemm_flags flags, int printerror) 
+ghost_error ghost_tsmttsm_valid(ghost_densemat *x, ghost_densemat *v, const char *transv,
+    ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce,
+    ghost_gemm_flags flags, int printerror)
 {
     /*if (w->traits.storage != GHOST_DENSEMAT_ROWMAJOR) {
         if (printerror) {
@@ -75,32 +77,37 @@ ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce, ghos
         }
         return GHOST_ERR_INVALID_ARG;
     }
-    if (x->traits.location != GHOST_LOCATION_HOST || v->traits.location != GHOST_LOCATION_HOST || w->traits.location != GHOST_LOCATION_HOST) {
-        if (printerror) {
-            GHOST_ERROR_LOG("TSMTTSM only implemented for host densemats!");
+    if (x->traits.location != GHOST_LOCATION_HOST || v->traits.location != GHOST_LOCATION_HOST ||
+    w->traits.location != GHOST_LOCATION_HOST) { if (printerror) { GHOST_ERROR_LOG("TSMTTSM only
+    implemented for host densemats!");
         }
         return GHOST_ERR_INVALID_ARG;
     }*/
 
-    if (v->traits.datatype != w->traits.datatype || v->traits.datatype != x->traits.datatype) {
+    // v,w,x must have same datatypes, or correspond to the special case v,w = float, x = double
+    if ((v->traits.datatype != w->traits.datatype
+            || (v->traits.datatype != x->traits.datatype
+                   && !(v->traits.datatype & GHOST_DT_FLOAT && x->traits.datatype & GHOST_DT_DOUBLE)))) {
         if (printerror) {
+            GHOST_ERROR_LOG("%d %d %d", v->traits.datatype, GHOST_DT_FLOAT, GHOST_DT_DOUBLE);
             GHOST_ERROR_LOG("Different data types!");
         }
         return GHOST_ERR_INVALID_ARG;
     }
-    if (v->traits.flags & GHOST_DENSEMAT_SCATTERED || w->traits.flags & GHOST_DENSEMAT_SCATTERED || x->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+    if (v->traits.flags & GHOST_DENSEMAT_SCATTERED || w->traits.flags & GHOST_DENSEMAT_SCATTERED
+        || x->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         if (printerror) {
             GHOST_ERROR_LOG("Scattered densemats not supported!");
         }
         return GHOST_ERR_INVALID_ARG;
     }
-    if (!strncasecmp(transv,"N",1)) {
+    if (!strncasecmp(transv, "N", 1)) {
         if (printerror) {
             GHOST_ERROR_LOG("v must be transposed!");
         }
         return GHOST_ERR_INVALID_ARG;
     }
-    if (strncasecmp(transw,"N",1)) {
+    if (strncasecmp(transw, "N", 1)) {
         if (printerror) {
             GHOST_ERROR_LOG("w must not be transposed!");
         }
@@ -116,7 +123,8 @@ ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce, ghos
 }
 
 
-ghost_error ghost_tsmttsm(ghost_densemat *x_in, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta,int reduce,int conjv,ghost_gemm_flags flags)
+ghost_error ghost_tsmttsm(ghost_densemat *x_in, ghost_densemat *v, ghost_densemat *w, void *alpha,
+    void *beta, int reduce, int conjv, ghost_gemm_flags flags)
 {
     ghost_error ret;
 
@@ -127,19 +135,20 @@ ghost_error ghost_tsmttsm(ghost_densemat *x_in, ghost_densemat *v, ghost_densema
         vtrans = "T";
     }
 
-    if ((ret = ghost_tsmttsm_valid(x_in,v,vtrans,w,"N",alpha,beta,reduce,flags,1)) != GHOST_SUCCESS) {
+    if ((ret = ghost_tsmttsm_valid(x_in, v, vtrans, w, "N", alpha, beta, reduce, flags, 1)) != GHOST_SUCCESS) {
         GHOST_INFO_LOG("TSMTTSM cannot be applied. Checking whether GEMM is fine!");
-        if ((ret = ghost_gemm_valid(x_in,v,vtrans,w,"N",alpha,beta,reduce,GHOST_GEMM_DEFAULT,1)) != GHOST_SUCCESS) {
+        if ((ret = ghost_gemm_valid(x_in, v, vtrans, w, "N", alpha, beta, reduce, GHOST_GEMM_DEFAULT, 1))
+            != GHOST_SUCCESS) {
             GHOST_ERROR_LOG("GEMM cannot be applied!");
             return ret;
         } else {
-            return ghost_gemm(x_in,v,vtrans,w,"N",alpha,beta,reduce,GHOST_GEMM_NOT_SPECIAL);
+            return ghost_gemm(x_in, v, vtrans, w, "N", alpha, beta, reduce, GHOST_GEMM_NOT_SPECIAL);
         }
     }
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
-   
+
     std::unordered_map<ghost_tsmttsm_parameters, ghost_tsmttsm_kernel> kernels;
-    if (flags & GHOST_GEMM_KAHAN) { 
+    if (flags & GHOST_GEMM_KAHAN) {
         if (ghost_tsmttsm_kahan_kernels.empty()) {
 #include "tsmttsm_kahan_plain.def"
 #include "tsmttsm_kahan_var2_plain.def"
@@ -164,11 +173,11 @@ ghost_error ghost_tsmttsm(ghost_densemat *x_in, ghost_densemat *v, ghost_densema
         kernels = ghost_tsmttsm_kernels;
     }
 
-    int me=0;
-    ghost_rank(&me,v->map->mpicomm);
+    int me = 0;
+    ghost_rank(&me, v->map->mpicomm);
     // make sure that the initial x only gets added up once
     if (me && (reduce != GHOST_GEMM_NO_REDUCE)) {
-        memset(beta,0,x_in->elSize);
+        memset(beta, 0, x_in->elSize);
     }
 
 
@@ -185,11 +194,11 @@ ghost_error ghost_tsmttsm(ghost_densemat *x_in, ghost_densemat *v, ghost_densema
         ghost_densemat_traits xtraits = x_in->traits;
         xtraits.flags &= (ghost_densemat_flags)~GHOST_DENSEMAT_VIEW;
         xtraits.storage = GHOST_DENSEMAT_COLMAJOR;
-        ghost_densemat_create(&x,ghost_map_create_light(x_in->map->dim,x_in->map->mpicomm),xtraits);
-        ghost_densemat_init_densemat(x,x_in,0,0);
+        ghost_densemat_create(&x, ghost_map_create_light(x_in->map->dim, x_in->map->mpicomm), xtraits);
+        ghost_densemat_init_densemat(x, x_in, 0, 0);
     }
-    
-    // fix properties    
+
+    // fix properties
     p.wstor = w->traits.storage;
 
     // possible implementations
@@ -201,32 +210,35 @@ ghost_error ghost_tsmttsm(ghost_densemat *x_in, ghost_densemat *v, ghost_densema
 #endif
         if (x->traits.compute_with != GHOST_IMPLEMENTATION_DEFAULT) {
 #ifdef GHOST_BUILD_MIC
-            if (x->traits.compute_with == GHOST_IMPLEMENTATION_MIC || x->traits.compute_with == GHOST_IMPLEMENTATION_PLAIN) {
+            if (x->traits.compute_with == GHOST_IMPLEMENTATION_MIC
+                || x->traits.compute_with == GHOST_IMPLEMENTATION_PLAIN) {
                 try_impl.push_back(x->traits.compute_with);
             }
 #elif defined(GHOST_BUILD_AVX512)
-            if (x->traits.compute_with <= GHOST_IMPLEMENTATION_AVX512) {
-                try_impl.push_back(x->traits.compute_with);
-            }
+        if (x->traits.compute_with <= GHOST_IMPLEMENTATION_AVX512) {
+            try_impl.push_back(x->traits.compute_with);
+        }
 #elif defined(GHOST_BUILD_AVX2)
-            if (x->traits.compute_with <= GHOST_IMPLEMENTATION_AVX2) {
-                try_impl.push_back(x->traits.compute_with);
-            }
+        if (x->traits.compute_with <= GHOST_IMPLEMENTATION_AVX2) {
+            try_impl.push_back(x->traits.compute_with);
+        }
 #elif defined(GHOST_BUILD_AVX)
-            if (x->traits.compute_with <= GHOST_IMPLEMENTATION_AVX) {
-                try_impl.push_back(x->traits.compute_with);
-            }
+        if (x->traits.compute_with <= GHOST_IMPLEMENTATION_AVX) {
+            try_impl.push_back(x->traits.compute_with);
+        }
 #elif defined(GHOST_BUILD_SSE)
-            if (x->traits.compute_with <= GHOST_IMPLEMENTATION_SSE) {
-                try_impl.push_back(x->traits.compute_with);
-            }
+        if (x->traits.compute_with <= GHOST_IMPLEMENTATION_SSE) {
+            try_impl.push_back(x->traits.compute_with);
+        }
 #else
-            if (x->traits.compute_with <= GHOST_IMPLEMENTATION_PLAIN) {
-                try_impl.push_back(x->traits.compute_with);
-            }
+        if (x->traits.compute_with <= GHOST_IMPLEMENTATION_PLAIN) {
+            try_impl.push_back(x->traits.compute_with);
+        }
 #endif
             if (!try_impl.size()) {
-                GHOST_WARNING_LOG("The implementation set via the compute_with field (%s) is not valid! Using a valid implementation.",ghost_implementation_string(x->traits.compute_with));
+                GHOST_WARNING_LOG("The implementation set via the compute_with field (%s) is not "
+                                  "valid! Using a valid implementation.",
+                    ghost_implementation_string(x->traits.compute_with));
             }
         }
         if (!try_impl.size()) {
@@ -234,76 +246,93 @@ ghost_error ghost_tsmttsm(ghost_densemat *x_in, ghost_densemat *v, ghost_densema
             try_impl.push_back(GHOST_IMPLEMENTATION_MIC);
             try_impl.push_back(GHOST_IMPLEMENTATION_PLAIN);
 #elif defined(GHOST_BUILD_AVX512)
-            try_impl.push_back(GHOST_IMPLEMENTATION_AVX512);
-            try_impl.push_back(GHOST_IMPLEMENTATION_AVX2);
-            try_impl.push_back(GHOST_IMPLEMENTATION_AVX);
-            try_impl.push_back(GHOST_IMPLEMENTATION_SSE);
-            try_impl.push_back(GHOST_IMPLEMENTATION_PLAIN);
+        try_impl.push_back(GHOST_IMPLEMENTATION_AVX512);
+        try_impl.push_back(GHOST_IMPLEMENTATION_AVX2);
+        try_impl.push_back(GHOST_IMPLEMENTATION_AVX);
+        try_impl.push_back(GHOST_IMPLEMENTATION_SSE);
+        try_impl.push_back(GHOST_IMPLEMENTATION_PLAIN);
 #elif defined(GHOST_BUILD_AVX2)
-            try_impl.push_back(GHOST_IMPLEMENTATION_AVX2);
-            try_impl.push_back(GHOST_IMPLEMENTATION_AVX);
-            try_impl.push_back(GHOST_IMPLEMENTATION_SSE);
-            try_impl.push_back(GHOST_IMPLEMENTATION_PLAIN);
+        try_impl.push_back(GHOST_IMPLEMENTATION_AVX2);
+        try_impl.push_back(GHOST_IMPLEMENTATION_AVX);
+        try_impl.push_back(GHOST_IMPLEMENTATION_SSE);
+        try_impl.push_back(GHOST_IMPLEMENTATION_PLAIN);
 #elif defined(GHOST_BUILD_AVX)
-            try_impl.push_back(GHOST_IMPLEMENTATION_AVX);
-            try_impl.push_back(GHOST_IMPLEMENTATION_SSE);
-            try_impl.push_back(GHOST_IMPLEMENTATION_PLAIN);
+        try_impl.push_back(GHOST_IMPLEMENTATION_AVX);
+        try_impl.push_back(GHOST_IMPLEMENTATION_SSE);
+        try_impl.push_back(GHOST_IMPLEMENTATION_PLAIN);
 #elif defined(GHOST_BUILD_SSE)
-            try_impl.push_back(GHOST_IMPLEMENTATION_SSE);
-            try_impl.push_back(GHOST_IMPLEMENTATION_PLAIN);
+        try_impl.push_back(GHOST_IMPLEMENTATION_SSE);
+        try_impl.push_back(GHOST_IMPLEMENTATION_PLAIN);
 #else
-            try_impl.push_back(GHOST_IMPLEMENTATION_PLAIN);
+        try_impl.push_back(GHOST_IMPLEMENTATION_PLAIN);
 #endif
         }
 #ifdef GHOST_HAVE_CUDA
-    } 
+    }
 #endif
-    
+
     // alignment of large input data
-    // the alignment of the result array does not matter because we can easily re-allocate it accordingly
+    // the alignment of the result array does not matter because we can easily re-allocate it
+    // accordingly
     int al = ghost_machine_alignment();
-    if (IS_ALIGNED(w->val,al) && IS_ALIGNED(v->val,al) && !((w->stride*w->elSize) % al) && !((v->stride*v->elSize) % al)) {
+    if (IS_ALIGNED(w->val, al) && IS_ALIGNED(v->val, al) && !((w->stride * w->elSize) % al)
+        && !((v->stride * v->elSize) % al)) {
         opt_align = GHOST_ALIGNED;
     } else {
         opt_align = GHOST_UNALIGNED;
     }
 
-    ghost_lidx try_wcols[2] = {w->traits.ncols,-1};
-    ghost_lidx try_vcols[2] = {v->traits.ncols,-1};
-    ghost_datatype try_dt[2] = {v->traits.datatype,GHOST_DT_ANY};
+    ghost_lidx try_wcols[2] = {w->traits.ncols, -1};
+    ghost_lidx try_vcols[2] = {v->traits.ncols, -1};
+    std::vector<ghost_datatype> try_dt = {v->traits.datatype, GHOST_DT_ANY};
 
-    if (x->traits.flags & GHOST_DENSEMAT_VIEW || v->traits.flags & GHOST_DENSEMAT_VIEW || x->map->dimpad % 2 || v->map->dimpad % 2) {
+    // mixed precision requires implementation that supports DT_ANY
+    if (v->traits.datatype != w->traits.datatype) {
+        try_dt = {GHOST_DT_ANY};
+    }
+
+    if (x->traits.flags & GHOST_DENSEMAT_VIEW || v->traits.flags & GHOST_DENSEMAT_VIEW
+        || x->map->dimpad % 2 || v->map->dimpad % 2) {
         opt_unroll = 1;
     } else {
         opt_unroll = GHOST_MAX_ROWS_UNROLL;
     }
-    
+
+
 #ifdef GHOST_HAVE_CUDA
     if (x->traits.location & GHOST_LOCATION_DEVICE && x->traits.compute_at != GHOST_LOCATION_HOST) {
-        try_dt[0] = GHOST_DT_ANY;
-        opt_align = GHOST_UNALIGNED;
+        try_dt = {GHOST_DT_ANY};
     }
-#endif
-    
-    int n_wcols = sizeof(try_wcols)/sizeof(ghost_lidx); 
-    int n_vcols = sizeof(try_vcols)/sizeof(ghost_lidx); 
-    int n_dt = sizeof(try_dt)/sizeof(ghost_datatype); 
-    int pos_wcols, pos_vcols, pos_dt;
-    bool optimal = true; // if we find a kernel with highest specialization grade (regardless unrolling), this remains true and no performance warning gets printed
+    opt_align = GHOST_UNALIGNED;
 
-    for (pos_wcols = 0; pos_wcols < n_wcols; pos_wcols++) {  
-        for (pos_vcols = 0; pos_vcols < n_vcols; pos_vcols++) {  
-            for (std::vector<ghost_implementation>::iterator impl = try_impl.begin(); impl != try_impl.end(); impl++) {
-                for (p.alignment = opt_align; (int)p.alignment >= GHOST_UNALIGNED; p.alignment = (ghost_alignment)((int)p.alignment-1)) {
+#endif
+
+    int n_wcols = sizeof(try_wcols) / sizeof(ghost_lidx);
+    int n_vcols = sizeof(try_vcols) / sizeof(ghost_lidx);
+    int pos_wcols, pos_vcols;
+    bool optimal = true; // if we find a kernel with highest specialization grade (regardless
+                         // unrolling), this remains true and no performance warning gets printed
+
+    for (pos_wcols = 0; pos_wcols < n_wcols; pos_wcols++) {
+        for (pos_vcols = 0; pos_vcols < n_vcols; pos_vcols++) {
+            for (std::vector<ghost_implementation>::iterator impl = try_impl.begin();
+                 impl != try_impl.end(); impl++) {
+                for (p.alignment = opt_align; (int)p.alignment >= GHOST_UNALIGNED;
+                     p.alignment = (ghost_alignment)((int)p.alignment - 1)) {
                     for (p.unroll = opt_unroll; p.unroll > 0; p.unroll /= 2) {
-                        for (pos_dt = 0; pos_dt < n_dt; pos_dt++) {
+                        for (auto pos_dt : try_dt) {
                             p.wcols = try_wcols[pos_wcols];
                             p.vcols = try_vcols[pos_vcols];
-                            p.dt = try_dt[pos_dt];
+                            p.dt = pos_dt;
                             p.impl = *impl;
-                            GHOST_INFO_LOG("Try wstor=%s, wcols=%s, vcols=%s, impl=%s, %s, unroll=%d, dt=%s",
-                                    ghost_densemat_storage_string(w->traits.storage), p.wcols==-1?"arbitrary":ghost::to_string((long long)p.wcols).c_str(),p.vcols==-1?"arbitrary":ghost::to_string((long long)p.vcols).c_str(),
-                                    ghost_implementation_string(p.impl),p.alignment==GHOST_UNALIGNED?"unaligned":"aligned",p.unroll,ghost_datatype_string(p.dt));
+                            GHOST_INFO_LOG(
+                                "Try wstor=%s, wcols=%s, vcols=%s, impl=%s, %s, unroll=%d, dt=%s",
+                                ghost_densemat_storage_string(w->traits.storage),
+                                p.wcols == -1 ? "arbitrary" : ghost::to_string((long long)p.wcols).c_str(),
+                                p.vcols == -1 ? "arbitrary" : ghost::to_string((long long)p.vcols).c_str(),
+                                ghost_implementation_string(p.impl),
+                                p.alignment == GHOST_UNALIGNED ? "unaligned" : "aligned", p.unroll,
+                                ghost_datatype_string(p.dt));
                             kernel = kernels[p];
                             if (kernel) {
                                 goto end_of_loop;
@@ -317,40 +346,46 @@ ghost_error ghost_tsmttsm(ghost_densemat *x_in, ghost_densemat *v, ghost_densema
     }
 
 end_of_loop:
-    
+
     if (pos_wcols || pos_vcols) {
         ghost_autogen_set_missing();
     }
     std::ostringstream oss;
     oss << try_vcols[0] << "," << try_wcols[0];
-    ghost_autogen_string_add("TSMTTSM",oss.str().c_str());
+    ghost_autogen_string_add("TSMTTSM", oss.str().c_str());
 
     if (kernel) {
         if (optimal) {
-            GHOST_INFO_LOG("Found kernel with highest specialization grade: dt=%d wcols=%d vcols=%d wstor=%d align=%d unroll=%d impl=%s",p.dt,p.wcols,p.vcols,p.wstor,p.alignment,p.unroll,ghost_implementation_string(p.impl));
+            GHOST_INFO_LOG("Found kernel with highest specialization grade: dt=%d wcols=%d "
+                           "vcols=%d wstor=%d align=%d unroll=%d impl=%s",
+                p.dt, p.wcols, p.vcols, p.wstor, p.alignment, p.unroll,
+                ghost_implementation_string(p.impl));
         } else {
-            GHOST_PERFWARNING_LOG("Using potentially non-optimal kernel: dt=%d wcols=%d vcols=%d wstor=%d align=%d unroll=%d impl=%s",p.dt,p.wcols,p.vcols,p.wstor,p.alignment,p.unroll,ghost_implementation_string(p.impl));
+            GHOST_PERFWARNING_LOG("Using potentially non-optimal kernel: dt=%d wcols=%d vcols=%d "
+                                  "wstor=%d align=%d unroll=%d impl=%s",
+                p.dt, p.wcols, p.vcols, p.wstor, p.alignment, p.unroll,
+                ghost_implementation_string(p.impl));
         }
 
-        ret = kernel(x,v,w,alpha,beta,conjv);
+        ret = kernel(x, v, w, alpha, beta, conjv);
         if (reduce != GHOST_GEMM_NO_REDUCE) {
-            ghost_densemat_reduce(x,reduce);
+            ghost_densemat_reduce(x, reduce);
         }
-    } else if (flags & GHOST_GEMM_KAHAN) { 
+    } else if (flags & GHOST_GEMM_KAHAN) {
         GHOST_WARNING_LOG("Could not find TSMTTSM-Kahan kernel. Trying non-Kahan version!");
         flags &= ~GHOST_GEMM_KAHAN;
         if (x != x_in) {
             ghost_densemat_destroy(x);
         }
         x = x_in;
-        ret = ghost_gemm(x_in,v,conjv?"C":"T",w,"N",alpha,beta,reduce,flags);
+        ret = ghost_gemm(x_in, v, conjv ? "C" : "T", w, "N", alpha, beta, reduce, flags);
     } else {
         GHOST_PERFWARNING_LOG("Could not find TSMTTSM kernel. Fallback to GEMM");
         if (x != x_in) {
             ghost_densemat_destroy(x);
         }
         x = x_in;
-        ret = ghost_gemm(x_in,v,conjv?"C":"T",w,"N",alpha,beta,reduce,GHOST_GEMM_NOT_SPECIAL);
+        ret = ghost_gemm(x_in, v, conjv ? "C" : "T", w, "N", alpha, beta, reduce, GHOST_GEMM_NOT_SPECIAL);
     }
 
 
@@ -360,15 +395,17 @@ end_of_loop:
     tsmttsm_perfargs.m = v->traits.ncols;
     tsmttsm_perfargs.k = v->map->gdim;
     tsmttsm_perfargs.dt = x->traits.datatype;
-    tsmttsm_perfargs.betaiszero = ghost_iszero(beta,x->traits.datatype);
-    tsmttsm_perfargs.alphaisone = ghost_isone(alpha,x->traits.datatype);
+    tsmttsm_perfargs.betaiszero = ghost_iszero(beta, x->traits.datatype);
+    tsmttsm_perfargs.alphaisone = ghost_isone(alpha, x->traits.datatype);
     tsmttsm_perfargs.aisc = false;
-    ghost_timing_set_perfFunc(NULL,__ghost_functag,ghost_gemm_perf_GBs,(void *)&tsmttsm_perfargs,sizeof(tsmttsm_perfargs),"GB/s");
-    ghost_timing_set_perfFunc(NULL,__ghost_functag,ghost_gemm_perf_GFs,(void *)&tsmttsm_perfargs,sizeof(tsmttsm_perfargs),"GF/s");
+    ghost_timing_set_perfFunc(NULL, __ghost_functag, ghost_gemm_perf_GBs, (void *)&tsmttsm_perfargs,
+        sizeof(tsmttsm_perfargs), "GB/s");
+    ghost_timing_set_perfFunc(NULL, __ghost_functag, ghost_gemm_perf_GFs, (void *)&tsmttsm_perfargs,
+        sizeof(tsmttsm_perfargs), "GF/s");
 #endif
-    
+
     if (x != x_in) {
-        ghost_densemat_init_densemat(x_in,x,0,0);
+        ghost_densemat_init_densemat(x_in, x, 0, 0);
         ghost_densemat_destroy(x);
     }
 
@@ -376,5 +413,3 @@ end_of_loop:
 
     return ret;
 }
-
-
