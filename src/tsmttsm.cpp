@@ -303,10 +303,10 @@ ghost_error ghost_tsmttsm(ghost_densemat *x_in, ghost_densemat *v, ghost_densema
 #ifdef GHOST_HAVE_CUDA
     if (x->traits.location & GHOST_LOCATION_DEVICE && x->traits.compute_at != GHOST_LOCATION_HOST) {
         try_dt = {GHOST_DT_ANY};
+        opt_align = GHOST_UNALIGNED;
     }
-    opt_align = GHOST_UNALIGNED;
-
 #endif
+
 
     int n_wcols = sizeof(try_wcols) / sizeof(ghost_lidx);
     int n_vcols = sizeof(try_vcols) / sizeof(ghost_lidx);
@@ -357,16 +357,25 @@ end_of_loop:
 
     if (kernel) {
         if (optimal) {
-            GHOST_INFO_LOG("Found kernel with highest specialization grade: dt=%d wcols=%d "
-                           "vcols=%d wstor=%d align=%d unroll=%d impl=%s",
-                p.dt, p.wcols, p.vcols, p.wstor, p.alignment, p.unroll,
-                ghost_implementation_string(p.impl));
+            GHOST_INFO_LOG("Found kernel with highest specialization grade:  wstor=%s, wcols=%s, "
+                           "vcols=%s, impl=%s, %s, unroll=%d, dt=%s",
+                ghost_densemat_storage_string(p.wstor),
+                p.wcols == -1 ? "arbitrary" : ghost::to_string((long long)p.wcols).c_str(),
+                p.vcols == -1 ? "arbitrary" : ghost::to_string((long long)p.vcols).c_str(),
+                ghost_implementation_string(p.impl), p.alignment == GHOST_UNALIGNED ? "unaligned" : "aligned",
+                p.unroll, ghost_datatype_string(p.dt));
+
         } else {
-            GHOST_PERFWARNING_LOG("Using potentially non-optimal kernel: dt=%d wcols=%d vcols=%d "
-                                  "wstor=%d align=%d unroll=%d impl=%s",
-                p.dt, p.wcols, p.vcols, p.wstor, p.alignment, p.unroll,
-                ghost_implementation_string(p.impl));
+            GHOST_PERFWARNING_LOG(
+                "Using potentially non-optimal kernel:  wstor=%s, wcols=%s, vcols=%s, "
+                "impl=%s, %s, unroll=%d, dt=%s",
+                ghost_densemat_storage_string(p.wstor),
+                p.wcols == -1 ? "arbitrary" : ghost::to_string((long long)p.wcols).c_str(),
+                p.vcols == -1 ? "arbitrary" : ghost::to_string((long long)p.vcols).c_str(),
+                ghost_implementation_string(p.impl), p.alignment == GHOST_UNALIGNED ? "unaligned" : "aligned",
+                p.unroll, ghost_datatype_string(p.dt));
         }
+
 
         ret = kernel(x, v, w, alpha, beta, conjv);
         if (reduce != GHOST_GEMM_NO_REDUCE) {
