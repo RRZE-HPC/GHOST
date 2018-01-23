@@ -6,89 +6,80 @@
 #include "ghost/util.h"
 #include "ghost/tsmttsm_var2_plain_gen.h"
 
+#include <typeinfo>
+#include <complex>
+
 
 namespace {
-template<bool ROWMAJOR, bool ALIGN>
-ghost_error tsmttsm__a_plain_d_x_x_1_xx(
-    ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
+
+template<typename T, bool CONJ>
+T conj_or_nop(T val)
 {
-    UNUSED(conjv);
+    if (CONJ)
+        return std::conj(val);
+    else
+        return val;
+}
+
+template<typename T, typename oT, bool ROWMAJOR, bool ALIGN, bool CONJV>
+ghost_error tsmttsm_plain_kernel(const ghost_lidx m, const ghost_lidx n, const ghost_lidx K,
+    oT *__restrict__ xval, const ghost_lidx ldx, const T *const __restrict__ vval,
+    const ghost_lidx ldv, const T *const __restrict__ wval, const ghost_lidx ldw, oT *alpha, oT *beta)
+{
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
-    ghost_lidx K = w->traits.ncols;
 
-    ghost_lidx n = DM_NROWS(v);
-    ghost_lidx m = v->traits.ncols;
 
-    if (ROWMAJOR) {
-        if (ALIGN) {
-            GHOST_INFO_LOG(
-                "In ALIGNED Row-Major TSMTTSM with arbitrary block sizes %dx%d <- %dx%d * %dx%d", m,
-                K, m, n, n, K);
-        } else {
-            GHOST_INFO_LOG(
-                "In UNALIGNED Row-Major TSMTTSM with arbitrary block sizes %dx%d <- %dx%d * %dx%d",
-                m, K, m, n, n, K);
-        }
-    } else {
-        if (ALIGN) {
-            GHOST_INFO_LOG(
-                "In ALIGNED Col-Major TSMTTSM with arbitrary block sizes %dx%d <- %dx%d * %dx%d", m,
-                K, m, n, n, K);
-        } else {
-            GHOST_INFO_LOG(
-                "In UNALIGNED Col-Major TSMTTSM with arbitrary block sizes %dx%d <- %dx%d * %dx%d",
-                m, K, m, n, n, K);
-        }
-    }
-    const double *const __restrict__ vval = (const double *)v->val;
-    const double *const __restrict__ wval = (const double *)w->val;
-    double *const __restrict__ xval = (double *)x->val;
+    const char *alignmentString = "UNALIGNED";
+    if (ALIGN) alignmentString = "ALIGNED";
+    const char *storageOrderString = "Col-Major";
+    if (ROWMAJOR) storageOrderString = "Row-Major";
+    GHOST_INFO_LOG("In %s %s TSMTTSM with arbitrary block sizes %dx%d <- %dx%d * %dx%d, %s %s",
+        alignmentString, storageOrderString, m, K, m, n, n, K, typeid(T).name(), typeid(oT).name());
 
-    const ghost_lidx ldv = v->stride;
-    const ghost_lidx ldw = w->stride;
-    const ghost_lidx ldx = x->stride;
 
-    double dalpha = *(double *)alpha;
-    double dbeta = *(double *)beta;
+    oT dalpha = *alpha;
+    oT dbeta = *beta;
 
-    ghost_lidx i, j;
 
-    ghost_lidx k;
-    for (j = 0; j < m; j++) {
-        for (k = 0; k < K; k++) {
+    for (ghost_lidx j = 0; j < m; j++) {
+        for (ghost_lidx k = 0; k < K; k++) {
             xval[k * ldx + j] = dbeta * xval[k * ldx + j];
         }
     }
-#pragma omp parallel private(j, k)
+#pragma omp parallel
     {
-        double *x_priv;
-        ghost_malloc_align((void **)&x_priv, m * K * sizeof(double), 32);
-        memset(x_priv, 0, m * K * sizeof(double));
+        oT *x_priv;
+        ghost_malloc_align((void **)&x_priv, m * K * sizeof(oT), 32);
+        memset(x_priv, 0, m * K * sizeof(oT));
 #pragma omp for schedule(static)
-        for (i = 0; i < n; i++) {
+        for (ghost_lidx i = 0; i < n; i++) {
             if (ALIGN) {
 #pragma vector aligned
 #pragma ivdep
 #pragma simd
-                for (k = 0; k < K; k++) {
-                    for (j = 0; j < m; j++) {
+                for (ghost_lidx k = 0; k < K; k++) {
+                    for (ghost_lidx j = 0; j < m; j++) {
                         if (ROWMAJOR)
-                            x_priv[j * K + k] += vval[i * ldv + j] * wval[i * ldw + k];
+                            x_priv[j * K + k] +=
+                                (oT)conj_or_nop<T, CONJV>(vval[i * ldv + j]) * (oT)wval[i * ldw + k];
                         else
-                            x_priv[j * K + k] += vval[j * ldv + i] * wval[k * ldw + i];
+                            x_priv[j * K + k] +=
+                                (oT)conj_or_nop<T, CONJV>(vval[j * ldv + i]) * (oT)wval[k * ldw + i];
                     }
                 }
             } else {
 #pragma vector unaligned
 #pragma ivdep
 #pragma simd
-                for (k = 0; k < K; k++) {
-                    for (j = 0; j < m; j++) {
+                for (ghost_lidx k = 0; k < K; k++) {
+                    for (ghost_lidx j = 0; j < m; j++) {
                         if (ROWMAJOR)
-                            x_priv[j * K + k] += vval[i * ldv + j] * wval[i * ldw + k];
+                            x_priv[j * K + k] +=
+                                (oT)conj_or_nop<T, CONJV>(vval[i * ldv + j]) * (oT)wval[i * ldw + k];
                         else
-                            x_priv[j * K + k] += vval[j * ldv + i] * wval[k * ldw + i];
+                            x_priv[j * K + k] +=
+                                (oT)conj_or_nop<T, CONJV>(vval[j * ldv + i]) * (oT)wval[k * ldw + i];
                     }
                 }
             }
@@ -99,357 +90,85 @@ ghost_error tsmttsm__a_plain_d_x_x_1_xx(
 #pragma vector aligned
 #pragma ivdep
 #pragma simd
-            for (k = 0; k < K; k++) {
+            for (ghost_lidx k = 0; k < K; k++) {
 #pragma unroll_and_jam
-                for (j = 0; j < m; j++) {
+                for (ghost_lidx j = 0; j < m; j++) {
                     xval[k * ldx + j] += dalpha * x_priv[j * K + k];
                 }
             }
         }
         free(x_priv);
     }
-
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 }
-}
 
-ghost_error ghost_tsmttsm__a_plain_d_x_x_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
+template<bool ROWMAJOR, bool ALIGN>
+ghost_error tsmttsm_plain_type_dispatch(
+    ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
 {
-    return tsmttsm__a_plain_d_x_x_1_xx<true, true>(x, v, w, alpha, beta, conjv);
-}
-ghost_error ghost_tsmttsm__a_plain_d_x_x_1_cm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
-{
-    return tsmttsm__a_plain_d_x_x_1_xx<false, true>(x, v, w, alpha, beta, conjv);
-}
-
-ghost_error ghost_tsmttsm__u_plain_d_x_x_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
-{
-    return tsmttsm__a_plain_d_x_x_1_xx<true, false>(x, v, w, alpha, beta, conjv);
-}
-ghost_error ghost_tsmttsm__u_plain_d_x_x_1_cm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
-{
-    return tsmttsm__a_plain_d_x_x_1_xx<false, false>(x, v, w, alpha, beta, conjv);
-}
-
-/*ghost_error 
-ghost_tsmttsm__a_plain
-_z_x_x_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
-{
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
-    ghost_error ret = GHOST_SUCCESS;
-    ghost_lidx K = w->traits.ncols;
-
-    ghost_lidx n = DM_NROWS(v);
-    ghost_lidx m = v->traits.ncols;
-    
-    GHOST_INFO_LOG("In TSMTTSM with arbitrary block sizes %dx%d <- %dx%d * %dx%d",m,K,m,n,n,K);
-   
-    const double complex * const __restrict__ vval = (const double complex*) v->val;
-    const double complex * const __restrict__ wval = (const double complex*) w->val;
-    double complex * const __restrict__ xval = (double complex*) x->val;
-
     const ghost_lidx ldv = v->stride;
     const ghost_lidx ldw = w->stride;
     const ghost_lidx ldx = x->stride;
-    
-    const double complex dalpha = *(double complex *)alpha;
-    double complex dbeta = *(double complex *)beta;
-
-    ghost_mpi_op mpiop_zadd;
-    ghost_mpi_datatype mpidt_z;
-    ghost_mpi_op_sum(&mpiop_zadd,(ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
-    ghost_mpi_datatype_get(&mpidt_z,(ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
-    
-    ghost_lidx i,j;
-    
-    ghost_lidx k;
-    for (j=0; j<m; j++) {
-        for (k=0; k<K; k++) {
-            xval[k*ldx+j] = dbeta*xval[k*ldx+j];
-        }
-    }
-#pragma omp parallel private(j,k)
-    {
-        complex double *x_priv;
-        ghost_malloc((void **)&x_priv,m*K*sizeof(complex double));
-        memset(x_priv,0,m*K*sizeof(complex double));
-
-        if (conjv) {
-#pragma omp for schedule(runtime)
-            for (i=0; i<n; i++) {
-#pragma simd
-                for (k=0; k<K; k++) {
-                  for (j=0; j<m; j++) {
-                        x_priv[j*K+k] += dalpha*conj(vval[i*ldv+j])*wval[i*ldw+k];
-                    }
-                }
-
-            }
-        } else {
-#pragma omp for schedule(runtime)
-            for (i=0; i<n; i++) {
-#pragma simd
-                for (k=0; k<K; k++) {
-                  for (j=0; j<m; j++) {
-                        x_priv[j*K+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
-                    }
-                }
-
-            }
-        }
-#pragma omp critical
-#pragma simd
-        for (k=0; k<K; k++) {
-            for (j=0; j<m; j++) {
-                xval[k*ldx+j] += x_priv[j*K+k];
-            }
-        }
-        free(x_priv);
-    }
-    
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
-    return ret;
-}
-*/ /*
-ghost_error ghost_tsmttsm__u_plain 
-
-_z_x_x_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
-{
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
-    ghost_error ret = GHOST_SUCCESS;
     ghost_lidx K = w->traits.ncols;
-
     ghost_lidx n = DM_NROWS(v);
     ghost_lidx m = v->traits.ncols;
-    
-    GHOST_INFO_LOG("In TSMTTSM with arbitrary block sizes %dx%d <- %dx%d * %dx%d",m,K,m,n,n,K);
-    
-    const double complex * const __restrict__ vval = (const double complex*) v->val;
-    const double complex * const __restrict__ wval = (const double complex*) w->val;
-    double complex * const __restrict__ xval = (double complex*) x->val;
-
-    const ghost_lidx ldv = v->stride;
-    const ghost_lidx ldw = w->stride;
-    const ghost_lidx ldx = x->stride;
-    
-    const double complex dalpha = *(double complex *)alpha;
-    double complex dbeta = *(double complex *)beta;
-
-    ghost_mpi_op mpiop_zadd;
-    ghost_mpi_datatype mpidt_z;
-    ghost_mpi_op_sum(&mpiop_zadd,(ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
-    ghost_mpi_datatype_get(&mpidt_z,(ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
-    
-    ghost_lidx i,j;
-    
-    ghost_lidx k;
-    for (j=0; j<m; j++) {
-        for (k=0; k<K; k++) {
-            xval[k*ldx+j] = dbeta*xval[k*ldx+j];
+    if (x->traits.datatype & GHOST_DT_REAL) {
+        if (x->traits.datatype & GHOST_DT_DOUBLE && w->traits.datatype & GHOST_DT_FLOAT) {
+            return tsmttsm_plain_kernel<float, double, ROWMAJOR, ALIGN, false>(m, n, K, (double *)x->val,
+                ldx, (float *)v->val, ldv, (float *)w->val, ldw, (double *)alpha, (double *)beta);
+        } else if (x->traits.datatype & GHOST_DT_DOUBLE) {
+            return tsmttsm_plain_kernel<double, double, ROWMAJOR, ALIGN, false>(m, n, K, (double *)x->val,
+                ldx, (double *)v->val, ldv, (double *)w->val, ldw, (double *)alpha, (double *)beta);
+        } else if (x->traits.datatype & GHOST_DT_FLOAT) {
+            return tsmttsm_plain_kernel<float, float, ROWMAJOR, ALIGN, false>(m, n, K, (float *)x->val,
+                ldx, (float *)v->val, ldv, (float *)w->val, ldw, (float *)alpha, (float *)beta);
         }
-    }
-#pragma omp parallel private(j,k)
-    {
-        complex double *x_priv;
-        ghost_malloc((void **)&x_priv,m*K*sizeof(complex double));
-        memset(x_priv,0,m*K*sizeof(complex double));
-
+    } else if (x->traits.datatype & GHOST_DT_COMPLEX) {
         if (conjv) {
-#pragma omp for schedule(runtime)
-            for (i=0; i<n; i++) {
-                for (k=0; k<K; k++) {
-                  for (j=0; j<m; j++) {
-                        x_priv[j*K+k] += dalpha*conj(vval[i*ldv+j])*wval[i*ldw+k];
-                    }
-                }
-
+            if (x->traits.datatype & GHOST_DT_DOUBLE) {
+                return tsmttsm_plain_kernel<std::complex<double>, std::complex<double>, ROWMAJOR, ALIGN, true>(
+                    m, n, K, (std::complex<double> *)x->val, ldx, (std::complex<double> *)v->val,
+                    ldv, (std::complex<double> *)w->val, ldw, (std::complex<double> *)alpha,
+                    (std::complex<double> *)beta);
+            } else if (x->traits.datatype & GHOST_DT_FLOAT) {
+                return tsmttsm_plain_kernel<std::complex<float>, std::complex<float>, ROWMAJOR, ALIGN, true>(
+                    m, n, K, (std::complex<float> *)x->val, ldx, (std::complex<float> *)v->val, ldv,
+                    (std::complex<float> *)w->val, ldw, (std::complex<float> *)alpha,
+                    (std::complex<float> *)beta);
             }
         } else {
-#pragma omp for schedule(runtime)
-            for (i=0; i<n; i++) {
-                for (k=0; k<K; k++) {
-                  for (j=0; j<m; j++) {
-                        x_priv[j*K+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
-                    }
-                }
-
+            if (x->traits.datatype & GHOST_DT_DOUBLE) {
+                return tsmttsm_plain_kernel<std::complex<double>, std::complex<double>, ROWMAJOR, ALIGN, false>(
+                    m, n, K, (std::complex<double> *)x->val, ldx, (std::complex<double> *)v->val,
+                    ldv, (std::complex<double> *)w->val, ldw, (std::complex<double> *)alpha,
+                    (std::complex<double> *)beta);
+            } else if (x->traits.datatype & GHOST_DT_FLOAT) {
+                return tsmttsm_plain_kernel<std::complex<float>, std::complex<float>, ROWMAJOR, ALIGN, false>(
+                    m, n, K, (std::complex<float> *)x->val, ldx, (std::complex<float> *)v->val, ldv,
+                    (std::complex<float> *)w->val, ldw, (std::complex<float> *)alpha,
+                    (std::complex<float> *)beta);
             }
         }
-#pragma omp critical
-        for (k=0; k<K; k++) {
-            for (j=0; j<m; j++) {
-                xval[k*ldx+j] += x_priv[j*K+k];
-            }
-        }
-        free(x_priv);
     }
-    
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
-    return ret;
+    return GHOST_ERR_DATATYPE;
 }
-*/ /*
- ghost_error ghost_tsmttsm__u_plain
- _c_x_x_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int
- conjv)
- {
-     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
-     ghost_error ret = GHOST_SUCCESS;
-     ghost_lidx K = w->traits.ncols;
+}
 
-     ghost_lidx n = DM_NROWS(v);
-     ghost_lidx m = v->traits.ncols;
+ghost_error ghost_tsmttsm__a_plain_x_x_x_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
+{
+    return tsmttsm_plain_type_dispatch<true, true>(x, v, w, alpha, beta, conjv);
+}
+ghost_error ghost_tsmttsm__a_plain_x_x_x_1_cm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
+{
+    return tsmttsm_plain_type_dispatch<false, true>(x, v, w, alpha, beta, conjv);
+}
 
-     GHOST_INFO_LOG("In TSMTTSM with arbitrary block sizes %dx%d <- %dx%d * %dx%d",m,K,m,n,n,K);
-
-     const float complex * const __restrict__ vval = (const float complex *) v->val;
-     const float complex * const __restrict__ wval = (const float complex *) w->val;
-     float complex * const __restrict__ xval = (float complex *) x->val;
-
-     const ghost_lidx ldv = v->stride;
-     const ghost_lidx ldw = w->stride;
-     const ghost_lidx ldx = x->stride;
-
-     const float complex dalpha = *(float complex *)alpha;
-     float complex dbeta = *(float complex *)beta;
-
-     ghost_mpi_op mpiop_zadd;
-     ghost_mpi_datatype mpidt_z;
-     ghost_mpi_op_sum(&mpiop_zadd,(ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_FLOAT));
-     ghost_mpi_datatype_get(&mpidt_z,(ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_FLOAT));
-
-     ghost_lidx i,j;
-
-     ghost_lidx k;
-     for (j=0; j<m; j++) {
-         for (k=0; k<K; k++) {
-             xval[k*ldx+j] = dbeta*xval[k*ldx+j];
-         }
-     }
- #pragma omp parallel private(j,k)
-     {
-         complex float *x_priv;
-         ghost_malloc((void **)&x_priv,m*K*sizeof(complex float));
-         memset(x_priv,0,m*K*sizeof(complex float));
-
-         if (conjv) {
- #pragma omp for schedule(runtime)
-             for (i=0; i<n; i++) {
- #pragma simd
- #pragma vector unaligned
-                 for (k=0; k<K; k++) {
-                   for (j=0; j<m; j++) {
-                         x_priv[j*K+k] += dalpha*conjf(vval[i*ldv+j])*wval[i*ldw+k];
-                     }
-                 }
-
-             }
-         } else {
- #pragma omp for schedule(runtime)
-             for (i=0; i<n; i++) {
- #pragma simd
- #pragma vector unaligned
-                 for (k=0; k<K; k++) {
-                   for (j=0; j<m; j++) {
-                         x_priv[j*K+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
-                     }
-                 }
-
-             }
-         }
- #pragma omp critical
- #pragma simd
- #pragma vector unaligned
-         for (k=0; k<K; k++) {
-             for (j=0; j<m; j++) {
-                 xval[k*ldx+j] += x_priv[j*K+k];
-             }
-         }
-         free(x_priv);
-     }
-
-     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
-     return ret;
- }
-
- ghost_error ghost_tsmttsm__a_plain
- _z_x_x_1_cm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int
- conjv)
- {
-     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
-     ghost_error ret = GHOST_SUCCESS;
-     ghost_lidx K = w->traits.ncols;
-
-     ghost_lidx n = DM_NROWS(v);
-     ghost_lidx m = v->traits.ncols;
-
-     GHOST_INFO_LOG("In TSMTTSM with arbitrary block sizes %dx%d <- %dx%d * %dx%d",m,K,m,n,n,K);
-
-     const double complex * const __restrict__ vval = (const double complex*) v->val;
-     const double complex * const __restrict__ wval = (const double complex*) w->val;
-     double complex * const __restrict__ xval = (double complex*) x->val;
-
-     const ghost_lidx ldv = v->stride;
-     const ghost_lidx ldw = w->stride;
-     const ghost_lidx ldx = x->stride;
-
-     double complex dalpha = *(double complex *)alpha;
-     double complex dbeta = *(double complex *)beta;
-
-     ghost_mpi_op mpiop_zadd;
-     ghost_mpi_datatype mpidt_z;
-     ghost_mpi_op_sum(&mpiop_zadd,(ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
-     ghost_mpi_datatype_get(&mpidt_z,(ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
-
-     ghost_lidx i,j;
-
-     ghost_lidx k;
-     for (j=0; j<m; j++) {
-         for (k=0; k<K; k++) {
-             xval[k*ldx+j] = dbeta*xval[k*ldx+j];
-         }
-     }
- #pragma omp parallel private(j,k)
-     {
-         complex double *x_priv;
-         ghost_malloc((void **)&x_priv,m*K*sizeof(complex double));
-         memset(x_priv,0,m*K*sizeof(complex double));
-
-         if (conjv) {
- #pragma omp for schedule(runtime)
-             for (i=0; i<n; i++) {
- #pragma simd
-                 for (k=0; k<K; k++) {
-                   for (j=0; j<m; j++) {
-                         x_priv[j*K+k] += dalpha*conj(vval[j*ldv+i])*wval[k*ldw+i];
-                     }
-                 }
-
-             }
-         } else {
- #pragma omp for schedule(runtime)
-             for (i=0; i<n; i++) {
- #pragma simd
-                 for (k=0; k<K; k++) {
-                   for (j=0; j<m; j++) {
-                         x_priv[j*K+k] += dalpha*vval[j*ldv+i]*wval[k*ldw+i];
-                     }
-                 }
-
-             }
-         }
- #pragma omp critical
- #pragma simd
-         for (k=0; k<K; k++) {
-             for (j=0; j<m; j++) {
-                 xval[k*ldx+j] += x_priv[j*K+k];
-             }
-         }
-         free(x_priv);
-     }
-
-     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
-     return ret;
- }
-
- */
+ghost_error ghost_tsmttsm__u_plain_x_x_x_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
+{
+    return tsmttsm_plain_type_dispatch<true, false>(x, v, w, alpha, beta, conjv);
+}
+ghost_error ghost_tsmttsm__u_plain_x_x_x_1_cm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
+{
+    return tsmttsm_plain_type_dispatch<false, false>(x, v, w, alpha, beta, conjv);
+}
