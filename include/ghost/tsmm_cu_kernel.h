@@ -96,7 +96,7 @@ __device__ inline T __shfl_xor_t(T var, unsigned int srcLane, int width = 32)
 {
     int *a = reinterpret_cast<int *>(&var);
     for (int i = 0; i < sizeof(T) / 4; i++) {
-        a[i] = __shfl_xor(a[i], srcLane, width);
+      a[i] = __shfl_xor_sync(0xFFFFFFFF, a[i], srcLane, width);
     }
     return *reinterpret_cast<T *>(a);
 }

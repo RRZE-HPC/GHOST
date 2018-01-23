@@ -7,29 +7,19 @@
 
 extern __shared__ char shared[];
 
-// double precision version only present from CUDA 6.5 onwards
-#if CUDA_VERSION < 6050
-__device__ inline double __shfl_down(double var, unsigned int srcLane, int width = 32)
-{
-    int2 a = *reinterpret_cast<int2 *>(&var);
-    a.x = __shfl_down(a.x, srcLane, width);
-    a.y = __shfl_down(a.y, srcLane, width);
-    return *reinterpret_cast<double *>(&a);
-}
-#endif
 
 template<typename v_t>
 __device__ inline v_t ghost_shfl_down32(v_t var, unsigned int srcLane)
 {
-    return __shfl_down(var, srcLane, 32);
+    return __shfl_down_sync(0xffffffff, var, srcLane, 32);
 }
 
 template<>
 __device__ inline cuFloatComplex ghost_shfl_down32<cuFloatComplex>(cuFloatComplex var, unsigned int srcLane)
 {
     float2 a = *reinterpret_cast<float2 *>(&var);
-    a.x = __shfl_down(a.x, srcLane, 32);
-    a.y = __shfl_down(a.y, srcLane, 32);
+    a.x = __shfl_down_sync(0xffffffff, a.x, srcLane, 32);
+    a.y = __shfl_down_sync(0xffffffff, a.y, srcLane, 32);
     return *reinterpret_cast<cuFloatComplex *>(&a);
 }
 
@@ -37,8 +27,8 @@ template<>
 __device__ inline cuDoubleComplex ghost_shfl_down32<cuDoubleComplex>(cuDoubleComplex var, unsigned int srcLane)
 {
     double2 a = *reinterpret_cast<double2 *>(&var);
-    a.x = __shfl_down(a.x, srcLane, 32);
-    a.y = __shfl_down(a.y, srcLane, 32);
+    a.x = __shfl_down_sync(0xffffffff, a.x, srcLane, 32);
+    a.y = __shfl_down_sync(0xffffffff, a.y, srcLane, 32);
     return *reinterpret_cast<cuDoubleComplex *>(&a);
 }
 
@@ -46,15 +36,15 @@ __device__ inline cuDoubleComplex ghost_shfl_down32<cuDoubleComplex>(cuDoubleCom
 template<typename v_t>
 __device__ inline v_t ghost_shfl_down(v_t var, unsigned int srcLane, int width)
 {
-    return __shfl_down(var, srcLane, width);
+    return __shfl_down_sync(0xffffffff, var, srcLane, width);
 }
 
 template<>
 __device__ inline cuFloatComplex ghost_shfl_down<cuFloatComplex>(cuFloatComplex var, unsigned int srcLane, int width)
 {
     float2 a = *reinterpret_cast<float2 *>(&var);
-    a.x = __shfl_down(a.x, srcLane, width);
-    a.y = __shfl_down(a.y, srcLane, width);
+    a.x = __shfl_down_sync(0xffffffff, a.x, srcLane, width);
+    a.y = __shfl_down_sync(0xffffffff, a.y, srcLane, width);
     return *reinterpret_cast<cuFloatComplex *>(&a);
 }
 
@@ -62,8 +52,8 @@ template<>
 __device__ inline cuDoubleComplex ghost_shfl_down<cuDoubleComplex>(cuDoubleComplex var, unsigned int srcLane, int width)
 {
     double2 a = *reinterpret_cast<double2 *>(&var);
-    a.x = __shfl_down(a.x, srcLane, width);
-    a.y = __shfl_down(a.y, srcLane, width);
+    a.x = __shfl_down_sync(0xffffffff, a.x, srcLane, width);
+    a.y = __shfl_down_sync(0xffffffff, a.y, srcLane, width);
     return *reinterpret_cast<cuDoubleComplex *>(&a);
 }
 
