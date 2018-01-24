@@ -671,7 +671,7 @@ endif()
 if (GHOST_HAVE_CUDA)
     set(CUDA_PROPAGATE_HOST_FLAGS OFF)
     cuda_include_directories(${PROJECT_SOURCE_DIR}/include ${PROJECT_BINARY_DIR} ${PROJECT_BINARY_DIR}/ghost)
-    list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fPIC;-gencode arch=compute_35,code=compute_35;-Xcompiler;-Wall;-Wno-deprecated-declarations)
+    list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fPIC;-gencode arch=compute_35,code=compute_35;-Xcompiler;-Wall)
     list(APPEND CUDA_NVCC_FLAGS -gencode arch=compute_60,code=compute_60)
 
     list(APPEND CUDA_NVCC_FLAGS -isystem;${HWLOC_INCLUDE_DIR})

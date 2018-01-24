@@ -96,7 +96,11 @@ __device__ inline T __shfl_xor_t(T var, unsigned int srcLane, int width = 32)
 {
     int *a = reinterpret_cast<int *>(&var);
     for (int i = 0; i < sizeof(T) / 4; i++) {
-        a[i] = __shfl_xor(a[i], srcLane, width);
+#if __CUDACC_VER_MAJOR__ < 9
+    a[i] = __shfl_xor(a[i], srcLane, width);
+#else
+    a[i] = __shfl_xor_sync(0xFFFFFFFF, a[i], srcLane, width);
+#endif
     }
     return *reinterpret_cast<T *>(a);
 }
