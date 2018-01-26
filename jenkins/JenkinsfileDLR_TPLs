@@ -12,8 +12,8 @@ export MODULEPATH=/tools/modulesystem/modulefiles
 module() { eval `/usr/bin/modulecmd bash $*`; }
 # set ccache path
 export CCACHE_DIR=/home_local/f_buildn/ESSEX_workspace/.ccache
-export FC="ccache gfortran" CC="ccache gcc" CXX="ccache g++"
-./test/ci-sc-dlr-optional-libs.sh -e gcc-5.3.0-openmpi -b Release -f optional-libs -v native
+export FC="gfortran" CC="gcc" CXX="g++"
+./test/ci-sc-dlr-optional-libs.sh -e gcc-7.2.0-openmpi -b Release -f optional-libs -v native -t git
 ''')
 
    stage 'native Debug build with Zoltan and GCC 5.3.0 and OpenMPI'
@@ -22,8 +22,8 @@ export MODULEPATH=/tools/modulesystem/modulefiles
 module() { eval `/usr/bin/modulecmd bash $*`; }
 # set ccache path
 export CCACHE_DIR=/home_local/f_buildn/ESSEX_workspace/.ccache
-export FC="ccache gfortran" CC="ccache gcc" CXX="ccache g++"
-./test/ci-sc-dlr-optional-libs.sh -e gcc-5.3.0-openmpi -b Debug -f optional-libs -v native
+export FC="gfortran" CC="gcc" CXX="g++"
+./test/ci-sc-dlr-optional-libs.sh -e gcc-7.2.0-openmpi -b Debug -f optional-libs -v native
 ''')
 /*
    stage 'CUDA Release build with Zoltan, GCC 4.9.2 and OpenMPI'
@@ -31,9 +31,8 @@ export FC="ccache gfortran" CC="ccache gcc" CXX="ccache g++"
 export MODULEPATH=/tools/modulesystem/modulefiles
 module() { eval `/usr/bin/modulecmd bash $*`; }
 # set ccache path
-export CCACHE_DIR=/home_local/f_buildn/ESSEX_workspace/.ccache
-export FC="ccache gfortran" CC="ccache gcc" CXX="ccache g++"
-./test/ci-sc-dlr-optional-libs.sh -e gcc-4.9.2-openmpi-1.10.1 -b Release -f optional-libs -v CUDA
+export FC="gfortran" CC="gcc" CXX="g++"
+./test/ci-sc-dlr-optional-libs.sh -e gcc-4.9.2-openmpi-1.10.1 -b Release -f optional-libs -v CUDA -t 12.6.1
 ''')
 
    stage 'CUDA Debug build with Zoltan, GCC 4.9.2 and OpenMPI'
@@ -41,9 +40,8 @@ export FC="ccache gfortran" CC="ccache gcc" CXX="ccache g++"
 export MODULEPATH=/tools/modulesystem/modulefiles
 module() { eval `/usr/bin/modulecmd bash $*`; }
 # set ccache path
-export CCACHE_DIR=/home_local/f_buildn/ESSEX_workspace/.ccache
-export FC="ccache gfortran" CC="ccache gcc" CXX="ccache g++"
-./test/ci-sc-dlr-optional-libs.sh -e gcc-4.9.2-openmpi-1.10.1 -b Debug -f optional-libs -v CUDA
+export FC="gfortran" CC="gcc" CXX="g++"
+./test/ci-sc-dlr-optional-libs.sh -e gcc-4.9.2-openmpi-1.10.1 -b Debug -f optional-libs -v CUDA -t 12.6.1
 ''')
 
    stage 'native Release build with SPMP, ICC 16.0.3 and MPICH'

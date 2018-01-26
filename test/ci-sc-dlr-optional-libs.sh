@@ -18,13 +18,14 @@ FLAGS="default" # "optional-libs"
 MODULES_BASIC="cmake ccache cppcheck lapack gsl"
 
 ADD_CMAKE_FLAGS=""
+TRILINOS_VERSION="git"
 
 ## parse command line arguments
 usage() { echo "Usage: $0 [-e <PrgEnv/module-string>] [-b <Release|Debug|...>] [-v <native|none|SSE|AVX|AVX2|CUDA>]"
           echo "       [-f default|optional-libs] [-p <install-prefix>] [-c <add cmake flags>]" 1>&2; 
 exit 1; }
 
-while getopts "e:b:v:f:p:c:h" o; do
+while getopts "e:b:v:f:p:c:t:h" o; do
     case "${o}" in
         c)
             ADD_CMAKE_FLAGS=${OPTARG}
@@ -43,6 +44,9 @@ while getopts "e:b:v:f:p:c:h" o; do
             ;;
         p)
             INSTALL_PREFIX=${OPTARG}
+            ;;
+        h)
+            TRILINOS_VERSION=${OPTARG}
             ;;
         h)
             usage
@@ -84,10 +88,10 @@ INSTALL_DIR=$INSTALL_PREFIX/install-${PRGENV}-${BUILD_TYPE}-${VECT_EXT}
 
 if [ "${FLAGS}" = "optional-libs" ]; then
   module load ColPack
-  ADD_CMAKE_FLAGS="${ADD_CMAKE_FLAGS} -DGHOST_USE_COLPACK:BOOL=ON"
+  ADD_CMAKE_FLAGS="${ADD_CMAKE_FLAGS}"
   if [ "${PRGENV}" ~= "gcc" ]; then
     # we currently have no Trilinos installation with icc
-    module load trilinos
+    module load trilinos/${TRILINOS_VERSION}
     ADD_CMAKE_FLAGS="${ADD_CMAKE_FLAGS} -DGHOST_USE_ZOLTAN:BOOL=ON"
   fi
   INSTALL_DIR=${INSTALL_DIR}_optional-libs
