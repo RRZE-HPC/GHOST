@@ -1,0 +1,174 @@
+/*!GHOST_AUTOGEN_TSMTTSM *,* */
+#include "ghost/config.h"
+#include "ghost/types.h"
+#include "ghost/math.h"
+#include "ghost/instr.h"
+#include "ghost/util.h"
+#include "ghost/tsmttsm_var2_plain_gen.h"
+
+#include <typeinfo>
+#include <complex>
+
+
+namespace {
+
+template<typename T, bool CONJ>
+T conj_or_nop(T val)
+{
+    if (CONJ)
+        return std::conj(val);
+    else
+        return val;
+}
+
+template<typename T, typename oT, bool ROWMAJOR, bool ALIGN, bool CONJV>
+ghost_error tsmttsm_plain_kernel(const ghost_lidx m, const ghost_lidx n, const ghost_lidx K,
+    oT *__restrict__ xval, const ghost_lidx ldx, const T *const __restrict__ vval,
+    const ghost_lidx ldv, const T *const __restrict__ wval, const ghost_lidx ldw, oT *alpha, oT *beta)
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
+    ghost_error ret = GHOST_SUCCESS;
+
+
+    const char *alignmentString = "UNALIGNED";
+    if (ALIGN) alignmentString = "ALIGNED";
+    const char *storageOrderString = "Col-Major";
+    if (ROWMAJOR) storageOrderString = "Row-Major";
+    GHOST_INFO_LOG("In %s %s TSMTTSM with arbitrary block sizes %dx%d <- %dx%d * %dx%d, %s %s",
+        alignmentString, storageOrderString, m, K, m, n, n, K, typeid(T).name(), typeid(oT).name());
+
+
+    oT dalpha = *alpha;
+    oT dbeta = *beta;
+
+
+    for (ghost_lidx j = 0; j < m; j++) {
+        for (ghost_lidx k = 0; k < K; k++) {
+            xval[k * ldx + j] = dbeta * xval[k * ldx + j];
+        }
+    }
+#pragma omp parallel
+    {
+        oT *x_priv;
+        ghost_malloc_align((void **)&x_priv, m * K * sizeof(oT), 32);
+        memset(x_priv, 0, m * K * sizeof(oT));
+#pragma omp for schedule(static)
+        for (ghost_lidx i = 0; i < n; i++) {
+            if (ALIGN) {
+#pragma vector aligned
+#pragma ivdep
+#pragma simd
+                for (ghost_lidx k = 0; k < K; k++) {
+                    for (ghost_lidx j = 0; j < m; j++) {
+                        if (ROWMAJOR)
+                            x_priv[j * K + k] +=
+                                (oT)conj_or_nop<T, CONJV>(vval[i * ldv + j]) * (oT)wval[i * ldw + k];
+                        else
+                            x_priv[j * K + k] +=
+                                (oT)conj_or_nop<T, CONJV>(vval[j * ldv + i]) * (oT)wval[k * ldw + i];
+                    }
+                }
+            } else {
+#pragma vector unaligned
+#pragma ivdep
+#pragma simd
+                for (ghost_lidx k = 0; k < K; k++) {
+                    for (ghost_lidx j = 0; j < m; j++) {
+                        if (ROWMAJOR)
+                            x_priv[j * K + k] +=
+                                (oT)conj_or_nop<T, CONJV>(vval[i * ldv + j]) * (oT)wval[i * ldw + k];
+                        else
+                            x_priv[j * K + k] +=
+                                (oT)conj_or_nop<T, CONJV>(vval[j * ldv + i]) * (oT)wval[k * ldw + i];
+                    }
+                }
+            }
+        }
+
+#pragma omp critical
+        {
+#pragma vector aligned
+#pragma ivdep
+#pragma simd
+            for (ghost_lidx k = 0; k < K; k++) {
+#pragma unroll_and_jam
+                for (ghost_lidx j = 0; j < m; j++) {
+                    xval[k * ldx + j] += dalpha * x_priv[j * K + k];
+                }
+            }
+        }
+        free(x_priv);
+    }
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
+    return ret;
+}
+
+template<bool ROWMAJOR, bool ALIGN>
+ghost_error tsmttsm_plain_type_dispatch(
+    ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
+{
+    const ghost_lidx ldv = v->stride;
+    const ghost_lidx ldw = w->stride;
+    const ghost_lidx ldx = x->stride;
+    ghost_lidx K = w->traits.ncols;
+    ghost_lidx n = DM_NROWS(v);
+    ghost_lidx m = v->traits.ncols;
+    if (x->traits.datatype & GHOST_DT_REAL) {
+        if (x->traits.datatype & GHOST_DT_DOUBLE && w->traits.datatype & GHOST_DT_FLOAT) {
+            return tsmttsm_plain_kernel<float, double, ROWMAJOR, ALIGN, false>(m, n, K, (double *)x->val,
+                ldx, (float *)v->val, ldv, (float *)w->val, ldw, (double *)alpha, (double *)beta);
+        } else if (x->traits.datatype & GHOST_DT_DOUBLE) {
+            return tsmttsm_plain_kernel<double, double, ROWMAJOR, ALIGN, false>(m, n, K, (double *)x->val,
+                ldx, (double *)v->val, ldv, (double *)w->val, ldw, (double *)alpha, (double *)beta);
+        } else if (x->traits.datatype & GHOST_DT_FLOAT) {
+            return tsmttsm_plain_kernel<float, float, ROWMAJOR, ALIGN, false>(m, n, K, (float *)x->val,
+                ldx, (float *)v->val, ldv, (float *)w->val, ldw, (float *)alpha, (float *)beta);
+        }
+    } else if (x->traits.datatype & GHOST_DT_COMPLEX) {
+        if (conjv) {
+            if (x->traits.datatype & GHOST_DT_DOUBLE) {
+                return tsmttsm_plain_kernel<std::complex<double>, std::complex<double>, ROWMAJOR, ALIGN, true>(
+                    m, n, K, (std::complex<double> *)x->val, ldx, (std::complex<double> *)v->val,
+                    ldv, (std::complex<double> *)w->val, ldw, (std::complex<double> *)alpha,
+                    (std::complex<double> *)beta);
+            } else if (x->traits.datatype & GHOST_DT_FLOAT) {
+                return tsmttsm_plain_kernel<std::complex<float>, std::complex<float>, ROWMAJOR, ALIGN, true>(
+                    m, n, K, (std::complex<float> *)x->val, ldx, (std::complex<float> *)v->val, ldv,
+                    (std::complex<float> *)w->val, ldw, (std::complex<float> *)alpha,
+                    (std::complex<float> *)beta);
+            }
+        } else {
+            if (x->traits.datatype & GHOST_DT_DOUBLE) {
+                return tsmttsm_plain_kernel<std::complex<double>, std::complex<double>, ROWMAJOR, ALIGN, false>(
+                    m, n, K, (std::complex<double> *)x->val, ldx, (std::complex<double> *)v->val,
+                    ldv, (std::complex<double> *)w->val, ldw, (std::complex<double> *)alpha,
+                    (std::complex<double> *)beta);
+            } else if (x->traits.datatype & GHOST_DT_FLOAT) {
+                return tsmttsm_plain_kernel<std::complex<float>, std::complex<float>, ROWMAJOR, ALIGN, false>(
+                    m, n, K, (std::complex<float> *)x->val, ldx, (std::complex<float> *)v->val, ldv,
+                    (std::complex<float> *)w->val, ldw, (std::complex<float> *)alpha,
+                    (std::complex<float> *)beta);
+            }
+        }
+    }
+    return GHOST_ERR_DATATYPE;
+}
+}
+
+ghost_error ghost_tsmttsm__a_plain_x_x_x_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
+{
+    return tsmttsm_plain_type_dispatch<true, true>(x, v, w, alpha, beta, conjv);
+}
+ghost_error ghost_tsmttsm__a_plain_x_x_x_1_cm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
+{
+    return tsmttsm_plain_type_dispatch<false, true>(x, v, w, alpha, beta, conjv);
+}
+
+ghost_error ghost_tsmttsm__u_plain_x_x_x_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
+{
+    return tsmttsm_plain_type_dispatch<true, false>(x, v, w, alpha, beta, conjv);
+}
+ghost_error ghost_tsmttsm__u_plain_x_x_x_1_cm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
+{
+    return tsmttsm_plain_type_dispatch<false, false>(x, v, w, alpha, beta, conjv);
+}
