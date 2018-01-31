@@ -25,26 +25,27 @@
 
 namespace {
 
-template<typename T, bool betaiszero>
+template<typename T, typename iT, bool betaiszero>
 __global__ static void ghost_tsmm_cu_rm_fallback(T *const __restrict__ x, const T *const __restrict__ v,
-    const T *const __restrict__ w, const T alpha, const T beta, ghost_lidx nrows,
+    const iT *const __restrict__ w, const iT alpha, const iT beta, ghost_lidx nrows,
     ghost_lidx stridex, ghost_lidx stridev, ghost_lidx stridew, const int M, const int K)
 {
     int row = blockIdx.x * blockDim.y + threadIdx.y;
     int m;
-    T tmp;
+
 
     for (; row < nrows; row += gridDim.x * blockDim.y) {
+        iT tmp;
         if (betaiszero) {
-            zero<T>(tmp);
+            zero<iT>(tmp);
         } else {
-            tmp = scale<T>(x[row * stridex + threadIdx.x], beta);
+            tmp = scale<iT>((iT)x[row * stridex + threadIdx.x], beta);
         }
         for (m = 0; m < M; m++) {
-            tmp = axpy<T, T>(tmp, alpha,
-                scale<T>(__ldg(&v[row * stridev + m]), __ldg(&w[threadIdx.x * stridew + m])));
+            tmp = axpy<iT, iT>(tmp, alpha,
+                scale<iT>((iT)__ldg(&v[row * stridev + m]), (iT)__ldg(&w[threadIdx.x * stridew + m])));
         }
-        x[row * stridex + threadIdx.x] = tmp;
+        x[row * stridex + threadIdx.x] = (T)tmp;
     }
 }
 
@@ -61,13 +62,13 @@ ghost_error tsmm_var2(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, v
     grid.z = 1;
 
     if (ghost_iszero(beta, w->traits.datatype)) {
-        ghost_tsmm_cu_rm_fallback<T, true><<<grid, block>>>((T *)x->cu_val, (T *)v->cu_val,
-            (T *)w->cu_val, *(T *)alpha, *(T *)beta, DM_NROWS(x), x->stride, v->stride, w->stride,
-            v->traits.ncols, x->traits.ncols);
+        ghost_tsmm_cu_rm_fallback<T, iT, true><<<grid, block>>>((T *)x->cu_val, (T *)v->cu_val,
+            (iT *)w->cu_val, *(iT *)alpha, *(iT *)beta, DM_NROWS(x), x->stride, v->stride,
+            w->stride, v->traits.ncols, x->traits.ncols);
     } else {
-        ghost_tsmm_cu_rm_fallback<T, false><<<grid, block>>>((T *)x->cu_val, (T *)v->cu_val,
-            (T *)w->cu_val, *(T *)alpha, *(T *)beta, DM_NROWS(x), x->stride, v->stride, w->stride,
-            v->traits.ncols, x->traits.ncols);
+        ghost_tsmm_cu_rm_fallback<T, iT, false><<<grid, block>>>((T *)x->cu_val, (T *)v->cu_val,
+            (iT *)w->cu_val, *(iT *)alpha, *(iT *)beta, DM_NROWS(x), x->stride, v->stride,
+            w->stride, v->traits.ncols, x->traits.ncols);
     }
     return ret;
 }
@@ -86,9 +87,11 @@ ghost_error ghost_tsmm__u_cuda_x_x_x_1_1_rm(ghost_densemat *x, ghost_densemat *v
             tsmm_var2<cuFloatComplex, cuFloatComplex>(x, v, w, alpha, beta);
         }
     } else {
-        if (x->traits.datatype & GHOST_DT_DOUBLE) {
+        if (x->traits.datatype & GHOST_DT_DOUBLE && w->traits.datatype & GHOST_DT_DOUBLE) {
             tsmm_var2<double, double>(x, v, w, alpha, beta);
-        } else {
+        } else if (x->traits.datatype & GHOST_DT_FLOAT && w->traits.datatype & GHOST_DT_FLOAT) {
+            tsmm_var2<float, float>(x, v, w, alpha, beta);
+        } else if (x->traits.datatype & GHOST_DT_FLOAT && w->traits.datatype & GHOST_DT_DOUBLE) {
             tsmm_var2<float, double>(x, v, w, alpha, beta);
         }
     }
