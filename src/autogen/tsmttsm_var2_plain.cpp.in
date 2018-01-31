@@ -12,14 +12,29 @@
 
 namespace {
 
+// note: partial specialization of a templated function is not allowed in C++,
+// so we introduce a small class for defining conj_or_np<T,CONJ>.
 template<typename T, bool CONJ>
-T conj_or_nop(T val)
+class cnp_traits
 {
-    if (CONJ)
-        return std::conj(val);
-    else
-        return val;
-}
+  public:
+  
+  static inline T conj_or_nop(T val)
+  {
+    return std::conj(val);
+  }
+};
+
+template<typename T>
+class cnp_traits<T,false>
+{
+  public:
+  
+  static inline T conj_or_nop(T val)
+  {
+    return val;
+  }
+};
 
 template<typename T, typename oT, bool ROWMAJOR, bool ALIGN, bool CONJV>
 ghost_error tsmttsm_plain_kernel(const ghost_lidx m, const ghost_lidx n, const ghost_lidx K,
@@ -62,10 +77,10 @@ ghost_error tsmttsm_plain_kernel(const ghost_lidx m, const ghost_lidx n, const g
                     for (ghost_lidx j = 0; j < m; j++) {
                         if (ROWMAJOR)
                             x_priv[j * K + k] +=
-                                (oT)conj_or_nop<T, CONJV>(vval[i * ldv + j]) * (oT)wval[i * ldw + k];
+                                (oT)cnp_traits<T, CONJV>::conj_or_nop(vval[i * ldv + j]) * (oT)wval[i * ldw + k];
                         else
                             x_priv[j * K + k] +=
-                                (oT)conj_or_nop<T, CONJV>(vval[j * ldv + i]) * (oT)wval[k * ldw + i];
+                                (oT)cnp_traits<T, CONJV>::conj_or_nop(vval[j * ldv + i]) * (oT)wval[k * ldw + i];
                     }
                 }
             } else {
@@ -76,10 +91,10 @@ ghost_error tsmttsm_plain_kernel(const ghost_lidx m, const ghost_lidx n, const g
                     for (ghost_lidx j = 0; j < m; j++) {
                         if (ROWMAJOR)
                             x_priv[j * K + k] +=
-                                (oT)conj_or_nop<T, CONJV>(vval[i * ldv + j]) * (oT)wval[i * ldw + k];
+                                (oT)cnp_traits<T, CONJV>::conj_or_nop(vval[i * ldv + j]) * (oT)wval[i * ldw + k];
                         else
                             x_priv[j * K + k] +=
-                                (oT)conj_or_nop<T, CONJV>(vval[j * ldv + i]) * (oT)wval[k * ldw + i];
+                                (oT)cnp_traits<T, CONJV>::conj_or_nop(vval[j * ldv + i]) * (oT)wval[k * ldw + i];
                     }
                 }
             }
