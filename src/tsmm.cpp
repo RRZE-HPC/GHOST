@@ -344,7 +344,7 @@ end_of_loop:
 
     if (kernel) {
         if (optimal) {
-            GHOST_INFO_LOG("                    Found optimal: xcols=%s, vcols=%s, impl=%s, %s, "
+            GHOST_INFO_LOG("         Found optimal: xcols=%s, vcols=%s, impl=%s, %s, "
                            "unroll=%d, dt=%s, multipleof=%d, storage=%s",
                 p.xcols == -1 ? "arbitrary" : ghost::to_string((long long)p.xcols).c_str(),
                 p.vcols == -1 ? "arbitrary" : ghost::to_string((long long)p.vcols).c_str(),
