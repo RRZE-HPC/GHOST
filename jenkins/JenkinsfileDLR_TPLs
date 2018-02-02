@@ -10,11 +10,13 @@ node("SC-030083L") {
    sh(shellPrefix + '''
 ./test/ci-sc-dlr.sh -e gcc-7.2.0-openmpi -b Release -f optional-libs -v native -t git
 ''')
-/*
+
    stage 'native Debug build with Zoltan and GCC 7.2.0 and OpenMPI'
    sh(shellPrefix + '''
 ./test/ci-sc-dlr.sh -e gcc-7.2.0-openmpi -b Debug -f optional-libs -v native -t git
 ''')
+
+/*
 
    stage 'CUDA Release build with Zoltan, GCC 4.9.2 and OpenMPI'
    sh(shellPrefix + '''
