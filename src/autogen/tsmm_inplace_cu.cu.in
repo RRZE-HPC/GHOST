@@ -9,7 +9,6 @@
 #include "ghost/instr.h"
 #include "ghost/rand.h"
 #include "ghost/tsmm_inplace_cu_gen.h"
-#include "ghost/tsmm_inplace_cu_kernel.h"
 
 #include <cuda_runtime.h>
 #include <stdio.h>
