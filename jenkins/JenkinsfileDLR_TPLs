@@ -6,57 +6,33 @@ node("SC-030083L") {
 
    shellPrefix="#!/bin/bash\n"
    
-   stage 'native Release build with Zoltan and GCC 5.3.0'
-   sh(shellPrefix + '''# configure modulesystem to load newer bash!
-export MODULEPATH=/tools/modulesystem/modulefiles
-module() { eval `/usr/bin/modulecmd bash $*`; }
-# set ccache path
-export CCACHE_DIR=/home_local/f_buildn/ESSEX_workspace/.ccache
-export FC="gfortran" CC="gcc" CXX="g++"
-./test/ci-sc-dlr-optional-libs.sh -e gcc-7.2.0-openmpi -b Release -f optional-libs -v native -t git
-''')
-
-   stage 'native Debug build with Zoltan and GCC 5.3.0 and OpenMPI'
-   sh(shellPrefix + '''# configure modulesystem to load newer bash!
-export MODULEPATH=/tools/modulesystem/modulefiles
-module() { eval `/usr/bin/modulecmd bash $*`; }
-# set ccache path
-export CCACHE_DIR=/home_local/f_buildn/ESSEX_workspace/.ccache
-export FC="gfortran" CC="gcc" CXX="g++"
-./test/ci-sc-dlr-optional-libs.sh -e gcc-7.2.0-openmpi -b Debug -f optional-libs -v native
+   stage 'native Release build with Zoltan and GCC 7.2.0'
+   sh(shellPrefix + '''
+./test/ci-sc-dlr.sh -e gcc-7.2.0-openmpi -b Release -f optional-libs -v native -t git
 ''')
 /*
+   stage 'native Debug build with Zoltan and GCC 7.2.0 and OpenMPI'
+   sh(shellPrefix + '''
+./test/ci-sc-dlr.sh -e gcc-7.2.0-openmpi -b Debug -f optional-libs -v native -t git
+''')
+
    stage 'CUDA Release build with Zoltan, GCC 4.9.2 and OpenMPI'
-   sh(shellPrefix + '''# configure modulesystem to load newer bash!
-export MODULEPATH=/tools/modulesystem/modulefiles
-module() { eval `/usr/bin/modulecmd bash $*`; }
-# set ccache path
-export FC="gfortran" CC="gcc" CXX="g++"
-./test/ci-sc-dlr-optional-libs.sh -e gcc-4.9.2-openmpi-1.10.1 -b Release -f optional-libs -v CUDA -t 12.6.1
+   sh(shellPrefix + '''
+./test/ci-sc-dlr.sh -e gcc-4.9.2-openmpi-1.10.1 -b Release -f optional-libs -v CUDA -t 12.6.1
 ''')
 
    stage 'CUDA Debug build with Zoltan, GCC 4.9.2 and OpenMPI'
-   sh(shellPrefix + '''# configure modulesystem to load newer bash!
-export MODULEPATH=/tools/modulesystem/modulefiles
-module() { eval `/usr/bin/modulecmd bash $*`; }
-# set ccache path
-export FC="gfortran" CC="gcc" CXX="g++"
-./test/ci-sc-dlr-optional-libs.sh -e gcc-4.9.2-openmpi-1.10.1 -b Debug -f optional-libs -v CUDA -t 12.6.1
+   sh(shellPrefix + '''
+./test/ci-sc-dlr.sh -e gcc-4.9.2-openmpi-1.10.1 -b Debug -f optional-libs -v CUDA -t 12.6.1
 ''')
 
    stage 'native Release build with SPMP, ICC 16.0.3 and MPICH'
-   sh(shellPrefix + '''# configure modulesystem to load newer bash!
-export MODULEPATH=/tools/modulesystem/modulefiles
-module() { eval `/usr/bin/modulecmd bash $*`; }
-export FC="ifort" CC="icc" CXX="icpc"
+   sh(shellPrefix + '''
 ./test/ci-sc-dlr-optional-libs.sh -e intel-16.0.3-mpich -b Release -f optional-libs -v native -c "-DGHOST_USE_SPMP:BOOL=ON"
 ''')
 
    stage 'native Debug build with SPMP, ICC 16.0.3 and MPICH'
-   sh(shellPrefix + '''# configure modulesystem to load newer bash!
-export MODULEPATH=/tools/modulesystem/modulefiles
-module() { eval `/usr/bin/modulecmd bash $*`; }
-export FC="ifort" CC="icc" CXX="icpc"
+   sh(shellPrefix + '''
 ./test/ci-sc-dlr-optional-libs.sh -e intel-16.0.3-mpich -b Debug -f optional-libs -v native -c "-DGHOST_USE_SPMP:BOOL=ON"
 ''')
 */
