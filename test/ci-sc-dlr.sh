@@ -1,27 +1,42 @@
 #!/usr/bin/env bash
+
+# very similar to the regular script, but allows compiling with trilinos (zoltan) and ColPack by passing in -f 
+# optional-libs. The reason why we have two scripts is a problem with our Jenkins build jobs, they fail with the
+# combination -v CUDA and -f default with this script (possibly an issue with ccache)
+
 set -e
+
+export CCACHE_DIR=/home_local/f_buildn/ESSEX_workspace/.ccache/
 
 ## default options and declarations
 # kernel lib
-PRGENV="gcc-4.9.2-openmpi" # intel-13.0.1-mpich gcc-4.8.2-openmpi
+PRGENV="gcc-4.9.2-openmpi-1.10.1" # intel-13.0.1-mpich gcc-4.8.2-openmpi
 BUILD_TYPE=Release
 INSTALL_PREFIX=../../
 VECT_EXT="native" # none SSE AVX AVX2 CUDA
+FLAGS="default" # "optional-libs"
 
-# list of modules to load. Note that ccache is used by ghost automatically
-# if the compiler is gcc and CUDA is disabled. We *must* load the ccache module
-# to prevent ghost from using the system ccache, which is old and possibly broken 
-# on the DLR systems.
-MODULES_BASIC="cmake ccache cppcheck"
+# list of modules to load
+MODULES_BASIC="cmake ccache cppcheck lapack gsl"
+
+ADD_CMAKE_FLAGS=""
+TRILINOS_VERSION="git"
 
 ## parse command line arguments
-usage() { echo "Usage: $0 [-e <PrgEnv/module-string>] [-b <Release|Debug|...>] [-v <native|none|SSE|AVX|AVX2|CUDA>]" 1>&2; 
+usage() { echo "Usage: $0 [-e <PrgEnv/module-string>] [-b <Release|Debug|...>] [-v <native|none|SSE|AVX|AVX2|CUDA>]"
+          echo "       [-f default|optional-libs] [-p <install-prefix>] [-c <add cmake flags>]" 1>&2; 
 exit 1; }
 
-while getopts "e:b:v:p:h" o; do
+while getopts "e:b:v:f:p:c:t:h" o; do
     case "${o}" in
+        c)
+            ADD_CMAKE_FLAGS=${OPTARG}
+            ;;
         e)
             PRGENV=${OPTARG}
+            ;;
+        f)
+            FLAGS=${OPTARG}
             ;;
         b)
             BUILD_TYPE=${OPTARG}
@@ -33,6 +48,9 @@ while getopts "e:b:v:p:h" o; do
             INSTALL_PREFIX=${OPTARG}
             ;;
         h)
+            TRILINOS_VERSION=${OPTARG}
+            ;;
+        h)
             usage
             ;;
         *)
@@ -42,7 +60,7 @@ while getopts "e:b:v:p:h" o; do
 done
 shift $((OPTIND-1))
 
-echo "Options: PRGENV=${PRGENV}, BUILD_TYPE=${BUILD_TYPE}"
+echo "Options: PRGENV=${PRGENV}, BUILD_TYPE=${BUILD_TYPE}, VECT_EXT=${VECT_EXT}, FLAGS=${FLAGS}, ADD_CMAKE_FLAGS=${ADD_CMAKE_FLAGS}"
 
 ## prepare system for compilation
 # configure modulesystem
@@ -51,26 +69,34 @@ module() { eval `/usr/bin/modulecmd bash $*`; }
 
 # load modules
 module load "PrgEnv/$PRGENV"
-if [[ "$PRGENV" =~ gcc* ]]; then
-  export FC="gfortran" CC="gcc" CXX="g++"
-  module add lapack
-elif [[ "$PRGENV" =~ intel* ]]; then
-  module add mkl
-  export FC=ifort CC=icc CXX=icpc
-else
-  set -- $(mpicc -show)
-  export CC=$1
-  set -- $(mpicxx -show)
-  export CXX=$1
-  set -- $(mpif90 -show)
-  export FC=$1
-fi
+# set compiler names
+set -- $(mpicc -show)
+export CC=$1
+set -- $(mpicxx -show)
+export CXX=$1
+set -- $(mpif90 -show)
+export FC=$1
 
 echo "compilers: CC=$CC, CXX=$CXX, FC=$FC"
 
 for m in $MODULES_BASIC; do module load $m; done
 if [ "${VECT_EXT}" = "CUDA" ]; then
   module load cuda
+  echo "check if any GPU is found..."
+  nvidia-smi -q|grep "Product Name"
+fi
+
+INSTALL_DIR=$INSTALL_PREFIX/install-${PRGENV}-${BUILD_TYPE}-${VECT_EXT}
+
+if [ "${FLAGS}" = "optional-libs" ]; then
+  module load ColPack
+  ADD_CMAKE_FLAGS="${ADD_CMAKE_FLAGS}"
+  if [ "${PRGENV}" ~= "gcc" ]; then
+    # we currently have no Trilinos installation with icc
+    module load trilinos/${TRILINOS_VERSION}
+    ADD_CMAKE_FLAGS="${ADD_CMAKE_FLAGS} -DGHOST_USE_ZOLTAN:BOOL=ON"
+  fi
+  INSTALL_DIR=${INSTALL_DIR}_optional-libs
 fi
 
 module list
@@ -113,10 +139,12 @@ fi
 
 error=0
 # build and install
-mkdir build_${PRGENV}_${BUILD_TYPE}_${VECT_EXT}       || exit 1
-cd build_${PRGENV}_${BUILD_TYPE}_${VECT_EXT}          || exit 1
-cmake -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX/install-${PRGENV}-${BUILD_TYPE}-${VECT_EXT} \
--DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DBUILD_SHARED_LIBS=ON ${VECT_FLAGS} ..              || error=1
+mkdir build_${PRGENV}_${BUILD_TYPE}_${VECT_EXT}_${FLAGS}       || exit 1
+cd build_${PRGENV}_${BUILD_TYPE}_${VECT_EXT}_${FLAGS}          || exit 1
+cmake -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} \
+-DGHOST_GEN_DENSEMAT_DIM=${BLOCKSZ} -DGHOST_GEN_SELL_C=${SELL_CS} \
+-DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DBUILD_SHARED_LIBS=ON ${VECT_FLAGS} ${ADD_CMAKE_FLAGS} \
+..              || error=1
 
 if [[ "${BUILD_TYPE}" =~ *Rel* ]]; then
   make doc                                  || error=1
