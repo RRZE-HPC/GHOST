@@ -18,45 +18,137 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <complex.h>
+#include <typeinfo>
 
 #include "ghost/cu_complex.h"
 
 #GHOST_SUBST NCOLSIN ${K}
 #GHOST_SUBST NCOLSOUT ${N}
 
-#define THREADSPERBLOCK 128
 
-ghost_error ghost_tsmm_inplace__u_cuda_x_NCOLSIN_NCOLSOUT(ghost_densemat *x, ghost_densemat *w, void *alpha, void *beta) 
+namespace {
+
+template<typename T>
+bool eq(const T lhs, const T rhs)
 {
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL); 
+    return lhs == rhs;
+};
+
+template<>
+bool eq<cuDoubleComplex>(const cuDoubleComplex lhs, const cuDoubleComplex rhs)
+{
+    return lhs.x == rhs.x && lhs.y == rhs.y;
+}
+
+template<>
+bool eq<cuFloatComplex>(const cuFloatComplex lhs, const cuFloatComplex rhs)
+{
+    return lhs.x == rhs.x && lhs.y == rhs.y;
+}
+
+template<typename T, typename iT, int M, int N, int BLOCKSIZE, bool BETAISZERO>
+static __global__ void tsmm_fix3_inplace_kernel(const T *__restrict__ A, const iT *__restrict__ B,
+    T *out, const int K, const int lda, const int ldb, const int ldc, iT alpha, iT beta)
+{
+    int tidx = blockIdx.x * BLOCKSIZE + threadIdx.x;
+
+    __shared__ iT bCache[M][N + (N % 2 == 0 ? 1 : 0)];
+#pragma unroll(1)
+    for (int mn = threadIdx.x; mn < M * N; mn += BLOCKSIZE) {
+        int tn = mn / M;
+        int tm = mn % M;
+        bCache[tm][tn] = B[tn * ldb + tm];
+    }
+
+    __syncthreads();
+
+    for (int row = tidx; row < K; row += gridDim.x * blockDim.x) {
+        T avals[M];
+        for (int m = 0; m < M; m++) {
+            avals[m] = A[row * lda + m];
+        }
+        for (int n = 0; n < N; n++) {
+            iT sums;
+            zero(sums);
+            for (int m = 0; m < M; m++) {
+                sums = axpy(sums, (iT)avals[m], bCache[m][n]);
+            }
+
+            if (BETAISZERO) {
+                out[row * ldc + n] = (T)scale(alpha, sums);
+            } else {
+                out[row * ldc + n] = (T)axpby(sums, (iT)__ldg(out + row * ldc + n), alpha, beta);
+            }
+        }
+    }
+}
+
+
+template<typename T, typename iT, int M, int N>
+bool ghost_tsmm_inplace(ghost_densemat *x, ghost_densemat *w, void *alpha, void *beta)
+{
+
+    T *C = (T *)x->cu_val;
+    T *A = (T *)x->cu_val;
+    iT *B = (iT *)w->cu_val;
+    iT dalpha = *(iT *)alpha;
+    iT dbeta = *(iT *)beta;
+    ghost_gidx K = DM_NROWS(x);
+    int lda = x->stride;
+    int ldb = w->stride;
+    int ldc = x->stride;
+
+    const int threadsPerBlock = (M * N * 8 > 10 * 1024) ? 256 : 128;
+    int deviceUsed;
+    cudaGetDevice(&deviceUsed);
+    cudaDeviceProp prop;
+    cudaGetDeviceProperties(&prop, deviceUsed);
+    int numBlocks;
     ghost_error ret = GHOST_SUCCESS;
-    dim3 block, grid;
-    block.x = NCOLSOUT;
-    block.y = CEILDIV(THREADSPERBLOCK,block.x);
-    block.z = 1;
-    grid.x = CEILDIV(DM_NROWS(x),block.y);
-    grid.y = 1;
-    grid.z = 1;
+    CUDA_CALL(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocks,
+                  tsmm_fix3_inplace_kernel<T, iT, M, N, threadsPerBlock, false>, threadsPerBlock, 0),
+        ret);
+    int blockCount = prop.multiProcessorCount * numBlocks;
+
+    iT Tzero;
+    zero(Tzero);
+    if (eq(dbeta, Tzero)) {
+        tsmm_fix3_inplace_kernel<T, iT, M, N, threadsPerBlock, true>
+            <<<blockCount, threadsPerBlock>>>(A, B, C, K, lda, ldb, ldc, dalpha, dbeta);
+    } else {
+        tsmm_fix3_inplace_kernel<T, iT, M, N, threadsPerBlock, false>
+            <<<blockCount, threadsPerBlock>>>(A, B, C, K, lda, ldb, ldc, dalpha, dbeta);
+    }
+    CUDA_CALL(cudaDeviceSynchronize(), ret);
+    CUDA_CALL(cudaGetLastError(), ret);
+    if (ret != GHOST_SUCCESS) return false;
+    return true;
+}
+}
+
+
+ghost_error ghost_tsmm_inplace__u_cuda_x_NCOLSIN_NCOLSOUT(ghost_densemat *x, ghost_densemat *w, void *alpha, void *beta)
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH | GHOST_FUNCTYPE_KERNEL);
+    ghost_error ret = GHOST_SUCCESS;
 
     if (x->traits.datatype & GHOST_DT_COMPLEX) {
         if (x->traits.datatype & GHOST_DT_DOUBLE) {
-            ghost_tsmm_inplace_cu_rm_cm<cuDoubleComplex,NCOLSOUT,NCOLSIN><<< grid,block >>>(
-                    (cuDoubleComplex *)x->cu_val,(const cuDoubleComplex *)w->cu_val,*(cuDoubleComplex *)alpha,*(cuDoubleComplex *)beta,DM_NROWS(x),x->stride,w->stride);
+            ghost_tsmm_inplace<cuDoubleComplex, cuDoubleComplex, NCOLSIN, NCOLSOUT>(x, w, alpha, beta);
         } else {
-            ghost_tsmm_inplace_cu_rm_cm<cuFloatComplex,NCOLSOUT,NCOLSIN><<< grid,block >>>(
-                    (cuFloatComplex *)x->cu_val,(const cuFloatComplex *)w->cu_val,*(cuFloatComplex *)alpha,*(cuFloatComplex *)beta,DM_NROWS(x),x->stride,w->stride);
+            ghost_tsmm_inplace<cuFloatComplex, cuFloatComplex, NCOLSIN, NCOLSOUT>(x, w, alpha, beta);
         }
     } else {
-        if (x->traits.datatype & GHOST_DT_DOUBLE) {
-            ghost_tsmm_inplace_cu_rm_cm<double,NCOLSOUT,NCOLSIN><<< grid,block >>>(
-                   (double *)x->cu_val,(const double *)w->cu_val,*(double *)alpha,*(double *)beta,DM_NROWS(x),x->stride,w->stride);
-        } else {
-            ghost_tsmm_inplace_cu_rm_cm<float,NCOLSOUT,NCOLSIN><<< grid,block >>>(
-                   (float *)x->cu_val,(const float *)w->cu_val,*(float *)alpha,*(float *)beta,DM_NROWS(x),x->stride,w->stride);
+        if (x->traits.datatype & GHOST_DT_DOUBLE && w->traits.datatype & GHOST_DT_DOUBLE) {
+            ghost_tsmm_inplace<double, double, NCOLSIN, NCOLSOUT>(x, w, alpha, beta);
+        } else if (x->traits.datatype & GHOST_DT_FLOAT && w->traits.datatype & GHOST_DT_FLOAT) {
+            ghost_tsmm_inplace<float, float, NCOLSIN, NCOLSOUT>(x, w, alpha, beta);
+        } else if (x->traits.datatype & GHOST_DT_FLOAT && w->traits.datatype & GHOST_DT_DOUBLE) {
+            ghost_tsmm_inplace<float, double, NCOLSIN, NCOLSOUT>(x, w, alpha, beta);
         }
     }
 
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL); 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH | GHOST_FUNCTYPE_KERNEL);
     CUDA_CALL_RETURN(cudaGetLastError());
     return ret;
 }
