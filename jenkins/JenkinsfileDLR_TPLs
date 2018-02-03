@@ -16,7 +16,7 @@ node("SC-030083L") {
 ./test/ci-sc-dlr.sh -e gcc-7.2.0-openmpi -b Debug -f optional-libs -v native -t git
 ''')
 
-/*
+
 
    stage 'CUDA Release build with Zoltan, GCC 4.9.2 and OpenMPI'
    sh(shellPrefix + '''
@@ -27,7 +27,7 @@ node("SC-030083L") {
    sh(shellPrefix + '''
 ./test/ci-sc-dlr.sh -e gcc-4.9.2-openmpi-1.10.1 -b Debug -f optional-libs -v CUDA -t 12.6.1
 ''')
-
+/*
    stage 'native Release build with SPMP, ICC 16.0.3 and MPICH'
    sh(shellPrefix + '''
 ./test/ci-sc-dlr-optional-libs.sh -e intel-16.0.3-mpich -b Release -f optional-libs -v native -c "-DGHOST_USE_SPMP:BOOL=ON"
