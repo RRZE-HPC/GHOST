@@ -24,7 +24,7 @@ TRILINOS_VERSION="git"
 
 ## parse command line arguments
 usage() { echo "Usage: $0 [-e <PrgEnv/module-string>] [-b <Release|Debug|...>] [-v <native|none|SSE|AVX|AVX2|CUDA>]"
-          echo "       [-f default|optional-libs] [-p <install-prefix>] [-c <add cmake flags>]" 1>&2; 
+          echo "       [-f default|optional-libs] [-p <install-prefix>] [-c <add cmake flags>] [-t TRILINIOS_VERSION]" 1>&2; 
 exit 1; }
 
 while getopts "e:b:v:f:p:c:t:h" o; do
@@ -47,7 +47,7 @@ while getopts "e:b:v:f:p:c:t:h" o; do
         p)
             INSTALL_PREFIX=${OPTARG}
             ;;
-        h)
+        t)
             TRILINOS_VERSION=${OPTARG}
             ;;
         h)
