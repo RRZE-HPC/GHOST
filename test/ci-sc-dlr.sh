@@ -21,7 +21,7 @@ MODULES_BASIC="cmake ccache cppcheck lapack gsl"
 
 ADD_CMAKE_FLAGS=""
 TRILINOS_VERSION="git"
-CUDA_VERSION=7.0.28
+CUDA_VERSION=8.0.6
 
 ## parse command line arguments
 usage() { echo "Usage: $0 [-e <PrgEnv/module-string>] [-b <Release|Debug|...>] [-v <native|none|SSE|AVX|AVX2|CUDA>]"
