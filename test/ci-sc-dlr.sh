@@ -21,6 +21,7 @@ MODULES_BASIC="cmake ccache cppcheck lapack gsl"
 
 ADD_CMAKE_FLAGS=""
 TRILINOS_VERSION="git"
+CUDA_VERSION=8.0.6
 
 ## parse command line arguments
 usage() { echo "Usage: $0 [-e <PrgEnv/module-string>] [-b <Release|Debug|...>] [-v <native|none|SSE|AVX|AVX2|CUDA>]"
@@ -81,7 +82,7 @@ echo "compilers: CC=$CC, CXX=$CXX, FC=$FC"
 
 for m in $MODULES_BASIC; do module load $m; done
 if [ "${VECT_EXT}" = "CUDA" ]; then
-  module load cuda
+  module load cuda/cuda-${CUDA_VERSION}
   echo "check if any GPU is found..."
   nvidia-smi -q|grep "Product Name"
 fi
