@@ -42,8 +42,8 @@ bool eq<cuFloatComplex>(const cuFloatComplex lhs, const cuFloatComplex rhs)
 }
 
 template<typename T, typename iT, bool BETAISZERO>
-static __global__ void __launch_bounds__(512) tsmm_varip2_kernel(T *A, const iT *B, T *out, const int M,
-    const int N, const int K, const int lda, const int ldb, const int ldc, iT alpha, iT beta)
+static __global__ void tsmm_varip2_kernel(T *A, const iT *B, T *out, const int M, const int N,
+    const int K, const int lda, const int ldb, const int ldc, iT alpha, iT beta)
 {
     int tidx = blockIdx.x * blockDim.x + threadIdx.x;
     int n = tidx % N;
@@ -109,14 +109,16 @@ void tsmm_dispatch(ghost_densemat *x, ghost_densemat *w, void *alpha, void *beta
     const int threadsPerBlock = (512 / N) * N;
     int blockCount = K / (threadsPerBlock * 8 / N);
 
-    iT Tzero;
-    zero(Tzero);
-    if (eq(dbeta, Tzero)) {
-        tsmm_varip2_kernel<T, iT, true>
-            <<<blockCount, threadsPerBlock>>>(A, B, A, M, N, K, lda, ldb, lda, dalpha, dbeta);
-    } else {
-        tsmm_varip2_kernel<T, iT, false>
-            <<<blockCount, threadsPerBlock>>>(A, B, A, M, N, K, lda, ldb, lda, dalpha, dbeta);
+    if (blockCount != 0) {
+        iT Tzero;
+        zero(Tzero);
+        if (eq(dbeta, Tzero)) {
+            tsmm_varip2_kernel<T, iT, true>
+                <<<blockCount, threadsPerBlock>>>(A, B, A, M, N, K, lda, ldb, lda, dalpha, dbeta);
+        } else {
+            tsmm_varip2_kernel<T, iT, false>
+                <<<blockCount, threadsPerBlock>>>(A, B, A, M, N, K, lda, ldb, lda, dalpha, dbeta);
+        }
     }
     tsmm_remainder_kernel<T, iT><<<10, (1024 / N) * N>>>(
         A, B, A, M, N, K, lda, ldb, lda, dalpha, dbeta, blockCount * (threadsPerBlock / N * 8));
