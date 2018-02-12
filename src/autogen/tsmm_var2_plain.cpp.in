@@ -14,7 +14,7 @@
 
 namespace {
 
-template<typename T, bool ROWMAJOR>
+template<typename T, typename iT, bool ROWMAJOR>
 ghost_error tsmm_u_plain(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH | GHOST_FUNCTYPE_KERNEL)
@@ -28,33 +28,35 @@ ghost_error tsmm_u_plain(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w
     const char *storageOrderString = "Col-Major";
     if (ROWMAJOR) storageOrderString = "Row-Major";
     GHOST_INFO_LOG("In %s TSMM with arbitrary block sizes %dx%d <- %dx%d * %dx%d, %s %s",
-        storageOrderString, K, N, K, M, M, N, typeid(T).name(), typeid(T).name());
+        storageOrderString, K, N, K, M, M, N, typeid(T).name(), typeid(iT).name());
 
 
     const T *const __restrict__ vval = (const T *)v->val;
-    const T *const __restrict__ wval = (const T *)w->val;
+    const iT *const __restrict__ wval = (const iT *)w->val;
     T *const __restrict__ xval = (T *)x->val;
 
     const ghost_lidx ldv = v->stride;
     const ghost_lidx ldw = w->stride;
     const ghost_lidx ldx = x->stride;
 
-    const T dalpha = *(T *)alpha;
-    const T dbeta = *(T *)beta;
+    const iT dalpha = *(iT *)alpha;
+    const iT dbeta = *(iT *)beta;
 
 #pragma omp parallel for schedule(static)
     for (ghost_lidx k = 0; k < K; k++) {
         for (ghost_lidx n = 0; n < N; n++) {
             if (ROWMAJOR) {
-                xval[k * ldx + n] = dbeta * xval[k * ldx + n];
+                iT temp = dbeta * (iT)xval[k * ldx + n];
                 for (ghost_lidx m = 0; m < M; m++) {
-                    xval[k * ldx + n] += dalpha * vval[k * ldv + m] * wval[n * ldw + m];
+                    temp += dalpha * (iT)vval[k * ldv + m] * wval[n * ldw + m];
                 }
+                xval[k * ldx + n] = (T)temp;
             } else {
-                xval[n * ldx + k] = dbeta * xval[n * ldx + k];
+                iT temp = dbeta * (iT)xval[n * ldx + k];
                 for (ghost_lidx m = 0; m < M; m++) {
-                    xval[n * ldx + k] += dalpha * vval[m * ldv + k] * wval[n * ldw + m];
+                    temp += dalpha * (iT)vval[m * ldv + k] * wval[n * ldw + m];
                 }
+                xval[n * ldx + k] = (T)temp;
             }
         }
     }
@@ -67,15 +69,17 @@ ghost_error tsmm_dispatcher(ghost_densemat *x, ghost_densemat *v, ghost_densemat
 {
     if (x->traits.datatype & GHOST_DT_REAL) {
         if (x->traits.datatype & GHOST_DT_DOUBLE && w->traits.datatype & GHOST_DT_DOUBLE) {
-            return tsmm_u_plain<double, ROWMAJOR>(x, v, w, alpha, beta);
+            return tsmm_u_plain<double, double, ROWMAJOR>(x, v, w, alpha, beta);
         } else if (x->traits.datatype & GHOST_DT_FLOAT && w->traits.datatype & GHOST_DT_FLOAT) {
-            return tsmm_u_plain<float, ROWMAJOR>(x, v, w, alpha, beta);
+          return tsmm_u_plain<float, float, ROWMAJOR>(x, v, w, alpha, beta);
+        } else if (x->traits.datatype & GHOST_DT_FLOAT && w->traits.datatype & GHOST_DT_DOUBLE) {
+          return tsmm_u_plain<float, double, ROWMAJOR>(x, v, w, alpha, beta);
         }
     } else if (x->traits.datatype & GHOST_DT_COMPLEX) {
         if (x->traits.datatype & GHOST_DT_DOUBLE) {
-            return tsmm_u_plain<std::complex<double>, ROWMAJOR>(x, v, w, alpha, beta);
+            return tsmm_u_plain<std::complex<double>, std::complex<double>, ROWMAJOR>(x, v, w, alpha, beta);
         } else if (x->traits.datatype & GHOST_DT_FLOAT) {
-            return tsmm_u_plain<std::complex<float>, ROWMAJOR>(x, v, w, alpha, beta);
+          return tsmm_u_plain<std::complex<float>, std::complex<float>, ROWMAJOR>(x, v, w, alpha, beta);
         }
     }
     return GHOST_ERR_DATATYPE;
