@@ -81,7 +81,7 @@ static __global__ void tsmm_remainder_kernel(T *A, const iT *B, T *out, const in
     int tidx = blockIdx.x * blockDim.x + threadIdx.x;
     int n = tidx % N;
 
-    for (int row = startIdx + tidx / N; row < K; row += gridDim.x * blockDim.x) {
+    for (int row = startIdx + tidx / N; row < K; row += gridDim.x * blockDim.x / N) {
         iT sum;
         zero(sum);
         for (int m = 0; m < M; m++) {
