@@ -48,7 +48,6 @@ __device__ T condConj2(T v)
     return v;
 }
 
-
 // round to next smaller power of two
 __device__ int roundPoT(int v)
 {
@@ -99,11 +98,11 @@ __global__ void __launch_bounds__(BLOCKSIZE) genv7_blockProductKernel(
         int idxNext = min(K - rowsPerBlock, idx + gridDim.x * rowsPerBlock);
         avNext = __ldg(A + idxNext * lda + aOffset);
 
-        //    if (!SELF) {
-        bvNext = __ldg(B + idxNext * ldb + bOffset);
-        //} else {
-        // bvNext = avNext;
-        //}
+        if (!SELF) {
+            bvNext = __ldg(B + idxNext * ldb + bOffset);
+        } else {
+            bvNext = avNext;
+        }
         __syncthreads();
         rowCache[threadIdx.x] = bvNow;
         __syncthreads();
@@ -151,8 +150,7 @@ __global__ void __launch_bounds__(BLOCKSIZE) genv7_blockProductKernel(
         }
     }
 }
-}
-
+} // namespace
 
 template<typename T, typename oT, int M, int N, int conjv>
 static ghost_error ghost_tsmttsm_cu_rm(oT *const __restrict__ C, const T *const __restrict__ A,
@@ -160,34 +158,6 @@ static ghost_error ghost_tsmttsm_cu_rm(oT *const __restrict__ C, const T *const 
     ghost_lidx lda, ghost_lidx ldb)
 {
     ghost_error ret = GHOST_SUCCESS;
-
-
-    if ((M > 64 || N > 64) && typeid(T) == typeid(oT)) {
-        cublasHandle_t handle;
-        ghost_cu_cublas_handle(&handle);
-        cublasOperation_t op = (conjv == 1) ? CUBLAS_OP_C : CUBLAS_OP_T;
-        if (typeid(T) == typeid(double)) {
-            CUBLAS_CALL(cublasDgemm(handle, CUBLAS_OP_N, CUBLAS_OP_T, M, N, K, (double *)&alpha,
-                            (double *)A, lda, (double *)B, ldb, (double *)&beta, (double *)C, ldc),
-                ret);
-        } else if (typeid(T) == typeid(float)) {
-            CUBLAS_CALL(cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_T, M, N, K, (float *)&alpha,
-                            (float *)A, lda, (float *)B, ldb, (float *)&beta, (float *)C, ldc),
-                ret);
-        } else if (typeid(T) == typeid(cuDoubleComplex)) {
-            CUBLAS_CALL(cublasZgemm(handle, CUBLAS_OP_N, op, M, N, K, (cuDoubleComplex *)&alpha,
-                            (cuDoubleComplex *)A, lda, (cuDoubleComplex *)B, ldb,
-                            (cuDoubleComplex *)&beta, (cuDoubleComplex *)C, ldc),
-                ret);
-        } else if (typeid(T) == typeid(cuFloatComplex)) {
-            CUBLAS_CALL(cublasCgemm(handle, CUBLAS_OP_N, op, M, N, K, (cuFloatComplex *)&alpha,
-                            (cuFloatComplex *)A, lda, (cuFloatComplex *)B, ldb,
-                            (cuFloatComplex *)&beta, (cuFloatComplex *)C, ldc),
-                ret);
-        }
-        return ret;
-    }
-
 
     const int targetBlockSize = 256;
     int deviceUsed;
@@ -227,12 +197,11 @@ static ghost_error ghost_tsmttsm_cu_rm(oT *const __restrict__ C, const T *const 
     }
 
     /*    size_t required_temp_storage_bytes = blockCount * sizeof(T) * N * ldc;
-    if (temp_storage_bytes < required_temp_storage_bytes || temp_storage == NULL) {
-        temp_storage_bytes = required_temp_storage_bytes;
+    if (temp_storage_bytes < required_temp_storage_bytes || temp_storage == NULL)
+    { temp_storage_bytes = required_temp_storage_bytes;
         ghost_cu_malloc(&temp_storage, temp_storage_bytes);
         if (temp_storage == NULL) temp_storage_bytes = 0;
         }*/
-
 
     if (N > M) {
         int const blockSize = (targetBlockSize / N) * N;
@@ -249,7 +218,6 @@ static ghost_error ghost_tsmttsm_cu_rm(oT *const __restrict__ C, const T *const 
         }
     }
     //    CUDA_CALL(cudaDeviceSynchronize(), ret);
-
 
     CUDA_CALL(cudaGetLastError(), ret);
     deviceReduce<oT, M, N>
