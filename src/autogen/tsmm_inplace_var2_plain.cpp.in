@@ -1,0 +1,81 @@
+/*!GHOST_AUTOGEN_TSMM-INPLACE *,* */
+#include "ghost/config.h"
+#include "ghost/types.h"
+#include "ghost/math.h"
+#include "ghost/instr.h"
+#include "ghost/util.h"
+#include "ghost/tsmm_inplace_var2_plain_gen.h"
+#include <complex>
+#include <typeinfo>
+
+namespace {
+template<typename T>
+ghost_error tsmm_inplace(ghost_densemat *x, ghost_densemat *w, void *alpha, void *beta)
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
+    ghost_error ret = GHOST_SUCCESS;
+
+    ghost_lidx N = w->traits.ncols;
+    ghost_lidx M = DM_NROWS(w);
+    ghost_lidx K = DM_NROWS(x);
+
+    GHOST_INFO_LOG("In in-place TSMM with arbitrary block size (%" PRLIDX "x%" PRLIDX
+                   ") <- (%" PRLIDX "x%" PRLIDX ") * (%" PRLIDX "x%" PRLIDX "), %s",
+        K, N, K, M, M, N, typeid(T).name());
+
+
+    const T *const __restrict__ wval = (T *)w->val;
+    T *const __restrict__ xval = (T *)x->val;
+
+    const ghost_lidx ldw = w->stride;
+    const ghost_lidx ldx = x->stride;
+
+    T dalpha = *(T *)alpha;
+    T dbeta = *(T *)beta;
+
+#pragma parallel
+    {
+        T temp[N];
+#pragma omp for schedule(static)
+        for (ghost_lidx k = 0; k < K; k++) {
+#pragma vector aligned
+#pragma vector always
+#pragma ivdep
+#pragma simd
+            for (ghost_lidx n = 0; n < N; n++) {
+                temp[n] = dbeta * (T)xval[k * ldx + n];
+                for (ghost_lidx m = 0; m < M; m++) {
+                    temp[n] += dalpha * (T)xval[k * ldx + m] * wval[n * ldw + m];
+                }
+            }
+            for (ghost_lidx n = 0; n < N; n++) {
+                xval[k * ldx + n] = (T)(temp[n]);
+            }
+        }
+    }
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
+    return ret;
+}
+}
+
+
+ghost_error ghost_tsmm_inplace__u_plain_x_x_x(ghost_densemat *x, ghost_densemat *w, void *alpha, void *beta)
+{
+    if (x->traits.datatype & GHOST_DT_REAL) {
+        if (x->traits.datatype & GHOST_DT_DOUBLE && w->traits.datatype & GHOST_DT_DOUBLE) {
+            return tsmm_inplace<double>(x, w, alpha, beta);
+        } else if (x->traits.datatype & GHOST_DT_FLOAT && w->traits.datatype & GHOST_DT_FLOAT) {
+            return tsmm_inplace<float>(x, w, alpha, beta);
+        } else if (x->traits.datatype & GHOST_DT_FLOAT && w->traits.datatype & GHOST_DT_DOUBLE) {
+            return tsmm_inplace<float>(x, w, alpha, beta);
+        }
+    } else if (x->traits.datatype & GHOST_DT_COMPLEX) {
+        if (x->traits.datatype & GHOST_DT_DOUBLE) {
+            return tsmm_inplace<std::complex<double>>(x, w, alpha, beta);
+        } else if (x->traits.datatype & GHOST_DT_FLOAT) {
+            return tsmm_inplace<std::complex<float>>(x, w, alpha, beta);
+        }
+    }
+    return GHOST_ERR_DATATYPE;
+}
