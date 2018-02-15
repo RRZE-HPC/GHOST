@@ -33,9 +33,10 @@ ghost_error tsmm_inplace(ghost_densemat *x, ghost_densemat *w, void *alpha, void
     iT dalpha = *(iT *)alpha;
     iT dbeta = *(iT *)beta;
 
+
 #pragma parallel
     {
-        iT temp[N];
+        vector<iT> temp(n);
 #pragma omp for schedule(static)
         for (ghost_lidx k = 0; k < K; k++) {
 #pragma vector aligned
