@@ -7,6 +7,7 @@
 #include "ghost/tsmm_inplace_var2_plain_gen.h"
 #include <complex>
 #include <typeinfo>
+#include <vector>
 
 namespace {
 template<typename T, typename iT>
@@ -36,7 +37,7 @@ ghost_error tsmm_inplace(ghost_densemat *x, ghost_densemat *w, void *alpha, void
 
 #pragma parallel
     {
-        vector<iT> temp(n);
+        std::vector<iT> temp(N);
 #pragma omp for schedule(static)
         for (ghost_lidx k = 0; k < K; k++) {
 #pragma vector aligned
