@@ -1031,6 +1031,22 @@ extern "C" {
 
     void ghost_spmtv_RACE_fallback(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);
 
+    void ghost_spmtv_MC(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);
+
+
+     /**
+     * @brief Do Symmetric SpMV kernel (Currently only for C.R.S).
+     *
+     * @param mat The matrix.
+     * @param lhs The output densemat.
+     * @param rhs The input densemat.
+     * @param iterations No. of iterations
+     *
+     */
+    /*SYMM-SPMV*/
+    void ghost_symm_spmv_RACE(ghost_densemat *lhs, ghost_sparsemat *mat, ghost_densemat *rhs, int iterations);
+
+
 
     /**
      * @brief Select and call the right SELL stringification function.
@@ -1202,6 +1218,19 @@ extern "C" {
     ghost_error ghost_carp(ghost_sparsemat *mat, ghost_densemat *x, ghost_densemat *b, ghost_carp_opts opts);
     ghost_error checker(ghost_sparsemat *mat);
     ghost_error split_transition(ghost_sparsemat *mat);
+
+     /**
+     * @brief Do KACZ kernel (Currently only for C.R.S).
+     *
+     * @param mat The matrix.
+     * @param b The input densemat.
+     * @param x The output densemat.
+     * @param iterations No. of iterations
+     *
+     */
+    /*SYMM-SPMV*/
+    void ghost_kacz_RACE(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);
+
 
     /**
      * @brief Initialize CARP
