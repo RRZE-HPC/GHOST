@@ -193,7 +193,7 @@
 
 #else
    //version 4: avoid loading column entry everytime
-//   #define INNER_LOOP_BODY_AVX2(chunk_arg)\
+/*   #define INNER_LOOP_BODY_AVX2(chunk_arg)\
         row = (chunk_arg)*CHUNKHEIGHT;\
         idx = mat->chunkStart[chunk_arg];\
         __m128i col_mask;\
@@ -206,7 +206,7 @@
         }\
 
     //version 5: avoid loading column entry everytime
-  // #define INNER_LOOP_BODY_AVX2(chunk_arg)\
+   #define INNER_LOOP_BODY_AVX2(chunk_arg)\
         row = (chunk_arg)*CHUNKHEIGHT;\
         idx = mat->chunkStart[chunk_arg];\
         int col1, col2, col3, col4;\
@@ -220,7 +220,7 @@
         }\
 
 
-   // #define INNER_LOOP_BODY_AVX2(chunk_arg)\
+    #define INNER_LOOP_BODY_AVX2(chunk_arg)\
         row = (chunk_arg)*CHUNKHEIGHT;\
         idx = mat->chunkStart[chunk_arg];\
         double *col_val1, *col_val2, *col_val3, *col_val4;\
@@ -233,7 +233,7 @@
             idx += CHUNKHEIGHT;\
         }\
 
-
+*/
 
 
 #endif
@@ -327,7 +327,7 @@ struct spmtv_RACE_arg__x_avx2_rm_CHUNKHEIGHT_NVECS{
 inline void  spmtv_RACE_kernel__x_avx2_rm_CHUNKHEIGHT_NVECS(int start, int end, void *args)
 {
 #if ((CHUNKHEIGHT%4)!=0)
-    ERROR_PRINT("You ended up in a wrong kernel call, this is AVX-256 version not applicable for CHUNKHEIGHT = %d", CHUNKHEIGHT);
+    GHOST_ERROR_LOG("You ended up in a wrong kernel call, this is AVX-256 version not applicable for CHUNKHEIGHT = %d", CHUNKHEIGHT);
     UNUSED(start);
     UNUSED(end);
     UNUSED(args);

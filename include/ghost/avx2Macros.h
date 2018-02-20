@@ -20,8 +20,9 @@
 #define AVX2_GATHER_with_128index(src, mask_reg)\
     _mm256_setr_pd(src[ _mm_cvtsi128_si32(mask_reg)], src[_mm_extract_epi32(mask_reg,1)], src[_mm_extract_epi32(mask_reg,2)], src[_mm_extract_epi32(mask_reg,3)])\
 
-
-//_mm256_i32gather_pd(src,  mask_reg, 8)\
+/*
+_mm256_i32gather_pd(src,  mask_reg, 8)\
+*/
 
 #define spl_AVX2_GATHER_with_addr(mask1, mask2, mask3, mask4)\
     _mm256_setr_pd((*mask1), (*mask2), (*mask3), (*mask4))\

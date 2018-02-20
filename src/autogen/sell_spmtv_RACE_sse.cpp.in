@@ -226,7 +226,7 @@ struct spmtv_RACE_arg__x_sse_rm_CHUNKHEIGHT_NVECS{
 inline void  spmtv_RACE_kernel__x_sse_rm_CHUNKHEIGHT_NVECS(int start, int end, void *args)
 {
 #if ((CHUNKHEIGHT%2)!=0)
-    ERROR_PRINT("You ended up in a wrong kernel call, this is SSE version not applicable for CHUNKHEIGHT = %d", CHUNKHEIGHT);
+    GHOST_ERROR_LOG("You ended up in a wrong kernel call, this is SSE version not applicable for CHUNKHEIGHT = %d", CHUNKHEIGHT);
     UNUSED(start);
     UNUSED(end);
     UNUSED(args);
