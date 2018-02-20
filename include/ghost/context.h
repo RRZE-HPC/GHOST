@@ -33,7 +33,7 @@ ghost_permutation_direction;
  * @brief This struct holds all possible flags for a context.
  */
 typedef enum {
-    GHOST_CONTEXT_DEFAULT = 0, 
+    GHOST_CONTEXT_DEFAULT = 0,
     /**
      * @brief Distribute work among the ranks by number of nonzeros.
      */
@@ -67,7 +67,7 @@ inline ghost_context_flags_t operator&(const ghost_context_flags_t &a,
  */
 typedef enum{
       /**
-       * @brief Multicolored 
+       * @brief Multicolored
        */
       GHOST_KACZ_METHOD_MC,
       /**
@@ -91,14 +91,14 @@ typedef enum{
 }
 ghost_kacz_method;
 
-//TODO zone ptr can be moved here 
+//TODO zone ptr can be moved here
 typedef struct {
-      
+
       ghost_kacz_method kacz_method;
       ghost_lidx active_threads;
 }
 ghost_kacz_setting;
-    
+
 
 /**
  * @brief The GHOST context.
@@ -149,15 +149,15 @@ struct ghost_context
      /**
      * @brief Number of wishes (= unique RHS elements to get) from each rank
      */
-    ghost_lidx * wishes; 
+    ghost_lidx * wishes;
     /**
      * @brief Column idx of wishes from each rank
      */
-    ghost_lidx ** wishlist; 
+    ghost_lidx ** wishlist;
     /**
      * @brief Number of dues (= unique RHS elements from myself) to each rank
      */
-    ghost_lidx * dues; 
+    ghost_lidx * dues;
     /**
      * @brief Column indices of dues to each rank
      */
@@ -169,7 +169,7 @@ struct ghost_context
     /**
      * @brief First index to get RHS elements coming from each rank
      */
-    ghost_lidx* hput_pos; 
+    ghost_lidx* hput_pos;
     /**
      * @brief The list of ranks to which this rank has to send RHS vector elements in SpMV communcations.
      *
@@ -199,29 +199,29 @@ struct ghost_context
      **/
     ghost_lidx nChunkAvg;
     /**
-    * @brief Compressed Pointer to the densematrix row indices where averaging has to be done 
+    * @brief Compressed Pointer to the densematrix row indices where averaging has to be done
     * (eg: used in densemat averaging)
-    */ 
+    */
     ghost_lidx *avg_ptr;
      /**
      * @brief The total elements to be averaged
      **/
     ghost_lidx nElemAvg;
     /**
-    * @brief Map used to compress the pointer 
+    * @brief Map used to compress the pointer
     * (eg: used in densemat averaging)
-    */ 
-    ghost_lidx *mapAvg; 
+    */
+    ghost_lidx *mapAvg;
     /**
-    * @brief Mapped Duelist 
+    * @brief Mapped Duelist
     * (eg: used in densemat averaging)
-    */ 
+    */
     ghost_lidx *mappedDuelist; //This might be removed in a future version
     /**
     * @brief  no. of ranks present in column index corresponding to avg_ptr
     *         (only elements with halo entries are stored)
     *         (eg: used in densemat averaging)
-    */ 
+    */
     int *nrankspresent;
 
     /**
@@ -246,7 +246,7 @@ struct ghost_context
      * @brief The maximum column index in the matrix
      * (Required for example if we permute the (local + remote) part of matrix
      */
-    ghost_gidx maxColRange; 
+    ghost_gidx maxColRange;
     /**
      * @brief The number of colors from distance-2 coloring.
      */
@@ -260,19 +260,24 @@ struct ghost_context
      **/
     ghost_lidx nzones;
     /**
-    * @brief Pointer to odd-even (Red-Black coloring) zones of a matrix (length: nzones+1)  
+    * @brief Pointer to odd-even (Red-Black coloring) zones of a matrix (length: nzones+1)
     * Ordering [even_begin_1 odd_begin_1 even_begin_2 odd_begin_2 ..... nrows]
     **/
     ghost_lidx *zone_ptr;
     /**
     * @brief details regarding kacz is stored here
-    */ 
+    */
     ghost_kacz_setting kacz_setting;
     /**
      * @brief Store the ratio between nrows and bandwidth
-     */ 	
+     */
     double kaczRatio;
- 
+
+     /**
+     * @brief Stores RACE internal
+     */
+    void *coloringEngine;
+
 };
 
 extern const ghost_context GHOST_CONTEXT_INITIALIZER;
@@ -283,37 +288,37 @@ extern "C" {
 #endif
 
     /**
-     * @brief Create a context. 
+     * @brief Create a context.
      *
      * @param[out] context Where to store the created context.
      * @param[in] gnrows The global number of rows for the context. If gnrows is 0 a valid matrix file path has to be provided in the argument matrixSource from which the number of rows will be read.
      * @param[in] gncols The global number of columns for the context. If gncols is 0 a valid matrix file path has to be provided in the argument matrixSource from which the number of columns will be read.
      * @param[in] flags Flags to the context.
-     * @param[in] matrixSource The sparse matrix source.     
-     * @param[in] srcType The type of the sparse matrix source.     
+     * @param[in] matrixSource The sparse matrix source.
+     * @param[in] srcType The type of the sparse matrix source.
      * @param[in] comm The MPI communicator in which the context is present.
-     * @param[in] weight This influences the work distribution amon ranks. If set to 0., it is automatically determined. 
+     * @param[in] weight This influences the work distribution amon ranks. If set to 0., it is automatically determined.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
-     * 
-     * The matrix source can either be one of ghost_sparsemat_src. The concrete type has to be specified in the srcType parameter. 
+     *
+     * The matrix source can either be one of ghost_sparsemat_src. The concrete type has to be specified in the srcType parameter.
      * It must not be ::GHOST_SPARSEMAT_SRC_NONE in the following cases:
-     * -# If gnrows or gncols are given as less than 1, the source has to be a a pointer to a ghost_sparsemat_src_rowfunc and srcType has to be set to ::GHOST_SPARSEMAT_SRC_FILE. 
+     * -# If gnrows or gncols are given as less than 1, the source has to be a a pointer to a ghost_sparsemat_src_rowfunc and srcType has to be set to ::GHOST_SPARSEMAT_SRC_FILE.
      * -# If the flag GHOST_CONTEXT_WORKDIST_NZE is set in the flags, the source may be of any type (except ::GHOST_SPARSEMAT_SRC_NONE of course)
-     * 
-     * In all other cases, i.e., gnrows and gncols are correctly set and the distribution of matrix rows across ranks should be done by the number of rows, the matrixSource parameter will be ignored. 
+     *
+     * In all other cases, i.e., gnrows and gncols are correctly set and the distribution of matrix rows across ranks should be done by the number of rows, the matrixSource parameter will be ignored.
      *
      * Each rank will get a portion of work which depends on the distribution scheme as set in the flags multiplied with the given weight divided by the sum of the weights of all ranks in the context's MPI communicator.
-     * Example: Rank A is of type ::GHOST_TYPE_CUDA using a GPU with a memory bandwidth of 150 GB/s and rank B is of type ::GHOST_TYPE_WORK using a CPU socket with a memory bandwidth of 50 GB/s. 
-     * The work is to be distributed by rows and the matrix contains 8 million rows. 
+     * Example: Rank A is of type ::GHOST_TYPE_CUDA using a GPU with a memory bandwidth of 150 GB/s and rank B is of type ::GHOST_TYPE_WORK using a CPU socket with a memory bandwidth of 50 GB/s.
+     * The work is to be distributed by rows and the matrix contains 8 million rows.
      * A straight-forward distribution of work would assume a weight of 1.5 for A and 0.5 for B.
      * Thus, A would be assigned 6 million matrix rows and B 2 million.
-     * Automatic weight determination is done using a main memory benchmark. 
+     * Automatic weight determination is done using a main memory benchmark.
      * If the bechmark results differ by less than 10% on each rank, the parallel run will be considered "homogeneous" and the weights will be fixed to 1.0
-     * 
+     *
      */
-    ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, ghost_gidx gncols, ghost_context_flags_t flags, ghost_mpi_comm comm, double weight); 
-    
+    ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, ghost_gidx gncols, ghost_context_flags_t flags, ghost_mpi_comm comm, double weight);
+
     /**
      * @ingroup stringification
      * @brief Create a string containing information on the context.
@@ -332,7 +337,7 @@ extern "C" {
      * If the context is NULL it will be ignored.
      */
     void ghost_context_destroy(ghost_context *ctx);
-    
+
     /**
      * @brief Get the name of the work distribution scheme.
      *

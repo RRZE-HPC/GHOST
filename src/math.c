@@ -344,6 +344,21 @@ int ghost_kacz_perf(double *perf, double time, void *varg)
     return 0;
 }
 
+int ghost_gs_perf(double *perf, double time, void *varg)
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_BENCH);
+
+    UNUSED(time);
+    ghost_gs_perf_args arg = *(ghost_gs_perf_args *)varg;
+    UNUSED(arg);
+    (*perf) = 2.0*(arg.globalnnz*1e-9)/(time);
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL|GHOST_FUNCTYPE_BENCH);
+    return 0;
+
+}
+
+
 int ghost_spmv_perf(double *perf, double time, void *varg)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL | GHOST_FUNCTYPE_BENCH);

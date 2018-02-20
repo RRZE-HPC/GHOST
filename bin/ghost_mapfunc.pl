@@ -24,7 +24,8 @@ my %implementations = (
 
 my %alignments = (
         'u' => 'GHOST_UNALIGNED',
-        'a' => 'GHOST_ALIGNED'
+        'a' => 'GHOST_ALIGNED',
+        'x' => 'GHOST_ALIGNED_ANY',
         );
 
 while (<>) {
@@ -97,7 +98,36 @@ while (<>) {
             print "spmv_perfargs.flags = traits.flags;\n";
             print "ghost_timing_set_perfFunc(__ghost_functag,\"".$funcname_noprefix."\",ghost_spmv_perf,(void *)&spmv_perfargs,sizeof(spmv_perfargs),GHOST_SPMV_PERF_UNIT);\n";
             print "}\n";
-        } elsif ($funcname eq "ghost_kacz") {
+        } elsif ($funcname eq "ghost_gs_RACE") {
+            print "{\n";
+            print $funcname."_parameters pars;\n";
+            print "pars.alignment = ".$alignments{$funcpars[0]}.";\n";
+            print "pars.impl = ".$implementations{$funcpars[1]}.";\n";
+            print "pars.mdt = ".$datatypes{$funcpars[2]}.";\n";
+            print "pars.vdt = ".$datatypes{$funcpars[3]}.";\n";
+            print "pars.storage = ".$storages{$funcpars[4]}.";\n";
+            print "pars.chunkheight = ".$funcpars[5].";\n";
+            if ($funcpars[6] eq "x") {
+                print "pars.blocksz = -1;\n";
+            } else {
+                print "pars.blocksz = ".$funcpars[6].";\n";
+            }
+            print $funcname."_kernels[pars] = ".$funcname_full.";\n"; 
+            if ($funcpars[6] ne "x") {
+                print "ghost_gidx nnz;\n";
+                print "ghost_gidx nrow;\n";
+                print "ghost_sparsemat_nnz(&nnz,mat);\n";
+                print "ghost_sparsemat_nrows(&nrow,mat);\n";
+                print "ghost_gs_perf_args gs_perfargs;\n";
+                print "gs_perfargs.vecncols = rhs->traits.ncols;\n";
+                print "gs_perfargs.globalnnz = nnz;\n";
+                print "gs_perfargs.globalrows = nrow;\n";
+                print "gs_perfargs.dt = rhs->traits.datatype;\n";
+                print "ghost_timing_set_perfFunc(__ghost_functag,\"".$funcname_noprefix."\",ghost_gs_perf,(void *)&gs_perfargs,sizeof(gs_perfargs),GHOST_GS_PERF_UNIT);\n";
+            }
+            print "}\n";
+        }
+        elsif ($funcname eq "ghost_kacz") {
             print "{\n";
             print $funcname."_parameters pars;\n";
             print "pars.method = GHOST_KACZ_METHOD_".$funcpars[0].";\n";

@@ -14,7 +14,7 @@
 #include <float.h>
 #include <math.h>
 
-ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, ghost_gidx gncols, ghost_context_flags_t context_flags, ghost_mpi_comm comm, double weight) 
+ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, ghost_gidx gncols, ghost_context_flags_t context_flags, ghost_mpi_comm comm, double weight)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_SETUP);
     if (weight < 0) {
@@ -27,7 +27,7 @@ ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, gho
 
     GHOST_CALL_GOTO(ghost_nrank(&nranks, comm),err,ret);
     GHOST_CALL_GOTO(ghost_rank(&me, comm),err,ret);
-    
+
     if (fabs(weight) < DBL_MIN) {
 #ifdef GHOST_USE_MPI
         double max_bw=0.0;
@@ -62,12 +62,12 @@ ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, gho
     if (!gncols) {
         gncols = gnrows;
     }
-    
-    
+
+
     ghost_lidx *target_rows = NULL;
     char *tmpval = NULL;
     ghost_gidx *tmpcol = NULL;
-    
+
     GHOST_CALL_GOTO(ghost_malloc((void **)context,sizeof(ghost_context)),err,ret);
     (*context)->weight=weight;
     (*context)->flags = context_flags;
@@ -98,9 +98,9 @@ ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, gho
     (*context)->avg_ptr = NULL;
     (*context)->mapAvg = NULL;
     (*context)->mappedDuelist = NULL;
-    (*context)->nrankspresent = NULL;   
-    (*context)->nmats = 1; 
-        
+    (*context)->nrankspresent = NULL;
+    (*context)->nmats = 1;
+
 
     GHOST_CALL_GOTO(ghost_map_create(&((*context)->row_map),gnrows,comm,GHOST_MAP_ROW,GHOST_MAP_DEFAULT),err,ret);
     GHOST_CALL_GOTO(ghost_map_create(&((*context)->col_map),gncols,comm,GHOST_MAP_COL,GHOST_MAP_DEFAULT),err,ret);
@@ -119,7 +119,7 @@ out:
     free(tmpval); tmpval = NULL;
     free(tmpcol); tmpcol = NULL;
     free(target_rows); target_rows = NULL;
-    
+
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_SETUP);
     return ret;
 }
@@ -145,7 +145,7 @@ ghost_error ghost_context_string(char **str, ghost_context *context)
 void ghost_context_destroy(ghost_context *context)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TEARDOWN);
-    
+
     if (context) {
         if (context->wishlist) {
             free(context->wishlist[0]);
@@ -169,7 +169,7 @@ void ghost_context_destroy(ghost_context *context)
         free(context->duepartners); context->duepartners = NULL;
         free(context->wishpartners); context->wishpartners = NULL;
         free(context->entsInCol); context->entsInCol = NULL;
-    
+
         if (context->col_map->loc_perm != context->row_map->loc_perm) {
             ghost_cu_free(context->col_map->cu_loc_perm); context->col_map->cu_loc_perm = NULL;
             free(context->col_map->loc_perm); context->col_map->loc_perm = NULL;
@@ -178,14 +178,14 @@ void ghost_context_destroy(ghost_context *context)
         ghost_cu_free(context->row_map->cu_loc_perm); context->row_map->cu_loc_perm = NULL;
         free(context->row_map->loc_perm); context->row_map->loc_perm = NULL;
         free(context->row_map->loc_perm_inv); context->row_map->loc_perm_inv = NULL;
-        
+
         if (context->col_map->glb_perm != context->row_map->glb_perm) {
             free(context->col_map->glb_perm); context->col_map->glb_perm = NULL;
             free(context->col_map->glb_perm_inv); context->col_map->glb_perm_inv = NULL;
         }
         free(context->row_map->glb_perm); context->row_map->glb_perm = NULL;
         free(context->row_map->glb_perm_inv); context->row_map->glb_perm_inv = NULL;
-        
+
         ghost_map_destroy(context->row_map);
         ghost_map_destroy(context->col_map);
         context->row_map = NULL;
@@ -197,9 +197,15 @@ void ghost_context_destroy(ghost_context *context)
           free(context->mappedDuelist); context->mappedDuelist = NULL;
           free(context->nrankspresent); context->nrankspresent = NULL;
         }
-    
+
         free(context->color_ptr);
         free(context->zone_ptr);
+
+        if(context->coloringEngine)
+        {
+            ghost_destroy_RACE(context);
+        }
+
 /*
         if( context->perm_local )
         {
@@ -212,7 +218,7 @@ void ghost_context_destroy(ghost_context *context)
 		free(context->perm_local->colInvPerm);
 		context->perm_local->colInvPerm = NULL;
 	}
-        
+
 	  free(context->perm_local); context->perm_local = NULL;
         }
       */
@@ -253,12 +259,12 @@ ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, gh
     ghost_lidx acc_transfer_wishes, acc_transfer_dues;
 
     size_t size_nint, size_lcol, size_gcol;
-    size_t size_nptr, size_pval;  
+    size_t size_nptr, size_pval;
     size_t size_wish, size_dues;
-    
+
     int nprocs;
     int me;
-    
+
     GHOST_CALL_RETURN(ghost_nrank(&nprocs, ctx->mpicomm));
     GHOST_CALL_RETURN(ghost_rank(&me, ctx->mpicomm));
 
@@ -267,14 +273,14 @@ ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, gh
     MPI_Status stat[2*nprocs];
 #endif
 
-    GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->entsInCol,ctx->col_map->dim*sizeof(ghost_lidx)),err,ret); 
-    GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->wishlist,nprocs*sizeof(ghost_lidx *)),err,ret); 
+    GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->entsInCol,ctx->col_map->dim*sizeof(ghost_lidx)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->wishlist,nprocs*sizeof(ghost_lidx *)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->duelist,nprocs*sizeof(ghost_lidx *)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->wishes,nprocs*sizeof(ghost_lidx)),err,ret); 
+    GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->wishes,nprocs*sizeof(ghost_lidx)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->dues,nprocs*sizeof(ghost_lidx)),err,ret);
 
     memset(ctx->entsInCol,0,ctx->col_map->dim*sizeof(ghost_lidx));
-       
+
     ghost_lidx chunk,rowinchunk,entinrow,globalent,globalrow;
     for(chunk = 0; chunk < mat->nchunks; chunk++) {
         for (rowinchunk=0; rowinchunk<mat->traits.C; rowinchunk++) {
@@ -345,15 +351,15 @@ ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, gh
      * wishlist_counts = <{0,0,0},{0,0,0},{0,0,0}>
      * comm_remotePE   = <{0,0,0,0,0,0,0},{0,0,0,0,0,0},{0,0,0,0,0}> PE where element is on
      * comm_remoteEl   = <{0,0,0,0,0,0,0},{0,0,0,0,0,0},{0,0,0,0,0}> local colidx of element
-     * present_values  = <{0,0,0,0,0,0,0},{0,0,0,0,0,0,0},{0,0,0,0,0,0,0}> 
+     * present_values  = <{0,0,0,0,0,0,0},{0,0,0,0,0,0,0},{0,0,0,0,0,0,0}>
      */
 
-      
-    GHOST_CALL_GOTO(ghost_malloc((void **)&item_from, size_nint),err,ret); 
-    GHOST_CALL_GOTO(ghost_malloc((void **)&wishlist_counts, nprocs*sizeof(ghost_lidx)),err,ret); 
+
+    GHOST_CALL_GOTO(ghost_malloc((void **)&item_from, size_nint),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&wishlist_counts, nprocs*sizeof(ghost_lidx)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&comm_remotePE, size_lcol),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&comm_remoteEl, size_lcol),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&present_values, size_pval),err,ret); 
+    GHOST_CALL_GOTO(ghost_malloc((void **)&present_values, size_pval),err,ret);
 
     for (i=0; i<nprocs; i++) wishlist_counts[i] = 0;
 
@@ -364,15 +370,15 @@ ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, gh
 #pragma omp single
     nthreads = ghost_omp_nthread();
     }
-    
+
     ghost_machine_cacheline_size(&clsize);
     int padding = 8*(int)clsize/sizeof(ghost_lidx);
-        
+
     ghost_lidx *partial_wishlist_counts;
-    GHOST_CALL_GOTO(ghost_malloc((void **)&partial_wishlist_counts, nthreads*(nprocs+padding)*sizeof(ghost_lidx)),err,ret); 
+    GHOST_CALL_GOTO(ghost_malloc((void **)&partial_wishlist_counts, nthreads*(nprocs+padding)*sizeof(ghost_lidx)),err,ret);
     memset(partial_wishlist_counts,0,nthreads*(nprocs+padding)*sizeof(ghost_lidx));
 
-    
+
     GHOST_INSTR_START("comm_remote*");
 #pragma omp parallel shared (partial_wishlist_counts)
     {
@@ -413,7 +419,7 @@ ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, gh
      * acc_wishes = <7,6,5> equal to lnEnts
      */
 
-    GHOST_CALL_GOTO(ghost_malloc((void **)&wishlist,size_nptr),err,ret); 
+    GHOST_CALL_GOTO(ghost_malloc((void **)&wishlist,size_nptr),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&cwishlist,size_nptr),err,ret);
 
     /*
@@ -471,15 +477,15 @@ ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, gh
             ctx->wishes[i] = thisentry;
             ctx->nwishpartners++;
 
-            MPI_CALL_GOTO(MPI_Win_lock(MPI_LOCK_SHARED,i,0,due_win),err,ret);            
+            MPI_CALL_GOTO(MPI_Win_lock(MPI_LOCK_SHARED,i,0,due_win),err,ret);
             MPI_CALL_GOTO(MPI_Put(&ctx->wishes[i],1,ghost_mpi_dt_lidx,i,me,1,ghost_mpi_dt_lidx,due_win),err,ret);
-            MPI_CALL_GOTO(MPI_Win_unlock(i,due_win),err,ret);            
-            
-            MPI_CALL_GOTO(MPI_Win_lock(MPI_LOCK_SHARED,i,0,nduepartners_win),err,ret);            
+            MPI_CALL_GOTO(MPI_Win_unlock(i,due_win),err,ret);
+
+            MPI_CALL_GOTO(MPI_Win_lock(MPI_LOCK_SHARED,i,0,nduepartners_win),err,ret);
             MPI_CALL_GOTO(MPI_Accumulate(&one,1,MPI_INT,i,0,1,MPI_INT,MPI_SUM,nduepartners_win),err,ret);
-            MPI_CALL_GOTO(MPI_Win_unlock(i,nduepartners_win),err,ret);            
+            MPI_CALL_GOTO(MPI_Win_unlock(i,nduepartners_win),err,ret);
         } else {
-            ctx->wishes[i] = 0; 
+            ctx->wishes[i] = 0;
         }
 
     }
@@ -488,7 +494,7 @@ ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, gh
     MPI_Win_free(&nduepartners_win);
 #endif
 
-    /* 
+    /*
      * cwishlist = <{{#,#,#},{1,0,#},{0}},{{0,1,#},{#,#},{1}},{{0},NULL,{#,#,#,#}}> compressed wish list
      * ctx->wishes = <{0,2,1},{2,0,1},{1,0,0}>
      * ctx->dues = <{0,2,1},{2,0,0},{1,1,0}>
@@ -498,7 +504,7 @@ ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, gh
 
 
     // now, we now have many due/wish partners we have and can allocate the according arrays
-    // it will be filled in a later loop over nprocs 
+    // it will be filled in a later loop over nprocs
     GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->duepartners,sizeof(int)*ctx->nduepartners),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->wishpartners,sizeof(int)*ctx->nwishpartners),err,ret);
 
@@ -508,8 +514,8 @@ ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, gh
         acc_transfer_wishes += ctx->wishes[i];
         acc_transfer_dues   += ctx->dues[i];
     }
-    
-    /* 
+
+    /*
      * acc_transfer_wishes = <3,3,1>
      * acc_transfer_dues = <3,2,2>
      */
@@ -519,14 +525,14 @@ ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, gh
     i = me;
     int meHandled = 0;
 
- 
+
     ghost_lidx first_putpos = 0;
-     
+
      if(mat->context->col_map->flags & GHOST_PERM_NO_DISTINCTION) {
         ghost_lidx halo_ctr = 0;
         //we need to know number of halo elements now
         for(int k=0;k<nprocs;++k) {
-          if (k != me){ 
+          if (k != me){
             for (j=0;j<ctx->wishes[k];j++){
                 ++halo_ctr;
             }
@@ -553,27 +559,27 @@ ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, gh
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&pseudocol,size_lcol),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&globcol,size_gcol),err,ret);
-    
+
     /*
      * pseudocol = <{0,0,0,0,0,0,0},{0,0,0,0,0,0},{0,0,0,0,0}> PE where element is on
      * globcol   = <{0,0,0,0,0,0,0},{0,0,0,0,0,0},{0,0,0,0,0}> local colidx of element
      */
 
     this_pseudo_col = ctx->row_map->ldim[me];
-    
+
     GHOST_CALL_RETURN(ghost_nrank(&nprocs, ctx->mpicomm));
     GHOST_CALL_RETURN(ghost_rank(&me, ctx->mpicomm));
 
     i = me;
-    
+
     for (; i<nprocs; i++) { // iterate i=me,..,nprocs,0,..,me-1
         ghost_lidx t;
         if (meHandled && (i == me)) continue;
 
-        if (i != me){ 
+        if (i != me){
             for (j=0;j<ctx->wishes[i];j++){
-                pseudocol[(*nhalo)] = this_pseudo_col; 
-                globcol[(*nhalo)]   = ctx->row_map->goffs[i]+cwishlist[i][j]; 
+                pseudocol[(*nhalo)] = this_pseudo_col;
+                globcol[(*nhalo)]   = ctx->row_map->goffs[i]+cwishlist[i][j];
                 (*nhalo)++;
                 this_pseudo_col++;
             }
@@ -632,11 +638,11 @@ ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, gh
     size_dues = (size_t)( acc_transfer_dues   * sizeof(ghost_lidx) );
 
     // we need a contiguous array in memory
-    GHOST_CALL_GOTO(ghost_malloc((void **)&wishl_mem,size_wish),err,ret); 
+    GHOST_CALL_GOTO(ghost_malloc((void **)&wishl_mem,size_wish),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&duel_mem,size_dues),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->hput_pos,size_nptr),err,ret); 
-   
-    ghost_type_get(&type); 
+    GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->hput_pos,size_nptr),err,ret);
+
+    ghost_type_get(&type);
 #ifdef GHOST_HAVE_CUDA
     ghost_lidx *cu_duel_mem;
     if (type == GHOST_TYPE_CUDA) {
@@ -675,24 +681,24 @@ ghost_error ghost_context_comm_init(ghost_context *ctx, ghost_gidx *col_orig, gh
     }
 
 #ifdef GHOST_HAVE_MPI
-    for (i=0;i<2*nprocs;i++) 
+    for (i=0;i<2*nprocs;i++)
         req[i] = MPI_REQUEST_NULL;
 
-    for (i=0; i<nprocs; i++) 
+    for (i=0; i<nprocs; i++)
         for (j=0;j<ctx->wishes[i];j++)
-            ctx->wishlist[i][j] = cwishlist[i][j]; 
+            ctx->wishlist[i][j] = cwishlist[i][j];
 
     int msgcount = 0;
 
     // TODO only loop duepartners
-    for(i=0; i<nprocs; i++) 
+    for(i=0; i<nprocs; i++)
     { // receive _my_ dues from _other_ processes' wishes
         MPI_CALL_GOTO(MPI_Irecv(ctx->duelist[i],ctx->dues[i],ghost_mpi_dt_lidx,i,i,ctx->mpicomm,&req[msgcount]),err,ret);
         msgcount++;
     }
 
 
-    for(i=0; i<nprocs; i++) { 
+    for(i=0; i<nprocs; i++) {
         MPI_CALL_GOTO(MPI_Isend(ctx->wishlist[i],ctx->wishes[i],ghost_mpi_dt_lidx,i,me,ctx->mpicomm,&req[msgcount]),err,ret);
         msgcount++;
     }
@@ -741,7 +747,7 @@ out:
     free(pseudocol); pseudocol = NULL;
     free(globcol); globcol = NULL;
     free(myrevcol); myrevcol = NULL;
-    
+
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION|GHOST_FUNCTYPE_SETUP);
     return ret;
 }
@@ -762,7 +768,7 @@ char * ghost_context_workdist_string(ghost_context_flags_t flags)
     return ret;
 }
 
-ghost_map *ghost_context_map(const ghost_context *ctx, const ghost_maptype mt) 
+ghost_map *ghost_context_map(const ghost_context *ctx, const ghost_maptype mt)
 {
     return mt==GHOST_MAP_ROW?ctx->row_map:mt==GHOST_MAP_COL?ctx->col_map:ctx->row_map;
 }
@@ -771,7 +777,7 @@ ghost_map *ghost_context_other_map(const ghost_context *ctx, const ghost_maptype
 {
     return mt==GHOST_MAP_ROW?ctx->col_map:mt==GHOST_MAP_COL?ctx->row_map:NULL;
 }
-    
+
 ghost_map *ghost_context_max_map(const ghost_context *ctx)
 {
     return ctx->row_map->dimpad>ctx->col_map->dimpad?ctx->row_map:ctx->col_map;

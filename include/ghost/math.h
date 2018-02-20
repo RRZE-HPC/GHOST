@@ -67,7 +67,7 @@ typedef struct {
      * C is mxn
      * A is mxk
      * B is kxn
-     */ 
+     */
     ghost_gidx m,n,k;
     bool alphaisone;
     bool betaiszero;
@@ -102,6 +102,17 @@ typedef struct {
 ghost_spmv_perf_args;
 #define GHOST_SPMV_PERF_UNIT "GF/s"
 #define GHOST_SPMV_PERF_TAG "spmv"
+
+typedef struct {
+    ghost_lidx vecncols;
+    ghost_lidx globalrows;
+    ghost_gidx globalnnz;
+    ghost_datatype dt;
+}
+ghost_gs_perf_args;
+#define GHOST_GS_PERF_UNIT "GF/s"
+#define GHOST_GS_PERF_TAG "gs"
+
 
 typedef struct {
     ghost_lidx ncols;
@@ -166,7 +177,7 @@ extern "C" {
      * @return ::GHOST_SUCCESS on success or an error indicator.
      *
      * In the most general case, this function computes the operation \f$y = \alpha (A - \gamma I) x + \beta y\f$.
-     * If required  by the operation, \f$\alpha\f$ , \f$\beta\f$, \f$\gamma\f$, \f$\delta\f$, \f$\eta\f$, \a dot, and \a z have 
+     * If required  by the operation, \f$\alpha\f$ , \f$\beta\f$, \f$\gamma\f$, \f$\delta\f$, \f$\eta\f$, \a dot, and \a z have
      * to be given in the \a traits struct (z has to be pointer to a ghost_densemat, everyhing else are pointers to variables of the same type as the vector's data).
      *
      * Application of the scaling factor \f$\alpha\f$ can be switched on by setting ::GHOST_SPMV_SCALE in the flags.
@@ -174,10 +185,10 @@ extern "C" {
      *
      * The scaling factor \f$\beta\f$ can be enabled by setting ::GHOST_SPMV_AXPBY in the flags.
      * The flag ::GHOST_SPMV_AXPY sets \f$\beta\f$ to a fixed value of 1 which is a very common case.
-     * 
+     *
      * \f$\gamma\f$ will be evaluated if the flags contain ::GHOST_SPMV_SHIFT or ::GHOST_SPMV_VSHIFT.
      *
-     * In case ::GHOST_SPMV_DOT, ::GHOST_SPMV_DOT_YY, ::GHOST_SPMV_DOT_XY, or ::GHOST_SPMV_DOT_XX are set, 
+     * In case ::GHOST_SPMV_DOT, ::GHOST_SPMV_DOT_YY, ::GHOST_SPMV_DOT_XY, or ::GHOST_SPMV_DOT_XX are set,
      * \a dot has to point to a memory destination with the size (3 * "number of vector columns" * "sizeof(vector entry))".
      * Column-wise dot products \f$y^Hy, x^Hy, x^Hx\f$ will be computed and stored to this location.
      *
@@ -186,8 +197,8 @@ extern "C" {
      */
     ghost_error ghost_spmv(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat *invec, ghost_spmv_opts opts);
     ghost_error ghost_spmv_nocomm(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat *invec, ghost_spmv_opts opts);
-    ghost_error ghost_gemm_valid(ghost_densemat *x, ghost_densemat *v, const char * transv, 
-    ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce,ghost_gemm_flags flags, int printerror); 
+    ghost_error ghost_gemm_valid(ghost_densemat *x, ghost_densemat *v, const char * transv,
+    ghost_densemat *w, const char *transw, void *alpha, void *beta, int reduce,ghost_gemm_flags flags, int printerror);
     /**
      * @ingroup globops
      *
@@ -203,14 +214,14 @@ extern "C" {
      * @param reduce
      * @param flags
      *
-     * @return 
+     * @return
      */
-    ghost_error ghost_gemm(ghost_densemat *x, ghost_densemat *v, const char *transv, ghost_densemat *w, const char * transw, void *alpha, void *beta, int reduce,ghost_gemm_flags flags); 
+    ghost_error ghost_gemm(ghost_densemat *x, ghost_densemat *v, const char *transv, ghost_densemat *w, const char * transw, void *alpha, void *beta, int reduce,ghost_gemm_flags flags);
     ghost_error ghost_mpi_operations_create();
     ghost_error ghost_mpi_operations_destroy();
     ghost_error ghost_mpi_op_densemat_sum(ghost_mpi_op * op, ghost_datatype datatype);
     ghost_error ghost_mpi_op_sum(ghost_mpi_op * op, ghost_datatype datatype);
-    
+
     ghost_error ghost_spmv_nflops(int *nFlops, ghost_datatype m_t, ghost_datatype v_t);
 
 
@@ -275,7 +286,7 @@ extern "C" {
      * @param c Points to the scale factors c. Length must be number of densemat columns.
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error ghost_vaxpbypcz(ghost_densemat *y, ghost_densemat *x, void *a, void *b, ghost_densemat *z, void *c); 
+    ghost_error ghost_vaxpbypcz(ghost_densemat *y, ghost_densemat *x, void *a, void *b, ghost_densemat *z, void *c);
 
     /**
      * @ingroup locops
@@ -311,7 +322,7 @@ extern "C" {
      * This function does nothing for real-valued densemats.
      */
     ghost_error ghost_conj(ghost_densemat *x);
-    
+
     /**
      * @brief Compute the norm of a densemat: sum_i [conj(vec_i) * vec_i]^pow
      *
@@ -322,7 +333,7 @@ extern "C" {
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error ghost_norm(void *norm, ghost_densemat *vec, void *pow);
-    
+
     /**
      * @brief Compute the norm of a densemat: sum_i [conj(vec_i) * vec_i]^2
      *
@@ -344,6 +355,7 @@ extern "C" {
 
     int ghost_kacz_perf(double *perf, double time, void *arg);
     int ghost_spmv_perf(double *perf, double time, void *arg);
+    int ghost_gs_perf(double *perf, double time, void *arg);
     int ghost_axpy_perf(double *perf, double time, void *arg);
     int ghost_axpby_perf(double *perf, double time, void *arg);
     int ghost_scale_perf(double *perf, double time, void *arg);

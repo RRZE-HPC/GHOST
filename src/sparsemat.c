@@ -153,14 +153,14 @@ ghost_error ghost_sparsemat_create(ghost_sparsemat ** mat, ghost_context *contex
 }
 
     /**
-     * @brief Sort the entries in a given row physically to have increasing 
+     * @brief Sort the entries in a given row physically to have increasing
      * column indices.
      *
      * @param[inout] col The column indices of the row.
      * @param[inout] val The values of the row.
      * @param[in] valSize The size of one entry.
      * @param[in] rowlen The length of the row.
-     * @param[in] stride The stride between successive elements in the row (1 
+     * @param[in] stride The stride between successive elements in the row (1
      * for CRS, C for SELL-C).
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
@@ -172,7 +172,7 @@ static ghost_error ghost_sparsemat_sortrow(ghost_gidx *col, char *val, size_t va
     ghost_lidx c;
     ghost_lidx swpcol;
     char swpval[valSize];
-   
+
     // set diag's column to -1 such that it gets sorted to the beginning
     if (diagfirst) {
         for (c=0; c<rowlen; c++) {
@@ -181,9 +181,9 @@ static ghost_error ghost_sparsemat_sortrow(ghost_gidx *col, char *val, size_t va
             }
         }
     }
-    
-   
-    // bubble sort in row 
+
+
+    // bubble sort in row
     for (n=rowlen; n>1; n--) {
         for (c=0; c<n-1; c++) {
             if (col[c*stride] > col[(c+1)*stride]) {
@@ -202,7 +202,7 @@ static ghost_error ghost_sparsemat_sortrow(ghost_gidx *col, char *val, size_t va
     if (diagfirst) {
         col[0] = row;
     }
-    
+
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
     return GHOST_SUCCESS;
@@ -1093,6 +1093,12 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
         if (mat->traits.flags & GHOST_SPARSEMAT_COLOR) {
             ghost_sparsemat_perm_color(mat->context,dummymat);
         }
+        //RACE coloring
+        if(mat->traits.flags & GHOST_SPARSEMAT_RACE) {
+            ghost_sparsemat_perm_RACE(mat->context,dummymat);
+            //Remove Solver KACZ if RACE is there
+            mat->traits.flags =(ghost_sparsemat_flags)  (mat->traits.flags & (~GHOST_SOLVER_KACZ));
+        }
         //blockcoloring needs to know bandwidth //TODO avoid 2 times calculating  bandwidth, if no RCM or no bandwidth disturbing permutations are done
         //take this branch only if the matrix cannot be bandwidth bound,
         //else normal splitting with just RCM permutation would do the work
@@ -1234,7 +1240,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
                 } else {
                   funcerrs += src->func(callrow,&rowlen,tmpcol,tmpval,src->arg);
                 }
-                
+
                 gnnz += rowlen;
 
                 bool diagexists = 0;
@@ -1542,7 +1548,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
 
         free(tmpval); tmpval = NULL;
         free(tmpcol); tmpcol = NULL;
- 
+
     }
 
     if (SPM_NROWS(mat) % C) {
@@ -1627,6 +1633,13 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
         ghost_sparsemat_upload(mat);
     #endif
 
+    //Required for dependent kernels and C>1
+    if(mat->traits.C > 1)
+    {
+        ret = ghost_simdify_RACE(mat);
+    }
+
+
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->rowLen2,SPM_NROWSPAD(mat)/2*sizeof(ghost_lidx)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->rowLen4,SPM_NROWSPAD(mat)/4*sizeof(ghost_lidx)),err,ret);
@@ -1681,6 +1694,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
 
+    //ghost_sparsemat_to_mm("finalMtx.mtx", mat);
     return ret;
 }
 
