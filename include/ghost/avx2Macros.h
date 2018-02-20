@@ -125,7 +125,7 @@ inline bool testAVX2Instructions()
     AVX2_STORE(b, a_vec);
     if(!(testEquality(a,b,4)))
     {
-        ERROR_LOG("AVX2 LD/ST broken");
+        GHOST_ERROR_LOG("AVX2 LD/ST broken");
         testPass = false;
     }
 
@@ -134,7 +134,7 @@ inline bool testAVX2Instructions()
     AVX2_SCATTER(b, mask, a_vec);
     if(!(testEquality(a,b,4)))
     {
-        ERROR_LOG("AVX2 GATHER/SCATTER broken");
+        GHOST_ERROR_LOG("AVX2 GATHER/SCATTER broken");
         testPass = false;
     }
 
@@ -143,7 +143,7 @@ inline bool testAVX2Instructions()
     AVX2_SCATTER_with_128index(b, mask128, a_vec);
     if(!(testEquality(a,b,4)))
     {
-        ERROR_LOG("AVX2 GATHER_with_addr/SCATTER_with_addr broken");
+        GHOST_ERROR_LOG("AVX2 GATHER_with_addr/SCATTER_with_addr broken");
         testPass = false;
     }
 
