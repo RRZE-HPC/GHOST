@@ -1,0 +1,215 @@
+/*!GHOST_AUTOGEN_SPMTV CHUNKHEIGHT,NVECS */
+#include "ghost/config.h"
+#include "ghost/types.h"
+#include "ghost/util.h"
+#include "ghost/instr.h"
+#include "ghost/omp.h"
+#include "ghost/machine.h"
+#include "ghost/math.h"
+#include "ghost/sparsemat.h"
+#include "ghost/densemat.h"
+#include "ghost/locality.h"
+#include <complex>
+#include <complex.h>
+#include "ghost/timing.h"
+#include "ghost/sparsemat.h"
+#ifdef GHOST_HAVE_RACE
+#include <RACE/interface.h>
+#endif
+#include <vector>
+#include "ghost/sell_spmtv_RACE_gen.h"
+
+#GHOST_SUBST NVECS ${NVECS}
+#GHOST_SUBST CHUNKHEIGHT ${CHUNKHEIGHT}
+
+#if 0
+
+#define INNER_LOOP_AVX512\
+    __m256i vindex = _mm256_stream_load_si256( &((__m256i*)mat->col)[idx]); \
+__m512d bvec = _mm512_i32gather_pd(vindex, (void*) bval, 1);\
+__m512d mvec = _mm512_load_pd( &( mval[idx]));\
+__m512d xvec = _mm512_set1_pd(x_row);\
+bvec = _mm512_fmadd_pd(mvec, xvec, bvec);\
+_mm512_i32scatter_pd((void*) bval,  vindex, bvec, 1);\
+idx+=8;\
+
+
+
+
+#define INNER_LOOP_REM\
+    bval[mat->col[idx]] = bval[mat->col[idx]] + (MT)mval[idx] * x_row;\
+idx+=1;\
+
+#endif
+
+#if (NVECS==1 && CHUNKHEIGHT==1)
+
+//this is necessary since #pragma omp for doesn't understand !=
+#define LOOP(start,end,MT,VT) \
+    for (ghost_lidx row=start; row<end; ++row) { \
+        VT x_row = xval[row]; \
+        ghost_lidx idx = mat->chunkStart[row]; \
+       _Pragma("simd") \
+        for (ghost_lidx j=0; j<mat->rowLen[row]; j++) { \
+           bval[mat->col[idx+j]] = bval[mat->col[idx+j]] + (MT)mval[idx+j] * x_row;\
+        } \
+    } \
+
+
+#elif CHUNKHEIGHT == 1
+
+#define LOOP(start,end,MT,VT) \
+    /*    _Pragma("omp parallel for") */\
+for (ghost_lidx row=start; row<end; ++row) { \
+    ghost_lidx idx = mat->chunkStart[row]; \
+    for (ghost_lidx j=0; j<mat->rowLen[row]; j++) { \
+        MT mval_idx = (MT)mval[idx]; \
+        ghost_lidx col_idx = mat->col[idx]; \
+        _Pragma("simd") \
+        for(int block=0; block<NVECS; ++block) { \
+            VT x_row = xval[row]; \
+            bval[NVECS*col_idx+block] = bval[NVECS*col_idx+block] + mval_idx * xval[NVECS*row + block];\
+        } \
+        idx += 1; \
+    } \
+} \
+
+#else
+
+#if NVECS==1
+
+    #define INNER_LOOP(chunk_arg, rowinchunk_arg)\
+        row = (chunk_arg)*CHUNKHEIGHT+rowinchunk_arg;\
+        idx = mat->chunkStart[chunk_arg]+rowinchunk_arg;\
+        VT x_row = xval[row];\
+        for(ghost_lidx j=0; j<mat->chunkLen[chunk_arg]; ++j) { \
+            bval[mat->col[idx]] = bval[mat->col[idx]] + (MT)mval[idx]*x_row;\
+            idx += CHUNKHEIGHT;\
+        }\
+
+#else
+
+    #define INNER_LOOP(chunk_arg, rowinchunk_arg)\
+        row = (chunk_arg)*CHUNKHEIGHT+rowinchunk_arg;\
+        idx = mat->chunkStart[chunk_arg]+rowinchunk_arg;\
+        VT x_row = xval[row];\
+        for(ghost_lidx j=0; j<mat->chunkLen[chunk_arg]; ++j) { \
+            bval[mat->col[idx]] = bval[mat->col[idx]] + (MT)mval[idx]*x_row;\
+            idx += CHUNKHEIGHT;\
+        }\
+
+#endif
+
+
+#define LOOP(start,end,MT,VT)\
+    ghost_lidx start_chunk = start/CHUNKHEIGHT;\
+    ghost_lidx start_rem = start%CHUNKHEIGHT;\
+    ghost_lidx end_chunk = end/CHUNKHEIGHT;\
+    ghost_lidx end_rem = end%CHUNKHEIGHT;\
+    ghost_lidx row = 0, idx = 0;\
+    /*do first reminder */\
+    for(ghost_lidx rowinchunk=start_rem; rowinchunk<MIN(CHUNKHEIGHT,(end_chunk-start_chunk)*CHUNKHEIGHT+end_rem); ++rowinchunk) { \
+        INNER_LOOP(start_chunk, rowinchunk); \
+    }\
+    /*main body */\
+    for(ghost_lidx chunk=(start_chunk+1); chunk<end_chunk; ++chunk) {\
+        for(ghost_lidx rowinchunk=0; rowinchunk<CHUNKHEIGHT; ++rowinchunk) { \
+            INNER_LOOP(chunk, rowinchunk); \
+        }\
+    }\
+    /*do last reminder*/\
+    if(start_chunk<end_chunk) { \
+        for(ghost_lidx rowinchunk=0; rowinchunk<end_rem; ++rowinchunk) { \
+            INNER_LOOP(end_chunk, rowinchunk); \
+        }\
+    }\
+
+#endif
+
+struct spmtv_RACE_arg__x_plain_rm_CHUNKHEIGHT_NVECS {
+    ghost_densemat *b;
+    ghost_sparsemat *mat;
+    ghost_densemat *x;
+};
+
+inline void spmtv_RACE_kernel__x_plain_rm_CHUNKHEIGHT_NVECS(int start, int end, void *args)
+{
+    spmtv_RACE_arg__x_plain_rm_CHUNKHEIGHT_NVECS* spmtvArg = (spmtv_RACE_arg__x_plain_rm_CHUNKHEIGHT_NVECS *) args;
+    typedef double MT;
+    typedef double VT;
+
+    MT *bval = (MT *)(spmtvArg->b->val);
+    MT *xval = (MT *)(spmtvArg->x->val);
+    MT *mval = (MT *)(spmtvArg->mat->val);
+
+    ghost_sparsemat *mat = spmtvArg->mat;
+
+    LOOP(start, end, MT, VT);
+}
+
+static ghost_error ghost_spmtv_RACE__x_plain_rm_CHUNKHEIGHT_NVECS_tmpl(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations)
+{
+#ifdef GHOST_HAVE_RACE
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+
+    RACE::Interface *ce = (RACE::Interface*) (mat->context->coloringEngine);
+
+    spmtv_RACE_arg__x_plain_rm_CHUNKHEIGHT_NVECS *spmtvArg = new spmtv_RACE_arg__x_plain_rm_CHUNKHEIGHT_NVECS;
+    spmtvArg->mat = mat;
+    spmtvArg->b = b;
+    spmtvArg->x = x;
+
+    void* argPtr = (void*) (spmtvArg);
+    int spmtvId = ce->registerFunction(&spmtv_RACE_kernel__x_plain_rm_CHUNKHEIGHT_NVECS, argPtr);
+    std::vector<double> time; 
+    //  std::vector<double> barrierTime;
+    double start_spmtv_inner, end_spmtv_inner;
+
+    //ce->resetTime();
+    for(int i=0; i<iterations; ++i)
+    {
+        ghost_barrier();
+        ghost_timing_wcmilli(&start_spmtv_inner);
+
+        ce->executeFunction(spmtvId);
+
+        ghost_barrier();
+        ghost_timing_wcmilli(&end_spmtv_inner);
+
+        time.push_back(end_spmtv_inner-start_spmtv_inner);
+        //barrierTime.push_back(ce->barrierTime()*1e3);
+    }
+
+    /*for(int i=0; i<iterations; ++i)
+    {
+        //printf("%d \t%f \t%f \t%f\n", i, time[i], barrierTime[i], time[i]-(barrierTime[i]));
+        printf("%d \t%f\n", i, time[i]);
+    }*/
+
+
+    delete spmtvArg;
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+    return GHOST_SUCCESS;
+
+#else
+    UNUSED(b);
+    UNUSED(mat);
+    UNUSED(x);
+    UNUSED(iterations);
+
+    GHOST_ERROR_LOG("Enable RACE library");
+    return GHOST_ERR_UNKNOWN;
+#endif
+}
+
+
+ghost_error ghost_spmtv_RACE__x_plain_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iter)
+{
+    ghost_error ret = GHOST_SUCCESS;
+    ret = ghost_spmtv_RACE__x_plain_rm_CHUNKHEIGHT_NVECS_tmpl(b,mat,x, iter);
+   // SELECT_TMPL_1DATATYPE(mat->traits.datatype,std::complex,ret,ghost_spmtv_RACE__u_plain_rm_CHUNKHEIGHT_NVECS_tmpl,x,mat,b,opts);
+    // TODO mixed datatypes
+    // SELECT_TMPL_2DATATYPES(mat->traits.datatype,x->traits.datatype,ghost_complex,ret,ghost_kacz_BMC_u_plain_cm_CHUNKHEIGHT_NVECS_tmpl,x,mat,b,opts);
+
+    return ret;
+}

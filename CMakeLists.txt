@@ -40,6 +40,7 @@ set(GHOST_SPARSEMAT_GLOBALSTATS 0 CACHE BOOL "Gather some global statistics on s
 set(GHOST_SPARSEMAT_STATS 0 CACHE BOOL "Gather statistics about sparse matrices (slows down matrix construction)")
 set(GHOST_KACZ_ANALYZE 0 CACHE BOOL "Gather data about load balancing for KACZ method (might slow down initial splitting)")  
 set(GHOST_AUTOGEN_SPMMV "8,1;8,2;8,4;8,8;8,*;32,1;32,2;32,4;32,8;32,*;1,4;1,*" CACHE STRING "SpM(M)V kernels to be auto-generated. Semicolon-separated list of 2-tuples: (CHUNKHEIGHT, NVECS)")
+set(GHOST_AUTOGEN_SPMTV "1,1" CACHE STRING "SPMTV kernels to be auto-generated. Semicolon-separated list of 2-tuples: (CHUNKHEIGHT, NVECS)")
 set(GHOST_AUTOGEN_GS "1,1" CACHE STRING "GS kernels to be auto-generated. Semicolon-separated list of 2-tuples: (CHUNKHEIGHT, NVECS)")
 set(GHOST_AUTOGEN_SPMMV_CUDA "32,1,0,0,0,0,0,0,0;1,4,0,0,0,0,0,0,0;32,*,0,0,0,0,0,0,0;1,*,0,0,0,0,0,0,0" CACHE STRING "SpM(M)V kernels to be auto-generated. Semicolon-separated list of 9-tuples: (CHUNKHEIGHT, NVECS,AXP(B)Y,SCALE,(V)SHIFT,DOT_YY,DOT_XY,DOT_XX,CHAIN_AXPBY)")
 set(GHOST_AUTOGEN_TSMM "1,1;2,2;4,4;8,8" CACHE STRING "TSMM kernels to be auto-generated. Semicolon-separated list of 3-tuples: (K, N, UNROLL)")
@@ -169,6 +170,8 @@ set (SOURCES
     src/sparsemat_perm_RACE.cpp
     src/sell_gs_RACE_fallback.cpp
     src/sell_gs.cpp
+    src/sell_spmtv.cpp
+    src/sell_spmtv_RACE_fallback.cpp
     )
 
 set (HEADERS

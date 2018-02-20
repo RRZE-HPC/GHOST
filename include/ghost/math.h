@@ -109,6 +109,17 @@ typedef struct {
     ghost_gidx globalnnz;
     ghost_datatype dt;
 }
+ghost_spmtv_perf_args;
+#define GHOST_SPMTV_PERF_UNIT "GF/s"
+#define GHOST_SPMTV_PERF_TAG "spmtv"
+
+
+typedef struct {
+    ghost_lidx vecncols;
+    ghost_lidx globalrows;
+    ghost_gidx globalnnz;
+    ghost_datatype dt;
+}
 ghost_gs_perf_args;
 #define GHOST_GS_PERF_UNIT "GF/s"
 #define GHOST_GS_PERF_TAG "gs"
@@ -355,6 +366,7 @@ extern "C" {
 
     int ghost_kacz_perf(double *perf, double time, void *arg);
     int ghost_spmv_perf(double *perf, double time, void *arg);
+    int ghost_spmtv_perf(double *perf, double time, void *arg);
     int ghost_gs_perf(double *perf, double time, void *arg);
     int ghost_axpy_perf(double *perf, double time, void *arg);
     int ghost_axpby_perf(double *perf, double time, void *arg);

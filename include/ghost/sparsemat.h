@@ -244,6 +244,54 @@ typedef struct
 }
 ghost_cusellspmv_parameters;
 
+/**
+ * @brief The parameters to identify a SELL SpMTV kernel.
+ *
+ * On kernel execution, GHOST will try to find an auto-generated kernel which
+ * matches all of these parameters.
+ */
+typedef struct
+{
+    /**
+     * @brief The data access alignment.
+     */
+    ghost_alignment alignment;
+    /**
+     * @brief The implementation.
+     */
+    ghost_implementation impl;
+    /**
+     * @brief The matrix data type.
+     */
+    ghost_datatype mdt;
+    /**
+     * @brief The densemat data type.
+     */
+    ghost_datatype vdt;
+    /**
+     * @brief The densemat width.
+     */
+    int blocksz;
+    /**
+     * @brief The SELL matrix chunk height.
+     */
+    int chunkheight;
+    /**
+     * @brief The densemat storage order.
+     */
+    ghost_densemat_storage storage;
+
+}
+ghost_spmtv_RACE_parameters;
+
+typedef ghost_error (*ghost_spmtv_RACE_kernel)(ghost_densemat*, ghost_sparsemat *, ghost_densemat*, int);
+
+/**
+ * @brief The parameters to identify a SELL GS kernel.
+ *
+ * On kernel execution, GHOST will try to find an auto-generated kernel which
+ * matches all of these parameters.
+ */
 typedef struct
 {
     /**
@@ -957,15 +1005,31 @@ extern "C" {
      *
      * @param mat The matrix.
      * @param b The input densemat.
-     * @param rhs The output densemat.
+     * @param x The output densemat.
      * @param iterations No. of iterations
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    /*Gauss-Seidel*/
+     /*Gauss-Seidel*/
     ghost_error ghost_gs_RACE(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);
 
     void ghost_gs_RACE_fallback(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);
+
+
+     /**
+     * @brief Select and call the right SpMTV kernel.
+     *
+     * @param mat The matrix.
+     * @param lhs The output densemat.
+     * @param rhs The input densemat.
+     * @param iterations No. of iterations
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+     /*SPMTV*/
+    ghost_error ghost_spmtv_RACE(ghost_densemat *lhs, ghost_sparsemat *mat, ghost_densemat *rhs, int iterations);
+
+    void ghost_spmtv_RACE_fallback(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);
 
 
     /**

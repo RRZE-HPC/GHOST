@@ -88,7 +88,7 @@ inline bool testEquality(double *a, double* b, int len)
     double tol = 1e-8;
     for(int i=0; i<len; ++i)
     {
-        if(fabs(a[i]-b[i]) < tol)
+        if(fabs(a[i]-b[i]) > tol)
         {
             pass = false;
             break;
