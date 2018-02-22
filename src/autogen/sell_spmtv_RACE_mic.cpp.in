@@ -147,7 +147,7 @@
     ghost_lidx end_rem = end%CHUNKHEIGHT;\
     ghost_lidx row = 0, idx = 0;\
     __m512d val512, b_temp512;\
-   #GHOST_UNROLL#__m512d x_row512@;\ #CHUNKHEIGHT/8\
+   #GHOST_UNROLL#__m512d x_row512@;\#CHUNKHEIGHT/8\
   /*do first reminder */\
     for(ghost_lidx rowinchunk=start_rem; rowinchunk<MIN(CHUNKHEIGHT,(end_chunk-start_chunk)*CHUNKHEIGHT+end_rem); ++rowinchunk) { \
         INNER_LOOP_REM(start_chunk, rowinchunk); \

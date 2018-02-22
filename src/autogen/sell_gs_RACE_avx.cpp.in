@@ -48,9 +48,9 @@
     idx = mat->chunkStart[chunk_arg]+rowinchunk_arg;\
     int startIdx = idx;\
     xval[row] = bval[row];\
-    for(ghost_lidx j=0; j<mat->chunkLen[chunk_arg]; ++j) { \
+    for(ghost_lidx j=1; j<mat->chunkLen[chunk_arg]; ++j) { \
+        idx+=CHUNKHEIGHT;\
         xval[row] -= (MT)mval[idx]*xval[mat->col[idx]];\
-        idx += CHUNKHEIGHT;\
     }\
     xval[row] /= mval[startIdx];
 
@@ -59,13 +59,49 @@
 #define INNER_LOOP_BODY_AVX256(chunk_arg)\
     row = (chunk_arg)*CHUNKHEIGHT;\
     idx = mat->chunkStart[chunk_arg];\
-    #GHOST_UNROLL#x_row256@ = AVX_256_LOAD(&(bval[row+4*@]));\#CHUNKHEIGHT/4\
-   /*_Pragma("simd")*/\
-    for(ghost_lidx j=0; j<mat->chunkLen[chunk_arg]; ++j) { \
-        #GHOST_UNROLL#val256 = AVX_256_LOAD(&(mval[idx+4*@]));x_col256 = AVX_256_GATHER_with_addr(xval, mat->col[idx+4*@], mat->col[idx+4*@+1], mat->col[idx+4*@+2], mat->col[idx+4*@+3]);x_row256@ = AVX_256_FMS(val256,x_col256,x_row256@); \#CHUNKHEIGHT/4\
-        idx += CHUNKHEIGHT;\
+    int startIdx = idx;\
+    /*_Pragma("simd")*/\
+    for(ghost_lidx k=0; k<CHUNKHEIGHT/4; ++k) { \
+        x_row256 = AVX_256_LOAD(&(bval[row+4*k]));\
+        idx = startIdx;\
+        for(ghost_lidx j=1; j<(mat->chunkLen[chunk_arg]); ++j) { \
+            idx+=CHUNKHEIGHT;\
+            val256 = AVX_256_LOAD(&(mval[idx+4*k]));x_col256 = AVX_256_GATHER_with_addr(xval, mat->col[idx+4*k], mat->col[idx+4*k+1], mat->col[idx+4*k+2], mat->col[idx+4*k+3]);x_row256 = AVX_256_FMS(val256,x_col256,x_row256); \
+        }\
+        x_row256 = AVX_256_DIV(x_row256, AVX_256_LOAD(&mval[startIdx+4*k]));\
+        AVX_256_STORE(&(xval[row+4*k]), x_row256);\
+   }\
+
+
+#define INNER_LOOP_BODY_AVX256_PURE(chunk_arg)\
+    row = (chunk_arg)*CHUNKHEIGHT;\
+    idx = mat->chunkStart[chunk_arg];\
+    int startIdx = idx;\
+    /*_Pragma("simd")*/\
+    for(ghost_lidx k=0; k<CHUNKHEIGHT/4; ++k) { \
+        x_row256 = AVX_256_LOAD(&(bval[row+4*k]));\
+        idx = startIdx;\
+        for(ghost_lidx j=1; j<(mat->chunkLen[chunk_arg]-3); ++j) { \
+            idx+=CHUNKHEIGHT;\
+            val256 = AVX_256_LOAD(&(mval[idx+4*k]));x_col256 = AVX_256_GATHER_with_addr(xval, mat->col[idx+4*k], mat->col[idx+4*k+1], mat->col[idx+4*k+2], mat->col[idx+4*k+3]);x_row256 = AVX_256_FMS(val256,x_col256,x_row256); \
+        }\
+        x_row256 = AVX_256_DIV(x_row256, AVX_256_LOAD(&mval[startIdx+4*k]));\
+        AVX_256_STORE(&(xval[row+4*k]), x_row256);\
+        /*Do dependency aware calculation*/\
+        for(ghost_lidx l=0; l<3; ++l) { \
+            idx+=CHUNKHEIGHT;\
+            val256 = AVX_256_LOAD(&(mval[idx+4*k]));x_col256 = AVX_256_GATHER_with_addr(xval, mat->col[idx+4*k], mat->col[idx+4*k+1], mat->col[idx+4*k+2], mat->col[idx+4*k+3]);x_row256 = AVX_256_MASK_FMS(val256,x_col256,x_row256,GET_AVX_FWDMASK(l)); \
+        }\
+        for(ghost_lidx l=0; l<3; ++l) { \
+            AVX_256_STORE(&(xval[row+4*k]), x_row256);\
+            xval[row+4*k+l] /= mval[startIdx+4*k+l];\
+            x_row256 = AVX_256_LOAD(&xval[row+4*k]);\
+            val256 = AVX_256_LOAD(&(mval[idx+4*k]));x_col256 = AVX_256_GATHER_with_addr(xval, mat->col[idx+4*k], mat->col[idx+4*k+1], mat->col[idx+4*k+2], mat->col[idx+4*k+3]);x_row256 = AVX_256_MASK_FMS(val256,x_col256,x_row256,GET_AVX_BACKMASK(l)); \
+            idx -= CHUNKHEIGHT;\
+        }\
+        AVX_256_STORE(&(xval[row+4*k]), x_row256);\
+        xval[row+4*k+3] /= mval[startIdx+4*k+3];\
     }\
-    #GHOST_UNROLL#diag256 = AVX_256_LOAD(&(mval[row+4*@]));x_row256@=AVX_256_DIV(x_row256@, diag256); AVX_256_STORE(&(xval[row+4*@]), x_row256@);\#CHUNKHEIGHT/4\
 
 
 /*
@@ -97,8 +133,8 @@
     ghost_lidx end_chunk = end/CHUNKHEIGHT;\
     ghost_lidx end_rem = end%CHUNKHEIGHT;\
     ghost_lidx row = 0, idx = 0;\
-    __m256d val256, x_col256, diag256;\
-   #GHOST_UNROLL#__m256d x_row256@;\#CHUNKHEIGHT/4\
+    __m256d val256, x_col256;\
+    __m256d x_row256;\
   /*do first reminder */\
     for(ghost_lidx rowinchunk=start_rem; rowinchunk<MIN(CHUNKHEIGHT,(end_chunk-start_chunk)*CHUNKHEIGHT+end_rem); ++rowinchunk) { \
         INNER_LOOP_REM(start_chunk, rowinchunk); \

@@ -893,6 +893,15 @@ extern "C" {
      */
     ghost_error ghost_simdify_RACE(ghost_sparsemat *mat);
 
+    /**
+     * @brief To support SELL-C-sigma and RACE coloring for D1 kernels.
+     *
+     * @param[out] mat Matrix to be resolved with SELL-C-sigma and coloring.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error ghost_simdifyD1_RACE(ghost_sparsemat *mat);
+
+
 
      /**
      * @brief To make threads invoked by RACE to sleep.

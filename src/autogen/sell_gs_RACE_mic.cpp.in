@@ -48,9 +48,9 @@
     idx = mat->chunkStart[chunk_arg]+rowinchunk_arg;\
     int startIdx = idx;\
     xval[row] = bval[row];\
-    for(ghost_lidx j=0; j<mat->chunkLen[chunk_arg]; ++j) { \
-        xval[row] -= (MT)mval[idx]*xval[mat->col[idx]];\
+    for(ghost_lidx j=1; j<mat->chunkLen[chunk_arg]; ++j) { \
         idx += CHUNKHEIGHT;\
+        xval[row] -= (MT)mval[idx]*xval[mat->col[idx]];\
     }\
     xval[row] /= mval[startIdx];
 
@@ -59,14 +59,18 @@
 #define INNER_LOOP_BODY_MIC(chunk_arg)\
     row = (chunk_arg)*CHUNKHEIGHT;\
     idx = mat->chunkStart[chunk_arg];\
-    #GHOST_UNROLL#x_row512@ = MIC_LOAD(&(bval[row+8*@]));\#CHUNKHEIGHT/8\
-   /*_Pragma("simd")*/\
-    for(ghost_lidx j=0; j<mat->chunkLen[chunk_arg]; ++j) { \
-        int* curr_col = &(mat->col[idx]);\
-        #GHOST_UNROLL#val512 = MIC_LOAD(&(mval[idx+8*@]));index=_mm256_load_si256((__m256i*)(curr_col+8*@));x_col512 = MIC_GATHER(xval, index);x_row512@ = MIC_FMS(val512,x_col512,x_row512@); \#CHUNKHEIGHT/8\
-        idx += CHUNKHEIGHT;\
+    int startIdx = idx;\
+    for(ghost_lidx k=0; k<CHUNKHEIGHT/8; ++k) { \
+        x_row512 = MIC_LOAD(&(bval[row+8*k]));\
+        idx = startIdx;\
+        for(ghost_lidx j=1; j<mat->chunkLen[chunk_arg]; ++j) { \
+            idx += CHUNKHEIGHT; \
+            int* curr_col = &(mat->col[idx]);\
+            val512 = MIC_LOAD(&(mval[idx+8*k]));index=_mm256_load_si256((__m256i*)(curr_col+8*k));x_col512 = MIC_GATHER(xval, index);x_row512 = MIC_FMS(val512,x_col512,x_row512);\
+        }\
+        x_row512=MIC_DIV( x_row512, MIC_LOAD(&(mval[startIdx+8*k])) );\
+        MIC_STORE(&(xval[row+8*k]), x_row512@);\
     }\
-    #GHOST_UNROLL#diag512 = MIC_LOAD(&(mval[row+8*@]));x_row512@=MIC_DIV(x_row512@, diag512); MIC_STORE(&(xval[row+8*@]), x_row512@);\#CHUNKHEIGHT/8\
 
 
 
@@ -90,9 +94,9 @@
     ghost_lidx end_chunk = end/CHUNKHEIGHT;\
     ghost_lidx end_rem = end%CHUNKHEIGHT;\
     ghost_lidx row = 0, idx = 0;\
-    __m512d val512, x_col512, diag512;\
+    __m512d val512, x_col512;\
     __m256i index;\
-   #GHOST_UNROLL#__m512d x_row512@;\#CHUNKHEIGHT/8\
+   __m512d x_row512;\
   /*do first reminder */\
     for(ghost_lidx rowinchunk=start_rem; rowinchunk<MIN(CHUNKHEIGHT,(end_chunk-start_chunk)*CHUNKHEIGHT+end_rem); ++rowinchunk) { \
         INNER_LOOP_REM(start_chunk, rowinchunk); \

@@ -82,6 +82,18 @@ inline void checkForConflict(int *col, int repeatableVal)
    _mm256_div_pd (a, b)
 
 
+#define AVX_256_MASK_FMS(a,b,c,mask)\
+   _mm256_blend_pd(_mm256_sub_pd(c,_mm256_mul_pd (a, b)), c, mask)
+
+
+#define GET_AVX_FWDMASK(idx)\
+    ((idx==0)?8:(idx==1)?12:14)
+
+
+#define GET_AVX_BACKMASK(idx)\
+    ((idx==0)?1:(idx==1)?3:7)
+
+
 inline bool testEquality(double *a, double* b, int len)
 {
     bool pass = true;
@@ -149,9 +161,117 @@ inline bool testInstructions()
         testPass = false;
     }
 
+    double *c = (double*) malloc(4*sizeof(double));
+
+    //mask fms
+    for(int i=0; i<4; ++i)
+    {
+        b[i] = i+1;
+        a[i] = 1/((double)(i+1));
+        c[i] = 1;
+    }
+
+     a_vec = AVX_256_LOAD(a);
+    __m256d b_vec = AVX_256_LOAD(b);
+    __m256d c_vec = AVX_256_LOAD(c);
+
+    __m256d d_vec = AVX_256_FMS(a_vec,b_vec,c_vec);
+    double *d = (double*) malloc(4*sizeof(double));
+    double *e = (double*) malloc(4*sizeof(double));
+    for(int i=0; i<4; ++i)
+    {
+        d[i] = 0;
+        e[i] = 0;
+    }
+
+    AVX_256_STORE(d,d_vec);
+
+    if(!testEquality(d,e,4))
+    {
+        GHOST_ERROR_LOG("AVX256 FMS broken");
+        testPass = false;
+    }
+
+
+    //for(int mask_idx = 0; mask_idx < 3; ++mask_idx)
+    {
+        int mask_idx = 0;
+        d_vec = AVX_256_MASK_FMS(a_vec,b_vec,c_vec, GET_AVX_FWDMASK(mask_idx));
+        AVX_256_STORE(d, d_vec);
+
+        for(int i=0; i<4; ++i)
+        {
+            if(i>=(3-mask_idx))
+            {
+                e[i] = c[i];
+            }
+            else
+            {
+                e[i] = 0;
+            }
+        }
+
+        if(!testEquality(d,e,4))
+        {
+            GHOST_ERROR_LOG("AVX256 FMS MASK broken");
+            testPass = false;
+        }
+    }
+
+    {
+        int mask_idx = 1;
+        d_vec = AVX_256_MASK_FMS(a_vec,b_vec,c_vec, GET_AVX_FWDMASK(mask_idx));
+        AVX_256_STORE(d, d_vec);
+
+        for(int i=0; i<4; ++i)
+        {
+            if(i>=(3-mask_idx))
+            {
+                e[i] = c[i];
+            }
+            else
+            {
+                e[i] = 0;
+            }
+        }
+
+        if(!testEquality(d,e,4))
+        {
+            GHOST_ERROR_LOG("AVX256 FMS MASK broken");
+            testPass = false;
+        }
+    }
+
+    {
+        int mask_idx = 2;
+        d_vec = AVX_256_MASK_FMS(a_vec,b_vec,c_vec, GET_AVX_FWDMASK(mask_idx));
+        AVX_256_STORE(d, d_vec);
+
+        for(int i=0; i<4; ++i)
+        {
+            if(i>=(3-mask_idx))
+            {
+                e[i] = c[i];
+            }
+            else
+            {
+                e[i] = 0;
+            }
+        }
+
+        if(!testEquality(d,e,4))
+        {
+            GHOST_ERROR_LOG("AVX256 FMS MASK broken");
+            testPass = false;
+        }
+    }
+
 
     free(a);
     free(b);
+    free(c);
+    free(d);
+    free(e);
     free(mask);
 
     return testPass;
