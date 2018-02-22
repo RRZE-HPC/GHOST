@@ -58,7 +58,7 @@ static __global__ void tsmm_varip2_kernel(T *A, const iT *B, T *out, const int M
 #pragma unroll(unrollFactor)
         for (int i = 0; i < unrollFactor; i++) {
             int row = tidx / N + i * (blockDim.x * gridDim.x / N);
-            sums[i] = axpy(sums[i], (iT)__ldg(A + row * lda + m), __ldg(B + n * lda + m));
+            sums[i] = axpy(sums[i], (iT)__ldg(A + row * lda + m), __ldg(B + n * ldb + m));
         }
     }
 
