@@ -16,7 +16,7 @@
 
 namespace {
 void *d_temp_storage = NULL;
-size_t temp_storage_size = 0;
+size_t temp_storage_bytes = 0;
 template<typename oT, int M, int N>
 __global__ void deviceReduce(
     oT *blockResults, oT *result, oT alpha, oT beta, int blockCount, int lda, int ldb, int ldc)
@@ -169,39 +169,31 @@ static ghost_error ghost_tsmttsm_cu_rm(oT *const __restrict__ C, const T *const 
     if (N > M) {
         int const blockSize = (targetBlockSize / N) * N;
         CUDA_CALL(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocks,
-                      genv7_blockProductKernel<T, T, conjv, M, N, blockSize, true, false>, blockSize, 0),
+                      genv7_blockProductKernel<T, oT, conjv, M, N, blockSize, true, false>, blockSize, 0),
             ret);
     } else {
         int const blockSize = (targetBlockSize / M) * M;
         if (M == N && A == B) {
             CUDA_CALL(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocks,
-                          genv7_blockProductKernel<T, T, conjv, M, N, blockSize, false, true>,
+                          genv7_blockProductKernel<T, oT, conjv, M, N, blockSize, false, true>,
                           blockSize, 0),
                 ret);
         } else {
             CUDA_CALL(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocks,
-                          genv7_blockProductKernel<T, T, conjv, M, N, blockSize, false, false>,
+                          genv7_blockProductKernel<T, oT, conjv, M, N, blockSize, false, false>,
                           blockSize, 0),
                 ret);
         }
     }
     int blockCount = prop.multiProcessorCount * numBlocks;
 
-    // CUDA_CALL(cudaMalloc(&d_temp_storage, 100 * 100 * 1000 * sizeof(T)), ret);
-
-    size_t required_temp_storage_size = M * N * blockCount;
-    if (temp_storage_size < required_temp_storage_size) {
+    size_t required_temp_storage_bytes = M * N * blockCount * sizeof(oT);
+    if (temp_storage_bytes < required_temp_storage_bytes) {
         CUDA_CALL(cudaFree(d_temp_storage), ret);
-        temp_storage_size = required_temp_storage_size;
-        CUDA_CALL(cudaMalloc(&d_temp_storage, sizeof(oT) * temp_storage_size), ret);
+        temp_storage_bytes = required_temp_storage_bytes;
+        CUDA_CALL(cudaMalloc(&d_temp_storage, temp_storage_bytes), ret);
     }
 
-    /*    size_t required_temp_storage_bytes = blockCount * sizeof(T) * N * ldc;
-    if (temp_storage_bytes < required_temp_storage_bytes || temp_storage == NULL)
-    { temp_storage_bytes = required_temp_storage_bytes;
-        ghost_cu_malloc(&temp_storage, temp_storage_bytes);
-        if (temp_storage == NULL) temp_storage_bytes = 0;
-        }*/
 
     if (N > M) {
         int const blockSize = (targetBlockSize / N) * N;
@@ -217,7 +209,6 @@ static ghost_error ghost_tsmttsm_cu_rm(oT *const __restrict__ C, const T *const 
                 <<<blockCount, blockSize>>>(A, B, (oT *)d_temp_storage, K, lda, ldb, ldc);
         }
     }
-    //    CUDA_CALL(cudaDeviceSynchronize(), ret);
 
     CUDA_CALL(cudaGetLastError(), ret);
     deviceReduce<oT, M, N>
