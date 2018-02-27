@@ -21,8 +21,8 @@
 
 #include "ghost/cu_complex.h"
 
-#GHOST_SUBST NCOLSIN ${K}
-#GHOST_SUBST NCOLSOUT ${N}
+#GHOST_SUBST CFGK ${K}
+#GHOST_SUBST CFGN ${N}
 
 
 namespace {
@@ -46,8 +46,8 @@ bool eq<cuFloatComplex>(const cuFloatComplex lhs, const cuFloatComplex rhs)
 }
 
 template<typename T, typename iT, int M, int N, int BLOCKSIZE, bool BETAISZERO>
-static __global__ void tsmm_fix3_inplace_kernel(const T *__restrict__ A, const iT *__restrict__ B,
-    T *out, const int K, const int lda, const int ldb, const int ldc, iT alpha, iT beta)
+static __global__ void tsmm_fix3_inplace_kernel(T *A, const iT *__restrict__ B, const int K,
+    const int lda, const int ldb, const int ldc, iT alpha, iT beta)
 {
     int tidx = blockIdx.x * BLOCKSIZE + threadIdx.x;
 
@@ -64,19 +64,19 @@ static __global__ void tsmm_fix3_inplace_kernel(const T *__restrict__ A, const i
     for (int row = tidx; row < K; row += gridDim.x * blockDim.x) {
         T avals[M];
         for (int m = 0; m < M; m++) {
-            avals[m] = A[row * lda + m];
+            avals[m] = __ldg(A + row * lda + m);
         }
         for (int n = 0; n < N; n++) {
-            iT sums;
-            zero(sums);
+            iT sum;
+            zero(sum);
             for (int m = 0; m < M; m++) {
-                sums = axpy(sums, (iT)avals[m], bCache[m][n]);
+                sum = axpy(sum, (iT)avals[m], bCache[m][n]);
             }
 
             if (BETAISZERO) {
-                out[row * ldc + n] = (T)scale(alpha, sums);
+                A[row * lda + n] = (T)scale(alpha, sum);
             } else {
-                out[row * ldc + n] = (T)axpby(sums, (iT)__ldg(out + row * ldc + n), alpha, beta);
+                A[row * lda + n] = (T)axpby(sum, (iT)__ldg(A + row * lda + n), alpha, beta);
             }
         }
     }
@@ -87,8 +87,7 @@ template<typename T, typename iT, int M, int N>
 bool ghost_tsmm_inplace(ghost_densemat *x, ghost_densemat *w, void *alpha, void *beta)
 {
 
-    T *C = (T *)x->cu_val;
-    T *A = (T *)x->cu_val;
+  T *A = (T *)x->cu_val;
     iT *B = (iT *)w->cu_val;
     iT dalpha = *(iT *)alpha;
     iT dbeta = *(iT *)beta;
@@ -113,10 +112,10 @@ bool ghost_tsmm_inplace(ghost_densemat *x, ghost_densemat *w, void *alpha, void 
     zero(Tzero);
     if (eq(dbeta, Tzero)) {
         tsmm_fix3_inplace_kernel<T, iT, M, N, threadsPerBlock, true>
-            <<<blockCount, threadsPerBlock>>>(A, B, C, K, lda, ldb, ldc, dalpha, dbeta);
+            <<<blockCount, threadsPerBlock>>>(A, B, K, lda, ldb, ldc, dalpha, dbeta);
     } else {
         tsmm_fix3_inplace_kernel<T, iT, M, N, threadsPerBlock, false>
-            <<<blockCount, threadsPerBlock>>>(A, B, C, K, lda, ldb, ldc, dalpha, dbeta);
+            <<<blockCount, threadsPerBlock>>>(A, B, K, lda, ldb, ldc, dalpha, dbeta);
     }
     CUDA_CALL(cudaDeviceSynchronize(), ret);
     CUDA_CALL(cudaGetLastError(), ret);
@@ -126,24 +125,24 @@ bool ghost_tsmm_inplace(ghost_densemat *x, ghost_densemat *w, void *alpha, void 
 }
 
 
-ghost_error ghost_tsmm_inplace__u_cuda_x_NCOLSIN_NCOLSOUT(ghost_densemat *x, ghost_densemat *w, void *alpha, void *beta)
+ghost_error ghost_tsmm_inplace__u_cuda_x_CFGN_CFGK(ghost_densemat *x, ghost_densemat *w, void *alpha, void *beta)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH | GHOST_FUNCTYPE_KERNEL);
     ghost_error ret = GHOST_SUCCESS;
 
     if (x->traits.datatype & GHOST_DT_COMPLEX) {
         if (x->traits.datatype & GHOST_DT_DOUBLE) {
-            ghost_tsmm_inplace<cuDoubleComplex, cuDoubleComplex, NCOLSIN, NCOLSOUT>(x, w, alpha, beta);
+            ghost_tsmm_inplace<cuDoubleComplex, cuDoubleComplex, CFGK, CFGN>(x, w, alpha, beta);
         } else {
-            ghost_tsmm_inplace<cuFloatComplex, cuFloatComplex, NCOLSIN, NCOLSOUT>(x, w, alpha, beta);
+            ghost_tsmm_inplace<cuFloatComplex, cuFloatComplex, CFGK, CFGN>(x, w, alpha, beta);
         }
     } else {
         if (x->traits.datatype & GHOST_DT_DOUBLE && w->traits.datatype & GHOST_DT_DOUBLE) {
-            ghost_tsmm_inplace<double, double, NCOLSIN, NCOLSOUT>(x, w, alpha, beta);
+            ghost_tsmm_inplace<double, double, CFGK, CFGN>(x, w, alpha, beta);
         } else if (x->traits.datatype & GHOST_DT_FLOAT && w->traits.datatype & GHOST_DT_FLOAT) {
-            ghost_tsmm_inplace<float, float, NCOLSIN, NCOLSOUT>(x, w, alpha, beta);
+            ghost_tsmm_inplace<float, float, CFGK, CFGN>(x, w, alpha, beta);
         } else if (x->traits.datatype & GHOST_DT_FLOAT && w->traits.datatype & GHOST_DT_DOUBLE) {
-            ghost_tsmm_inplace<float, double, NCOLSIN, NCOLSOUT>(x, w, alpha, beta);
+            ghost_tsmm_inplace<float, double, CFGK, CFGN>(x, w, alpha, beta);
         }
     }
 
