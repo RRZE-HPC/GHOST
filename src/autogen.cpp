@@ -4,16 +4,19 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <map>
+#include <set>
 
 using namespace std;
 
+static map<string, set<string>> autogen_str_map;
 static string autogen_str;
 static int missingConfs = 0;
 
 ghost_error ghost_autogen_kacz_nvecs(int **nvecs, int *n, int chunkheight, int nshifts)
 {
     string configurations = GHOST_AUTOGEN_KACZ;
-    if (configurations[configurations.length()-1] != ';') {
+    if (configurations[configurations.length() - 1] != ';') {
         configurations += ";";
     }
 
@@ -26,7 +29,7 @@ ghost_error ghost_autogen_kacz_nvecs(int **nvecs, int *n, int chunkheight, int n
         configuration = configurations.substr(0, pos);
 
         commapos = configuration.find(",");
-        string cfg_chunkheight_str = configuration.substr(0,commapos);
+        string cfg_chunkheight_str = configuration.substr(0, commapos);
 
         if (!cfg_chunkheight_str.compare("*")) {
             cfg_chunkheight = chunkheight;
@@ -34,9 +37,9 @@ ghost_error ghost_autogen_kacz_nvecs(int **nvecs, int *n, int chunkheight, int n
             cfg_chunkheight = atoi(cfg_chunkheight_str.c_str());
         }
         configuration.erase(0, commapos + 1);
-        
+
         commapos = configuration.find(",");
-        string cfg_nvecs_str = configuration.substr(0,commapos);
+        string cfg_nvecs_str = configuration.substr(0, commapos);
         if (!cfg_nvecs_str.compare("*")) {
             configurations.erase(0, pos + 1);
             continue;
@@ -59,18 +62,16 @@ ghost_error ghost_autogen_kacz_nvecs(int **nvecs, int *n, int chunkheight, int n
         configurations.erase(0, pos + 1);
     }
 
-    sort(nvecs_vec.begin(),nvecs_vec.end());
+    sort(nvecs_vec.begin(), nvecs_vec.end());
     *n = nvecs_vec.size();
-    ghost_malloc((void **)nvecs,sizeof(int)*(*n));
+    ghost_malloc((void **)nvecs, sizeof(int) * (*n));
 
     int i;
-    for (i=0; i<*n; i++) {
+    for (i = 0; i < *n; i++) {
         (*nvecs)[i] = nvecs_vec[i];
     }
 
     return GHOST_SUCCESS;
-
-
 }
 
 ghost_error ghost_autogen_spmmv_nvecs(int **nvecs, int *n, int chunkheight)
@@ -85,7 +86,7 @@ ghost_error ghost_autogen_spmmv_nvecs(int **nvecs, int *n, int chunkheight)
         configurations = GHOST_AUTOGEN_SPMMV;
     }
 
-    if (configurations[configurations.length()-1] != ';') {
+    if (configurations[configurations.length() - 1] != ';') {
         configurations += ";";
     }
 
@@ -98,7 +99,7 @@ ghost_error ghost_autogen_spmmv_nvecs(int **nvecs, int *n, int chunkheight)
         configuration = configurations.substr(0, pos);
 
         commapos = configuration.find(",");
-        string cfg_chunkheight_str = configuration.substr(0,commapos);
+        string cfg_chunkheight_str = configuration.substr(0, commapos);
 
         if (!cfg_chunkheight_str.compare("*")) {
             cfg_chunkheight = chunkheight;
@@ -106,9 +107,9 @@ ghost_error ghost_autogen_spmmv_nvecs(int **nvecs, int *n, int chunkheight)
             cfg_chunkheight = atoi(cfg_chunkheight_str.c_str());
         }
         configuration.erase(0, commapos + 1);
-        
+
         commapos = configuration.find(",");
-        string cfg_nvecs_str = configuration.substr(0,commapos);
+        string cfg_nvecs_str = configuration.substr(0, commapos);
         if (!cfg_nvecs_str.compare("*")) {
             configurations.erase(0, pos + 1);
             continue;
@@ -121,12 +122,12 @@ ghost_error ghost_autogen_spmmv_nvecs(int **nvecs, int *n, int chunkheight)
         configurations.erase(0, pos + 1);
     }
 
-    sort(nvecs_vec.begin(),nvecs_vec.end());
+    sort(nvecs_vec.begin(), nvecs_vec.end());
     *n = nvecs_vec.size();
-    ghost_malloc((void **)nvecs,sizeof(int)*(*n));
+    ghost_malloc((void **)nvecs, sizeof(int) * (*n));
 
     int i;
-    for (i=0; i<*n; i++) {
+    for (i = 0; i < *n; i++) {
         (*nvecs)[i] = nvecs_vec[i];
     }
 
@@ -136,16 +137,16 @@ ghost_error ghost_autogen_spmmv_nvecs(int **nvecs, int *n, int chunkheight)
 int ghost_autogen_spmmv_next_nvecs(int desired_nvecs, int chunkheight)
 {
     int *nvecs = NULL;
-    int n,i,found_nvecs=0;
+    int n, i, found_nvecs = 0;
 
-    if (ghost_autogen_spmmv_nvecs(&nvecs,&n,chunkheight) != GHOST_SUCCESS) {
+    if (ghost_autogen_spmmv_nvecs(&nvecs, &n, chunkheight) != GHOST_SUCCESS) {
         return 0;
     }
     if (n == 0) {
         free(nvecs);
         return 0;
     }
-    for (i=n-1; i>=0; i--) {
+    for (i = n - 1; i >= 0; i--) {
         if (nvecs[i] <= desired_nvecs) {
             found_nvecs = nvecs[i];
             break;
@@ -157,43 +158,48 @@ int ghost_autogen_spmmv_next_nvecs(int desired_nvecs, int chunkheight)
     return found_nvecs;
 }
 
-ghost_error ghost_autogen_string_add(const char * func, const char * par)
+ghost_error ghost_autogen_string_add(const char *func, const char *par)
 {
-    size_t funcpos = autogen_str.find(func);
-    if (funcpos == string::npos) {
-        autogen_str.append(" -DGHOST_AUTOGEN_");
-        autogen_str.append(func);
-        autogen_str.append("=\"");
-        autogen_str.append(par);
-        autogen_str.append("\"");
-    } else {
-        string funcstr = autogen_str.substr(funcpos+strlen(func)+1,autogen_str.find(" ",funcpos));
-        string findpar_inner = ";"+string(par)+";";
-        string findpar_last = ";"+string(par)+"\"";
-        string findpar_first = "\""+string(par)+";";
-        string findpar_only = "\""+string(par)+"\"";
-        if ((funcstr.find(findpar_inner) == string::npos) 
-                && (funcstr.find(findpar_last) == string::npos)
-                && (funcstr.find(findpar_first) == string::npos)
-                && (funcstr.find(findpar_only) == string::npos)) {
-            autogen_str.insert(funcpos+strlen(func)+2,string(par)+";");
-        }
-    }
+    /*    size_t funcpos = autogen_str.find(func);
+      if (funcpos == string::npos) {
+          autogen_str.append(" -DGHOST_AUTOGEN_");
+          autogen_str.append(func);
+          autogen_str.append("=\"");
+          autogen_str.append(par);
+          autogen_str.append("\"");
+      } else {
+          string funcstr = autogen_str.substr(funcpos+strlen(func)+1,autogen_str.find(" ",funcpos));
+          string findpar_inner = ";"+string(par)+";";
+          string findpar_last = ";"+string(par)+"\"";
+          string findpar_first = "\""+string(par)+";";
+          string findpar_only = "\""+string(par)+"\"";
+          if ((funcstr.find(findpar_inner) == string::npos)
+                  && (funcstr.find(findpar_last) == string::npos)
+                  && (funcstr.find(findpar_first) == string::npos)
+                  && (funcstr.find(findpar_only) == string::npos)) {
+              autogen_str.insert(funcpos+strlen(func)+2,string(par)+";");
+          }
+      }
+    */
 
+    autogen_str_map[string(func)].insert(string(par));
     return GHOST_SUCCESS;
 }
 
 const char *ghost_autogen_string()
 {
+    autogen_str = "";
+
+    for (auto &func : autogen_str_map) {
+        autogen_str += string("-DGHOST_") + func.first + "=\"";
+        for (auto &par : func.second) {
+            autogen_str += par + ";";
+        }
+        autogen_str += string("\" ");
+    }
     return autogen_str.c_str();
 }
 
-void ghost_autogen_set_missing()
-{
-    missingConfs = 1;
-}
+void ghost_autogen_set_missing() { missingConfs = 1; }
 
-int ghost_autogen_missing()
-{
-    return missingConfs;
-}
+int ghost_autogen_missing() { return missingConfs; }
