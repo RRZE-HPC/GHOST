@@ -96,6 +96,9 @@ bool ghost_tsmm_inplace(ghost_densemat *x, ghost_densemat *w, void *alpha, void 
     int ldb = w->stride;
     int ldc = x->stride;
 
+    GHOST_INFO_LOG("%d, %d  - %d, %d", M, N, DM_NROWS(w), w->traits.ncols)
+
+    
     const int threadsPerBlock = (M * N * 8 > 10 * 1024) ? 256 : 128;
     int deviceUsed;
     cudaGetDevice(&deviceUsed);
@@ -125,24 +128,24 @@ bool ghost_tsmm_inplace(ghost_densemat *x, ghost_densemat *w, void *alpha, void 
 }
 
 
-ghost_error ghost_tsmm_inplace__u_cuda_x_CFGN_CFGK(ghost_densemat *x, ghost_densemat *w, void *alpha, void *beta)
+ghost_error ghost_tsmm_inplace__u_cuda_x_CFGK_CFGN(ghost_densemat *x, ghost_densemat *w, void *alpha, void *beta)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH | GHOST_FUNCTYPE_KERNEL);
     ghost_error ret = GHOST_SUCCESS;
 
     if (x->traits.datatype & GHOST_DT_COMPLEX) {
         if (x->traits.datatype & GHOST_DT_DOUBLE) {
-            ghost_tsmm_inplace<cuDoubleComplex, cuDoubleComplex, CFGK, CFGN>(x, w, alpha, beta);
+            ghost_tsmm_inplace<cuDoubleComplex, cuDoubleComplex, CFGN, CFGK>(x, w, alpha, beta);
         } else {
-            ghost_tsmm_inplace<cuFloatComplex, cuFloatComplex, CFGK, CFGN>(x, w, alpha, beta);
+            ghost_tsmm_inplace<cuFloatComplex, cuFloatComplex, CFGN, CFGK>(x, w, alpha, beta);
         }
     } else {
         if (x->traits.datatype & GHOST_DT_DOUBLE && w->traits.datatype & GHOST_DT_DOUBLE) {
-            ghost_tsmm_inplace<double, double, CFGK, CFGN>(x, w, alpha, beta);
+            ghost_tsmm_inplace<double, double, CFGN, CFGK>(x, w, alpha, beta);
         } else if (x->traits.datatype & GHOST_DT_FLOAT && w->traits.datatype & GHOST_DT_FLOAT) {
-            ghost_tsmm_inplace<float, float, CFGK, CFGN>(x, w, alpha, beta);
+            ghost_tsmm_inplace<float, float, CFGN, CFGK>(x, w, alpha, beta);
         } else if (x->traits.datatype & GHOST_DT_FLOAT && w->traits.datatype & GHOST_DT_DOUBLE) {
-            ghost_tsmm_inplace<float, double, CFGK, CFGN>(x, w, alpha, beta);
+            ghost_tsmm_inplace<float, double, CFGN, CFGK>(x, w, alpha, beta);
         }
     }
 
