@@ -6,11 +6,11 @@
 #include "ghost/util.h"
 #include "ghost/tsmm_inplace_plain_gen.h"
 
-#GHOST_SUBST NCOLSIN ${K}
-#GHOST_SUBST NCOLSOUT ${N}
+#GHOST_SUBST NCOLSIN ${N}
+#GHOST_SUBST NCOLSOUT ${K}
 #GHOST_SUBST OUTERUNROLL 2
 
-ghost_error ghost_tsmm_inplace__a_plain_d_NCOLSIN_NCOLSOUT(ghost_densemat *x, ghost_densemat *w, void *alpha, void *beta)
+ghost_error ghost_tsmm_inplace__a_plain_d_NCOLSOUT_NCOLSIN(ghost_densemat *x, ghost_densemat *w, void *alpha, void *beta)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
