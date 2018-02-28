@@ -282,8 +282,8 @@ ghost_error ghost_tsmttsm(ghost_densemat *x_in, ghost_densemat *v, ghost_densema
         opt_align = GHOST_UNALIGNED;
     }
 
-    ghost_lidx try_wcols[2] = {w->traits.ncols, -1};
-    ghost_lidx try_vcols[2] = {v->traits.ncols, -1};
+    std::vector<ghost_lidx> try_wcols = {w->traits.ncols, -1};
+    std::vector<ghost_lidx> try_vcols = {v->traits.ncols, -1};
     std::vector<ghost_datatype> try_dt = {v->traits.datatype, GHOST_DT_ANY};
 
     // mixed precision requires implementation that supports DT_ANY
@@ -304,26 +304,24 @@ ghost_error ghost_tsmttsm(ghost_densemat *x_in, ghost_densemat *v, ghost_densema
     if (x->traits.location & GHOST_LOCATION_DEVICE && x->traits.compute_at != GHOST_LOCATION_HOST) {
         try_dt = {GHOST_DT_ANY};
         opt_align = GHOST_UNALIGNED;
+        opt_unroll = 1;
     }
 #endif
 
 
-    int n_wcols = sizeof(try_wcols) / sizeof(ghost_lidx);
-    int n_vcols = sizeof(try_vcols) / sizeof(ghost_lidx);
-    int pos_wcols, pos_vcols;
     bool optimal = true; // if we find a kernel with highest specialization grade (regardless
                          // unrolling), this remains true and no performance warning gets printed
 
-    for (pos_wcols = 0; pos_wcols < n_wcols; pos_wcols++) {
-        for (pos_vcols = 0; pos_vcols < n_vcols; pos_vcols++) {
+    for (auto pos_wcols : try_wcols) {
+        for (auto pos_vcols : try_vcols) {
             for (std::vector<ghost_implementation>::iterator impl = try_impl.begin();
                  impl != try_impl.end(); impl++) {
                 for (p.alignment = opt_align; (int)p.alignment >= GHOST_UNALIGNED;
                      p.alignment = (ghost_alignment)((int)p.alignment - 1)) {
                     for (p.unroll = opt_unroll; p.unroll > 0; p.unroll /= 2) {
                         for (auto pos_dt : try_dt) {
-                            p.wcols = try_wcols[pos_wcols];
-                            p.vcols = try_vcols[pos_vcols];
+                            p.wcols = pos_wcols;
+                            p.vcols = pos_vcols;
                             p.dt = pos_dt;
                             p.impl = *impl;
                             GHOST_INFO_LOG(
@@ -348,13 +346,12 @@ ghost_error ghost_tsmttsm(ghost_densemat *x_in, ghost_densemat *v, ghost_densema
 
 end_of_loop:
 
-    if (pos_wcols || pos_vcols) {
+    if (p.wcols == -1 || p.vcols == -1) {
         ghost_autogen_set_missing();
     }
     std::ostringstream oss;
     oss << try_vcols[0] << "," << try_wcols[0];
     ghost_autogen_string_add("TSMTTSM", oss.str().c_str());
-
     if (kernel) {
         if (optimal) {
             GHOST_INFO_LOG("Found kernel with highest specialization grade:  wstor=%s, wcols=%s, "

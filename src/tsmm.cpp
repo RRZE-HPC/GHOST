@@ -334,13 +334,12 @@ ghost_error ghost_tsmm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w_i
 
 end_of_loop:
 
-    if (pos_xcols || pos_vcols) {
+    if (p.xcols == -1 || p.vcols == -1) {
         ghost_autogen_set_missing();
     }
     std::ostringstream oss;
     oss << try_vcols[0] << "," << try_xcols[0];
     ghost_autogen_string_add("TSMM", oss.str().c_str());
-
 
     if (kernel) {
         if (optimal) {
