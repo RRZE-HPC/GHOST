@@ -191,7 +191,7 @@ const char *ghost_autogen_string()
     autogen_str = "";
 
     for (auto &func : autogen_str_map) {
-        autogen_str += string("-DGHOST_") + func.first + "=\"";
+        autogen_str += string("-DGHOST_AUTOGEN") + func.first + "=\"";
         for (auto &par : func.second) {
             autogen_str += par + ";";
         }
