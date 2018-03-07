@@ -111,6 +111,9 @@ set (SOURCES
     src/tsmm.cpp
     src/tsmm_inplace.cpp
     src/tsmttsm.cpp
+    src/tsmtspmtsm.cpp
+    src/tsmtspmtsm_var2_cuda.cpp
+    src/tsmtspmtsm_var2_plain.cpp
     src/bench.c
     src/bincrs_func.c
     src/bitmap.c
@@ -204,6 +207,7 @@ set (HEADERS
     include/ghost/tsmm.h
     include/ghost/tsmm_inplace.h
     include/ghost/tsmttsm.h
+    include/ghost/tsmtspmtsm.h
     include/ghost/types.h
     include/ghost/util.h
     include/ghost/rcm_dissection.h

@@ -24,6 +24,7 @@
 #include "ghost/datatransfers.h"
 #include "ghost/tsmttsm.h"
 #include "ghost/tsmm.h"
+#include "ghost/tsmtspmtsm.h"
 #include "ghost/matrixmarket.h"
 
 #include "ghost/rcm_dissection.h"
