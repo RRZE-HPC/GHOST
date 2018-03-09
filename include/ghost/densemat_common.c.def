@@ -415,6 +415,11 @@ out:
 ghost_error FUNCNAME(entry(ghost_densemat * vec, void *val, ghost_lidx r, ghost_lidx c)) 
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
+
+    if (!(vec->traits.location & GHOST_LOCATION_HOST)) {
+      GHOST_ERROR_LOG("Vector is not in host memory, needs to be downloaded (ghost_densemat_download) before ghost_entry is used\n");
+    }
+
     ghost_densemat *singleent;
     GHOST_CALL_RETURN(ghost_densemat_create_and_view_densemat(&singleent,vec,1,r,1,c));
     memcpy(val,singleent->val,singleent->elSize);
