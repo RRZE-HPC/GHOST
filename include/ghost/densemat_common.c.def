@@ -418,7 +418,7 @@ ghost_error FUNCNAME(entry(ghost_densemat * vec, void *val, ghost_lidx r, ghost_
 
     if (!(vec->traits.location & GHOST_LOCATION_HOST)) {
       GHOST_ERROR_LOG("Vector is not in host memory, needs to be downloaded (ghost_densemat_download) before ghost_entry is used\n");
-      return GHOST_ERROR_UNKNOWN;
+      return GHOST_ERR_UNKNOWN;
     }
 
     ghost_densemat *singleent;
