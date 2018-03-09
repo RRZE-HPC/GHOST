@@ -559,7 +559,6 @@ if (GHOST_USE_COLPACK)
 endif()
 
 set(CBLAS_INCLUDE_DIR CBLAS_INCLUDE_DIR-NOTFOUND CACHE PATH "Location of *cblas.h")
-
 # firstly, try to find a Cblas header in the default locations
 if (NOT CBLAS_INCLUDE_DIR)
     message(STATUS "Try to find MKL in default paths and via MKLROOT")
@@ -582,7 +581,7 @@ endif()
 
 include_directories(SYSTEM ${CBLAS_INCLUDE_DIR})
 
-file(GLOB CBLAS_H_FULL "${CBLAS_INCLUDE_DIR}/*cblas.h")
+find_file(CBLAS_H_FULL NAMES "cblas.h" "mkl_cblas.h" CBLAS_H_FULL PATHS ${CBLAS_INCLUDE_DIR} PATH_SUFFIXES "cblas")
 get_filename_component(CBLAS_H ${CBLAS_H_FULL} NAME)
 
 if (${CBLAS_H} STREQUAL "mkl_cblas.h")
