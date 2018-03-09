@@ -44,14 +44,15 @@ extern "C" {
  *
  * alpha and beta are pointers to values in host memory, that have the same data type as x
  *
- * The data types of x, v, w and A have to be the same, except for the special case that v, w, and A are float, and x is double. In that case, all calculations are peformed in double precision.
+ * The data types of x, v, w and A have to be the same, except for the special case that v, w, and A
+ * are float, and x is double. In that case, all calculations are peformed in double precision.
  *
  * This kernel is auto-generated at compile time for given values of M and N.
  *
  * @return ::GHOST_SUCCESS on success or an error indicator.
  */
 ghost_error ghost_tsmtspmtsm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w,
-    ghost_sparsemat *A, void *alpha, void *beta);
+    ghost_sparsemat *A, void *alpha, void *beta, int reduce);
 
 
 #ifdef __cplusplus
