@@ -581,7 +581,7 @@ endif()
 
 include_directories(SYSTEM ${CBLAS_INCLUDE_DIR})
 
-find_file(CBLAS_H_FULL NAMES "cblas.h" "mkl_cblas.h" CBLAS_H_FULL PATHS ${CBLAS_INCLUDE_DIR} PATH_SUFFIXES "cblas")
+find_file(CBLAS_H_FULL NAMES "cblas.h" "mkl_cblas.h" "gsl_cblas.h" CBLAS_H_FULL PATHS ${CBLAS_INCLUDE_DIR} PATH_SUFFIXES "cblas")
 get_filename_component(CBLAS_H ${CBLAS_H_FULL} NAME)
 
 if (${CBLAS_H} STREQUAL "mkl_cblas.h")
