@@ -20,10 +20,6 @@ ghost_error tsmm_inplace(ghost_densemat *x, ghost_densemat *w, void *alpha, void
     ghost_lidx M = DM_NROWS(w);
     ghost_lidx K = DM_NROWS(x);
 
-    GHOST_INFO_LOG("In in-place TSMM with arbitrary block size (%" PRLIDX "x%" PRLIDX
-                   ") <- (%" PRLIDX "x%" PRLIDX ") * (%" PRLIDX "x%" PRLIDX "),  %s  %s",
-        K, N, K, M, M, N, typeid(T).name(), typeid(iT).name());
-
 
     const iT *const __restrict__ wval = (iT *)w->val;
     T *const __restrict__ xval = (T *)x->val;
