@@ -32,36 +32,50 @@ ghost_error tsmtspmtsm_var2_plain_kernel(ghost_densemat *x, ghost_densemat *v, g
     ghost_lidx M = v->traits.ncols;
 
 
-    vector<oT> wsums(N);
-    vector<oT> result(N * M);
-    for (int chunk = 0; chunk < SPM_NCHUNKS(A); chunk++) {
-        for (int c = 0; c < C; c++) {
-            for (int n = 0; n < N; n++) {
-                wsums[n] = 0;
-            }
-            for (int j = 0; j < A->chunkLen[chunk]; j++) {
-                ghost_gidx idx = A->chunkStart[chunk] + j * C + c;
-                //                cout << " * " << chunk * C + c << " " << idx << " " << A->col[idx] << "\n";
-                for (int n = 0; n < N; n++) {
-                    wsums[n] += (oT)Aval[idx] * (oT)wval[A->col[idx] * ldw + n];
-                }
-            }
-            if (chunk * C + c < SPM_NROWS(A)) {
-                for (int m = 0; m < M; m++) {
-                    for (int n = 0; n < N; n++) {
+    for (int m = 0; m < M; m++) {
+        for (int n = 0; n < N; n++) {
+            xval[n * ldx + m] = beta * xval[n * ldx + m];
+        }
+    }
 
-                        result[n * M + m] += wsums[n] * (oT)vval[(chunk * C + c) * ldv + m];
+#pragma omp parallel
+    {
+        vector<oT> wsums(N);
+        vector<oT> result(N * M);
+#pragma omp for
+        for (int chunk = 0; chunk < SPM_NCHUNKS(A); chunk++) {
+            for (int c = 0; c < C; c++) {
+                for (int n = 0; n < N; n++) {
+                    wsums[n] = 0;
+                }
+                for (int j = 0; j < A->chunkLen[chunk]; j++) {
+                    ghost_gidx idx = A->chunkStart[chunk] + j * C + c;
+                    //                cout << " * " << chunk * C + c << " " << idx << " " <<
+                    //                A->col[idx]
+                    //                << "\n";
+                    for (int n = 0; n < N; n++) {
+                        wsums[n] += (oT)Aval[idx] * (oT)wval[A->col[idx] * ldw + n];
+                    }
+                }
+                if (chunk * C + c < SPM_NROWS(A)) {
+                    for (int m = 0; m < M; m++) {
+                        for (int n = 0; n < N; n++) {
+                            result[n * M + m] += wsums[n] * (oT)vval[(chunk * C + c) * ldv + m];
+                        }
                     }
                 }
             }
         }
-    }
-
-    for (int m = 0; m < M; m++) {
-        for (int n = 0; n < N; n++) {
-            xval[n * ldx + m] = alpha * result[n * M + m] + beta * xval[n * ldx + m];
+#pragma omp critical
+        {
+            for (int m = 0; m < M; m++) {
+                for (int n = 0; n < N; n++) {
+                    xval[n * ldx + m] += alpha * result[n * M + m];
+                }
+            }
         }
     }
+
 
     return GHOST_SUCCESS;
 }
