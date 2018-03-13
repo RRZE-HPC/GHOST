@@ -111,6 +111,9 @@ set (SOURCES
     src/tsmm.cpp
     src/tsmm_inplace.cpp
     src/tsmttsm.cpp
+    src/tsmtspmtsm.cpp
+    src/tsmtspmtsm_var2_cuda.cu
+    src/tsmtspmtsm_var2_plain.cpp
     src/bench.c
     src/bincrs_func.c
     src/bitmap.c
@@ -204,6 +207,7 @@ set (HEADERS
     include/ghost/tsmm.h
     include/ghost/tsmm_inplace.h
     include/ghost/tsmttsm.h
+    include/ghost/tsmtspmtsm.h
     include/ghost/types.h
     include/ghost/util.h
     include/ghost/rcm_dissection.h
@@ -670,8 +674,8 @@ endif()
 if (GHOST_HAVE_CUDA)
     set(CUDA_PROPAGATE_HOST_FLAGS OFF)
     cuda_include_directories(${PROJECT_SOURCE_DIR}/include ${PROJECT_BINARY_DIR} ${PROJECT_BINARY_DIR}/ghost)
-    list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fPIC;-gencode arch=compute_35,code=compute_35;-Xcompiler;-Wall)
-    list(APPEND CUDA_NVCC_FLAGS -gencode arch=compute_60,code=compute_60)
+    list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fPIC;-gencode arch=compute_35,code=sm_35;-Xcompiler;-Wall)
+#    list(APPEND CUDA_NVCC_FLAGS -gencode arch=compute_60,code=sm_60)
 
     list(APPEND CUDA_NVCC_FLAGS -isystem;${HWLOC_INCLUDE_DIR})
     foreach(mpi_inc ${MPI_INCLUDE_PATH}) 
