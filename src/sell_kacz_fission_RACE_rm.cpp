@@ -62,7 +62,7 @@ for (ghost_lidx row=start; row<end; ++row){ \
         rownorm += (MT)mval[idx+j]*(MT)mval[idx+j]; \
     } \
     scal /= (-rownorm); \
-    /*scal *= omega;*/ \
+    scal *= omega; \
     \
     _Pragma("simd")\
     for (ghost_lidx j=0; j<rowLen; j++) { \

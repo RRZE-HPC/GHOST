@@ -49,7 +49,6 @@ idx+=1;\
 
 #define LOOP_preMtx(start,end,MT,VT) \
 for (ghost_lidx row=start; row<end; ++row){ \
-    MT rownorm = 0.; \
     MT scal = 0; \
     ghost_lidx idx = mat->chunkStart[row]; \
     ghost_lidx rowLen = mat->chunkStart[row+1] - mat->chunkStart[row];\
@@ -60,8 +59,7 @@ for (ghost_lidx row=start; row<end; ++row){ \
     for (ghost_lidx j=0; j<rowLen; ++j) { \
         scal += (MT)mval[idx+j] * xval[mat->col[idx+j]]; \
     } \
-    /*scal *= -1;;*/ \
-    /*scal *= omega;*/ \
+    scal *= omega; \
     \
     _Pragma("simd")\
     for (ghost_lidx j=0; j<rowLen; j++) { \

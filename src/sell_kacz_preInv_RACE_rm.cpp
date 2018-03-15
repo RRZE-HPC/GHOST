@@ -60,7 +60,7 @@ for (ghost_lidx row=start; row<end; ++row){ \
         scal += (MT)mval[idx+j] * xval[mat->col[idx+j]]; \
     } \
     scal *= (-rnmInv_sq[row]); \
-    /*scal *= omega;*/ \
+    scal *= omega; \
     \
     _Pragma("simd")\
     for (ghost_lidx j=0; j<rowLen; j++) { \

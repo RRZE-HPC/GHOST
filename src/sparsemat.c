@@ -16,7 +16,7 @@
 #include <libgen.h>
 #include <math.h>
 #include <limits.h>
-#include "ghost/init.h"
+//#include "ghost/init.h"
 
 const ghost_sparsemat_src_rowfunc GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER = {
     .func = NULL,
