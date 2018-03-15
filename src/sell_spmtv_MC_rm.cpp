@@ -48,7 +48,6 @@ idx+=1;\
 for (ghost_lidx row=start; row<end; ++row){ \
     VT x_row = xval[row]; \
     ghost_lidx idx = mat->chunkStart[row]; \
-    _Pragma("nounroll") \
     _Pragma("simd") \
     for (ghost_lidx j=0; j<mat->rowLen[row]; j++) { \
         bval[mat->col[idx+j]] = bval[mat->col[idx+j]] + (MT)mval[idx+j] * x_row;\
