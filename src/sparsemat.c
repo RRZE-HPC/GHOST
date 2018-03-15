@@ -16,6 +16,7 @@
 #include <libgen.h>
 #include <math.h>
 #include <limits.h>
+#include "ghost/init.h"
 
 const ghost_sparsemat_src_rowfunc GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER = {
     .func = NULL,
@@ -140,7 +141,8 @@ ghost_error ghost_sparsemat_create(ghost_sparsemat ** mat, ghost_context *contex
     (*mat)->rowLen4 = NULL;
     (*mat)->rowLenPadded = NULL;
     (*mat)->chunkStart = NULL;
-
+    (*mat)->rowNormSq = NULL;
+    (*mat)->rowNormSqInv = NULL;
 
     goto out;
     err:
@@ -633,6 +635,12 @@ void ghost_sparsemat_destroy(ghost_sparsemat *mat)
     free(mat->rowLen2); mat->rowLen2 = NULL;
     free(mat->rowLen4); mat->rowLen4 = NULL;
     free(mat->rowLenPadded); mat->rowLenPadded = NULL;
+
+    if(mat->rowNormSq)
+    {
+        free(mat->rowNormSq); mat->rowNormSq = NULL;
+        free(mat->rowNormSqInv); mat->rowNormSqInv = NULL;
+    }
 
     mat->context->nmats--;
     if (mat->context->nmats == 0) {
@@ -1639,6 +1647,20 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
         ret = ghost_simdify_RACE(mat);
     }
 
+    //find rowNorm & invRowNorm
+    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->rowNormSq,SPM_NROWSPAD(mat)*sizeof(double)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->rowNormSqInv,SPM_NROWSPAD(mat)*sizeof(double)),err,ret);
+
+    for(row=0; row<SPM_NROWSPAD(mat); ++row)
+    {
+        double temp = 0;
+        for(int idx=mat->chunkStart[row]; idx<mat->chunkStart[row+1]; ++idx)
+        {
+            temp += ((double*)mat->val)[idx]*((double*)mat->val)[idx];
+        }
+        ((double*)mat->rowNormSq)[row] = temp;
+        ((double*)mat->rowNormSqInv)[row] = 1.0/temp;
+    }
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->rowLen2,SPM_NROWSPAD(mat)/2*sizeof(ghost_lidx)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->rowLen4,SPM_NROWSPAD(mat)/4*sizeof(ghost_lidx)),err,ret);
@@ -1665,7 +1687,6 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
     }
 
 
-
     if (src->func == ghost_sparsemat_rowfunc_bincrs || src->func == ghost_sparsemat_rowfunc_mm) {
         if (src->func(GHOST_SPARSEMAT_ROWFUNC_FINALIZE,NULL,NULL,NULL,src->arg)) {
             GHOST_ERROR_LOG("Error in matrix creation function");
@@ -1673,6 +1694,9 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
             goto err;
         }
     }
+
+    //NUMA reInit
+    //reInit(mat);
 
     goto out;
     err:

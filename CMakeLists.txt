@@ -173,8 +173,14 @@ set (SOURCES
     src/sell_spmtv.cpp
     src/sell_spmtv_RACE_fallback.cpp
     src/sell_spmtv_MC_rm.cpp
+    #    src/sell_symm_spmv_MC_rm.cpp
     src/sell_symm_spmv_RACE_rm.cpp
     src/sell_kacz_RACE_rm.cpp
+    src/sell_kacz_fission_RACE_rm.cpp
+    src/sell_kacz_pre_RACE_rm.cpp
+    src/sell_kacz_preInv_RACE_rm.cpp
+    src/sell_kacz_preMtx_RACE_rm.cpp
+    #src/init.cpp
     )
 
 set (HEADERS
@@ -232,6 +238,7 @@ set (HEADERS
     include/ghost/sell_kacz_mc.h
     include/ghost/sell_kacz_fallback.h
     include/ghost/compatibility_check.h
+    #include/ghost/init.h
     )
 
 # only do this in the initial run: either if GHOST_USE_CUDA is undefined or it is enabled by the user but no libraries are found yet

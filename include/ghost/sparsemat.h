@@ -739,6 +739,9 @@ struct ghost_sparsemat
      */
     ghost_gidx *nzDist;
     ghost_lidx nchunks;
+
+    void* rowNormSqInv;
+    void* rowNormSq;
 };
 
 typedef struct
@@ -1042,6 +1045,9 @@ extern "C" {
 
     void ghost_spmtv_MC(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);
 
+    void ghost_symm_spmv_MC(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);
+
+
 
      /**
      * @brief Do Symmetric SpMV kernel (Currently only for C.R.S).
@@ -1237,8 +1243,12 @@ extern "C" {
      * @param iterations No. of iterations
      *
      */
-    /*SYMM-SPMV*/
+    /*KACZ*/
     void ghost_kacz_RACE(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);
+    void ghost_kacz_fission_RACE(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);
+    void ghost_kacz_pre_RACE(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);
+    void ghost_kacz_preMtx_RACE(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);
+    void ghost_kacz_preInv_RACE(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);
 
 
     /**
