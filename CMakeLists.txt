@@ -173,7 +173,7 @@ set (SOURCES
     src/sell_spmtv.cpp
     src/sell_spmtv_RACE_fallback.cpp
     src/sell_spmtv_MC_rm.cpp
-    #    src/sell_symm_spmv_MC_rm.cpp
+    src/sell_symm_spmv_MC_rm.cpp
     src/sell_symm_spmv_RACE_rm.cpp
     src/sell_kacz_RACE_rm.cpp
     src/sell_kacz_fission_RACE_rm.cpp
