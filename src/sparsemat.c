@@ -1641,14 +1641,16 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
         ghost_sparsemat_upload(mat);
     #endif
 
+#ifdef GHOST_HAVE_RACE
     //Required for dependent kernels and C>1
     if(mat->traits.C > 1)
     {
         ret = ghost_simdify_RACE(mat);
     }
+#endif
 
     //find rowNorm & invRowNorm
-    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->rowNormSq,SPM_NROWSPAD(mat)*sizeof(double)),err,ret);
+    /*GHOST_CALL_GOTO(ghost_malloc((void **)&mat->rowNormSq,SPM_NROWSPAD(mat)*sizeof(double)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->rowNormSqInv,SPM_NROWSPAD(mat)*sizeof(double)),err,ret);
 
     for(row=0; row<SPM_NROWSPAD(mat); ++row)
@@ -1660,7 +1662,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
         }
         ((double*)mat->rowNormSq)[row] = temp;
         ((double*)mat->rowNormSqInv)[row] = 1.0/temp;
-    }
+    }*/
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->rowLen2,SPM_NROWSPAD(mat)/2*sizeof(ghost_lidx)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->rowLen4,SPM_NROWSPAD(mat)/4*sizeof(ghost_lidx)),err,ret);
