@@ -17,7 +17,7 @@ VECT_EXT="native" # none SSE AVX AVX2 CUDA
 FLAGS="default" # "optional-libs"
 
 # list of modules to load
-MODULES_BASIC="cmake ccache cppcheck lapack gsl"
+MODULES_BASIC="cmake ccache cppcheck"
 
 ADD_CMAKE_FLAGS=""
 TRILINOS_VERSION="git"
@@ -81,6 +81,13 @@ export FC=$1
 echo "compilers: CC=$CC, CXX=$CXX, FC=$FC"
 
 for m in $MODULES_BASIC; do module load $m; done
+
+if [ "${PRGENV}" =~ "intel" ]; then
+  module load mkl
+else
+  module load gsl lapack
+fi
+
 if [ "${VECT_EXT}" = "CUDA" ]; then
   module load cuda/cuda-${CUDA_VERSION}
   echo "check if any GPU is found..."
