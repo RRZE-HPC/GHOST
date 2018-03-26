@@ -24,7 +24,8 @@ const ghost_sparsemat_src_rowfunc GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER = {
     .flags = GHOST_SPARSEMAT_ROWFUNC_DEFAULT,
     .arg = NULL,
     .gnrows = 0,
-    .gncols = 0
+    .gncols = 0,
+    .funcinit = NULL
 };
 
 const ghost_sparsemat_traits GHOST_SPARSEMAT_TRAITS_INITIALIZER = {
@@ -1203,6 +1204,13 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
     maxRowLenInChunk = 0;
     }
     } else {*/
+
+       // allocate local workspace
+       void *work = NULL;
+       if (src->funcinit) {
+         src->funcinit(src->arg, &work);
+       }
+
         #pragma omp for schedule(runtime)
         for( chunk = 0; chunk < nChunks; chunk++ ) {
             (*chunkptr)[chunk] = 0; // NUMA init
@@ -1221,7 +1229,11 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
                 } else {
                     callrow = mat->context->row_map->goffs[me]+row;
                 }
-                funcerrs += src->func(callrow,&rowlen,tmpcol,tmpval,src->arg);
+                if (work) {
+                  funcerrs += src->func(callrow,&rowlen,tmpcol,tmpval,work);
+                } else {
+                  funcerrs += src->func(callrow,&rowlen,tmpcol,tmpval,src->arg);
+                }
                 
                 gnnz += rowlen;
 
@@ -1261,8 +1273,11 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
             privateMaxRowLen = MAX(privateMaxRowLen,maxRowLenInChunk);
             maxRowLenInChunk = 0;
         }
-        //}
 
+        // free local workspace
+        if (src->funcinit) {
+          src->funcinit(src->arg, &work);
+        }
 
         free(tmpval); tmpval = NULL;
         free(tmpcol); tmpcol = NULL;
@@ -1344,6 +1359,13 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
         int funcret = 0;
         GHOST_CALL(ghost_malloc((void **)&tmpval,C*mat->maxRowLen*mat->elSize),ret);
         GHOST_CALL(ghost_malloc((void **)&tmpcol,C*mat->maxRowLen*sizeof(ghost_gidx)),ret);
+
+        // allocate local workspace
+        void *work = NULL;
+        if (src->funcinit) {
+          src->funcinit(src->arg, &work);
+        }
+
 
         if (src->func == ghost_sparsemat_rowfunc_crs) {
             ghost_gidx *crscol;
@@ -1447,7 +1469,11 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
                     } else {
                         callrow = mat->context->row_map->goffs[me]+row;
                     }
-                    funcret = src->func(callrow,&rowlen,&tmpcol[mat->maxRowLen*i],&tmpval[mat->maxRowLen*i*mat->elSize],src->arg);
+                    if (work) {
+                      funcret = src->func(callrow,&rowlen,&tmpcol[mat->maxRowLen*i],&tmpval[mat->maxRowLen*i*mat->elSize],work);
+                    } else {
+                      funcret = src->func(callrow,&rowlen,&tmpcol[mat->maxRowLen*i],&tmpval[mat->maxRowLen*i*mat->elSize],src->arg);
+                    }
                     if (funcret) {
                         GHOST_ERROR_LOG("Matrix construction function returned error");
                         ret = GHOST_ERR_UNKNOWN;
@@ -1508,8 +1534,15 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
                 }
             }
         }
+
+        // free local workspace
+        if (src->funcinit) {
+          src->funcinit(src->arg, &work);
+        }
+
         free(tmpval); tmpval = NULL;
         free(tmpcol); tmpcol = NULL;
+ 
     }
 
     if (SPM_NROWS(mat) % C) {
