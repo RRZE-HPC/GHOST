@@ -5,6 +5,7 @@
 #include "ghost/error.h"
 #include "ghost/util.h"
 #include "ghost/math.h"
+#include "ghost/cu_temp_buffer_malloc.h"
 
 #include <cuComplex.h>
 #include <cuda_runtime.h>
@@ -15,17 +16,13 @@
 #include "ghost/cu_complex.h"
 #include "ghost/cu_sell_kernel.h"
 
+
+
+
 #define MAX_COLS_PER_BLOCK 16
 #define MAX_COLS_PER_BLOCK_COLMAJOR 16
 #define SELL_CUDA_THREADSPERBLOCK 512
 
-#define STATIC_CUDA_MALLOC(name, size, type)  static size_t name ## _CU_STATIC_SIZE = 0; static void * name ## _CU_STATIC = NULL; \
-  if( name ## _CU_STATIC_SIZE != size)  { \
-  if( name ## _CU_STATIC != NULL) { ghost_cu_free(name ## _CU_STATIC); } \
-    ghost_cu_malloc(& name ##_CU_STATIC, size); \
-    name ## _CU_STATIC_SIZE = size; \
-  } \
-  name = (type*) name ## _CU_STATIC;
 
 //   comment this out if the dot products should not be computed on the fly but  _after_ the SpMV
 #define LOCALDOT_ONTHEFLY
@@ -335,7 +332,7 @@ ghost_error ghost_sellspmv_cu_tmpl(ghost_densemat *lhs, ghost_sparsemat *mat, gh
     }
     if (opts.flags & (GHOST_SPMV_SHIFT | GHOST_SPMV_VSHIFT)) {
         size_t shiftsize = sizeof(v_dt_device) * (opts.flags & (GHOST_SPMV_VSHIFT | GHOST_SPMV_SHIFT) ? rhs->traits.ncols : 0);
-        STATIC_CUDA_MALLOC(cu_shift, shiftsize, v_dt_device)
+        GHOST_CALL_RETURN(ghost_cu_temp_buffer_malloc((void **)&cu_shift, shiftsize));
         if (opts.flags & GHOST_SPMV_SHIFT) {
             ghost_lidx c;
             for (c = 0; c < rhs->traits.ncols; c++) {
@@ -360,7 +357,7 @@ ghost_error ghost_sellspmv_cu_tmpl(ghost_densemat *lhs, ghost_sparsemat *mat, gh
         grid.x = CEILDIV(SPM_NROWSPAD(mat), block.x);
         grid.y = CEILDIV(rhs->traits.ncols, MAX_COLS_PER_BLOCK_COLMAJOR);
         if (opts.flags & GHOST_SPMV_DOT) {
-            STATIC_CUDA_MALLOC(cu_localdot, (sizeof(v_dt_device) * rhs->traits.ncols * 3 * grid.x), v_dt_device)
+            GHOST_CALL_RETURN(ghost_cu_temp_buffer_malloc((void **)&cu_localdot, sizeof(v_dt_device) * rhs->traits.ncols * 3 * grid.x));
         }
         size_t reqSmem = 0;
         if (opts.flags & GHOST_SPMV_DOT) {
@@ -378,8 +375,7 @@ ghost_error ghost_sellspmv_cu_tmpl(ghost_densemat *lhs, ghost_sparsemat *mat, gh
             grid.y = CEILDIV(rhs->traits.ncols, nrowsinblock);
             block.x = nrowsinblock * CEILDIV(rhs->traits.ncols, grid.y);
             if (opts.flags & GHOST_SPMV_DOT) {
-                STATIC_CUDA_MALLOC(cu_localdot, (sizeof(v_dt_device) * rhs->traits.ncols * 3 * grid.x), v_dt_device)
-      
+                GHOST_CALL_RETURN(ghost_cu_temp_buffer_malloc((void **)&cu_localdot, sizeof(v_dt_device) * rhs->traits.ncols * 3 * grid.x));
             }
             GHOST_DEBUG_LOG(1, "grid %dx%d block %dx%d nrowsinblock %d", grid.x, grid.y, block.x, block.y, nrowsinblock);
             SELL_kernel_CU_rm_tmpl<m_dt, v_dt_device, v_dt_base, nrowsinblock, C, ncols, do_axpby, do_scale, do_vshift, do_dot_yy, do_dot_xy, do_dot_xx, do_chain_axpby><<<grid, block, 0>>>((v_dt_device *)lhsval, lhs->stride, (v_dt_device *)rhsval, rhs->stride, opts.flags, mat->context->row_map->dim, mat->cu_rowLen, mat->cu_col, (m_dt *)mat->cu_val, mat->cu_chunkStart, (v_dt_device *)cu_shift, (v_dt_device)scale, (v_dt_device)beta, (v_dt_device *)cu_localdot, (v_dt_device *)zval, zstride, (v_dt_device)sdelta, (v_dt_device)seta);
@@ -389,8 +385,7 @@ ghost_error ghost_sellspmv_cu_tmpl(ghost_densemat *lhs, ghost_sparsemat *mat, gh
             grid.y = 1;
             block.x = nrowsinblock * rhs->traits.ncols;
             if (opts.flags & GHOST_SPMV_DOT) {
-                STATIC_CUDA_MALLOC(cu_localdot, (sizeof(v_dt_device) * rhs->traits.ncols * 3 * grid.x), v_dt_device)
-      
+                GHOST_CALL_RETURN(ghost_cu_temp_buffer_malloc((void **)&cu_localdot, sizeof(v_dt_device) * rhs->traits.ncols * 3 * grid.x));
             }
             GHOST_DEBUG_LOG(1, "grid %dx%d block %dx%d nrowsinblock %d", grid.x, grid.y, block.x, block.y, nrowsinblock);
             SELL_kernel_CU_rm_tmpl<m_dt, v_dt_device, v_dt_base, nrowsinblock, C, ncols, do_axpby, do_scale, do_vshift, do_dot_yy, do_dot_xy, do_dot_xx, do_chain_axpby><<<grid, block, 0>>>((v_dt_device *)lhsval, lhs->stride, (v_dt_device *)rhsval, rhs->stride, opts.flags, mat->context->row_map->dim, mat->cu_rowLen, mat->cu_col, (m_dt *)mat->cu_val, mat->cu_chunkStart, (v_dt_device *)cu_shift, (v_dt_device)scale, (v_dt_device)beta, (v_dt_device *)cu_localdot, (v_dt_device *)zval, zstride, (v_dt_device)sdelta, (v_dt_device)seta);
@@ -400,8 +395,7 @@ ghost_error ghost_sellspmv_cu_tmpl(ghost_densemat *lhs, ghost_sparsemat *mat, gh
             grid.y = 1;
             block.x = nrowsinblock * rhs->traits.ncols;
             if (opts.flags & GHOST_SPMV_DOT) {
-                
-                STATIC_CUDA_MALLOC(cu_localdot, (sizeof(v_dt_device) * rhs->traits.ncols * 3 * grid.x), v_dt_device)
+                GHOST_CALL_RETURN(ghost_cu_temp_buffer_malloc((void **)&cu_localdot, sizeof(v_dt_device) * rhs->traits.ncols * 3 * grid.x));
             }
             int smem = (block.x / 32) * sizeof(v_dt_device);
             GHOST_DEBUG_LOG(1, "grid %dx%d block %dx%d nrowsinblock %d smem %d", grid.x, grid.y, block.x, block.y, nrowsinblock, smem);
@@ -412,7 +406,7 @@ ghost_error ghost_sellspmv_cu_tmpl(ghost_densemat *lhs, ghost_sparsemat *mat, gh
             grid.y = 1;
             block.x = nrowsinblock * rhs->traits.ncols;
             if (opts.flags & GHOST_SPMV_DOT) {
-              STATIC_CUDA_MALLOC(cu_localdot, (sizeof(v_dt_device) * rhs->traits.ncols * 3 * grid.x), v_dt_device)
+                GHOST_CALL_RETURN(ghost_cu_temp_buffer_malloc((void **)&cu_localdot, sizeof(v_dt_device) * rhs->traits.ncols * 3 * grid.x));
             }
             int smem = (block.x / 32) * sizeof(v_dt_device);
             GHOST_DEBUG_LOG(1, "grid %dx%d block %dx%d nrowsinblock %d smem %d", grid.x, grid.y, block.x, block.y, nrowsinblock, smem);
@@ -423,12 +417,8 @@ ghost_error ghost_sellspmv_cu_tmpl(ghost_densemat *lhs, ghost_sparsemat *mat, gh
             grid.y = 1;
             block.x = nrowsinblock * rhs->traits.ncols;
             if (opts.flags & GHOST_SPMV_DOT) {
-               
-                STATIC_CUDA_MALLOC(cu_localdot, (sizeof(v_dt_device) * rhs->traits.ncols * 3 * grid.x), v_dt_device)
+                GHOST_CALL_RETURN(ghost_cu_temp_buffer_malloc((void **)&cu_localdot, sizeof(v_dt_device) * rhs->traits.ncols * 3 * grid.x));
             }
-
-
-            
             int smem = (block.x / 32) * sizeof(v_dt_device);
             GHOST_DEBUG_LOG(1, "grid %dx%d block %dx%d nrowsinblock %d smem %d", grid.x, grid.y, block.x, block.y, nrowsinblock, smem);
             SELL_kernel_CU_rm_tmpl<m_dt, v_dt_device, v_dt_base, nrowsinblock, C, ncols, do_axpby, do_scale, do_vshift, do_dot_yy, do_dot_xy, do_dot_xx, do_chain_axpby><<<grid, block, smem>>>((v_dt_device *)lhsval, lhs->stride, (v_dt_device *)rhsval, rhs->stride, opts.flags, mat->context->row_map->dim, mat->cu_rowLen, mat->cu_col, (m_dt *)mat->cu_val, mat->cu_chunkStart, (v_dt_device *)cu_shift, (v_dt_device)scale, (v_dt_device)beta, (v_dt_device *)cu_localdot, (v_dt_device *)zval, zstride, (v_dt_device)sdelta, (v_dt_device)seta);
@@ -451,8 +441,7 @@ ghost_error ghost_sellspmv_cu_tmpl(ghost_densemat *lhs, ghost_sparsemat *mat, gh
 #ifdef LOCALDOT_ONTHEFLY
         GHOST_INSTR_START("spmv_cuda_dot_reduction")
         v_dt_device *cu_localdot_result;
-       
-        STATIC_CUDA_MALLOC(cu_localdot_result, (sizeof(v_dt_device) * rhs->traits.ncols), v_dt_device)
+        GHOST_CALL_RETURN(ghost_cu_temp_buffer_malloc((void **)&cu_localdot_result, sizeof(v_dt_device) * rhs->traits.ncols));
         if (opts.flags & GHOST_SPMV_DOT_YY) {
             GHOST_CALL_RETURN(ghost_cu_memset(cu_localdot_result, 0, sizeof(v_dt_device) * rhs->traits.ncols));
 
@@ -487,7 +476,7 @@ ghost_error ghost_sellspmv_cu_tmpl(ghost_densemat *lhs, ghost_sparsemat *mat, gh
 
             GHOST_CALL_RETURN(ghost_cu_download(&localdot[2 * rhs->traits.ncols], cu_localdot_result, rhs->traits.ncols * sizeof(v_dt_host)));
         }
-
+        GHOST_CALL_RETURN(ghost_cu_temp_buffer_free(cu_localdot_result));
         GHOST_INSTR_STOP("spmv_cuda_dot_reduction")
 #else
         GHOST_INSTR_START("spmv_cuda_dot")
@@ -499,8 +488,16 @@ ghost_error ghost_sellspmv_cu_tmpl(ghost_densemat *lhs, ghost_sparsemat *mat, gh
         GHOST_INSTR_STOP("spmv_cuda_dot")
 #endif
     }
-
-
+    //if (traits.flags & GHOST_SPMV_CHAIN_AXPBY) {
+    //    GHOST_PERFWARNING_LOG("AXPBY will not be done on-the-fly!");
+    //    z->axpby(z,lhs,&seta,&sdelta);
+    // }
+    if (opts.flags & GHOST_SPMV_DOT) {
+        GHOST_CALL_RETURN(ghost_cu_temp_buffer_free(cu_localdot));
+    }
+    if (opts.flags & (GHOST_SPMV_SHIFT | GHOST_SPMV_VSHIFT)) {
+        GHOST_CALL_RETURN(ghost_cu_temp_buffer_free(cu_shift));
+    }
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
     return ret;
 }
