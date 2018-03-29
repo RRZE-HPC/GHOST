@@ -18,6 +18,7 @@
  * @return  
  */
 typedef int (*ghost_sparsemat_rowfunc)(ghost_gidx row, ghost_lidx *nnz, ghost_gidx *col, void *val, void *arg);
+typedef int (*ghost_sparsemat_rowfunc_constructor) (void *arg, void **work);
 
 /**
  * @brief Flags to be passed to a row-wise matrix assembly function.
@@ -53,6 +54,10 @@ typedef struct {
     ghost_gidx gnrows;
     ghost_gidx gncols;
     void *arg;
+    /**
+     *  hack into the code
+     */
+    ghost_sparsemat_rowfunc_constructor funcinit;
 } ghost_sparsemat_src_rowfunc;
 
 
