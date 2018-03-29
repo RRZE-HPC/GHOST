@@ -64,6 +64,26 @@ ghost_error ghost_cu_init(int dev)
     return GHOST_SUCCESS;
 }
 
+
+ghost_error ghost_cu_malloc_managed(void **mem, size_t bytesize)
+{
+    ghost_error ret = GHOST_SUCCESS;
+#ifdef GHOST_HAVE_CUDA
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
+    CUDA_CALL_GOTO(cudaMallocManaged(mem,bytesize,cudaMemAttachGlobal),err,ret);
+    goto out;
+err:
+    GHOST_ERROR_LOG("CUDA malloc with %zu bytes failed!",bytesize);
+out:
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
+#else
+    UNUSED(mem);
+    UNUSED(bytesize);
+#endif
+    return ret;
+}
+
+
 ghost_error ghost_cu_malloc(void **mem, size_t bytesize)
 {
     ghost_error ret = GHOST_SUCCESS;

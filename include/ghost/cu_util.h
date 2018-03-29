@@ -66,6 +66,7 @@ ghost_error ghost_cu_init(int dev);
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
+ghost_error ghost_cu_malloc_managed(void **mem, size_t bytesize);
 ghost_error ghost_cu_malloc(void **mem, size_t bytesize);
 /**
      * @brief Allocate mapped host memory.
