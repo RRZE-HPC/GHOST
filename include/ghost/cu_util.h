@@ -59,7 +59,7 @@ extern "C" {
      */
 ghost_error ghost_cu_init(int dev);
 /**
-     * @brief Allocate CUDA device memory.
+     * @brief Allocate managed CUDA device memory.
      *
      * @param mem Where to store the memory.
      * @param bytesize The number of bytes to allocate.
@@ -67,6 +67,14 @@ ghost_error ghost_cu_init(int dev);
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
 ghost_error ghost_cu_malloc_managed(void **mem, size_t bytesize);
+/**
+     * @brief Allocate CUDA device memory.
+     *
+     * @param mem Where to store the memory.
+     * @param bytesize The number of bytes to allocate.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
 ghost_error ghost_cu_malloc(void **mem, size_t bytesize);
 /**
      * @brief Allocate mapped host memory.
