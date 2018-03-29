@@ -193,7 +193,7 @@ ghost_error ghost_densemat_cm_compress(ghost_densemat *vec)
 #ifdef GHOST_HAVE_CUDA
 
         char *cu_val;
-        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_val,DM_NROWSPAD(vec)*vec->traits.ncols*vec->elSize));
+        GHOST_CALL_RETURN(ghost_cu_malloc_managed((void **)&cu_val,DM_NROWSPAD(vec)*vec->traits.ncols*vec->elSize));
 
         DENSEMAT_ITER(vec,ghost_cu_memcpy(&cu_val[(col*DM_NROWSPAD(vec)+col)*vec->elSize],
                     DENSEMAT_CUVALPTR(vec,memrow,memcol),vec->elSize));

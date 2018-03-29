@@ -1977,12 +1977,12 @@ static ghost_error ghost_sparsemat_upload(ghost_sparsemat* mat)
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
     if (!(mat->traits.flags & GHOST_SPARSEMAT_HOST)) {
         GHOST_DEBUG_LOG(1,"Creating matrix on CUDA device");
-        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&mat->cu_rowLen,(SPM_NROWS(mat))*sizeof(ghost_lidx)));
-        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&mat->cu_rowLenPadded,(SPM_NROWS(mat))*sizeof(ghost_lidx)));
-        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&mat->cu_col,(mat->nEnts)*sizeof(ghost_lidx)));
-        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&mat->cu_val,(mat->nEnts)*mat->elSize));
-        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&mat->cu_chunkStart,(SPM_NROWSPAD(mat)/mat->traits.C+1)*sizeof(ghost_lidx)));
-        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&mat->cu_chunkLen,(SPM_NROWSPAD(mat)/mat->traits.C)*sizeof(ghost_lidx)));
+        GHOST_CALL_RETURN(ghost_cu_malloc_managed((void **)&mat->cu_rowLen,(SPM_NROWS(mat))*sizeof(ghost_lidx)));
+        GHOST_CALL_RETURN(ghost_cu_malloc_managed((void **)&mat->cu_rowLenPadded,(SPM_NROWS(mat))*sizeof(ghost_lidx)));
+        GHOST_CALL_RETURN(ghost_cu_malloc_managed((void **)&mat->cu_col,(mat->nEnts)*sizeof(ghost_lidx)));
+        GHOST_CALL_RETURN(ghost_cu_malloc_managed((void **)&mat->cu_val,(mat->nEnts)*mat->elSize));
+        GHOST_CALL_RETURN(ghost_cu_malloc_managed((void **)&mat->cu_chunkStart,(SPM_NROWSPAD(mat)/mat->traits.C+1)*sizeof(ghost_lidx)));
+        GHOST_CALL_RETURN(ghost_cu_malloc_managed((void **)&mat->cu_chunkLen,(SPM_NROWSPAD(mat)/mat->traits.C)*sizeof(ghost_lidx)));
 
         GHOST_CALL_RETURN(ghost_cu_upload(mat->cu_rowLen, mat->rowLen, SPM_NROWS(mat)*sizeof(ghost_lidx)));
         GHOST_CALL_RETURN(ghost_cu_upload(mat->cu_rowLenPadded, mat->rowLenPadded, SPM_NROWS(mat)*sizeof(ghost_lidx)));
