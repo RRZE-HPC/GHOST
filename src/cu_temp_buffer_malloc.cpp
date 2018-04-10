@@ -20,7 +20,6 @@ struct SmallBuffer {
 };
 
 vector<SmallBuffer> buffers;
-const size_t threshold = 1 >> 10;
 std::mutex cu_temp_buffer_malloc_mutex;
 
 ghost_error ghost_cu_temp_buffer_malloc(void **mem, size_t bytesize) {
