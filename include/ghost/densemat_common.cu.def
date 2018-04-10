@@ -1118,7 +1118,7 @@ extern "C" ghost_error FUNCNAME(fromRand)(ghost_densemat *vec)
         compactvec = vec;
     }
 
-    cudaMalloc(&raw,DM_NROWS(vec)*vec->traits.ncols*vec->elSize);
+    ghost_cu_malloc(&raw,DM_NROWS(vec)*vec->traits.ncols*vec->elSize);
     if (vec->traits.datatype & GHOST_DT_COMPLEX) {
         if (vec->traits.datatype & GHOST_DT_DOUBLE) {
             CURAND_CALL_GOTO(curandGenerateUniformDouble(gen,(double *)raw,DM_NROWS(vec)*vec->traits.ncols*2),err,ret);
@@ -1152,7 +1152,7 @@ err:
 out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
     ghost_densemat_destroy(onevec);
-    cudaFree(raw);
+    ghost_cu_free(raw);
 
     return ret;
 }
