@@ -125,6 +125,7 @@ set (SOURCES
     src/context.cpp
     src/core.c
     src/cu_util.c
+    src/cu_temp_buffer_malloc.cpp
     src/densemat.c
     src/densemat_cm.c 
     src/densemat_rm.c 
@@ -177,6 +178,7 @@ set (HEADERS
     include/ghost/core.h
     include/ghost/cu_bench.h
     include/ghost/cu_util.h
+    include/ghost/cu_temp_buffer_malloc.h
     include/ghost/datatransfers.h
     include/ghost/densemat.h
     include/ghost/densemat_cm.h
@@ -674,8 +676,9 @@ endif()
 if (GHOST_HAVE_CUDA)
     set(CUDA_PROPAGATE_HOST_FLAGS OFF)
     cuda_include_directories(${PROJECT_SOURCE_DIR}/include ${PROJECT_BINARY_DIR} ${PROJECT_BINARY_DIR}/ghost)
-    list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fPIC;-gencode arch=compute_35,code=sm_35;-Xcompiler;-Wall)
-#    list(APPEND CUDA_NVCC_FLAGS -gencode arch=compute_60,code=sm_60)
+    list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fPIC;-Xcompiler;-Wall)
+    list(APPEND CUDA_NVCC_FLAGS -gencode arch=compute_35,code=sm_35)
+    list(APPEND CUDA_NVCC_FLAGS -gencode arch=compute_70,code=sm_70)
 
     list(APPEND CUDA_NVCC_FLAGS -isystem;${HWLOC_INCLUDE_DIR})
     foreach(mpi_inc ${MPI_INCLUDE_PATH}) 
