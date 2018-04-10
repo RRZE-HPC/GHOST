@@ -68,12 +68,13 @@ ghost_error ghost_cu_init(int dev)
 ghost_error ghost_cu_malloc_managed(void **mem, size_t bytesize)
 {
     ghost_error ret = GHOST_SUCCESS;
+    GHOST_DEBUG_LOG(1, "CUDA malloc managed with %zu bytes (%zu MB)",bytesize, bytesize / (1 << 20));
 #ifdef GHOST_HAVE_CUDA
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     CUDA_CALL_GOTO(cudaMallocManaged(mem,bytesize,cudaMemAttachGlobal),err,ret);
     goto out;
 err:
-    GHOST_ERROR_LOG("CUDA malloc with %zu bytes failed!",bytesize);
+    GHOST_ERROR_LOG("CUDA malloc managed with %zu bytes failed!",bytesize);
 out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
 #else
@@ -87,6 +88,8 @@ out:
 ghost_error ghost_cu_malloc(void **mem, size_t bytesize)
 {
     ghost_error ret = GHOST_SUCCESS;
+    
+    GHOST_DEBUG_LOG(1, "CUDA malloc with %zu bytes (%zu MB)",bytesize, bytesize / (1 << 20));
 #ifdef GHOST_HAVE_CUDA
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     CUDA_CALL_GOTO(cudaMalloc(mem,bytesize),err,ret);
@@ -228,6 +231,7 @@ ghost_error ghost_cu_download(void *hostmem, void *devmem,
 
 ghost_error ghost_cu_free(void * mem)
 {
+  GHOST_DEBUG_LOG(1, "CUDA free");
 #ifdef GHOST_HAVE_CUDA
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     CUDA_CALL_RETURN(cudaFree(mem));
