@@ -48,7 +48,7 @@ ghost_error ghost_cu_temp_buffer_malloc(void **mem, size_t bytesize)
         //cout << "Malloc " << bytesize << " bytes\n";
         if (buffers.size() > peakBufferCount) {
             //cout << "Have " << buffers.size() << " buffers, needed " << peakBufferCount
-                 << " at most, remove buffer with " << begin(buffers)->size << "B \n";
+            //     << " at most, remove buffer with " << begin(buffers)->size << "B \n";
             buffers.erase(begin(buffers));
         }
     }
