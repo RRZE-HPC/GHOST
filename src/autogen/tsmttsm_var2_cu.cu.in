@@ -9,6 +9,7 @@
 #include "ghost/tsmttsm_var2_cu_gen.h"
 #include "ghost/types.h"
 #include "ghost/util.h"
+#include "ghost/cu_temp_buffer_malloc.h"
 
 #include <complex.h>
 #include <cublas_v2.h>
@@ -47,6 +48,10 @@ __global__ void varBlockProductKernel(
     const T *A, const T *B, oT *out, size_t K, size_t lda, size_t ldb, size_t ldc, int M, int N)
 {
     size_t tidx = blockDim.x * blockIdx.x + threadIdx.x;
+
+    for (size_t mn = threadIdx.x; mn < M * N; mn += BLOCKSIZE) {
+        zero(out[blockIdx.x * N * M + mn]);
+    }
 
     __shared__ oT blockStorage[BLOCKSIZE];
 
@@ -102,15 +107,15 @@ void ghost_tsmttsm_cu_rm_fallback(oT *const __restrict__ C, const T *const __res
         &numBlocks, varBlockProductKernel<T, oT, conjv, threadsPerBlock>, threadsPerBlock, 0);
     int blockCount = prop.multiProcessorCount * numBlocks;
 
-    //    blockCount = min(K / threadsPerBlock / 100 + 1, blockCount);
+    blockCount = min(K * M * N  / threadsPerBlock / 20 + 1, blockCount);
 
 
     void *d_temp_storage = NULL;
     size_t temp_storage_size = M * N * blockCount;
 
-    CUDA_CALL(cudaMalloc(&d_temp_storage, sizeof(oT) * temp_storage_size), err);
+    ghost_cu_temp_buffer_malloc(&d_temp_storage, sizeof(oT) * temp_storage_size);
 
-    CUDA_CALL(cudaMemset(d_temp_storage, 0, temp_storage_size * sizeof(oT)), err);
+    //    CUDA_CALL(cudaMemset(d_temp_storage, 0, temp_storage_size * sizeof(oT)), err);
     if (err != GHOST_SUCCESS) return;
 
     varBlockProductKernel<T, oT, conjv, threadsPerBlock>
@@ -118,7 +123,7 @@ void ghost_tsmttsm_cu_rm_fallback(oT *const __restrict__ C, const T *const __res
 
     deviceReduce<<<M * N / 256 + 1, 256>>>(
         (oT *)d_temp_storage, C, alpha, beta, blockCount, lda, ldb, ldc, M, N);
-    CUDA_CALL(cudaFree(d_temp_storage), err);
+    ghost_cu_temp_buffer_free(d_temp_storage);
 }
 } // namespace
 
