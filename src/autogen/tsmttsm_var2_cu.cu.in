@@ -1,30 +1,29 @@
 /*!GHOST_AUTOGEN_TSMTTSM *,* */
 #include "ghost/config.h"
+#include "ghost/densemat.h"
+#include "ghost/instr.h"
+#include "ghost/locality.h"
+#include "ghost/log.h"
+#include "ghost/rand.h"
+#include "ghost/timing.h"
+#include "ghost/tsmttsm_var2_cu_gen.h"
 #include "ghost/types.h"
 #include "ghost/util.h"
-#include "ghost/densemat.h"
-#include "ghost/log.h"
-#include "ghost/timing.h"
-#include "ghost/locality.h"
-#include "ghost/instr.h"
-#include "ghost/rand.h"
-#include "ghost/tsmttsm_var2_cu_gen.h"
 
-#include <cuda_runtime.h>
-#include <stdio.h>
+#include <complex.h>
 #include <cublas_v2.h>
+#include <cuda_runtime.h>
 #include <curand.h>
+#include <stdio.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <complex.h>
+#include <iostream>
 
 #include "ghost/cu_complex.h"
 
 namespace {
 
-
-
-  template<typename T>
+template<typename T>
 __global__ void deviceReduce(T *blockResults, T *result, T alpha, T beta, int blockCount,
     size_t lda, size_t ldb, size_t ldc, int M, int N)
 {
@@ -38,9 +37,7 @@ __global__ void deviceReduce(T *blockResults, T *result, T alpha, T beta, int bl
     T sum;
     zero(sum);
 
-    for (int i = 0; i < blockCount; i++) {
-        sum = accu(sum, blockResults[i * N * M + n * M + m]);
-    }
+    for (int i = 0; i < blockCount; i++) { sum = accu(sum, blockResults[i * N * M + n * M + m]); }
 
     result[n * ldc + m] = axpby(sum, result[n * ldc + m], alpha, beta);
 }
@@ -89,7 +86,6 @@ __global__ void varBlockProductKernel(
     }
 }
 
-
 template<typename T, typename oT, bool conjv>
 void ghost_tsmttsm_cu_rm_fallback(oT *const __restrict__ C, const T *const __restrict__ A,
     const T *const __restrict__ B, const oT alpha, const oT beta, ghost_lidx K, ghost_lidx ldc,
@@ -98,19 +94,19 @@ void ghost_tsmttsm_cu_rm_fallback(oT *const __restrict__ C, const T *const __res
 
     ghost_error err = GHOST_SUCCESS;
     const int threadsPerBlock = 256;
-    int deviceUsed;
-    cudaGetDevice(&deviceUsed);
-    cudaDeviceProp prop;
-    cudaGetDeviceProperties(&prop, deviceUsed);
+    ghost_cu_deviceprop prop;
+    ghost_cu_deviceprop_get(&prop);
+
     int numBlocks;
     cudaOccupancyMaxActiveBlocksPerMultiprocessor(
         &numBlocks, varBlockProductKernel<T, oT, conjv, threadsPerBlock>, threadsPerBlock, 0);
     int blockCount = prop.multiProcessorCount * numBlocks;
 
+    //    blockCount = min(K / threadsPerBlock / 100 + 1, blockCount);
+
 
     void *d_temp_storage = NULL;
     size_t temp_storage_size = M * N * blockCount;
-
 
     CUDA_CALL(cudaMalloc(&d_temp_storage, sizeof(oT) * temp_storage_size), err);
 
@@ -124,7 +120,7 @@ void ghost_tsmttsm_cu_rm_fallback(oT *const __restrict__ C, const T *const __res
         (oT *)d_temp_storage, C, alpha, beta, blockCount, lda, ldb, ldc, M, N);
     CUDA_CALL(cudaFree(d_temp_storage), err);
 }
-}
+} // namespace
 
 ghost_error ghost_tsmttsm__u_cuda_x_x_x_1_rm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, int conjv)
 {

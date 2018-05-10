@@ -16,35 +16,39 @@ ghost_error ghost_tsmm__u_cuda_x_CFGN_CFGK_1_1_rm(ghost_densemat *x, ghost_dense
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH | GHOST_FUNCTYPE_KERNEL);
     ghost_error ret = GHOST_SUCCESS;
 
-
+    bool result = false;
     if (x->traits.datatype & GHOST_DT_COMPLEX) {
         if (x->traits.datatype & GHOST_DT_DOUBLE) {
-            ghost_tsmm_cu_rm_cm<cuDoubleComplex, cuDoubleComplex, CFGK, CFGN>(
+            result = ghost_tsmm_cu_rm_cm<cuDoubleComplex, cuDoubleComplex, CFGK, CFGN>(
                 (cuDoubleComplex *)x->cu_val, (const cuDoubleComplex *)v->cu_val,
                 (const cuDoubleComplex *)w->cu_val, *(cuDoubleComplex *)alpha,
                 *(cuDoubleComplex *)beta, DM_NROWS(x), x->stride, v->stride, w->stride);
         } else {
-            ghost_tsmm_cu_rm_cm<cuFloatComplex, cuFloatComplex, CFGK, CFGN>((cuFloatComplex *)x->cu_val,
-                (const cuFloatComplex *)v->cu_val, (const cuFloatComplex *)w->cu_val,
-                *(cuFloatComplex *)alpha, *(cuFloatComplex *)beta, DM_NROWS(x), x->stride,
-                v->stride, w->stride);
+            result = ghost_tsmm_cu_rm_cm<cuFloatComplex, cuFloatComplex, CFGK, CFGN>(
+                (cuFloatComplex *)x->cu_val, (const cuFloatComplex *)v->cu_val,
+                (const cuFloatComplex *)w->cu_val, *(cuFloatComplex *)alpha,
+                *(cuFloatComplex *)beta, DM_NROWS(x), x->stride, v->stride, w->stride);
         }
     } else {
         if (x->traits.datatype & GHOST_DT_DOUBLE && w->traits.datatype & GHOST_DT_DOUBLE) {
-            ghost_tsmm_cu_rm_cm<double, double, CFGK, CFGN>((double *)x->cu_val,
+            result = ghost_tsmm_cu_rm_cm<double, double, CFGK, CFGN>((double *)x->cu_val,
                 (const double *)v->cu_val, (const double *)w->cu_val, *(double *)alpha,
                 *(double *)beta, DM_NROWS(x), x->stride, v->stride, w->stride);
         } else if (x->traits.datatype & GHOST_DT_FLOAT && w->traits.datatype & GHOST_DT_FLOAT) {
-            ghost_tsmm_cu_rm_cm<float, float, CFGK, CFGN>((float *)x->cu_val,
+            result = ghost_tsmm_cu_rm_cm<float, float, CFGK, CFGN>((float *)x->cu_val,
                 (const float *)v->cu_val, (const float *)w->cu_val, *(float *)alpha, *(float *)beta,
                 DM_NROWS(x), x->stride, v->stride, w->stride);
         } else if (x->traits.datatype & GHOST_DT_FLOAT && w->traits.datatype & GHOST_DT_DOUBLE) {
-            ghost_tsmm_cu_rm_cm<float, double, CFGK, CFGN>((float *)x->cu_val,
+            result = ghost_tsmm_cu_rm_cm<float, double, CFGK, CFGN>((float *)x->cu_val,
                 (const float *)v->cu_val, (const double *)w->cu_val, *(double *)alpha,
                 *(double *)beta, DM_NROWS(x), x->stride, v->stride, w->stride);
         }
     }
 
+    if (!result) {
+        GHOST_WARNING_LOG("cuda tsmm with sizes %d %d does not work, try ghost_gemm\n", M, N);
+        ghost_gemm(x, v, "N", w, "N", &alpha, &beta, GHOST_GEMM_NO_REDUCE, GHOST_GEMM_NOT_SPECIAL);
+    }
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH | GHOST_FUNCTYPE_KERNEL);
     CUDA_CALL_RETURN(cudaGetLastError());
     return ret;
