@@ -6,13 +6,13 @@
 #ifndef GHOST_TSMM_CU_KERNEL_H
 #define GHOST_TSMM_CU_KERNEL_H
 
-#include <cublas_v2.h>
-#include <iostream>
-#include <typeinfo>
 #include "ghost/config.h"
 #include "ghost/cu_complex.h"
 #include "ghost/cu_util.h"
 #include "ghost/types.h"
+#include <cublas_v2.h>
+#include <iostream>
+#include <typeinfo>
 
 namespace {
 
@@ -42,7 +42,10 @@ static __global__ void __launch_bounds__(BLOCKSIZE)
     int tidx = blockIdx.x * BLOCKSIZE + threadIdx.x;
     int n = tidx % N;
 
-    __shared__ iT bCache[M][N];
+    const bool fitsShm = (M * N * sizeof(iT) <= (1 << 14)); // bCache fits in 16kB shared memory
+
+    __shared__ iT bCache[fitsShm ? M : 1][fitsShm ? N : 1];
+
 #pragma unroll(1)
     for (int mn = threadIdx.x; mn < M * N; mn += BLOCKSIZE) {
         int tn = mn / M;
@@ -62,7 +65,6 @@ static __global__ void __launch_bounds__(BLOCKSIZE)
 
         const int o1 = row * lda;
         const int o2 = (row + K / 2) * lda;
-
 
         for (int m = 0; m < M; m++) {
             iT bV = bCache[m][n];
@@ -84,9 +86,7 @@ static __global__ void __launch_bounds__(BLOCKSIZE)
         zero(sum);
 
 #pragma unroll(M <= 8 ? M : 1)
-        for (int m = 0; m < M; m++) {
-            sum = axpy(sum, (iT)A[row * lda + m], bCache[m][n]);
-        }
+        for (int m = 0; m < M; m++) { sum = axpy(sum, (iT)A[row * lda + m], bCache[m][n]); }
         if (BETAISZERO) {
             out[row * ldc + n] = scale(alpha, sum);
         } else {
@@ -94,12 +94,16 @@ static __global__ void __launch_bounds__(BLOCKSIZE)
         }
     }
 }
-}
+} // namespace
 
 template<typename T, typename iT, int M, int N>
 bool ghost_tsmm_cu_rm_cm(T *C, const T *A, const iT *B, const iT alpha, const iT beta,
     const ghost_lidx K, const ghost_lidx ldc, const ghost_lidx lda, const ghost_lidx ldb)
 {
+
+    const bool fitsShm = (M * N * sizeof(iT) <= (1 << 14)); // bCache fits in 16kB shared memory
+    if (!fitsShm) return false;
+
     const int threadsPerBlock = (M * N > 1024) ? (M * N > 55 ? 1024 : 512) : 256;
 
     int deviceUsed;
