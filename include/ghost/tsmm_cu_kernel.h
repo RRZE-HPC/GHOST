@@ -109,7 +109,8 @@ bool ghost_tsmm_cu_rm_cm(T *C, const T *A, const iT *B, const iT alpha, const iT
     int deviceUsed;
     cudaGetDevice(&deviceUsed);
     cudaDeviceProp prop;
-    cudaGetDeviceProperties(&prop, deviceUsed);
+    ghost_cu_deviceprop_get(&prop);
+
     int numBlocks;
     ghost_error ret = GHOST_SUCCESS;
 
