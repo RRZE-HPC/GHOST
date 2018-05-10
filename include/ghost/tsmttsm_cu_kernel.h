@@ -13,6 +13,7 @@
 #include "ghost/cu_complex.h"
 #include "ghost/cu_util.h"
 #include "ghost/types.h"
+#include "ghost/cu_temp_buffer_malloc.h"
 
 namespace {
 void *d_temp_storage = NULL;
@@ -163,7 +164,8 @@ static ghost_error ghost_tsmttsm_cu_rm(oT *const __restrict__ C, const T *const 
     int deviceUsed;
     cudaGetDevice(&deviceUsed);
     cudaDeviceProp prop;
-    cudaGetDeviceProperties(&prop, deviceUsed);
+    ghost_cu_deviceprop_get(&prop);
+
     int numBlocks;
 
     if (N > M) {
@@ -185,14 +187,11 @@ static ghost_error ghost_tsmttsm_cu_rm(oT *const __restrict__ C, const T *const 
                 ret);
         }
     }
-    int blockCount = prop.multiProcessorCount * numBlocks;
+    int blockCount = min( prop.multiProcessorCount * numBlocks, K*N / 10 / targetBlockSize + 1);
+
 
     size_t required_temp_storage_bytes = M * N * blockCount * sizeof(oT);
-    if (temp_storage_bytes < required_temp_storage_bytes) {
-        CUDA_CALL(cudaFree(d_temp_storage), ret);
-        temp_storage_bytes = required_temp_storage_bytes;
-        CUDA_CALL(cudaMalloc(&d_temp_storage, temp_storage_bytes), ret);
-    }
+    ghost_cu_temp_buffer_malloc(&d_temp_storage, required_temp_storage_bytes);
 
 
     if (N > M) {
@@ -214,7 +213,7 @@ static ghost_error ghost_tsmttsm_cu_rm(oT *const __restrict__ C, const T *const 
     deviceReduce<oT, M, N>
         <<<(M * N) / 256 + 1, 256>>>((oT *)d_temp_storage, C, alpha, beta, blockCount, lda, ldb, ldc);
     CUDA_CALL(cudaGetLastError(), ret);
-
+    ghost_cu_temp_buffer_free(d_temp_storage);
     return ret;
 }
 #endif
