@@ -46,7 +46,7 @@ ghost_error ghost_tsmm__u_cuda_x_CFGN_CFGK_1_1_rm(ghost_densemat *x, ghost_dense
     }
 
     if (!result) {
-        GHOST_WARNING_LOG("cuda tsmm with sizes %d %d does not work, try ghost_gemm\n", M, N);
+        GHOST_WARNING_LOG("cuda tsmm with sizes %d %d does not work, try ghost_gemm\n", CFGK, CFGN);
         ghost_gemm(x, v, "N", w, "N", &alpha, &beta, GHOST_GEMM_NO_REDUCE, GHOST_GEMM_NOT_SPECIAL);
     }
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH | GHOST_FUNCTYPE_KERNEL);
