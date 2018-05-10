@@ -103,7 +103,8 @@ bool ghost_tsmm_inplace(ghost_densemat *x, ghost_densemat *w, void *alpha, void 
     int deviceUsed;
     cudaGetDevice(&deviceUsed);
     cudaDeviceProp prop;
-    cudaGetDeviceProperties(&prop, deviceUsed);
+    ghost_cu_deviceprop_get(&prop);
+
     int numBlocks;
     ghost_error ret = GHOST_SUCCESS;
     CUDA_CALL(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocks,
