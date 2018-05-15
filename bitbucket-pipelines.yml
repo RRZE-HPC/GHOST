@@ -18,7 +18,7 @@ pipelines:
           - make check
           - cd ..
           - mkdir build-no-cuda
-          - cd build
+          - cd build-no-cuda
           - cmake .. -DGHOST_STREAM_ARRAY_SIZE=1e6 -DCMAKE_CXX_FLAGS=-Werror -DCMAKE_C_FLAGS=-Werror -DGHOST_USE_CUDA=OFF
           - make -j
           - make check
