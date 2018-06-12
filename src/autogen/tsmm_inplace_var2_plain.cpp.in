@@ -13,6 +13,7 @@ namespace {
 template<typename T, typename iT>
 ghost_error tsmm_inplace(ghost_densemat *x, ghost_densemat *w, void *alpha, void *beta)
 {
+
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error ret = GHOST_SUCCESS;
 
@@ -20,6 +21,9 @@ ghost_error tsmm_inplace(ghost_densemat *x, ghost_densemat *w, void *alpha, void
     ghost_lidx M = DM_NROWS(w);
     ghost_lidx K = DM_NROWS(x);
 
+    GHOST_INFO_LOG("In inplace TSMM with arbitrary block sizes %dx%d <- %dx%d * %dx%d, %s %s",
+         M, K, M, N, N, K, typeid(T).name(), typeid(iT).name());
+    
 
     const iT *const __restrict__ wval = (iT *)w->val;
     T *const __restrict__ xval = (T *)x->val;
@@ -31,27 +35,42 @@ ghost_error tsmm_inplace(ghost_densemat *x, ghost_densemat *w, void *alpha, void
     iT dbeta = *(iT *)beta;
 
 
-#pragma parallel
-    {
-        std::vector<iT> temp(N);
-#pragma omp for schedule(static)
-        for (ghost_lidx k = 0; k < K; k++) {
-#pragma vector aligned
-#pragma vector always
-#pragma ivdep
-#pragma simd
-            for (ghost_lidx n = 0; n < N; n++) {
-                temp[n] = dbeta * (iT)xval[k * ldx + n];
-                for (ghost_lidx m = 0; m < M; m++) {
-                    temp[n] += dalpha * (iT)xval[k * ldx + m] * wval[n * ldw + m];
-                }
-            }
-            for (ghost_lidx n = 0; n < N; n++) {
-                xval[k * ldx + n] = (T)(temp[n]);
-            }
-        }
+    if ( M == 1 && N == 1) {
+#pragma omp parallel for
+      #pragma simd
+      for (ghost_gidx k = 0; k < K; k++) {
+        xval[k*ldx] = (T) ( xval[k*ldx] * dbeta +  wval[0] * xval[k*ldx] * dalpha);
+      }
+      GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
+        return ret;
     }
 
+
+    iT* tempw = (iT*) malloc(M*N*sizeof(iT));
+    for( int m = 0; m < M; m++) {
+      for( int n = 0; n < N; n++) {
+        tempw[m*N + n] = wval[n*ldw + m];
+      }
+    }
+
+#pragma omp parallel
+    {
+      T* temp = (T*) malloc(M*sizeof(T));
+#pragma omp for
+      for (ghost_gidx k = 0; k < K; k++) {
+        memcpy(temp, xval + k*ldx, sizeof(T) * M);
+#pragma omp simd
+        for (ghost_lidx n = 0; n < N; n++) {
+          iT sum = 0;
+          for (ghost_lidx m = 0; m < M; m++) {
+            sum += temp[m] * tempw[m*N + n];
+          }
+          xval[k*ldx + n] = (T) ( xval[k*ldx + n] * dbeta + sum * dalpha);
+        }
+      }
+      free(temp);
+    }
+    free(tempw);
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 }
@@ -60,6 +79,7 @@ ghost_error tsmm_inplace(ghost_densemat *x, ghost_densemat *w, void *alpha, void
 
 ghost_error ghost_tsmm_inplace__u_plain_x_x_x(ghost_densemat *x, ghost_densemat *w, void *alpha, void *beta)
 {
+
     if (x->traits.datatype & GHOST_DT_REAL) {
         if (x->traits.datatype & GHOST_DT_DOUBLE && w->traits.datatype & GHOST_DT_DOUBLE) {
             return tsmm_inplace<double, double>(x, w, alpha, beta);
