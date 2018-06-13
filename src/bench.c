@@ -18,7 +18,7 @@
 #endif
 
 #define N PAD((ghost_lidx)GHOST_STREAM_ARRAY_SIZE,16)
-#define NITER 40
+#define NITER 200
 
 static void dummy(double *a) {
     if (a[(ghost_lidx)N>>1] < 0) {
