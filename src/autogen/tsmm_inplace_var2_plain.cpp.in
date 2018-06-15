@@ -46,29 +46,52 @@ ghost_error tsmm_inplace(ghost_densemat *x, ghost_densemat *w, void *alpha, void
     }
 
 
-    iT* tempw = (iT*) malloc(M*N*sizeof(iT));
+    ghost_lidx N_padded = PAD(N, 64 / sizeof(T));
+    iT* tempw = NULL;
+    ghost_malloc_align((void**)&tempw, N_padded*M*sizeof(iT), 64);
     for( int m = 0; m < M; m++) {
       for( int n = 0; n < N; n++) {
-        tempw[m*N + n] = wval[n*ldw + m];
+        tempw[m*N_padded + n] = wval[n*ldw + m];
       }
     }
 
 #pragma omp parallel
     {
-      T* temp = (T*) malloc(M*sizeof(T));
-#pragma omp for
+      T* tempx = (T*) malloc(M*sizeof(T));
+       #pragma omp for schedule(static)
       for (ghost_gidx k = 0; k < K; k++) {
-        memcpy(temp, xval + k*ldx, sizeof(T) * M);
+        for( int m = 0; m < M; m++) {
+          tempx[m] = xval[k*ldx + m];
+        }
 #pragma omp simd
         for (ghost_lidx n = 0; n < N; n++) {
           iT sum = 0;
-          for (ghost_lidx m = 0; m < M; m++) {
-            sum += temp[m] * tempw[m*N + n];
+          iT sum2 = 0;
+          iT sum3 = 0;
+          iT sum4 = 0;
+          #pragma vector aligned
+          for (ghost_lidx m = 0; m < M-(M%4); m+=4) {
+            T* alignedPtr1 = (T*) __builtin_assume_aligned( tempw + m*N_padded, 32 );
+            T* alignedPtr2 =  (T*)__builtin_assume_aligned( tempw + (m+1)*N_padded, 32 );
+            T* alignedPtr3 = (T*) __builtin_assume_aligned( tempw + (m+2)*N_padded, 32 );
+            T* alignedPtr4 =  (T*)__builtin_assume_aligned( tempw + (m+3)*N_padded, 32 );
+            sum += tempx[m] * alignedPtr1[n];
+            sum2 += tempx[m+1] * alignedPtr2[n];
+            sum3 += tempx[m+2] * alignedPtr3[n];
+            sum4 += tempx[m+3] * alignedPtr4[n];
           }
+#pragma vector aligned
+          for (ghost_lidx m = M - (M%4); m < M; m++) {
+            T* alignedPtr1 = (T*) __builtin_assume_aligned( tempw + m*N_padded, 32 );
+            sum += tempx[m] * alignedPtr1[n];
+          }
+          sum += sum2;
+          sum3 += sum4;
+          sum += sum3;
           xval[k*ldx + n] = (T) ( xval[k*ldx + n] * dbeta + sum * dalpha);
         }
       }
-      free(temp);
+      free(tempx);
     }
     free(tempw);
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
