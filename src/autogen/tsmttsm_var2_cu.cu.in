@@ -105,7 +105,7 @@ void ghost_tsmttsm_cu_rm_fallback(oT *const __restrict__ C, const T *const __res
     int numBlocks;
     cudaOccupancyMaxActiveBlocksPerMultiprocessor(
         &numBlocks, varBlockProductKernel<T, oT, conjv, threadsPerBlock>, threadsPerBlock, 0);
-    int blockCount = prop.multiProcessorCount * numBlocks;
+    ghost_lidx blockCount = prop.multiProcessorCount * numBlocks;
 
     blockCount = min(K * M * N  / threadsPerBlock / 20 + 1, blockCount);
 

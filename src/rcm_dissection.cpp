@@ -29,7 +29,7 @@ if(n_threads>1)
    int total_even_rows   = nrows - total_odd_rows;
  
    mat->context->zone_ptr         = new ghost_lidx[n_zones+1]; 
-   int* zone_ptr         = mat->context->zone_ptr; 
+   ghost_lidx* zone_ptr         = mat->context->zone_ptr; 
  
    bool flag_level = true; //flag for recursive call in current thread does not fit
    bool flag_lb    = true; //flag for load balancing
@@ -113,7 +113,7 @@ if(n_threads>1)
 }
 else{
   mat->context->nzones = 2;
-  mat->context->zone_ptr = new int[mat->context->nzones+1];
+  mat->context->zone_ptr = new ghost_lidx[mat->context->nzones+1];
   mat->context->zone_ptr[0] = 0;
   mat->context->zone_ptr[1] = static_cast<int>(static_cast<double>(SPM_NROWS(mat))/mat->context->nzones);
   mat->context->zone_ptr[2] = SPM_NROWS(mat);

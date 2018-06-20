@@ -141,7 +141,7 @@ free(tmpval);
     // even if the last thread gets a bit less load its fine since the excess load 
     // is evenly spread among rest of the threads
     
-    rhs_split = new int[n_zones+2];
+    rhs_split = new ghost_lidx[n_zones+2];
     
     for(int i=0; i<n_zones+1; ++i) {
         rhs_split[i] = i*local_size;
