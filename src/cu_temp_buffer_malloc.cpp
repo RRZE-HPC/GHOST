@@ -7,6 +7,7 @@
 #include <mutex>
 #include <thread>
 #include <vector>
+#include <sstream>
 #ifdef GHOST_HAVE_CUDA
 #include <cuda.h>
 #include <cuda_runtime.h>
@@ -29,6 +30,7 @@ ghost_error ghost_cu_temp_buffer_malloc(void **mem, size_t bytesize)
 #ifdef GHOST_HAVE_CUDA
     lock_guard<mutex> lock(cu_temp_buffer_malloc_mutex);
 
+
     peakBufferCount += 1;
     auto foundBuffer = find_if(begin(buffers), end(buffers),
         [=](const SmallBuffer &b) { return (b.size >= bytesize && !b.used); });
@@ -36,7 +38,7 @@ ghost_error ghost_cu_temp_buffer_malloc(void **mem, size_t bytesize)
     if (foundBuffer != end(buffers)) {
         foundBuffer->used = true;
         *mem = foundBuffer->dPtr;
-        //cout << "Return " << foundBuffer->size << " B buffer for " << bytesize << " B Request\n";
+        GHOST_DEBUG_LOG(1, "Return %zuB buffer for %zuB Request", foundBuffer->size, bytesize);
     } else {
         SmallBuffer newBuffer;
         newBuffer.size = bytesize;
@@ -47,11 +49,13 @@ ghost_error ghost_cu_temp_buffer_malloc(void **mem, size_t bytesize)
         sort(begin(buffers), end(buffers), [](const SmallBuffer &a, const SmallBuffer &b) {
             return (!a.used && b.used) || a.size < b.size;
         });
-        //cout << "Malloc " << bytesize << " bytes\n";
+
+        GHOST_DEBUG_LOG(1, "cudaMalloc new temporary buffer with  %zuB", bytesize);
         if (buffers.size() > peakBufferCount) {
-            //cout << "Have " << buffers.size() << " buffers, needed " << peakBufferCount
-            //     << " at most, remove buffer with " << begin(buffers)->size << "B \n";
+          GHOST_DEBUG_LOG(1, "Have %zu buffers, needed %u at most, cudaFree buffer with %zuB", buffers.size(), peakBufferCount, begin(buffers)->size );
+          CUDA_CALL_RETURN(cudaFree(begin(buffers)->dPtr));
             buffers.erase(begin(buffers));
+
         }
     }
 #else
@@ -72,7 +76,7 @@ ghost_error ghost_cu_temp_buffer_free(void *mem)
         find_if(begin(buffers), end(buffers), [=](SmallBuffer b) { return b.dPtr == mem; });
     if (foundBuffer != end(buffers)) {
         foundBuffer->used = false;
-        //cout << "Reclaimed " << foundBuffer->size << " B buffer\n";
+        GHOST_DEBUG_LOG(1, "Reclaimed %zuB buffer", foundBuffer->size);
     } else {
         GHOST_ERROR_LOG("Error, address  was not allocated with cu_temp_buffer_malloc\n");
         return GHOST_ERR_UNKNOWN;
