@@ -8,6 +8,7 @@
 #include "ghost/rand.h"
 #include "ghost/cu_sell_kernel.h"
 #include "ghost/math.h"
+#include "ghost/cu_temp_buffer_malloc.h"
 
 #include <cuda_runtime.h>
 #include <stdio.h>
@@ -364,10 +365,10 @@ extern "C" ghost_error FUNCNAME(vaxpby)(ghost_densemat *v1, ghost_densemat *v2, 
     size_t sizeofdt;
 
     ghost_datatype_size(&sizeofdt,v1->traits.datatype);
-    
-    GHOST_CALL_GOTO(ghost_cu_malloc(&d_a,v1->traits.ncols*sizeofdt),err,ret);
-    GHOST_CALL_GOTO(ghost_cu_malloc(&d_b,v1->traits.ncols*sizeofdt),err,ret);
-   
+
+    GHOST_CALL_GOTO(ghost_cu_temp_buffer_malloc(&d_a,v1->traits.ncols*sizeofdt),err,ret);
+    GHOST_CALL_GOTO(ghost_cu_temp_buffer_malloc(&d_b,v1->traits.ncols*sizeofdt),err,ret);
+
     ghost_lidx c; 
     for (c=0; c<v1->traits.ncols; c++) {
             GHOST_CALL_GOTO(ghost_cu_upload(&((char *)d_a)[c*sizeofdt],&((char *)a)[c*sizeofdt],sizeofdt),err,ret);
@@ -461,10 +462,11 @@ extern "C" ghost_error FUNCNAME(vaxpbypcz)(ghost_densemat *v1, ghost_densemat *v
 
     ghost_datatype_size(&sizeofdt,v1->traits.datatype);
     
-    GHOST_CALL_GOTO(ghost_cu_malloc(&d_a,v1->traits.ncols*sizeofdt),err,ret);
-    GHOST_CALL_GOTO(ghost_cu_malloc(&d_b,v1->traits.ncols*sizeofdt),err,ret);
-    GHOST_CALL_GOTO(ghost_cu_malloc(&d_c,v1->traits.ncols*sizeofdt),err,ret);
-   
+
+    GHOST_CALL_GOTO(ghost_cu_temp_buffer_malloc(&d_a,v1->traits.ncols*sizeofdt),err,ret);
+    GHOST_CALL_GOTO(ghost_cu_temp_buffer_malloc(&d_b,v1->traits.ncols*sizeofdt),err,ret);
+    GHOST_CALL_GOTO(ghost_cu_temp_buffer_malloc(&d_c,v1->traits.ncols*sizeofdt),err,ret);
+
     ghost_lidx col; 
     for (col=0; col<v1->traits.ncols; col++) {
             GHOST_CALL_GOTO(ghost_cu_upload(&((char *)d_a)[col*sizeofdt],&((char *)a)[col*sizeofdt],sizeofdt),err,ret);
@@ -600,8 +602,10 @@ extern "C" ghost_error FUNCNAME(dotprod)(ghost_densemat *vec, void *res, ghost_d
     if (vec->traits.storage == GHOST_DENSEMAT_ROWMAJOR && veccompact->stride > 1) {
         int col;
         char *cu_localdot_result, *partres;
-        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&partres,vec->traits.ncols*grid.x*vec->elSize));
-        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot_result,vec->elSize*vec->traits.ncols));
+
+        GHOST_CALL_RETURN(ghost_cu_temp_buffer_malloc((void **)&partres,vec->traits.ncols*grid.x*vec->elSize));
+        GHOST_CALL_RETURN(ghost_cu_temp_buffer_malloc((void **)&cu_localdot_result,vec->elSize*vec->traits.ncols));
+
         GHOST_CALL_RETURN(ghost_cu_memset(cu_localdot_result,0,vec->elSize*vec->traits.ncols));
         if (vec->traits.datatype & GHOST_DT_COMPLEX) {
             if (vec->traits.datatype & GHOST_DT_DOUBLE) {
@@ -969,8 +973,9 @@ extern "C" ghost_error FUNCNAME(vscale)(ghost_densemat *vec, void *a)
     }
     vecval = veccompact->cu_val;
 
-    GHOST_CALL_GOTO(ghost_cu_malloc(&d_a,vec->traits.ncols*vec->elSize),err,ret);
-    
+
+    GHOST_CALL_GOTO(ghost_cu_temp_buffer_malloc(&d_a,vec->traits.ncols*vec->elSize),err,ret);
+
     for (c=0; c<vec->traits.ncols; c++) {
         GHOST_CALL_GOTO(ghost_cu_upload(&((char *)d_a)[c*vec->elSize],&((char *)a)[c*vec->elSize],vec->elSize),err,ret);
     }
