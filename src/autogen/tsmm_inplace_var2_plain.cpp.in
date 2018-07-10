@@ -66,7 +66,7 @@ ghost_error tsmm_inplace(ghost_densemat *x, ghost_densemat *w, void *alpha, void
           for( int m = 0; m < M; m++) {
             tempx[m] = xval[k*ldx + m];
           }
-#pragma omp simd simdlen(2)
+#pragma omp simd
           for (ghost_lidx n = 0; n < N; n++) {
             iT sum = 0;
             for (ghost_lidx m = 0; m < M; m++) {
