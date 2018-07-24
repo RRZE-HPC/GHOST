@@ -84,7 +84,7 @@ ghost_gemm_perf_args;
 
 typedef struct {
     ghost_lidx vecncols;
-    ghost_lidx globalrows;
+    ghost_gidx globalrows;
     ghost_gidx globalnnz;
     ghost_datatype dt;
 }
@@ -94,7 +94,7 @@ ghost_kacz_perf_args;
 
 typedef struct {
     ghost_lidx vecncols;
-    ghost_lidx globalrows;
+    ghost_gidx globalrows;
     ghost_gidx globalnnz;
     ghost_datatype dt;
     ghost_spmv_flags flags;
