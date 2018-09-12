@@ -8,10 +8,11 @@ pipelines:
           - (umask  077 ; echo $MY_SSH_KEY | base64 --decode > ~/.ssh/id_rsa)
           - git push git@github.com:RRZE-HPC/GHOST.git
           - echo "Building and testing GHOST..."
-          - wget https://developer.nvidia.com/compute/cuda/9.2/Prod2/local_installers/cuda_9.2.148_396.37_linux
-          - sh cuda_9.2.148_396.37_linux
+          - wget https://developer.nvidia.com/compute/cuda/9.2/Prod2/local_installers/cuda-repo-ubuntu1604-9-2-local_9.2.148-1_amd64
+          - dpkg -i cuda-repo-ubuntu1604-9-2-local_9.2.148-1_amd64
+          - apt-key add /var/cuda-repo-ubuntu1604-9-2-local_9.2.148/7fa2af80.pub
           - apt-get update
-          - apt-get install -y libhwloc-dev libopenmpi-dev libgsl0-dev cmake openmpi-bin
+          - apt-get install -y libhwloc-dev libopenmpi-dev libgsl0-dev cmake openmpi-bin cuda
           - mkdir build
           - cd build
           - cmake .. -DGHOST_STREAM_ARRAY_SIZE=1e6 -DCMAKE_CXX_FLAGS=-Werror -DCMAKE_C_FLAGS=-Werror
