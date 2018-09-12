@@ -12,7 +12,7 @@ pipelines:
           - add-apt-repository ppa:ubuntu-toolchain-r/test
           - apt-get update
           - apt-get install -y libhwloc-dev cuda-toolkit-8-0 libopenmpi-dev libgsl0-dev cmake openmpi-bin gcc-5 g++-5
-           - update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-5 60 --slave /usr/bin/g++ g++ /usr/bin/g++-5
+          - update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-5 60 --slave /usr/bin/g++ g++ /usr/bin/g++-5
           - mkdir build
           - cd build
           - cmake .. -DGHOST_STREAM_ARRAY_SIZE=1e6 -DCMAKE_CXX_FLAGS=-Werror -DCMAKE_C_FLAGS=-Werror
