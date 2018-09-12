@@ -231,127 +231,6 @@ ghost_error ghost_hwconfig_get(ghost_hwconfig *hwconfig)
     return GHOST_SUCCESS;
 }
 
-//-----------------------------------------------------------------------------
-// MurmurHash3 was written by Austin Appleby, and is placed in the public
-// domain. The author hereby disclaims copyright to this source code.
-static void MurmurHash3_x86_32(const void *key, int len, uint32_t seed, void *out)
-{
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
-    const uint8_t *data = (const uint8_t *)key;
-    const int nblocks = len / 4;
-
-    uint32_t h1 = seed;
-
-    uint32_t c1 = 0xcc9e2d51;
-    uint32_t c2 = 0x1b873593;
-
-    //----------
-    // body
-
-    const uint32_t *blocks = (const uint32_t *)(data + nblocks * 4);
-
-    for (int i = -nblocks; i; i++) {
-        uint32_t k1 = blocks[i];
-
-        k1 *= c1;
-        k1 = ROTL32(k1, 15);
-        k1 *= c2;
-
-        h1 ^= k1;
-        h1 = ROTL32(h1, 13);
-        h1 = h1 * 5 + 0xe6546b64;
-    }
-
-    //----------
-    // tail
-
-    const uint8_t *tail = (const uint8_t *)(data + nblocks * 4);
-
-    uint32_t k1 = 0;
-
-    switch (len & 3) {
-        case 3:
-            k1 ^= tail[2] << 16;
-            // fallthrough
-        case 2:
-            k1 ^= tail[1] << 8;
-            // fallthrough
-        case 1:
-            k1 ^= tail[0];
-            k1 *= c1;
-            k1 = ROTL32(k1, 15);
-            k1 *= c2;
-            h1 ^= k1;
-    };
-
-    //----------
-    // finalization
-
-    h1 ^= len;
-
-    h1 ^= h1 >> 16;
-    h1 *= 0x85ebca6b;
-    h1 ^= h1 >> 13;
-    h1 *= 0xc2b2ae35;
-    h1 ^= h1 >> 16;
-
-
-    *(uint32_t *)out = h1;
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
-}
-
-static ghost_error ghost_hostname(char **hostnamePtr, size_t *hostnameLength)
-{
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
-    // Trace();
-
-    char *hostname = NULL;
-    size_t nHostname = 0;
-
-    int allocateMore = 0;
-
-    *hostnamePtr = NULL;
-    *hostnameLength = 0;
-
-    do {
-        nHostname += MAX(HOST_NAME_MAX, LOCAL_HOSTNAME_MAX);
-
-        GHOST_CALL_RETURN(ghost_malloc((void **)&hostname, sizeof(char) * nHostname));
-        memset(hostname, 0, nHostname);
-
-        int error;
-
-        error = gethostname(hostname, nHostname);
-
-        if (error == -1) {
-            if (errno == ENAMETOOLONG) {
-                allocateMore = 1;
-                free(hostname);
-                hostname = NULL;
-            } else {
-                free(hostname);
-                hostname = NULL;
-
-                GHOST_ERROR_LOG("gethostname failed with error %d: %s", errno, strerror(errno));
-                return GHOST_ERR_UNKNOWN;
-            }
-
-        } else {
-            allocateMore = 0;
-        }
-
-    } while (allocateMore);
-
-    // Make sure hostname is \x00 terminated.
-    hostname[nHostname - 1] = 0x00;
-
-    *hostnameLength = strnlen(hostname, nHostname) + 1;
-    *hostnamePtr = hostname;
-
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
-    return GHOST_SUCCESS;
-}
-
 ghost_error ghost_nodecomm_get(ghost_mpi_comm *comm)
 {
     if (!comm) {
@@ -379,8 +258,6 @@ ghost_error ghost_nodecomm_setup(ghost_mpi_comm comm)
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL | GHOST_FUNCTYPE_COMMUNICATION);
 #else
     UNUSED(comm);
-    UNUSED(&MurmurHash3_x86_32);
-    UNUSED(&ghost_hostname);
 #endif
 
     return GHOST_SUCCESS;
