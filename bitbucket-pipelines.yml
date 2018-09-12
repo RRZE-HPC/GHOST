@@ -10,7 +10,7 @@ pipelines:
           - echo "Building and testing GHOST..."
           - wget https://developer.nvidia.com/compute/cuda/9.2/Prod2/local_installers/cuda-repo-ubuntu1604-9-2-local_9.2.148-1_amd64
           - dpkg -i cuda-repo-ubuntu1604-9-2-local_9.2.148-1_amd64
-          - apt-key add /var/cuda-repo-ubuntu1604-9-2-local_9.2.148/7fa2af80.pub
+          - apt-key add /var/cuda-repo-9-2-local/7fa2af80.pub
           - apt-get update
           - apt-get install -y libhwloc-dev libopenmpi-dev libgsl0-dev cmake openmpi-bin cuda
           - mkdir build
