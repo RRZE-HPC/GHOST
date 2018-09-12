@@ -9,6 +9,7 @@ pipelines:
           - echo "Building and testing GHOST..."
           - wget http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1404/x86_64/cuda-repo-ubuntu1404_8.0.61-1_amd64.deb
           - dpkg -i cuda-repo-ubuntu1404_8.0.61-1_amd64.deb
+          - add-apt-repository ppa:ubuntu-toolchain-r/test
           - apt-get update
           - apt-get install -y libhwloc-dev cuda-toolkit-8-0 libopenmpi-dev libgsl0-dev cmake openmpi-bin gcc-5 g++-5
           - update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-5 1
