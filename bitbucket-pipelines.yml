@@ -9,7 +9,7 @@ pipelines:
           - git push git@github.com:RRZE-HPC/GHOST.git
           - echo "Building and testing GHOST..."
           - wget https://developer.nvidia.com/compute/cuda/9.2/Prod2/local_installers/cuda_9.2.148_396.37_linux
-          - sh cuda_9.2.148_396.37_linux.run
+          - sh cuda_9.2.148_396.37_linux
           - apt-get update
           - apt-get install -y libhwloc-dev libopenmpi-dev libgsl0-dev cmake openmpi-bin
           - mkdir build
