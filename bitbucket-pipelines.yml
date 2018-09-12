@@ -1,18 +1,17 @@
 pipelines:
   default:
     - step:
+        image: atlassian/default-image:2
         script:
           - echo "Mirroring repository to GitHub..."
           - mkdir -p ~/.ssh
           - (umask  077 ; echo $MY_SSH_KEY | base64 --decode > ~/.ssh/id_rsa)
           - git push git@github.com:RRZE-HPC/GHOST.git
           - echo "Building and testing GHOST..."
-          - wget http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1404/x86_64/cuda-repo-ubuntu1404_8.0.61-1_amd64.deb
-          - dpkg -i cuda-repo-ubuntu1404_8.0.61-1_amd64.deb
-          - add-apt-repository ppa:ubuntu-toolchain-r/test
+          - wget https://developer.nvidia.com/compute/cuda/9.2/Prod2/local_installers/cuda_9.2.148_396.37_linux
+          - sh cuda_9.2.148_396.37_linux.run
           - apt-get update
-          - apt-get install -y libhwloc-dev cuda-toolkit-8-0 libopenmpi-dev libgsl0-dev cmake openmpi-bin gcc-5 g++-5
-          - update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-5 60 --slave /usr/bin/g++ g++ /usr/bin/g++-5
+          - apt-get install -y libhwloc-dev libopenmpi-dev libgsl0-dev cmake openmpi-bin
           - mkdir build
           - cd build
           - cmake .. -DGHOST_STREAM_ARRAY_SIZE=1e6 -DCMAKE_CXX_FLAGS=-Werror -DCMAKE_C_FLAGS=-Werror
