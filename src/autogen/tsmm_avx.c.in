@@ -568,7 +568,8 @@ ghost_error ghost_tsmm__u_avx_d_OUTCOLS_INCOLS_OUTERUNROLL_1_rm(ghost_densemat *
                 #GHOST_UNROLL#tmp@ = _mm256_setzero_pd();#4*OUTERUNROLL
 
 #ifdef KREMAINDER
-#pragma unroll(INCOLS/4)
+
+#pragma unroll( INCOLS/4 > 0 ? INCOLS/4 : 1 )
                 for (m=0; m<INCOLS/4; m++) {
                     #GHOST_UNROLL#vrow@ = _mm256_loadu_pd(&vval[(i+@)*ldv+m*4]);#OUTERUNROLL
                     #GHOST_UNROLL#tmp@ = _mm256_add_pd(tmp@,_mm256_mul_pd(vrow~@/4~,_mm256_loadu_pd(&wnonpad[(k*4+(@%4))*nrows_wnonpad+m*4])));#4*OUTERUNROLL
