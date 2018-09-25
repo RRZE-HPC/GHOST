@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/RRZE-HPC/GHOST.svg?branch=devel)](https://travis-ci.org/RRZE-HPC/GHOST)
+
 ---
 # Disclaimer #
 ---
