@@ -11,6 +11,9 @@
 #include <complex>
 #include <cuda_runtime.h>
 #include <cusparse_v2.h>
+#include <vector>
+
+using namespace std;
 
 typedef cusparseStatus_t (*cusparse_sell1_spmv_kernel_t) (cusparseHandle_t handle, cusparseOperation_t transA, 
         int m, int n, int nnz, const void           *alpha, 
@@ -160,7 +163,7 @@ static ghost_error ghost_cu_sell1spmv_augfunc_tmpl(ghost_densemat * lhs, ghost_d
 
     if (traits.flags & (GHOST_SPMV_SHIFT|GHOST_SPMV_VSHIFT)) {
         GHOST_PERFWARNING_LOG("Shift will not be applied on-the-fly!");
-        dt minusshift[rhs->traits.ncols];
+        vector<dt> minusshift(rhs->traits.ncols);
         ghost_lidx col;
         if (traits.flags & GHOST_SPMV_SHIFT) {
             for (col=0; col<rhs->traits.ncols; col++) {
@@ -171,7 +174,7 @@ static ghost_error ghost_cu_sell1spmv_augfunc_tmpl(ghost_densemat * lhs, ghost_d
                 minusshift[col] = (dt)-1.*(*(dt *)&scale)*(((dt *)shift)[col]);
             }
         }
-        ghost_vaxpy(lhs,rhs,minusshift);
+        ghost_vaxpy(lhs,rhs,minusshift.data());
     }
     
     if (traits.flags & GHOST_SPMV_DOT) {
