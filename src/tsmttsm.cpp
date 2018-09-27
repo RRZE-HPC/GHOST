@@ -244,28 +244,27 @@ ghost_error ghost_tsmttsm(ghost_densemat *x_in, ghost_densemat *v, ghost_densema
         if (!try_impl.size()) {
 #ifdef GHOST_BUILD_MIC
             try_impl.push_back(GHOST_IMPLEMENTATION_MIC);
-            try_impl.push_back(GHOST_IMPLEMENTATION_PLAIN);
-#elif defined(GHOST_BUILD_AVX512)
-        try_impl.push_back(GHOST_IMPLEMENTATION_AVX512);
-        try_impl.push_back(GHOST_IMPLEMENTATION_AVX2);
-        try_impl.push_back(GHOST_IMPLEMENTATION_AVX);
-        try_impl.push_back(GHOST_IMPLEMENTATION_SSE);
-        try_impl.push_back(GHOST_IMPLEMENTATION_PLAIN);
-#elif defined(GHOST_BUILD_AVX2)
-        try_impl.push_back(GHOST_IMPLEMENTATION_AVX2);
-        try_impl.push_back(GHOST_IMPLEMENTATION_AVX);
-        try_impl.push_back(GHOST_IMPLEMENTATION_SSE);
-        try_impl.push_back(GHOST_IMPLEMENTATION_PLAIN);
-#elif defined(GHOST_BUILD_AVX)
-        try_impl.push_back(GHOST_IMPLEMENTATION_AVX);
-        try_impl.push_back(GHOST_IMPLEMENTATION_SSE);
-        try_impl.push_back(GHOST_IMPLEMENTATION_PLAIN);
-#elif defined(GHOST_BUILD_SSE)
-        try_impl.push_back(GHOST_IMPLEMENTATION_SSE);
-        try_impl.push_back(GHOST_IMPLEMENTATION_PLAIN);
-#else
-        try_impl.push_back(GHOST_IMPLEMENTATION_PLAIN);
 #endif
+#if defined(GHOST_BUILD_AVX512)
+            //try_impl.push_back(GHOST_IMPLEMENTATION_AVX512);
+            try_impl.push_back(GHOST_IMPLEMENTATION_AVX2);
+            try_impl.push_back(GHOST_IMPLEMENTATION_AVX);
+            try_impl.push_back(GHOST_IMPLEMENTATION_SSE);
+#elif defined(GHOST_BUILD_AVX2)
+            try_impl.push_back(GHOST_IMPLEMENTATION_AVX2);
+            try_impl.push_back(GHOST_IMPLEMENTATION_AVX);
+            try_impl.push_back(GHOST_IMPLEMENTATION_SSE);
+            try_impl.push_back(GHOST_IMPLEMENTATION_PLAIN);
+#elif defined(GHOST_BUILD_AVX)
+            try_impl.push_back(GHOST_IMPLEMENTATION_AVX);
+            try_impl.push_back(GHOST_IMPLEMENTATION_SSE);
+            try_impl.push_back(GHOST_IMPLEMENTATION_PLAIN);
+#elif defined(GHOST_BUILD_SSE)
+            try_impl.push_back(GHOST_IMPLEMENTATION_SSE);
+            try_impl.push_back(GHOST_IMPLEMENTATION_PLAIN);
+
+#endif
+            try_impl.push_back(GHOST_IMPLEMENTATION_PLAIN);
         }
 #ifdef GHOST_HAVE_CUDA
     }
