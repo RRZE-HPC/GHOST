@@ -176,10 +176,10 @@ ghost_error ghost_tsmm(ghost_densemat *x, ghost_densemat *v, ghost_densemat *w_i
                 || x->traits.compute_with == GHOST_IMPLEMENTATION_PLAIN) {
                 try_impl.push_back(x->traits.compute_with);
             }
-#elif defined(GHOST_BUILD_AVX512)
-        if (x->traits.compute_with <= GHOST_IMPLEMENTATION_AVX512) {
-            try_impl.push_back(x->traits.compute_with);
-        }
+            // #elif defined(GHOST_BUILD_AVX512)
+            //if (x->traits.compute_with <= GHOST_IMPLEMENTATION_AVX512) {
+            // try_impl.push_back(x->traits.compute_with);
+            // }
 #elif defined(GHOST_BUILD_AVX2)
         if (x->traits.compute_with <= GHOST_IMPLEMENTATION_AVX2) {
             try_impl.push_back(x->traits.compute_with);

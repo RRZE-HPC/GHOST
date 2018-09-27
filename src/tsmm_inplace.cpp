@@ -159,10 +159,10 @@ ghost_error ghost_tsmm_inplace(ghost_densemat *x, ghost_densemat *w, void *alpha
                 || x->traits.compute_with == GHOST_IMPLEMENTATION_PLAIN) {
                 try_impl.push_back(x->traits.compute_with);
             }
-#elif defined(GHOST_BUILD_AVX512)
-        if (x->traits.compute_with <= GHOST_IMPLEMENTATION_AVX512) {
-            try_impl.push_back(x->traits.compute_with);
-        }
+            // #elif defined(GHOST_BUILD_AVX512)
+            // if (x->traits.compute_with <= GHOST_IMPLEMENTATION_AVX512) {
+            // try_impl.push_back(x->traits.compute_with);
+            // }
 #elif defined(GHOST_BUILD_AVX2)
         if (x->traits.compute_with <= GHOST_IMPLEMENTATION_AVX2) {
             try_impl.push_back(x->traits.compute_with);
@@ -188,30 +188,25 @@ ghost_error ghost_tsmm_inplace(ghost_densemat *x, ghost_densemat *w, void *alpha
         }
         if (!try_impl.size()) {
 #ifdef GHOST_BUILD_MIC
-            try_impl.push_back(GHOST_IMPLEMENTATION_MIC);
-            try_impl.push_back(GHOST_IMPLEMENTATION_PLAIN);
-#elif defined(GHOST_BUILD_AVX512)
-        try_impl.push_back(GHOST_IMPLEMENTATION_AVX512);
-        try_impl.push_back(GHOST_IMPLEMENTATION_AVX2);
-        try_impl.push_back(GHOST_IMPLEMENTATION_AVX);
-        try_impl.push_back(GHOST_IMPLEMENTATION_SSE);
-        try_impl.push_back(GHOST_IMPLEMENTATION_PLAIN);
+          try_impl.push_back(GHOST_IMPLEMENTATION_MIC);
+#endif
+#if defined(GHOST_BUILD_AVX512)
+          //    try_impl.push_back(GHOST_IMPLEMENTATION_AVX512);
+          try_impl.push_back(GHOST_IMPLEMENTATION_AVX2);
+          try_impl.push_back(GHOST_IMPLEMENTATION_AVX);
+          try_impl.push_back(GHOST_IMPLEMENTATION_SSE);
 #elif defined(GHOST_BUILD_AVX2)
-        try_impl.push_back(GHOST_IMPLEMENTATION_AVX2);
-        try_impl.push_back(GHOST_IMPLEMENTATION_AVX);
-        try_impl.push_back(GHOST_IMPLEMENTATION_SSE);
-        try_impl.push_back(GHOST_IMPLEMENTATION_PLAIN);
+          try_impl.push_back(GHOST_IMPLEMENTATION_AVX2);
+          try_impl.push_back(GHOST_IMPLEMENTATION_AVX);
+          try_impl.push_back(GHOST_IMPLEMENTATION_SSE);
 #elif defined(GHOST_BUILD_AVX)
-        try_impl.push_back(GHOST_IMPLEMENTATION_AVX);
-        try_impl.push_back(GHOST_IMPLEMENTATION_SSE);
-        try_impl.push_back(GHOST_IMPLEMENTATION_PLAIN);
+          try_impl.push_back(GHOST_IMPLEMENTATION_AVX);
+          try_impl.push_back(GHOST_IMPLEMENTATION_SSE);
 #elif defined(GHOST_BUILD_SSE)
-        try_impl.push_back(GHOST_IMPLEMENTATION_SSE);
-        try_impl.push_back(GHOST_IMPLEMENTATION_PLAIN);
-#else
-        try_impl.push_back(GHOST_IMPLEMENTATION_PLAIN);
+          try_impl.push_back(GHOST_IMPLEMENTATION_SSE);
 #endif
         }
+        try_impl.push_back(GHOST_IMPLEMENTATION_PLAIN);
 #ifdef GHOST_HAVE_CUDA
     }
 #endif
