@@ -319,7 +319,7 @@ ghost_error ghost_sellspmvBROKEN__a_mic_d_d_rm_CHUNKHEIGHT_NVECS(ghost_densemat 
 
 ghost_error ghost_sellspmv__a_mic_z_z_rm_CHUNKHEIGHT_NVECS(ghost_densemat *res, ghost_sparsemat *mat, ghost_densemat* invec, ghost_spmv_opts traits)
 {
-#if defined(GHOST_BUILD_AVX512)
+#if defined(GHOST_BUILD_MIC)
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
 
 #if NVECS%4
