@@ -823,15 +823,17 @@ else()
         AutodetectHostArchitecture()
         OptimizeForArchitecture()
         if (USE_AVX512F)
-            if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
-                set(GHOST_BUILD_MIC 1 CACHE BOOL "Generate MIC kernels" FORCE)
-                set(GHOST_BUILD_AVX512 1 CACHE BOOL "Generate AVX512 kernels")
-                set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -xMIC-AVX512")
-                set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -xMIC-AVX512")
-            else ()
-                set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mavx512f")
-                set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx512f")
-            endif()
+          if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
+            set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -xCOMMON-AVX512")
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -xCOMMON-AVX512")
+            set(GHOST_BUILD_MIC 1 CACHE BOOL "Generate MIC kernels" FORCE)
+          else ()
+            set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mavx512f")
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx512f")
+          endif()
+          
+          set(GHOST_BUILD_AVX512 1 CACHE BOOL "Generate AVX512 kernels")
+          
         else ()
             set(GHOST_BUILD_AVX512 0 CACHE BOOL "Generate AVX512 kernels")
         endif()
@@ -863,6 +865,26 @@ else()
         endif()
     endif()
 endif()
+
+
+if( ${GHOST_BUILD_MIC} )
+  message(STATUS "Build with MIC")
+endif()
+if( ${GHOST_BUILD_AVX512} )
+  message( STATUS "Build with AVX512")
+endif()
+if( ${GHOST_BUILD_AVX2} )
+  message( STATUS "Build with AVX2")
+endif()
+if( ${GHOST_BUILD_AVX} )
+  message(STATUS "Build with AVX")
+endif()
+if( ${GHOST_BUILD_SSE} )
+  message(STATUS "Build with SSE")
+endif()
+
+
+
 
 ########################################################################
 #  Disable a few warnings for release builds.
