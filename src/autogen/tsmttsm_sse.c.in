@@ -68,9 +68,9 @@ ghost_error ghost_tsmttsm__a_sse_d_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_dense
         double print[2]; 
         double *x_priv;
         ghost_lidx ldxpriv = PAD(CFGM,2);
-        if (ldxpriv != CFGM) {
-            GHOST_INFO_LOG("Pad xpriv from %d to %d",CFGM,ldxpriv);
-        }
+        //if (ldxpriv != CFGM) {
+        //    GHOST_INFO_LOG("Pad xpriv from %d to %d",CFGM,ldxpriv);
+        //}
         ghost_malloc_align((void **)&x_priv,ldxpriv*CFGK*sizeof(double),32);
         memset(x_priv,0,ldxpriv*CFGK*sizeof(double));
         __m128d wvec,wvecshuf,vvec,tmp1,tmp2;
@@ -100,9 +100,9 @@ ghost_error ghost_tsmttsm__a_sse_d_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_dense
 
         double *x_priv;
         ghost_lidx ldxpriv = PAD(CFGM,2);
-        if (ldxpriv != CFGM) {
-            GHOST_INFO_LOG("Pad xpriv from %d to %d",CFGM,ldxpriv);
-        }
+        //if (ldxpriv != CFGM) {
+        //    GHOST_INFO_LOG("Pad xpriv from %d to %d",CFGM,ldxpriv);
+        //}
         ghost_malloc_align((void **)&x_priv,ldxpriv*CFGK*sizeof(double),32);
         memset(x_priv,0,ldxpriv*CFGK*sizeof(double));
 

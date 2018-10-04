@@ -66,9 +66,7 @@ ghost_error ghost_tsmttsm__a_avx_d_x_x_1_rm(ghost_densemat *x, ghost_densemat *v
 
         double *x_priv;
         ghost_lidx ldxpriv = PAD(ldv,4);
-        if (ldxpriv != ldv) {
-            GHOST_INFO_LOG("Pad xpriv from %d to %d",ldv,ldxpriv);
-        }
+
         ghost_malloc_align((void **)&x_priv,ldxpriv*ldw*sizeof(double),32);
         memset(x_priv,0,ldxpriv*ldw*sizeof(double));
         
@@ -103,7 +101,7 @@ ghost_error ghost_tsmttsm__a_avx_d_x_x_1_rm(ghost_densemat *x, ghost_densemat *v
                 }
             }
         } else {
-            GHOST_INFO_LOG("fast case alpha=1");
+
 #pragma omp for schedule(runtime)
             for (i=0; i<n; i++) {
                 for (k=0; k+4<=x->traits.ncols; k+=4) {

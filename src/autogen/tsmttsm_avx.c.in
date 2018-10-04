@@ -715,7 +715,7 @@ ghost_error ghost_tsmttsm__u_avx_z_CFGN_CFGM_2_rm(ghost_densemat *x, ghost_dense
                     }
                 }
             } else {
-                GHOST_INFO_LOG("fast case alpha=1 asdf");
+
 #pragma omp for schedule(runtime)
                 for (i=0; i<=n-2; i+=2) {
                     for (k=0; k<CFGN; k++) {
@@ -921,7 +921,7 @@ ghost_error ghost_tsmttsm__a_avx_c_CFGN_CFGM_4_rm(ghost_densemat *x, ghost_dense
                     }
                 }
             } else {
-                GHOST_INFO_LOG("fast case alpha=1 asdf");
+
 #pragma omp for schedule(runtime)
                 for (i=0; i<=n-4; i+=4) {
                     for (k=0; k<CFGN; k++) {
@@ -1105,7 +1105,7 @@ ghost_error ghost_tsmttsm2__a_avx_z_CFGN_CFGM_1_rm(ghost_densemat *x, ghost_dens
                     }
                 }
             } else {
-                GHOST_INFO_LOG("fast case alpha=1 asdf");
+
 #pragma omp for schedule(runtime)
                 for (i=0; i<=n-4; i+=4) {
                     for (k=0; k<CFGN; k++) {
