@@ -129,15 +129,15 @@ const char * ghost_datatype_string(ghost_datatype datatype)
 
     if (datatype & GHOST_DT_FLOAT) {
         if (datatype & GHOST_DT_REAL) {
-            return "Float";
+            return "float";
         } else {
-            return "Complex float";
+            return "complex float";
         }
     } else {
         if (datatype & GHOST_DT_REAL) {
-            return "Double";
+            return "double";
         } else {
-            return "Complex double";
+            return "complex double";
         }
     }
 }
@@ -219,7 +219,7 @@ const char * ghost_implementation_string(ghost_implementation implementation)
     
     switch(implementation) {
         case GHOST_IMPLEMENTATION_PLAIN:
-            return "vanilla";
+            return "PLAIN";
         case GHOST_IMPLEMENTATION_SSE:
             return "SSE";
         case GHOST_IMPLEMENTATION_AVX:
