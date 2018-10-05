@@ -101,11 +101,22 @@ ghost_error ghost_tsmttsm_valid(ghost_densemat *x, ghost_densemat *v, const char
 }
 
 
+std::string to_string(ghost_tsmttsm_parameters params)
+{
+    std::stringstream str;
+    str << (params.vcols == -1 ? "var" : "fix") << " " << (params.wcols == -1 ? "var" : "fix")
+        << " " << std::setw(5) << ghost_implementation_string(params.impl) << " " << std::setw(13)
+        << ghost_datatype_string(params.dt) << " "
+        << (params.alignment == GHOST_UNALIGNED ? "UNALIGN" : "ALIGNED") << " "
+        << (params.wstor == GHOST_DENSEMAT_ROWMAJOR ? "ROW" : "COL");
+    return str.str();
+}
+
 unordered_map<ghost_tsmttsm_parameters, ghost_tsmttsm_kernel> ghost_get_tsmttsm_kernels(
     ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, ghost_gemm_flags flags)
 {
+  GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     unordered_map<ghost_tsmttsm_parameters, ghost_tsmttsm_kernel> kernels;
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     if (flags & GHOST_GEMM_KAHAN) {
         if (ghost_tsmttsm_kahan_kernels.empty()) {
 #include "tsmttsm_kahan_plain.def"
@@ -154,6 +165,7 @@ unordered_map<ghost_tsmttsm_parameters, ghost_tsmttsm_kernel> ghost_get_tsmttsm_
             it++;
         }
     }
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_UTIL);
     return kernels;
 }
 

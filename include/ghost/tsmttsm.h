@@ -70,16 +70,7 @@ std::unordered_map<ghost_tsmttsm_parameters, ghost_tsmttsm_kernel> ghost_get_tsm
     ghost_densemat *v, ghost_densemat *w, void *alpha, void *beta, ghost_gemm_flags flags);
 
 
-std::string to_string(ghost_tsmttsm_parameters params)
-{
-    std::stringstream str;
-    str << (params.vcols == -1 ? "var" : "fix") << " " << (params.wcols == -1 ? "var" : "fix")
-        << " " << std::setw(5) << ghost_implementation_string(params.impl) << " " << std::setw(13)
-        << ghost_datatype_string(params.dt) << " "
-        << (params.alignment == GHOST_UNALIGNED ? "UNALIGN" : "ALIGNED") << " "
-        << (params.wstor == GHOST_DENSEMAT_ROWMAJOR ? "ROW" : "COL");
-    return str.str();
-}
+std::string to_string(ghost_tsmttsm_parameters params);
 
 
 extern "C" {
