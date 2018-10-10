@@ -33,7 +33,7 @@ using namespace std;
 
 typedef ghost_tsmttsm_parameters ghost_tsmttsm_kahan_parameters;
 
-static bool operator==(const ghost_tsmttsm_parameters &a, const ghost_tsmttsm_parameters &b)
+bool operator==(const ghost_tsmttsm_parameters &a, const ghost_tsmttsm_parameters &b)
 {
     return a.dt == b.dt && a.wcols == b.wcols && a.vcols == b.vcols && a.impl == b.impl
         && a.wstor == b.wstor && a.alignment == b.alignment && a.unroll == b.unroll;
