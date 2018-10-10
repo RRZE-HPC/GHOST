@@ -42,7 +42,7 @@ set(GHOST_AUTOGEN_SPMMV "8,1;8,2;8,4;8,8;8,*;32,1;32,2;32,4;32,8;32,*;1,4;1,*" C
 set(GHOST_AUTOGEN_SPMMV_CUDA "32,1,0,0,0,0,0,0,0;1,4,0,0,0,0,0,0,0;32,*,0,0,0,0,0,0,0;1,*,0,0,0,0,0,0,0" CACHE STRING "SpM(M)V kernels to be auto-generated. Semicolon-separated list of 9-tuples: (CHUNKHEIGHT, NVECS,AXP(B)Y,SCALE,(V)SHIFT,DOT_YY,DOT_XY,DOT_XX,CHAIN_AXPBY)")
 set(GHOST_AUTOGEN_TSMM "1,1;2,2;4,4;8,8" CACHE STRING "TSMM kernels to be auto-generated. Semicolon-separated list of 3-tuples: (K, N, UNROLL)")
 set(GHOST_AUTOGEN_TSMM-INPLACE "1,1;2,2;4,4;8,8" CACHE STRING "TSMM-inplace kernels to be auto-generated. Semicolon-separated list of 2-tuples: (K, N) where K>=N")
-set(GHOST_AUTOGEN_TSMTTSM "1,1;2,2;4,4;8,8" CACHE STRING "TSMTTSM kernels to be auto-generated. Semicolon-separated list of 3-tuples: (M, N, UNROLL)")
+set(GHOST_AUTOGEN_TSMTTSM "1,1;2,2;3,3;4,4;5,5;6,6;7,7;8,8;16,16;32,32;1,*;2,*;3,*;4,*;5,*;6,*;7,*;8,*;9,*,10,*;11,*;12,*;13,*;14,*;15,*;16,*;*,1;*,2;*,3;*,4;*,5;*,6;*,7;*,8;*,9;*,10;*,11;*,12;*,13;*,14;*,15;*,16;" CACHE STRING "TSMTTSM kernels to be auto-generated. Semicolon-separated list of 3-tuples: (M, N, UNROLL)")
 set(GHOST_AUTOGEN_DOT "1;2;4;8" CACHE STRING "DOT kernels to be auto-generated. Semicolon-separated list of 1-tuples: (NVECS)")
 set(GHOST_AUTOGEN_KACZ "32,1,0;32,4,0;1,4,0;1,4,4" CACHE STRING "KACZ kernels to be auto-generated. Semicolon-separated list of 3-tuples: (CHUNKHEIGHT, NVECS, NSHIFTS)")
 set(GHOST_VERBOSITY 1 CACHE STRING "Level of verbosity information. Valid values: 0 (be totally silent), 1 (print warnings, errors and further important information), 2, 3, 4 (increasing level of verbosity)")
