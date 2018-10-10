@@ -32,7 +32,12 @@
 using namespace std;
 
 typedef ghost_tsmttsm_parameters ghost_tsmttsm_kahan_parameters;
-typedef ghost_tsmttsm_parameters ghost_tsmttsm_kahan_parameters;
+
+static bool operator==(const ghost_tsmttsm_parameters &a, const ghost_tsmttsm_parameters &b)
+{
+    return a.dt == b.dt && a.wcols == b.wcols && a.vcols == b.vcols && a.impl == b.impl
+        && a.wstor == b.wstor && a.alignment == b.alignment && a.unroll == b.unroll;
+}
 
 
 static std::unordered_map<ghost_tsmttsm_parameters, ghost_tsmttsm_kernel> ghost_tsmttsm_kernels;

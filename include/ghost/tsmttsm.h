@@ -45,11 +45,7 @@ struct hash<ghost_tsmttsm_parameters> {
 };
 }
 
-static bool operator==(const ghost_tsmttsm_parameters &a, const ghost_tsmttsm_parameters &b)
-{
-    return a.dt == b.dt && a.wcols == b.wcols && a.vcols == b.vcols && a.impl == b.impl
-        && a.wstor == b.wstor && a.alignment == b.alignment && a.unroll == b.unroll;
-}
+static bool operator==(const ghost_tsmttsm_parameters &a, const ghost_tsmttsm_parameters &b);
 
 /**
  *
