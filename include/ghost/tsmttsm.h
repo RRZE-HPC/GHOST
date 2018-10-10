@@ -45,7 +45,7 @@ struct hash<ghost_tsmttsm_parameters> {
 };
 }
 
-static bool operator==(const ghost_tsmttsm_parameters &a, const ghost_tsmttsm_parameters &b);
+bool operator==(const ghost_tsmttsm_parameters &a, const ghost_tsmttsm_parameters &b);
 
 /**
  *
