@@ -54,7 +54,7 @@ ghost_error ghost_tsmttsm__a_sse_d_CFGK_CFGM_1_rm(ghost_densemat *x, ghost_dense
     ghost_lidx k;
     for (k=0; k<CFGK; k++) {
         for (m=0; m+2<=CFGM; m+=2) {
-            _mm_store_pd(&xpad[k*ldxpad+m],_mm_mul_pd(_mm_load_pd(&xval[k*ldx+m]),betavec));
+            _mm_store_pd(&xpad[k*ldxpad+m],_mm_mul_pd(_mm_loadu_pd(&xval[k*ldx+m]),betavec));
         }
         for (; m<CFGM; m++) {
             xpad[k*ldxpad+m] = dbeta*xval[k*ldx+m];
