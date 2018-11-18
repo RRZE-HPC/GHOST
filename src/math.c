@@ -808,3 +808,29 @@ ghost_error ghost_nrm2(void *norm, ghost_densemat *x)
     return GHOST_SUCCESS;
 }
 
+ghost_error ghost_mult(ghost_densemat *y, ghost_densemat *x, void *a)
+{
+    
+    int ncolsX = x->traits.ncols;
+    // make the following check pass despite densemats having different #cols
+    if (ncolsX==1) x->traits.ncols=y->traits.ncols;
+    GHOST_DENSEMAT_CHECK_SIMILARITY(y,x);
+    x->traits.ncols=ncolsX;
+
+    ghost_location commonlocation = (ghost_location)(y->traits.location & x->traits.location);
+
+    ghost_error ret;
+
+    typedef ghost_error (*ghost_mult_kernel)(ghost_densemat*, ghost_densemat*, void*);
+    ghost_mult_kernel kernels[2][2] = {{NULL,NULL},{NULL,NULL}};
+    kernels[GHOST_HOST_IDX][GHOST_RM_IDX] = &ghost_densemat_rm_mult;
+    kernels[GHOST_HOST_IDX][GHOST_CM_IDX] = &ghost_densemat_cm_mult;
+#ifdef GHOST_HAVE_CUDA
+    kernels[GHOST_DEVICE_IDX][GHOST_RM_IDX] = &ghost_densemat_cu_rm_mult;
+    kernels[GHOST_DEVICE_IDX][GHOST_CM_IDX] = &ghost_densemat_cu_cm_mult;
+#endif
+
+    SELECT_BLAS1_KERNEL(kernels,commonlocation,y->traits.compute_at,y->traits.storage,ret,y,x,a);
+
+    return ret;
+}
