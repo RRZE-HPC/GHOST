@@ -40,6 +40,7 @@ extern "C" {
     ghost_error ghost_densemat_rm_axpby(ghost_densemat *vec1, ghost_densemat *vec2, void *, void *); 
     ghost_error ghost_densemat_rm_axpbypcz(ghost_densemat *vec1, ghost_densemat *vec2, void *, void *, ghost_densemat *vec3, void *); 
     ghost_error ghost_densemat_rm_scale(ghost_densemat *vec, void *); 
+    ghost_error ghost_densemat_rm_mult(ghost_densemat *vec1, ghost_densemat *vec2, void *); 
     ghost_error ghost_densemat_rm_distributeVector(ghost_densemat *vec, ghost_densemat *nodeVec, ghost_context *ctx);
     ghost_error ghost_densemat_rm_collectVectors(ghost_densemat *vec, ghost_densemat *totalVec, ghost_context *ctx); 
     ghost_error ghost_densemat_rm_compress(ghost_densemat *vec);
