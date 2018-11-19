@@ -341,7 +341,8 @@ static ghost_error FUNCNAME(vscale_tmpl(ghost_densemat *vec, void *scale))
 static ghost_error FUNCNAME(mult_tmpl(ghost_densemat *vec, ghost_densemat *vec2, void *scale))
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
-    DENSEMAT_ITER2(vec,vec2,*(v_t *)valptr2 *= *(v_t *)valptr1 * s[0];
+    v_t *s = (v_t*)scale;
+    DENSEMAT_ITER2(vec,vec2,*(v_t *)valptr2 *= *(v_t *)valptr1 * s[0]);
 
 #ifdef GHOST_INSTR_TIMING__not_implemented
     ghost_scale_perf_args pargs;
@@ -360,8 +361,9 @@ static ghost_error FUNCNAME(mult_tmpl(ghost_densemat *vec, ghost_densemat *vec2,
 static ghost_error FUNCNAME(mult1_tmpl(ghost_densemat *vec, ghost_densemat *vec2, void *scale))
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+    v_t* s = (v_t*)scale;
     // TODO: here vec has just 1 column, is there a macro we can use?
-//    DENSEMAT_ITER2(vec,vec2,*(v_t *)valptr2 *= *(v_t *)valptr1 * s[0];
+//    DENSEMAT_ITER2(vec,vec2,*(v_t *)valptr2 *= *(v_t *)valptr1 * s[0]);
 
 #ifdef GHOST_INSTR_TIMING__not_implemented
     ghost_scale_perf_args pargs;
