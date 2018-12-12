@@ -6,7 +6,7 @@
 
 set -e
 
-export CCACHE_DIR=/home_local/f_buildn/ESSEX_workspace/.ccache/
+#export CCACHE_DIR=/home_local/f_buildn/ESSEX_workspace/.ccache/
 
 ## default options and declarations
 # kernel lib
