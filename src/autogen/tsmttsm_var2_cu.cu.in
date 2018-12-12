@@ -20,6 +20,7 @@
 #include <unistd.h>
 #include <iostream>
 
+
 #include "ghost/cu_complex.h"
 
 namespace {
@@ -107,7 +108,7 @@ void ghost_tsmttsm_cu_rm_fallback(oT *const __restrict__ C, const T *const __res
         &numBlocks, varBlockProductKernel<T, oT, conjv, threadsPerBlock>, threadsPerBlock, 0);
     ghost_lidx blockCount = prop.multiProcessorCount * numBlocks;
 
-    blockCount = min(K * M * N  / threadsPerBlock / 20 + 1, blockCount);
+    blockCount = max(M*N / threadsPerBlock + 1, min(K * M * N  / threadsPerBlock / 20 + 1, blockCount));
 
 
     void *d_temp_storage = NULL;
@@ -116,7 +117,10 @@ void ghost_tsmttsm_cu_rm_fallback(oT *const __restrict__ C, const T *const __res
     ghost_cu_temp_buffer_malloc(&d_temp_storage, sizeof(oT) * temp_storage_size);
 
     //    CUDA_CALL(cudaMemset(d_temp_storage, 0, temp_storage_size * sizeof(oT)), err);
-    if (err != GHOST_SUCCESS) return;
+    if (err != GHOST_SUCCESS) {
+      return;
+    }
+
 
     varBlockProductKernel<T, oT, conjv, threadsPerBlock>
         <<<blockCount, threadsPerBlock>>>(A, B, (oT *)d_temp_storage, K, lda, ldb, ldc, M, N);
