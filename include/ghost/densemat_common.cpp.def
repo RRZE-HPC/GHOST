@@ -914,6 +914,16 @@ extern "C" ghost_error FUNCNAME(vscale_selector(ghost_densemat *vec, void *scale
     return ret;
 }
 
+extern "C" ghost_error FUNCNAME(mult_selector(ghost_densemat *v1, ghost_densemat *v2, void *scale)) 
+{ 
+    ghost_error ret = GHOST_SUCCESS;
+
+    SELECT_TMPL_1DATATYPE(v1->traits.datatype,std::complex,ret,FUNCNAME(mult_tmpl),v1, v2,scale);
+
+    return ret;
+}
+
+
 extern "C" ghost_error FUNCNAME(vaxpy_selector(ghost_densemat *vec, ghost_densemat *vec2, void *scale))
 { 
     ghost_error ret = GHOST_SUCCESS;

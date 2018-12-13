@@ -823,8 +823,8 @@ ghost_error ghost_mult(ghost_densemat *y, ghost_densemat *x, void *a)
 
     typedef ghost_error (*ghost_mult_kernel)(ghost_densemat*, ghost_densemat*, void*);
     ghost_mult_kernel kernels[2][2] = {{NULL,NULL},{NULL,NULL}};
-    kernels[GHOST_HOST_IDX][GHOST_RM_IDX] = &ghost_densemat_rm_mult;
-    kernels[GHOST_HOST_IDX][GHOST_CM_IDX] = &ghost_densemat_cm_mult;
+    kernels[GHOST_HOST_IDX][GHOST_RM_IDX] = &ghost_densemat_rm_mult_selector;
+    kernels[GHOST_HOST_IDX][GHOST_CM_IDX] = &ghost_densemat_cm_mult_selector;
 #ifdef GHOST_HAVE_CUDA
     kernels[GHOST_DEVICE_IDX][GHOST_RM_IDX] = &ghost_densemat_cu_rm_mult;
     kernels[GHOST_DEVICE_IDX][GHOST_CM_IDX] = &ghost_densemat_cu_cm_mult;

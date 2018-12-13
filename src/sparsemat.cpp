@@ -4,7 +4,7 @@
 #endif
 
 #include <map>
-#include <cmath>
+#include <math.h>
 #include <cstdlib>
 #include <vector>
 #include <numeric>
