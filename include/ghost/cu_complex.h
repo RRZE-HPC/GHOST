@@ -332,5 +332,23 @@ __device__ inline cuDoubleComplex scale2<cuDoubleComplex,double>(cuDoubleComplex
     return cuCmul(make_cuDoubleComplex(a,0.),y);
 }
 
+// z = a*x*y
+template<typename T>
+__device__ inline T mult(T x, T y, T a)
+{
+    return a*x*y;
+}
+
+template<>
+__device__ inline cuFloatComplex mult<cuFloatComplex>(cuFloatComplex x, cuFloatComplex y, cuFloatComplex a)
+{
+    return cuCmulf(a,cuCmulf(x,y));
+}
+
+template<>
+__device__ inline cuDoubleComplex mult<cuDoubleComplex>(cuDoubleComplex x, cuDoubleComplex y, cuDoubleComplex a)
+{
+    return cuCmul(a,cuCmul(x,y));
+}
 
 #endif
