@@ -23,6 +23,7 @@ struct SmallBuffer {
 
 vector<SmallBuffer> buffers;
 std::mutex cu_temp_buffer_malloc_mutex;
+unsigned int usedBufferCount = 0;
 unsigned int peakBufferCount = 0;
 
 ghost_error ghost_cu_temp_buffer_malloc(void **mem, size_t bytesize)
@@ -31,7 +32,9 @@ ghost_error ghost_cu_temp_buffer_malloc(void **mem, size_t bytesize)
     lock_guard<mutex> lock(cu_temp_buffer_malloc_mutex);
 
 
-    peakBufferCount += 1;
+    usedBufferCount += 1;
+    peakBufferCount = max(peakBufferCount, usedBufferCount);
+
     auto foundBuffer = find_if(begin(buffers), end(buffers),
         [=](const SmallBuffer &b) { return (b.size >= bytesize && !b.used); });
 
@@ -46,16 +49,18 @@ ghost_error ghost_cu_temp_buffer_malloc(void **mem, size_t bytesize)
         CUDA_CALL_RETURN(cudaMalloc(&newBuffer.dPtr, bytesize));
         *mem = newBuffer.dPtr;
         buffers.push_back(newBuffer);
+
         sort(begin(buffers), end(buffers), [](const SmallBuffer &a, const SmallBuffer &b) {
-            return (!a.used && b.used) || a.size < b.size;
+            return (a.used == b.used && a.size < b.size) || (!a.used && b.used);
         });
+
 
         GHOST_DEBUG_LOG(1, "cudaMalloc new temporary buffer with  %zuB", bytesize);
         if (buffers.size() > peakBufferCount) {
-          GHOST_DEBUG_LOG(1, "Have %zu buffers, needed %u at most, cudaFree buffer with %zuB", buffers.size(), peakBufferCount, begin(buffers)->size );
-          CUDA_CALL_RETURN(cudaFree(begin(buffers)->dPtr));
+            GHOST_DEBUG_LOG(1, "Have %zu buffers, needed %u at most, cudaFree buffer with %zuB",
+                buffers.size(), peakBufferCount, begin(buffers)->size);
+            CUDA_CALL_RETURN(cudaFree(begin(buffers)->dPtr));
             buffers.erase(begin(buffers));
-
         }
     }
 #else
@@ -70,7 +75,7 @@ ghost_error ghost_cu_temp_buffer_free(void *mem)
 {
 #ifdef GHOST_HAVE_CUDA
     lock_guard<mutex> lock(cu_temp_buffer_malloc_mutex);
-    peakBufferCount = peakBufferCount - 1;
+    usedBufferCount -= 1;
 
     auto foundBuffer =
         find_if(begin(buffers), end(buffers), [=](SmallBuffer b) { return b.dPtr == mem; });
