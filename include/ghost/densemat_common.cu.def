@@ -28,10 +28,10 @@
 #error "Only one of ROWMAJOR or COLMAJOR must be defined!"
 #endif
 #define PREFIX rm
-#define IDX(row,col,ld) ((row)*(ld)+(col))
-#elif defined (COLMAJOR)
+#define IDX(row, col, ld) ((row) * (ld) + (col))
+#elif defined(COLMAJOR)
 #define PREFIX cm
-#define IDX(row,col,ld) ((col)*(ld)+(row))
+#define IDX(row, col, ld) ((col) * (ld) + (row))
 #else
 #error "One of ROWMAJOR or COLMAJOR must be defined!"
 #endif
@@ -39,18 +39,19 @@
 // macros for a 2D thread block with leading dimension along the columns
 // this access pattern might seem bad for row-major densemats, but it is
 // required for fast reduction with shuffle instructions
-#define BLOCK_ROWSTRIDE blockDim.x*gridDim.x
-#define BLOCK_ROW blockIdx.x*blockDim.x+threadIdx.x
-#define BLOCK_COL blockIdx.y*blockDim.y+threadIdx.y
+#define BLOCK_ROWSTRIDE blockDim.x *gridDim.x
+#define BLOCK_ROW blockIdx.x *blockDim.x + threadIdx.x
+#define BLOCK_COL blockIdx.y *blockDim.y + threadIdx.y
 
-#define PASTER(x,y) x ## _ ## y
-#define EVALUATOR(x,y) PASTER(x,y)
-#define FUNCNAME(fun) EVALUATOR(ghost_densemat_cu,EVALUATOR(PREFIX,fun))
+#define PASTER(x, y) x##_##y
+#define EVALUATOR(x, y) PASTER(x, y)
+#define FUNCNAME(fun) EVALUATOR(ghost_densemat_cu, EVALUATOR(PREFIX, fun))
 
 extern __shared__ char shared[];
 
-template<typename T>  
-__global__ static void FUNCNAME(dot_kernel)(T *res, T *v1, T *v2, ghost_lidx nrows, ghost_lidx ncols, ghost_lidx ld1, ghost_lidx ld2)
+template<typename T>
+__global__ static void FUNCNAME(dot_kernel)(
+    T *res, T *v1, T *v2, ghost_lidx nrows, ghost_lidx ncols, ghost_lidx ld1, ghost_lidx ld2)
 {
     T dot;
     zero<T>(dot);
@@ -58,156 +59,183 @@ __global__ static void FUNCNAME(dot_kernel)(T *res, T *v1, T *v2, ghost_lidx nro
     int col = BLOCK_COL;
 
     if (col < ncols) {
-        T * shmem = (T *)shared; // Shared mem for 32 partial sums
+        T *shmem = (T *)shared; // Shared mem for 32 partial sums
 
         if (row < nrows) {
-            dot = mulConj<T>(v1[IDX(row,col,ld1)],v2[IDX(row,col,ld2)]);
+            dot = mulConj<T>(v1[IDX(row, col, ld1)], v2[IDX(row, col, ld2)]);
         } else {
             zero<T>(dot);
         }
 
 
-        dot = accu<T>(dot,ghost_shfl_down(dot, 16, warpSize));
-        dot = accu<T>(dot,ghost_shfl_down(dot, 8, warpSize));
-        dot = accu<T>(dot,ghost_shfl_down(dot, 4, warpSize));
-        dot = accu<T>(dot,ghost_shfl_down(dot, 2, warpSize));
-        dot = accu<T>(dot,ghost_shfl_down(dot, 1, warpSize));
+        dot = accu<T>(dot, ghost_shfl_down(dot, 16, warpSize));
+        dot = accu<T>(dot, ghost_shfl_down(dot, 8, warpSize));
+        dot = accu<T>(dot, ghost_shfl_down(dot, 4, warpSize));
+        dot = accu<T>(dot, ghost_shfl_down(dot, 2, warpSize));
+        dot = accu<T>(dot, ghost_shfl_down(dot, 1, warpSize));
 
-        if (threadIdx.x%warpSize == 0) {
-            int wid = (threadIdx.x / warpSize) + ((blockDim.x / warpSize)*threadIdx.y);
-            shmem[wid]=dot; // Write reduced value to shared memory
+        if (threadIdx.x % warpSize == 0) {
+            int wid = (threadIdx.x / warpSize) + ((blockDim.x / warpSize) * threadIdx.y);
+            shmem[wid] = dot; // Write reduced value to shared memory
         }
 
-        __syncthreads();              // Wait for all partial reductions
+        __syncthreads(); // Wait for all partial reductions
 
-        //read from shared memory only if that warp existed
+        // read from shared memory only if that warp existed
         if (threadIdx.x < blockDim.x / warpSize) {
-            int lane = (threadIdx.x % warpSize) + ((blockDim.x / warpSize)*threadIdx.y);
+            int lane = (threadIdx.x % warpSize) + ((blockDim.x / warpSize) * threadIdx.y);
             dot = shmem[lane];
         } else {
             zero<T>(dot);
         }
 
         if (threadIdx.x < warpSize) {
-            dot = ghost_partialWarpReduceSum(dot,blockDim.x/warpSize,blockDim.x/warpSize);
-            if (threadIdx.x == 0) {
-                res[col*gridDim.x+blockIdx.x] = dot;
-            }
+            dot = ghost_partialWarpReduceSum(dot, blockDim.x / warpSize, blockDim.x / warpSize);
+            if (threadIdx.x == 0) { res[col * gridDim.x + blockIdx.x] = dot; }
         }
     }
 }
 
-template<typename T>  
-__global__ static void FUNCNAME(vaxpby_kernel)(T *v1, T *v2, T *a, T *b, ghost_lidx nrows, ghost_lidx ncols, ghost_lidx ld1, ghost_lidx ld2)
+template<typename T>
+__global__ static void FUNCNAME(vaxpby_kernel)(
+    T *v1, T *v2, T *a, T *b, ghost_lidx nrows, ghost_lidx ncols, ghost_lidx ld1, ghost_lidx ld2)
 {
-    int idx = blockIdx.x*blockDim.x+threadIdx.x;
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
-    for (;idx < nrows; idx+=gridDim.x*blockDim.x) {
+    for (; idx < nrows; idx += gridDim.x * blockDim.x) {
         ghost_lidx v;
-        for (v=0; v<ncols; v++) {
-            v1[IDX(idx,v,ld1)] = axpby<T>(v2[IDX(idx,v,ld2)],v1[IDX(idx,v,ld1)],a[v],b[v]);
+        for (v = 0; v < ncols; v++) {
+            v1[IDX(idx, v, ld1)] = axpby<T>(v2[IDX(idx, v, ld2)], v1[IDX(idx, v, ld1)], a[v], b[v]);
         }
     }
 }
 
-template<typename T>  
-__global__ static void FUNCNAME(axpby_kernel)(T *v1, T *v2, T a, T b, ghost_lidx nrows, ghost_lidx ncols, ghost_lidx ld1, ghost_lidx ld2) 
+template<typename T>
+__global__ static void FUNCNAME(axpby_kernel)(
+    T *v1, T *v2, T a, T b, ghost_lidx nrows, ghost_lidx ncols, ghost_lidx ld1, ghost_lidx ld2)
 {
-    int idx = blockIdx.x*blockDim.x+threadIdx.x;
-    for (;idx < nrows*ncols; idx+=gridDim.x*blockDim.x) {
-        int row = idx/ncols;
-        int col = idx%ncols;
-        v1[IDX(row,col,ld1)] = axpby<T>(v2[IDX(row,col,ld2)],v1[IDX(row,col,ld1)],a,b);
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    for (; idx < nrows * ncols; idx += gridDim.x * blockDim.x) {
+        int row = idx / ncols;
+        int col = idx % ncols;
+        v1[IDX(row, col, ld1)] = axpby<T>(v2[IDX(row, col, ld2)], v1[IDX(row, col, ld1)], a, b);
     }
 }
 
-template<typename T>  
-__global__ static void FUNCNAME(axpbypcz_kernel)(T *v1, T *v2, T *v3, T a, T b, T c, ghost_lidx nrows, ghost_lidx ncols, ghost_lidx ld1, ghost_lidx ld2, ghost_lidx ld3) 
+template<typename T>
+__global__ static void FUNCNAME(axpbypcz_kernel)(T *v1, T *v2, T *v3, T a, T b, T c,
+    ghost_lidx nrows, ghost_lidx ncols, ghost_lidx ld1, ghost_lidx ld2, ghost_lidx ld3)
 {
     T o;
     one(o);
-    int idx = blockIdx.x*blockDim.x+threadIdx.x;
-    for (;idx < nrows; idx+=gridDim.x*blockDim.x) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    for (; idx < nrows; idx += gridDim.x * blockDim.x) {
         ghost_lidx v;
-        for (v=0; v<ncols; v++) {
-            v1[IDX(idx,v,ld1)] = axpby<T>(axpby<T>(v2[IDX(idx,v,ld2)],v1[IDX(idx,v,ld1)],a,b),v3[IDX(idx,v,ld3)],o,c);
+        for (v = 0; v < ncols; v++) {
+            v1[IDX(idx, v, ld1)] = axpby<T>(axpby<T>(v2[IDX(idx, v, ld2)], v1[IDX(idx, v, ld1)], a, b),
+                v3[IDX(idx, v, ld3)], o, c);
         }
     }
 }
 
-template<typename T>  
-__global__ static void FUNCNAME(vaxpbypcz_kernel)(T *v1, T *v2, T *v3, T *a, T *b, T *c, ghost_lidx nrows, ghost_lidx ncols, ghost_lidx ld1, ghost_lidx ld2, ghost_lidx ld3) 
+template<typename T>
+__global__ static void FUNCNAME(vaxpbypcz_kernel)(T *v1, T *v2, T *v3, T *a, T *b, T *c,
+    ghost_lidx nrows, ghost_lidx ncols, ghost_lidx ld1, ghost_lidx ld2, ghost_lidx ld3)
 {
     T o;
     one(o);
-    int idx = blockIdx.x*blockDim.x+threadIdx.x;
-    for (;idx < nrows; idx+=gridDim.x*blockDim.x) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    for (; idx < nrows; idx += gridDim.x * blockDim.x) {
         ghost_lidx v;
-        for (v=0; v<ncols; v++) {
-            v1[IDX(idx,v,ld1)] = axpby<T>(axpby<T>(v2[IDX(idx,v,ld2)],v1[IDX(idx,v,ld1)],a[v],b[v]),v3[IDX(idx,v,ld3)],o,c[v]);
+        for (v = 0; v < ncols; v++) {
+            v1[IDX(idx, v, ld1)] =
+                axpby<T>(axpby<T>(v2[IDX(idx, v, ld2)], v1[IDX(idx, v, ld1)], a[v], b[v]),
+                    v3[IDX(idx, v, ld3)], o, c[v]);
         }
     }
 }
 
-template<typename T>  
+template<typename T>
 __global__ static void FUNCNAME(scale_kernel)(T *vec, T a, ghost_lidx nrows, ghost_lidx ncols, ghost_lidx ld)
 {
-    int idx = blockIdx.x*blockDim.x+threadIdx.x;
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
-    for (;idx < nrows; idx+=gridDim.x*blockDim.x) {
+    for (; idx < nrows; idx += gridDim.x * blockDim.x) {
         ghost_lidx v;
-        for (v=0; v<ncols; v++) {
-            vec[IDX(idx,v,ld)] = scale<T>(a,vec[IDX(idx,v,ld)]);
-        }
+        for (v = 0; v < ncols; v++) { vec[IDX(idx, v, ld)] = scale<T>(a, vec[IDX(idx, v, ld)]); }
     }
-
 }
 
-template<typename T>  
+template<typename T>
 __global__ static void FUNCNAME(conj_kernel)(T *vec, ghost_lidx nrows, ghost_lidx ncols, ghost_lidx ld)
 {
-    int idx = blockIdx.x*blockDim.x+threadIdx.x;
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
-    for (;idx < nrows; idx+=gridDim.x*blockDim.x) {
+    for (; idx < nrows; idx += gridDim.x * blockDim.x) {
         ghost_lidx v;
-        for (v=0; v<ncols; v++) {
-            vec[IDX(idx,v,ld)] = conj(vec[IDX(idx,v,ld)]);
-        }
-    }
-
-}
-
-template<typename T>  
-__global__ static void FUNCNAME(vscale_kernel)(T *vec, T *a, ghost_lidx nrows, ghost_lidx ncols, ghost_lidx ld)
-{
-    int idx = blockIdx.x*blockDim.x+threadIdx.x;
-
-    for (;idx < nrows; idx+=gridDim.x*blockDim.x) {
-        ghost_lidx v;
-        for (v=0; v<ncols; v++) {
-            vec[IDX(idx,v,ld)] = scale<T>(a[v],vec[IDX(idx,v,ld)]);
-        }
+        for (v = 0; v < ncols; v++) { vec[IDX(idx, v, ld)] = conj(vec[IDX(idx, v, ld)]); }
     }
 }
 
-template<typename T>  
-__global__ static void FUNCNAME(fromscalar_kernel)(T *vec, T a, ghost_lidx nrows, ghost_lidx ncols, ghost_lidx ld)
+template<typename T>
+__global__ static void FUNCNAME(vscale_kernel)(
+    T *vec, T *a, ghost_lidx nrows, ghost_lidx ncols, ghost_lidx ld)
 {
-    int idx = blockIdx.x*blockDim.x+threadIdx.x;
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
-    for (;idx < nrows; idx+=gridDim.x*blockDim.x) {
+    for (; idx < nrows; idx += gridDim.x * blockDim.x) {
         ghost_lidx v;
-        for (v=0; v<ncols; v++) {
-            vec[IDX(idx,v,ld)] = a;
+        for (v = 0; v < ncols; v++) { vec[IDX(idx, v, ld)] = scale<T>(a[v], vec[IDX(idx, v, ld)]); }
+    }
+}
+
+template<typename T>
+__global__ static void FUNCNAME(mult_kernel)(
+    T *v1, T *v2, T a, ghost_lidx nrows, ghost_lidx ncols, ghost_lidx ld1, ghost_lidx ld2)
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    for (; idx < nrows; idx += gridDim.x * blockDim.x) {
+        ghost_lidx v;
+        for (v = 0; v < ncols; v++) {
+            v2[IDX(idx, v, ld1)] = mult<T>(a, v1[IDX(idx, v, ld1)], v2[IDX(idx, v, ld2)]);
         }
     }
 }
 
-
-template<typename T>  
-__global__ static void FUNCNAME(communicationassembly_kernel)(T *vec, T *work, ghost_lidx offs, ghost_lidx *duelist, ghost_lidx ncols, ghost_lidx ndues, ghost_lidx ld, ghost_lidx nduestotal, ghost_lidx *perm)
+template<typename T>
+__global__ static void FUNCNAME(mult1_kernel)(
+    T *v1, T *v2, T *a, ghost_lidx nrows, ghost_lidx ncols, ghost_lidx ld1, ghost_lidx ld2)
 {
-    int due = blockIdx.x*blockDim.x+threadIdx.x;
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    for (; idx < nrows; idx += gridDim.x * blockDim.x) {
+        ghost_lidx v;
+        for (v = 0; v < ncols; v++) {
+            v2[IDX(idx, v, ld1)] = mult<T>(a[0], v1[IDX(idx, 0, ld2)], v2[IDX(idx, v, ld2)]);
+        }
+    }
+}
+
+template<typename T>
+__global__ static void FUNCNAME(fromscalar_kernel)(
+    T *vec, T a, ghost_lidx nrows, ghost_lidx ncols, ghost_lidx ld)
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    for (; idx < nrows; idx += gridDim.x * blockDim.x) {
+        ghost_lidx v;
+        for (v = 0; v < ncols; v++) { vec[IDX(idx, v, ld)] = a; }
+    }
+}
+
+
+template<typename T>
+__global__ static void FUNCNAME(communicationassembly_kernel)(T *vec, T *work, ghost_lidx offs,
+    ghost_lidx *duelist, ghost_lidx ncols, ghost_lidx ndues, ghost_lidx ld, ghost_lidx nduestotal,
+    ghost_lidx *perm)
+{
+    int due = blockIdx.x * blockDim.x + threadIdx.x;
     int col = threadIdx.y;
 #ifdef ROWMAJOR
     int ldwork = ncols;
@@ -216,66 +244,69 @@ __global__ static void FUNCNAME(communicationassembly_kernel)(T *vec, T *work, g
 #endif
 
     if (perm) {
-        for (;due < ndues; due+=gridDim.x*blockDim.x) {
-            work[IDX(offs+due,col,ldwork)] = vec[IDX(perm[duelist[due]],col,ld)];
+        for (; due < ndues; due += gridDim.x * blockDim.x) {
+            work[IDX(offs + due, col, ldwork)] = vec[IDX(perm[duelist[due]], col, ld)];
         }
     } else {
-        for (;due < ndues; due+=gridDim.x*blockDim.x) {
-            work[IDX(offs+due,col,ldwork)] = vec[IDX(duelist[due],col,ld)];
+        for (; due < ndues; due += gridDim.x * blockDim.x) {
+            work[IDX(offs + due, col, ldwork)] = vec[IDX(duelist[due], col, ld)];
         }
     }
 }
 
-extern "C" ghost_error FUNCNAME(communicationassembly)(void * work, ghost_lidx *dueptr, ghost_lidx totaldues, ghost_densemat *vec, ghost_context *ctx, ghost_lidx *perm)
+extern "C" ghost_error FUNCNAME(communicationassembly)(void *work, ghost_lidx *dueptr,
+    ghost_lidx totaldues, ghost_densemat *vec, ghost_context *ctx, ghost_lidx *perm)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
-  
+
     if (!ctx->cu_duelist) {
-       GHOST_ERROR_LOG("cu_duelist must not be NULL!");
-       return GHOST_ERR_INVALID_ARG;
+        GHOST_ERROR_LOG("cu_duelist must not be NULL!");
+        return GHOST_ERR_INVALID_ARG;
     }
     if (!dueptr) {
-       GHOST_ERROR_LOG("dueptr must not be NULL!");
-       return GHOST_ERR_INVALID_ARG;
+        GHOST_ERROR_LOG("dueptr must not be NULL!");
+        return GHOST_ERR_INVALID_ARG;
     }
 
 
     int nrank, proc, me;
-    
-    ghost_nrank(&nrank,ctx->mpicomm); 
-    ghost_rank(&me,ctx->mpicomm);
-            
-    for (proc=0 ; proc<nrank ; proc++){
-        dim3 block((int)ceil((double)THREADSPERBLOCK/vec->traits.ncols),vec->traits.ncols);
-        dim3 grid((int)ceil((double)ctx->dues[proc]/block.x));
-        GHOST_DEBUG_LOG(1,"communication assembly with grid %d block %dx%d %d->%d",grid.x,block.x,block.y,me,proc);
-        if (vec->traits.datatype & GHOST_DT_COMPLEX)
-        {
-            if (vec->traits.datatype & GHOST_DT_DOUBLE)
-            {
+
+    ghost_nrank(&nrank, ctx->mpicomm);
+    ghost_rank(&me, ctx->mpicomm);
+
+    for (proc = 0; proc < nrank; proc++) {
+        dim3 block((int)ceil((double)THREADSPERBLOCK / vec->traits.ncols), vec->traits.ncols);
+        dim3 grid((int)ceil((double)ctx->dues[proc] / block.x));
+        GHOST_DEBUG_LOG(1, "communication assembly with grid %d block %dx%d %d->%d", grid.x,
+            block.x, block.y, me, proc);
+        if (vec->traits.datatype & GHOST_DT_COMPLEX) {
+            if (vec->traits.datatype & GHOST_DT_DOUBLE) {
                 if (ctx->dues[proc]) {
-                    FUNCNAME(communicationassembly_kernel)<cuDoubleComplex><<< grid,block >>>((cuDoubleComplex *)vec->cu_val, ((cuDoubleComplex *)work),dueptr[proc],ctx->cu_duelist[proc],vec->traits.ncols,ctx->dues[proc],vec->stride,totaldues,perm);
+                    FUNCNAME(communicationassembly_kernel)<cuDoubleComplex>
+                        <<<grid, block>>>((cuDoubleComplex *)vec->cu_val, ((cuDoubleComplex *)work),
+                            dueptr[proc], ctx->cu_duelist[proc], vec->traits.ncols, ctx->dues[proc],
+                            vec->stride, totaldues, perm);
                 }
-            } 
-            else 
-            {
+            } else {
                 if (ctx->dues[proc]) {
-                    FUNCNAME(communicationassembly_kernel)<cuFloatComplex><<< grid,block >>>((cuFloatComplex *)vec->cu_val, ((cuFloatComplex *)work),dueptr[proc],ctx->cu_duelist[proc],vec->traits.ncols,ctx->dues[proc],vec->stride,totaldues,perm);
+                    FUNCNAME(communicationassembly_kernel)<cuFloatComplex>
+                        <<<grid, block>>>((cuFloatComplex *)vec->cu_val, ((cuFloatComplex *)work),
+                            dueptr[proc], ctx->cu_duelist[proc], vec->traits.ncols, ctx->dues[proc],
+                            vec->stride, totaldues, perm);
                 }
             }
-        }
-        else
-        {
-            if (vec->traits.datatype & GHOST_DT_DOUBLE)
-            {
+        } else {
+            if (vec->traits.datatype & GHOST_DT_DOUBLE) {
                 if (ctx->dues[proc]) {
-                    FUNCNAME(communicationassembly_kernel)<double><<< grid,block >>>((double *)vec->cu_val, ((double *)work),dueptr[proc],ctx->cu_duelist[proc],vec->traits.ncols,ctx->dues[proc],vec->stride,totaldues,perm);
+                    FUNCNAME(communicationassembly_kernel)<double><<<grid, block>>>(
+                        (double *)vec->cu_val, ((double *)work), dueptr[proc], ctx->cu_duelist[proc],
+                        vec->traits.ncols, ctx->dues[proc], vec->stride, totaldues, perm);
                 }
-            } 
-            else 
-            {
+            } else {
                 if (ctx->dues[proc]) {
-                    FUNCNAME(communicationassembly_kernel)<float><<< grid,block >>>((float *)vec->cu_val, ((float *)work),dueptr[proc],ctx->cu_duelist[proc],vec->traits.ncols,ctx->dues[proc],vec->stride,totaldues,perm);
+                    FUNCNAME(communicationassembly_kernel)<float><<<grid, block>>>((float *)vec->cu_val,
+                        ((float *)work), dueptr[proc], ctx->cu_duelist[proc], vec->traits.ncols,
+                        ctx->dues[proc], vec->stride, totaldues, perm);
                 }
             }
         }
@@ -289,74 +320,57 @@ extern "C" ghost_error FUNCNAME(communicationassembly)(void * work, ghost_lidx *
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
 
     return GHOST_SUCCESS;
-
 }
 
 extern "C" ghost_error FUNCNAME(vaxpy)(ghost_densemat *v1, ghost_densemat *v2, void *a)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
-    ghost_error ret = GHOST_SUCCESS; 
-    
-    if (v1->traits.datatype & GHOST_DT_COMPLEX)
-    {
-        if (v1->traits.datatype & GHOST_DT_DOUBLE)
-        {
+    ghost_error ret = GHOST_SUCCESS;
+
+    if (v1->traits.datatype & GHOST_DT_COMPLEX) {
+        if (v1->traits.datatype & GHOST_DT_DOUBLE) {
             std::complex<double> *ones;
-            GHOST_CALL_RETURN(ghost_malloc((void **)&ones,v1->traits.ncols*sizeof(std::complex<double>)));
+            GHOST_CALL_RETURN(
+                ghost_malloc((void **)&ones, v1->traits.ncols * sizeof(std::complex<double>)));
             int v;
-            for (v=0; v<v1->traits.ncols; v++) {
-                ones[v] = std::complex<double>(1.,0.);
-            }
-            ret =  FUNCNAME(vaxpby)(v1,v2,a,ones);
-        } 
-        else 
-        {
+            for (v = 0; v < v1->traits.ncols; v++) { ones[v] = std::complex<double>(1., 0.); }
+            ret = FUNCNAME(vaxpby)(v1, v2, a, ones);
+        } else {
             std::complex<float> *ones;
-            GHOST_CALL_RETURN(ghost_malloc((void **)&ones,v1->traits.ncols*sizeof(std::complex<float>)));
+            GHOST_CALL_RETURN(
+                ghost_malloc((void **)&ones, v1->traits.ncols * sizeof(std::complex<float>)));
             int v;
-            for (v=0; v<v1->traits.ncols; v++) {
-                ones[v] = std::complex<float>(1.,0.);
-            }
-            ret =  FUNCNAME(vaxpby)(v1,v2,a,ones);
+            for (v = 0; v < v1->traits.ncols; v++) { ones[v] = std::complex<float>(1., 0.); }
+            ret = FUNCNAME(vaxpby)(v1, v2, a, ones);
         }
-    }
-    else
-    {
-        if (v1->traits.datatype & GHOST_DT_DOUBLE)
-        {
+    } else {
+        if (v1->traits.datatype & GHOST_DT_DOUBLE) {
             double *ones;
-            GHOST_CALL_RETURN(ghost_malloc((void **)&ones,v1->traits.ncols*sizeof(double)));
+            GHOST_CALL_RETURN(ghost_malloc((void **)&ones, v1->traits.ncols * sizeof(double)));
             int v;
-            for (v=0; v<v1->traits.ncols; v++) {
-                ones[v] = 1.;
-            }
-            ret =  FUNCNAME(vaxpby)(v1,v2,a,ones);
-        } 
-        else 
-        {
+            for (v = 0; v < v1->traits.ncols; v++) { ones[v] = 1.; }
+            ret = FUNCNAME(vaxpby)(v1, v2, a, ones);
+        } else {
             float *ones;
-            GHOST_CALL_RETURN(ghost_malloc((void **)&ones,v1->traits.ncols*sizeof(float)));
+            GHOST_CALL_RETURN(ghost_malloc((void **)&ones, v1->traits.ncols * sizeof(float)));
             int v;
-            for (v=0; v<v1->traits.ncols; v++) {
-                ones[v] = 1.;
-            }
-            ret =  FUNCNAME(vaxpby)(v1,v2,a,ones);
+            for (v = 0; v < v1->traits.ncols; v++) { ones[v] = 1.; }
+            ret = FUNCNAME(vaxpby)(v1, v2, a, ones);
         }
     }
-    
+
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
 
     return ret;
 }
-    
+
 extern "C" ghost_error FUNCNAME(vaxpby)(ghost_densemat *v1, ghost_densemat *v2, void *a, void *b)
 {
-    if (v1->traits.datatype != v2->traits.datatype)
-    {
+    if (v1->traits.datatype != v2->traits.datatype) {
         GHOST_ERROR_LOG("Cannot VAXPBY vectors with different data types");
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
-    
+
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error ret = GHOST_SUCCESS;
 
@@ -364,75 +378,70 @@ extern "C" ghost_error FUNCNAME(vaxpby)(ghost_densemat *v1, ghost_densemat *v2, 
     void *d_b;
     size_t sizeofdt;
 
-    ghost_datatype_size(&sizeofdt,v1->traits.datatype);
 
-    GHOST_CALL_GOTO(ghost_cu_temp_buffer_malloc(&d_a,v1->traits.ncols*sizeofdt),err,ret);
-    GHOST_CALL_GOTO(ghost_cu_temp_buffer_malloc(&d_b,v1->traits.ncols*sizeofdt),err,ret);
+    ghost_datatype_size(&sizeofdt, v1->traits.datatype);
 
-    ghost_lidx c; 
-    for (c=0; c<v1->traits.ncols; c++) {
-            GHOST_CALL_GOTO(ghost_cu_upload(&((char *)d_a)[c*sizeofdt],&((char *)a)[c*sizeofdt],sizeofdt),err,ret);
-            GHOST_CALL_GOTO(ghost_cu_upload(&((char *)d_b)[c*sizeofdt],&((char *)b)[c*sizeofdt],sizeofdt),err,ret);
+    GHOST_CALL_GOTO(ghost_cu_temp_buffer_malloc(&d_a, v1->traits.ncols * sizeofdt), err, ret);
+    GHOST_CALL_GOTO(ghost_cu_temp_buffer_malloc(&d_b, v1->traits.ncols * sizeofdt), err, ret);
+
+    ghost_lidx c;
+    for (c = 0; c < v1->traits.ncols; c++) {
+        GHOST_CALL_GOTO(
+            ghost_cu_upload(&((char *)d_a)[c * sizeofdt], &((char *)a)[c * sizeofdt], sizeofdt), err, ret);
+        GHOST_CALL_GOTO(
+            ghost_cu_upload(&((char *)d_b)[c * sizeofdt], &((char *)b)[c * sizeofdt], sizeofdt), err, ret);
     }
-    
-    
+
     void *v1val, *v2val;
     ghost_densemat *v1compact, *v2compact;
-    
+
     if (v1->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         GHOST_INFO_LOG("Cloning (and compressing) v1 before operation");
-        GHOST_CALL_GOTO(ghost_densemat_clone(&v1compact,v1,v1->traits.ncols,0),err,ret);
+        GHOST_CALL_GOTO(ghost_densemat_clone(&v1compact, v1, v1->traits.ncols, 0), err, ret);
     } else {
         v1compact = v1;
     }
     if (v2->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         GHOST_INFO_LOG("Cloning (and compressing) v2 before operation");
-        GHOST_CALL_GOTO(ghost_densemat_clone(&v2compact,v2,v2->traits.ncols,0),err,ret);
+        GHOST_CALL_GOTO(ghost_densemat_clone(&v2compact, v2, v2->traits.ncols, 0), err, ret);
     } else {
         v2compact = v2;
     }
     v1val = v1compact->cu_val;
     v2val = v2compact->cu_val;
-    
 
-    if (v1->traits.datatype & GHOST_DT_COMPLEX)
-    {
-        if (v1->traits.datatype & GHOST_DT_DOUBLE)
-        {
-            FUNCNAME(vaxpby_kernel)<cuDoubleComplex><<< (int)ceil((double)DM_NROWS(v1)/THREADSPERBLOCK),THREADSPERBLOCK >>>(
-                (cuDoubleComplex *)v1val, (cuDoubleComplex *)v2val,(cuDoubleComplex *)d_a,(cuDoubleComplex *)d_b,
-                 DM_NROWS(v1),v1->traits.ncols,v1->stride,v2->stride);
-        } 
-        else 
-        {
-            FUNCNAME(vaxpby_kernel)<cuFloatComplex><<< (int)ceil((double)DM_NROWS(v1)/THREADSPERBLOCK),THREADSPERBLOCK >>>(
-                (cuFloatComplex *)v1val, (cuFloatComplex *)v2val,(cuFloatComplex *)d_a,(cuFloatComplex *)d_b,
-                 DM_NROWS(v1),v1->traits.ncols,v1->stride,v2->stride);
+
+    if (v1->traits.datatype & GHOST_DT_COMPLEX) {
+        if (v1->traits.datatype & GHOST_DT_DOUBLE) {
+            FUNCNAME(vaxpby_kernel)<cuDoubleComplex>
+                <<<(int)ceil((double)DM_NROWS(v1) / THREADSPERBLOCK), THREADSPERBLOCK>>>(
+                    (cuDoubleComplex *)v1val, (cuDoubleComplex *)v2val, (cuDoubleComplex *)d_a,
+                    (cuDoubleComplex *)d_b, DM_NROWS(v1), v1->traits.ncols, v1->stride, v2->stride);
+        } else {
+            FUNCNAME(vaxpby_kernel)<cuFloatComplex>
+                <<<(int)ceil((double)DM_NROWS(v1) / THREADSPERBLOCK), THREADSPERBLOCK>>>(
+                    (cuFloatComplex *)v1val, (cuFloatComplex *)v2val, (cuFloatComplex *)d_a,
+                    (cuFloatComplex *)d_b, DM_NROWS(v1), v1->traits.ncols, v1->stride, v2->stride);
         }
-    }
-    else
-    {
-        if (v1->traits.datatype & GHOST_DT_DOUBLE)
-        {
-            FUNCNAME(vaxpby_kernel)<double><<< (int)ceil((double)DM_NROWS(v1)/THREADSPERBLOCK),THREADSPERBLOCK >>>(
-                (double *)v1val, (double *)v2val,(double *)d_a,(double *)d_b,
-                 DM_NROWS(v1),v1->traits.ncols,v1->stride,v2->stride);
-        } 
-        else 
-        {
-            FUNCNAME(vaxpby_kernel)<float><<< (int)ceil((double)DM_NROWS(v1)/THREADSPERBLOCK),THREADSPERBLOCK >>>(
-                (float *)v1val, (float *)v2val,(float *)d_a,(float *)d_b,
-                 DM_NROWS(v1),v1->traits.ncols,v1->stride,v2->stride);
+    } else {
+        if (v1->traits.datatype & GHOST_DT_DOUBLE) {
+            FUNCNAME(vaxpby_kernel)<double>
+                <<<(int)ceil((double)DM_NROWS(v1) / THREADSPERBLOCK), THREADSPERBLOCK>>>(
+                    (double *)v1val, (double *)v2val, (double *)d_a, (double *)d_b, DM_NROWS(v1),
+                    v1->traits.ncols, v1->stride, v2->stride);
+        } else {
+            FUNCNAME(vaxpby_kernel)<float>
+                <<<(int)ceil((double)DM_NROWS(v1) / THREADSPERBLOCK), THREADSPERBLOCK>>>((float *)v1val,
+                    (float *)v2val, (float *)d_a, (float *)d_b, DM_NROWS(v1), v1->traits.ncols,
+                    v1->stride, v2->stride);
         }
     }
     if (v1compact != v1) {
-        GHOST_CALL_GOTO(ghost_densemat_init_densemat(v1,v1compact,0,0),err,ret);
+        GHOST_CALL_GOTO(ghost_densemat_init_densemat(v1, v1compact, 0, 0), err, ret);
         ghost_densemat_destroy(v1compact);
     }
-    if (v2compact != v2) {
-        ghost_densemat_destroy(v2compact);
-    }
-    
+    if (v2compact != v2) { ghost_densemat_destroy(v2compact); }
+
     goto out;
 err:
 out:
@@ -444,14 +453,14 @@ out:
     return ret;
 }
 
-extern "C" ghost_error FUNCNAME(vaxpbypcz)(ghost_densemat *v1, ghost_densemat *v2, void *a, void *b, ghost_densemat *v3, void *c)
+extern "C" ghost_error FUNCNAME(vaxpbypcz)(
+    ghost_densemat *v1, ghost_densemat *v2, void *a, void *b, ghost_densemat *v3, void *c)
 {
-    if (v1->traits.datatype != v2->traits.datatype || v1->traits.datatype != v3->traits.datatype)
-    {
+    if (v1->traits.datatype != v2->traits.datatype || v1->traits.datatype != v3->traits.datatype) {
         GHOST_ERROR_LOG("Cannot VAXPBYPCZ vectors with different data types");
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
-    
+
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error ret = GHOST_SUCCESS;
 
@@ -460,39 +469,45 @@ extern "C" ghost_error FUNCNAME(vaxpbypcz)(ghost_densemat *v1, ghost_densemat *v
     void *d_c;
     size_t sizeofdt;
 
-    ghost_datatype_size(&sizeofdt,v1->traits.datatype);
-    
+    ghost_datatype_size(&sizeofdt, v1->traits.datatype);
 
-    GHOST_CALL_GOTO(ghost_cu_temp_buffer_malloc(&d_a,v1->traits.ncols*sizeofdt),err,ret);
-    GHOST_CALL_GOTO(ghost_cu_temp_buffer_malloc(&d_b,v1->traits.ncols*sizeofdt),err,ret);
-    GHOST_CALL_GOTO(ghost_cu_temp_buffer_malloc(&d_c,v1->traits.ncols*sizeofdt),err,ret);
 
-    ghost_lidx col; 
-    for (col=0; col<v1->traits.ncols; col++) {
-            GHOST_CALL_GOTO(ghost_cu_upload(&((char *)d_a)[col*sizeofdt],&((char *)a)[col*sizeofdt],sizeofdt),err,ret);
-            GHOST_CALL_GOTO(ghost_cu_upload(&((char *)d_b)[col*sizeofdt],&((char *)b)[col*sizeofdt],sizeofdt),err,ret);
-            GHOST_CALL_GOTO(ghost_cu_upload(&((char *)d_c)[col*sizeofdt],&((char *)c)[col*sizeofdt],sizeofdt),err,ret);
+    GHOST_CALL_GOTO(ghost_cu_temp_buffer_malloc(&d_a, v1->traits.ncols * sizeofdt), err, ret);
+    GHOST_CALL_GOTO(ghost_cu_temp_buffer_malloc(&d_b, v1->traits.ncols * sizeofdt), err, ret);
+    GHOST_CALL_GOTO(ghost_cu_temp_buffer_malloc(&d_c, v1->traits.ncols * sizeofdt), err, ret);
+
+    ghost_lidx col;
+    for (col = 0; col < v1->traits.ncols; col++) {
+        GHOST_CALL_GOTO(
+            ghost_cu_upload(&((char *)d_a)[col * sizeofdt], &((char *)a)[col * sizeofdt], sizeofdt),
+            err, ret);
+        GHOST_CALL_GOTO(
+            ghost_cu_upload(&((char *)d_b)[col * sizeofdt], &((char *)b)[col * sizeofdt], sizeofdt),
+            err, ret);
+        GHOST_CALL_GOTO(
+            ghost_cu_upload(&((char *)d_c)[col * sizeofdt], &((char *)c)[col * sizeofdt], sizeofdt),
+            err, ret);
     }
     
     
     void *v1val, *v2val, *v3val;
     ghost_densemat *v1compact, *v2compact, *v3compact;
-    
+
     if (v1->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         GHOST_INFO_LOG("Cloning (and compressing) v1 before operation");
-        GHOST_CALL_GOTO(ghost_densemat_clone(&v1compact,v1,v1->traits.ncols,0),err,ret);
+        GHOST_CALL_GOTO(ghost_densemat_clone(&v1compact, v1, v1->traits.ncols, 0), err, ret);
     } else {
         v1compact = v1;
     }
     if (v2->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         GHOST_INFO_LOG("Cloning (and compressing) v2 before operation");
-        GHOST_CALL_GOTO(ghost_densemat_clone(&v2compact,v2,v2->traits.ncols,0),err,ret);
+        GHOST_CALL_GOTO(ghost_densemat_clone(&v2compact, v2, v2->traits.ncols, 0), err, ret);
     } else {
         v2compact = v2;
     }
     if (v3->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         GHOST_INFO_LOG("Cloning (and compressing) v3 before operation");
-        GHOST_CALL_GOTO(ghost_densemat_clone(&v3compact,v3,v3->traits.ncols,0),err,ret);
+        GHOST_CALL_GOTO(ghost_densemat_clone(&v3compact, v3, v3->traits.ncols, 0), err, ret);
     } else {
         v3compact = v3;
     }
@@ -500,47 +515,40 @@ extern "C" ghost_error FUNCNAME(vaxpbypcz)(ghost_densemat *v1, ghost_densemat *v
     v2val = v2compact->cu_val;
     v3val = v3compact->cu_val;
 
-    if (v1->traits.datatype & GHOST_DT_COMPLEX)
-    {
-        if (v1->traits.datatype & GHOST_DT_DOUBLE)
-        {
-            FUNCNAME(vaxpbypcz_kernel)<cuDoubleComplex><<< (int)ceil((double)DM_NROWS(v1)/THREADSPERBLOCK),THREADSPERBLOCK >>>(
-                (cuDoubleComplex *)v1val, (cuDoubleComplex *)v2val, (cuDoubleComplex *)v3val, (cuDoubleComplex *)d_a,(cuDoubleComplex *)d_b,
-                (cuDoubleComplex *)d_c, DM_NROWS(v1),v1->traits.ncols,v1->stride,v2->stride, v3->stride);
-        } 
-        else 
-        {
-            FUNCNAME(vaxpbypcz_kernel)<cuFloatComplex><<< (int)ceil((double)DM_NROWS(v1)/THREADSPERBLOCK),THREADSPERBLOCK >>>(
-                (cuFloatComplex *)v1val, (cuFloatComplex *)v2val, (cuFloatComplex *)v3val, (cuFloatComplex *)d_a,(cuFloatComplex *)d_b,
-                (cuFloatComplex *)d_c, DM_NROWS(v1),v1->traits.ncols,v1->stride,v2->stride, v3->stride);
+    if (v1->traits.datatype & GHOST_DT_COMPLEX) {
+        if (v1->traits.datatype & GHOST_DT_DOUBLE) {
+            FUNCNAME(vaxpbypcz_kernel)<cuDoubleComplex>
+                <<<(int)ceil((double)DM_NROWS(v1) / THREADSPERBLOCK), THREADSPERBLOCK>>>(
+                    (cuDoubleComplex *)v1val, (cuDoubleComplex *)v2val, (cuDoubleComplex *)v3val,
+                    (cuDoubleComplex *)d_a, (cuDoubleComplex *)d_b, (cuDoubleComplex *)d_c,
+                    DM_NROWS(v1), v1->traits.ncols, v1->stride, v2->stride, v3->stride);
+        } else {
+            FUNCNAME(vaxpbypcz_kernel)<cuFloatComplex>
+                <<<(int)ceil((double)DM_NROWS(v1) / THREADSPERBLOCK), THREADSPERBLOCK>>>(
+                    (cuFloatComplex *)v1val, (cuFloatComplex *)v2val, (cuFloatComplex *)v3val,
+                    (cuFloatComplex *)d_a, (cuFloatComplex *)d_b, (cuFloatComplex *)d_c,
+                    DM_NROWS(v1), v1->traits.ncols, v1->stride, v2->stride, v3->stride);
         }
-    }
-    else
-    {
-        if (v1->traits.datatype & GHOST_DT_DOUBLE)
-        {
-            FUNCNAME(vaxpbypcz_kernel)<double><<< (int)ceil((double)DM_NROWS(v1)/THREADSPERBLOCK),THREADSPERBLOCK >>>(
-                (double *)v1val, (double *)v2val, (double *)v3val, (double *)d_a,(double *)d_b,
-                (double *)d_c, DM_NROWS(v1),v1->traits.ncols,v1->stride,v2->stride, v3->stride);
-        } 
-        else 
-        {
-            FUNCNAME(vaxpbypcz_kernel)<float><<< (int)ceil((double)DM_NROWS(v1)/THREADSPERBLOCK),THREADSPERBLOCK >>>(
-                (float *)v1val, (float *)v2val, (float *)v3val, (float *)d_a,(float *)d_b,
-                (float *)d_c, DM_NROWS(v1),v1->traits.ncols,v1->stride,v2->stride, v3->stride);
+    } else {
+        if (v1->traits.datatype & GHOST_DT_DOUBLE) {
+            FUNCNAME(vaxpbypcz_kernel)<double>
+                <<<(int)ceil((double)DM_NROWS(v1) / THREADSPERBLOCK), THREADSPERBLOCK>>>((double *)v1val,
+                    (double *)v2val, (double *)v3val, (double *)d_a, (double *)d_b, (double *)d_c,
+                    DM_NROWS(v1), v1->traits.ncols, v1->stride, v2->stride, v3->stride);
+        } else {
+            FUNCNAME(vaxpbypcz_kernel)<float>
+                <<<(int)ceil((double)DM_NROWS(v1) / THREADSPERBLOCK), THREADSPERBLOCK>>>((float *)v1val,
+                    (float *)v2val, (float *)v3val, (float *)d_a, (float *)d_b, (float *)d_c,
+                    DM_NROWS(v1), v1->traits.ncols, v1->stride, v2->stride, v3->stride);
         }
     }
     if (v1compact != v1) {
-        GHOST_CALL_GOTO(ghost_densemat_init_densemat(v1,v1compact,0,0),err,ret);
+        GHOST_CALL_GOTO(ghost_densemat_init_densemat(v1, v1compact, 0, 0), err, ret);
         ghost_densemat_destroy(v1compact);
     }
-    if (v2compact != v2) {
-        ghost_densemat_destroy(v2compact);
-    }
-    if (v3compact != v3) {
-        ghost_densemat_destroy(v3compact);
-    }
-    
+    if (v2compact != v2) { ghost_densemat_destroy(v2compact); }
+    if (v3compact != v3) { ghost_densemat_destroy(v3compact); }
+
     goto out;
 err:
 out:
@@ -557,30 +565,30 @@ extern "C" ghost_error FUNCNAME(dotprod)(ghost_densemat *vec, void *res, ghost_d
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error ret = GHOST_SUCCESS;
-   
-    if (vec->traits.datatype != vec2->traits.datatype)
-    {
-        GHOST_ERROR_LOG("Cannot DOT vectors with different data types (%s and %s)",ghost_datatype_string(vec->traits.datatype),ghost_datatype_string(vec2->traits.datatype));
+
+    if (vec->traits.datatype != vec2->traits.datatype) {
+        GHOST_ERROR_LOG("Cannot DOT vectors with different data types (%s and %s)",
+            ghost_datatype_string(vec->traits.datatype), ghost_datatype_string(vec2->traits.datatype));
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
     size_t sizeofdt;
-    ghost_datatype_size(&sizeofdt,vec->traits.datatype);
+    ghost_datatype_size(&sizeofdt, vec->traits.datatype);
     ghost_densemat *veccompact;
     ghost_densemat *vec2compact;
 
     if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         GHOST_INFO_LOG("Cloning (and compressing) vec1 before dotproduct");
-        ghost_densemat_clone(&veccompact,vec,vec->traits.ncols,0);
+        ghost_densemat_clone(&veccompact, vec, vec->traits.ncols, 0);
     } else {
         veccompact = vec;
     }
     if (vec2->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         GHOST_INFO_LOG("Cloning (and compressing) vec2 before dotproduct");
-        ghost_densemat_clone(&vec2compact,vec2,vec2->traits.ncols,0);
+        ghost_densemat_clone(&vec2compact, vec2, vec2->traits.ncols, 0);
     } else {
         vec2compact = vec2;
     }
- 
+
 #ifdef COLMAJOR
     int vec1stride = 1;
     int vec2stride = 1;
@@ -589,100 +597,91 @@ extern "C" ghost_error FUNCNAME(dotprod)(ghost_densemat *vec, void *res, ghost_d
     int vec2stride = vec2compact->stride;
 #endif
 
-    dim3 block(PAD(CEILDIV(THREADSPERBLOCK,vec->traits.ncols),32),vec->traits.ncols,1);
-    while ((block.x*block.y) > THREADSPERBLOCK && (block.x > 32)) {
-        block.x -= 32;
-    }
-    while ((block.x*block.y) > THREADSPERBLOCK) {
-        block.y--;
-    }
+    dim3 block(PAD(CEILDIV(THREADSPERBLOCK, vec->traits.ncols), 32), vec->traits.ncols, 1);
+    while ((block.x * block.y) > THREADSPERBLOCK && (block.x > 32)) { block.x -= 32; }
+    while ((block.x * block.y) > THREADSPERBLOCK) { block.y--; }
 
-    dim3 grid(CEILDIV(DM_NROWS(vec),block.x),CEILDIV(vec->traits.ncols,block.y),1);
+    dim3 grid(CEILDIV(DM_NROWS(vec), block.x), CEILDIV(vec->traits.ncols, block.y), 1);
 
     if (vec->traits.storage == GHOST_DENSEMAT_ROWMAJOR && veccompact->stride > 1) {
         int col;
         char *cu_localdot_result, *partres;
 
-        GHOST_CALL_RETURN(ghost_cu_temp_buffer_malloc((void **)&partres,vec->traits.ncols*grid.x*vec->elSize));
-        GHOST_CALL_RETURN(ghost_cu_temp_buffer_malloc((void **)&cu_localdot_result,vec->elSize*vec->traits.ncols));
+        GHOST_CALL_RETURN(
+            ghost_cu_temp_buffer_malloc((void **)&partres, vec->traits.ncols * grid.x * vec->elSize));
+        GHOST_CALL_RETURN(
+            ghost_cu_temp_buffer_malloc((void **)&cu_localdot_result, vec->elSize * vec->traits.ncols));
 
-        GHOST_CALL_RETURN(ghost_cu_memset(cu_localdot_result,0,vec->elSize*vec->traits.ncols));
+        GHOST_CALL_RETURN(ghost_cu_memset(cu_localdot_result, 0, vec->elSize * vec->traits.ncols));
         if (vec->traits.datatype & GHOST_DT_COMPLEX) {
             if (vec->traits.datatype & GHOST_DT_DOUBLE) {
-                FUNCNAME(dot_kernel)<cuDoubleComplex><<< grid,block,block.x/32*sizeof(std::complex<double>)*block.y >>>(
-                        (cuDoubleComplex *)partres,
-                        (cuDoubleComplex *)veccompact->cu_val, (cuDoubleComplex *)vec2compact->cu_val,
-                        DM_NROWS(vec),vec->traits.ncols,veccompact->stride,vec2compact->stride);
+                FUNCNAME(dot_kernel)<cuDoubleComplex>
+                    <<<grid, block, block.x / 32 * sizeof(std::complex<double>) * block.y>>>(
+                        (cuDoubleComplex *)partres, (cuDoubleComplex *)veccompact->cu_val,
+                        (cuDoubleComplex *)vec2compact->cu_val, DM_NROWS(vec), vec->traits.ncols,
+                        veccompact->stride, vec2compact->stride);
             } else {
-                FUNCNAME(dot_kernel)<cuFloatComplex><<< grid,block,block.x/32*sizeof(std::complex<float>)*block.y >>>(
-                        (cuFloatComplex *)partres,
-                        (cuFloatComplex *)veccompact->cu_val, (cuFloatComplex *)vec2compact->cu_val,
-                        DM_NROWS(vec),vec->traits.ncols,veccompact->stride,vec2compact->stride);
+                FUNCNAME(dot_kernel)<cuFloatComplex>
+                    <<<grid, block, block.x / 32 * sizeof(std::complex<float>) * block.y>>>(
+                        (cuFloatComplex *)partres, (cuFloatComplex *)veccompact->cu_val,
+                        (cuFloatComplex *)vec2compact->cu_val, DM_NROWS(vec), vec->traits.ncols,
+                        veccompact->stride, vec2compact->stride);
             }
         } else {
             if (vec->traits.datatype & GHOST_DT_DOUBLE) {
-                FUNCNAME(dot_kernel)<double><<< grid,block,block.x/32*sizeof(double)*block.y >>>(
-                        (double *)partres,
-                        (double *)veccompact->cu_val, (double *)vec2compact->cu_val,
-                        DM_NROWS(vec),vec->traits.ncols,veccompact->stride,vec2compact->stride);
+                FUNCNAME(dot_kernel)<double><<<grid, block, block.x / 32 * sizeof(double) * block.y>>>(
+                    (double *)partres, (double *)veccompact->cu_val, (double *)vec2compact->cu_val,
+                    DM_NROWS(vec), vec->traits.ncols, veccompact->stride, vec2compact->stride);
             } else {
-                FUNCNAME(dot_kernel)<float><<< grid,block,block.x/32*sizeof(float)*block.y >>>(
-                        (float *)partres,
-                        (float *)veccompact->cu_val, (float *)vec2compact->cu_val,
-                        DM_NROWS(vec),vec->traits.ncols,veccompact->stride,vec2compact->stride);
+                FUNCNAME(dot_kernel)<float><<<grid, block, block.x / 32 * sizeof(float) * block.y>>>(
+                    (float *)partres, (float *)veccompact->cu_val, (float *)vec2compact->cu_val,
+                    DM_NROWS(vec), vec->traits.ncols, veccompact->stride, vec2compact->stride);
             }
         }
-        for (col=0; col<vec->traits.ncols; col++) {
-            ghost_cu_reduce(cu_localdot_result+col*vec->elSize,partres+col*grid.x*vec->elSize,vec->traits.datatype,grid.x);
+        for (col = 0; col < vec->traits.ncols; col++) {
+            ghost_cu_reduce(cu_localdot_result + col * vec->elSize,
+                partres + col * grid.x * vec->elSize, vec->traits.datatype, grid.x);
         }
-        GHOST_CALL_RETURN(ghost_cu_download(res,cu_localdot_result,vec->elSize*vec->traits.ncols));
+        GHOST_CALL_RETURN(ghost_cu_download(res, cu_localdot_result, vec->elSize * vec->traits.ncols));
         ghost_cu_free(partres);
         ghost_cu_free(cu_localdot_result);
 
     } else {
         GHOST_INFO_LOG("Calling CUBLAS DOT");
         cublasHandle_t ghost_cublas_handle;
-        GHOST_CALL_GOTO(ghost_cu_cublas_handle(&ghost_cublas_handle),err,ret); 
+        GHOST_CALL_GOTO(ghost_cu_cublas_handle(&ghost_cublas_handle), err, ret);
         ghost_lidx v;
-        for (v=0; v<veccompact->traits.ncols; v++)
-        {
-            char *v1 = veccompact->cu_val+v*veccompact->stride*veccompact->elSize;
-            char *v2 = vec2compact->cu_val+v*vec2compact->stride*veccompact->elSize;
-            if (vec->traits.datatype & GHOST_DT_COMPLEX)
-            {
-                if (vec->traits.datatype & GHOST_DT_DOUBLE)
-                {
-                    CUBLAS_CALL_GOTO(cublasZdotc(ghost_cublas_handle,DM_NROWS(vec),
-                                (const cuDoubleComplex *)v1,vec1stride,(const cuDoubleComplex *)v2,vec2stride,&((cuDoubleComplex *)res)[v]),err,ret);
-                } 
-                else 
-                {
-                    CUBLAS_CALL_GOTO(cublasCdotc(ghost_cublas_handle,DM_NROWS(vec),
-                                (const cuFloatComplex *)v1,vec1stride,(const cuFloatComplex *)v2,vec2stride,&((cuFloatComplex *)res)[v]),err,ret);
+        for (v = 0; v < veccompact->traits.ncols; v++) {
+            char *v1 = veccompact->cu_val + v * veccompact->stride * veccompact->elSize;
+            char *v2 = vec2compact->cu_val + v * vec2compact->stride * veccompact->elSize;
+            if (vec->traits.datatype & GHOST_DT_COMPLEX) {
+                if (vec->traits.datatype & GHOST_DT_DOUBLE) {
+                    CUBLAS_CALL_GOTO(
+                        cublasZdotc(ghost_cublas_handle, DM_NROWS(vec), (const cuDoubleComplex *)v1, vec1stride,
+                            (const cuDoubleComplex *)v2, vec2stride, &((cuDoubleComplex *)res)[v]),
+                        err, ret);
+                } else {
+                    CUBLAS_CALL_GOTO(
+                        cublasCdotc(ghost_cublas_handle, DM_NROWS(vec), (const cuFloatComplex *)v1, vec1stride,
+                            (const cuFloatComplex *)v2, vec2stride, &((cuFloatComplex *)res)[v]),
+                        err, ret);
                 }
-            }
-            else
-            {
-                if (vec->traits.datatype & GHOST_DT_DOUBLE)
-                {
-                    CUBLAS_CALL_GOTO(cublasDdot(ghost_cublas_handle,DM_NROWS(vec),
-                                (const double *)v1,vec1stride,(const double *)v2,vec2stride,&((double *)res)[v]),err,ret);
-                } 
-                else 
-                {
-                    CUBLAS_CALL_GOTO(cublasSdot(ghost_cublas_handle,DM_NROWS(vec),
-                                (const float *)v1,vec1stride,(const float *)v2,vec2stride,&((float *)res)[v]),err,ret);
+            } else {
+                if (vec->traits.datatype & GHOST_DT_DOUBLE) {
+                    CUBLAS_CALL_GOTO(cublasDdot(ghost_cublas_handle, DM_NROWS(vec), (const double *)v1,
+                                         vec1stride, (const double *)v2, vec2stride, &((double *)res)[v]),
+                        err, ret);
+                } else {
+                    CUBLAS_CALL_GOTO(cublasSdot(ghost_cublas_handle, DM_NROWS(vec), (const float *)v1,
+                                         vec1stride, (const float *)v2, vec2stride, &((float *)res)[v]),
+                        err, ret);
                 }
             }
         }
     }
-    
-    if (veccompact != vec) {
-        ghost_densemat_destroy(veccompact);
-    }
-    if (vec2compact != vec2) {
-        ghost_densemat_destroy(vec2compact);
-    }
+
+    if (veccompact != vec) { ghost_densemat_destroy(veccompact); }
+    if (vec2compact != vec2) { ghost_densemat_destroy(vec2compact); }
     goto out;
 err:
 out:
@@ -695,35 +694,26 @@ out:
 extern "C" ghost_error FUNCNAME(axpy)(ghost_densemat *v1, ghost_densemat *v2, void *a)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
-    ghost_error ret = GHOST_SUCCESS; 
-    
-    if (v1->traits.datatype & GHOST_DT_COMPLEX)
-    {
-        if (v1->traits.datatype & GHOST_DT_DOUBLE)
-        {
-            const cuDoubleComplex one = make_cuDoubleComplex(1.,0);
-            ret =  FUNCNAME(axpby)(v1,v2,a,(void *)&one);
-        } 
-        else 
-        {
-            const cuFloatComplex one = make_cuFloatComplex(1.,0.);
-            ret = FUNCNAME(axpby)(v1,v2,a,(void *)&one);
+    ghost_error ret = GHOST_SUCCESS;
+
+    if (v1->traits.datatype & GHOST_DT_COMPLEX) {
+        if (v1->traits.datatype & GHOST_DT_DOUBLE) {
+            const cuDoubleComplex one = make_cuDoubleComplex(1., 0);
+            ret = FUNCNAME(axpby)(v1, v2, a, (void *)&one);
+        } else {
+            const cuFloatComplex one = make_cuFloatComplex(1., 0.);
+            ret = FUNCNAME(axpby)(v1, v2, a, (void *)&one);
         }
-    }
-    else
-    {
-        if (v1->traits.datatype & GHOST_DT_DOUBLE)
-        {
+    } else {
+        if (v1->traits.datatype & GHOST_DT_DOUBLE) {
             const double one = 1.;
-            ret = FUNCNAME(axpby)(v1,v2,a,(void *)&one);
-        } 
-        else 
-        {
+            ret = FUNCNAME(axpby)(v1, v2, a, (void *)&one);
+        } else {
             const float one = 1.f;
-            ret = FUNCNAME(axpby)(v1,v2,a,(void *)&one);
+            ret = FUNCNAME(axpby)(v1, v2, a, (void *)&one);
         }
     }
-    
+
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
 
     return ret;
@@ -731,8 +721,7 @@ extern "C" ghost_error FUNCNAME(axpy)(ghost_densemat *v1, ghost_densemat *v2, vo
 
 extern "C" ghost_error FUNCNAME(axpby)(ghost_densemat *v1, ghost_densemat *v2, void *a, void *b)
 {
-    if (v1->traits.datatype != v2->traits.datatype)
-    {
+    if (v1->traits.datatype != v2->traits.datatype) {
         GHOST_ERROR_LOG("Cannot AXPBY vectors with different data types");
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
@@ -740,56 +729,52 @@ extern "C" ghost_error FUNCNAME(axpby)(ghost_densemat *v1, ghost_densemat *v2, v
     ghost_error ret = GHOST_SUCCESS;
     void *v1val, *v2val;
     ghost_densemat *v1compact, *v2compact;
-    
+
     if (v1->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         GHOST_INFO_LOG("Cloning (and compressing) v1 before operation");
-        GHOST_CALL_GOTO(ghost_densemat_clone(&v1compact,v1,v1->traits.ncols,0),err,ret);
+        GHOST_CALL_GOTO(ghost_densemat_clone(&v1compact, v1, v1->traits.ncols, 0), err, ret);
     } else {
         v1compact = v1;
     }
     if (v2->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         GHOST_INFO_LOG("Cloning (and compressing) v2 before operation");
-        GHOST_CALL_GOTO(ghost_densemat_clone(&v2compact,v2,v2->traits.ncols,0),err,ret);
+        GHOST_CALL_GOTO(ghost_densemat_clone(&v2compact, v2, v2->traits.ncols, 0), err, ret);
     } else {
         v2compact = v2;
     }
     v1val = v1compact->cu_val;
     v2val = v2compact->cu_val;
 
-    if (v1->traits.datatype & GHOST_DT_COMPLEX)
-    {
-        if (v1->traits.datatype & GHOST_DT_DOUBLE)
-        {
-            FUNCNAME(axpby_kernel)<cuDoubleComplex><<< CEILDIV(DM_NROWS(v1)*v1->traits.ncols,THREADSPERBLOCK),THREADSPERBLOCK >>>
-                ((cuDoubleComplex *)v1val, (cuDoubleComplex *)v2val,*((cuDoubleComplex *)a),*((cuDoubleComplex *)b),DM_NROWS(v1),v1->traits.ncols,v1->stride,v2->stride);
-        } 
-        else 
-        {
-            FUNCNAME(axpby_kernel)<cuFloatComplex><<< CEILDIV(DM_NROWS(v1)*v1->traits.ncols,THREADSPERBLOCK),THREADSPERBLOCK >>>
-                ((cuFloatComplex *)v1val, (cuFloatComplex *)v2val,*((cuFloatComplex *)a),*((cuFloatComplex *)b),DM_NROWS(v1),v1->traits.ncols,v1->stride,v2->stride);
-            
+    if (v1->traits.datatype & GHOST_DT_COMPLEX) {
+        if (v1->traits.datatype & GHOST_DT_DOUBLE) {
+            FUNCNAME(axpby_kernel)<cuDoubleComplex>
+                <<<CEILDIV(DM_NROWS(v1) * v1->traits.ncols, THREADSPERBLOCK), THREADSPERBLOCK>>>(
+                    (cuDoubleComplex *)v1val, (cuDoubleComplex *)v2val, *((cuDoubleComplex *)a),
+                    *((cuDoubleComplex *)b), DM_NROWS(v1), v1->traits.ncols, v1->stride, v2->stride);
+        } else {
+            FUNCNAME(axpby_kernel)<cuFloatComplex>
+                <<<CEILDIV(DM_NROWS(v1) * v1->traits.ncols, THREADSPERBLOCK), THREADSPERBLOCK>>>(
+                    (cuFloatComplex *)v1val, (cuFloatComplex *)v2val, *((cuFloatComplex *)a),
+                    *((cuFloatComplex *)b), DM_NROWS(v1), v1->traits.ncols, v1->stride, v2->stride);
         }
-    }
-    else
-    {
-        if (v1->traits.datatype & GHOST_DT_DOUBLE)
-        {
-            FUNCNAME(axpby_kernel)<double><<< CEILDIV(DM_NROWS(v1)*v1->traits.ncols,THREADSPERBLOCK),THREADSPERBLOCK >>>
-                ((double *)v1val, (double *)v2val,*((double *)a),*((double *)b),DM_NROWS(v1),v1->traits.ncols,v1->stride,v2->stride);
-        } 
-        else 
-        {
-            FUNCNAME(axpby_kernel)<float><<< CEILDIV(DM_NROWS(v1)*v1->traits.ncols,THREADSPERBLOCK),THREADSPERBLOCK >>>
-                ((float *)v1val, (float *)v2val,*((float *)a),*((float *)b),DM_NROWS(v1),v1->traits.ncols,v1->stride,v2->stride);
+    } else {
+        if (v1->traits.datatype & GHOST_DT_DOUBLE) {
+            FUNCNAME(axpby_kernel)<double>
+                <<<CEILDIV(DM_NROWS(v1) * v1->traits.ncols, THREADSPERBLOCK), THREADSPERBLOCK>>>(
+                    (double *)v1val, (double *)v2val, *((double *)a), *((double *)b), DM_NROWS(v1),
+                    v1->traits.ncols, v1->stride, v2->stride);
+        } else {
+            FUNCNAME(axpby_kernel)<float>
+                <<<CEILDIV(DM_NROWS(v1) * v1->traits.ncols, THREADSPERBLOCK), THREADSPERBLOCK>>>(
+                    (float *)v1val, (float *)v2val, *((float *)a), *((float *)b), DM_NROWS(v1),
+                    v1->traits.ncols, v1->stride, v2->stride);
         }
     }
     if (v1compact != v1) {
-        GHOST_CALL_GOTO(ghost_densemat_init_densemat(v1,v1compact,0,0),err,ret);
+        GHOST_CALL_GOTO(ghost_densemat_init_densemat(v1, v1compact, 0, 0), err, ret);
         ghost_densemat_destroy(v1compact);
     }
-    if (v2compact != v2) {
-        ghost_densemat_destroy(v2compact);
-    }
+    if (v2compact != v2) { ghost_densemat_destroy(v2compact); }
 
     goto out;
 err:
@@ -800,88 +785,81 @@ out:
     return ret;
 }
 
-extern "C" ghost_error FUNCNAME(axpbypcz)(ghost_densemat *v1, ghost_densemat *v2, void *a, void *b, ghost_densemat *v3, void *c)
+extern "C" ghost_error FUNCNAME(axpbypcz)(
+    ghost_densemat *v1, ghost_densemat *v2, void *a, void *b, ghost_densemat *v3, void *c)
 {
-    if (v1->traits.datatype != v2->traits.datatype || v1->traits.datatype != v3->traits.datatype)
-    {
+    if (v1->traits.datatype != v2->traits.datatype || v1->traits.datatype != v3->traits.datatype) {
         GHOST_ERROR_LOG("Cannot VAXPBYPCZ vectors with different data types");
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
-    
+
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error ret = GHOST_SUCCESS;
 
     size_t sizeofdt;
 
-    ghost_datatype_size(&sizeofdt,v1->traits.datatype);
-    
+    ghost_datatype_size(&sizeofdt, v1->traits.datatype);
+
     void *v1val, *v2val, *v3val;
     ghost_densemat *v1compact, *v2compact, *v3compact;
-    
+
     if (v1->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         GHOST_INFO_LOG("Cloning (and compressing) v1 before operation");
-        GHOST_CALL_GOTO(ghost_densemat_clone(&v1compact,v1,v1->traits.ncols,0),err,ret);
+        GHOST_CALL_GOTO(ghost_densemat_clone(&v1compact, v1, v1->traits.ncols, 0), err, ret);
     } else {
         v1compact = v1;
     }
     if (v2->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         GHOST_INFO_LOG("Cloning (and compressing) v2 before operation");
-        GHOST_CALL_GOTO(ghost_densemat_clone(&v2compact,v2,v2->traits.ncols,0),err,ret);
+        GHOST_CALL_GOTO(ghost_densemat_clone(&v2compact, v2, v2->traits.ncols, 0), err, ret);
     } else {
         v2compact = v2;
     }
     if (v3->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         GHOST_INFO_LOG("Cloning (and compressing) v3 before operation");
-        GHOST_CALL_GOTO(ghost_densemat_clone(&v3compact,v3,v3->traits.ncols,0),err,ret);
+        GHOST_CALL_GOTO(ghost_densemat_clone(&v3compact, v3, v3->traits.ncols, 0), err, ret);
     } else {
         v3compact = v3;
     }
     v1val = v1compact->cu_val;
     v2val = v2compact->cu_val;
     v3val = v3compact->cu_val;
-    
 
-    if (v1->traits.datatype & GHOST_DT_COMPLEX)
-    {
-        if (v1->traits.datatype & GHOST_DT_DOUBLE)
-        {
-            FUNCNAME(axpbypcz_kernel)<cuDoubleComplex><<< (int)ceil((double)DM_NROWS(v1)/THREADSPERBLOCK),THREADSPERBLOCK >>>(
-                (cuDoubleComplex *)v1val, (cuDoubleComplex *)v2val, (cuDoubleComplex *)v3val, *(cuDoubleComplex *)a,*(cuDoubleComplex *)b,
-                *(cuDoubleComplex *)c, DM_NROWS(v1),v1->traits.ncols,v1->stride,v2->stride, v3->stride);
-        } 
-        else 
-        {
-            FUNCNAME(axpbypcz_kernel)<cuFloatComplex><<< (int)ceil((double)DM_NROWS(v1)/THREADSPERBLOCK),THREADSPERBLOCK >>>(
-                (cuFloatComplex *)v1val, (cuFloatComplex *)v2val, (cuFloatComplex *)v3val, *(cuFloatComplex *)a,*(cuFloatComplex *)b,
-                *(cuFloatComplex *)c, DM_NROWS(v1),v1->traits.ncols,v1->stride,v2->stride, v3->stride);
+
+    if (v1->traits.datatype & GHOST_DT_COMPLEX) {
+        if (v1->traits.datatype & GHOST_DT_DOUBLE) {
+            FUNCNAME(axpbypcz_kernel)<cuDoubleComplex>
+                <<<(int)ceil((double)DM_NROWS(v1) / THREADSPERBLOCK), THREADSPERBLOCK>>>(
+                    (cuDoubleComplex *)v1val, (cuDoubleComplex *)v2val, (cuDoubleComplex *)v3val,
+                    *(cuDoubleComplex *)a, *(cuDoubleComplex *)b, *(cuDoubleComplex *)c,
+                    DM_NROWS(v1), v1->traits.ncols, v1->stride, v2->stride, v3->stride);
+        } else {
+            FUNCNAME(axpbypcz_kernel)<cuFloatComplex>
+                <<<(int)ceil((double)DM_NROWS(v1) / THREADSPERBLOCK), THREADSPERBLOCK>>>(
+                    (cuFloatComplex *)v1val, (cuFloatComplex *)v2val, (cuFloatComplex *)v3val,
+                    *(cuFloatComplex *)a, *(cuFloatComplex *)b, *(cuFloatComplex *)c, DM_NROWS(v1),
+                    v1->traits.ncols, v1->stride, v2->stride, v3->stride);
         }
-    }
-    else
-    {
-        if (v1->traits.datatype & GHOST_DT_DOUBLE)
-        {
-            FUNCNAME(axpbypcz_kernel)<double><<< (int)ceil((double)DM_NROWS(v1)/THREADSPERBLOCK),THREADSPERBLOCK >>>(
-                (double *)v1val, (double *)v2val, (double *)v3val, *(double *)a,*(double *)b,
-                *(double *)c, DM_NROWS(v1),v1->traits.ncols,v1->stride,v2->stride, v3->stride);
-        } 
-        else 
-        {
-            FUNCNAME(axpbypcz_kernel)<float><<< (int)ceil((double)DM_NROWS(v1)/THREADSPERBLOCK),THREADSPERBLOCK >>>(
-                (float *)v1val, (float *)v2val, (float *)v3val, *(float *)a,*(float *)b,
-                *(float *)c, DM_NROWS(v1),v1->traits.ncols,v1->stride,v2->stride, v3->stride);
+    } else {
+        if (v1->traits.datatype & GHOST_DT_DOUBLE) {
+            FUNCNAME(axpbypcz_kernel)<double>
+                <<<(int)ceil((double)DM_NROWS(v1) / THREADSPERBLOCK), THREADSPERBLOCK>>>((double *)v1val,
+                    (double *)v2val, (double *)v3val, *(double *)a, *(double *)b, *(double *)c,
+                    DM_NROWS(v1), v1->traits.ncols, v1->stride, v2->stride, v3->stride);
+        } else {
+            FUNCNAME(axpbypcz_kernel)<float>
+                <<<(int)ceil((double)DM_NROWS(v1) / THREADSPERBLOCK), THREADSPERBLOCK>>>((float *)v1val,
+                    (float *)v2val, (float *)v3val, *(float *)a, *(float *)b, *(float *)c,
+                    DM_NROWS(v1), v1->traits.ncols, v1->stride, v2->stride, v3->stride);
         }
     }
     if (v1compact != v1) {
-        GHOST_CALL_GOTO(ghost_densemat_init_densemat(v1,v1compact,0,0),err,ret);
+        GHOST_CALL_GOTO(ghost_densemat_init_densemat(v1, v1compact, 0, 0), err, ret);
         ghost_densemat_destroy(v1compact);
     }
-    if (v2compact != v2) {
-        ghost_densemat_destroy(v2compact);
-    }
-    if (v3compact != v3) {
-        ghost_densemat_destroy(v3compact);
-    }
-    
+    if (v2compact != v2) { ghost_densemat_destroy(v2compact); }
+    if (v3compact != v3) { ghost_densemat_destroy(v3compact); }
+
     goto out;
 err:
 out:
@@ -895,54 +873,47 @@ extern "C" ghost_error FUNCNAME(scale)(ghost_densemat *vec, void *a)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error ret = GHOST_SUCCESS;
-    
+
     void *vecval;
     ghost_densemat *veccompact;
-    
+
     if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         GHOST_INFO_LOG("Cloning (and compressing) vec before operation");
-        GHOST_CALL_GOTO(ghost_densemat_clone(&veccompact,vec,vec->traits.ncols,0),err,ret);
+        GHOST_CALL_GOTO(ghost_densemat_clone(&veccompact, vec, vec->traits.ncols, 0), err, ret);
     } else {
         veccompact = vec;
     }
     vecval = veccompact->cu_val;
-    
-    if (vec->traits.datatype & GHOST_DT_COMPLEX)
-    {
-        if (vec->traits.datatype & GHOST_DT_DOUBLE)
-        {
-            FUNCNAME(scale_kernel)<cuDoubleComplex><<< (int)ceil((double)DM_NROWS(vec)/THREADSPERBLOCK),THREADSPERBLOCK >>>(
-                    (cuDoubleComplex *)vecval, *(cuDoubleComplex *)a,
-                    DM_NROWS(vec),vec->traits.ncols,veccompact->stride);
-        } 
-        else 
-        {
-            FUNCNAME(scale_kernel)<cuFloatComplex><<< (int)ceil((double)DM_NROWS(vec)/THREADSPERBLOCK),THREADSPERBLOCK >>>(
-                    (cuFloatComplex *)vecval, *(cuFloatComplex *)a,
-                    DM_NROWS(vec),vec->traits.ncols,veccompact->stride);
+
+    if (vec->traits.datatype & GHOST_DT_COMPLEX) {
+        if (vec->traits.datatype & GHOST_DT_DOUBLE) {
+            FUNCNAME(scale_kernel)<cuDoubleComplex>
+                <<<(int)ceil((double)DM_NROWS(vec) / THREADSPERBLOCK), THREADSPERBLOCK>>>(
+                    (cuDoubleComplex *)vecval, *(cuDoubleComplex *)a, DM_NROWS(vec),
+                    vec->traits.ncols, veccompact->stride);
+        } else {
+            FUNCNAME(scale_kernel)<cuFloatComplex>
+                <<<(int)ceil((double)DM_NROWS(vec) / THREADSPERBLOCK), THREADSPERBLOCK>>>(
+                    (cuFloatComplex *)vecval, *(cuFloatComplex *)a, DM_NROWS(vec),
+                    vec->traits.ncols, veccompact->stride);
         }
-    }
-    else
-    {
-        if (vec->traits.datatype & GHOST_DT_DOUBLE)
-        {
-            FUNCNAME(scale_kernel)<double><<< (int)ceil((double)DM_NROWS(vec)/THREADSPERBLOCK),THREADSPERBLOCK >>>(
-                    (double *)vecval, *(double *)a,
-                    DM_NROWS(vec),vec->traits.ncols,veccompact->stride);
-        } 
-        else 
-        {
-            FUNCNAME(scale_kernel)<float><<< (int)ceil((double)DM_NROWS(vec)/THREADSPERBLOCK),THREADSPERBLOCK >>>(
-                    (float *)vecval, *(float *)a,
-                    DM_NROWS(vec),vec->traits.ncols,veccompact->stride);
+    } else {
+        if (vec->traits.datatype & GHOST_DT_DOUBLE) {
+            FUNCNAME(scale_kernel)<double>
+                <<<(int)ceil((double)DM_NROWS(vec) / THREADSPERBLOCK), THREADSPERBLOCK>>>((double *)vecval,
+                    *(double *)a, DM_NROWS(vec), vec->traits.ncols, veccompact->stride);
+        } else {
+            FUNCNAME(scale_kernel)<float>
+                <<<(int)ceil((double)DM_NROWS(vec) / THREADSPERBLOCK), THREADSPERBLOCK>>>(
+                    (float *)vecval, *(float *)a, DM_NROWS(vec), vec->traits.ncols, veccompact->stride);
         }
     }
     if (veccompact != vec) {
         GHOST_INFO_LOG("Transform back");
-        GHOST_CALL_GOTO(ghost_densemat_init_densemat(vec,veccompact,0,0),err,ret);
+        GHOST_CALL_GOTO(ghost_densemat_init_densemat(vec, veccompact, 0, 0), err, ret);
         ghost_densemat_destroy(veccompact);
     }
-    
+
     goto out;
 
 err:
@@ -951,7 +922,7 @@ out:
     cudaDeviceSynchronize();
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
 
-    
+
     return ret;
 }
 
@@ -964,56 +935,122 @@ extern "C" ghost_error FUNCNAME(vscale)(ghost_densemat *vec, void *a)
     ghost_lidx c;
     void *vecval;
     ghost_densemat *veccompact;
-    
+
     if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         GHOST_INFO_LOG("Cloning (and compressing) vec before operation");
-        GHOST_CALL_GOTO(ghost_densemat_clone(&veccompact,vec,vec->traits.ncols,0),err,ret);
+        GHOST_CALL_GOTO(ghost_densemat_clone(&veccompact, vec, vec->traits.ncols, 0), err, ret);
     } else {
         veccompact = vec;
     }
     vecval = veccompact->cu_val;
 
 
-    GHOST_CALL_GOTO(ghost_cu_temp_buffer_malloc(&d_a,vec->traits.ncols*vec->elSize),err,ret);
+    GHOST_CALL_GOTO(ghost_cu_temp_buffer_malloc(&d_a, vec->traits.ncols * vec->elSize), err, ret);
 
-    for (c=0; c<vec->traits.ncols; c++) {
-        GHOST_CALL_GOTO(ghost_cu_upload(&((char *)d_a)[c*vec->elSize],&((char *)a)[c*vec->elSize],vec->elSize),err,ret);
+    for (c = 0; c < vec->traits.ncols; c++) {
+        GHOST_CALL_GOTO(ghost_cu_upload(&((char *)d_a)[c * vec->elSize],
+                            &((char *)a)[c * vec->elSize], vec->elSize),
+            err, ret);
     }
-    
-    if (vec->traits.datatype & GHOST_DT_COMPLEX)
-    {
-        if (vec->traits.datatype & GHOST_DT_DOUBLE)
-        {
-            FUNCNAME(vscale_kernel)<cuDoubleComplex><<< (int)ceil((double)DM_NROWS(vec)/THREADSPERBLOCK),THREADSPERBLOCK >>>(
-                    (cuDoubleComplex *)vecval, (cuDoubleComplex *)d_a,
-                    DM_NROWS(vec),vec->traits.ncols,veccompact->stride);
-        } 
-        else 
-        {
-            FUNCNAME(vscale_kernel)<cuFloatComplex><<< (int)ceil((double)DM_NROWS(vec)/THREADSPERBLOCK),THREADSPERBLOCK >>>(
-                    (cuFloatComplex *)vecval, (cuFloatComplex *)d_a,
-                    DM_NROWS(vec),vec->traits.ncols,veccompact->stride);
+
+    if (vec->traits.datatype & GHOST_DT_COMPLEX) {
+        if (vec->traits.datatype & GHOST_DT_DOUBLE) {
+            FUNCNAME(vscale_kernel)<cuDoubleComplex>
+                <<<(int)ceil((double)DM_NROWS(vec) / THREADSPERBLOCK), THREADSPERBLOCK>>>(
+                    (cuDoubleComplex *)vecval, (cuDoubleComplex *)d_a, DM_NROWS(vec),
+                    vec->traits.ncols, veccompact->stride);
+        } else {
+            FUNCNAME(vscale_kernel)<cuFloatComplex>
+                <<<(int)ceil((double)DM_NROWS(vec) / THREADSPERBLOCK), THREADSPERBLOCK>>>(
+                    (cuFloatComplex *)vecval, (cuFloatComplex *)d_a, DM_NROWS(vec),
+                    vec->traits.ncols, veccompact->stride);
         }
-    }
-    else
-    {
-        if (vec->traits.datatype & GHOST_DT_DOUBLE)
-        {
-            FUNCNAME(vscale_kernel)<double><<< (int)ceil((double)DM_NROWS(vec)/THREADSPERBLOCK),THREADSPERBLOCK >>>(
-                    (double *)vecval, (double *)d_a,
-                    DM_NROWS(vec),vec->traits.ncols,veccompact->stride);
-        } 
-        else 
-        {
-            FUNCNAME(vscale_kernel)<float><<< (int)ceil((double)DM_NROWS(vec)/THREADSPERBLOCK),THREADSPERBLOCK >>>(
-                    (float *)vecval, (float *)d_a,
-                    DM_NROWS(vec),vec->traits.ncols,veccompact->stride);
+    } else {
+        if (vec->traits.datatype & GHOST_DT_DOUBLE) {
+            FUNCNAME(vscale_kernel)<double>
+                <<<(int)ceil((double)DM_NROWS(vec) / THREADSPERBLOCK), THREADSPERBLOCK>>>((double *)vecval,
+                    (double *)d_a, DM_NROWS(vec), vec->traits.ncols, veccompact->stride);
+        } else {
+            FUNCNAME(vscale_kernel)<float>
+                <<<(int)ceil((double)DM_NROWS(vec) / THREADSPERBLOCK), THREADSPERBLOCK>>>((float *)vecval,
+                    (float *)d_a, DM_NROWS(vec), vec->traits.ncols, veccompact->stride);
         }
     }
     if (veccompact != vec) {
         GHOST_INFO_LOG("Transform back");
-        GHOST_CALL_GOTO(ghost_densemat_init_densemat(vec,veccompact,0,0),err,ret);
+        GHOST_CALL_GOTO(ghost_densemat_init_densemat(vec, veccompact, 0, 0), err, ret);
         ghost_densemat_destroy(veccompact);
+    }
+
+    goto out;
+err:
+out:
+    cudaDeviceSynchronize();
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
+
+    return ret;
+}
+
+
+extern "C" ghost_error FUNCNAME(mult)(ghost_densemat *v1, ghost_densemat *v2, void *a)
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
+    ghost_error ret = GHOST_SUCCESS;
+
+    void *v1val, *v2val;
+    ghost_densemat *veccompact1, *veccompact2;
+
+    if (v1->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+        GHOST_INFO_LOG("Cloning (and compressing) vec before operation");
+        GHOST_CALL_GOTO(ghost_densemat_clone(&veccompact1, v1, v1->traits.ncols, 0), err, ret);
+    } else {
+        veccompact1 = v1;
+    }
+    v1val = veccompact1->cu_val;
+
+    if (v2->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+        GHOST_INFO_LOG("Cloning (and compressing) vec before operation");
+        GHOST_CALL_GOTO(ghost_densemat_clone(&veccompact2, v2, v2->traits.ncols, 0), err, ret);
+    } else {
+        veccompact2 = v2;
+    }
+    v2val = veccompact2->cu_val;
+
+
+    if (v1->traits.datatype & GHOST_DT_COMPLEX) {
+        if (v1->traits.datatype & GHOST_DT_DOUBLE) {
+            FUNCNAME(mult_kernel)<cuDoubleComplex>
+                <<<(int)ceil((double)DM_NROWS(v1) / THREADSPERBLOCK), THREADSPERBLOCK>>>(
+                    (cuDoubleComplex *)v1val, (cuDoubleComplex *)v2val, *(cuDoubleComplex *)a,
+                    DM_NROWS(v1), v1->traits.ncols, veccompact1->stride, veccompact2->stride);
+        } else {
+            FUNCNAME(mult_kernel)<cuFloatComplex>
+                <<<(int)ceil((double)DM_NROWS(v1) / THREADSPERBLOCK), THREADSPERBLOCK>>>(
+                    (cuFloatComplex *)v1val, (cuFloatComplex *)v2val, *(cuFloatComplex *)a,
+                    DM_NROWS(v1), v1->traits.ncols, veccompact1->stride, veccompact2->stride);
+        }
+    } else {
+        if (v1->traits.datatype & GHOST_DT_DOUBLE) {
+            FUNCNAME(mult_kernel)<double>
+                <<<(int)ceil((double)DM_NROWS(v1) / THREADSPERBLOCK), THREADSPERBLOCK>>>(
+                    (double *)v1val, (double *)v2val, *(double *)a, DM_NROWS(v1), v1->traits.ncols,
+                    veccompact1->stride, veccompact2->stride);
+        } else {
+            FUNCNAME(mult_kernel)<float>
+                <<<(int)ceil((double)DM_NROWS(v1) / THREADSPERBLOCK), THREADSPERBLOCK>>>(
+                    (float *)v1val, (float *)v2val, *(float *)a, DM_NROWS(v1), v1->traits.ncols,
+                    veccompact1->stride, veccompact2->stride);
+        }
+    }
+    if (veccompact1 != v1) {
+        GHOST_INFO_LOG("Transform back");
+        GHOST_CALL_GOTO(ghost_densemat_init_densemat(v1, veccompact1, 0, 0), err, ret);
+        ghost_densemat_destroy(veccompact1);
+    }
+    if (veccompact2 != v2) {
+        GHOST_INFO_LOG("Transform back");
+        GHOST_CALL_GOTO(ghost_densemat_init_densemat(v2, veccompact2, 0, 0), err, ret);
+        ghost_densemat_destroy(veccompact2);
     }
 
     goto out;
@@ -1029,60 +1066,51 @@ extern "C" ghost_error FUNCNAME(fromScalar)(ghost_densemat *vec, void *a)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     ghost_error ret = GHOST_SUCCESS;
-    
+
     int needInit = 0;
-    ghost_densemat_malloc(vec,&needInit);
-    
+    ghost_densemat_malloc(vec, &needInit);
+
     void *vecval;
     ghost_densemat *veccompact;
-    
+
     if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         GHOST_INFO_LOG("Cloning (and compressing) vec before operation");
-        GHOST_CALL_GOTO(ghost_densemat_clone(&veccompact,vec,vec->traits.ncols,0),err,ret);
+        GHOST_CALL_GOTO(ghost_densemat_clone(&veccompact, vec, vec->traits.ncols, 0), err, ret);
     } else {
         veccompact = vec;
     }
     vecval = veccompact->cu_val;
 
-    if (vec->traits.datatype & GHOST_DT_COMPLEX)
-    {
-        if (vec->traits.datatype & GHOST_DT_DOUBLE)
-        {
-            FUNCNAME(fromscalar_kernel)<cuDoubleComplex><<< (int)ceil((double)DM_NROWS(vec)/THREADSPERBLOCK),THREADSPERBLOCK >>>(
-                    (cuDoubleComplex *)vecval, *(cuDoubleComplex *)a,
-                    DM_NROWS(vec),vec->traits.ncols,veccompact->stride);
-        } 
-        else 
-        {
-            FUNCNAME(fromscalar_kernel)<cuFloatComplex><<< (int)ceil((double)DM_NROWS(vec)/THREADSPERBLOCK),THREADSPERBLOCK >>>(
-                    (cuFloatComplex *)vecval, *(cuFloatComplex *)a,
-                    DM_NROWS(vec),vec->traits.ncols,veccompact->stride);
+    if (vec->traits.datatype & GHOST_DT_COMPLEX) {
+        if (vec->traits.datatype & GHOST_DT_DOUBLE) {
+            FUNCNAME(fromscalar_kernel)<cuDoubleComplex>
+                <<<(int)ceil((double)DM_NROWS(vec) / THREADSPERBLOCK), THREADSPERBLOCK>>>(
+                    (cuDoubleComplex *)vecval, *(cuDoubleComplex *)a, DM_NROWS(vec),
+                    vec->traits.ncols, veccompact->stride);
+        } else {
+            FUNCNAME(fromscalar_kernel)<cuFloatComplex>
+                <<<(int)ceil((double)DM_NROWS(vec) / THREADSPERBLOCK), THREADSPERBLOCK>>>(
+                    (cuFloatComplex *)vecval, *(cuFloatComplex *)a, DM_NROWS(vec),
+                    vec->traits.ncols, veccompact->stride);
         }
-    }
-    else
-    {
-        if (vec->traits.datatype & GHOST_DT_DOUBLE)
-        {
-            FUNCNAME(fromscalar_kernel)<double><<< (int)ceil((double)DM_NROWS(vec)/THREADSPERBLOCK),THREADSPERBLOCK >>>(
-                    (double *)vecval, *(double *)a,
-                    DM_NROWS(vec),vec->traits.ncols,veccompact->stride);
-        } 
-        else 
-        {
-            FUNCNAME(fromscalar_kernel)<float><<< (int)ceil((double)DM_NROWS(vec)/THREADSPERBLOCK),THREADSPERBLOCK >>>(
-                    (float *)vecval, *(float *)a,
-                    DM_NROWS(vec),vec->traits.ncols,veccompact->stride);
+    } else {
+        if (vec->traits.datatype & GHOST_DT_DOUBLE) {
+            FUNCNAME(fromscalar_kernel)<double>
+                <<<(int)ceil((double)DM_NROWS(vec) / THREADSPERBLOCK), THREADSPERBLOCK>>>((double *)vecval,
+                    *(double *)a, DM_NROWS(vec), vec->traits.ncols, veccompact->stride);
+        } else {
+            FUNCNAME(fromscalar_kernel)<float>
+                <<<(int)ceil((double)DM_NROWS(vec) / THREADSPERBLOCK), THREADSPERBLOCK>>>(
+                    (float *)vecval, *(float *)a, DM_NROWS(vec), vec->traits.ncols, veccompact->stride);
         }
     }
     if (veccompact != vec) {
         GHOST_INFO_LOG("Transform back");
-        GHOST_CALL_GOTO(ghost_densemat_init_densemat(vec,veccompact,0,0),err,ret);
+        GHOST_CALL_GOTO(ghost_densemat_init_densemat(vec, veccompact, 0, 0), err, ret);
         ghost_densemat_destroy(veccompact);
     }
-    if (vec->map->loc_perm || vec->map->glb_perm) {
-        vec->traits.flags |= GHOST_DENSEMAT_PERMUTED;
-    }
-    
+    if (vec->map->loc_perm || vec->map->glb_perm) { vec->traits.flags |= GHOST_DENSEMAT_PERMUTED; }
+
     goto out;
 err:
 out:
@@ -1094,64 +1122,69 @@ extern "C" ghost_error FUNCNAME(fromRand)(ghost_densemat *vec)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     ghost_error ret = GHOST_SUCCESS;
-    
+
     int needInit = 0;
-    ghost_densemat_malloc(vec,&needInit);
+    ghost_densemat_malloc(vec, &needInit);
 
     void *raw = NULL;
     ghost_densemat *onevec;
     double time;
-    double one[] = {1.,1.};
-    float fone[] = {1.,0.};
-    double minusahalf[] = {-0.5,0.};
-    float fminusahalf[] = {-0.5,0.};
-    
+    double one[] = {1., 1.};
+    float fone[] = {1., 0.};
+    double minusahalf[] = {-0.5, 0.};
+    float fminusahalf[] = {-0.5, 0.};
+
     ghost_timing_wcmilli(&time);
     curandGenerator_t gen;
-    GHOST_CALL_GOTO(ghost_cu_rand_generator_get(&gen),err,ret);
+    GHOST_CALL_GOTO(ghost_cu_rand_generator_get(&gen), err, ret);
 
-    ghost_densemat_clone(&onevec,vec,vec->traits.ncols,0);
-    ghost_densemat_init_val(onevec,one);
+    ghost_densemat_clone(&onevec, vec, vec->traits.ncols, 0);
+    ghost_densemat_init_val(onevec, one);
 
     one[1] = 0.;
     ghost_densemat *compactvec;
-    
+
     if ((vec->src->traits.ncols != vec->traits.ncols) || (vec->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
         GHOST_INFO_LOG("Cloning (and compressing) vec before operation");
-        ghost_densemat_clone(&compactvec,vec,vec->traits.ncols,0);
+        ghost_densemat_clone(&compactvec, vec, vec->traits.ncols, 0);
     } else {
         compactvec = vec;
     }
 
-    ghost_cu_malloc(&raw,DM_NROWS(vec)*vec->traits.ncols*vec->elSize);
+    ghost_cu_malloc(&raw, DM_NROWS(vec) * vec->traits.ncols * vec->elSize);
     if (vec->traits.datatype & GHOST_DT_COMPLEX) {
         if (vec->traits.datatype & GHOST_DT_DOUBLE) {
-            CURAND_CALL_GOTO(curandGenerateUniformDouble(gen,(double *)raw,DM_NROWS(vec)*vec->traits.ncols*2),err,ret);
+            CURAND_CALL_GOTO(
+                curandGenerateUniformDouble(gen, (double *)raw, DM_NROWS(vec) * vec->traits.ncols * 2),
+                err, ret);
         } else {
-            CURAND_CALL_GOTO(curandGenerateUniform(gen,(float *)raw,DM_NROWS(vec)*vec->traits.ncols*2),err,ret);
+            CURAND_CALL_GOTO(
+                curandGenerateUniform(gen, (float *)raw, DM_NROWS(vec) * vec->traits.ncols * 2), err, ret);
         }
     } else {
         if (vec->traits.datatype & GHOST_DT_DOUBLE) {
-            CURAND_CALL_GOTO(curandGenerateUniformDouble(gen,(double *)raw,DM_NROWS(vec)*vec->traits.ncols),err,ret);
+            CURAND_CALL_GOTO(
+                curandGenerateUniformDouble(gen, (double *)raw, DM_NROWS(vec) * vec->traits.ncols),
+                err, ret);
         } else {
-            CURAND_CALL_GOTO(curandGenerateUniform(gen,(float *)raw,DM_NROWS(vec)*vec->traits.ncols),err,ret);
+            CURAND_CALL_GOTO(
+                curandGenerateUniform(gen, (float *)raw, DM_NROWS(vec) * vec->traits.ncols), err, ret);
         }
     }
 
-    ghost_cu_memcpy2d(compactvec->cu_val,compactvec->traits.ncolspadded*vec->elSize,raw,vec->traits.ncols*vec->elSize,compactvec->traits.ncols*vec->elSize,DM_NROWS(compactvec));
+    ghost_cu_memcpy2d(compactvec->cu_val, compactvec->traits.ncolspadded * vec->elSize, raw,
+        vec->traits.ncols * vec->elSize, compactvec->traits.ncols * vec->elSize, DM_NROWS(compactvec));
 
     if (compactvec->traits.datatype & GHOST_DT_DOUBLE) {
-        ghost_axpby(compactvec,onevec,minusahalf,one);
+        ghost_axpby(compactvec, onevec, minusahalf, one);
     } else {
-        ghost_axpby(compactvec,onevec,fminusahalf,fone);
+        ghost_axpby(compactvec, onevec, fminusahalf, fone);
     }
     if (compactvec != vec) {
-        ghost_densemat_init_densemat(vec,compactvec,0,0);
+        ghost_densemat_init_densemat(vec, compactvec, 0, 0);
         ghost_densemat_destroy(compactvec);
     }
-    if (vec->map->loc_perm || vec->map->glb_perm) {
-        vec->traits.flags |= GHOST_DENSEMAT_PERMUTED;
-    }
+    if (vec->map->loc_perm || vec->map->glb_perm) { vec->traits.flags |= GHOST_DENSEMAT_PERMUTED; }
     goto out;
 err:
 out:
@@ -1164,41 +1197,36 @@ out:
 
 extern "C" ghost_error FUNCNAME(conj)(ghost_densemat *vec)
 {
-    if (vec->traits.datatype & GHOST_DT_REAL) {
-        return GHOST_SUCCESS;
-    }
+    if (vec->traits.datatype & GHOST_DT_REAL) { return GHOST_SUCCESS; }
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error ret = GHOST_SUCCESS;
-    
+
     void *vecval;
     ghost_densemat *veccompact;
-    
+
     if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         GHOST_INFO_LOG("Cloning (and compressing) vec before operation");
-        GHOST_CALL_GOTO(ghost_densemat_clone(&veccompact,vec,vec->traits.ncols,0),err,ret);
+        GHOST_CALL_GOTO(ghost_densemat_clone(&veccompact, vec, vec->traits.ncols, 0), err, ret);
     } else {
         veccompact = vec;
     }
     vecval = veccompact->cu_val;
-    
-    if (vec->traits.datatype & GHOST_DT_DOUBLE)
-    {
-        FUNCNAME(conj_kernel)<cuDoubleComplex><<< (int)ceil((double)DM_NROWS(vec)/THREADSPERBLOCK),THREADSPERBLOCK >>>(
-                (cuDoubleComplex *)vecval,
-                DM_NROWS(vec),vec->traits.ncols,veccompact->stride);
-    } 
-    else 
-    {
-        FUNCNAME(conj_kernel)<cuFloatComplex><<< (int)ceil((double)DM_NROWS(vec)/THREADSPERBLOCK),THREADSPERBLOCK >>>(
-                (cuFloatComplex *)vecval,
-                DM_NROWS(vec),vec->traits.ncols,veccompact->stride);
+
+    if (vec->traits.datatype & GHOST_DT_DOUBLE) {
+        FUNCNAME(conj_kernel)<cuDoubleComplex>
+            <<<(int)ceil((double)DM_NROWS(vec) / THREADSPERBLOCK), THREADSPERBLOCK>>>(
+                (cuDoubleComplex *)vecval, DM_NROWS(vec), vec->traits.ncols, veccompact->stride);
+    } else {
+        FUNCNAME(conj_kernel)<cuFloatComplex>
+            <<<(int)ceil((double)DM_NROWS(vec) / THREADSPERBLOCK), THREADSPERBLOCK>>>(
+                (cuFloatComplex *)vecval, DM_NROWS(vec), vec->traits.ncols, veccompact->stride);
     }
     if (veccompact != vec) {
         GHOST_INFO_LOG("Transform back");
-        GHOST_CALL_GOTO(ghost_densemat_init_densemat(vec,veccompact,0,0),err,ret);
+        GHOST_CALL_GOTO(ghost_densemat_init_densemat(vec, veccompact, 0, 0), err, ret);
         ghost_densemat_destroy(veccompact);
     }
-    
+
     goto out;
 
 err:
@@ -1207,6 +1235,6 @@ out:
     cudaDeviceSynchronize();
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
 
-    
+
     return ret;
 }

@@ -332,6 +332,15 @@ extern "C" {
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error ghost_nrm2(void *norm, ghost_densemat *vec);
+    /**
+     * @ingroup locops
+     * @brief Computes <em>y(i,j) := a*x(i,j)*y(i,j)</em> or <em>y(i,j) := a*x(i)</em> (if x has 1 column), with scalar a
+     * @param y The in-/output densemat.
+     * @param x The input densemat
+     * @param a Points to the scale factor a.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error ghost_mult(ghost_densemat *y, ghost_densemat *x, void *a);
 
     int ghost_kacz_perf(double *perf, double time, void *arg);
     int ghost_spmv_perf(double *perf, double time, void *arg);
