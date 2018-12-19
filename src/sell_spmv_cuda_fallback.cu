@@ -215,7 +215,7 @@ static ghost_error ghost_sellspmv_cu_tmpl_fallback(ghost_densemat *lhs, ghost_sp
     }
     if (opts.flags & (GHOST_SPMV_SHIFT|GHOST_SPMV_VSHIFT)) {
         size_t shiftsize = sizeof(v_dt_device)*(opts.flags & (GHOST_SPMV_VSHIFT|GHOST_SPMV_SHIFT)?rhs->traits.ncols:0);
-        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_shift,shiftsize));
+        GHOST_CALL_RETURN(ghost_cu_temp_buffer_malloc((void **)&cu_shift,shiftsize));
         if (opts.flags & GHOST_SPMV_SHIFT) {
             ghost_lidx c;
             for (c=0; c<rhs->traits.ncols; c++) {
@@ -241,7 +241,7 @@ static ghost_error ghost_sellspmv_cu_tmpl_fallback(ghost_densemat *lhs, ghost_sp
         grid.x = CEILDIV(SPM_NROWSPAD(mat),block.x);
         grid.y = CEILDIV(rhs->traits.ncols,MAX_COLS_PER_BLOCK_COLMAJOR);
         if (opts.flags & GHOST_SPMV_DOT) {
-            GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
+            GHOST_CALL_RETURN(ghost_cu_temp_buffer_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
         }
         size_t smem = 0;
         if (opts.flags & GHOST_SPMV_DOT) {
@@ -269,7 +269,7 @@ static ghost_error ghost_sellspmv_cu_tmpl_fallback(ghost_densemat *lhs, ghost_sp
             grid.y = CEILDIV(rhs->traits.ncols,nrowsinblock);
             block.x = nrowsinblock*CEILDIV(rhs->traits.ncols,grid.y);
             if (opts.flags & GHOST_SPMV_DOT) {
-                GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
+                GHOST_CALL_RETURN(ghost_cu_temp_buffer_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
             }
             GHOST_DEBUG_LOG(1,"grid %dx%d block %dx%d nrowsinblock %d",grid.x,grid.y,block.x,block.y,nrowsinblock);
             SELL_kernel_rm_fallback_tmpl<m_dt,v_dt_device,v_dt_base><<<grid,block,0>>>(
@@ -289,7 +289,7 @@ static ghost_error ghost_sellspmv_cu_tmpl_fallback(ghost_densemat *lhs, ghost_sp
             grid.y = 1;
             block.x = nrowsinblock*rhs->traits.ncols;
             if (opts.flags & GHOST_SPMV_DOT) {
-                GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
+                GHOST_CALL_RETURN(ghost_cu_temp_buffer_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
             }
             GHOST_DEBUG_LOG(1,"grid %dx%d block %dx%d nrowsinblock %d",grid.x,grid.y,block.x,block.y,nrowsinblock);
             SELL_kernel_rm_fallback_tmpl<m_dt,v_dt_device,v_dt_base><<<grid,block,0>>>(
@@ -309,7 +309,7 @@ static ghost_error ghost_sellspmv_cu_tmpl_fallback(ghost_densemat *lhs, ghost_sp
             grid.y = 1;
             block.x = nrowsinblock*rhs->traits.ncols;
             if (opts.flags & GHOST_SPMV_DOT) {
-                GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
+                GHOST_CALL_RETURN(ghost_cu_temp_buffer_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
             }
             int smem = (block.x/32)*sizeof(v_dt_device);
             GHOST_DEBUG_LOG(1,"grid %dx%d block %dx%d nrowsinblock %d smem %d",grid.x,grid.y,block.x,block.y,nrowsinblock,smem);
@@ -330,7 +330,7 @@ static ghost_error ghost_sellspmv_cu_tmpl_fallback(ghost_densemat *lhs, ghost_sp
             grid.y = 1;
             block.x = nrowsinblock*rhs->traits.ncols;
             if (opts.flags & GHOST_SPMV_DOT) {
-                GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
+                GHOST_CALL_RETURN(ghost_cu_temp_buffer_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
             }
             int smem = (block.x/32)*sizeof(v_dt_device);
             GHOST_DEBUG_LOG(1,"grid %dx%d block %dx%d nrowsinblock %d smem %d",grid.x,grid.y,block.x,block.y,nrowsinblock,smem);
@@ -351,7 +351,7 @@ static ghost_error ghost_sellspmv_cu_tmpl_fallback(ghost_densemat *lhs, ghost_sp
             grid.y = 1;
             block.x = nrowsinblock*rhs->traits.ncols;
             if (opts.flags & GHOST_SPMV_DOT) {
-                GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
+                GHOST_CALL_RETURN(ghost_cu_temp_buffer_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
             }
             int smem = (block.x/32)*sizeof(v_dt_device);
             GHOST_DEBUG_LOG(1,"grid %dx%d block %dx%d nrowsinblock %d smem %d",grid.x,grid.y,block.x,block.y,nrowsinblock,smem);
@@ -386,7 +386,7 @@ static ghost_error ghost_sellspmv_cu_tmpl_fallback(ghost_densemat *lhs, ghost_sp
 #ifdef LOCALDOT_ONTHEFLY
         GHOST_INSTR_START("spmv_cuda_dot_reduction")
         v_dt_device *cu_localdot_result;
-        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot_result,sizeof(v_dt_device)*rhs->traits.ncols));
+        GHOST_CALL_RETURN(ghost_cu_temp_buffer_malloc((void **)&cu_localdot_result,sizeof(v_dt_device)*rhs->traits.ncols));
         if (opts.flags & GHOST_SPMV_DOT_YY) {
             GHOST_CALL_RETURN(ghost_cu_memset(cu_localdot_result,0,sizeof(v_dt_device)*rhs->traits.ncols));
 
