@@ -71,7 +71,10 @@ ghost_error ghost_cu_malloc_managed(void **mem, size_t bytesize)
     ghost_error ret = GHOST_SUCCESS;
 
     GHOST_DEBUG_LOG(1, "CUDA malloc managed with %zu bytes (%zu MB)", bytesize, bytesize / (1 << 20));
-    if (bytesize == 0) bytesize = 1;
+    if (bytesize == 0) {
+      *mem = NULL;
+      return GHOST_SUCCESS;
+    }
 
 
 #ifdef GHOST_HAVE_CUDA
