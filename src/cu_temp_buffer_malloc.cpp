@@ -28,6 +28,10 @@ unsigned int peakBufferCount = 0;
 
 ghost_error ghost_cu_temp_buffer_malloc(void **mem, size_t bytesize)
 {
+    if (bytesize == 0) {
+        *mem = NULL;
+        return GHOST_SUCCESS;
+    }
 #ifdef GHOST_HAVE_CUDA
     lock_guard<mutex> lock(cu_temp_buffer_malloc_mutex);
 
@@ -71,6 +75,7 @@ ghost_error ghost_cu_temp_buffer_malloc(void **mem, size_t bytesize)
     return GHOST_SUCCESS;
 }
 
+
 ghost_error ghost_cu_temp_buffer_free(void *mem)
 {
 #ifdef GHOST_HAVE_CUDA
@@ -91,4 +96,29 @@ ghost_error ghost_cu_temp_buffer_free(void *mem)
     UNUSED(mem);
 #endif
     return GHOST_SUCCESS;
+}
+
+
+bool ghost_cu_temp_buffer_free_or_nop(void *mem)
+{
+#ifdef GHOST_HAVE_CUDA
+    lock_guard<mutex> lock(cu_temp_buffer_malloc_mutex);
+
+    auto foundBuffer =
+        find_if(begin(buffers), end(buffers), [=](SmallBuffer b) { return b.dPtr == mem; });
+    if (foundBuffer != end(buffers)) {
+        usedBufferCount -= 1;
+        foundBuffer->used = false;
+        GHOST_DEBUG_LOG(1, "Reclaimed %zuB buffer", foundBuffer->size);
+        return true;
+    } else {
+        GHOST_DEBUG_LOG(
+            2, "Attempt freeing temp buffer, but address  was not allocated with cu_temp_buffer_malloc\n");
+        return false;
+    }
+
+#else
+    UNUSED(mem);
+    return false;
+#endif
 }
