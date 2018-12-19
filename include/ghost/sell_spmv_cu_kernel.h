@@ -473,7 +473,7 @@ ghost_error ghost_sellspmv_cu_tmpl(ghost_densemat *lhs, ghost_sparsemat *mat, gh
 
             GHOST_CALL_RETURN(ghost_cu_download(&localdot[2 * rhs->traits.ncols], cu_localdot_result, rhs->traits.ncols * sizeof(v_dt_host)));
         }
-        GHOST_CALL_RETURN(ghost_cu_free(cu_localdot_result));
+        GHOST_CALL_RETURN(ghost_cu_temp_buffer_free(cu_localdot_result));
         GHOST_INSTR_STOP("spmv_cuda_dot_reduction")
 #else
         GHOST_INSTR_START("spmv_cuda_dot")
@@ -490,10 +490,10 @@ ghost_error ghost_sellspmv_cu_tmpl(ghost_densemat *lhs, ghost_sparsemat *mat, gh
     //    z->axpby(z,lhs,&seta,&sdelta);
     // }
     if (opts.flags & GHOST_SPMV_DOT) {
-        GHOST_CALL_RETURN(ghost_cu_free(cu_localdot));
+        GHOST_CALL_RETURN(ghost_cu_temp_buffer_free(cu_localdot));
     }
     if (opts.flags & (GHOST_SPMV_SHIFT | GHOST_SPMV_VSHIFT)) {
-        GHOST_CALL_RETURN(ghost_cu_free(cu_shift));
+        GHOST_CALL_RETURN(ghost_cu_temp_buffer_free(cu_shift));
     }
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
     return ret;
