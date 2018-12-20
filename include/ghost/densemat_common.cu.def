@@ -335,6 +335,7 @@ extern "C" ghost_error FUNCNAME(vaxpy)(ghost_densemat *v1, ghost_densemat *v2, v
             int v;
             for (v = 0; v < v1->traits.ncols; v++) { ones[v] = std::complex<double>(1., 0.); }
             ret = FUNCNAME(vaxpby)(v1, v2, a, ones);
+            free(ones);
         } else {
             std::complex<float> *ones;
             GHOST_CALL_RETURN(
@@ -342,6 +343,7 @@ extern "C" ghost_error FUNCNAME(vaxpy)(ghost_densemat *v1, ghost_densemat *v2, v
             int v;
             for (v = 0; v < v1->traits.ncols; v++) { ones[v] = std::complex<float>(1., 0.); }
             ret = FUNCNAME(vaxpby)(v1, v2, a, ones);
+            free(ones);
         }
     } else {
         if (v1->traits.datatype & GHOST_DT_DOUBLE) {
@@ -350,15 +352,16 @@ extern "C" ghost_error FUNCNAME(vaxpy)(ghost_densemat *v1, ghost_densemat *v2, v
             int v;
             for (v = 0; v < v1->traits.ncols; v++) { ones[v] = 1.; }
             ret = FUNCNAME(vaxpby)(v1, v2, a, ones);
+            free(ones);
         } else {
             float *ones;
             GHOST_CALL_RETURN(ghost_malloc((void **)&ones, v1->traits.ncols * sizeof(float)));
             int v;
             for (v = 0; v < v1->traits.ncols; v++) { ones[v] = 1.; }
             ret = FUNCNAME(vaxpby)(v1, v2, a, ones);
+            free(ones);
         }
     }
-
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
 
     return ret;
@@ -374,8 +377,8 @@ extern "C" ghost_error FUNCNAME(vaxpby)(ghost_densemat *v1, ghost_densemat *v2, 
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error ret = GHOST_SUCCESS;
 
-    void *d_a;
-    void *d_b;
+    void *d_a = NULL;
+    void *d_b = NULL;
     size_t sizeofdt;
 
 
@@ -488,8 +491,8 @@ extern "C" ghost_error FUNCNAME(vaxpbypcz)(
             ghost_cu_upload(&((char *)d_c)[col * sizeofdt], &((char *)c)[col * sizeofdt], sizeofdt),
             err, ret);
     }
-    
-    
+
+
     void *v1val, *v2val, *v3val;
     ghost_densemat *v1compact, *v2compact, *v3compact;
 
@@ -985,6 +988,7 @@ extern "C" ghost_error FUNCNAME(vscale)(ghost_densemat *vec, void *a)
     goto out;
 err:
 out:
+    GHOST_CALL_RETURN(ghost_cu_temp_buffer_free(d_a));
     cudaDeviceSynchronize();
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
 
