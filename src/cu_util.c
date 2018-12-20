@@ -80,6 +80,9 @@ ghost_error ghost_cu_malloc_managed(void **mem, size_t bytesize)
 #ifdef GHOST_HAVE_CUDA
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_UTIL);
     CUDA_CALL_GOTO(cudaMallocManaged(mem, bytesize, cudaMemAttachGlobal), err, ret);
+    cudaStream_t stream;
+    CUDA_CALL_GOTO(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking), err, ret);
+    CUDA_CALL_GOTO(cudaMemPrefetchAsync ( *mem, bytesize, cu_device, stream), err, ret);
     goto out;
 err:
     GHOST_ERROR_LOG("CUDA malloc managed with %zu bytes failed!", bytesize);
