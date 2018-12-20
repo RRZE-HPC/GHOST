@@ -6,7 +6,7 @@ pipelines:
           - echo "Mirroring repository to GitHub..."
           - mkdir -p ~/.ssh
           - (umask  077 ; echo $MY_SSH_KEY | base64 --decode > ~/.ssh/id_rsa)
-          - git push git@github.com:RRZE-HPC/GHOST.git
+          - git push -f git@github.com:RRZE-HPC/GHOST.git
           - echo "Building and testing GHOST..."
           - export DEBIAN_FRONTEND=noninteractive
           - wget https://developer.nvidia.com/compute/cuda/9.2/Prod2/local_installers/cuda-repo-ubuntu1604-9-2-local_9.2.148-1_amd64
