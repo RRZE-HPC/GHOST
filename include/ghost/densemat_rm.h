@@ -24,7 +24,8 @@ extern "C" {
     ghost_error ghost_densemat_rm_normalize_selector(ghost_densemat *vec);
     ghost_error ghost_densemat_rm_dotprod_selector(ghost_densemat *vec, void *, ghost_densemat *);
     ghost_error ghost_densemat_rm_vscale_selector(ghost_densemat *vec1, void *);
-    ghost_error ghost_densemat_rm_mult_selector(ghost_densemat *vec1,ghost_densemat *vec2, void *); 
+    ghost_error ghost_densemat_rm_mult_selector(ghost_densemat *vec1,ghost_densemat *vec2, void *);
+    ghost_error ghost_densemat_rm_mult1_selector(ghost_densemat *vec1,ghost_densemat *vec2, void *); 
     ghost_error ghost_densemat_rm_vaxpy_selector(ghost_densemat *vec1, ghost_densemat *vec2, void *); 
     ghost_error ghost_densemat_rm_vaxpby_selector(ghost_densemat *vec1, ghost_densemat *vec2, void *, void *); 
     ghost_error ghost_densemat_rm_fromRand_selector(ghost_densemat *vec);

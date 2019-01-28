@@ -198,21 +198,21 @@ __global__ static void FUNCNAME(mult_kernel)(
     for (; idx < nrows; idx += gridDim.x * blockDim.x) {
         ghost_lidx v;
         for (v = 0; v < ncols; v++) {
-            v2[IDX(idx, v, ld1)] = mult<T>(a, v1[IDX(idx, v, ld1)], v2[IDX(idx, v, ld2)]);
+            v1[IDX(idx, v, ld1)] = mult<T>(a, v1[IDX(idx, v, ld1)], v2[IDX(idx, v, ld2)]);
         }
     }
 }
 
 template<typename T>
 __global__ static void FUNCNAME(mult1_kernel)(
-    T *v1, T *v2, T *a, ghost_lidx nrows, ghost_lidx ncols, ghost_lidx ld1, ghost_lidx ld2)
+    T *v1, T *v2, T a, ghost_lidx nrows, ghost_lidx ncols, ghost_lidx ld1, ghost_lidx ld2)
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
     for (; idx < nrows; idx += gridDim.x * blockDim.x) {
         ghost_lidx v;
         for (v = 0; v < ncols; v++) {
-            v2[IDX(idx, v, ld1)] = mult<T>(a[0], v1[IDX(idx, 0, ld2)], v2[IDX(idx, v, ld2)]);
+            v1[IDX(idx, v, ld1)] = mult<T>(a, v1[IDX(idx, 0, ld2)], v2[IDX(idx, v, ld2)]);
         }
     }
 }
@@ -1041,6 +1041,76 @@ extern "C" ghost_error FUNCNAME(mult)(ghost_densemat *v1, ghost_densemat *v2, vo
                     veccompact1->stride, veccompact2->stride);
         } else {
             FUNCNAME(mult_kernel)<float>
+                <<<(int)ceil((double)DM_NROWS(v1) / THREADSPERBLOCK), THREADSPERBLOCK>>>(
+                    (float *)v1val, (float *)v2val, *(float *)a, DM_NROWS(v1), v1->traits.ncols,
+                    veccompact1->stride, veccompact2->stride);
+        }
+    }
+    if (veccompact1 != v1) {
+        GHOST_INFO_LOG("Transform back");
+        GHOST_CALL_GOTO(ghost_densemat_init_densemat(v1, veccompact1, 0, 0), err, ret);
+        ghost_densemat_destroy(veccompact1);
+    }
+    if (veccompact2 != v2) {
+        GHOST_INFO_LOG("Transform back");
+        GHOST_CALL_GOTO(ghost_densemat_init_densemat(v2, veccompact2, 0, 0), err, ret);
+        ghost_densemat_destroy(veccompact2);
+    }
+
+    goto out;
+err:
+out:
+    cudaDeviceSynchronize();
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
+
+    return ret;
+}
+
+extern "C" ghost_error FUNCNAME(mult1)(ghost_densemat *v1, ghost_densemat *v2, void *a)
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
+    ghost_error ret = GHOST_SUCCESS;
+
+    void *v1val, *v2val;
+    ghost_densemat *veccompact1, *veccompact2;
+
+    if (v1->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+        GHOST_INFO_LOG("Cloning (and compressing) vec before operation");
+        GHOST_CALL_GOTO(ghost_densemat_clone(&veccompact1, v1, v1->traits.ncols, 0), err, ret);
+    } else {
+        veccompact1 = v1;
+    }
+    v1val = veccompact1->cu_val;
+
+    if (v2->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+        GHOST_INFO_LOG("Cloning (and compressing) vec before operation");
+        GHOST_CALL_GOTO(ghost_densemat_clone(&veccompact2, v2, v2->traits.ncols, 0), err, ret);
+    } else {
+        veccompact2 = v2;
+    }
+    v2val = veccompact2->cu_val;
+
+
+    if (v1->traits.datatype & GHOST_DT_COMPLEX) {
+        if (v1->traits.datatype & GHOST_DT_DOUBLE) {
+            FUNCNAME(mult1_kernel)<cuDoubleComplex>
+                <<<(int)ceil((double)DM_NROWS(v1) / THREADSPERBLOCK), THREADSPERBLOCK>>>(
+                    (cuDoubleComplex *)v1val, (cuDoubleComplex *)v2val, *(cuDoubleComplex *)a,
+                    DM_NROWS(v1), v1->traits.ncols, veccompact1->stride, veccompact2->stride);
+        } else {
+            FUNCNAME(mult1_kernel)<cuFloatComplex>
+                <<<(int)ceil((double)DM_NROWS(v1) / THREADSPERBLOCK), THREADSPERBLOCK>>>(
+                    (cuFloatComplex *)v1val, (cuFloatComplex *)v2val, *(cuFloatComplex *)a,
+                    DM_NROWS(v1), v1->traits.ncols, veccompact1->stride, veccompact2->stride);
+        }
+    } else {
+        if (v1->traits.datatype & GHOST_DT_DOUBLE) {
+            FUNCNAME(mult1_kernel)<double>
+                <<<(int)ceil((double)DM_NROWS(v1) / THREADSPERBLOCK), THREADSPERBLOCK>>>(
+                    (double *)v1val, (double *)v2val, *(double *)a, DM_NROWS(v1), v1->traits.ncols,
+                    veccompact1->stride, veccompact2->stride);
+        } else {
+            FUNCNAME(mult1_kernel)<float>
                 <<<(int)ceil((double)DM_NROWS(v1) / THREADSPERBLOCK), THREADSPERBLOCK>>>(
                     (float *)v1val, (float *)v2val, *(float *)a, DM_NROWS(v1), v1->traits.ncols,
                     veccompact1->stride, veccompact2->stride);

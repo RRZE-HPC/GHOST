@@ -25,6 +25,7 @@ ghost_error ghost_densemat_cu_rm_axpbypcz(ghost_densemat *v1, ghost_densemat *v2
 ghost_error ghost_densemat_cu_rm_scale(ghost_densemat *v, void *a);
 ghost_error ghost_densemat_cu_rm_vscale(ghost_densemat *v, void *a);
 ghost_error ghost_densemat_cu_rm_mult(ghost_densemat *v1, ghost_densemat *v2, void *a);
+ghost_error ghost_densemat_cu_rm_mult1(ghost_densemat *v1, ghost_densemat *v2, void *a);
 ghost_error ghost_densemat_cu_rm_fromScalar(ghost_densemat *vec, void *val);
 ghost_error ghost_densemat_cu_rm_fromRand(ghost_densemat *vec);
 ghost_error ghost_densemat_cu_rm_communicationassembly(void * work, ghost_lidx *dueptr, ghost_lidx totaldues, ghost_densemat *vec, ghost_context *ctx, ghost_lidx *perm);
