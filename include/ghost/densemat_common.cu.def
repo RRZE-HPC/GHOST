@@ -212,7 +212,7 @@ __global__ static void FUNCNAME(mult1_kernel)(
     for (; idx < nrows; idx += gridDim.x * blockDim.x) {
         ghost_lidx v;
         for (v = 0; v < ncols; v++) {
-            v1[IDX(idx, v, ld1)] = mult<T>(a, v1[IDX(idx, v, ld2)], v2[IDX(idx, 0, ld2)]);
+            v1[IDX(idx, v, ld1)] = mult<T>(a, v1[IDX(idx, v, ld1)], v2[IDX(idx, 0, ld2)]);
         }
     }
 }
