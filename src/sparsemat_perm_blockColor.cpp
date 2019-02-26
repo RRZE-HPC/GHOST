@@ -13,6 +13,9 @@
 extern "C" ghost_error ghost_sparsemat_blockColor(ghost_context *ctx, ghost_sparsemat *mat) 
 {
     ghost_error ret = GHOST_SUCCESS;
+
+    UNUSED(ctx);
+    UNUSED(mat);
     GHOST_ERROR_LOG("The function has been deprecated and removed use RACE permutation");
 #if 0    
     GHOST_INFO_LOG("Create partition and permute (Block coloring)");

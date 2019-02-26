@@ -109,7 +109,7 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *c
             symm = 0;
         }
 
-        printf("allocating total size of %f, where gidx = %d\n", (double)actualnz*sizeof(ghost_gidx)+2*(M + 1)*sizeof(ghost_gidx)+(double)actualnz*dtsize, sizeof(ghost_gidx));
+        //printf("allocating total size of %f, where gidx = %d\n", (double)actualnz*sizeof(ghost_gidx)+2*(M + 1)*sizeof(ghost_gidx)+(double)actualnz*dtsize, sizeof(ghost_gidx));
         ghost_malloc((void **)&colInd,actualnz * sizeof(ghost_gidx));
         ghost_malloc((void **)&rowPtr,(M + 1) * sizeof(ghost_gidx));
         ghost_malloc((void **)&values,actualnz * dtsize);

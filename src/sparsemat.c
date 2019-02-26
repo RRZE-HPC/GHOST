@@ -1190,7 +1190,6 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
 
     if (!(*chunkptr)) {
         GHOST_INSTR_START("rowlens");
-        printf("allocating chunkPtr %f\n", (double)(nChunks+1)*sizeof(ghost_lidx));
         GHOST_CALL_GOTO(ghost_malloc_align((void **)chunkptr,(nChunks+1)*sizeof(ghost_lidx),GHOST_DATA_ALIGNMENT),err,ret);
 
     }
@@ -1198,9 +1197,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
     {
         ghost_lidx rowlen;
         maxRowLenInChunk = 0;
-        printf("allocating tmp val %f\n", (double)src->maxrowlen*mat->elSize);
         GHOST_CALL(ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize),ret);
-        printf("allocating tmp col %f\n", (double)src->maxrowlen*sizeof(ghost_gidx));
         GHOST_CALL(ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx)),ret);
 
         /*if (!(mat->traits.flags & GHOST_SPARSEMAT_PERM_ANY) && src->func == ghost_sparsemat_rowfunc_crs) {
@@ -1372,12 +1369,10 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
 
     bool readcols = 0; // we only need to read the columns the first time the matrix is created
     if (!(*val)) {
-        printf("allocating val %f\n", (double)mat->elSize*(size_t)mat->nEnts);
         GHOST_CALL_GOTO(ghost_malloc_align((void **)val,mat->elSize*(size_t)mat->nEnts,GHOST_DATA_ALIGNMENT),err,ret);
     }
 
     if (!(*col)) {
-        printf("allocating col %f\n", (double)sizeof(ghost_gidx)*(size_t)mat->nEnts);
         GHOST_CALL_GOTO(ghost_malloc_align((void **)col,sizeof(ghost_gidx)*(size_t)mat->nEnts,GHOST_DATA_ALIGNMENT),err,ret);
         readcols = 1;
     }
