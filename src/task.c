@@ -17,6 +17,7 @@
 #include "ghost/machine.h"
 #include "ghost/log.h"
 #include "ghost/taskq.h"
+#include "ghost/omp.h"
 
 #ifdef GHOST_HAVE_OPENMP
 #include <omp.h>
@@ -31,9 +32,9 @@ ghost_error ghost_task_unpin(ghost_task *task)
     ghost_thpool_get(&ghost_thpool);
     if (!(task->flags & GHOST_TASK_NOT_PIN)) {
         hwloc_bitmap_foreach_begin(pu,task->coremap);
-            if (task->parent && 
-                    !(task->parent->flags & GHOST_TASK_NOT_ALLOW_CHILD) && 
-                    hwloc_bitmap_isset(task->parent->coremap,pu)) 
+            if (task->parent &&
+                    !(task->parent->flags & GHOST_TASK_NOT_ALLOW_CHILD) &&
+                    hwloc_bitmap_isset(task->parent->coremap,pu))
             {
                 hwloc_bitmap_clr(task->parent->childusedmap,pu);
             } else {
@@ -46,7 +47,7 @@ ghost_error ghost_task_unpin(ghost_task *task)
     return GHOST_SUCCESS;
 }
 
-ghost_error ghost_task_string(char **str, ghost_task *t) 
+ghost_error ghost_task_string(char **str, ghost_task *t)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING|GHOST_FUNCTYPE_UTIL);
     GHOST_CALL_RETURN(ghost_malloc((void **)str,1));
@@ -64,7 +65,7 @@ ghost_error ghost_task_string(char **str, ghost_task *t)
 ghost_error ghost_task_enqueue(ghost_task *t)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING);
-    
+
     if (!ghost_tasking_enabled()) {
         t->ret = t->func(t->arg);
         t->state = GHOST_TASK_FINISHED;
@@ -119,7 +120,7 @@ ghost_task_state ghost_taskest(ghost_task * t)
 ghost_error ghost_task_wait(ghost_task * task)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING);
-    
+
     if (!ghost_tasking_enabled()) {
         return GHOST_SUCCESS;
     } else {
@@ -157,19 +158,19 @@ const char *ghost_task_state_string(ghost_task_state state)
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_TASKING|GHOST_FUNCTYPE_UTIL);
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_TASKING|GHOST_FUNCTYPE_UTIL);
     switch (state) {
-        case GHOST_TASK_INVALID: 
+        case GHOST_TASK_INVALID:
             return "Invalid";
             break;
-        case GHOST_TASK_CREATED: 
+        case GHOST_TASK_CREATED:
             return "Created";
             break;
-        case GHOST_TASK_ENQUEUED: 
+        case GHOST_TASK_ENQUEUED:
             return "Enqueued";
             break;
-        case GHOST_TASK_RUNNING: 
+        case GHOST_TASK_RUNNING:
             return "Running";
             break;
-        case GHOST_TASK_FINISHED: 
+        case GHOST_TASK_FINISHED:
             return "Finished";
             break;
         default:
@@ -208,21 +209,21 @@ ghost_error ghost_task_create(ghost_task **t, int nThreads, int LD, void *(*func
     ghost_error ret = GHOST_SUCCESS;
 
     GHOST_CALL_GOTO(ghost_malloc((void **)t,sizeof(ghost_task)),err,ret);
-    
+
     if (nThreads == GHOST_TASK_FILL_LD) {
         if (LD < 0) {
             GHOST_WARNING_LOG("FILL_LD does only work when the LD is given! Not creating task!");
             return GHOST_ERR_INVALID_ARG;
         }
         ghost_pumap_npu(&(*t)->nThreads,LD);
-    } 
+    }
     else if (nThreads == GHOST_TASK_FILL_ALL) {
 #ifdef GHOST_HAVE_OPENMP
         GHOST_CALL_GOTO(ghost_pumap_npu(&((*t)->nThreads),GHOST_NUMANODE_ANY),err,ret);
 #else
         (*t)->nThreads = 1; //TODO is this the correct behavior?
 #endif
-    } 
+    }
     else {
         (*t)->nThreads = nThreads;
     }
@@ -282,7 +283,7 @@ ghost_error ghost_task_cur(ghost_task **task)
 
     ghost_thpool *thpool;
     ghost_thpool_get(&thpool);
-    
+
     if (!thpool) {
         *task = NULL;
     } else {
@@ -300,7 +301,50 @@ bool ghost_tasking_enabled()
 {
     char *envtask = getenv("GHOST_TASK");
     if (envtask && !strncasecmp(envtask,"disable",7)) {
+        //pin threads if disabled
+        int nThreads;
+
+#pragma omp parallel
+        {
+            nThreads = ghost_omp_nthread();
+        }
+
+        ghost_pumap *pumap;
+        ghost_pumap_get(&pumap);
+
+        hwloc_bitmap_t mybusy = hwloc_bitmap_alloc();
+        hwloc_bitmap_t myfree = hwloc_bitmap_alloc();
+        hwloc_bitmap_andnot(myfree,pumap->cpuset,mybusy);
+
+        int curCore = hwloc_bitmap_first(myfree);
+        // pin me
+        ghost_thread_pin(curCore);
+        int curThread;
+
+        if( nThreads > 0 ) {
+            int cores[nThreads];
+            for(curThread=0; curThread<nThreads; curThread++) {
+                cores[curThread] = curCore;
+                hwloc_bitmap_set(mybusy,curCore);
+                curCore = hwloc_bitmap_next(myfree,curCore);
+            }
+
+#pragma omp parallel private(curThread)
+            {
+                curThread = ghost_omp_threadnum();
+                GHOST_DEBUG_LOG(1,"Thread %d (%d): Core # %d is idle, using it",curThread,
+                        (int)pthread_self(),cores[curThread]);
+
+                ghost_thread_pin(cores[curThread]);
+
+            }
+        }
+
+        hwloc_bitmap_free(mybusy);
+        hwloc_bitmap_free(myfree);
+
         return false;
+
     } else {
         return true;
     }
