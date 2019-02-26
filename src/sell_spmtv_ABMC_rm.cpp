@@ -56,14 +56,16 @@ idx+=1;\
 //this is necessary since #pragma omp for doesn't understand !=
 #define LOOP(start,end,MT,VT) \
 _Pragma("omp parallel for schedule(runtime)")\
-for (ghost_lidx row=start; row<end; ++row){ \
-    VT x_row = xval[row]; \
-    ghost_lidx idx = mat->chunkStart[row]; \
-    _Pragma("simd vectorlength(VECLEN)") \
-    for (ghost_lidx j=0; j<mat->rowLen[row]; j++) { \
-        bval[mat->col[idx+j]] = bval[mat->col[idx+j]] + (MT)mval[idx+j] * x_row;\
-    } \
-} \
+for (ghost_lidx part=start; part<end; ++part){ \
+    for (ghost_lidx row=ctx->part_ptr[part]; row<ctx->part_ptr[part+1]; ++row){ \
+        VT x_row = xval[row]; \
+        ghost_lidx idx = mat->chunkStart[row]; \
+        _Pragma("simd vectorlength(VECLEN)") \
+        for (ghost_lidx j=0; j<mat->rowLen[row]; j++) { \
+            bval[mat->col[idx+j]] = bval[mat->col[idx+j]] + (MT)mval[idx+j] * x_row;\
+        }\
+    }\
+}\
 
 
 #elif CHUNKHEIGHT == 1
@@ -199,8 +201,9 @@ if(start_chunk<end_chunk) { \
 }
 #endif
 
-void ghost_spmtv_MC(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations)
+void ghost_spmtv_ABMC(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations)
 {
+#ifdef GHOST_HAVE_METIS
 #ifdef GHOST_HAVE_COLPACK
     typedef double MT;
     typedef double VT;
@@ -209,7 +212,6 @@ void ghost_spmtv_MC(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, 
     MT *xval = (MT *)(x->val);
     MT *mval = (MT *)(mat->val);
     ghost_context* ctx = (ghost_context*) mat->context;
- 
     if( (mat->context->color_ptr==NULL) || (mat->context->ncolors==0) )
     {
         GHOST_ERROR_LOG("Matrix not colored")
@@ -234,7 +236,16 @@ void ghost_spmtv_MC(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, 
     UNUSED(x);
     UNUSED(iterations);
 
-    GHOST_ERROR_LOG("Enable RACE library");
+    GHOST_ERROR_LOG("Enable COLPACK library");
 #endif
+#else
+    UNUSED(b);
+    UNUSED(mat);
+    UNUSED(x);
+    UNUSED(iterations);
+
+    GHOST_ERROR_LOG("Enable METIS library");
+#endif
+
 }
 

@@ -473,7 +473,12 @@ typedef enum {
     /**
     * @brief Recursive Coloring
     */
-    GHOST_SPARSEMAT_RACE=1<<18
+    GHOST_SPARSEMAT_RACE=1<<18,
+
+    /**
+     * @brief Algebraic Block Multi-coloring
+     */
+    GHOST_SPARSEMAT_ABMC=1<<19
 
 } ghost_sparsemat_flags;
 
@@ -481,7 +486,7 @@ typedef enum {
  * @brief Combination of flags which apply any permutation to a ::ghost_sparsemat
  */
 #define GHOST_SPARSEMAT_PERM_ANY (GHOST_SPARSEMAT_PERM_ANY_LOCAL|GHOST_SPARSEMAT_PERM_ANY_GLOBAL)
-#define GHOST_SPARSEMAT_PERM_ANY_LOCAL (GHOST_SPARSEMAT_COLOR|GHOST_SPARSEMAT_RCM|GHOST_SPARSEMAT_BLOCKCOLOR|GHOST_SPARSEMAT_SORT_ROWS|GHOST_SPARSEMAT_RACE)
+#define GHOST_SPARSEMAT_PERM_ANY_LOCAL (GHOST_SPARSEMAT_COLOR|GHOST_SPARSEMAT_ABMC|GHOST_SPARSEMAT_RCM|GHOST_SPARSEMAT_BLOCKCOLOR|GHOST_SPARSEMAT_SORT_ROWS|GHOST_SPARSEMAT_RACE)
 #define GHOST_SPARSEMAT_PERM_ANY_GLOBAL (GHOST_SPARSEMAT_SCOTCHIFY|GHOST_SPARSEMAT_ZOLTAN)
 
 #ifdef __cplusplus
@@ -867,6 +872,8 @@ extern "C" {
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error ghost_sparsemat_perm_color(ghost_context *ctx, ghost_sparsemat *mat);
+    ghost_error ghost_sparsemat_perm_abmc(ghost_context *ctx, ghost_sparsemat *mat);
+
 
     ghost_error ghost_sparsemat_blockColor(ghost_context *ctx, ghost_sparsemat *mat);
 
@@ -912,7 +919,6 @@ extern "C" {
      * @param[out] ctx The context in which the permutations and color information is stored.
      */
     void ghost_sleep_RACE(ghost_context* ctx);
-
 
     ghost_error ghost_sparsemat_perm_zoltan(ghost_context *ctx, ghost_sparsemat *mat);
     /**
@@ -1027,6 +1033,23 @@ extern "C" {
 
     void ghost_gs_RACE_fallback(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);
 
+    void ghost_trsv_RACE_fallback(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat* diag, ghost_densemat *x, int iterations);
+
+    void ghost_gs_MC(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);
+
+    void ghost_symm_gs_MC(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);
+
+    void ghost_gs_ABMC(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);
+
+    void ghost_symm_gs_ABMC(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);
+
+
+    ghost_error ghost_symm_gs_RACE(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);
+
+
+    void ghost_spmv_RACE(ghost_densemat *lhs, ghost_sparsemat *mat, ghost_densemat *rhs);
+
+
 
      /**
      * @brief Select and call the right SpMTV kernel.
@@ -1038,7 +1061,7 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-     /*SPMTV*/
+    /*SPMTV*/
     ghost_error ghost_spmtv_RACE(ghost_densemat *lhs, ghost_sparsemat *mat, ghost_densemat *rhs, int iterations);
 
     void ghost_spmtv_RACE_fallback(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);
@@ -1046,6 +1069,11 @@ extern "C" {
     void ghost_spmtv_MC(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);
 
     void ghost_symm_spmv_MC(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);
+
+    void ghost_spmtv_ABMC(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);
+
+    void ghost_symm_spmv_ABMC(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);
+
 
 
 
@@ -1249,6 +1277,14 @@ extern "C" {
     void ghost_kacz_pre_RACE(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);
     void ghost_kacz_preMtx_RACE(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);
     void ghost_kacz_preInv_RACE(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);
+
+    void ghost_kacz_MC(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);
+    void ghost_kacz_ABMC(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);
+
+    void ghost_symm_kacz_RACE(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);
+    void ghost_symm_kacz_MC(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);
+    void ghost_symm_kacz_ABMC(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations);
+
 
 
     /**

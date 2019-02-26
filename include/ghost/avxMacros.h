@@ -196,7 +196,7 @@ inline bool testInstructions()
     //for(int mask_idx = 0; mask_idx < 3; ++mask_idx)
     {
         int mask_idx = 0;
-        d_vec = AVX_256_MASK_FMS(a_vec,b_vec,c_vec, GET_AVX_FWDMASK(mask_idx));
+        d_vec = AVX_256_MASK_FMS(a_vec,b_vec,c_vec, GET_AVX_FWDMASK(0));
         AVX_256_STORE(d, d_vec);
 
         for(int i=0; i<4; ++i)
@@ -220,7 +220,7 @@ inline bool testInstructions()
 
     {
         int mask_idx = 1;
-        d_vec = AVX_256_MASK_FMS(a_vec,b_vec,c_vec, GET_AVX_FWDMASK(mask_idx));
+        d_vec = AVX_256_MASK_FMS(a_vec,b_vec,c_vec, GET_AVX_FWDMASK(1));
         AVX_256_STORE(d, d_vec);
 
         for(int i=0; i<4; ++i)
@@ -244,7 +244,7 @@ inline bool testInstructions()
 
     {
         int mask_idx = 2;
-        d_vec = AVX_256_MASK_FMS(a_vec,b_vec,c_vec, GET_AVX_FWDMASK(mask_idx));
+        d_vec = AVX_256_MASK_FMS(a_vec,b_vec,c_vec, GET_AVX_FWDMASK(2));
         AVX_256_STORE(d, d_vec);
 
         for(int i=0; i<4; ++i)

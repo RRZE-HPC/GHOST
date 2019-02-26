@@ -75,32 +75,52 @@ extern "C" ghost_error ghost_sparsemat_perm_spmp(ghost_context *ctx, ghost_spars
     }
 #endif
 
-    GHOST_CALL_GOTO(ghost_malloc((void **)&rptlocal,(ctx->row_map->dim+1)*sizeof(int)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&collocal,nnz * sizeof(ghost_lidx)),err,ret);
-    
-    rptlocal[0] = 0;
-    
+/*
+    ghost_lidx new_nnz = 0;
+
     for (i=0; i<ctx->row_map->dim; i++) {
-        rptlocal[i+1] = rptlocal[i];
-        
         ghost_lidx orig_row = i;
         if (ctx->row_map->loc_perm) {
             orig_row = ctx->row_map->loc_perm_inv[i];
         }
         ghost_lidx * col = &mat->col[mat->chunkStart[orig_row]];
-        ghost_lidx orig_row_len = mat->chunkStart[orig_row+1]-mat->chunkStart[orig_row];
+        ghost_lidx orig_row_len = mat->rowLen[orig_row];//mat->chunkStart[orig_row+1]-mat->chunkStart[orig_row];
+
+        for(j=0; j<orig_row_len; ++j) {
+            if ((ctx->flags & GHOST_PERM_NO_DISTINCTION) || (col[j] < mat->context->row_map->dim)) {
+               ++new_nnz;
+            }
+        }
+    }
+
+    nnz = new_nnz;
+*/
+    GHOST_CALL_GOTO(ghost_malloc((void **)&rptlocal,(ctx->row_map->dim+1)*sizeof(int)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&collocal,nnz * sizeof(ghost_lidx)),err,ret);
+
+    rptlocal[0] = 0;
+
+    for (i=0; i<ctx->row_map->dim; i++) {
+        rptlocal[i+1] = rptlocal[i];
+
+        ghost_lidx orig_row = i;
+        if (ctx->row_map->loc_perm) {
+            orig_row = ctx->row_map->loc_perm_inv[i];
+        }
+        ghost_lidx * col = &mat->col[mat->chunkStart[orig_row]];
+        ghost_lidx orig_row_len = mat->rowLen[orig_row];//mat->chunkStart[orig_row+1]-mat->chunkStart[orig_row];
 
         for(j=0; j<orig_row_len; ++j) {
             if ((ctx->flags & GHOST_PERM_NO_DISTINCTION) || (col[j] < mat->context->row_map->dim)) {
                 collocal[nnzlocal] = col[j];
-                nnzlocal++;
                 rptlocal[i+1]++;
+                ++nnzlocal;
             }
         }
     }
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->row_map->loc_perm,sizeof(ghost_lidx)*ctx->row_map->dim),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->row_map->loc_perm_inv,sizeof(ghost_lidx)*ctx->row_map->dim),err,ret);   
+    GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->row_map->loc_perm_inv,sizeof(ghost_lidx)*ctx->row_map->dim),err,ret);
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&val,sizeof(double)*nnzlocal),err,ret);
     memset(val,0,sizeof(double)*nnzlocal);
@@ -110,8 +130,8 @@ extern "C" ghost_error ghost_sparsemat_perm_spmp(ghost_context *ctx, ghost_spars
     GHOST_CALL_GOTO(ghost_malloc((void **)&intperm,sizeof(int)*ctx->row_map->dim),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&intinvperm,sizeof(int)*ctx->row_map->dim),err,ret);
 
-    if (csr->isSymmetric(false,false)) {
-       GHOST_INFO_LOG("Doing RCM"); 
+    if(csr->isSymmetric(false,false)) {
+        GHOST_INFO_LOG("Doing RCM");
         csr->getRCMPermutation(intperm, intinvperm);
 
         useperm = intperm;
@@ -178,11 +198,13 @@ extern "C" ghost_error ghost_sparsemat_perm_spmp(ghost_context *ctx, ghost_spars
 
         int me;
         ghost_rank(&me,MPI_COMM_WORLD);
-        	if(me==0)
-            csr->storeMatrixMarket("proc0_before_RCM");
-            if(me==1)
-            csr->storeMatrixMarket("proc1_before_RCM");
 
+        /*
+        if(me==0)
+            csr->storeMatrixMarket("proc0_before_RCM");
+        if(me==1)
+            csr->storeMatrixMarket("proc1_before_RCM");
+*/
         csrT = csr->transpose();
         /*      csrTT = csrT->transpose();
 

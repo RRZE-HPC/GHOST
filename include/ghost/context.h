@@ -255,6 +255,9 @@ struct ghost_context
      * @brief The number of rows with each color (length: ncolors+1).
      */
     ghost_lidx *color_ptr;
+    /*ABMC internals*/
+    ghost_lidx *part_ptr;
+    ghost_lidx blockSize;
      /**
      * @brief The number of total zones (odd+even)
      **/

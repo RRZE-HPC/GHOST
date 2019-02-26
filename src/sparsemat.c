@@ -955,6 +955,9 @@ static ghost_error initHaloAvg(ghost_sparsemat *mat)
 
 ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_src_rowfunc *src, ghost_mpi_comm mpicomm, double weight)
 {
+    int HAVE_DIAG = 0; //added to have explicit diagonals, set value to 0 to avoid this explicit diag insertion
+    int HAVE_DIAG_second_pass = 0;
+
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     ghost_error ret = GHOST_SUCCESS;
 
@@ -985,6 +988,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
     if (mat->context->row_map->dimpad == mat->context->row_map->dim) {
         mat->context->row_map->dimpad = PAD(SPM_NROWS(mat),ghost_densemat_row_padding());
     }
+
     if (mat->context->col_map->dimpad == mat->context->col_map->dim) {
         mat->context->col_map->dimpad = PAD(mat->context->col_map->dim,ghost_densemat_row_padding());
     }
@@ -1093,13 +1097,24 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
         mtraits.C = 1;
         mtraits.sortScope = 1;
         ghost_sparsemat_create(&dummymat,NULL,&mtraits,1);
-        ghost_sparsemat_init_rowfunc(dummymat,src,mat->context->mpicomm,mat->context->weight);
 
+        ghost_sparsemat_init_rowfunc(dummymat,src,mat->context->mpicomm,mat->context->weight);
+        HAVE_DIAG_second_pass = 0;
+        int orig_threads = 1;
+        #pragma omp parallel
+        {
+            orig_threads = omp_get_num_threads();
+        }
+        omp_set_num_threads(1);
         if (mat->traits.flags & GHOST_SPARSEMAT_RCM) {
             ghost_sparsemat_perm_spmp(mat->context,dummymat);
         }
+        omp_set_num_threads(orig_threads);
         if (mat->traits.flags & GHOST_SPARSEMAT_COLOR) {
             ghost_sparsemat_perm_color(mat->context,dummymat);
+        }
+        if (mat->traits.flags & GHOST_SPARSEMAT_ABMC) {
+            ghost_sparsemat_perm_abmc(mat->context,dummymat);
         }
         //RACE coloring
         if(mat->traits.flags & GHOST_SPARSEMAT_RACE) {
@@ -1175,6 +1190,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
 
     if (!(*chunkptr)) {
         GHOST_INSTR_START("rowlens");
+        printf("allocating chunkPtr %f\n", (double)(nChunks+1)*sizeof(ghost_lidx));
         GHOST_CALL_GOTO(ghost_malloc_align((void **)chunkptr,(nChunks+1)*sizeof(ghost_lidx),GHOST_DATA_ALIGNMENT),err,ret);
 
     }
@@ -1182,7 +1198,9 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
     {
         ghost_lidx rowlen;
         maxRowLenInChunk = 0;
+        printf("allocating tmp val %f\n", (double)src->maxrowlen*mat->elSize);
         GHOST_CALL(ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize),ret);
+        printf("allocating tmp col %f\n", (double)src->maxrowlen*sizeof(ghost_gidx));
         GHOST_CALL(ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx)),ret);
 
         /*if (!(mat->traits.flags & GHOST_SPARSEMAT_PERM_ANY) && src->func == ghost_sparsemat_rowfunc_crs) {
@@ -1253,7 +1271,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
 
                 bool diagexists = 0;
                 // check whether the diagonal exists, if not: create an artificial zero diagonal
-                if (mat->traits.flags & GHOST_SPARSEMAT_DIAG_FIRST) {
+                if (mat->traits.flags & GHOST_SPARSEMAT_DIAG_FIRST || HAVE_DIAG && !(HAVE_DIAG_second_pass)) {
                     for (colidx=0; colidx<rowlen; colidx++) {
                         if (tmpcol[colidx] == callrow) {
                             diagexists = 1;
@@ -1296,6 +1314,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
         free(tmpval); tmpval = NULL;
         free(tmpcol); tmpcol = NULL;
     }
+
     GHOST_INSTR_STOP("rowlens");
     maxRowLen = privateMaxRowLen;
     mat->maxRowLen = maxRowLen;
@@ -1353,10 +1372,12 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
 
     bool readcols = 0; // we only need to read the columns the first time the matrix is created
     if (!(*val)) {
+        printf("allocating val %f\n", (double)mat->elSize*(size_t)mat->nEnts);
         GHOST_CALL_GOTO(ghost_malloc_align((void **)val,mat->elSize*(size_t)mat->nEnts,GHOST_DATA_ALIGNMENT),err,ret);
     }
 
     if (!(*col)) {
+        printf("allocating col %f\n", (double)sizeof(ghost_gidx)*(size_t)mat->nEnts);
         GHOST_CALL_GOTO(ghost_malloc_align((void **)col,sizeof(ghost_gidx)*(size_t)mat->nEnts,GHOST_DATA_ALIGNMENT),err,ret);
         readcols = 1;
     }
@@ -1388,7 +1409,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
             #pragma omp single
             GHOST_INFO_LOG("Fast matrix construction for CRS source and no permutation");
 
-            #pragma omp for schedule(runtime)
+           #pragma omp for schedule(runtime)
             for( chunk = 0; chunk < nChunks; chunk++ ) {
                 //memset(tmpval,0,mat->elSize*src->maxrowlen*C);
 
@@ -1448,7 +1469,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
             }
         } else {
             ghost_gidx callrow;
-            #pragma omp for schedule(runtime)
+#pragma omp for schedule(runtime)
             for (chunk = 0; chunk < nChunks; chunk++) {
                 if(mat->context->flags & GHOST_PERM_NO_DISTINCTION) {
                     memset(&(*col)[(*chunkptr)[chunk]],0,C*clp[chunk]*sizeof(ghost_gidx));
@@ -1493,7 +1514,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
                         ret = GHOST_ERR_UNKNOWN;
                     }
                     if (rowlen != rl[row]) {
-                        if (mat->traits.flags & GHOST_SPARSEMAT_DIAG_FIRST) {
+                        if (mat->traits.flags & GHOST_SPARSEMAT_DIAG_FIRST || HAVE_DIAG && !(HAVE_DIAG_second_pass)) {
                             if (rowlen != rl[row]-1) {
                                 GHOST_ERROR_LOG("Row length mismatch in matrix construction for a DIAG_FIRST matrix!");
                                 ret = GHOST_ERR_UNKNOWN;
@@ -1696,9 +1717,11 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
             goto err;
         }
     }
-
-    //NUMA reInit
-    //reInit(mat);
+    if (mat->traits.flags & GHOST_SPARSEMAT_PERM_ANY)
+    {
+        //NUMA reInit
+        reInit(mat);
+    }
 
     goto out;
     err:

@@ -11,9 +11,10 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *c
     static ghost_gidx *colInd = NULL, *rowPtr = NULL;
     static char *values = NULL;
     static size_t dtsize = 0;
+    bool isPattern = false;
 
     if (row == GHOST_SPARSEMAT_ROWFUNC_MM_ROW_GETDIM) {
-        ghost_sparsemat_rowfunc_file_initargs args = 
+        ghost_sparsemat_rowfunc_file_initargs args =
             *(ghost_sparsemat_rowfunc_file_initargs *)arg;
         char *filename = args.filename;
 
@@ -31,7 +32,7 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *c
             GHOST_ERROR_LOG("Could not process Matrix Market banner!");
             return 1;
         }
-        
+
         if (rowlen){
             if (mm_is_complex(matcode)) *rowlen = (ghost_lidx)GHOST_DT_COMPLEX;
             else *rowlen = (ghost_lidx)GHOST_DT_REAL;
@@ -43,11 +44,11 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *c
         }
         col[0] = M;
         col[1] = N;
-        
+
         fclose(f);
     } else if (row == GHOST_SPARSEMAT_ROWFUNC_INIT) {
 
-        ghost_sparsemat_rowfunc_file_initargs args = 
+        ghost_sparsemat_rowfunc_file_initargs args =
             *(ghost_sparsemat_rowfunc_file_initargs *)arg;
         char *filename = args.filename;
         ghost_datatype matdt = args.dt;
@@ -81,9 +82,12 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *c
             GHOST_ERROR_LOG("Only general and symmetric matrices supported at the moment!");
             return 1;
         }
+        //supporting pattern matrices
         if (mm_is_pattern(matcode)) {
-            GHOST_ERROR_LOG("Pattern matrices not supported!");
-            return 1;
+            GHOST_WARNING_LOG("Will fill 1.0(double) as the value of pattern matrices");
+            /*     GHOST_ERROR_LOG("Pattern matrices not supported!");
+                   return 1;*/
+            isPattern = true;
         }
 
         if((ret_code = mm_read_mtx_crd_size(f, &M, &N, &nz)) != 0){
@@ -105,18 +109,19 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *c
             symm = 0;
         }
 
-
+        printf("allocating total size of %f, where gidx = %d\n", (double)actualnz*sizeof(ghost_gidx)+2*(M + 1)*sizeof(ghost_gidx)+(double)actualnz*dtsize, sizeof(ghost_gidx));
         ghost_malloc((void **)&colInd,actualnz * sizeof(ghost_gidx));
         ghost_malloc((void **)&rowPtr,(M + 1) * sizeof(ghost_gidx));
         ghost_malloc((void **)&values,actualnz * dtsize);
         ghost_malloc((void **)&offset,(M + 1) * sizeof(ghost_gidx));
+        printf("allocated\n");
 
         for(i = 0; i <= M; ++i){
             rowPtr[i] = 0;
             offset[i] = 0;
         }
 
-        int toread = 3*nz;
+        int toread = (!isPattern)?(3*nz):(2*nz);
         if (matdt & GHOST_DT_COMPLEX) {
             toread += nz;
         }
@@ -124,32 +129,38 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *c
         char value[dtsize];
         fpos_t pos;
         fgetpos(f,&pos);
-    
-        int scanned = 0; 
+
+        int scanned = 0;
         for (i = 0; i < nz; ++i){
-            if (matdt & GHOST_DT_COMPLEX) {
-                if (matdt & GHOST_DT_DOUBLE) {
-                    scanned += fscanf(f, "%"PRGIDX" %"PRGIDX" %lg %lg\n", &readrow,&readcol,(double *)value,(double *)(value+dtsize/2));
+            if(!isPattern) {
+                if (matdt & GHOST_DT_COMPLEX) {
+                    if (matdt & GHOST_DT_DOUBLE) {
+                        scanned += fscanf(f, "%"PRGIDX" %"PRGIDX" %lg %lg\n", &readrow,&readcol,(double *)value,(double *)(value+dtsize/2));
+                    } else {
+                        scanned += fscanf(f, "%"PRGIDX" %"PRGIDX" %g %g\n", &readrow,&readcol,(float *)value,(float *)(value+dtsize/2));
+                    }
                 } else {
-                    scanned += fscanf(f, "%"PRGIDX" %"PRGIDX" %g %g\n", &readrow,&readcol,(float *)value,(float *)(value+dtsize/2));
+                    if (matdt & GHOST_DT_DOUBLE) {
+                        scanned += fscanf(f, "%"PRGIDX" %"PRGIDX" %lg\n", &readrow,&readcol,(double *)value);
+                    } else {
+                        scanned += fscanf(f, "%"PRGIDX" %"PRGIDX" %g\n", &readrow,&readcol,(float *)value);
+                    }
                 }
             } else {
-                if (matdt & GHOST_DT_DOUBLE) {
-                    scanned += fscanf(f, "%"PRGIDX" %"PRGIDX" %lg\n", &readrow,&readcol,(double *)value);
-                } else {
-                    scanned += fscanf(f, "%"PRGIDX" %"PRGIDX" %g\n", &readrow,&readcol,(float *)value);
-                }
+                scanned += fscanf(f, "%"PRGIDX" %"PRGIDX"\n", &readrow,&readcol);
             }
+
             readcol--;
             readrow--;
+
             rowPtr[readrow+1]++;
 
             if (symm) {
-               if (readrow != readcol) {
-                   rowPtr[readcol+1]++; // insert sibling entry
-               } else {
-                   actualnz--; // do not count diagonal entries twice
-               }
+                if (readrow != readcol) {
+                    rowPtr[readcol+1]++; // insert sibling entry
+                } else {
+                    actualnz--; // do not count diagonal entries twice
+                }
             }
         }
 
@@ -165,31 +176,47 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *c
         if (row == GHOST_SPARSEMAT_ROWFUNC_MM_ROW_GETRPT) {
             col = rowPtr;
         } else {
-        
+
             fsetpos(f,&pos);
-                
+
             scanned = 0;
             for (i = 0; i < nz; ++i){
-                if (matdt & GHOST_DT_COMPLEX) {
-                    if (matdt & GHOST_DT_DOUBLE) {
-                        scanned += fscanf(f, "%"PRGIDX" %"PRGIDX" %lg %lg\n", &readrow,&readcol,(double *)value,(double *)(value+dtsize/2));
+                if(!isPattern)
+                {
+                    if (matdt & GHOST_DT_COMPLEX) {
+                        if (matdt & GHOST_DT_DOUBLE) {
+                            scanned += fscanf(f, "%"PRGIDX" %"PRGIDX" %lg %lg\n", &readrow,&readcol,(double *)value,(double *)(value+dtsize/2));
+                        } else {
+                            scanned += fscanf(f, "%"PRGIDX" %"PRGIDX" %g %g\n", &readrow,&readcol,(float *)value,(float *)(value+dtsize/2));
+                        }
                     } else {
-                        scanned += fscanf(f, "%"PRGIDX" %"PRGIDX" %g %g\n", &readrow,&readcol,(float *)value,(float *)(value+dtsize/2));
+                        if (matdt & GHOST_DT_DOUBLE) {
+                            scanned += fscanf(f, "%"PRGIDX" %"PRGIDX" %lg\n", &readrow,&readcol,(double *)value);
+                        } else {
+                            scanned += fscanf(f, "%"PRGIDX" %"PRGIDX" %g\n", &readrow,&readcol,(float *)value);
+                        }
                     }
-                } else {
-                    if (matdt & GHOST_DT_DOUBLE) {
-                        scanned += fscanf(f, "%"PRGIDX" %"PRGIDX" %lg\n", &readrow,&readcol,(double *)value);
-                    } else {
-                        scanned += fscanf(f, "%"PRGIDX" %"PRGIDX" %g\n", &readrow,&readcol,(float *)value);
-                    }
+                }
+                else
+                {
+                    scanned += fscanf(f, "%"PRGIDX" %"PRGIDX"\n", &readrow,&readcol);
                 }
                 readrow--;
                 readcol--;
 
-                memcpy(&values[(rowPtr[readrow] + offset[readrow])*dtsize],value,dtsize);
+                if(!isPattern)
+                {
+                    memcpy(&values[(rowPtr[readrow] + offset[readrow])*dtsize],value,dtsize);
+                }
+                else
+                {
+                  //  values[rowPtr[readrow] + offset[readrow]] = 1.0;
+                    memset(&values[(rowPtr[readrow] + offset[readrow])*dtsize],1.0,dtsize);
+                }
+
                 colInd[rowPtr[readrow] + offset[readrow]] = readcol;
                 offset[readrow]++;
-                
+
                 if (symm && (readrow != readcol)) {
                     memcpy(&values[(rowPtr[readcol] + offset[readcol])*dtsize],value,dtsize);
                     colInd[rowPtr[readcol] + offset[readcol]] = readrow;
@@ -198,11 +225,10 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx row, ghost_lidx *rowlen, ghost_gidx *c
 
             }
             if (scanned != toread) {
-                GHOST_ERROR_LOG("Error while reading filei: read %d items but was expecting %d!",scanned,toread);
+                GHOST_ERROR_LOG("Error while reading file: read %d items but was expecting %d!",scanned,toread);
                 return 1;
             }
         }
-
 
         free(offset);
         fclose(f);
@@ -232,8 +258,9 @@ int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx row, ghost_lidx *rowlen, gho
     static size_t dtsize = 0;
 
     if (row == GHOST_SPARSEMAT_ROWFUNC_MM_ROW_GETDIM) {
-        ghost_sparsemat_rowfunc_file_initargs args = 
+       ghost_sparsemat_rowfunc_file_initargs args =
             *(ghost_sparsemat_rowfunc_file_initargs *)arg;
+
         char *filename = args.filename;
 
         FILE *f;
@@ -250,7 +277,7 @@ int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx row, ghost_lidx *rowlen, gho
             GHOST_ERROR_LOG("Could not process Matrix Market banner!");
             return 1;
         }
-        
+
         if (rowlen){
             if (mm_is_complex(matcode)) *rowlen = (ghost_lidx)GHOST_DT_COMPLEX;
             else *rowlen = (ghost_lidx)GHOST_DT_REAL;
@@ -262,12 +289,13 @@ int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx row, ghost_lidx *rowlen, gho
         }
         col[0] = M;
         col[1] = N;
-        
+
         fclose(f);
     } else if (row == GHOST_SPARSEMAT_ROWFUNC_INIT) {
 
-        ghost_sparsemat_rowfunc_file_initargs args = 
+       ghost_sparsemat_rowfunc_file_initargs args =
             *(ghost_sparsemat_rowfunc_file_initargs *)arg;
+
         char *filename = args.filename;
         ghost_datatype matdt = args.dt;
 
@@ -343,8 +371,8 @@ int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx row, ghost_lidx *rowlen, gho
         char value[dtsize];
         fpos_t pos;
         fgetpos(f,&pos);
-    
-        int scanned = 0; 
+        int scanned = 0;
+
         for (i = 0; i < nz; ++i){
             if (matdt & GHOST_DT_COMPLEX) {
                 if (matdt & GHOST_DT_DOUBLE) {
@@ -364,11 +392,11 @@ int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx row, ghost_lidx *rowlen, gho
             rowPtr[readrow+1]++;
 
             if (symm) {
-               if (readrow != readcol) {
-                   rowPtr[readcol+1]++; // insert sibling entry
-               } else {
-                   actualnz--; // do not count diagonal entries twice
-               }
+                if (readrow != readcol) {
+                    rowPtr[readcol+1]++; // insert sibling entry
+                } else {
+                    actualnz--; // do not count diagonal entries twice
+                }
             }
         }
 
@@ -384,9 +412,9 @@ int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx row, ghost_lidx *rowlen, gho
         if (row == GHOST_SPARSEMAT_ROWFUNC_MM_ROW_GETRPT) {
             col = rowPtr;
         } else {
-        
+
             fsetpos(f,&pos);
-                
+
             scanned = 0;
             for (i = 0; i < nz; ++i){
                 if (matdt & GHOST_DT_COMPLEX) {
@@ -408,7 +436,7 @@ int ghost_sparsemat_rowfunc_mm_transpose(ghost_gidx row, ghost_lidx *rowlen, gho
                 memcpy(&values[(rowPtr[readrow] + offset[readrow])*dtsize],value,dtsize);
                 colInd[rowPtr[readrow] + offset[readrow]] = readcol;
                 offset[readrow]++;
-                
+
                 if (symm && (readrow != readcol)) {
                     memcpy(&values[(rowPtr[readcol] + offset[readcol])*dtsize],value,dtsize);
                     colInd[rowPtr[readcol] + offset[readcol]] = readrow;
@@ -450,30 +478,30 @@ ghost_error ghost_sparsemat_to_mm(char *path, ghost_sparsemat *mat)
     ghost_lidx sellidx;
     int nrank,rank;
     FILE *fp;
-    
+
     if (mat->context->row_map->gdim > INT_MAX) {
         GHOST_ERROR_LOG("The number of matrix rows exceeds INT_MAX and I cannot write a MatrixMarket file!");
         return GHOST_ERR_INVALID_ARG;
     }
-    
+
     if (mat->context->col_map->gdim > INT_MAX) {
         GHOST_ERROR_LOG("The number of matrix columns exceeds INT_MAX and I cannot write a MatrixMarket file!");
         return GHOST_ERR_INVALID_ARG;
     }
-    
+
     if (mat->context->gnnz > INT_MAX) {
         GHOST_ERROR_LOG("The number of matrix entries exceeds INT_MAX and I cannot write a MatrixMarket file!");
         return GHOST_ERR_INVALID_ARG;
     }
-    
+
     ghost_nrank(&nrank,mat->context->mpicomm);
     ghost_rank(&rank,mat->context->mpicomm);
-    
+
     if (nrank > 1 && !(mat->traits.flags & GHOST_SPARSEMAT_SAVE_ORIG_COLS)) {
         GHOST_WARNING_LOG("The matrix is distributed and the non-compressed columns are not saved. The output will probably be useless!");
     }
-   
-    if (rank == 0) { 
+
+    if (rank == 0) {
         fp = fopen(path,"w");
         if (!fp) {
             GHOST_ERROR_LOG("Unable to open file %s!",path);
@@ -487,10 +515,10 @@ ghost_error ghost_sparsemat_to_mm(char *path, ghost_sparsemat *mat)
         } else {
             mm_set_complex(&matcode);
         }
-        
+
         mm_write_banner(fp,matcode);
         mm_write_mtx_crd_size(fp,(int)mat->context->row_map->gdim,(int)mat->context->col_map->gdim,(int)mat->context->gnnz);
-        
+
         fclose(fp);
     }
 
@@ -542,7 +570,7 @@ ghost_error ghost_sparsemat_to_mm(char *path, ghost_sparsemat *mat)
                             }
                         }
                     }
-                    
+
                 }
             }
             fclose(fp);

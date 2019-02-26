@@ -15,7 +15,7 @@ extern "C" ghost_error ghost_sparsemat_perm_color(ghost_context *ctx, ghost_spar
     uint32_t** adolc = new uint32_t*[ctx->row_map->dim];
     std::vector<int>* colvec = NULL;
     uint32_t *adolc_data = NULL;
-    ColPack::GraphColoring *GC=new ColPack::GraphColoring();
+    ColPack::GraphColoringInterface *GC=new ColPack::GraphColoringInterface(-1);
     bool oldperm = false;
     //ghost_permutation *oldperm = NULL;
 
@@ -28,9 +28,9 @@ extern "C" ghost_error ghost_sparsemat_perm_color(ghost_context *ctx, ghost_spar
     int64_t pos=0;
 
     /*ghost_lidx ncols_halo_padded = ctx->row_map->dim;
-    if (ctx->flags & GHOST_PERM_NO_DISTINCTION) {
-        ncols_halo_padded = ctx->col_map->dimpad;
-    }*/
+      if (ctx->flags & GHOST_PERM_NO_DISTINCTION) {
+      ncols_halo_padded = ctx->col_map->dimpad;
+      }*/
 
     nnz = SPM_NNZ(mat); 
 
@@ -48,13 +48,21 @@ extern "C" ghost_error ghost_sparsemat_perm_color(ghost_context *ctx, ghost_spar
         ghost_lidx orig_row = i;
         if (ctx->row_map->loc_perm) {
             orig_row = ctx->row_map->loc_perm_inv[i];
+            // orig_row = ctx->row_map->loc_perm[i];
         }
         ghost_lidx * col = &mat->col[mat->chunkStart[orig_row]];
         ghost_lidx orig_row_len = mat->chunkStart[orig_row+1]-mat->chunkStart[orig_row];
 
         for(j=0; j<orig_row_len; ++j) {
             if (col[j] < mat->context->row_map->dim) {
-                collocal[nnzlocal] = col[j];
+                if(ctx->row_map->loc_perm)
+                {
+                    collocal[nnzlocal] = ctx->row_map->loc_perm[col[j]];
+                }
+                else
+                {
+                    collocal[nnzlocal] = col[j];
+                }
                 nnzlocal++;
                 rptlocal[i+1]++;
             }
@@ -76,14 +84,46 @@ extern "C" ghost_error ghost_sparsemat_perm_color(ghost_context *ctx, ghost_spar
 
     GC->BuildGraphFromRowCompressedFormat(adolc, ctx->row_map->dim);
 
-    COLPACK_CALL_GOTO(GC->DistanceTwoColoring(),err,ret);
+    char *color_dist_env = getenv("GHOST_COLOR_DISTANCE");
+    int color_dist = 2;
 
-    if (GC->CheckDistanceTwoColoring(2)) {
-        GHOST_ERROR_LOG("Error in coloring!");
-        ret = GHOST_ERR_COLPACK;
-        goto err;
+    if(color_dist_env)
+    {
+        color_dist = atoi(color_dist_env);
     }
 
+    if(color_dist != 1 && color_dist != 2)
+    {
+        printf("Dist %d not supported, falling back to dist-2\n",color_dist);
+        color_dist = 2;
+    }
+
+    if(color_dist == 1)
+    {
+        COLPACK_CALL_GOTO(GC->Coloring(),err,ret);
+        //COLPACK_CALL_GOTO(GC->DistanceOneColoring(),err,ret);
+    }
+    else
+    {
+        COLPACK_CALL_GOTO(GC->Coloring("NATURAL", "DISTANCE_TWO"),err,ret);
+        //COLPACK_CALL_GOTO(GC->DistanceTwoColoring(),err,ret);
+        /*
+           if (GC->CheckDistanceTwoColoring(2)) {
+           GHOST_ERROR_LOG("Error in coloring!");
+           ret = GHOST_ERR_COLPACK;
+           goto err;
+           }*/
+    }
+
+    /*
+       COLPACK_CALL_GOTO(GC->DistanceTwoColoring(),err,ret);
+
+       if (GC->CheckDistanceTwoColoring(2)) {
+       GHOST_ERROR_LOG("Error in coloring!");
+       ret = GHOST_ERR_COLPACK;
+       goto err;
+       }
+       */
     ctx->ncolors = GC->GetVertexColorCount();
 
     if (!ctx->row_map->loc_perm) {
@@ -141,7 +181,7 @@ extern "C" ghost_error ghost_sparsemat_perm_color(ghost_context *ctx, ghost_spar
         for (i=0;i<ctx->row_map->dim;i++) {
             int idx = ctx->row_map->loc_perm_inv[i];
             ctx->row_map->loc_perm[idx]  = curcol[(*colvec)[i]] + ctx->color_ptr[(*colvec)[i]];
-            //ctx->row_map->loc_perm[i] = ctx->row_map->loc_perm_inv[curcol[(*colvec)[i]] + ctx->color_ptr[(*colvec)[i]]];
+            // ctx->row_map->loc_perm[i] = ctx->row_map->loc_perm_inv[curcol[(*colvec)[i]] + ctx->color_ptr[(*colvec)[i]]];
             curcol[(*colvec)[i]]++;
         }
     } else {

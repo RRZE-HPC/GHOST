@@ -29,20 +29,64 @@ extern "C" {
         int smt=std::max(hwconfig.nsmt,1);
         printf("smt = %d\n",smt);
 
+        char *color_dist_env = getenv("GHOST_COLOR_DISTANCE");
+        int color_dist = 2;
+
+        if(color_dist_env)
+        {
+            color_dist = atoi(color_dist_env);
+        }
+
+        if(color_dist != 1 && color_dist != 2)
+        {
+            printf("Dist %d not supported, falling back to dist-2\n",color_dist);
+            color_dist = 2;
+        }
+
+        RACE::dist dist_ = RACE::TWO;
+
+        if(color_dist == 1)
+            dist_ = RACE::ONE;
 
         //convert from SELL-C-sigma to CRS
-        RACE::Interface *ce = new RACE::Interface(mat->context->row_map->dim, nthread, RACE::TWO, mat->chunkStart, mat->col, smt, RACE::FILL, ctx->row_map->loc_perm_inv, ctx->row_map->loc_perm);
+        RACE::Interface *ce = new RACE::Interface(mat->context->row_map->dim, nthread, dist_, mat->chunkStart, mat->col, smt, RACE::FILL, ctx->row_map->loc_perm_inv, ctx->row_map->loc_perm);
         ce->RACEColor();
 
+        printf("coloring efficiency = %f\n", ce->getEfficiency());
+        printf("max. stage depth = %d\n", ce->getMaxStageDepth());
         int permLen;
+
+        ghost_lidx* finalPerm;
+        ghost_lidx* finalInvPerm;
         //perm and invPerm have been switched in library
-        ce->getInvPerm(&ctx->row_map->loc_perm, &permLen);
-        ce->getPerm(&ctx->row_map->loc_perm_inv, &permLen);
+        ce->getInvPerm(&finalPerm, &permLen);
+        ce->getPerm(&finalInvPerm, &permLen);
+
+        if(ctx->row_map->loc_perm)
+        {
+            free(ctx->row_map->loc_perm);
+            free(ctx->row_map->loc_perm_inv);
+        }
+
+        ctx->row_map->loc_perm = finalPerm;
+        ctx->row_map->loc_perm_inv = finalInvPerm;
+
 
         ctx->col_map->loc_perm = ctx->row_map->loc_perm;
         ctx->col_map->loc_perm_inv = ctx->row_map->loc_perm_inv;
 
+//#if 0
+        //pin Thread according to RACE
+        omp_set_dynamic(0);    //  Explicitly disable dynamic teams
+        int availableThreads = ce->getNumThreads();
+        omp_set_num_threads(availableThreads);
 
+#pragma omp parallel
+        {
+            int pinOrder = omp_get_thread_num();
+            ce->pinThread(pinOrder);
+        }
+//#endif
 /*
         FILE *file;
         file = fopen("perm.txt", "w");
@@ -152,3 +196,4 @@ extern "C" {
 #endif
     }
 }
+

@@ -27,6 +27,7 @@ set(GHOST_USE_COLPACK 0 CACHE BOOL "Use ColPack for matrix coloring")
 set(GHOST_USE_ZOLTAN 0 CACHE BOOL "Use Zoltan for matrix re-ordering")
 set(GHOST_USE_SPMP 0 CACHE BOOL "Use SpMP for matrix preprocessing")
 set(GHOST_USE_RACE 0 CACHE BOOL "Use RACE for recursive matrix coloring")
+set(GHOST_USE_METIS 0 CACHE BOOL "Use METIS for matrix partitioning")
 set(GHOST_USE_GPUDIRECT 0 CACHE BOOL "Use GPUdirect for MPI+CUDA (ignored if CUDA is not enabled)")
 set(GHOST_MIC_CROSSCOMPILE 0 CACHE BOOL "Cross-compile for Intel MIC")
 set(GHOST_IDX64_LOCAL 0 CACHE BOOL "Enable 64-bit indices for local quantities")
@@ -169,18 +170,33 @@ set (SOURCES
     src/util.c
     src/sparsemat_perm_RACE.cpp
     src/sell_gs_RACE_fallback.cpp
+    src/sell_trsv_RACE_fallback.cpp
     src/sell_gs.cpp
+    src/sell_symm_gs_RACE.cpp
+    src/sell_gs_MC.cpp
+    src/sell_symm_gs_MC.cpp
+    src/sell_gs_ABMC.cpp
+    src/sell_symm_gs_ABMC.cpp
     src/sell_spmtv.cpp
     src/sell_spmtv_RACE_fallback.cpp
     src/sell_spmtv_MC_rm.cpp
     src/sell_symm_spmv_MC_rm.cpp
     src/sell_symm_spmv_RACE_rm.cpp
-    src/sell_kacz_RACE_rm.cpp
     src/sell_kacz_fission_RACE_rm.cpp
     src/sell_kacz_pre_RACE_rm.cpp
     src/sell_kacz_preInv_RACE_rm.cpp
     src/sell_kacz_preMtx_RACE_rm.cpp
-    #src/init.cpp
+    src/init.cpp
+    src/sparsemat_perm_abmc.cpp
+    src/sell_spmtv_ABMC_rm.cpp
+    src/sell_symm_spmv_ABMC_rm.cpp
+    src/sell_spmv_RACE_rm.cpp
+    src/sell_kacz_RACE_rm.cpp
+    src/sell_kacz_MC.cpp
+    src/sell_kacz_ABMC.cpp
+    src/sell_symm_kacz_RACE_rm.cpp
+    src/sell_symm_kacz_MC.cpp
+    src/sell_symm_kacz_ABMC.cpp
     )
 
 set (HEADERS
@@ -594,6 +610,19 @@ if (GHOST_USE_RACE)
     endif()
 endif()
 
+if (GHOST_USE_METIS)
+    set(GHOST_HAVE_METIS 1)
+    set(METIS_INCLUDE_DIR "${METIS_INCLUDE_DIR}" CACHE PATH "Location of METIS headers")
+    include_directories(${METIS_INCLUDE_DIR})
+    get_filename_component(METIS_LIBDIR ${METIS_INCLUDE_DIR}/../lib/ REALPATH)
+
+    find_library(METIS_LIBRARIES NAMES metis PATHS ${METIS_LIBDIR})
+    if (NOT METIS_LIBRARIES)
+        message(FATAL_ERROR "METIS_INCLUDE_DIR not set correctly!")
+    endif()
+endif()
+
+
 
 set(CBLAS_INCLUDE_DIR CBLAS_INCLUDE_DIR-NOTFOUND CACHE PATH "Location of *cblas.h")
 # firstly, try to find a Cblas header in the default locations
@@ -765,6 +794,10 @@ if (GHOST_USE_RACE)
     target_link_libraries(ghost "${RACE_LIBRARIES}")
 endif()
 
+if (GHOST_USE_METIS)
+    target_link_libraries(ghost "${METIS_LIBRARIES}")
+endif()
+
 
 check_function_exists(qsort_r HAVE_QSORT_R)
 
@@ -818,7 +851,7 @@ else ()
                       endif()
                     endif()
                 endif()
-              
+
                 if ("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
                     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Ofast -fstrict-aliasing")
                     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast -fstrict-aliasing")
@@ -861,16 +894,21 @@ else()
         OptimizeForArchitecture()
         if (USE_AVX512F)
           if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
-            set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -xCOMMON-AVX512")
-            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -xCOMMON-AVX512")
+              #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -xCOMMON-AVX512")
+              #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -xCOMMON-AVX512")
+            if(TARGET_ARCHITECTURE STREQUAL "knl")
+                set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -xMIC-AVX512")
+                set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -xMIC-AVX512")
+            else()
+                set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -xCORE-AVX512")
+                set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -xCORE-AVX512")
+            endif()
             set(GHOST_BUILD_MIC 1 CACHE BOOL "Generate MIC kernels" FORCE)
           else ()
             set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mavx512f")
             set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx512f")
           endif()
-          
           set(GHOST_BUILD_AVX512 1 CACHE BOOL "Generate AVX512 kernels")
-          
         else ()
             set(GHOST_BUILD_AVX512 0 CACHE BOOL "Generate AVX512 kernels")
         endif()

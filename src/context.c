@@ -88,6 +88,8 @@ ghost_error ghost_context_create(ghost_context **context, ghost_gidx gnrows, gho
     (*context)->entsInCol = NULL;
     (*context)->ncolors = 0;
     (*context)->color_ptr = NULL;
+    (*context)->part_ptr = NULL;
+    (*context)->blockSize = -1;
     (*context)->nzones = 0;
     (*context)->zone_ptr = NULL;
     (*context)->kacz_setting.kacz_method = GHOST_KACZ_METHOD_MC;
@@ -200,8 +202,16 @@ void ghost_context_destroy(ghost_context *context)
           free(context->nrankspresent); context->nrankspresent = NULL;
         }
 
-        free(context->color_ptr);
+        if(context->color_ptr)
+        {
+            free(context->color_ptr);
+        }
         free(context->zone_ptr);
+
+        if(context->part_ptr)
+        {
+            free(context->part_ptr);
+        }
 
         if(context->coloringEngine)
         {

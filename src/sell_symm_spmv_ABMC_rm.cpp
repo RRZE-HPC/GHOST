@@ -56,18 +56,20 @@ idx+=1;\
 //this is necessary since #pragma omp for doesn't understand !=
 #define LOOP(start,end,MT,VT) \
 _Pragma("omp parallel for schedule(runtime)")\
-for (ghost_lidx row=start; row<end; ++row){ \
-    VT x_row = xval[row]; \
-    ghost_lidx idx = mat->chunkStart[row]; \
-    bval[row] += mval[idx]*x_row;\
-    double temp=0;\
-    _Pragma("simd reduction(+:temp) vectorlength(VECLEN)") \
-    for (ghost_lidx j=1; j<mat->rowLen[row]; j++) { \
-        temp = temp + (MT)mval[idx+j] * xval[mat->col[idx+j]];\
-        bval[mat->col[idx+j]] = bval[mat->col[idx+j]] + (MT)mval[idx+j] * x_row;\
+for (ghost_lidx part=start; part<end; ++part){ \
+     for (ghost_lidx row=ctx->part_ptr[part]; row<ctx->part_ptr[part+1]; ++row){ \
+        VT x_row = xval[row]; \
+        ghost_lidx idx = mat->chunkStart[row]; \
+        bval[row] += mval[idx]*x_row;\
+        double temp=0;\
+        _Pragma("simd reduction(+:temp) vectorlength(VECLEN)") \
+        for (ghost_lidx j=1; j<mat->rowLen[row]; j++) { \
+            temp = temp + (MT)mval[idx+j] * xval[mat->col[idx+j]];\
+            bval[mat->col[idx+j]] = bval[mat->col[idx+j]] + (MT)mval[idx+j] * x_row;\
+        } \
+        bval[row]+=temp;\
     } \
-    bval[row]+=temp;\
-} \
+}\
 
 
 #elif CHUNKHEIGHT == 1
@@ -82,7 +84,7 @@ for (ghost_lidx row=start; row<end; ++row){ \
      GHOST_ERROR_LOG("Not Implemented")
 #endif
 
-void ghost_symm_spmv_MC(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations)
+void ghost_symm_spmv_ABMC(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations)
 {
 #ifdef GHOST_HAVE_COLPACK
     typedef double MT;
@@ -91,6 +93,7 @@ void ghost_symm_spmv_MC(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat 
     MT *bval = (MT *)(b->val);
     MT *xval = (MT *)(x->val);
     MT *mval = (MT *)(mat->val);
+    ghost_context* ctx = mat->context;
 
     if( (mat->context->color_ptr==NULL) || (mat->context->ncolors==0) )
     {

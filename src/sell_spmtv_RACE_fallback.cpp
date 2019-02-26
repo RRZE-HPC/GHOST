@@ -42,6 +42,16 @@ idx+=1;\
 
 #endif
 
+#if defined GHOST_BUILD_AVX512
+    #define VECLEN 8
+#elif defined (GHOST_BUILD_AVX2) || defined (GHOST_BUILD_AVX)
+    #define VECLEN 4
+#elif defined (GHOST_BUILD_SSE)
+    #define VECLEN 2
+#else
+    #define VECLEN 1
+#endif
+
 
 
 #if (NVECS==1 && CHUNKHEIGHT==1)
@@ -51,7 +61,7 @@ idx+=1;\
     for (ghost_lidx row=start; row<end; ++row) { \
         VT x_row = xval[row]; \
         ghost_lidx idx = mat->chunkStart[row]; \
-       _Pragma("simd") \
+       _Pragma("simd vectorlength(VECLEN)") \
         for (ghost_lidx j=0; j<mat->rowLen[row]; j++) { \
             bval[mat->col[idx+j]] = bval[mat->col[idx+j]] + (MT)mval[idx+j] * x_row;\
         } \

@@ -28,6 +28,8 @@
 #cmakedefine GHOST_HAVE_SPMP
 #cmakedefine GHOST_HAVE_GPUDIRECT
 #cmakedefine GHOST_HAVE_RACE
+#cmakedefine GHOST_HAVE_METIS
+
 
 
 /* hardware features */

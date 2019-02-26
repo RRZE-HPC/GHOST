@@ -78,10 +78,36 @@ for (ghost_lidx row=start; row<end; ++row){ \
     } \
 } \
 
+#define LOOP_rev(start,end,MT,VT) \
+for (ghost_lidx row=end-1; row>=start; --row){ \
+    MT rownorm = 0.; \
+    MT scal = 0; \
+    ghost_lidx idx = mat->chunkStart[row]; \
+    if(bval != NULL) { \
+        scal = -bval[row]; \
+    } \
+    for (ghost_lidx j=0; j<mat->rowLen[row]; ++j) { \
+        MT mval_idx = (MT)mval[idx+j]; \
+        scal += mval_idx * xval[mat->col[idx+j]]; \
+        rownorm += ghost::norm(mval_idx); \
+    } \
+    scal /= (MT)rownorm; \
+    scal *= omega; \
+    \
+    _Pragma("simd vectorlength(VECLEN)") \
+    for (ghost_lidx j=0; j<mat->rowLen[row]; j++) { \
+        xval[mat->col[idx+j]] = xval[mat->col[idx+j]] - scal*(ghost::conj_or_nop(mval[idx+j]));\
+    } \
+} \
+
 
 #else
 #define LOOP(start,end,MT,VT) \
     GHOST_ERROR_LOG("Not Implemented")
+
+#define LOOP_rev(start,end,MT,VT) \
+    GHOST_ERROR_LOG("Not Implemented")
+
 
 #endif
 
@@ -107,8 +133,23 @@ inline void KACZ_Kernel(int start, int end, void *args)
     LOOP(start, end, MT, VT);
 }
 
+inline void KACZ_Kernel_rev(int start, int end, void *args)
+{
+    KACZ_ARG* kaczArg = (KACZ_ARG *) args;
+    typedef double MT;
+    //typedef double VT;
+
+    MT *bval = (MT *)(kaczArg->b->val);
+    MT *xval = (MT *)(kaczArg->x->val);
+    MT *mval = (MT *)(kaczArg->mat->val);
+    MT omega = *((MT*)(kaczArg->omega));
+    ghost_sparsemat *mat = kaczArg->mat;
+
+    LOOP_rev(start, end, MT, VT);
+}
+
 //static ghost_error ghost_kacz_u_plain_rm_CHUNKHEIGHT_NVECS_tmpl(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts)
-void ghost_kacz_RACE(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations)
+void ghost_symm_kacz_RACE(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations)
 {
 #ifdef GHOST_HAVE_RACE
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
@@ -124,11 +165,13 @@ void ghost_kacz_RACE(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x,
 
     void* argPtr = (void*) (kaczArg);
     int kaczId = ce->registerFunction(&KACZ_Kernel, argPtr);
+    int kaczId_rev = ce->registerFunction(&KACZ_Kernel_rev, argPtr);
 
     //  std::vector<double> barrierTime;
     for(int i=0; i<iterations; ++i)
     {
         ce->executeFunction(kaczId);
+        ce->executeFunction(kaczId_rev, true);
     }
 
     /*    for(int i=0; i<iterations; ++i)

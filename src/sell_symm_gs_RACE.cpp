@@ -18,6 +18,7 @@
 #endif
 #include <vector>
 
+
 #define CHUNKHEIGHT 1
 
 #if defined GHOST_BUILD_AVX512
@@ -46,11 +47,27 @@
     }\
 
 
+#define LOOP_rev(start,end,MT,VT) \
+    for (ghost_lidx row=end-1; row>=start; --row){ \
+        double temp = bval[row]; \
+        ghost_lidx idx = mat->chunkStart[row]; \
+        _Pragma("simd reduction(+:temp)") \
+        for (ghost_lidx j=1; j<mat->rowLen[row]; j++) { \
+            temp -= (MT)mval[idx+j] * xval[mat->col[idx+j]];\
+        }\
+        xval[row] = temp/mval[idx];\
+    }\
+
+
 #else
 
 
 #define LOOP(start,end,MT,VT) \
     GHOST_ERROR_LOG("TO Do")\
+
+#define LOOP_rev(start,end,MT,VT) \
+    GHOST_ERROR_LOG("TO Do")\
+
 
 #endif
 
@@ -75,9 +92,24 @@ inline void GS_Kernel(int start, int end, void *args)
     LOOP(start, end, MT, VT);
 }
 
+inline void GS_Kernel_rev(int start, int end, void *args)
+{
+    GS_ARG* gsArg = (GS_ARG *) args;
+    typedef double MT;
+    //typedef double VT;
+
+    MT *bval = (MT *)(gsArg->b->val);
+    MT *xval = (MT *)(gsArg->x->val);
+    MT *mval = (MT *)(gsArg->mat->val);
+
+    ghost_sparsemat *mat = gsArg->mat;
+
+    LOOP_rev(start, end, MT, VT);
+}
+
 
 //static ghost_error ghost_gs_BMC_u_plain_rm_CHUNKHEIGHT_NVECS_tmpl(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *b, ghost_kacz_opts opts)
-void ghost_gs_RACE_fallback(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations)
+ghost_error ghost_symm_gs_RACE(ghost_densemat *b, ghost_sparsemat *mat, ghost_densemat *x, int iterations)
 {
 #ifdef GHOST_HAVE_RACE
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
@@ -96,8 +128,8 @@ void ghost_gs_RACE_fallback(ghost_densemat *b, ghost_sparsemat *mat, ghost_dense
 
         void* argPtr = (void*) (gsArg);
 
-        int gsId;
-        gsId = ce->registerFunction(&GS_Kernel, argPtr);
+        int gsId = ce->registerFunction(&GS_Kernel, argPtr);
+        int gsId_rev  = ce->registerFunction(&GS_Kernel_rev, argPtr);
 
         std::vector<double> time;
         //  std::vector<double> barrierTime;
@@ -108,6 +140,7 @@ void ghost_gs_RACE_fallback(ghost_densemat *b, ghost_sparsemat *mat, ghost_dense
             ghost_timing_wcmilli(&start_gs_inner);
 
             ce->executeFunction(gsId);
+            ce->executeFunction(gsId_rev, true);
 
             ghost_barrier();
             ghost_timing_wcmilli(&end_gs_inner);
@@ -123,6 +156,8 @@ void ghost_gs_RACE_fallback(ghost_densemat *b, ghost_sparsemat *mat, ghost_dense
         delete gsArg;
     }
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+
+    return GHOST_SUCCESS;
 #else
     UNUSED(b);
     UNUSED(mat);
@@ -130,6 +165,7 @@ void ghost_gs_RACE_fallback(ghost_densemat *b, ghost_sparsemat *mat, ghost_dense
     UNUSED(iterations);
 
     GHOST_ERROR_LOG("Enable RACE library");
+    return GHOST_ERR_UNKNOWN;
 #endif
 }
 
