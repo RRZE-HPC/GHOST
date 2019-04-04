@@ -26,6 +26,9 @@ extern "C" ghost_error ghost_sparsemat_perm_color(ghost_context *ctx, ghost_spar
     ghost_lidx *collocal = NULL;
     ghost_lidx nnz = 0, nnzlocal = 0;
     int64_t pos=0;
+    char *color_dist_env = NULL;
+    int color_dist = 2;
+
 
     /*ghost_lidx ncols_halo_padded = ctx->row_map->dim;
       if (ctx->flags & GHOST_PERM_NO_DISTINCTION) {
@@ -84,8 +87,8 @@ extern "C" ghost_error ghost_sparsemat_perm_color(ghost_context *ctx, ghost_spar
 
     GC->BuildGraphFromRowCompressedFormat(adolc, ctx->row_map->dim);
 
-    char *color_dist_env = getenv("GHOST_COLOR_DISTANCE");
-    int color_dist = 2;
+    color_dist_env = getenv("GHOST_COLOR_DISTANCE");
+    color_dist = 2;
 
     if(color_dist_env)
     {

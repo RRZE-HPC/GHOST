@@ -61,7 +61,7 @@ idx+=1;\
         ghost_lidx idx = mat->chunkStart[row]; \
         bval[row] += mval[idx]*x_row;\
         double temp = 0;\
-        _Pragma("simd reduction(+:temp) vectorlength(VECLEN)")\
+        _Pragma("simd reduction(+:temp) vectorlength(VECLEN)") \
         for(ghost_lidx j=1; j<mat->rowLen[row]; j++) { \
             temp = temp + (MT)mval[idx+j] * xval[mat->col[idx+j]];\
             bval[mat->col[idx+j]] = bval[mat->col[idx+j]] + (MT)mval[idx+j] * x_row;\

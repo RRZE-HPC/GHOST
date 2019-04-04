@@ -70,7 +70,7 @@ ghost_error ghost_densemat_create(ghost_densemat **vec, ghost_map *map, ghost_de
     (*vec)->rowmask = NULL;
     (*vec)->val = NULL;
     (*vec)->cu_val = NULL;
-
+    (*vec)->subdm = NULL;
     /*
       if (ctx) {
   //        if (ctx->perm_global || ctx->perm_local) {
@@ -600,6 +600,10 @@ void ghost_densemat_destroy(ghost_densemat *vec)
                     vec->val = NULL;
                 }
             }
+        }
+        if(vec->subdm)
+        {
+            free(vec->subdm);
         }
         ghost_bitmap_free(vec->rowmask);
         vec->rowmask = NULL;

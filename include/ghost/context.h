@@ -87,7 +87,12 @@ typedef enum{
       /**
        * @brief For system normalized at start
        */
-      GHOST_KACZ_METHOD_BMCNORMAL
+      GHOST_KACZ_METHOD_BMCNORMAL,
+
+      /**
+       * @brief For shifted system with RACE library
+       */
+      GHOST_KACZ_METHOD_RACEshift
 }
 ghost_kacz_method;
 

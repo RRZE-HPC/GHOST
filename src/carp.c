@@ -22,19 +22,27 @@ ghost_error ghost_carp(ghost_sparsemat *mat, ghost_densemat *x, ghost_densemat *
     opts.initialized = carp_opts.initialized;
 
     opts.direction = GHOST_KACZ_DIRECTION_FORWARD;
+#ifdef CARP
     GHOST_CALL_RETURN(ghost_densemat_halocomm_init(x,mat->context,&comm));
     GHOST_CALL_RETURN(ghost_densemat_halocomm_start(x,mat->context,&comm));
     GHOST_CALL_RETURN(ghost_densemat_halocomm_finalize(x,mat->context,&comm));
-    ghost_kacz(x,mat,b,opts);    
+#endif
+    ghost_kacz(x,mat,b,opts);
+
+#ifdef CARP
     GHOST_CALL_RETURN(ghost_densemat_halo_avg(x,mat->context));
+#endif
 
     opts.direction = GHOST_KACZ_DIRECTION_BACKWARD;
+#ifdef CARP
     GHOST_CALL_RETURN(ghost_densemat_halocomm_init(x,mat->context,&comm));
     GHOST_CALL_RETURN(ghost_densemat_halocomm_start(x,mat->context,&comm));
     GHOST_CALL_RETURN(ghost_densemat_halocomm_finalize(x,mat->context,&comm));
+#endif
     ghost_kacz(x,mat,b,opts);
+#ifdef CARP
     GHOST_CALL_RETURN(ghost_densemat_halo_avg(x,mat->context));
-
+#endif
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_SOLVER);
 
     return GHOST_SUCCESS;

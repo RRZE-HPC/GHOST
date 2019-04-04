@@ -11,6 +11,7 @@
 #include "ghost/sell_kacz_bmc_rm_gen.h"
 #include "ghost/sell_kacz_bmc_normal_gen.h"
 #include "ghost/sell_kacz_bmc_shift_gen.h"
+#include "ghost/sell_kacz_RACE_shift_gen.h"
 #include "ghost/sell_kacz_fallback.h"
 #include "ghost/compatibility_check.h"
 #include "ghost/autogen.h"
@@ -145,7 +146,7 @@ static ghost_error ghost_carp_perf_init_tmpl(ghost_sparsemat *mat, ghost_carp_op
                     vtraits_col.datatype = (ghost_datatype)(GHOST_DT_COMPLEX|GHOST_DT_FLOAT);
                 }
             }
-        }  
+        }
 
         std::complex<double> zero=0;
         std::complex<double> one=1;
@@ -279,7 +280,7 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
     if(rhs==NULL) {
         if(opts.num_shifts != 0)       
             ghost_densemat_create_and_view_densemat(&b, x, DM_NROWS(x), 0, x->traits.ncols/opts.num_shifts, 0);
-        else       
+        else
             ghost_densemat_create_and_view_densemat(&b, x, DM_NROWS(x), 0, x->traits.ncols, 0);
 
         b->val = NULL; 
@@ -287,8 +288,13 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
         b = rhs;
     }
 
-    if(opts.shift) {     
-        if(!(mat->traits.flags & GHOST_SPARSEMAT_COLOR)) {
+    if(opts.shift) {
+        if(mat->traits.flags & GHOST_SPARSEMAT_RACE) {
+            GHOST_INFO_LOG("KACZ_shift with RACE called");
+            p.nshifts = opts.num_shifts;
+            p.method = GHOST_KACZ_METHOD_RACEshift;
+        }
+        else if(!(mat->traits.flags & GHOST_SPARSEMAT_COLOR)) {
             p.nshifts = opts.num_shifts;
             if(!(mat->traits.flags & GHOST_SPARSEMAT_BLOCKCOLOR) && (mat->context->kaczRatio >= 2*mat->context->kacz_setting.active_threads)) {
                 GHOST_INFO_LOG("BMC KACZ_shift without transition called");
@@ -339,6 +345,7 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
 #include "sell_kacz_bmc_rm.def"
 #include "sell_kacz_bmc_normal.def"
 #include "sell_kacz_bmc_shift.def"
+#include "sell_kacz_RACE_shift.def"
 #include "sell_kacz_mc.def"
         //#include "sell_kacz_avx.def"
 
@@ -434,7 +441,7 @@ ghost_error ghost_kacz(ghost_densemat *x, ghost_sparsemat *mat, ghost_densemat *
                                         p.chunkheight==-1?"arbitrary":ghost::to_string((long long)p.chunkheight).c_str(),
                                         p.blocksz==-1?"arbitrary":ghost::to_string((long long)p.blocksz).c_str(),
                                         ghost::to_string((long long)p.nshifts).c_str(),
-                                        ghost_implementation_string(p.impl),p.alignment==GHOST_UNALIGNED?"unaligned":"aligned",p.method==GHOST_KACZ_METHOD_BMC?"BMC":p.method==GHOST_KACZ_METHOD_MC?"MC":p.method==GHOST_KACZ_METHOD_BMCNORMAL?"BMC_NORMAL":"BMC_shift",ghost_densemat_storage_string(p.storage),ghost_datatype_string(p.vdt));
+                                        ghost_implementation_string(p.impl),p.alignment==GHOST_UNALIGNED?"unaligned":"aligned",p.method==GHOST_KACZ_METHOD_BMC?"BMC":p.method==GHOST_KACZ_METHOD_MC?"MC":p.method==GHOST_KACZ_METHOD_RACEshift?"RACE_shift":p.method==GHOST_KACZ_METHOD_BMCNORMAL?"BMC_NORMAL":"BMC_shift",ghost_densemat_storage_string(p.storage),ghost_datatype_string(p.vdt));
                                 kernel = ghost_kacz_kernels[p];
                                 if (kernel) {
                                     goto end_of_loop;
@@ -464,6 +471,9 @@ end_of_loop:
 
     }
 
+    if(rhs==NULL) {
+        ghost_densemat_destroy(b);
+    }
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
     return ret;
 }
