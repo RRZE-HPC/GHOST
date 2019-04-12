@@ -92,7 +92,12 @@ typedef enum{
       /**
        * @brief For shifted system with RACE library
        */
-      GHOST_KACZ_METHOD_RACEshift
+      GHOST_KACZ_METHOD_RACEshift,
+
+      /**
+       * @brief For shifted system with ABMC
+       */
+      GHOST_KACZ_METHOD_ABMCshift,
 }
 ghost_kacz_method;
 

@@ -30,7 +30,8 @@ extern "C" ghost_error ghost_sparsemat_perm_abmc(ghost_context *ctx, ghost_spars
     }
     ctx->blockSize = blocksize;
 
-    std::vector<int> block_sizes_default{8,32,64,128};
+    //std::vector<int> block_sizes_default{8,32,64,128};
+    std::vector<int> block_sizes_default{64,128};
     std::vector<int> block_sizes;
     int opt_block;
 
