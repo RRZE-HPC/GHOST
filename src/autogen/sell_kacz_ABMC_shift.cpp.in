@@ -507,7 +507,7 @@ ghost_error ghost_kacz_ABMCshift_u_plain_rm_CHUNKHEIGHT_NVECS_NSHIFTS(ghost_dens
             for (ghost_lidx part=end-1; part>=start; --part)
             {
                 int row_start = mat->context->part_ptr[part];
-                int row_end = mat->context->part_ptr[part+1]-1;
+                int row_end = mat->context->part_ptr[part+1];
                 BACKWARD_SHIFT_LOOP(row_start,row_end,MT,VT)
             }
         }
