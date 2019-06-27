@@ -780,7 +780,7 @@ else ()
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DGHOST_FUJITSU -noansi")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DGHOST_FUJITSU")
     else()
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -std=c99 -Wall -Wextra -Werror -pedantic")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -std=c99 -Wall -Wextra -pedantic")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -std=c++0x -Wall -Wextra -pedantic") # removed -Werror
         if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
             set(CMAKE_INCLUDE_SYSTEM_FLAG_C "-isystem ") # Not present in Cmake 2.8.11.2

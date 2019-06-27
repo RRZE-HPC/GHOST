@@ -100,7 +100,9 @@ extern "C" {
 extern "C" {
     void ghost_ce_sleep(ghost_context* ctx)
     {
+#ifdef GHOST_HAVE_NAME
         NAMEInterface *ce = (NAMEInterface*) ctx->coloringEngine;
         ce->sleep();
+#endif
     }
 }

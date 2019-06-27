@@ -1,8 +1,11 @@
+#ifdef GHOST_HAVE_NAME
 #include <NAME/interface.h>
+#endif
 #include "ghost/init.h"
 #include "ghost/constants.h" 
 #include "ghost/util.h"
 
+#ifdef GHOST_HAVE_NAME
 void chunkPtr(int start, int end, void *args_)
 {
     ghost_sparsemat *args = (ghost_sparsemat*) args_;
@@ -88,7 +91,10 @@ void initCol(ghost_sparsemat *mat)
     printf("finished col\n");
 }
 
+}
+#endif
 
+extern "C" {
 //reinitialise for NUMA and CE compatibility
 void reInit(ghost_sparsemat *mat)
 {
@@ -96,7 +102,9 @@ void reInit(ghost_sparsemat *mat)
     ghost_malloc_align((void **)&newChunkStart,(mat->context->row_map->dim+1)*sizeof(ghost_lidx),GHOST_DATA_ALIGNMENT);
     int* oldChunkStart = mat->chunkStart;
     mat->chunkStart = newChunkStart;
+#ifdef GHOST_HAVE_NAME
     initChunkPtr(mat);
+#endif
     int len = mat->context->row_map->dim+1;
 #pragma omp parallel for
     for(int i=0; i<len; ++i)
@@ -111,7 +119,9 @@ void reInit(ghost_sparsemat *mat)
     ghost_malloc_align((void **)&newRowLen,(mat->context->row_map->dim)*sizeof(ghost_lidx),GHOST_DATA_ALIGNMENT);
     int* oldRowLen = mat->rowLen;
     mat->rowLen = newRowLen;
+#ifdef GHOST_HAVE_NAME
     initRowLen(mat);
+#endif
     len = mat->context->row_map->dim;
 #pragma omp parallel for
     for(int i=0; i<len; ++i)
@@ -127,7 +137,9 @@ void reInit(ghost_sparsemat *mat)
     ghost_malloc_align((void **)&newVal,mat->elSize*(size_t)mat->nEnts,GHOST_DATA_ALIGNMENT);
     char* oldVal = mat->val;
     mat->val = newVal;
+#ifdef GHOST_HAVE_NAME
     initVal(mat);
+#endif
     len = mat->nEnts*mat->elSize;
 #pragma omp parallel for
     for(int i=0; i<len; ++i)
@@ -142,7 +154,9 @@ void reInit(ghost_sparsemat *mat)
     ghost_malloc_align((void **)&newCol,sizeof(ghost_lidx)*mat->nEnts,GHOST_DATA_ALIGNMENT);
     int *oldCol = mat->col;
     mat->col = newCol;
+#ifdef GHOST_HAVE_NAME
     initCol(mat);
+#endif
     len = mat->nEnts;
 #pragma omp parallel for
     for(int i=0; i<len; ++i)
