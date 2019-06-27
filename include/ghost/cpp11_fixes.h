@@ -12,13 +12,13 @@
 
 namespace ghost {
 
-template<typename T> 
+template<typename T>
 static inline T conj(const T& a)
 {
     return std::conj(a);
 }
 
-#if __cplusplus < 201103L
+#if __cplusplus < 201103L || defined(__GNUC__)
 static inline float conj(const float &a)
 {
     return a;
@@ -30,7 +30,7 @@ static inline double conj(const double &a)
 }
 #endif
 
-template<typename T> 
+template<typename T>
 static inline T norm(const T& a)
 {
     return std::norm(a);

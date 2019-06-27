@@ -178,11 +178,11 @@ extern "C" ghost_error ghost_sparsemat_perm_spmp(ghost_context *ctx, ghost_spars
 
         int me;
         ghost_rank(&me,MPI_COMM_WORLD);
-        	if(me==0)
-            csr->storeMatrixMarket("proc0_before_RCM");
-            if(me==1)
-            csr->storeMatrixMarket("proc1_before_RCM");
-
+        /*if(me==0)
+          csr->storeMatrixMarket("proc0_before_RCM");
+          if(me==1)
+          csr->storeMatrixMarket("proc1_before_RCM");
+          */
         csrT = csr->transpose();
         /*      csrTT = csrT->transpose();
 
