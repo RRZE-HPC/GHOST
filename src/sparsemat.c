@@ -1048,6 +1048,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
      *        SPM_NCOLS(mat) = mat->context->nrowspadded;
      *    else */
 
+
     #ifdef GHOST_SPARSEMAT_GLOBALSTATS
     GHOST_CALL_GOTO(ghost_malloc((void **)&(mat->nzDist),sizeof(ghost_gidx)*(2*mat->context->row_map->gdim-1)),err,ret);
     memset(mat->nzDist,0,sizeof(ghost_gidx)*(2*mat->context->row_map->gdim-1));
@@ -1097,8 +1098,8 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
         mtraits.C = 1;
         mtraits.sortScope = 1;
         ghost_sparsemat_create(&dummymat,NULL,&mtraits,1);
-
         ghost_sparsemat_init_rowfunc(dummymat,src,mat->context->mpicomm,mat->context->weight);
+
         HAVE_DIAG_second_pass = 0;
         int orig_threads = 1;
         #pragma omp parallel
@@ -1541,7 +1542,7 @@ ghost_error ghost_sparsemat_init_rowfunc(ghost_sparsemat *mat, ghost_sparsemat_s
                                         // do not permute remote and do not allow local to go to remote
                                         if(tmpcol[i*mat->maxRowLen+colidx] < mat->context->col_map->dimpad) {
                                             if( mat->context->col_map->loc_perm[tmpcol[i*mat->maxRowLen+colidx]]>=mat->context->col_map->dimpad ) {
-                                                GHOST_ERROR_LOG("Ensure you have halo number of paddings, since GHOST_PERM_NO_DISTINCTION is switched on");
+                                                GHOST_ERROR_LOG("Ensure you have halo number of paddings, since GHOST_PERM_NO_DISTINCTION is switched on cur col = %d, max = %d",  mat->context->col_map->loc_perm[tmpcol[i*mat->maxRowLen+colidx]], mat->context->col_map->dimpad);
                                             }
                                             (*col)[(*chunkptr)[chunk]+colidx*C+i] = mat->context->col_map->loc_perm[tmpcol[i*mat->maxRowLen+colidx]];
                                         } else {

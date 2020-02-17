@@ -8,6 +8,7 @@
 #include "ghost/machine.h"
 #include "ghost/constants.h"
 
+
 // uncomment if RCM with mirrored triangular matrix should be used for non-symmetric matres
 // else, bipartite graph BFS is used
 //#define NONSYM_RCM_MIRROR
@@ -66,7 +67,9 @@ extern "C" ghost_error ghost_sparsemat_perm_spmp(ghost_context *ctx, ghost_spars
 
     ghost_lidx ncols_halo_padded = mat->context->row_map->dim;
     if (mat->traits.flags & GHOST_PERM_NO_DISTINCTION) {
-        ncols_halo_padded = mat->context->col_map->dim;
+//        ncols_halo_padded = mat->context->col_map->dimpad;
+        printf("ncols =  %d\n", ncols_halo_padded);
+        printf("nrows = %d\n", mat->context->row_map->dim);
     }
 
 #ifdef GHOST_HAVE_CUDA
