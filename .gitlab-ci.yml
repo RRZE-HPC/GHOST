@@ -1,0 +1,23 @@
+gcc9-cpu:
+  tags:
+    - ESSEX
+  script:
+    - ./test/ci-sc-dlr.sh -e gcc9-openmpi -v native -b Release
+    - ./test/ci-sc-dlr.sh -e gcc9-openmpi -v native -b Debug
+
+
+gcc8-cpu:
+  tags:
+    - ESSEX
+  script:
+    - ./test/ci-sc-dlr.sh -e gcc8-openmpi-cuda -v native -b Release
+    - ./test/ci-sc-dlr.sh -e gcc8-openmpi-cuda -v native -b Debug
+
+
+gcc8-gpu:
+  tags:
+    - ESSEX, GPU
+  script:
+    - ./test/ci-sc-dlr.sh -e gcc8-openmpi-cuda -v cuda -b Release
+    - ./test/ci-sc-dlr.sh -e gcc8-openmpi-cuda -v cuda -b Debug
+
