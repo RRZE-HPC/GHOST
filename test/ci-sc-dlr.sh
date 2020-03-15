@@ -6,7 +6,7 @@
 
 set -e
 
-#export CCACHE_DIR=/home_local/f_buildn/ESSEX_workspace/.ccache/
+export CCACHE_DIR=/home_local/f_jkessx/.ccache/
 
 ## default options and declarations
 # kernel lib
@@ -67,6 +67,8 @@ echo "Options: PRGENV=${PRGENV}, BUILD_TYPE=${BUILD_TYPE}, VECT_EXT=${VECT_EXT},
 # configure modulesystem
 export MODULEPATH=/tools/modulesystem/modulefiles
 module() { eval `/usr/bin/modulecmd bash $*`; }
+
+source /tools/modulesystem/spack_KP/share/spack/setup-env.sh
 
 # load modules
 module load "PrgEnv/$PRGENV"
