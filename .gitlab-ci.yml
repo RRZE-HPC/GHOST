@@ -14,10 +14,10 @@ gcc8-cpu:
     - ./test/ci-sc-dlr.sh -e gcc8-openmpi-cuda -v native -b Debug
 
 
-gcc8-gpu:
-  tags:
-    - ESSEX, GPU
-  script:
-    - ./test/ci-sc-dlr.sh -e gcc8-openmpi-cuda -v cuda -b Release
-    - ./test/ci-sc-dlr.sh -e gcc8-openmpi-cuda -v cuda -b Debug
+#gcc8-gpu:
+#  tags:
+#    - ESSEX, GPU
+#  script:
+#    - ./test/ci-sc-dlr.sh -e gcc8-openmpi-cuda -v cuda -b Release
+#    - ./test/ci-sc-dlr.sh -e gcc8-openmpi-cuda -v cuda -b Debug
 
