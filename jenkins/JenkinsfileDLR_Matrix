@@ -1,3 +1,4 @@
+pipeline {
 node("SC-030114L") {
    dir("/home_local/f_jkessx/ESSEX_workspace/ghost/"){
 
@@ -35,5 +36,5 @@ node("SC-030114L") {
    }
    }
 }
-
+}
 
