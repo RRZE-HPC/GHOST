@@ -1,40 +1,42 @@
 node("SC-030114L") {
-   dir("/home_local/f_jkessx/ESSEX_workspace/ghost/"){
+  dir("/home_local/f_jkessx/ESSEX_workspace/ghost/"){
 
-   stages {
-   
-   stage 'check out from bitbucket'
-   checkout([$class: 'GitSCM', branches: [[name: '*/devel']], doGenerateSubmoduleConfigurations: false, extensions: [[$class: 'CleanCheckout']], gitTool: 'Default', submoduleCfg: [], userRemoteConfigs: [[url: 'https://bitbucket.org/essex/ghost.git']]])
+  stages {
+    stage 'check out from bitbucket'
+    checkout([$class: 'GitSCM', branches: [[name: '*/devel']], doGenerateSubmoduleConfigurations: false, extensions: 
+    [[$class: 'CleanCheckout']], gitTool: 'Default', submoduleCfg: [], userRemoteConfigs: [[url: https://bitbucket.org/essex/ghost.git']]])
 
-   shellPrefix="#!/bin/bash\n"   
+    shellPrefix="#!/bin/bash\n"
 
-  stage('BuildAndTest') {
+    stage('BuildAndTest') {
       matrix {
-          axes {
-                axis {
-                   name 'PRGENV'
-                   values 'gcc9-openmpi'
-                }
-                axis {
-                   name 'KERNELS'
-                   values 'builtin', 'eigen', 'epetra', 'tpetra', 'petsc'
-                }
-                axis {
-                   name 'VECT_EXT'
-                   values 'none', 'SSE', 'AVX2'
-                }
-                axis {
-                   name 'BUILD_TYPE'
-                   values 'Release', 'Debug'
-                }
-               }
-            }
-   stage '#{VECT_EXT}, ${PRGENV}, ${FLAGS}'
-   sh(shellPrefix + '''
+        axes {
+          axis {
+            name 'PRGENV'
+            values 'gcc9-openmpi'
+          }
+          axis {
+            name 'FLAGS'
+            values 'default', 'optional-libs'
+          }
+          axis {
+            name 'VECT_EXT'
+            values 'plain', 'SSE', 'AVX2'
+          }
+          axis {
+            name 'BUILD_TYPE'
+            values 'Release', 'Debug'
+          }
+        }
+      }
+
+    stage '${VECT_EXT}, ${PRGENV}, ${FLAGS}'
+    sh(shellPrefix + '''
 ./test/ci-sc-dlr.sh -e ${PRGENV} -b ${BUILD_TYPE} -f ${FLAGS} -v ${VECT_EXT}
 ''')
-        }
+       }
     }
+  }
 }
 
 
