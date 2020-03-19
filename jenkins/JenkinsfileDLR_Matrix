@@ -7,9 +7,9 @@ pipeline {
    }
    stages {
    
-   stage 'check out from bitbucket'
-   checkout([$class: 'GitSCM', branches: [[name: '*/devel']], doGenerateSubmoduleConfigurations: false, extensions: [[$class: 'CleanCheckout']], gitTool: 'Default', submoduleCfg: [], userRemoteConfigs: [[url: 'https://bitbucket.org/essex/ghost.git']]])
-
+      stage('check out from bitbucket') {
+      checkout([$class: 'GitSCM', branches: [[name: '*/devel']], doGenerateSubmoduleConfigurations: false, extensions: [[$class: 'CleanCheckout']], gitTool: 'Default', submoduleCfg: [], userRemoteConfigs: [[url: 'https://bitbucket.org/essex/ghost.git']]])
+      }
    shellPrefix="#!/bin/bash\n"
 
       stage('BuildAndTest') {
