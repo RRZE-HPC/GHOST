@@ -27,8 +27,8 @@ pipeline {
                values 'Release', 'Debug'
                }
             }
-            stages {
-               stage('${VECT_EXT}, ${PRGENV}, ${FLAGS}') {
+            stages {            
+               stage('BuildAndTest') {
 sh('''#!/bin/bash\n
 ./test/ci-sc-dlr.sh -e ${PRGENV} -b ${BUILD_TYPE} -f ${FLAGS} -v ${VECT_EXT}
 ''')
