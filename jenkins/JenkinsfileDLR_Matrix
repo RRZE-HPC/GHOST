@@ -10,7 +10,6 @@ pipeline {
       stage('check out from bitbucket') {
       checkout([$class: 'GitSCM', branches: [[name: '*/devel']], doGenerateSubmoduleConfigurations: false, extensions: [[$class: 'CleanCheckout']], gitTool: 'Default', submoduleCfg: [], userRemoteConfigs: [[url: 'https://bitbucket.org/essex/ghost.git']]])
       }
-   shellPrefix="#!/bin/bash\n"
 
       stage('BuildAndTest') {
          matrix {
@@ -32,12 +31,13 @@ pipeline {
                values 'Release', 'Debug'
                }
             }
-         }
 
-         stage '${VECT_EXT}, ${PRGENV}, ${FLAGS}'
-sh(shellPrefix + '''
+            stage('${VECT_EXT}, ${PRGENV}, ${FLAGS}') {
+sh('''#!/bin/bash\n
 ./test/ci-sc-dlr.sh -e ${PRGENV} -b ${BUILD_TYPE} -f ${FLAGS} -v ${VECT_EXT}
 ''')
+            }
+         }
       }
    }
 }
