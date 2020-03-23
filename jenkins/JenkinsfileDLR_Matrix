@@ -27,7 +27,7 @@ pipeline {
                values 'Release', 'Debug'
                }
             }
-            stages {            
+            parallel {
                stage('BuildAndTest') {
                   steps {
 sh('''#!/bin/bash\n
