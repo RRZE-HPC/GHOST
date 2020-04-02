@@ -1,43 +1,31 @@
-node("SC-030083L") {
-   dir("/home_local/f_buildn/ESSEX_workspace/GHOST_TPLs/"){
+node("SC-030114L") {
+   dir("/home_local/f_jkessx/ESSEX_workspace/ghost/"){
    
    stage 'check out from bitbucket'
    checkout([$class: 'GitSCM', branches: [[name: '*/devel']], doGenerateSubmoduleConfigurations: false, extensions: [[$class: 'CleanCheckout']], gitTool: 'Default', submoduleCfg: [], userRemoteConfigs: [[url: 'https://bitbucket.org/essex/ghost.git']]])
 
    shellPrefix="#!/bin/bash\n"
    
-   stage 'native Release build with Zoltan and GCC 7.2.0'
+   stage 'native Release build GCC 9'
    sh(shellPrefix + '''
-./test/ci-sc-dlr.sh -e gcc-7.2.0-openmpi -b Release -f optional-libs -v native -t git
+./test/ci-sc-dlr.sh -e gcc9-openmpi -b Release -v native
 ''')
 
-   stage 'native Debug build with Zoltan and GCC 7.2.0 and OpenMPI'
+   stage 'native Debug build with GCC 9 and OpenMPI'
    sh(shellPrefix + '''
-./test/ci-sc-dlr.sh -e gcc-7.2.0-openmpi -b Debug -f optional-libs -v native -t git
+./test/ci-sc-dlr.sh -e gcc9-openmpi -b Debug -v native
 ''')
 
-
-
-   stage 'CUDA Release build with Zoltan, GCC 4.9.2 and OpenMPI'
+   stage 'native Release build with GCC 9, OpenMPI and Zoltan'
    sh(shellPrefix + '''
-./test/ci-sc-dlr.sh -e gcc-4.9.2-openmpi-1.10.1 -b Release -f optional-libs -v CUDA -t 12.6.1
+./test/ci-sc-dlr.sh -e gcc9-openmpi -b Release -f optional-libs -v native
 ''')
 
-   stage 'CUDA Debug build with Zoltan, GCC 4.9.2 and OpenMPI'
+   stage 'native Debug build with GCC 9, OpenMPI and Zoltan'
    sh(shellPrefix + '''
-./test/ci-sc-dlr.sh -e gcc-4.9.2-openmpi-1.10.1 -b Debug -f optional-libs -v CUDA -t 12.6.1
-''')
-/*
-   stage 'native Release build with SPMP, ICC 16.0.3 and MPICH'
-   sh(shellPrefix + '''
-./test/ci-sc-dlr-optional-libs.sh -e intel-16.0.3-mpich -b Release -f optional-libs -v native -c "-DGHOST_USE_SPMP:BOOL=ON"
+./test/ci-sc-dlr.sh -e gcc9-openmpi -b Debug -f optional-libs -v native
 ''')
 
-   stage 'native Debug build with SPMP, ICC 16.0.3 and MPICH'
-   sh(shellPrefix + '''
-./test/ci-sc-dlr-optional-libs.sh -e intel-16.0.3-mpich -b Debug -f optional-libs -v native -c "-DGHOST_USE_SPMP:BOOL=ON"
-''')
-*/
 step([$class: 'Mailer', notifyEveryUnstableBuild: false, recipients: 'Jonas.Thies@DLR.de', sendToIndividuals: false])
  emailext body: '''Project: ${PROJECT_NAME}
  Revision: ${GIT_REVISION}

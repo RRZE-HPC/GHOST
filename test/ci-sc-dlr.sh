@@ -6,7 +6,7 @@
 
 set -e
 
-#export CCACHE_DIR=/home_local/f_buildn/ESSEX_workspace/.ccache/
+export CCACHE_DIR=/home_local/f_jkessx/.ccache/
 
 ## default options and declarations
 # kernel lib
@@ -15,9 +15,6 @@ BUILD_TYPE=Release
 INSTALL_PREFIX=../../
 VECT_EXT="native" # none SSE AVX AVX2 CUDA
 FLAGS="default" # "optional-libs"
-
-# list of modules to load
-MODULES_BASIC="cmake ccache cppcheck"
 
 ADD_CMAKE_FLAGS=""
 TRILINOS_VERSION="git"
@@ -64,9 +61,8 @@ shift $((OPTIND-1))
 echo "Options: PRGENV=${PRGENV}, BUILD_TYPE=${BUILD_TYPE}, VECT_EXT=${VECT_EXT}, FLAGS=${FLAGS}, ADD_CMAKE_FLAGS=${ADD_CMAKE_FLAGS}"
 
 ## prepare system for compilation
-# configure modulesystem
-export MODULEPATH=/tools/modulesystem/modulefiles
 module() { eval `/usr/bin/modulecmd bash $*`; }
+source /tools/modulesystem/spack_KP/share/spack/setup-env.sh
 
 # load modules
 module load "PrgEnv/$PRGENV"
@@ -80,16 +76,7 @@ export FC=$1
 
 echo "compilers: CC=$CC, CXX=$CXX, FC=$FC"
 
-for m in $MODULES_BASIC; do module load $m; done
-
-if [ "${PRGENV}" =~ "intel" ]; then
-  module load mkl
-else
-  module load gsl lapack
-fi
-
 if [ "${VECT_EXT}" = "CUDA" ]; then
-  module load cuda/cuda-${CUDA_VERSION}
   echo "check if any GPU is found..."
   nvidia-smi -q|grep "Product Name"
 fi
@@ -97,11 +84,10 @@ fi
 INSTALL_DIR=$INSTALL_PREFIX/install-${PRGENV}-${BUILD_TYPE}-${VECT_EXT}
 
 if [ "${FLAGS}" = "optional-libs" ]; then
-  module load ColPack
+#  module load ColPack
   ADD_CMAKE_FLAGS="${ADD_CMAKE_FLAGS}"
   if [ "${PRGENV}" ~= "gcc" ]; then
     # we currently have no Trilinos installation with icc
-    module load trilinos/${TRILINOS_VERSION}
     ADD_CMAKE_FLAGS="${ADD_CMAKE_FLAGS} -DGHOST_USE_ZOLTAN:BOOL=ON"
   fi
   INSTALL_DIR=${INSTALL_DIR}_optional-libs
