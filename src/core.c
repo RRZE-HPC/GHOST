@@ -17,6 +17,10 @@
 #include "ghost/instr.h"
 #include "ghost/autogen.h"
 
+#ifdef GHOST_HAVE_OPENMP
+#include <stdlib.h>
+#include <omp.h>
+#endif
 #include <hwloc.h>
 #if HWLOC_API_VERSION >= 0x00010700
 #include <hwloc/intel-mic.h>
@@ -130,6 +134,20 @@ ghost_error ghost_init(int argc, char **argv)
     ghost_instr_create();
     ghost_instr_prefix_set("");
     ghost_instr_suffix_set("");
+
+
+#ifdef GHOST_HAVE_OPENMP
+
+    omp_sched_t kind;
+    int chunk;
+    char *env_omp_sched = getenv("OMP_SCHEDULE");
+
+    if (!env_omp_sched) { omp_set_schedule(omp_sched_static, 0); }
+    setenv("OMP_SCHEDULE", "static", 0);
+    omp_get_schedule(&kind, &chunk);
+    printf("schedule %d\n", kind);
+#endif
+
 
 #ifdef GHOST_HAVE_MPI
     int req, prov;
