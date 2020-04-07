@@ -135,7 +135,7 @@ ghost_error ghost_init(int argc, char **argv)
     int req, prov;
 
 #ifdef GHOST_HAVE_OPENMP
-    req = MPI_THREAD_MULTIPLE; 
+    req = MPI_THREAD_SERIALIZED;
 #else
     req = MPI_THREAD_SINGLE;
 #endif
