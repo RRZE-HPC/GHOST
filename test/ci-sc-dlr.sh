@@ -6,7 +6,7 @@
 
 set -e
 
-export CCACHE_DIR=/home_local/f_jkessx/.ccache/
+export CCACHE_DIR=/localdata1/f_jkessx/.ccache/
 
 ## default options and declarations
 # kernel lib
