@@ -1,7 +1,11 @@
-#include <RACE/interface.h>
 #include "ghost/init.h"
 #include "ghost/constants.h" 
 #include "ghost/util.h"
+#include "ghost/config.h"
+#ifdef GHOST_HAVE_RACE
+#include <RACE/interface.h>
+#endif
+
 
 
 void chunkPtr(int start, int end, void *args_)
@@ -49,44 +53,54 @@ void val(int start, int end, void *args_)
 extern "C" {
 void initChunkPtr(ghost_sparsemat *mat)
 {
+#ifdef GHOST_HAVE_RACE
     printf("Initing chunkPtr\n");
     RACE::Interface *ce = (RACE::Interface*) (mat->context->coloringEngine);
     //NUMA INIT for coloring engine
     int fnId = ce->registerFunction(&chunkPtr, (void*)mat);
     ce->executeFunction(fnId);
     printf("Finished chunkPtr\n");
+#endif
 }
 
 void initRowLen(ghost_sparsemat *mat)
 {
+
+#ifdef GHOST_HAVE_RACE
     printf("Initing rowLen\n");
     RACE::Interface *ce = (RACE::Interface*) (mat->context->coloringEngine);
     //NUMA INIT for coloring engine
     int fnId = ce->registerFunction(&rowLen, (void*)mat);
     ce->executeFunction(fnId);
     printf("Finished rowLen\n");
+#endif
 }
 
 
 void initVal(ghost_sparsemat *mat)
 {
+
+#ifdef GHOST_HAVE_RACE
     printf("initing val\n");
     RACE::Interface *ce = (RACE::Interface*) (mat->context->coloringEngine);
     //NUMA INIT for coloring engine
     int fnId = ce->registerFunction(&val, (void*)mat);
     ce->executeFunction(fnId);
     printf("finished val\n");
+#endif
 }
 
 
 void initCol(ghost_sparsemat *mat)
 {
+#ifdef GHOST_HAVE_RACE
     printf("initing col\n");
     RACE::Interface *ce = (RACE::Interface*) (mat->context->coloringEngine);
     //NUMA INIT for coloring engine
     int fnId = ce->registerFunction(&col, (void*)mat);
     ce->executeFunction(fnId);
     printf("finished col\n");
+#endif
 }
 
 #define INIT_POLICY(RACE_policy, ...)\
