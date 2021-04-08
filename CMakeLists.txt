@@ -80,6 +80,17 @@ foreach(SPMMVCONF ${GHOST_AUTOGEN_SPMMV})
     endif()
 endforeach()
 
+#also check for CUDA kernels for max.
+if(GHOST_USE_CUDA)
+    foreach(SPMMVCONF ${GHOST_AUTOGEN_SPMMV_CUDA})
+        string(REPLACE "," ";" SPMMVCONF_LIST ${SPMMVCONF})
+        list(GET SPMMVCONF_LIST 0 CHUNKHEIGHT)
+        if(NOT "${CHUNKHEIGHT}" STREQUAL "*" AND ${CHUNKHEIGHT} GREATER ${GHOST_AUTOGEN_MAX_CHUNKHEIGHT})
+            set(GHOST_AUTOGEN_MAX_CHUNKHEIGHT ${CHUNKHEIGHT})
+        endif()
+    endforeach()
+endif()
+
 find_package(PkgConfig)
 
 add_definitions(-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -DMPICH_IGNORE_CXX_SEEK -DMPICH_SKIP_MPICXX)

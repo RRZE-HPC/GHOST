@@ -1,0 +1,42 @@
+pipeline {
+   agent {
+      node {
+      label 'SC-030114L'
+      customWorkspace("/home_local/f_jkessx/ESSEX_workspace/ghost/")
+      }
+   }
+   stages {
+   
+      stage('BuildAndTest') {
+         matrix {
+            axes {
+               axis {
+               name 'PRGENV'
+               values 'gcc9-openmpi'
+               }
+               axis {
+               name 'FLAGS'
+               values 'default', 'optional-libs'
+               }
+               axis {
+               name 'VECT_EXT'
+               values 'plain', 'SSE', 'AVX2'
+               }
+               axis {
+               name 'BUILD_TYPE'
+               values 'Release', 'Debug'
+               }
+            }
+            parallel {
+               stage('BuildAndTest') {
+                  steps {
+sh('''#!/bin/bash\n
+./test/ci-sc-dlr.sh -e ${PRGENV} -b ${BUILD_TYPE} -f ${FLAGS} -v ${VECT_EXT}
+''')
+                  }
+               }
+            }
+         }
+      }
+   }
+}

@@ -11,8 +11,7 @@
 #include <ghost/core.h>
 #include <ghost/timing.h>
 
-typedef enum
-{
+typedef enum {
     GHOST_FUNCTYPE_MATH = 1,
     GHOST_FUNCTYPE_UTIL = 2,
     /**
@@ -20,7 +19,7 @@ typedef enum
      */
     GHOST_FUNCTYPE_COMMUNICATION = 4,
     /**
-     * @brief Setup of GHOST or creation (no filling with data) data structures    
+     * @brief Setup of GHOST or creation (no filling with data) data structures
      */
     GHOST_FUNCTYPE_SETUP = 8,
     /**
@@ -34,7 +33,7 @@ typedef enum
      */
     GHOST_FUNCTYPE_IO = 128,
     /**
-     * @brief Teardown of GHOST or destruction data structures    
+     * @brief Teardown of GHOST or destruction data structures
      */
     GHOST_FUNCTYPE_TEARDOWN = 256,
     /**
@@ -44,64 +43,41 @@ typedef enum
     GHOST_FUNCTYPE_SOLVER = 1024
 } ghost_functype;
 
-#define GHOST_FUNCTYPE_ANY (\
-        GHOST_FUNCTYPE_MATH|\
-        GHOST_FUNCTYPE_UTIL|\
-        GHOST_FUNCTYPE_COMMUNICATION|\
-        GHOST_FUNCTYPE_SETUP|\
-        GHOST_FUNCTYPE_INITIALIZATION|\
-        GHOST_FUNCTYPE_KERNEL|\
-        GHOST_FUNCTYPE_BENCH|\
-        GHOST_FUNCTYPE_IO|\
-        GHOST_FUNCTYPE_SOLVER)
+#define GHOST_FUNCTYPE_ANY                                                                         \
+    (GHOST_FUNCTYPE_MATH | GHOST_FUNCTYPE_UTIL | GHOST_FUNCTYPE_COMMUNICATION                      \
+        | GHOST_FUNCTYPE_SETUP | GHOST_FUNCTYPE_INITIALIZATION | GHOST_FUNCTYPE_KERNEL             \
+        | GHOST_FUNCTYPE_BENCH | GHOST_FUNCTYPE_IO | GHOST_FUNCTYPE_SOLVER)
 
-#define GHOST_FUNC_ENTER(functype)\
-    int __funcnameoffset;\
-    char * __prefixbackup = NULL;\
-    char * __prefix = NULL;\
-    char * __ghost_functag = NULL;\
-    void * __ghost_instr_enable_backup = pthread_getspecific(ghost_instr_enable_key);\
-    if ((${GHOST_INSTRUMENT_FUNCTYPES}) && (${GHOST_INSTR_TIMING} || ${GHOST_INSTR_LIKWID})) {\
-        __prefix = (char *)malloc(1024*sizeof(char));\
-        __ghost_functag = (char *)malloc(1024*sizeof(char));\
-        __funcnameoffset = strncmp(__func__,"ghost_",6)?0:6;\
-        __prefixbackup = ghost_instr_prefix_get();\
-        snprintf(__ghost_functag,1024,"%s%s",__prefixbackup,\
-                __func__+__funcnameoffset);\
-        snprintf(__prefix,1024,"%s%s->",__prefixbackup,\
-            __func__+__funcnameoffset);\
-        pthread_setspecific(ghost_instr_enable_key,(void *)0x1);\
-        GHOST_INSTR_START(__func__+__funcnameoffset);\
-        ghost_instr_prefix_set(__prefix);\
-    } else {\
-        pthread_setspecific(ghost_instr_enable_key,NULL);\
-    }\
-    if ((functype) == (GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)) {\
-        ghost_task *cur = NULL;\
-        ghost_task_cur(&cur);\
-        if (!cur) {\
-            GHOST_PERFWARNING_LOG("A kernel function has been called outside a task!");\
-        }else if(cur->nThreads == 0) {\
-            GHOST_PERFWARNING_LOG("A kernel function has been called in a task with 0 threads!");\
-        }\
-    }\
-    if (GHOST_VERBOSITY > 2) {\
-        GHOST_DEBUG_LOG(1,"Enter function %s",__func__);\
-    } 
+#define GHOST_FUNC_ENTER(functype)                                                                 \
+    int __funcnameoffset;                                                                          \
+    char *__prefixbackup = NULL;                                                                   \
+    char *__prefix = NULL;                                                                         \
+    char *__ghost_functag = NULL;                                                                  \
+    void *__ghost_instr_enable_backup = pthread_getspecific(ghost_instr_enable_key);               \
+    if ((${GHOST_INSTRUMENT_FUNCTYPES}) && (${GHOST_INSTR_TIMING} || ${GHOST_INSTR_LIKWID})) {     \
+        __prefix = (char *)malloc(1024 * sizeof(char));                                            \
+        __ghost_functag = (char *)malloc(1024 * sizeof(char));                                     \
+        __funcnameoffset = strncmp(__func__, "ghost_", 6) ? 0 : 6;                                 \
+        __prefixbackup = ghost_instr_prefix_get();                                                 \
+        snprintf(__ghost_functag, 1024, "%s%s", __prefixbackup, __func__ + __funcnameoffset);      \
+        snprintf(__prefix, 1024, "%s%s->", __prefixbackup, __func__ + __funcnameoffset);           \
+        pthread_setspecific(ghost_instr_enable_key, (void *)0x1);                                  \
+        GHOST_INSTR_START(__func__ + __funcnameoffset);                                            \
+        ghost_instr_prefix_set(__prefix);                                                          \
+    } else {                                                                                       \
+        pthread_setspecific(ghost_instr_enable_key, NULL);                                         \
+    }                                                                                              \
+    if (GHOST_VERBOSITY > 2) { GHOST_DEBUG_LOG(1, "Enter function %s", __func__); }
 
-#define GHOST_FUNC_EXIT(functype)\
-    if ((${GHOST_INSTRUMENT_FUNCTYPES}) && (${GHOST_INSTR_TIMING} || ${GHOST_INSTR_LIKWID})) {\
-        if (${GHOST_INSTR_BARRIER}) {\
-            ghost_cu_barrier();\
-        }\
-        ghost_instr_prefix_set(__prefixbackup);\
-        GHOST_INSTR_STOP(__func__+__funcnameoffset);\
-        free(__ghost_functag);\
-        free(__prefix);\
-    }\
-    pthread_setspecific(ghost_instr_enable_key,__ghost_instr_enable_backup);\
-    if (GHOST_VERBOSITY > 2) {\
-        GHOST_DEBUG_LOG(1,"Exit function %s",__func__);\
-    } 
+#define GHOST_FUNC_EXIT(functype)                                                                  \
+    if ((${GHOST_INSTRUMENT_FUNCTYPES}) && (${GHOST_INSTR_TIMING} || ${GHOST_INSTR_LIKWID})) {     \
+        if (${GHOST_INSTR_BARRIER}) { ghost_cu_barrier(); }                                        \
+        ghost_instr_prefix_set(__prefixbackup);                                                    \
+        GHOST_INSTR_STOP(__func__ + __funcnameoffset);                                             \
+        free(__ghost_functag);                                                                     \
+        free(__prefix);                                                                            \
+    }                                                                                              \
+    pthread_setspecific(ghost_instr_enable_key, __ghost_instr_enable_backup);                      \
+    if (GHOST_VERBOSITY > 2) { GHOST_DEBUG_LOG(1, "Exit function %s", __func__); }
 
 #endif
